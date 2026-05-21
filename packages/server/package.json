@@ -16,6 +16,7 @@
   "dependencies": {
     "@erp-framework/core": "workspace:*",
     "@erp-framework/db": "workspace:*",
+    "@erp-framework/plugins": "workspace:*",
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^10.0.0",
     "@trpc/server": "^11.0.0",

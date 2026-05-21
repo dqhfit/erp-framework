@@ -15,11 +15,13 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "bridge": "node scripts/claude-bridge.mjs",
-    "new:plugin": "node tooling/create-plugin.mjs"
+    "new:plugin": "node tooling/create-plugin.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@erp-framework/core": "workspace:*",
     "@erp-framework/client": "workspace:*",
+    "@erp-framework/plugins": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@tanstack/react-router": "^1.95.0",
@@ -52,6 +54,7 @@
     "@biomejs/biome": "^1.9.0",
     "vitest": "^2.1.0",
     "@testing-library/react": "^16.1.0",
+    "@playwright/test": "^1.48.0",
     "concurrently": "^9.1.0"
   }
 }

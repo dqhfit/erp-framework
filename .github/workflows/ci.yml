@@ -1,6 +1,4 @@
-# CI — typecheck + build + test cho ERP Framework (monorepo pnpm).
-# Bắt lỗi type sớm: pnpm -r typecheck KHÔNG phủ app gốc nếu thiếu
-# routeTree.gen.ts, nên build app trước rồi mới typecheck toàn bộ.
+# CI — typecheck + build + test + e2e cho ERP Framework (monorepo pnpm).
 name: CI
 
 on:
@@ -13,29 +11,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Cài pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 11
-
       - name: Cài Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
-      # --ignore-scripts: pnpm 11 chặn build script dependency (esbuild,
-      # @swc/core, biome) và coi là lỗi khi chạy không tương tác. Các gói
-      # này nạp binary qua optionalDependencies nên vẫn hoạt động.
+      # --ignore-scripts: pnpm 11 chặn build script dependency và coi là
+      # lỗi khi chạy không tương tác. esbuild/@swc/core nạp binary qua
+      # optionalDependencies nên vẫn hoạt động.
       - name: Cài dependency
         run: pnpm install --ignore-scripts
-
       - name: Build app (sinh routeTree.gen.ts)
         run: pnpm exec vite build
-
       - name: Typecheck toàn monorepo
         run: pnpm -r typecheck
-
       - name: Test
         run: pnpm -r test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Cài Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Cài dependency
+        run: pnpm install --ignore-scripts
+      - name: Cài trình duyệt Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      # e2e smoke chạy với app-only (pnpm dev:app) — không cần DB/server.
+      - name: Chạy e2e
+        run: pnpm e2e

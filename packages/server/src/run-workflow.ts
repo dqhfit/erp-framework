@@ -10,7 +10,7 @@
 import { desc, eq } from "drizzle-orm";
 import { workflows, workflowRuns } from "@erp-framework/db";
 import {
-  runWorkflow,
+  runWorkflow, pluginRegistry,
   type WfNode, type WfEdge, type RunWorkflowOptions,
 } from "@erp-framework/core";
 import type { DB } from "./db";
@@ -66,7 +66,8 @@ export async function executeWorkflow(
   }).returning();
   if (!run) throw new Error("Không tạo được bản ghi workflow_run");
 
-  // Chạy lõi runtime
+  // Chạy lõi runtime — truyền registry để runner thực thi được
+  // node do plugin định nghĩa (xem nhánh default trong runWorkflow).
   const result = await runWorkflow({
     workflowId,
     workflowName: wf.name,
@@ -75,6 +76,7 @@ export async function executeWorkflow(
     callTool: opts.callTool ?? makeCallTool(db),
     callAgent: opts.callAgent ?? makeCallAgent(db),
     initialVars: opts.context,
+    registry: pluginRegistry,
   });
 
   // Ghi kết quả cuối

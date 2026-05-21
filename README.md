@@ -1,81 +1,75 @@
 # ERP Framework
 
-Low-code/no-code ERP builder. MCP làm data source. Multi-LLM agents.
-Người dùng tự thiết kế Entity → Page → Workflow → Dashboard.
+Framework low-code/no-code để dựng ứng dụng ERP: người dùng tự thiết kế
+Entity → Page → Workflow → Agent qua giao diện kéo-thả, dữ liệu chạy trên
+backend thật (PostgreSQL). Mở rộng được bằng plugin, tự host được.
 
-## Stack
-React 19 + TypeScript 5 + Vite 5 + TanStack Router/Query/Table +
-Zustand + react-hook-form + Zod + @xyflow/react + @dnd-kit + Tailwind +
-shadcn/ui + Recharts + Biome.
+## Kiến trúc — monorepo pnpm
 
-## Setup
+| Package                | Vai trò                                                        |
+|------------------------|----------------------------------------------------------------|
+| `@erp-framework/core`  | Lõi THUẦN (không React/IO): DataSource interface, RBAC, validate-on-write, formula, workflow-runner, Plugin SDK |
+| `@erp-framework/db`    | Schema Drizzle + migration (PostgreSQL 18, `uuidv7`)           |
+| `@erp-framework/server`| Backend Fastify + tRPC + Drizzle: auth phiên, RBAC, scheduler pg-boss, MCP/LLM client |
+| `@erp-framework/client`| Client cho frontend: `ApiDataSource`, auth client, objects client |
+| `@erp-framework/plugins`| Plugin dùng chung cho cả app lẫn server                       |
+| `src/` (gốc)           | App ERP mẫu — React 19 + Vite + TanStack Router                |
+
+## Chạy môi trường dev
 
 ```bash
 pnpm install
-pnpm dev           # Dev server localhost:5173
-pnpm build         # Output → dist/
+pnpm dev          # chạy app (vite :5173) + server (:8910) cùng lúc
 ```
 
-## LLM Authentication — 4 cách
-
-### 1. API Key (đơn giản nhất)
-Vào `/settings/llm` → tạo profile → nhập API key của Anthropic/OpenAI/Gemini/Ollama.
-
-### 2. Claude Pro/Max OAuth (dùng quota subscription)
-- Vào `/settings/llm` → click **"Đăng nhập với Claude Pro/Max"**
-- Sẽ redirect tới claude.ai, login, approve.
-- Token lưu localStorage, auto-refresh.
-- Tạo profile "Claude Pro" → chat trong app, dùng quota subscription thay vì trả API.
-
-### 3. Claude Code CLI Bridge (khuyến nghị nếu đã có CLI)
-Tận dụng `claude` CLI đã đăng nhập Pro/Max (hoặc API key) làm backend.
+Lần đầu cần một PostgreSQL — xem `packages/server/.env.example`. App mở
+màn hình đăng nhập; tài khoản đầu tiên là quản trị viên.
 
 ```bash
-# 1 lần: cài Claude Code CLI
-npm install -g @anthropic-ai/claude-code
-
-# 1 lần: login
-claude
-
-# Mỗi lần dev: chạy bridge song song với Vite
-pnpm bridge      # → localhost:8909
-# hoặc cùng lúc:
-pnpm dev:all     # cần `pnpm add -D concurrently` trước
+pnpm -r typecheck # kiểm type toàn monorepo
+pnpm build        # build app (tsc + vite)
+pnpm test         # chạy test
 ```
 
-Sau đó vào `/settings/llm` → card "Claude Code CLI Bridge" → click **Test** → nếu OK click **+ Tạo profile** → dùng adapter `claude-cli`.
+## Tự host (self-host)
 
-Ưu điểm: không cần copy-paste API key, không cần OAuth setup, dùng auth của CLI luôn.
+Triển khai đầy đủ bằng Docker — PostgreSQL + server + app (nginx) + bridge:
 
-### 4. Local LLM (Ollama)
-Chạy Ollama tại `localhost:11434`. Vào settings tạo profile adapter `ollama`, chọn model `llama3` / `qwen2.5`.
+```bash
+cp docker/.env.example docker/.env   # đặt ENCRYPTION_KEY
+docker compose -f docker/docker-compose.yml up -d --build
+```
 
-## Deploy lên Coolify
+Mở <http://localhost:3000>. Chi tiết: [docs/SELF-HOST.md](./docs/SELF-HOST.md).
 
-App là **SPA thuần client** — build ra `dist/` rồi serve tĩnh. Có sẵn `Dockerfile` (multi-stage: Node build → nginx serve, kèm SPA fallback).
+## Hệ plugin
 
-### Cách 1 — Dockerfile (khuyến nghị)
-1. Push repo lên Git (GitHub/GitLab).
-2. Trên Coolify: **New Resource → Application → từ Git repo**.
-3. Build Pack: chọn **Dockerfile** (Coolify tự nhận `Dockerfile` ở root).
-4. Port: `80`. Coolify tự cấp domain + HTTPS.
-5. Deploy. Healthcheck đã cấu hình sẵn (`HEALTHCHECK` trong Dockerfile).
+Mở rộng framework (kiểu field, node workflow, widget, MCP connector, LLM
+adapter) mà không sửa lõi:
 
-### Cách 2 — Static site
-1. Build Pack: **Static** (hoặc Nixpacks).
-2. Install command: `corepack enable && pnpm install`
-3. Build command: `pnpm build`
-4. Output / publish directory: `dist`
-5. Bật **SPA mode** (fallback về `index.html`) — bắt buộc, nếu không refresh route con sẽ 404.
+```bash
+pnpm new:plugin ten-plugin   # scaffold src/plugins/ten-plugin.ts
+```
 
-### Sau khi deploy
-- **OAuth redirect**: `redirect_uri` tự lấy theo `window.location.origin` → không cần sửa code. Nhưng phải đảm bảo domain production được Anthropic chấp nhận cho OAuth flow.
-- **MCP**: user tự cấu hình URL MCP server trong `/settings/mcp` lúc dùng.
+Loader tự nạp mọi file trong `src/plugins/`. Chi tiết:
+[docs/PLUGINS.md](./docs/PLUGINS.md).
 
-**Lưu ý — Bridge**: `pnpm bridge` (Claude Code CLI proxy + config-sync) **không deploy được trong container** vì cần `claude` CLI cài trên máy. Bridge là tool *optional, local*: app deploy chạy bình thường không cần bridge — chỉ adapter `claude-cli` và tính năng config-sync cần user tự chạy `pnpm bridge` trên máy họ. Production dùng API Key / OAuth là đủ.
+## Xác thực LLM — 4 cách
 
-## Docs
-- [ROADMAP.md](./ROADMAP.md) — Architecture + sprints + decisions
-- [DESIGN_SPEC.md](./DESIGN_SPEC.md) — UX/UI spec
-- `src/core/llm/` — Multi-LLM adapter system
-- `src/routes/` — File-based routing
+1. **API Key** — `/settings/llm` → tạo profile → nhập key Anthropic/OpenAI/Gemini/Ollama.
+2. **Claude Pro/Max OAuth** — đăng nhập claude.ai, dùng quota subscription.
+3. **Claude Code CLI Bridge** — dùng `claude` CLI làm nguồn LLM. Trong
+   self-host, bridge chạy sẵn thành một container (cổng 8909); đăng nhập một
+   lần bằng `docker compose ... exec -it bridge claude`.
+4. **Local LLM (Ollama)** — adapter `ollama`, `localhost:11434`.
+
+## Tài liệu
+
+- [docs/UPGRADE-PLAN.md](./docs/UPGRADE-PLAN.md) — kế hoạch & kiến trúc đích
+- [docs/SELF-HOST.md](./docs/SELF-HOST.md) — triển khai Docker
+- [docs/PLUGINS.md](./docs/PLUGINS.md) — hệ plugin
+- [ROADMAP.md](./ROADMAP.md) · [DESIGN_SPEC.md](./DESIGN_SPEC.md)
+
+## CI
+
+`.github/workflows/ci.yml` chạy typecheck + build + test mỗi lần push/PR.

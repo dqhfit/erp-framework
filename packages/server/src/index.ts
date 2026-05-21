@@ -7,6 +7,7 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { startJobs, stopJobs } from "./jobs";
+import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 
 const PORT = Number(process.env.PORT ?? 8910);
 const HOST = process.env.HOST ?? "127.0.0.1";
