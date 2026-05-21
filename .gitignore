@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+dist-ssr/
+
+# TanStack Router auto-generated
+src/routeTree.gen.ts
+
+# bridge runtime data
+.bridge-data/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# env
+.env
+.env.local
+.env.*.local
+
+# vite cache
+.vite/
+
+# compiled output (TS project — .js belongs in dist/ only)
+src/**/*.js
+src/**/*.js.map

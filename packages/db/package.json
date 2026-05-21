@@ -1,0 +1,21 @@
+{
+  "name": "@erp-framework/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/schema.ts" },
+  "scripts": {
+    "typecheck": "tsc",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.36.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

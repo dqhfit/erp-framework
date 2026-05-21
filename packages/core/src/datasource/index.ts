@@ -1,0 +1,89 @@
+/* ==========================================================
+   DataSource — hợp đồng truy cập dữ liệu của ERP Framework.
+   packages/core CHỈ khai báo interface + DTO; ứng dụng cung
+   cấp cài đặt cụ thể (LocalStorageDataSource / ApiDataSource).
+   Đây là "cổng contract-first" của P1 — xem UPGRADE-PLAN 5.1.
+   ========================================================== */
+
+/* ─── DTO ────────────────────────────────────────────────── */
+
+/** Kiểu field hỗ trợ trong định nghĩa entity. */
+export type FieldType =
+  | "text" | "number" | "boolean" | "date" | "datetime"
+  | "select" | "multiselect" | "relation" | "formula" | "json";
+
+/** Định nghĩa một field trong entity (lưu ở entities.fields). */
+export interface EntityFieldDef {
+  name: string;                 // định danh máy — làm key trong record.data
+  label: string;
+  type: FieldType | (string & {});  // built-in hoặc kiểu do plugin thêm
+  required?: boolean;
+  options?: string[];           // cho select / multiselect
+  relationEntityId?: string;    // cho relation
+  formula?: string;             // cho formula
+  /** Cờ điều khiển sinh index — xem data governance UPGRADE-PLAN 3.5 */
+  filterable?: boolean;
+  sortable?: boolean;
+}
+
+/** Định nghĩa một entity (metadata low-code). */
+export interface EntityConfig {
+  id: string;
+  name: string;
+  label: string;
+  icon?: string;
+  fields: EntityFieldDef[];
+}
+
+/** Một bản ghi dữ liệu thực tế của entity động. */
+export interface EntityRecord {
+  id: string;
+  entityId: string;
+  schemaVersion: string;
+  data: Record<string, unknown>;
+  createdBy?: string;
+  createdAt: string;            // ISO string
+  updatedAt: string;
+}
+
+export type FilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in";
+
+/** Tham số truy vấn record động. */
+export interface QueryParams {
+  /** Lọc theo field động, vd { tong_tien: { op: ">", value: 5_000_000 } } */
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+  sort?: { field: string; dir: "asc" | "desc" };
+  limit?: number;
+  offset?: number;
+}
+
+export interface Paginated<T> {
+  rows: T[];
+  total: number;
+}
+
+/* ─── Interface ──────────────────────────────────────────── */
+
+/**
+ * Mọi store/đọc-ghi dữ liệu đi qua interface này — không gọi
+ * thẳng localStorage hay tRPC. Nhờ đó P1 chuyển đổi cuốn chiếu:
+ * frontend chạy trên LocalStorageDataSource trong khi backend
+ * còn đang dựng, rồi đổi sang ApiDataSource bằng một dòng inject.
+ */
+export interface DataSource {
+  /* Metadata low-code */
+  listEntities(): Promise<EntityConfig[]>;
+  getEntity(id: string): Promise<EntityConfig | null>;
+  saveEntity(entity: EntityConfig): Promise<EntityConfig>;
+  deleteEntity(id: string): Promise<void>;
+
+  /* Dữ liệu thực tế — record động */
+  getRecords(entityId: string, query?: QueryParams): Promise<Paginated<EntityRecord>>;
+  getRecord(recordId: string): Promise<EntityRecord | null>;
+  createRecord(entityId: string, data: Record<string, unknown>): Promise<EntityRecord>;
+  updateRecord(recordId: string, data: Record<string, unknown>): Promise<EntityRecord>;
+  deleteRecord(recordId: string): Promise<void>;
+
+  /* Workflow & scheduler */
+  triggerWorkflow(workflowId: string, context?: unknown): Promise<{ runId: string }>;
+}

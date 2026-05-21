@@ -1,0 +1,21 @@
+# @erp-framework/server — self-host trong monorepo pnpm.
+# node:22-slim (Debian/glibc) — tránh rắc rối native module trên Alpine/musl.
+FROM node:22-slim
+RUN npm install -g pnpm@11
+WORKDIR /app
+
+# Copy toàn bộ monorepo (node_modules đã bị .dockerignore loại trừ).
+COPY . .
+
+# Chỉ cài deps cho server + các workspace package nó phụ thuộc (core, db).
+# "--filter ...server..." kéo theo dependency nội bộ (core, db).
+# "--ignore-scripts": pnpm 11 chặn build script của dependency mặc định và
+# coi đó là LỖI (ERR_PNPM_IGNORED_BUILDS, exit 1) khi chạy không tương tác.
+# Cờ này là chỉ thị tường minh → pnpm thoát 0. tsx chạy server dựa trên
+# esbuild — esbuild nạp binary qua optionalDependencies nên vẫn hoạt động.
+RUN pnpm install --filter "@erp-framework/server..." --ignore-scripts
+RUN pnpm rebuild esbuild || true
+
+EXPOSE 8910
+# Migrate → seed ERP mẫu (idempotent) → khởi động server.
+CMD ["sh", "-c", "pnpm --filter @erp-framework/db migrate && pnpm --filter @erp-framework/server seed && pnpm --filter @erp-framework/server start"]

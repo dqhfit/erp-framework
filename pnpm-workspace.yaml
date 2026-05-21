@@ -1,0 +1,13 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - 'tooling/*'
+
+# pnpm 10.6+/11: build scripts của dependency bị chặn mặc định.
+# Phải khai báo TẠI ĐÂY (không phải package.json#pnpm) cho workspace —
+# nếu không, pnpm install báo ERR_PNPM_IGNORED_BUILDS và thoát mã 1.
+# esbuild + @swc/core cần postinstall để cài binary native cho vite build.
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - '@swc/core'
+  - esbuild

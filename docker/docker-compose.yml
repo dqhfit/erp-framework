@@ -1,0 +1,77 @@
+# Self-host đầy đủ ERP Framework: PostgreSQL 18 + server + app (nginx) + bridge.
+# Chạy:  docker compose -f docker/docker-compose.yml up -d --build
+# Truy cập:  http://localhost:3000   (nginx phục vụ SPA, proxy /trpc → server)
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp
+      POSTGRES_DB: erp_framework
+    volumes:
+      - erp-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp_framework"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://erp:erp@db:5432/erp_framework
+      PORT: "8910"
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-please-change-this-encryption-key}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Không expose ra ngoài — app (nginx) proxy nội bộ qua /trpc.
+    # Mở dòng dưới nếu cần gọi thẳng server để debug.
+    # ports:
+    #   - "8910:8910"
+    expose:
+      - "8910"
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "3000:80"
+
+  # Claude Code CLI Bridge — dùng claude CLI làm nguồn LLM (auth Pro/Max).
+  # Đăng nhập MỘT LẦN sau khi container chạy (credentials lưu vào volume
+  # claude-auth, không mất khi restart):
+  #   docker compose -f docker/docker-compose.yml exec -it bridge claude
+  # Trong app → Cài đặt LLM → Bridge URL để  http://localhost:8909
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    restart: unless-stopped
+    ports:
+      - "8909:8909"
+    volumes:
+      # Một volume giữ TẤT CẢ trạng thái: phiên đăng nhập claude CLI
+      # (/data/claude) + config storage của bridge (/data/bridge).
+      - bridge-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8909/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  erp-pgdata:
+  bridge-data:

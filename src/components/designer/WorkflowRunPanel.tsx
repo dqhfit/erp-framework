@@ -1,0 +1,212 @@
+/* ==========================================================
+   WorkflowRunPanel — Modal cho 2 việc với 1 workflow:
+   1. Chạy THẬT (runWorkflow) — gọi MCP tool + LLM thật.
+   2. Quản lý LỊCH chạy tự động (cron schedule).
+   Tách riêng khỏi WorkflowDesigner để file gọn.
+   ========================================================== */
+import { useState } from "react";
+import { Modal, Button, Chip, Input, Select } from "@/components/ui";
+import { I } from "@/components/Icons";
+import { runWorkflow, type WfNode, type WfEdge, type RunStep } from "@/core/workflow-runner";
+import { callToolReal, callAgentReal } from "@/core/workflow-callbacks";
+import { useSchedules } from "@/stores/schedules";
+import { describeCron, parseCron, nextCronRun, CRON_PRESETS } from "@/lib/cron";
+import { dialog } from "@/lib/dialog";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  workflowId: string;
+  workflowName: string;
+  nodes: WfNode[];
+  edges: WfEdge[];
+}
+
+const STEP_COLOR: Record<RunStep["status"], string> = {
+  ok: "text-success",
+  error: "text-danger",
+  skipped: "text-muted",
+  paused: "text-warning",
+};
+
+export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, nodes, edges }: Props) {
+  const [tab, setTab] = useState<"run" | "schedule">("run");
+  const [running, setRunning] = useState(false);
+  const [steps, setSteps] = useState<RunStep[]>([]);
+  const [result, setResult] = useState<string>("");
+
+  const schedules = useSchedules((s) => s.schedules);
+  const addSchedule = useSchedules((s) => s.addSchedule);
+  const toggleSchedule = useSchedules((s) => s.toggleSchedule);
+  const deleteSchedule = useSchedules((s) => s.deleteSchedule);
+  const mySchedules = schedules.filter((s) => s.workflowId === workflowId);
+
+  const [cronExpr, setCronExpr] = useState("0 9 * * *");
+
+  const doRun = async () => {
+    setRunning(true);
+    setSteps([]);
+    setResult("");
+    try {
+      const r = await runWorkflow({
+        workflowId,
+        workflowName,
+        nodes,
+        edges,
+        callTool: callToolReal,
+        callAgent: callAgentReal,
+        onStep: (s) => setSteps((prev) => [...prev, s]),
+      });
+      setResult(
+        r.status === "completed" ? "✓ Workflow chạy xong."
+        : r.status === "paused" ? "⏸ Workflow tạm dừng (chờ duyệt)."
+        : "✗ Workflow lỗi.",
+      );
+    } catch (e) {
+      setResult("✗ Lỗi: " + (e as Error).message);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleAddSchedule = () => {
+    if (!parseCron(cronExpr)) {
+      void dialog.alert("Biểu thức cron không hợp lệ. Định dạng: phút giờ ngày tháng thứ.",
+        { title: "Cron sai" });
+      return;
+    }
+    addSchedule({ workflowId, workflowName, cronExpr, enabled: true });
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    const ok = await dialog.confirm("Xoá lịch chạy này?", {
+      title: "Xoá lịch", confirmText: "Xoá", danger: true,
+    });
+    if (ok) deleteSchedule(id);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Vận hành — ${workflowName}`} width={620}>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab("run")}
+          className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
+            (tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted")}
+        >
+          Chạy thật
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("schedule")}
+          className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
+            (tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted")}
+        >
+          Lịch chạy {mySchedules.length > 0 && <Chip>{mySchedules.length}</Chip>}
+        </button>
+      </div>
+
+      {tab === "run" && (
+        <div>
+          <div className="text-xs text-muted mb-3">
+            Chạy thật: gọi MCP tool và LLM thật, có thể thay đổi dữ liệu. Mỗi bước được ghi vào Nhật ký.
+          </div>
+          <Button variant="primary" icon={<I.Play size={13} />} onClick={doRun} disabled={running}>
+            {running ? "Đang chạy…" : "Chạy workflow"}
+          </Button>
+
+          {steps.length > 0 && (
+            <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[320px] overflow-auto">
+              {steps.map((s, i) => (
+                <div key={i} className="px-3 py-2 text-sm flex items-start gap-2">
+                  <span className={"font-mono text-xs shrink-0 " + STEP_COLOR[s.status]}>
+                    {s.status === "ok" ? "✓" : s.status === "error" ? "✗"
+                      : s.status === "paused" ? "⏸" : "○"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{s.label} <span className="text-muted text-xs">({s.kind})</span></div>
+                    <div className="text-xs text-muted">{s.detail}</div>
+                  </div>
+                  <span className="text-[10px] text-muted font-mono shrink-0">{s.durationMs}ms</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {result && (
+            <div className={"mt-3 text-sm font-medium " +
+              (result.startsWith("✓") ? "text-success"
+                : result.startsWith("⏸") ? "text-warning" : "text-danger")}>
+              {result}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "schedule" && (
+        <div>
+          <div className="text-xs text-muted mb-3">
+            Lịch tự động chạy workflow theo cron. Chỉ chạy khi app đang mở (không có daemon nền).
+          </div>
+
+          {/* Add form */}
+          <div className="flex items-end gap-2 mb-3">
+            <div className="flex-1">
+              <label className="text-xs text-muted block mb-1">Biểu thức cron</label>
+              <Input value={cronExpr} onChange={(e) => setCronExpr(e.target.value)}
+                placeholder="0 9 * * *" />
+            </div>
+            <Select value="" onChange={(e) => e.target.value && setCronExpr(e.target.value)}
+              className="w-44">
+              <option value="">Mẫu sẵn…</option>
+              {CRON_PRESETS.map((p) => (
+                <option key={p.expr} value={p.expr}>{p.label}</option>
+              ))}
+            </Select>
+            <Button variant="primary" icon={<I.Plus size={13} />} onClick={handleAddSchedule}>
+              Thêm lịch
+            </Button>
+          </div>
+          <div className="text-xs text-muted mb-3">
+            {describeCron(cronExpr)}
+          </div>
+
+          {/* List */}
+          {mySchedules.length === 0 ? (
+            <div className="text-center text-muted py-6 text-sm border border-border rounded-md">
+              Chưa có lịch nào cho workflow này.
+            </div>
+          ) : (
+            <div className="border border-border rounded-md divide-y divide-border">
+              {mySchedules.map((s) => {
+                const next = s.enabled ? nextCronRun(s.cronExpr) : null;
+                return (
+                  <div key={s.id} className="px-3 py-2 flex items-center gap-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono font-medium flex items-center gap-2">
+                        {s.cronExpr}
+                        {s.enabled
+                          ? <Chip variant="success">Đang bật</Chip>
+                          : <Chip>Tắt</Chip>}
+                      </div>
+                      <div className="text-xs text-muted">
+                        {describeCron(s.cronExpr)}
+                        {" · "}đã chạy {s.runCount} lần
+                        {s.lastStatus ? ` · gần nhất: ${s.lastStatus}` : ""}
+                        {next ? ` · kế: ${next.toLocaleString("vi-VN")}` : ""}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSchedule(s.id)}
+                      icon={<I.Power size={12} />} />
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteSchedule(s.id)}
+                      icon={<I.Trash size={12} />} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}

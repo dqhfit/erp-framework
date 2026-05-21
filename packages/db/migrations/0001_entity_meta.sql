@@ -1,0 +1,1 @@
+ALTER TABLE "entities" ADD COLUMN "meta" jsonb DEFAULT '{}'::jsonb NOT NULL;
