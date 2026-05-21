@@ -60,6 +60,12 @@ export interface WorkflowSaveInput {
   graph?: Record<string, unknown>;
   isActive?: boolean;
 }
+export interface ScheduleSaveInput {
+  id?: string;
+  workflowId: string;
+  cronExpr: string;
+  enabled?: boolean;
+}
 
 /** Tạo client CRUD cho 4 loại đối tượng low-code. */
 export function createObjectsClient(baseUrl: string) {
@@ -82,12 +88,26 @@ export function createObjectsClient(baseUrl: string) {
       get: (id: string) => trpc.workflows.get.query(id),
       save: (input: WorkflowSaveInput) => trpc.workflows.save.mutate(input),
       delete: (id: string) => trpc.workflows.delete.mutate(id),
+      // Chạy workflow THẬT phía server (gọi MCP/LLM thật, ghi workflow_runs).
+      trigger: (workflowId: string, context?: Record<string, unknown>) =>
+        trpc.workflows.trigger.mutate({ workflowId, context }),
+      // Lịch sử các lần chạy gần đây (gồm steps).
+      runs: (workflowId: string) => trpc.workflows.runs.query(workflowId),
     },
     agents: {
       list: () => trpc.agents.list.query(),
       get: (id: string) => trpc.agents.get.query(id),
       save: (input: AgentSaveInput) => trpc.agents.save.mutate(input),
       delete: (id: string) => trpc.agents.delete.mutate(id),
+    },
+    schedules: {
+      list: () => trpc.schedules.list.query(),
+      save: (input: ScheduleSaveInput) => trpc.schedules.save.mutate(input),
+      delete: (id: string) => trpc.schedules.delete.mutate(id),
+    },
+    activity: {
+      list: () => trpc.activity.list.query(),
+      clear: () => trpc.activity.clear.mutate(),
     },
   };
 }

@@ -302,19 +302,13 @@ function WorkflowInner({ workflowId }: Props) {
         onApply={handleAiApply}
       />
 
-      {/* Vận hành — chạy thật + lịch cron */}
+      {/* Vận hành — chạy thật phía server + lịch cron.
+          Server nạp graph từ DB nên không cần truyền nodes/edges. */}
       <WorkflowRunPanel
         open={runOpen}
         onClose={() => setRunOpen(false)}
         workflowId={workflowId}
         workflowName={`Workflow ${workflowId}`}
-        nodes={nodes.map((n) => ({
-          id: n.id, type: n.data.kind, label: n.data.label, config: n.data.config,
-        }))}
-        edges={edges.map((e) => ({
-          source: e.source, target: e.target,
-          label: typeof e.label === "string" ? e.label : undefined,
-        }))}
       />
 
       {/* Test Run — log mô phỏng */}

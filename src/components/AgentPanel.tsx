@@ -5,8 +5,8 @@ import { Button, Chip, Textarea, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { llmRegistry } from "@/core/llm";
 import { useSettings } from "@/stores/settings";
-import { useMcpClient, callMcpTool } from "@/hooks/useMcpClient";
-import { runAgent, mcpToolsToToolDefs } from "@/core/agent-runner";
+import { useMcpClient } from "@/hooks/useMcpClient";
+import { mcpToolsToToolDefs } from "@/core/agent-runner";
 import { useT } from "@/hooks/useT";
 
 interface Message {
@@ -89,45 +89,75 @@ export function AgentPanel() {
 
     try {
       const history = messages
-        .filter((m) => !m.pending && !m.error)
+        .filter((m) => !m.pending && !m.error && m.id !== userMsg.id)
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
       const toolDefs = mcpTools.length ? mcpToolsToToolDefs(mcpTools) : [];
 
-      const result = await runAgent({
-        profileName: profile.name,
-        system: SYSTEM_PROMPT + (toolDefs.length
-          ? `\n\nBạn có quyền gọi ${toolDefs.length} MCP tool để truy vấn dữ liệu thật. Hãy gọi tool khi cần.`
-          : ""),
-        userPrompt: text,
-        history,
-        tools: toolDefs,
-        callTool: (name, args) => callMcpTool(name, args),
-        maxIterations: 5,
-        onEvent: (ev) => {
-          if (ev.type === "tool_call") {
-            // Append một message hiển thị tool call đang chạy
+      // Gọi agent backend — server chạy vòng lặp LLM + MCP tool, phát
+      // event theo từng bước qua SSE.
+      const res = await fetch("/agent/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          profileName: profile.name,
+          system: SYSTEM_PROMPT + (toolDefs.length
+            ? `\n\nBạn có ${toolDefs.length} MCP tool — gọi khi cần truy vấn dữ liệu thật.`
+            : ""),
+          messages: [...history, { role: "user", content: text }],
+          tools: toolDefs,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error(`Server ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let finalText = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          let ev: { type?: string; [k: string]: unknown };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.type === "text" || ev.type === "done") {
+            finalText = (ev.text as string) || finalText;
+          } else if (ev.type === "tool_call") {
+            const args = JSON.stringify(ev.args ?? {}).slice(0, 80);
             setMessages((m) => [...m, {
-              id: `t${ev.id}`, role: "assistant", content: "",
-              toolCall: { name: ev.name, args: JSON.stringify(ev.args).slice(0, 80) },
-              pending: true,
+              id: `t${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+              role: "assistant", content: "",
+              toolCall: { name: String(ev.name), args }, pending: true,
             }]);
           } else if (ev.type === "tool_result") {
-            setMessages((m) => m.map((msg) => msg.id === `t${ev.id}` ? {
-              ...msg,
-              pending: false,
-              content: ev.error
-                ? `✗ ${ev.name} → ${ev.error}`
-                : `✓ ${ev.name} → ${summarizeResult(ev.result)}`,
-              error: !!ev.error,
-              toolCall: undefined,
-            } : msg));
+            setMessages((m) => {
+              const ri = [...m].reverse().findIndex((x) => x.pending && !!x.toolCall);
+              if (ri < 0) return m;
+              const idx = m.length - 1 - ri;
+              const copy = [...m];
+              copy[idx] = {
+                ...copy[idx]!, pending: false, toolCall: undefined,
+                error: !!ev.error,
+                content: ev.error
+                  ? `✗ ${String(ev.name)} → ${String(ev.error)}`
+                  : `✓ ${String(ev.name)} → ${summarizeResult(ev.result)}`,
+              };
+              return copy;
+            });
+          } else if (ev.type === "error") {
+            throw new Error(String(ev.message ?? "lỗi không rõ"));
           }
-        },
-      });
+        }
+      }
 
       setMessages((m) => m.map((msg) =>
         msg.id === pendingId
-          ? { ...msg, content: result.text || "(không có nội dung)", pending: false, toolCall: undefined }
+          ? { ...msg, content: finalText || "(không có nội dung)", pending: false, toolCall: undefined }
           : msg
       ));
     } catch (err) {

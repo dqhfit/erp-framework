@@ -1,27 +1,47 @@
+/* ==========================================================
+   activity — Dashboard Nhật ký & Chi phí. Đọc bảng activity_log
+   trên server qua objects.activity. Server ghi log khi chạy
+   workflow (run-workflow.ts); nguồn log mở rộng dần.
+   ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Chip, Button, Select } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useActivity, type ActivityKind } from "@/stores/activity";
+import { createObjectsClient } from "@erp-framework/client";
 import { formatUsd } from "@/lib/pricing";
 import { dialog } from "@/lib/dialog";
 
-const KIND_LABEL: Record<ActivityKind, string> = {
+const objects = createObjectsClient("");
+
+interface ActivityRow {
+  id: string;
+  at: string | Date;
+  kind: string;
+  objectType?: string | null;
+  target?: string | null;
+  detail: string;
+  tokensInput?: number | null;
+  tokensOutput?: number | null;
+  model?: string | null;
+  cost?: number | null;
+}
+
+const KIND_LABEL: Record<string, string> = {
   create: "Tạo", update: "Cập nhật", delete: "Xoá",
   run_workflow: "Chạy workflow", run_agent: "Chạy agent", mcp_call: "Gọi MCP",
   login: "Đăng nhập", error: "Lỗi",
 };
-
-const KIND_VARIANT: Record<ActivityKind, "default" | "accent" | "success" | "warning" | "danger"> = {
+const KIND_VARIANT: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
   create: "success", update: "accent", delete: "warning",
   run_workflow: "accent", run_agent: "accent", mcp_call: "default",
   login: "default", error: "danger",
 };
+const kindLabel = (k: string) => KIND_LABEL[k] ?? k;
+const kindVariant = (k: string) => KIND_VARIANT[k] ?? "default";
 
-function fmtTime(ts: number): string {
+function fmtTime(ts: string | Date): string {
   const d = new Date(ts);
-  const today = new Date();
-  const sameDay = d.toDateString() === today.toDateString();
+  const sameDay = d.toDateString() === new Date().toDateString();
   return sameDay
     ? d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -38,30 +58,32 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 function ActivityDashboard() {
-  const entries = useActivity((s) => s.entries);
-  const clear = useActivity((s) => s.clear);
+  const [rows, setRows] = useState<ActivityRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
 
-  // Tính từ entries — KHÔNG select object tính sẵn. Selector trả về
-  // object mới mỗi render → Zustand re-render vô hạn ("Maximum update
-  // depth exceeded"). Tính trong thân component thì an toàn.
-  const totalCost = entries.reduce((sum, e) => sum + (e.cost ?? 0), 0);
-  const totalTokens = entries.reduce(
-    (acc, e) => ({
-      input: acc.input + (e.tokens?.input ?? 0),
-      output: acc.output + (e.tokens?.output ?? 0),
-    }),
-    { input: 0, output: 0 },
-  );
+  const reload = useCallback(() => {
+    setLoading(true);
+    objects.activity.list()
+      .then((r) => { setRows(r as ActivityRow[]); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
 
-  const shown = filter === "all" ? entries : entries.filter((e) => e.kind === filter);
-  const llmCalls = entries.filter((e) => e.kind === "run_agent" || e.kind === "mcp_call").length;
+  const totalCost = rows.reduce((s, e) => s + (e.cost ?? 0), 0);
+  const tokIn = rows.reduce((s, e) => s + (e.tokensInput ?? 0), 0);
+  const tokOut = rows.reduce((s, e) => s + (e.tokensOutput ?? 0), 0);
+  const withTokens = rows.filter((e) => e.tokensInput || e.tokensOutput).length;
+  const kinds = [...new Set(rows.map((e) => e.kind))];
+  const shown = filter === "all" ? rows : rows.filter((e) => e.kind === filter);
 
   const handleClear = async () => {
     const ok = await dialog.confirm("Xoá toàn bộ nhật ký hoạt động?", {
       title: "Xoá nhật ký", confirmText: "Xoá", danger: true,
     });
-    if (ok) clear();
+    if (!ok) return;
+    await objects.activity.clear().catch(() => {});
+    reload();
   };
 
   return (
@@ -69,40 +91,35 @@ function ActivityDashboard() {
       <div className="max-w-[1000px] mx-auto p-8">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-semibold">Nhật ký & Chi phí</h1>
-          {entries.length > 0 && (
+          {rows.length > 0 && (
             <Button variant="danger" icon={<I.Trash size={13} />} onClick={handleClear}>
               Xoá nhật ký
             </Button>
           )}
         </div>
         <div className="text-sm text-muted mb-5">
-          Theo dõi mọi hành động trong app và chi phí token ước tính.
+          Hành động ghi nhận trên server (activity_log) — workflow run, chi phí token.
         </div>
 
-        {/* === Stats === */}
         <div className="flex gap-3 mb-5">
-          <Stat label="Tổng chi phí" value={formatUsd(totalCost)} sub={`${llmCalls} lần gọi LLM/MCP`} />
-          <Stat label="Token vào" value={totalTokens.input.toLocaleString("vi-VN")} />
-          <Stat label="Token ra" value={totalTokens.output.toLocaleString("vi-VN")} />
-          <Stat label="Số sự kiện" value={entries.length.toLocaleString("vi-VN")} />
+          <Stat label="Tổng chi phí" value={formatUsd(totalCost)} sub={`${withTokens} lần có token`} />
+          <Stat label="Token vào" value={tokIn.toLocaleString("vi-VN")} />
+          <Stat label="Token ra" value={tokOut.toLocaleString("vi-VN")} />
+          <Stat label="Số sự kiện" value={rows.length.toLocaleString("vi-VN")} />
         </div>
 
-        {/* === Filter === */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm text-muted">Lọc theo loại:</span>
           <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-48">
             <option value="all">Tất cả</option>
-            {(Object.keys(KIND_LABEL) as ActivityKind[]).map((k) => (
-              <option key={k} value={k}>{KIND_LABEL[k]}</option>
-            ))}
+            {kinds.map((k) => <option key={k} value={k}>{kindLabel(k)}</option>)}
           </Select>
         </div>
 
-        {/* === Log list === */}
         {shown.length === 0 ? (
           <Card>
             <div className="text-center text-muted py-12 text-sm">
-              Chưa có hoạt động nào được ghi nhận.
+              {loading ? "Đang tải…" : "Chưa có hoạt động nào được ghi nhận."}
             </div>
           </Card>
         ) : (
@@ -124,7 +141,7 @@ function ActivityDashboard() {
                       {fmtTime(e.at)}
                     </td>
                     <td className="py-2 px-3">
-                      <Chip variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Chip>
+                      <Chip variant={kindVariant(e.kind)}>{kindLabel(e.kind)}</Chip>
                     </td>
                     <td className="py-2 px-3">
                       <div>{e.detail}</div>
@@ -136,7 +153,8 @@ function ActivityDashboard() {
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-xs text-muted whitespace-nowrap">
-                      {e.tokens ? `${e.tokens.input}/${e.tokens.output}` : "—"}
+                      {e.tokensInput || e.tokensOutput
+                        ? `${e.tokensInput ?? 0}/${e.tokensOutput ?? 0}` : "—"}
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-xs whitespace-nowrap">
                       {e.cost != null ? formatUsd(e.cost) : "—"}

@@ -4,9 +4,15 @@ import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
+import { eq } from "drizzle-orm";
+import { sessions } from "@erp-framework/db";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { startJobs, stopJobs } from "./jobs";
+import { db } from "./db";
+import { SESSION_COOKIE } from "./auth";
+import { runAgentChat } from "./agent-chat";
+import { makeCallTool } from "./mcp-client";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 
 const PORT = Number(process.env.PORT ?? 8910);
@@ -34,6 +40,45 @@ async function main(): Promise<void> {
     endpoints: { health: "/health", trpc: "/trpc" },
   }));
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
+
+  /* Agent chat — SSE stream. Vòng lặp agentic (LLM + MCP tool) chạy
+     server-side; mỗi bước phát một event. Cần phiên đăng nhập. */
+  app.post("/agent/chat", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) { reply.code(401).send({ error: "Chưa đăng nhập" }); return; }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) {
+      reply.code(401).send({ error: "Phiên hết hạn" }); return;
+    }
+    const body = (req.body ?? {}) as {
+      profileName?: string;
+      system?: string;
+      messages?: Array<{ role: "user" | "assistant"; content: string }>;
+      tools?: Array<{ name: string; description?: string; schema: Record<string, unknown> }>;
+    };
+    reply.hijack();
+    const raw = reply.raw;
+    raw.writeHead(200, {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      "connection": "keep-alive",
+    });
+    const emit = (e: unknown) => raw.write(`data: ${JSON.stringify(e)}\n\n`);
+    try {
+      await runAgentChat({
+        db,
+        profileName: body.profileName,
+        system: body.system ?? "Bạn là trợ lý ERP.",
+        messages: body.messages ?? [],
+        tools: body.tools ?? [],
+        callTool: makeCallTool(db),
+        onEvent: emit,
+      });
+    } catch (e) {
+      emit({ type: "error", message: (e as Error).message });
+    }
+    raw.end();
+  });
 
   await app.listen({ host: HOST, port: PORT });
   console.log(`ERP Framework server → http://${HOST}:${PORT}`);

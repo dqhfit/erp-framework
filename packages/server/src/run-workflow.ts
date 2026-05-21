@@ -16,6 +16,7 @@ import {
 import type { DB } from "./db";
 import { makeCallTool } from "./mcp-client";
 import { makeCallAgent } from "./llm-client";
+import { logActivity } from "./activity";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
 interface RawGraph {
@@ -86,6 +87,19 @@ export async function executeWorkflow(
     vars: result.vars,
     finishedAt: new Date(),
   }).where(eq(workflowRuns.id, run.id));
+
+  // Ghi nhật ký hành động (gộp token của các bước agent).
+  const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);
+  const tOut = result.steps.reduce((n, s) => n + (s.tokens?.output_tokens ?? 0), 0);
+  await logActivity(db, {
+    kind: "run_workflow",
+    objectType: "workflow",
+    target: wf.name,
+    detail: `Chạy workflow — ${result.status} (${result.steps.length} bước)`,
+    tokensInput: tIn || undefined,
+    tokensOutput: tOut || undefined,
+    model: result.steps.find((s) => s.model)?.model,
+  });
 
   return { runId: run.id, status: result.status, stepCount: result.steps.length };
 }

@@ -1,25 +1,34 @@
 /* ==========================================================
    WorkflowRunPanel — Modal cho 2 việc với 1 workflow:
-   1. Chạy THẬT (runWorkflow) — gọi MCP tool + LLM thật.
-   2. Quản lý LỊCH chạy tự động (cron schedule).
-   Tách riêng khỏi WorkflowDesigner để file gọn.
+   1. Chạy THẬT phía SERVER (executeWorkflow) — gọi MCP/LLM thật,
+      ghi bảng workflow_runs.
+   2. Quản lý LỊCH chạy cron — lưu bảng schedules trên server;
+      pg-boss quét mỗi phút và chạy nền (không cần app mở).
    ========================================================== */
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Modal, Button, Chip, Input, Select } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { runWorkflow, type WfNode, type WfEdge, type RunStep } from "@/core/workflow-runner";
-import { callToolReal, callAgentReal } from "@/core/workflow-callbacks";
-import { useSchedules } from "@/stores/schedules";
+import type { RunStep } from "@erp-framework/core";
+import { createObjectsClient } from "@erp-framework/client";
 import { describeCron, parseCron, nextCronRun, CRON_PRESETS } from "@/lib/cron";
 import { dialog } from "@/lib/dialog";
+
+const objects = createObjectsClient("");
 
 interface Props {
   open: boolean;
   onClose: () => void;
   workflowId: string;
   workflowName: string;
-  nodes: WfNode[];
-  edges: WfEdge[];
+}
+
+interface ServerSchedule {
+  id: string;
+  workflowId: string;
+  cronExpr: string;
+  enabled: boolean;
+  runCount: number;
+  lastStatus?: string | null;
 }
 
 const STEP_COLOR: Record<RunStep["status"], string> = {
@@ -29,34 +38,37 @@ const STEP_COLOR: Record<RunStep["status"], string> = {
   paused: "text-warning",
 };
 
-export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, nodes, edges }: Props) {
+export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Props) {
   const [tab, setTab] = useState<"run" | "schedule">("run");
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [result, setResult] = useState<string>("");
 
-  const schedules = useSchedules((s) => s.schedules);
-  const addSchedule = useSchedules((s) => s.addSchedule);
-  const toggleSchedule = useSchedules((s) => s.toggleSchedule);
-  const deleteSchedule = useSchedules((s) => s.deleteSchedule);
+  const [schedules, setSchedules] = useState<ServerSchedule[]>([]);
+  const [cronExpr, setCronExpr] = useState("0 9 * * *");
+  const [schErr, setSchErr] = useState("");
+
   const mySchedules = schedules.filter((s) => s.workflowId === workflowId);
 
-  const [cronExpr, setCronExpr] = useState("0 9 * * *");
+  const loadSchedules = useCallback(() => {
+    objects.schedules.list()
+      .then((rows) => setSchedules(rows as ServerSchedule[]))
+      .catch((e) => setSchErr((e as Error).message));
+  }, []);
+
+  useEffect(() => { if (open) loadSchedules(); }, [open, loadSchedules]);
 
   const doRun = async () => {
     setRunning(true);
     setSteps([]);
     setResult("");
     try {
-      const r = await runWorkflow({
-        workflowId,
-        workflowName,
-        nodes,
-        edges,
-        callTool: callToolReal,
-        callAgent: callAgentReal,
-        onStep: (s) => setSteps((prev) => [...prev, s]),
-      });
+      // Chạy phía server — server nạp graph từ DB, dùng runner thật.
+      const r = await objects.workflows.trigger(workflowId);
+      const runs = await objects.workflows.runs(workflowId);
+      const run = (runs as Array<{ id: string; steps?: unknown }>)
+        .find((x) => x.id === r.runId);
+      if (run) setSteps((run.steps ?? []) as RunStep[]);
       setResult(
         r.status === "completed" ? "✓ Workflow chạy xong."
         : r.status === "paused" ? "⏸ Workflow tạm dừng (chờ duyệt)."
@@ -69,40 +81,50 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, node
     }
   };
 
-  const handleAddSchedule = () => {
+  const handleAddSchedule = async () => {
     if (!parseCron(cronExpr)) {
       void dialog.alert("Biểu thức cron không hợp lệ. Định dạng: phút giờ ngày tháng thứ.",
         { title: "Cron sai" });
       return;
     }
-    addSchedule({ workflowId, workflowName, cronExpr, enabled: true });
+    setSchErr("");
+    try {
+      await objects.schedules.save({ workflowId, cronExpr, enabled: true });
+      loadSchedules();
+    } catch (e) { setSchErr((e as Error).message); }
+  };
+
+  const handleToggle = async (s: ServerSchedule) => {
+    try {
+      await objects.schedules.save({
+        id: s.id, workflowId: s.workflowId, cronExpr: s.cronExpr,
+        enabled: !s.enabled,
+      });
+      loadSchedules();
+    } catch (e) { setSchErr((e as Error).message); }
   };
 
   const handleDeleteSchedule = async (id: string) => {
     const ok = await dialog.confirm("Xoá lịch chạy này?", {
       title: "Xoá lịch", confirmText: "Xoá", danger: true,
     });
-    if (ok) deleteSchedule(id);
+    if (!ok) return;
+    try { await objects.schedules.delete(id); loadSchedules(); }
+    catch (e) { setSchErr((e as Error).message); }
   };
 
   return (
     <Modal open={open} onClose={onClose} title={`Vận hành — ${workflowName}`} width={620}>
       {/* Tabs */}
       <div className="flex gap-1 mb-4 border-b border-border">
-        <button
-          type="button"
-          onClick={() => setTab("run")}
+        <button type="button" onClick={() => setTab("run")}
           className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
-            (tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted")}
-        >
+            (tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted")}>
           Chạy thật
         </button>
-        <button
-          type="button"
-          onClick={() => setTab("schedule")}
+        <button type="button" onClick={() => setTab("schedule")}
           className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
-            (tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted")}
-        >
+            (tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted")}>
           Lịch chạy {mySchedules.length > 0 && <Chip>{mySchedules.length}</Chip>}
         </button>
       </div>
@@ -110,7 +132,8 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, node
       {tab === "run" && (
         <div>
           <div className="text-xs text-muted mb-3">
-            Chạy thật: gọi MCP tool và LLM thật, có thể thay đổi dữ liệu. Mỗi bước được ghi vào Nhật ký.
+            Chạy thật trên server: gọi MCP tool và LLM thật, có thể thay đổi
+            dữ liệu. Mỗi bước được ghi vào bảng workflow_runs.
           </div>
           <Button variant="primary" icon={<I.Play size={13} />} onClick={doRun} disabled={running}>
             {running ? "Đang chạy…" : "Chạy workflow"}
@@ -146,10 +169,10 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, node
       {tab === "schedule" && (
         <div>
           <div className="text-xs text-muted mb-3">
-            Lịch tự động chạy workflow theo cron. Chỉ chạy khi app đang mở (không có daemon nền).
+            Lịch tự động chạy workflow theo cron. Lưu trên server — pg-boss
+            chạy nền mỗi phút, không cần mở app.
           </div>
 
-          {/* Add form */}
           <div className="flex items-end gap-2 mb-3">
             <div className="flex-1">
               <label className="text-xs text-muted block mb-1">Biểu thức cron</label>
@@ -167,11 +190,9 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, node
               Thêm lịch
             </Button>
           </div>
-          <div className="text-xs text-muted mb-3">
-            {describeCron(cronExpr)}
-          </div>
+          <div className="text-xs text-muted mb-3">{describeCron(cronExpr)}</div>
+          {schErr && <Chip variant="danger">{schErr}</Chip>}
 
-          {/* List */}
           {mySchedules.length === 0 ? (
             <div className="text-center text-muted py-6 text-sm border border-border rounded-md">
               Chưa có lịch nào cho workflow này.
@@ -196,7 +217,7 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName, node
                         {next ? ` · kế: ${next.toLocaleString("vi-VN")}` : ""}
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => toggleSchedule(s.id)}
+                    <Button variant="ghost" size="sm" onClick={() => handleToggle(s)}
                       icon={<I.Power size={12} />} />
                     <Button variant="ghost" size="sm" onClick={() => handleDeleteSchedule(s.id)}
                       icon={<I.Trash size={12} />} />

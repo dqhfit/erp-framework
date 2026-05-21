@@ -12,4 +12,5 @@ export {
   type PageSaveInput,
   type AgentSaveInput,
   type WorkflowSaveInput,
+  type ScheduleSaveInput,
 } from "./objects";

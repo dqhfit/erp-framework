@@ -7,6 +7,8 @@ export default defineConfig({
   plugins: [TanStackRouterVite(), react()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: {
+    // Bind IPv4 — tránh EACCES khi Windows chặn IPv6 (::1) trên cổng này.
+    host: "127.0.0.1",
     port: 5173,
     strictPort: true,
     // Proxy API sang server backend → trình duyệt chỉ gọi cùng origin.
@@ -14,6 +16,11 @@ export default defineConfig({
     // tránh việc "localhost" phân giải sang ::1 (IPv6) làm proxy lỗi.
     proxy: {
       "/trpc": {
+        target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
+        changeOrigin: true,
+      },
+      // Agent chat SSE — không buffer để stream chảy ngay.
+      "/agent": {
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },

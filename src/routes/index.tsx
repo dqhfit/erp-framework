@@ -5,14 +5,6 @@ import type { IconName } from "@/lib/mock-data";
 import { useUserObjects } from "@/stores/userObjects";
 import { useUI } from "@/stores/ui";
 
-const recents: Array<{ kind: string; id: string; name: string; icon: IconName; time: string; who: string; to: string }> = [
-  { kind: "entity",   id: "order",     name: "Đơn hàng",                    icon: "Cart",     time: "2 phút trước",  who: "bạn",      to: "/entities/order" },
-  { kind: "page",     id: "p_dashboard", name: "Bảng điều khiển kinh doanh", icon: "BarChart", time: "12 phút trước", who: "bạn",      to: "/pages/p_dashboard" },
-  { kind: "workflow", id: "w_approve_big_order", name: "Duyệt đơn hàng > 50tr", icon: "Workflow", time: "1 giờ trước",  who: "Chị Linh", to: "/workflows/w_approve_big_order" },
-  { kind: "entity",   id: "customer",  name: "Khách hàng",                  icon: "Users",    time: "3 giờ trước",   who: "bạn",      to: "/entities/customer" },
-  { kind: "page",     id: "p_orders",  name: "Quản lý đơn hàng",            icon: "Cart",     time: "hôm qua",        who: "Anh Đức",  to: "/pages/p_orders" },
-];
-
 const templates: Array<{ name: string; desc: string; icon: IconName; tint: "accent" | "accent-2" | "success" | "warning" }> = [
   { name: "CRM cơ bản",       desc: "Khách hàng, Cơ hội, Hợp đồng",       icon: "Users",     tint: "accent" },
   { name: "Quản lý đơn hàng", desc: "Đơn, Khách hàng, Sản phẩm",          icon: "Cart",      tint: "accent-2" },
@@ -47,6 +39,13 @@ function Home() {
     { label: "Workflows", value: uWorkflows.length, icon: "Workflow", tint: "success" },
     { label: "Agents",    value: uAgents.length,    icon: "Bot",      tint: "warning" },
   ];
+
+  // "Gần đây" = đối tượng thật từ backend (không còn link tĩnh chết).
+  const recents: Array<{ kind: string; name: string; icon: IconName; to: string }> = [
+    ...uEntities.map((e) => ({ kind: "Entity", name: e.name, icon: e.icon, to: `/entities/${e.id}` })),
+    ...uPages.map((p) => ({ kind: "Page", name: p.name, icon: p.icon, to: `/pages/${p.id}` })),
+    ...uWorkflows.map((w) => ({ kind: "Workflow", name: w.name, icon: w.icon, to: `/workflows/${w.id}` })),
+  ].slice(0, 6);
 
   return (
     <div className="overflow-y-auto h-full">
@@ -100,8 +99,13 @@ function Home() {
               <button className="text-xs text-muted hover:text-text">Xem tất cả</button>
             </div>
             <div className="card divide-y divide-border">
+              {recents.length === 0 && (
+                <div className="p-6 text-center text-sm text-muted">
+                  Chưa có đối tượng nào. Bấm "+ Entity mới" để bắt đầu.
+                </div>
+              )}
               {recents.map((r, i) => {
-                const IconC = I[r.icon];
+                const IconC = I[r.icon] ?? I.Folder;
                 return (
                   <Link key={i} to={r.to}
                         className="flex items-center gap-3 p-3 hover:bg-hover/30 cursor-pointer group">
@@ -111,7 +115,7 @@ function Home() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{r.name}</div>
                       <div className="text-xs text-muted">
-                        <span className="capitalize">{r.kind}</span> · cập nhật {r.time} bởi {r.who}
+                        <span className="capitalize">{r.kind}</span>
                       </div>
                     </div>
                     <I.ChevronRight size={14} className="text-muted opacity-0 group-hover:opacity-100" />

@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "bridge": "node scripts/claude-bridge.mjs",
     "new:plugin": "node tooling/create-plugin.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:full": "node tooling/e2e-full.mjs"
   },
   "dependencies": {
     "@erp-framework/core": "workspace:*",

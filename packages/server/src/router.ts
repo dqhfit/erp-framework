@@ -6,13 +6,13 @@
    - workflows.*  : trigger workflow             (RBAC)
    ========================================================== */
 import { z } from "zod";
-import { and, eq, sql, type SQL } from "drizzle-orm";
+import { and, eq, sql, desc, type SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   entities, entityRecords, users, sessions, mcpConfigs, llmProfiles,
-  pages, agents, workflows,
+  pages, agents, workflows, schedules, activityLog,
 } from "@erp-framework/db";
-import { validateRecord, type EntityFieldDef } from "@erp-framework/core";
+import { validateRecord, pluginRegistry, type EntityFieldDef } from "@erp-framework/core";
 import { router, publicProcedure, protectedProcedure, rbacProcedure } from "./trpc";
 import { encryptSecret, decryptSecret } from "./crypto";
 import {
@@ -76,6 +76,14 @@ const workflowInput = z.object({
   isActive: z.boolean().optional(),
 });
 
+/* Lịch chạy workflow (cron). pg-boss quét bảng schedules mỗi phút. */
+const scheduleInput = z.object({
+  id: z.string().uuid().optional(),
+  workflowId: z.string().uuid(),
+  cronExpr: z.string().min(1),
+  enabled: z.boolean().optional(),
+});
+
 const filterOp = z.enum(["=", "!=", ">", ">=", "<", "<=", "contains", "in"]);
 const queryParams = z.object({
   filters: z.record(z.object({ op: filterOp, value: z.unknown() })).optional(),
@@ -124,9 +132,10 @@ async function loadEntityFields(
   return (row.fields ?? []) as EntityFieldDef[];
 }
 
-/** Ném BAD_REQUEST nếu validate-on-write thất bại. */
+/** Ném BAD_REQUEST nếu validate-on-write thất bại.
+   Truyền pluginRegistry để coerce được cả kiểu field do plugin thêm. */
 function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, partial: boolean) {
-  const v = validateRecord(fields, data, { partial });
+  const v = validateRecord(fields, data, { partial, registry: pluginRegistry });
   if (!v.ok) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -367,6 +376,33 @@ export const appRouter = router({
       .query(({ ctx, input }) => recentRuns(ctx.db, input)),
   }),
 
+  /* ── Lịch chạy workflow (cron) — pg-boss quét bảng này ── */
+  schedules: router({
+    list: rbacProcedure("view", "workflow")
+      .query(({ ctx }) => ctx.db.select().from(schedules)),
+
+    save: rbacProcedure("edit", "workflow")
+      .input(scheduleInput)
+      .mutation(async ({ ctx, input }) => {
+        const values = {
+          workflowId: input.workflowId,
+          cronExpr: input.cronExpr,
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        };
+        const [row] = await ctx.db.insert(schedules)
+          .values({ ...(input.id ? { id: input.id } : {}), ...values })
+          .onConflictDoUpdate({ target: schedules.id, set: values })
+          .returning();
+        return row;
+      }),
+
+    delete: rbacProcedure("delete", "workflow")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db.delete(schedules).where(eq(schedules.id, input));
+      }),
+  }),
+
   /* ── Page (metadata low-code) ── */
   pages: router({
     list: rbacProcedure("view", "page")
@@ -439,6 +475,18 @@ export const appRouter = router({
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
         await ctx.db.delete(agents).where(eq(agents.id, input));
+      }),
+  }),
+
+  /* ── Nhật ký hành động (activity_log) ── */
+  activity: router({
+    list: rbacProcedure("view", "activity")
+      .query(({ ctx }) => ctx.db.select().from(activityLog)
+        .orderBy(desc(activityLog.at)).limit(200)),
+    clear: rbacProcedure("delete", "activity")
+      .mutation(async ({ ctx }) => {
+        await ctx.db.delete(activityLog);
+        return { ok: true };
       }),
   }),
 

@@ -9,13 +9,12 @@ import { DialogHost } from "@/components/DialogHost";
 import { AuthGate } from "@/components/AuthGate";
 import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
-import { useScheduler } from "@/hooks/useScheduler";
 import { useUI } from "@/stores/ui";
 
-/* Phần thân app — chỉ mount khi đã đăng nhập (sau AuthGate). */
+/* Phần thân app — chỉ mount khi đã đăng nhập (sau AuthGate).
+   Scheduler chạy phía server (pg-boss) — không còn scheduler client. */
 function AppShell() {
   useGlobalShortcuts();
-  useScheduler();
   const agentOpen = useUI((s) => s.agentOpen);
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
