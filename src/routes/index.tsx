@@ -206,6 +206,23 @@ function Home() {
                 <Kbd>⌘</Kbd><Kbd>K</Kbd>
               </div>
             </div>
+
+            {/* Hướng dẫn sử dụng — file tĩnh public/huong-dan.html, mở tab mới. */}
+            <a
+              href="/huong-dan.html"
+              target="_blank"
+              rel="noopener"
+              className="card p-4 flex items-center gap-3 hover:border-accent/50 transition-colors group"
+            >
+              <span className="w-9 h-9 rounded-md bg-accent/15 text-accent flex items-center justify-center shrink-0">
+                <I.File size={16} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold">Hướng dẫn sử dụng</div>
+                <div className="text-xs text-muted">Cách dùng hệ thống, từng bước</div>
+              </div>
+              <I.ChevronRight size={14} className="text-muted group-hover:text-accent" />
+            </a>
           </div>
         </div>
       </div>

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hướng dẫn sử dụng — ERP Framework</title>
+<style>
+  :root {
+    --accent: #6c47ff; --accent-soft: #efeaff;
+    --text: #1c1c28; --muted: #6b6b80; --bg: #f5f5f8;
+    --card: #ffffff; --border: #e5e5ec;
+    --ok: #15803d; --ok-bg: #e9f7ee;
+    --warn: #b45309; --warn-bg: #fdf3e3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.65; font-size: 16px;
+  }
+  .wrap { max-width: 840px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero {
+    background: linear-gradient(135deg, var(--accent), #9b6bff);
+    color: #fff; border-radius: 16px; padding: 32px 28px; margin-bottom: 28px;
+  }
+  header.hero h1 { margin: 0 0 6px; font-size: 28px; }
+  header.hero p { margin: 0; opacity: .92; }
+  h2 {
+    font-size: 21px; margin: 38px 0 12px; padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 .num {
+    display: inline-flex; width: 28px; height: 28px; margin-right: 8px;
+    background: var(--accent); color: #fff; border-radius: 8px;
+    align-items: center; justify-content: center; font-size: 15px; vertical-align: 2px;
+  }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p, li { margin: 6px 0; }
+  ul, ol { padding-left: 22px; }
+  code {
+    background: #ecebf3; padding: 1px 6px; border-radius: 5px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13.5px;
+  }
+  pre {
+    background: #1c1c28; color: #eaeaf2; padding: 14px 16px; border-radius: 10px;
+    overflow-x: auto; font-size: 13px;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px 22px 18px; margin: 14px 0; }
+  .toc { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 22px; }
+  .toc strong { display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; }
+  .toc a { color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .callout { border-radius: 10px; padding: 12px 16px; margin: 14px 0; border-left: 4px solid; }
+  .tip { background: var(--ok-bg); border-color: var(--ok); }
+  .tip b { color: var(--ok); }
+  .warn { background: var(--warn-bg); border-color: var(--warn); }
+  .warn b { color: var(--warn); }
+  .appbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent); color: #fff; text-decoration: none;
+    padding: 7px 14px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    margin: 6px 6px 6px 0;
+  }
+  .appbtn:hover { background: #5a37e0; }
+  .appbtn::after { content: "↗"; font-size: 12px; }
+  .step { display: flex; gap: 12px; margin: 12px 0; }
+  .step .n {
+    flex: none; width: 26px; height: 26px; background: var(--accent-soft);
+    color: var(--accent); border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+  }
+  footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Hướng dẫn sử dụng ERP Framework</h1>
+  <p>Cách đăng nhập, sử dụng và khai thác hệ thống — dành cho người dùng.</p>
+</header>
+
+<div class="toc">
+  <strong>Mục lục</strong>
+  <ol>
+    <li><a href="#gioi-thieu">ERP Framework là gì</a></li>
+    <li><a href="#dang-nhap">Đăng nhập</a></li>
+    <li><a href="#giao-dien">Làm quen giao diện</a></li>
+    <li><a href="#doi-tuong">Bốn đối tượng low-code</a></li>
+    <li><a href="#du-lieu">Nhập &amp; xem dữ liệu</a></li>
+    <li><a href="#kb">Knowledge Base — Kho tri thức</a></li>
+    <li><a href="#tro-ly">Trợ lý AI</a></li>
+    <li><a href="#quan-tri">Cấu hình &amp; quản trị</a></li>
+    <li><a href="#su-co">Mẹo &amp; xử lý sự cố</a></li>
+    <li><a href="#trien-khai">Phụ lục: Triển khai (quản trị viên)</a></li>
+  </ol>
+  <p style="margin:10px 0 0;color:var(--muted);font-size:13.5px">
+    Các nút <span style="color:var(--accent);font-weight:600">Mở …↗</span> trong tài liệu
+    này mở thẳng trang tương ứng trong ứng dụng (tab mới).
+  </p>
+</div>
+
+<section id="gioi-thieu">
+  <h2><span class="num">1</span>ERP Framework là gì</h2>
+  <p>
+    ERP Framework là nền tảng <b>low-code</b> để xây dựng phần mềm quản lý doanh
+    nghiệp. Bạn tự thiết kế dữ liệu và quy trình bằng giao diện kéo-thả — không cần
+    lập trình. Mọi dữ liệu lưu trên máy chủ của doanh nghiệp; có sẵn trợ lý AI và
+    kho tri thức để tra cứu.
+  </p>
+  <p>Hệ thống gồm 4 thành phần bạn tự tạo:</p>
+  <ul>
+    <li><b>Entity</b> — bảng dữ liệu (vd: Khách hàng, Đơn hàng).</li>
+    <li><b>Page</b> — trang giao diện ghép từ các widget (biểu đồ, danh sách, biểu mẫu…).</li>
+    <li><b>Workflow</b> — luồng tự động hoá (vd: tự duyệt đơn dưới 5 triệu).</li>
+    <li><b>Agent</b> — trợ lý AI cấu hình theo nhu cầu.</li>
+  </ul>
+</section>
+
+<section id="dang-nhap">
+  <h2><span class="num">2</span>Đăng nhập</h2>
+  <p>
+    Mở trình duyệt và truy cập địa chỉ hệ thống (mặc định khi tự cài:
+    <code>http://localhost:3000</code>, hoặc địa chỉ do quản trị viên cung cấp).
+  </p>
+  <div class="step"><div class="n">1</div><div>Nhập <b>email</b> và <b>mật khẩu</b> rồi bấm <b>Đăng nhập</b>.</div></div>
+  <div class="step"><div class="n">2</div><div>Lần chạy đầu tiên, hệ thống cho <b>tạo tài khoản quản trị</b> — đây sẽ là admin.</div></div>
+  <div class="callout tip"><b>Mẹo:</b> Đổi mật khẩu ngay sau lần đăng nhập đầu nếu tài khoản do người khác cấp.</div>
+  <a class="appbtn" href="/" target="_blank" rel="noopener">Mở trang chủ ứng dụng</a>
+</section>
+
+<section id="giao-dien">
+  <h2><span class="num">3</span>Làm quen giao diện</h2>
+  <h3>Thanh bên trái</h3>
+  <p>Liệt kê mọi đối tượng và trang, chia nhóm:</p>
+  <ul>
+    <li><b>Đối tượng</b> — Entity, Page, Workflow, Agent bạn đã tạo.</li>
+    <li><b>Vận hành</b> — Nhật ký &amp; Chi phí, Phê duyệt, Sơ đồ tổ chức, <b>Tri thức</b>.</li>
+    <li><b>Cấu hình &amp; Hệ thống</b> — Vai trò, Công ty, LLM, Embedding, MCP…</li>
+  </ul>
+  <h3>Thanh trên</h3>
+  <ul>
+    <li><b>Tìm kiếm nhanh</b> — bấm <code>Ctrl</code>+<code>K</code> (hoặc <code>⌘</code>+<code>K</code>) để nhảy tới bất cứ đâu.</li>
+    <li><b>Chế độ Thiết kế / Người dùng</b> — nút chuyển ở thanh trên khi mở một đối tượng.</li>
+    <li><b>Công ty</b> — chuyển giữa các công ty bạn là thành viên.</li>
+    <li><b>Trợ lý AI</b> — biểu tượng tia sáng, mở khung chat.</li>
+  </ul>
+  <div class="callout tip">
+    <b>Hai chế độ:</b> <b>Thiết kế</b> để dựng cấu trúc (thêm field, kéo widget…);
+    <b>Người dùng</b> để nhập và xem dữ liệu thật.
+  </div>
+</section>
+
+<section id="doi-tuong">
+  <h2><span class="num">4</span>Bốn đối tượng low-code</h2>
+  <p>Bấm dấu <b>+</b> bên cạnh tên nhóm ở thanh bên để tạo mới (có thể tạo bằng AI).</p>
+  <h3>Entity — bảng dữ liệu</h3>
+  <p>Định nghĩa các <b>field</b> (cột): văn bản, số, ngày, lựa chọn, tiền tệ… Ở chế độ Người dùng, Entity trở thành màn hình nhập/xem bản ghi.</p>
+  <h3>Page — trang giao diện</h3>
+  <p>Kéo-thả widget lên lưới: KPI, biểu đồ, danh sách, biểu mẫu, kanban. Mỗi widget gắn với một Entity để hiển thị dữ liệu thật.</p>
+  <h3>Workflow — tự động hoá</h3>
+  <p>Nối các node: Trigger → Điều kiện → Hành động / Agent / Phê duyệt. Bấm <b>Chạy thử / Vận hành</b> để chạy và xem lịch sử; đặt lịch cron để chạy nền.</p>
+  <h3>Agent — trợ lý AI</h3>
+  <p>Cấu hình model, câu lệnh hệ thống (system prompt), công cụ. Agent có thể được gọi trong Workflow hoặc trò chuyện trực tiếp.</p>
+</section>
+
+<section id="du-lieu">
+  <h2><span class="num">5</span>Nhập &amp; xem dữ liệu</h2>
+  <div class="step"><div class="n">1</div><div>Mở một Entity từ thanh bên.</div></div>
+  <div class="step"><div class="n">2</div><div>Chuyển sang chế độ <b>Người dùng</b> ở thanh trên → hiện màn hình Dữ liệu.</div></div>
+  <div class="step"><div class="n">3</div><div>Bấm <b>Thêm bản ghi</b>, điền biểu mẫu, lưu. Bản ghi hiện ngay trong bảng.</div></div>
+  <p>Trang (Page) ở chế độ Người dùng cũng hiển thị dữ liệu thật theo widget đã thiết kế.</p>
+</section>
+
+<section id="kb">
+  <h2><span class="num">6</span>Knowledge Base — Kho tri thức</h2>
+  <p>
+    Knowledge Base biến tài liệu, dữ liệu và ghi chú của doanh nghiệp thành kho tri
+    thức <b>tra cứu được bằng ngôn ngữ tự nhiên</b> — cho cả người dùng lẫn trợ lý AI.
+  </p>
+
+  <h3>Bước 1 — Cấu hình Embedding (làm một lần)</h3>
+  <p>Vào <b>Cài đặt → Cấu hình Embedding</b> và chọn nhà cung cấp:</p>
+  <ul>
+    <li><b>Ollama</b> (cục bộ, miễn phí): model <code>nomic-embed-text</code>, endpoint <code>http://ollama:11434</code>.</li>
+    <li><b>OpenAI</b> (đám mây): model <code>text-embedding-3-small</code>, dán API key.</li>
+  </ul>
+  <a class="appbtn" href="/settings/embedding" target="_blank" rel="noopener">Mở Cấu hình Embedding</a>
+
+  <h3>Bước 2 — Thêm nguồn tri thức</h3>
+  <p>Vào trang <b>Tri thức</b>. Có 3 cách nạp:</p>
+  <ul>
+    <li><b>Văn bản dán tay</b> — dán nội dung (chính sách, ghi chú…) kèm tiêu đề.</li>
+    <li><b>Dữ liệu một Entity</b> — chọn Entity để đưa toàn bộ bản ghi vào kho.</li>
+    <li><b>Tải file</b> — PDF, DOCX, XLSX, PPTX, TXT… (tối đa 25MB).</li>
+  </ul>
+  <p>Nguồn mới sẽ chạy nền: <code>Chờ xử lý</code> → <code>Đang xử lý</code> → <code>Sẵn sàng</code>.</p>
+  <a class="appbtn" href="/knowledge" target="_blank" rel="noopener">Mở Knowledge Base</a>
+
+  <h3>Bước 3 — Tra cứu</h3>
+  <p>Dùng ô tìm kiếm ở đầu trang Tri thức: nhập câu hỏi hoặc từ khoá, hệ thống trả về các đoạn liên quan nhất kèm % độ khớp.</p>
+
+  <h3>Bước 4 — Hỏi trợ lý AI</h3>
+  <p>Mở Trợ lý AI và đặt câu hỏi — agent tự động tra Knowledge Base để trả lời theo dữ liệu nội bộ của bạn.</p>
+
+  <div class="callout warn">
+    <b>Lưu ý:</b> phải hoàn tất Bước 1 (Embedding) trước, nếu không nguồn tri thức sẽ
+    báo trạng thái <code>Lỗi</code>.
+  </div>
+</section>
+
+<section id="tro-ly">
+  <h2><span class="num">7</span>Trợ lý AI</h2>
+  <p>
+    Bấm biểu tượng <b>tia sáng</b> ở thanh trên để mở khung chat. Trợ lý có thể truy
+    vấn dữ liệu, tra Knowledge Base và đề xuất hành động. Trước khi tạo/sửa dữ liệu,
+    trợ lý luôn hỏi xác nhận.
+  </p>
+  <p>Cần kết nối một model chat ở <b>Cài đặt → LLM</b> thì trợ lý mới hoạt động.</p>
+  <a class="appbtn" href="/settings/llm" target="_blank" rel="noopener">Mở Cài đặt LLM</a>
+</section>
+
+<section id="quan-tri">
+  <h2><span class="num">8</span>Cấu hình &amp; quản trị</h2>
+  <ul>
+    <li><b>Công ty &amp; thành viên</b> — thêm người dùng, gán vai trò theo công ty.</li>
+    <li><b>Vai trò &amp; Quyền</b> — 3 vai trò: <b>admin</b> (toàn quyền), <b>editor</b> (tạo/sửa nội dung), <b>viewer</b> (chỉ xem &amp; chạy).</li>
+    <li><b>Nhật ký &amp; Chi phí</b> — theo dõi hoạt động, lượng token AI, chi phí; đặt hạn mức ngân sách hằng tháng.</li>
+  </ul>
+  <a class="appbtn" href="/settings/companies" target="_blank" rel="noopener">Công ty</a>
+  <a class="appbtn" href="/settings/rbac" target="_blank" rel="noopener">Vai trò &amp; Quyền</a>
+  <a class="appbtn" href="/activity" target="_blank" rel="noopener">Nhật ký &amp; Chi phí</a>
+</section>
+
+<section id="su-co">
+  <h2><span class="num">9</span>Mẹo &amp; xử lý sự cố</h2>
+  <ul>
+    <li><b>Tìm nhanh:</b> <code>Ctrl</code>+<code>K</code> mở bảng lệnh, gõ để nhảy tới mọi nơi.</li>
+    <li><b>Không thấy nút nhập dữ liệu?</b> Kiểm tra đang ở chế độ <b>Người dùng</b> (nút ở thanh trên).</li>
+    <li><b>Nguồn tri thức báo "Lỗi"?</b> Mở nguồn xem chi tiết lỗi; thường do chưa cấu hình Embedding hoặc file không trích được nội dung. Sửa xong bấm <b>Nạp lại</b>.</li>
+    <li><b>Trợ lý AI không trả lời?</b> Kiểm tra đã cấu hình model ở <b>Cài đặt → LLM</b> chưa.</li>
+    <li><b>Không sửa được gì?</b> Có thể tài khoản của bạn là vai trò <b>viewer</b> — liên hệ quản trị viên.</li>
+  </ul>
+</section>
+
+<section id="trien-khai">
+  <h2><span class="num">10</span>Phụ lục: Triển khai (dành cho quản trị viên)</h2>
+  <p>Phần này dành cho người cài đặt hệ thống — người dùng thông thường có thể bỏ qua.</p>
+  <p>Tự host bằng Docker (cần Docker Desktop):</p>
+  <pre><code>docker compose -f docker/docker-compose.yml up -d --build</code></pre>
+  <p>
+    Lệnh trên dựng đủ: cơ sở dữ liệu (PostgreSQL + pgvector), máy chủ, ứng dụng,
+    Apache Tika (trích văn bản từ file) và Ollama (sinh embedding). Sau đó mở
+    <code>http://localhost:3000</code>. Chi tiết xem <code>docs/SELF-HOST.md</code>
+    trong mã nguồn.
+  </p>
+  <p>Trên máy lập trình, thiết lập một lần bằng: <code>pnpm dev:setup</code>, rồi chạy <code>pnpm dev</code>.</p>
+</section>
+
+<footer>
+  ERP Framework — Hướng dẫn sử dụng. Tài liệu này được phục vụ ngay trong ứng dụng tại
+  <code>/huong-dan.html</code>.
+</footer>
+
+</div>
+</body>
+</html>
