@@ -19,6 +19,7 @@
     "@erp-framework/plugins": "workspace:*",
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^10.0.0",
+    "@fastify/multipart": "^9.0.0",
     "@trpc/server": "^11.0.0",
     "drizzle-orm": "^0.36.0",
     "fastify": "^5.0.0",

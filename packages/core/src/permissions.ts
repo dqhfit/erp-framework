@@ -10,7 +10,7 @@ export type Action = "view" | "create" | "edit" | "delete" | "run";
 
 export type ObjectType =
   | "entity" | "page" | "workflow" | "agent"
-  | "settings" | "activity" | "rbac" | "company";
+  | "settings" | "activity" | "rbac" | "company" | "knowledge";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
 
@@ -23,6 +23,7 @@ const MATRIX: Record<Role, string[]> = {
     "create:page", "edit:page", "run:page",
     "create:workflow", "edit:workflow", "run:workflow",
     "create:agent", "edit:agent", "run:agent",
+    "create:knowledge", "edit:knowledge", "delete:knowledge",
   ],
   viewer: ["view:*", "run:workflow", "run:agent"],
 };

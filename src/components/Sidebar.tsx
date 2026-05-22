@@ -335,6 +335,8 @@ export function Sidebar() {
             icon={<I.CheckSq size={14} />} collapsed={collapsed} label={t("sidebar.approvals")} />
           <SidebarItem to="/org-chart" active={pathname === "/org-chart"}
             icon={<I.GitBranch size={14} />} collapsed={collapsed} label={t("sidebar.org_chart")} />
+          <SidebarItem to="/knowledge" active={pathname === "/knowledge"}
+            icon={<I.File size={14} />} collapsed={collapsed} label={t("sidebar.knowledge")} />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
@@ -343,6 +345,8 @@ export function Sidebar() {
             icon={<I.Briefcase size={14} />} collapsed={collapsed} label={t("sidebar.companies")} />
           <SidebarItem to="/settings/llm" active={pathname === "/settings/llm"}
             icon={<I.Sparkles size={14} />} collapsed={collapsed} label={t("sidebar.llm_profiles")} />
+          <SidebarItem to="/settings/embedding" active={pathname === "/settings/embedding"}
+            icon={<I.Hash size={14} />} collapsed={collapsed} label={t("sidebar.embedding")} />
           <SidebarItem to="/settings/mcp" active={pathname === "/settings/mcp"}
             icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.mcp_server")} />
           <SidebarItem to="/settings/transfer" active={pathname === "/settings/transfer"}

@@ -18,7 +18,8 @@ export type ObjectType =
   | "agent"
   | "settings"
   | "activity"
-  | "rbac";
+  | "rbac"
+  | "knowledge";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
 export const ALL_ACTIONS: Action[] = ["view", "create", "edit", "delete", "run"];
@@ -44,13 +45,15 @@ const MATRIX: Record<Role, string[]> = {
   // Admin: mọi hành động trên mọi object.
   admin: ["*:*"],
 
-  // Editor: xem/tạo/sửa/chạy 4 loại object nội dung; xem activity & settings.
+  // Editor: xem/tạo/sửa/chạy 4 loại object nội dung; xem activity & settings;
+  // quản lý nguồn Knowledge Base.
   editor: [
     "view:*",
     "create:entity", "edit:entity", "run:entity",
     "create:page", "edit:page", "run:page",
     "create:workflow", "edit:workflow", "run:workflow",
     "create:agent", "edit:agent", "run:agent",
+    "create:knowledge", "edit:knowledge", "delete:knowledge",
   ],
 
   // Viewer: chỉ xem mọi thứ + chạy workflow/agent.
@@ -75,7 +78,7 @@ export function roleCan(role: Role, action: Action, obj: ObjectType): boolean {
 /** Liệt kê toàn bộ quyền (dạng "action:object") mà role có — cho UI hiển thị. */
 export function permissionsOf(role: Role): string[] {
   const out: string[] = [];
-  const objs: ObjectType[] = ["entity", "page", "workflow", "agent", "settings", "activity", "rbac"];
+  const objs: ObjectType[] = ["entity", "page", "workflow", "agent", "settings", "activity", "rbac", "knowledge"];
   for (const obj of objs) {
     for (const action of ALL_ACTIONS) {
       if (roleCan(role, action, obj)) out.push(`${action}:${obj}`);

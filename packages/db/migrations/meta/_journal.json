@@ -50,6 +50,13 @@
       "when": 1780000000000,
       "tag": "0006_entity_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0007_knowledge_base",
+      "breakpoints": true
     }
   ]
 }

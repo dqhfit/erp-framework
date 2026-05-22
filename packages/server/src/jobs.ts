@@ -13,12 +13,15 @@ import { db } from "./db";
 import { executeWorkflow } from "./run-workflow";
 import { runHeartbeat } from "./run-heartbeat";
 import { runEntitySync } from "./run-entity-sync";
+import { runKbIngest } from "./run-kb-ingest";
 
 const QUEUE_RUN = "workflow-run";
 const QUEUE_TICK = "scheduler-tick";
 const QUEUE_HEARTBEAT = "agent-heartbeat-run";
 const QUEUE_ENTITY_SYNC = "entity-sync-run";
 const QUEUE_SESSION_CLEANUP = "session-cleanup";
+/** Queue nạp tri thức Knowledge Base (trích + chunk + embed). */
+export const QUEUE_KB_INGEST = "kb-ingest";
 
 interface RunJobData {
   workflowId: string;
@@ -29,6 +32,9 @@ interface HeartbeatJobData {
 }
 interface EntitySyncJobData {
   syncId: string;
+}
+interface KbIngestJobData {
+  sourceId: string;
 }
 
 let boss: PgBoss | null = null;
@@ -44,6 +50,7 @@ export async function startJobs(): Promise<void> {
   await boss.createQueue(QUEUE_HEARTBEAT);
   await boss.createQueue(QUEUE_ENTITY_SYNC);
   await boss.createQueue(QUEUE_SESSION_CLEANUP);
+  await boss.createQueue(QUEUE_KB_INGEST);
 
   // Worker: chạy workflow khi có job.
   await boss.work<RunJobData>(QUEUE_RUN, async (jobs) => {
@@ -78,6 +85,17 @@ export async function startJobs(): Promise<void> {
         await runEntitySync(db, job.data.syncId);
       } catch (e) {
         console.error("[entity-sync] lỗi:", (e as Error).message);
+      }
+    }
+  });
+
+  // Worker: nạp một nguồn tri thức vào Knowledge Base.
+  await boss.work<KbIngestJobData>(QUEUE_KB_INGEST, async (jobs) => {
+    for (const job of jobs) {
+      try {
+        await runKbIngest(db, job.data.sourceId);
+      } catch (e) {
+        console.error("[kb-ingest] lỗi:", (e as Error).message);
       }
     }
   });
@@ -133,4 +151,13 @@ export async function stopJobs(): Promise<void> {
     await boss.stop();
     boss = null;
   }
+}
+
+/** Đưa một nguồn tri thức vào hàng đợi nạp (kb-ingest). Gọi từ
+   knowledge-router / route upload sau khi tạo knowledge_sources. */
+export async function enqueueKbIngest(sourceId: string): Promise<void> {
+  if (!boss) {
+    throw new Error("Job runner chưa sẵn sàng — thử lại sau giây lát.");
+  }
+  await boss.send(QUEUE_KB_INGEST, { sourceId });
 }

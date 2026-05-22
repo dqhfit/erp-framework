@@ -38,6 +38,13 @@ export {
 } from "./embed";
 export { createConfigClient, type LlmProfileInput } from "./config";
 export {
+  createKnowledgeClient,
+  type KnowledgeClient,
+  type KnowledgeSource,
+  type KnowledgeHit,
+  type EmbeddingProfileInput,
+} from "./knowledge";
+export {
   createObjectsClient,
   type ObjectsClient,
   type EntitySaveInput,

@@ -29,6 +29,11 @@ export default defineConfig({
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },
+      // Tải file lên Knowledge Base (multipart/form-data).
+      "/upload": {
+        target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
+        changeOrigin: true,
+      },
     },
   },
   build: { sourcemap: true, target: "es2022" },

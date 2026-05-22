@@ -1,9 +1,12 @@
-# Self-host đầy đủ ERP Framework: PostgreSQL 18 + server + app (nginx) + bridge.
+# Self-host đầy đủ ERP Framework: PostgreSQL 18 (pgvector) + server + app
+# (nginx) + Apache Tika + bridge.
 # Chạy:  docker compose -f docker/docker-compose.yml up -d --build
 # Truy cập:  http://localhost:3000   (nginx phục vụ SPA, proxy /trpc → server)
 services:
   db:
-    image: postgres:18
+    # pgvector/pgvector:pg18 = PostgreSQL 18 + extension pgvector cài sẵn
+    # (Knowledge Base cần `CREATE EXTENSION vector` — xem migration 0007).
+    image: pgvector/pgvector:pg18
     restart: unless-stopped
     environment:
       POSTGRES_USER: erp
@@ -24,6 +27,19 @@ services:
       retries: 20
       start_period: 40s
 
+  # Apache Tika — sidecar trích văn bản từ file cho Knowledge Base.
+  # Bản `-full` kèm Tesseract OCR + đủ parser (PDF/DOCX/XLSX/PPTX/HTML…).
+  # Không healthcheck: image dựa trên JRE tối giản, không chắc có wget/curl;
+  # worker kb-ingest tự xử lý khi Tika chưa sẵn sàng (đặt status=error).
+  tika:
+    image: apache/tika:3.2.1.0-full
+    restart: unless-stopped
+    # Mở cổng ra host để dev (server chạy trên host) gọi được.
+    ports:
+      - "${ERP_TIKA_PORT:-9998}:9998"
+    expose:
+      - "9998"
+
   server:
     build:
       context: ..
@@ -35,9 +51,16 @@ services:
       HOST: 0.0.0.0
       NODE_ENV: production
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-please-change-this-encryption-key}
+      # Knowledge Base — sidecar Tika + thư mục lưu file tải lên.
+      TIKA_URL: http://tika:9998
+      UPLOAD_DIR: /data/uploads
     depends_on:
       db:
         condition: service_healthy
+      tika:
+        condition: service_started
+    volumes:
+      - erp-uploads:/data/uploads
     # Không expose ra ngoài — app (nginx) proxy nội bộ qua /trpc.
     # Mở dòng dưới nếu cần gọi thẳng server để debug.
     # ports:
@@ -81,3 +104,4 @@ services:
 volumes:
   erp-pgdata:
   bridge-data:
+  erp-uploads:

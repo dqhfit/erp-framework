@@ -11,7 +11,7 @@
    ========================================================== */
 import {
   pgTable, pgEnum, uuid, text, timestamp, jsonb, boolean, integer,
-  doublePrecision, index, uniqueIndex, type AnyPgColumn,
+  doublePrecision, index, uniqueIndex, vector, type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -173,6 +173,9 @@ export const llmProfiles = pgTable("llm_profiles", {
   name: text("name").notNull(),
   adapter: text("adapter").notNull(),
   model: text("model").notNull(),
+  // kind: "chat" (mặc định) | "embedding" — phân biệt profile sinh
+  // chat completion với profile sinh embedding cho Knowledge Base.
+  kind: text("kind").notNull().default("chat"),
   endpoint: text("endpoint"),
   apiKeyEnc: text("api_key_enc"),                    // mã hoá ở tầng app, không plaintext
   temperature: doublePrecision("temperature").default(0.7),
@@ -337,4 +340,49 @@ export const entitySyncs = pgTable("entity_syncs", {
 }, (t) => ({
   companyIdIdx: index("entity_syncs_company_id_idx").on(t.companyId),
   entityIdIdx: uniqueIndex("entity_syncs_entity_id_idx").on(t.entityId),
+}));
+
+/* ─── Knowledge Base (RAG) ────────────────────────────────────
+   Nguồn tri thức (file tải lên / dữ liệu entity / văn bản dán tay)
+   được trích văn bản, cắt đoạn (chunk) rồi sinh embedding. Tra cứu
+   bằng ANN cosine trên cột vector — phục vụ ô tìm kiếm UI lẫn tool
+   "knowledge_search" của agent. Cần extension pgvector (migration
+   0007 bật `CREATE EXTENSION vector`). */
+export const knowledgeSources = pgTable("knowledge_sources", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  // kind: "file" | "entity" | "text"
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  // status: "pending" | "processing" | "ready" | "error"
+  status: text("status").notNull().default("pending"),
+  // meta: file → { path, mime, size, originalName }; entity → { entityId };
+  //       text → { text }
+  meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
+  error: text("error"),
+  chunkCount: integer("chunk_count").notNull().default(0),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyIdIdx: index("knowledge_sources_company_id_idx").on(t.companyId),
+}));
+
+/* Đoạn (chunk) có embedding. Cột embedding vector(768) — index HNSW
+   cosine tạo trong migration 0007 (drizzle-kit không sinh kiểu index
+   này nên viết tay). */
+export const knowledgeChunks = pgTable("knowledge_chunks", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  sourceId: uuid("source_id").notNull()
+    .references(() => knowledgeSources.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  content: text("content").notNull(),
+  tokens: integer("tokens").notNull().default(0),
+  embedding: vector("embedding", { dimensions: 768 }),
+}, (t) => ({
+  companyIdIdx: index("knowledge_chunks_company_id_idx").on(t.companyId),
+  sourceIdIdx: index("knowledge_chunks_source_id_idx").on(t.sourceId),
 }));

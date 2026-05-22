@@ -21,6 +21,7 @@ import { entitySyncRouter } from "./entity-sync-router";
 import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
 import { embedRouter } from "./embed-router";
+import { knowledgeRouter } from "./knowledge-router";
 import { encryptSecret, decryptSecret } from "./crypto";
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
@@ -633,6 +634,9 @@ export const appRouter = router({
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,
+
+  /* ── Knowledge Base — nạp tri thức + tra cứu RAG ── */
+  knowledge: knowledgeRouter,
 
   /* ── Xuất/nhập cấu hình (entity+page+workflow+agent) ── */
   transfer: router({
