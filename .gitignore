@@ -32,6 +32,11 @@ Thumbs.db
 # vite cache
 .vite/
 
+# Playwright e2e output
+test-results/
+playwright-report/
+.codegraph/
+
 # compiled output (TS project — .js belongs in dist/ only)
 src/**/*.js
 src/**/*.js.map

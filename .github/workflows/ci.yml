@@ -58,7 +58,8 @@ jobs:
     # e2e full-stack: PostgreSQL + server + app thật.
     services:
       postgres:
-        image: postgres:18
+        # pgvector/pgvector:pg18 — cần cho migration 0007 (CREATE EXTENSION vector).
+        image: pgvector/pgvector:pg18
         env:
           POSTGRES_USER: erp
           POSTGRES_PASSWORD: erp

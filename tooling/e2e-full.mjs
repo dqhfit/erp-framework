@@ -40,9 +40,11 @@ async function main() {
     console.log("• Dựng PostgreSQL e2e (container erp-e2e-db)…");
     try { execSync("docker rm -f erp-e2e-db", { stdio: "ignore" }); }
     catch { /* chưa có container */ }
+    // pgvector/pgvector:pg18 — PostgreSQL 18 + extension pgvector cài sẵn
+    // (migration 0007 cần CREATE EXTENSION vector cho Knowledge Base).
     sh("docker run -d --name erp-e2e-db -p 5432:5432 "
       + "-e POSTGRES_USER=erp -e POSTGRES_PASSWORD=erp "
-      + "-e POSTGRES_DB=erp_framework postgres:18");
+      + "-e POSTGRES_DB=erp_framework pgvector/pgvector:pg18");
     await waitForPg();
   }
   console.log("• Áp migration…");

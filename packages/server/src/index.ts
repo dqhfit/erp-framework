@@ -60,7 +60,9 @@ const KB_ADD_TOOL: ToolDef = {
 };
 
 async function main(): Promise<void> {
-  const app = Fastify({ logger: true });
+  // maxParamLength cao — tRPC httpBatchLink gộp nhiều procedure vào URL
+  // (/trpc/a,b,c…); mặc định Fastify 100 ký tự sẽ làm batch lớn bị 404.
+  const app = Fastify({ logger: true, maxParamLength: 5000 });
 
   // CORS — cho frontend (origin khác) gọi kèm cookie phiên.
   // Production BẮT BUỘC khai báo CORS_ORIGIN tường minh: phản chiếu

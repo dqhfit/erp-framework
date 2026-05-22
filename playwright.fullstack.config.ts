@@ -24,16 +24,27 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // Stub dịch vụ ngoài: embedding + LLM + Tika (cổng 9100).
+      command: "node tooling/e2e-stub-server.mjs",
+      url: "http://127.0.0.1:9100/health",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       command: "pnpm --filter @erp-framework/server start",
       url: "http://127.0.0.1:8910/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
-      env: { DATABASE_URL, ENCRYPTION_KEY, PORT: "8910", HOST: "127.0.0.1" },
+      // TIKA_URL trỏ vào stub — route /upload trích văn bản qua đó.
+      env: {
+        DATABASE_URL, ENCRYPTION_KEY, PORT: "8910", HOST: "127.0.0.1",
+        TIKA_URL: "http://127.0.0.1:9100",
+      },
     },
     {
       command: "pnpm dev:app",
       url: "http://127.0.0.1:5173",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],
