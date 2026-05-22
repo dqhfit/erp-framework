@@ -20,6 +20,10 @@ export interface KnowledgeHit {
   score: number;
 }
 
+/** Ngưỡng tương đồng tối thiểu — bỏ đoạn quá ít liên quan để tránh
+   trả nhiễu (nhất là cho tool agent). Nới lỏng, chỉ lọc rác. */
+const MIN_SCORE = 0.2;
+
 /** Tìm `limit` đoạn gần nghĩa nhất với `query` trong phạm vi công ty. */
 export async function knowledgeSearch(
   db: DB, companyId: string, query: string, limit = 5,
@@ -49,13 +53,15 @@ export async function knowledgeSearch(
     .orderBy(sql`${knowledgeChunks.embedding} <=> ${lit}::vector`)
     .limit(limit);
 
-  return rows.map((r) => ({
-    chunkId: r.chunkId,
-    sourceId: r.sourceId,
-    sourceTitle: r.sourceTitle,
-    sourceKind: r.sourceKind,
-    seq: r.seq,
-    content: r.content,
-    score: 1 - Number(r.dist),
-  }));
+  return rows
+    .map((r) => ({
+      chunkId: r.chunkId,
+      sourceId: r.sourceId,
+      sourceTitle: r.sourceTitle,
+      sourceKind: r.sourceKind,
+      seq: r.seq,
+      content: r.content,
+      score: 1 - Number(r.dist),
+    }))
+    .filter((h) => h.score >= MIN_SCORE);
 }

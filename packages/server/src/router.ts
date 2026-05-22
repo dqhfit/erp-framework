@@ -706,11 +706,15 @@ export const appRouter = router({
   }),
 
   /* ── LLM profiles (theo công ty) ── */
+  /* CHỈ profile chat (kind='chat'). Profile embedding của Knowledge
+     Base cũng nằm chung bảng llm_profiles (kind='embedding') — phải
+     lọc kind để nó KHÔNG lọt vào danh sách model chat / AgentPanel. */
   llm: router({
     list: rbacProcedure("view", "settings")
       .query(async ({ ctx }) => {
         const rows = await ctx.db.select().from(llmProfiles)
-          .where(eq(llmProfiles.companyId, ctx.user.companyId));
+          .where(and(eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.kind, "chat")));
         // Giải mã apiKey để client nạp lại profile.
         return rows.map((r) => ({
           ...r,
@@ -730,7 +734,8 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const [ex] = await ctx.db.select({ id: llmProfiles.id })
           .from(llmProfiles).where(and(eq(llmProfiles.name, input.name),
-            eq(llmProfiles.companyId, ctx.user.companyId)));
+            eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.kind, "chat")));
         const values = {
           adapter: input.adapter,
           model: input.model,
@@ -744,7 +749,7 @@ export const appRouter = router({
             .where(eq(llmProfiles.id, ex.id));
         } else {
           await ctx.db.insert(llmProfiles)
-            .values({ companyId: ctx.user.companyId, name: input.name, ...values });
+            .values({ companyId: ctx.user.companyId, name: input.name, kind: "chat", ...values });
         }
         return { ok: true };
       }),
@@ -752,7 +757,8 @@ export const appRouter = router({
       .input(z.string().min(1))
       .mutation(async ({ ctx, input }) => {
         await ctx.db.delete(llmProfiles).where(and(eq(llmProfiles.name, input),
-          eq(llmProfiles.companyId, ctx.user.companyId)));
+          eq(llmProfiles.companyId, ctx.user.companyId),
+          eq(llmProfiles.kind, "chat")));
       }),
   }),
 });
