@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import { createAuthClient } from "@erp-framework/client";
 import { useUserObjects } from "./userObjects";
+import { t } from "@/hooks/useT";
 
 const auth = createAuthClient("");
 
@@ -51,7 +52,7 @@ export const useAuth = create<AuthState>()((set) => ({
       const u = (await auth.login(email, password)) as AuthUser;
       enter(set, u);
     } catch (e) {
-      set({ error: (e as Error).message || "Đăng nhập thất bại" });
+      set({ error: (e as Error).message || t("auth.login_failed") });
     }
   },
 
@@ -62,7 +63,7 @@ export const useAuth = create<AuthState>()((set) => ({
       const u = (await auth.login(email, password)) as AuthUser;
       enter(set, u);
     } catch (e) {
-      set({ error: (e as Error).message || "Đăng ký thất bại" });
+      set({ error: (e as Error).message || t("auth.register_failed") });
     }
   },
 

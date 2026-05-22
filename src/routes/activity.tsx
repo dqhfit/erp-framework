@@ -5,7 +5,7 @@
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
-import { Card, Chip, Button, Select } from "@/components/ui";
+import { Card, Chip, Button, Select, Input } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { createObjectsClient } from "@erp-framework/client";
 import { formatUsd } from "@/lib/pricing";
@@ -61,14 +61,27 @@ function ActivityDashboard() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+  const [budget, setBudget] = useState<{ monthlyUsd: number; usedUsd: number }>({ monthlyUsd: 0, usedUsd: 0 });
+  const [budgetInput, setBudgetInput] = useState("");
 
   const reload = useCallback(() => {
     setLoading(true);
     objects.activity.list()
       .then((r) => { setRows(r as ActivityRow[]); setLoading(false); })
       .catch(() => setLoading(false));
+    objects.budget.get()
+      .then((b) => { setBudget(b); setBudgetInput(String(b.monthlyUsd)); })
+      .catch(() => { /* chưa đăng nhập / lỗi mạng */ });
   }, []);
   useEffect(() => { reload(); }, [reload]);
+
+  const saveBudget = async () => {
+    const v = Number(budgetInput);
+    if (!Number.isFinite(v) || v < 0) return;
+    await objects.budget.save(v).catch(() => {});
+    reload();
+  };
+  const overBudget = budget.monthlyUsd > 0 && budget.usedUsd >= budget.monthlyUsd;
 
   const totalCost = rows.reduce((s, e) => s + (e.cost ?? 0), 0);
   const tokIn = rows.reduce((s, e) => s + (e.tokensInput ?? 0), 0);
@@ -107,6 +120,36 @@ function ActivityDashboard() {
           <Stat label="Token ra" value={tokOut.toLocaleString("vi-VN")} />
           <Stat label="Số sự kiện" value={rows.length.toLocaleString("vi-VN")} />
         </div>
+
+        {/* Ngân sách tháng — chặn cứng khi vượt */}
+        <Card className="mb-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="text-xs text-muted uppercase tracking-wide">Ngân sách tháng</div>
+              <div className="text-sm mt-1">
+                Đã dùng <b>{formatUsd(budget.usedUsd)}</b>
+                {budget.monthlyUsd > 0
+                  ? <> {" / "} hạn mức <b>{formatUsd(budget.monthlyUsd)}</b></>
+                  : <> {" · "}<span className="text-muted">chưa đặt hạn mức</span></>}
+              </div>
+              {overBudget && (
+                <div className="mt-1">
+                  <Chip variant="danger">Đã chạm hạn mức — workflow & agent bị chặn</Chip>
+                </div>
+              )}
+            </div>
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="text-xs text-muted block mb-1">
+                  Hạn mức USD/tháng (0 = không giới hạn)
+                </label>
+                <Input type="number" min="0" className="w-40" value={budgetInput}
+                  onChange={(e) => setBudgetInput(e.target.value)} />
+              </div>
+              <Button variant="primary" onClick={saveBudget}>Lưu hạn mức</Button>
+            </div>
+          </div>
+        </Card>
 
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm text-muted">Lọc theo loại:</span>

@@ -7,6 +7,8 @@ import { activityLog } from "@erp-framework/db";
 import type { DB } from "./db";
 
 export interface ActivityInput {
+  /** Công ty sở hữu bản ghi nhật ký (đa công ty — bắt buộc). */
+  companyId: string;
   kind: string;
   objectType?: string;
   target?: string;
@@ -21,6 +23,7 @@ export interface ActivityInput {
 export async function logActivity(db: DB, e: ActivityInput): Promise<void> {
   try {
     await db.insert(activityLog).values({
+      companyId: e.companyId,
       kind: e.kind,
       objectType: e.objectType ?? null,
       target: e.target ?? null,

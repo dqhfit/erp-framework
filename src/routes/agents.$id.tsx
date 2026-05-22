@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { I } from "@/components/Icons";
-import type { MockAgent } from "@/lib/mock-data";
+import type { MockAgent } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { Button, Chip, Card, FormField, Input, Select } from "@/components/ui";
 import { useUI } from "@/stores/ui";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useDynamicModels } from "@/hooks/useDynamicModels";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
@@ -233,6 +234,10 @@ function AgentRoute() {
               <div className="flex justify-between"><dt className="text-muted">Token / msg</dt><dd>1,2k</dd></div>
             </dl>
           </Card>
+        </div>
+
+        <div className="mt-4">
+          <HeartbeatPanel agentId={id} />
         </div>
       </div>
 

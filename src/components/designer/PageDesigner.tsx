@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button, Chip, FormField, Select, Input, EmptyState } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { ORDER_ROWS, formatVND, type IconName } from "@/lib/mock-data";
-import { DataGrid } from "@/components/renderer/DataGrid";
-import { Chart } from "@/components/renderer/Chart";
+import type { IconName } from "@/lib/object-types";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useUserObjects } from "@/stores/userObjects";
@@ -28,14 +26,6 @@ const PALETTE: Array<{ kind: ComponentKind; label: string; icon: IconName; defau
   { kind: "kpi",    label: "KPI",           icon: "TrendUp",   defaultSize: { w: 3,  h: 2 } },
   { kind: "kanban", label: "Kanban",        icon: "Kanban",    defaultSize: { w: 12, h: 4 } },
   { kind: "html",   label: "HTML / Note",   icon: "Type",      defaultSize: { w: 6,  h: 2 } },
-];
-
-const SAMPLE_CHART = [
-  { month: "T1", doanh_thu: 1200, don_hang: 45 },
-  { month: "T2", doanh_thu: 1800, don_hang: 62 },
-  { month: "T3", doanh_thu: 2200, don_hang: 78 },
-  { month: "T4", doanh_thu: 1900, don_hang: 70 },
-  { month: "T5", doanh_thu: 2800, don_hang: 95 },
 ];
 
 interface Props { pageId: string }
@@ -264,7 +254,8 @@ export function PageDesigner({ pageId }: Props) {
                       onChange={(e) => update(sel.id, { h: Math.max(1, parseInt(e.target.value) || 1) })} />
                   </FormField>
                 </div>
-                {sel.kind === "list" && (
+                {(sel.kind === "list" || sel.kind === "form"
+                  || sel.kind === "chart" || sel.kind === "kanban") && (
                   <FormField label="Entity">
                     <Select
                       value={(sel.config.entity as string) ?? ""}
@@ -276,17 +267,42 @@ export function PageDesigner({ pageId }: Props) {
                   </FormField>
                 )}
                 {sel.kind === "chart" && (
-                  <FormField label={t("field.chart_type")}>
-                    <Select
-                      value={(sel.config.kind as string) ?? "bar"}
-                      onChange={(e) => update(sel.id, { config: { ...sel.config, kind: e.target.value } })}
-                    >
-                      <option value="bar">Bar</option>
-                      <option value="line">Line</option>
-                      <option value="area">Area</option>
-                      <option value="pie">Pie</option>
-                      <option value="doughnut">Doughnut</option>
-                    </Select>
+                  <>
+                    <FormField label={t("field.chart_type")}>
+                      <Select
+                        value={(sel.config.kind as string) ?? "bar"}
+                        onChange={(e) => update(sel.id, { config: { ...sel.config, kind: e.target.value } })}
+                      >
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                        <option value="area">Area</option>
+                        <option value="pie">Pie</option>
+                        <option value="doughnut">Doughnut</option>
+                      </Select>
+                    </FormField>
+                    <FormField label="Nhóm theo field">
+                      <Input
+                        value={(sel.config.groupBy as string) ?? ""}
+                        placeholder="vd: status"
+                        onChange={(e) => update(sel.id, { config: { ...sel.config, groupBy: e.target.value } })}
+                      />
+                    </FormField>
+                    <FormField label="Field giá trị (trống = đếm)">
+                      <Input
+                        value={(sel.config.valueField as string) ?? ""}
+                        placeholder="vd: tong_tien"
+                        onChange={(e) => update(sel.id, { config: { ...sel.config, valueField: e.target.value } })}
+                      />
+                    </FormField>
+                  </>
+                )}
+                {sel.kind === "kanban" && (
+                  <FormField label="Nhóm theo field">
+                    <Input
+                      value={(sel.config.groupBy as string) ?? "status"}
+                      placeholder="vd: status"
+                      onChange={(e) => update(sel.id, { config: { ...sel.config, groupBy: e.target.value } })}
+                    />
                   </FormField>
                 )}
                 <Button variant="danger" size="sm" icon={<I.Trash size={13} />} onClick={() => remove(sel.id)}
@@ -342,6 +358,19 @@ function ComponentCard({ comp, selected, onSelect, onRemove, isConsumer }: Compo
 }
 
 
+/* Ô xem trước trên canvas thiết kế — chỉ mô tả cấu trúc widget;
+   dữ liệu thật render ở chế độ người dùng (ConsumerPage). */
+function PreviewBox({ icon, label, hint }: { icon: IconName; label: string; hint: string }) {
+  const IC = I[icon];
+  return (
+    <div className="p-3 h-full flex flex-col items-center justify-center text-center gap-1">
+      <IC size={20} className="text-muted" />
+      <div className="text-xs font-medium truncate max-w-full">{label}</div>
+      <div className="text-[11px] text-muted">{hint}</div>
+    </div>
+  );
+}
+
 function ComponentBody({ comp }: { comp: PageComponent }) {
   const entities = useUserObjects((s) => s.entities);
   if (comp.kind === "kpi") {
@@ -355,49 +384,38 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
     );
   }
   if (comp.kind === "chart") {
-    const { kind = "bar", title } = comp.config as { kind?: string; title?: string };
+    const { kind = "bar", title, entity, groupBy } = comp.config as
+      { kind?: string; title?: string; entity?: string; groupBy?: string };
+    const ent = entities.find((e) => e.id === entity);
     return (
-      <div className="p-2 h-full flex flex-col">
-        {title && <div className="text-xs font-medium mb-1 truncate">{title}</div>}
-        <div className="flex-1 min-h-0">
-          <Chart kind={kind as "bar" | "line" | "area" | "pie" | "doughnut"}
-            data={SAMPLE_CHART} labelKey="month" valueKeys={["doanh_thu"]} />
-        </div>
-      </div>
+      <PreviewBox icon="BarChart" label={title || "Chart"}
+        hint={ent
+          ? `${ent.name} · ${kind}${groupBy ? ` · nhóm ${groupBy}` : ""}`
+          : "Chưa bind entity"} />
     );
   }
   if (comp.kind === "list") {
     const { entity } = comp.config as { entity?: string };
     const ent = entities.find((e) => e.id === entity);
     return (
-      <div className="h-full flex flex-col">
-        <div className="text-xs px-2 py-1 border-b border-border text-muted">
-          {ent?.name ?? "List"}
-        </div>
-        <div className="flex-1 min-h-0 overflow-auto">
-          <DataGrid
-            toolbar={false}
-            data={ORDER_ROWS.slice(0, 6)}
-            columns={[
-              { accessorKey: "id", header: "Mã" },
-              { accessorKey: "customer", header: "Khách" },
-              { accessorKey: "total", header: "Tổng",
-                cell: (c) => formatVND(Number(c.getValue() ?? 0)) },
-              { accessorKey: "status", header: "TT" },
-            ]}
-          />
-        </div>
-      </div>
+      <PreviewBox icon="Table" label={ent?.name ?? "List"}
+        hint={ent ? "Bảng record thật (xem ở chế độ người dùng)" : "Chưa bind entity"} />
     );
   }
   if (comp.kind === "form") {
+    const { entity } = comp.config as { entity?: string };
+    const ent = entities.find((e) => e.id === entity);
     return (
-      <div className="p-3 text-xs text-muted">Form placeholder — bind tới entity ở Inspector.</div>
+      <PreviewBox icon="Edit" label={ent ? `Form ${ent.name}` : "Form"}
+        hint={ent ? "Ghi record thật vào backend" : "Chưa bind entity"} />
     );
   }
   if (comp.kind === "kanban") {
+    const { entity, groupBy } = comp.config as { entity?: string; groupBy?: string };
+    const ent = entities.find((e) => e.id === entity);
     return (
-      <div className="p-3 text-xs text-muted">Kanban placeholder — group theo field "status".</div>
+      <PreviewBox icon="Kanban" label={ent?.name ?? "Kanban"}
+        hint={ent ? `Nhóm theo "${groupBy || "status"}"` : "Chưa bind entity"} />
     );
   }
   if (comp.kind === "html") {

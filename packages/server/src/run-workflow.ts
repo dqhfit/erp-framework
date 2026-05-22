@@ -7,7 +7,7 @@
    (llm-client) — đều đọc cấu hình từ DB. Có thể tiêm callback
    riêng qua ExecuteOptions để test/ghi đè.
    ========================================================== */
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { workflows, workflowRuns } from "@erp-framework/db";
 import {
   runWorkflow, pluginRegistry,
@@ -17,6 +17,7 @@ import type { DB } from "./db";
 import { makeCallTool } from "./mcp-client";
 import { makeCallAgent } from "./llm-client";
 import { logActivity } from "./activity";
+import { assertWithinBudget } from "./budget";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
 interface RawGraph {
@@ -33,6 +34,8 @@ export interface ExecuteOptions {
   callAgent?: RunWorkflowOptions["callAgent"];
   context?: Record<string, unknown>;
   scheduleId?: string;
+  /** Nếu có: từ chối chạy nếu workflow không thuộc công ty này (đa công ty). */
+  companyId?: string;
 }
 
 /** Chạy một workflow theo id, ghi 1 bản ghi workflow_runs. */
@@ -44,8 +47,15 @@ export async function executeWorkflow(
   const [wf] = await db.select().from(workflows)
     .where(eq(workflows.id, workflowId));
   if (!wf) throw new Error(`Workflow không tồn tại: ${workflowId}`);
+  // Đa công ty: workflow phải thuộc đúng công ty của người gọi.
+  if (opts.companyId && wf.companyId !== opts.companyId) {
+    throw new Error(`Workflow không tồn tại: ${workflowId}`);
+  }
+  // Chặn cứng theo ngân sách — vượt hạn mức tháng của công ty thì không chạy.
+  await assertWithinBudget(db, wf.companyId);
 
-  const graph = (wf.graph ?? {}) as RawGraph;
+  // Runner chạy bản ĐÃ PUBLISH; chưa publish thì tạm dùng bản nháp.
+  const graph = (wf.publishedGraph ?? wf.graph ?? {}) as RawGraph;
   const nodes: WfNode[] = (graph.nodes ?? []).map((n) => ({
     id: n.id,
     type: n.data?.kind ?? n.type ?? "action",
@@ -60,6 +70,7 @@ export async function executeWorkflow(
 
   // Bản ghi run — trạng thái "running"
   const [run] = await db.insert(workflowRuns).values({
+    companyId: wf.companyId,
     workflowId,
     scheduleId: opts.scheduleId ?? null,
     status: "running",
@@ -74,7 +85,7 @@ export async function executeWorkflow(
     workflowName: wf.name,
     nodes,
     edges,
-    callTool: opts.callTool ?? makeCallTool(db),
+    callTool: opts.callTool ?? makeCallTool(db, wf.companyId),
     callAgent: opts.callAgent ?? makeCallAgent(db),
     initialVars: opts.context,
     registry: pluginRegistry,
@@ -92,6 +103,7 @@ export async function executeWorkflow(
   const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);
   const tOut = result.steps.reduce((n, s) => n + (s.tokens?.output_tokens ?? 0), 0);
   await logActivity(db, {
+    companyId: wf.companyId,
     kind: "run_workflow",
     objectType: "workflow",
     target: wf.name,
@@ -104,10 +116,16 @@ export async function executeWorkflow(
   return { runId: run.id, status: result.status, stepCount: result.steps.length };
 }
 
-/** Lịch sử các lần chạy gần đây của một workflow. */
-export function recentRuns(db: DB, workflowId: string, limit = 20) {
+/** Lịch sử các lần chạy gần đây của một workflow (trong phạm vi công ty). */
+export function recentRuns(
+  db: DB,
+  workflowId: string,
+  companyId: string,
+  limit = 20,
+) {
   return db.select().from(workflowRuns)
-    .where(eq(workflowRuns.workflowId, workflowId))
+    .where(and(eq(workflowRuns.workflowId, workflowId),
+      eq(workflowRuns.companyId, companyId)))
     .orderBy(desc(workflowRuns.startedAt))
     .limit(limit);
 }

@@ -1,14 +1,27 @@
 import { useState, useEffect } from "react";
 import { useMcpClient, callMcpTool } from "@/hooks/useMcpClient";
 import { normalizeRows, inferSchema, toFieldDefs, type InferredField } from "@/lib/schema-infer";
-import { Modal, Button, Select, FormField, Chip } from "@/components/ui";
+import { Modal, Button, Select, FormField, Chip, Tabs } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { SchemaArgsForm } from "@/components/designer/SchemaArgsForm";
+import { useT } from "@/hooks/useT";
 import type { FieldDef } from "@/types/entity";
+
+/** Định dạng một ô dữ liệu để hiển thị trong bảng. */
+function formatCell(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "boolean") return v ? "✓" : "✗";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
 
 export interface McpImportResult {
   fields: FieldDef[];
   mode: "replace" | "append";
+  /** schema = chỉ field; snapshot = nhập kèm dữ liệu mẫu vào DB */
+  dataMode: "schema" | "snapshot";
+  /** Dòng dữ liệu mẫu (dùng khi dataMode = snapshot) */
+  rows: Record<string, unknown>[];
   /** Tool đã dùng để fetch sample */
   tool: string;
   /** Args đã gửi khi gọi tool */
@@ -26,6 +39,7 @@ interface Props {
 type Step = "select" | "preview" | "error";
 
 export function McpImportModal({ open, onClose, onApply }: Props) {
+  const t = useT();
   const { tools, connecting, error: mcpError } = useMcpClient();
   const [tool, setTool] = useState<string>("");
   const [argsObj, setArgsObj] = useState<Record<string, unknown>>({});
@@ -33,13 +47,17 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
   const [loading, setLoading] = useState(false);
   const [inferred, setInferred] = useState<InferredField[]>([]);
   const [sampleData, setSampleData] = useState<unknown>(null);
+  const [sampleRows, setSampleRows] = useState<Record<string, unknown>[]>([]);
+  const [previewTab, setPreviewTab] = useState<"schema" | "data" | "raw">("schema");
   const [errMsg, setErrMsg] = useState("");
   const [mode, setMode] = useState<"replace" | "append">("replace");
+  const [dataMode, setDataMode] = useState<"schema" | "snapshot">("schema");
 
   // Reset khi đóng / chọn tool khác
   useEffect(() => {
     if (!open) {
       setStep("select"); setInferred([]); setErrMsg(""); setSampleData(null);
+      setSampleRows([]); setPreviewTab("schema"); setDataMode("schema");
     }
   }, [open]);
   useEffect(() => {
@@ -49,8 +67,8 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
   // Khi đổi tool → reset args + pre-fill default từ schema
   useEffect(() => {
     if (!tool) return;
-    const t = tools.find((x) => x.name === tool);
-    const props = t?.inputSchema?.properties ?? {};
+    const tdef = tools.find((x) => x.name === tool);
+    const props = tdef?.inputSchema?.properties ?? {};
     const defaults: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(props)) {
       const d = (v as { default?: unknown }).default;
@@ -67,12 +85,14 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
       const data = await callMcpTool(tool, argsObj);
       const rows = normalizeRows(data);
       if (!rows.length) {
-        setErrMsg("Tool trả về 0 row — không thể infer schema");
+        setErrMsg(t("mcpimport.zero_rows"));
         setStep("error");
         return;
       }
       setSampleData(data);
+      setSampleRows(rows as Record<string, unknown>[]);
       setInferred(inferSchema(rows));
+      setPreviewTab("schema");
       setStep("preview");
     } catch (e) {
       setErrMsg((e as Error).message);
@@ -87,44 +107,50 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
     onApply({
       fields,
       mode,
+      dataMode,
+      rows: sampleRows,
       tool,
       args: argsObj,
-      availableTools: tools.map((t) => t.name),
+      availableTools: tools.map((tl) => tl.name),
     });
     onClose();
   };
 
-  const selectedTool = tools.find((t) => t.name === tool);
+  const selectedTool = tools.find((tl) => tl.name === tool);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Import schema từ MCP"
+      title={t("mcpimport.title")}
       width={700}
       footer={
         step === "preview" ? (
           <>
             <div className="flex items-center gap-2 text-xs mr-auto">
-              <span className="text-muted">Áp dụng:</span>
+              <span className="text-muted">{t("mcpimport.apply_label")}</span>
               <button
                 onClick={() => setMode("replace")}
                 className={`chip ${mode === "replace" ? "chip-accent" : ""}`}>
-                Thay thế toàn bộ
+                {t("mcpimport.mode_replace")}
               </button>
               <button
                 onClick={() => setMode("append")}
                 className={`chip ${mode === "append" ? "chip-accent" : ""}`}>
-                Thêm vào sau
+                {t("mcpimport.mode_append")}
               </button>
             </div>
-            <Button variant="ghost" onClick={() => setStep("select")}>← Quay lại</Button>
+            <Button variant="ghost" onClick={() => setStep("select")}>
+              {t("mcpimport.back")}
+            </Button>
             <Button variant="primary" onClick={handleApply} icon={<I.Check size={13} />}>
-              Áp dụng {inferred.filter((i) => !i._skip).length} fields
+              {t("mcpimport.apply_n", {
+                count: inferred.filter((i) => !i._skip).length,
+              })}
             </Button>
           </>
         ) : (
-          <Button variant="ghost" onClick={onClose}>Đóng</Button>
+          <Button variant="ghost" onClick={onClose}>{t("common.close")}</Button>
         )
       }
     >
@@ -132,14 +158,19 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
         <div className="space-y-4">
           {mcpError && (
             <div className="text-xs bg-danger/10 border border-danger/30 text-danger rounded p-2">
-              ⚠ MCP error: {mcpError}
+              {t("mcpimport.mcp_error", { error: mcpError })}
             </div>
           )}
-          <FormField label="MCP Tool" hint={connecting ? "Đang kết nối MCP..." : `${tools.length} tool có sẵn`}>
+          <FormField
+            label={t("mcpimport.tool_label")}
+            hint={connecting
+              ? t("mcpimport.connecting")
+              : t("mcpimport.tools_count", { count: tools.length })}
+          >
             <Select value={tool} onChange={(e) => setTool(e.target.value)} disabled={connecting || !tools.length}>
-              {tools.length === 0 && <option value="">— chưa có tool —</option>}
-              {tools.map((t) => (
-                <option key={t.name} value={t.name}>{t.name}</option>
+              {tools.length === 0 && <option value="">{t("mcpimport.no_tool")}</option>}
+              {tools.map((tl) => (
+                <option key={tl.name} value={tl.name}>{tl.name}</option>
               ))}
             </Select>
           </FormField>
@@ -160,7 +191,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             icon={loading ? <I.Loader size={14} className="animate-spin" /> : <I.Play size={14} />}
             className="w-full justify-center"
           >
-            {loading ? "Đang gọi tool..." : "Lấy sample + infer schema"}
+            {loading ? t("mcpimport.calling") : t("mcpimport.fetch_btn")}
           </Button>
         </div>
       )}
@@ -168,22 +199,54 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
       {step === "preview" && (
         <div className="space-y-3">
           <div className="text-sm">
-            <span className="text-muted">Phát hiện</span>{" "}
-            <span className="font-semibold">{inferred.length} fields</span>{" "}
-            <span className="text-muted">từ</span>{" "}
+            <span className="text-muted">{t("mcpimport.detected")}</span>{" "}
+            <span className="font-semibold">
+              {t("mcpimport.n_fields", { count: inferred.length })}
+            </span>{" "}
+            <span className="text-muted">{t("mcpimport.from")}</span>{" "}
             <span className="font-mono text-accent">{tool}</span>
           </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted">{t("mcpimport.data_apply")}</span>
+            <button
+              onClick={() => setDataMode("schema")}
+              className={`chip ${dataMode === "schema" ? "chip-accent" : ""}`}>
+              {t("mcpimport.data_schema_only")}
+            </button>
+            <button
+              onClick={() => setDataMode("snapshot")}
+              className={`chip ${dataMode === "snapshot" ? "chip-accent" : ""}`}>
+              {t("mcpimport.data_snapshot", { count: sampleRows.length })}
+            </button>
+          </div>
+
+          <Tabs
+            value={previewTab}
+            onChange={setPreviewTab}
+            options={[
+              { value: "schema", label: t("mcpimport.tab_schema", { count: inferred.length }) },
+              { value: "data", label: t("mcpimport.tab_data", { count: sampleRows.length }) },
+              { value: "raw", label: t("mcpimport.tab_raw") },
+            ]}
+          />
+
+          {previewTab === "schema" && (
           <div className="border border-border rounded overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-panel-2 text-muted uppercase tracking-wide">
                 <tr>
                   <th className="text-left px-2 py-1.5">✓</th>
                   <th className="text-left px-2 py-1.5">Key</th>
-                  <th className="text-left px-2 py-1.5">Label</th>
-                  <th className="text-left px-2 py-1.5">Type</th>
-                  <th className="text-left px-2 py-1.5">Sample</th>
-                  <th className="text-right px-2 py-1.5" title="Tỷ lệ null">Null</th>
-                  <th className="text-right px-2 py-1.5" title="Số giá trị unique">Unique</th>
+                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_label")}</th>
+                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_type")}</th>
+                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_sample")}</th>
+                  <th className="text-right px-2 py-1.5" title={t("mcpimport.null_ratio")}>
+                    {t("mcpimport.col_null")}
+                  </th>
+                  <th className="text-right px-2 py-1.5" title={t("mcpimport.unique_count")}>
+                    {t("mcpimport.col_unique")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -225,12 +288,63 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
               </tbody>
             </table>
           </div>
-          <details className="text-xs">
-            <summary className="cursor-pointer text-muted">Xem raw response</summary>
-            <pre className="mt-2 bg-bg-soft border border-border rounded p-2 max-h-[200px] overflow-auto font-mono">
-              {JSON.stringify(sampleData, null, 2).slice(0, 2000)}
+          )}
+
+          {previewTab === "data" && (
+            inferred.length === 0 || sampleRows.length === 0 ? (
+              <div className="text-xs text-muted p-3">
+                {t("mcpimport.no_data")}
+              </div>
+            ) : (
+              <div className="border border-border rounded overflow-auto max-h-[340px]">
+                <table className="w-full text-xs">
+                  <thead className="bg-panel-2 text-muted uppercase tracking-wide">
+                    <tr>
+                      {inferred.map((f) => (
+                        <th key={f.key}
+                          className="text-left px-2 py-1.5 whitespace-nowrap">
+                          {f.label || f.key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sampleRows.slice(0, 50).map((row, ri) => (
+                      <tr key={ri} className="border-t border-border hover:bg-hover/30">
+                        {inferred.map((f) => {
+                          const v = row[f.key];
+                          const num = f.type === "number";
+                          return (
+                            <td
+                              key={f.key}
+                              className={
+                                "px-2 py-1.5 max-w-[220px] truncate " +
+                                (num ? "text-right tabular-nums" : "")
+                              }
+                              title={formatCell(v)}
+                            >
+                              {formatCell(v)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {sampleRows.length > 50 && (
+                  <div className="text-[11px] text-muted px-2 py-1 border-t border-border">
+                    {t("mcpimport.rows_limit", { total: sampleRows.length })}
+                  </div>
+                )}
+              </div>
+            )
+          )}
+
+          {previewTab === "raw" && (
+            <pre className="bg-bg-soft border border-border rounded p-2 max-h-[340px] overflow-auto font-mono text-xs">
+              {JSON.stringify(sampleData, null, 2).slice(0, 5000)}
             </pre>
-          </details>
+          )}
         </div>
       )}
 
@@ -239,11 +353,13 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
           <div className="w-12 h-12 rounded-full bg-danger/15 text-danger flex items-center justify-center mx-auto mb-3">
             <I.AlertCircle size={24} />
           </div>
-          <div className="font-semibold mb-1">Không infer được schema</div>
+          <div className="font-semibold mb-1">{t("mcpimport.infer_fail")}</div>
           <pre className="text-xs text-danger bg-bg-soft border border-border rounded p-2 mt-3 text-left max-h-[200px] overflow-auto">
             {errMsg}
           </pre>
-          <Button variant="default" onClick={() => setStep("select")} className="mt-3">← Thử lại</Button>
+          <Button variant="default" onClick={() => setStep("select")} className="mt-3">
+            {t("mcpimport.retry")}
+          </Button>
         </div>
       )}
     </Modal>

@@ -1,10 +1,14 @@
 /* context.ts — Context tRPC mỗi request. Đọc cookie phiên,
-   tra bảng sessions + users để xác định người dùng hiện tại. */
+   tra bảng sessions + users để xác định người dùng hiện tại.
+
+   ĐA CÔNG TY: vai trò HIỆU LỰC lấy theo công ty đang chọn
+   (sessions.active_company_id → company_members.role). Nếu phiên
+   chưa chọn công ty hợp lệ → dùng công ty đầu tiên user là thành viên. */
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import type { FastifyReply } from "fastify";
 import "@fastify/cookie";  // mang augmentation cookies/setCookie vào kiểu Fastify
 import { and, eq, gt } from "drizzle-orm";
-import { sessions, users } from "@erp-framework/db";
+import { sessions, users, companyMembers } from "@erp-framework/db";
 import type { Role } from "@erp-framework/core";
 import { db } from "./db";
 import { SESSION_COOKIE } from "./auth";
@@ -13,7 +17,10 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  /** Vai trò hiệu lực trong công ty đang chọn. */
   role: Role;
+  /** Công ty đang chọn. null = user chưa thuộc công ty nào. */
+  companyId: string | null;
 }
 
 export interface Context {
@@ -21,6 +28,24 @@ export interface Context {
   user: SessionUser | null;
   sessionToken: string | null;
   reply: FastifyReply;
+}
+
+/** Phân giải công ty hiệu lực + vai trò cho một user.
+   preferredCompanyId: công ty phiên đang chọn (nếu có). Trả về null
+   nếu user không là thành viên công ty nào. */
+export async function resolveActiveCompany(
+  database: typeof db,
+  userId: string,
+  preferredCompanyId: string | null,
+): Promise<{ companyId: string; role: Role } | null> {
+  const memberships = await database
+    .select({ companyId: companyMembers.companyId, role: companyMembers.role })
+    .from(companyMembers)
+    .where(eq(companyMembers.userId, userId));
+  const picked =
+    memberships.find((m) => m.companyId === preferredCompanyId) ?? memberships[0];
+  if (!picked) return null;
+  return { companyId: picked.companyId, role: picked.role as Role };
 }
 
 export async function createContext(
@@ -35,14 +60,22 @@ export async function createContext(
         id: users.id,
         email: users.email,
         name: users.name,
-        role: users.role,
+        defaultRole: users.role,
+        activeCompanyId: sessions.activeCompanyId,
       })
       .from(sessions)
       .innerJoin(users, eq(sessions.userId, users.id))
       .where(and(eq(sessions.id, token), gt(sessions.expiresAt, new Date())));
     const row = rows[0];
     if (row) {
-      user = { id: row.id, email: row.email, name: row.name, role: row.role };
+      const active = await resolveActiveCompany(db, row.id, row.activeCompanyId);
+      user = {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        role: active?.role ?? (row.defaultRole as Role),
+        companyId: active?.companyId ?? null,
+      };
     }
   }
 

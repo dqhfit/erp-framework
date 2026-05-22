@@ -50,6 +50,21 @@ erp-framework/
   docker/    docker-compose, Dockerfile, script backup
 ```
 
+> **Cập nhật 2026-05-22 — cấu trúc thực tế khác thiết kế đích trên.**
+> Khi triển khai P0–P6 + R1–R9, repo đã chốt cấu trúc sau (chi tiết xem
+> `docs/PROJECT-ANALYSIS.md`):
+> - **Không tách `packages/ui`** — phần React (designer/renderer) nằm ở
+>   `src/` thư mục gốc; `src/` chính là app studio.
+> - **Chưa có thư mục `apps/`** — chưa tách `apps/studio` / `apps/sample-erp`
+>   (`pnpm-workspace.yaml` vẫn khai báo `apps/*` để dành).
+> - Thêm **`packages/client`** (SDK tRPC + `ApiDataSource`) và
+>   **`packages/plugins`** (interface plugin dùng chung) — `packages/client`
+>   đảm nhận vai trò "cung cấp DataSource".
+> - **P5** (ERP mẫu) hiện thể hiện qua seed dữ liệu
+>   (`packages/server/src/seed.ts`), chưa thành app `apps/sample-erp` riêng.
+>
+> Thiết kế `packages/ui` + `apps/*` giữ lại làm hướng tinh gọn tương lai.
+
 > **Vì sao tách `core` (thuần) khỏi `ui` (React)?** P3 đưa `workflow-runner`,
 > `agent-runner`, `formula` chạy ở **server**. Nếu để chung package với designers/
 > renderers (React), server sẽ kéo theo React + DOM làm dependency một cách vô ích,

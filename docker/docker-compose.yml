@@ -9,6 +9,12 @@ services:
       POSTGRES_USER: erp
       POSTGRES_PASSWORD: erp
       POSTGRES_DB: erp_framework
+    ports:
+      # Mở cổng ra host để công cụ dev kết nối: drizzle-kit migrate,
+      # pnpm dev (server chạy trên host), psql…
+      # Cổng host lấy từ biến ERP_DB_PORT (mặc định 5433). `pnpm db:setup`
+      # tự dò cổng trống và đặt biến này để tránh đụng cổng.
+      - "${ERP_DB_PORT:-5433}:5432"
     volumes:
       - erp-pgdata:/var/lib/postgresql
     healthcheck:

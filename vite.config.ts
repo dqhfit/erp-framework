@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import path from "node:path";
@@ -6,6 +6,11 @@ import path from "node:path";
 export default defineConfig({
   plugins: [TanStackRouterVite(), react()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  // Vitest — unit test cho src/. Thư mục e2e/ là Playwright spec,
+  // loại khỏi vitest để không bị gom nhầm.
+  test: {
+    exclude: [...configDefaults.exclude, "e2e/**"],
+  },
   server: {
     // Bind IPv4 — tránh EACCES khi Windows chặn IPv6 (::1) trên cổng này.
     host: "127.0.0.1",

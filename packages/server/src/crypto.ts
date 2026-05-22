@@ -1,15 +1,31 @@
 /* ==========================================================
    crypto.ts — Mã hoá/giải mã bí mật (API key của LLM profile)
    bằng AES-256-GCM. Khoá dẫn xuất từ ENCRYPTION_KEY (env) qua
-   sha256. ĐẶT ENCRYPTION_KEY thật ở production — mặc định dev
-   chỉ là che mắt, không phải bảo mật thật.
+   sha256.
+
+   BẢO MẬT: ở production BẮT BUỘC đặt ENCRYPTION_KEY thật. Nếu
+   thiếu (hoặc còn giá trị mặc định dev), getKey() ném lỗi ngay
+   lúc khởi động — vì khoá mặc định ai cũng biết, dùng nó để mã
+   hoá API key chẳng khác gì lưu plaintext.
    ========================================================== */
 import {
   createCipheriv, createDecipheriv, randomBytes, createHash,
 } from "node:crypto";
 
+/** Giá trị mặc định CHỈ dùng cho dev — production phải tự đặt. */
+const DEV_KEY = "erp-framework-dev-key-change-me";
+
 function getKey(): Buffer {
-  const raw = process.env.ENCRYPTION_KEY || "erp-framework-dev-key-change-me";
+  const raw = process.env.ENCRYPTION_KEY;
+  if (!raw || raw === DEV_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "ENCRYPTION_KEY chưa được đặt (hoặc còn giá trị mặc định dev) — "
+        + "bắt buộc đặt một khoá bí mật thật ở môi trường production.",
+      );
+    }
+    return createHash("sha256").update(DEV_KEY).digest();
+  }
   return createHash("sha256").update(raw).digest(); // 32 byte cho aes-256
 }
 

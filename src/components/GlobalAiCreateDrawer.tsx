@@ -14,7 +14,7 @@ import { useMcpClient } from "@/hooks/useMcpClient";
 import type {
   EntityDesign, PageDesign, WorkflowDesign, AgentDesign,
 } from "@/lib/ai-design-prompts";
-import type { MockEntity } from "@/lib/mock-data";
+import type { MockEntity } from "@/lib/object-types";
 
 export function GlobalAiCreateDrawer() {
   const target = useUI((s) => s.aiCreateTarget);

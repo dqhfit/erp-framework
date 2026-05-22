@@ -1,10 +1,15 @@
 /* ==========================================================
    seed.ts — Nạp ERP mẫu (entity + record + page + workflow +
    agent) vào PostgreSQL. Idempotent: đối tượng đã tồn tại → bỏ qua.
+   ĐA CÔNG TY: nạp vào "Công ty mặc định" (slug="default"), tạo
+   công ty này nếu chưa có.
    Chạy: pnpm --filter @erp-framework/server seed
    ========================================================== */
-import { eq } from "drizzle-orm";
-import { entities, entityRecords, pages, workflows, agents } from "@erp-framework/db";
+import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
+import { and, eq } from "drizzle-orm";
+import {
+  entities, entityRecords, pages, workflows, agents, companies,
+} from "@erp-framework/db";
 import { db } from "./db";
 
 interface SeedEntity {
@@ -61,24 +66,36 @@ const SEED: SeedEntity[] = [
   },
 ];
 
+/** Lấy id "Công ty mặc định" — tạo nếu chưa có. */
+async function defaultCompanyId(): Promise<string> {
+  const [ex] = await db.select({ id: companies.id }).from(companies)
+    .where(eq(companies.slug, "default"));
+  if (ex) return ex.id;
+  const [co] = await db.insert(companies)
+    .values({ name: "Công ty mặc định", slug: "default" }).returning();
+  if (!co) throw new Error("Không tạo được công ty mặc định");
+  console.log(`✓ Công ty mặc định`);
+  return co.id;
+}
+
 /** Nạp entity + record. Trả về map name → id để page tham chiếu. */
-async function seedEntities(): Promise<Record<string, string>> {
+async function seedEntities(companyId: string): Promise<Record<string, string>> {
   const ids: Record<string, string> = {};
   for (const s of SEED) {
     const [exist] = await db.select({ id: entities.id }).from(entities)
-      .where(eq(entities.name, s.name));
+      .where(and(eq(entities.name, s.name), eq(entities.companyId, companyId)));
     if (exist) {
       ids[s.name] = exist.id;
       console.log(`• Bỏ qua entity "${s.name}" — đã tồn tại`);
       continue;
     }
     const [ent] = await db.insert(entities).values({
-      name: s.name, label: s.label, icon: s.icon, fields: s.fields,
+      companyId, name: s.name, label: s.label, icon: s.icon, fields: s.fields,
     }).returning();
     if (!ent) throw new Error(`Không tạo được entity ${s.name}`);
     ids[s.name] = ent.id;
     for (const r of s.records) {
-      await db.insert(entityRecords).values({ entityId: ent.id, data: r });
+      await db.insert(entityRecords).values({ companyId, entityId: ent.id, data: r });
     }
     console.log(`✓ Entity "${s.label}" + ${s.records.length} record`);
   }
@@ -86,10 +103,13 @@ async function seedEntities(): Promise<Record<string, string>> {
 }
 
 /** Trang dashboard mẫu — list trỏ vào entity Đơn hàng. */
-async function seedPage(entityIds: Record<string, string>): Promise<void> {
+async function seedPage(
+  companyId: string,
+  entityIds: Record<string, string>,
+): Promise<void> {
   const name = "tong_quan";
   const [exist] = await db.select({ id: pages.id }).from(pages)
-    .where(eq(pages.name, name));
+    .where(and(eq(pages.name, name), eq(pages.companyId, companyId)));
   if (exist) { console.log(`• Bỏ qua page "${name}" — đã tồn tại`); return; }
   const content = [
     { id: "k1", kind: "kpi", x: 0, y: 0, w: 3, h: 2,
@@ -104,32 +124,32 @@ async function seedPage(entityIds: Record<string, string>): Promise<void> {
       config: { entity: entityIds.don_hang ?? "" } },
   ];
   await db.insert(pages).values({
-    name, label: "Tổng quan kinh doanh", icon: "BarChart", content,
+    companyId, name, label: "Tổng quan kinh doanh", icon: "BarChart", content,
   });
   console.log(`✓ Page "Tổng quan kinh doanh"`);
 }
 
 /** Workflow mẫu — trigger thủ công, graph rỗng để designer điền sau. */
-async function seedWorkflow(): Promise<void> {
+async function seedWorkflow(companyId: string): Promise<void> {
   const name = "Duyệt đơn hàng lớn";
   const [exist] = await db.select({ id: workflows.id }).from(workflows)
-    .where(eq(workflows.name, name));
+    .where(and(eq(workflows.name, name), eq(workflows.companyId, companyId)));
   if (exist) { console.log(`• Bỏ qua workflow "${name}" — đã tồn tại`); return; }
   await db.insert(workflows).values({
-    name, triggerType: "manual", isActive: true,
+    companyId, name, triggerType: "manual", isActive: true,
     graph: { nodes: [], edges: [] },
   });
   console.log(`✓ Workflow "${name}"`);
 }
 
 /** Agent mẫu — trợ lý bán hàng. */
-async function seedAgent(): Promise<void> {
+async function seedAgent(companyId: string): Promise<void> {
   const name = "Trợ lý bán hàng";
   const [exist] = await db.select({ id: agents.id }).from(agents)
-    .where(eq(agents.name, name));
+    .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
   if (exist) { console.log(`• Bỏ qua agent "${name}" — đã tồn tại`); return; }
   await db.insert(agents).values({
-    name, model: "claude-sonnet-4-6",
+    companyId, name, model: "claude-sonnet-4-6",
     config: {
       name,
       model: "claude-sonnet-4-6",
@@ -144,10 +164,11 @@ async function seedAgent(): Promise<void> {
 }
 
 async function seed(): Promise<void> {
-  const ids = await seedEntities();
-  await seedPage(ids);
-  await seedWorkflow();
-  await seedAgent();
+  const companyId = await defaultCompanyId();
+  const ids = await seedEntities(companyId);
+  await seedPage(companyId, ids);
+  await seedWorkflow(companyId);
+  await seedAgent(companyId);
   console.log("Seed xong.");
 }
 

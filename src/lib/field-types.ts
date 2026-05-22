@@ -1,11 +1,39 @@
 /* ==========================================================
    field-types.ts — Palette kiểu field cho EntityDesigner.
-   Gộp kiểu builtin (mock-data) + field-type plugin đã đăng ký
-   trong pluginRegistry. Plugin thêm kiểu field → tự hiện trong
-   palette mà không sửa lõi.
+   Gộp kiểu builtin + field-type plugin đã đăng ký trong
+   pluginRegistry. Plugin thêm kiểu field → tự hiện trong palette
+   mà không sửa lõi.
    ========================================================== */
+import type { I as IconSet } from "@/components/Icons";
 import { pluginRegistry } from "@erp-framework/core";
-import { FIELD_TYPES, type FieldType } from "@/lib/mock-data";
+
+type IconName = keyof typeof IconSet;
+
+export interface FieldType {
+  id: string; name: string; icon: IconName; desc: string;
+}
+
+/** Kiểu field builtin của framework. */
+export const FIELD_TYPES: FieldType[] = [
+  { id: "text",        name: "Text",         icon: "Type",      desc: "Single line text" },
+  { id: "longtext",    name: "Long text",    icon: "List",      desc: "Multi-line" },
+  { id: "number",      name: "Number",       icon: "Hash",      desc: "Integer / decimal" },
+  { id: "currency",    name: "Currency",     icon: "DollarSign", desc: "VND / USD" },
+  { id: "date",        name: "Date",         icon: "Calendar",  desc: "Date only" },
+  { id: "datetime",    name: "Datetime",     icon: "Clock",     desc: "Date + time" },
+  { id: "bool",        name: "Boolean",      icon: "ToggleR",   desc: "Yes / No" },
+  { id: "select",      name: "Select",       icon: "ChevronDown", desc: "Single choice" },
+  { id: "multiselect", name: "Multi-select", icon: "CheckSq",   desc: "Many choices" },
+  { id: "email",       name: "Email",        icon: "Mail",      desc: "Validated email" },
+  { id: "phone",       name: "Phone",        icon: "Phone",     desc: "VN phone" },
+  { id: "url",         name: "URL",          icon: "Link",      desc: "External link" },
+  { id: "address",     name: "Address",      icon: "MapPin",    desc: "VN address" },
+  { id: "file",        name: "File",         icon: "File",      desc: "Upload file" },
+  { id: "image",       name: "Image",        icon: "Image",     desc: "Upload image" },
+  { id: "lookup",      name: "Lookup",       icon: "Link",      desc: "Ref entity" },
+  { id: "formula",     name: "Formula",      icon: "Wand",      desc: "Computed" },
+  { id: "tag",         name: "Tag",          icon: "Tag",       desc: "Color tags" },
+];
 
 /** Kiểu field cho designer = builtin + plugin (bỏ trùng theo id). */
 export function getFieldTypes(): FieldType[] {

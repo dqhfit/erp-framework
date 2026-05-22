@@ -1,9 +1,8 @@
 /* ==========================================================
-   WorkflowRunPanel — Modal cho 2 việc với 1 workflow:
-   1. Chạy THẬT phía SERVER (executeWorkflow) — gọi MCP/LLM thật,
-      ghi bảng workflow_runs.
-   2. Quản lý LỊCH chạy cron — lưu bảng schedules trên server;
-      pg-boss quét mỗi phút và chạy nền (không cần app mở).
+   WorkflowRunPanel — Modal cho 1 workflow:
+   1. Chạy THẬT phía server + xem chi tiết từng bước (debug):
+      bấm vào step để xem payload output. Có lịch sử các lần chạy.
+   2. Quản lý LỊCH cron — lưu bảng schedules, pg-boss chạy nền.
    ========================================================== */
 import { useState, useEffect, useCallback } from "react";
 import { Modal, Button, Chip, Input, Select } from "@/components/ui";
@@ -31,18 +30,62 @@ interface ServerSchedule {
   lastStatus?: string | null;
 }
 
+interface RunRow {
+  id: string;
+  status: string;
+  steps?: unknown;
+  startedAt?: string | Date;
+}
+
 const STEP_COLOR: Record<RunStep["status"], string> = {
   ok: "text-success",
   error: "text-danger",
   skipped: "text-muted",
   paused: "text-warning",
 };
+const STEP_ICON: Record<RunStep["status"], string> = {
+  ok: "✓", error: "✗", skipped: "○", paused: "⏸",
+};
+
+/* Một bước — bấm để mở/đóng payload output (debug). */
+function StepRow({ step }: { step: RunStep }) {
+  const [open, setOpen] = useState(false);
+  const hasOutput = step.output !== undefined && step.output !== null;
+  return (
+    <div className="px-3 py-2 text-sm">
+      <button type="button"
+        onClick={() => hasOutput && setOpen(!open)}
+        className={"w-full flex items-start gap-2 text-left " + (hasOutput ? "cursor-pointer" : "cursor-default")}>
+        <span className={"font-mono text-xs shrink-0 " + STEP_COLOR[step.status]}>
+          {STEP_ICON[step.status]}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">
+            {step.label} <span className="text-muted text-xs">({step.kind})</span>
+          </div>
+          <div className="text-xs text-muted">{step.detail}</div>
+        </div>
+        <span className="text-[10px] text-muted font-mono shrink-0">{step.durationMs}ms</span>
+        {hasOutput && (
+          <span className="text-[10px] text-muted shrink-0">{open ? "▾" : "▸"}</span>
+        )}
+      </button>
+      {open && hasOutput && (
+        <pre className="mt-1.5 ml-5 p-2 rounded bg-bg-soft border border-border text-[11px]
+          overflow-auto max-h-48 whitespace-pre-wrap">
+          {JSON.stringify(step.output, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Props) {
   const [tab, setTab] = useState<"run" | "schedule">("run");
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [result, setResult] = useState<string>("");
+  const [history, setHistory] = useState<RunRow[]>([]);
 
   const [schedules, setSchedules] = useState<ServerSchedule[]>([]);
   const [cronExpr, setCronExpr] = useState("0 9 * * *");
@@ -50,25 +93,31 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
 
   const mySchedules = schedules.filter((s) => s.workflowId === workflowId);
 
+  const loadHistory = useCallback(() => {
+    objects.workflows.runs(workflowId)
+      .then((rs) => setHistory(rs as RunRow[]))
+      .catch(() => { /* bỏ qua */ });
+  }, [workflowId]);
   const loadSchedules = useCallback(() => {
     objects.schedules.list()
       .then((rows) => setSchedules(rows as ServerSchedule[]))
       .catch((e) => setSchErr((e as Error).message));
   }, []);
 
-  useEffect(() => { if (open) loadSchedules(); }, [open, loadSchedules]);
+  useEffect(() => {
+    if (open) { loadHistory(); loadSchedules(); }
+  }, [open, loadHistory, loadSchedules]);
 
   const doRun = async () => {
     setRunning(true);
     setSteps([]);
     setResult("");
     try {
-      // Chạy phía server — server nạp graph từ DB, dùng runner thật.
       const r = await objects.workflows.trigger(workflowId);
       const runs = await objects.workflows.runs(workflowId);
-      const run = (runs as Array<{ id: string; steps?: unknown }>)
-        .find((x) => x.id === r.runId);
+      const run = (runs as RunRow[]).find((x) => x.id === r.runId);
       if (run) setSteps((run.steps ?? []) as RunStep[]);
+      setHistory(runs as RunRow[]);
       setResult(
         r.status === "completed" ? "✓ Workflow chạy xong."
         : r.status === "paused" ? "⏸ Workflow tạm dừng (chờ duyệt)."
@@ -79,6 +128,12 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
     } finally {
       setRunning(false);
     }
+  };
+
+  /* Mở một lần chạy cũ để soi từng bước. */
+  const openRun = (run: RunRow) => {
+    setSteps((run.steps ?? []) as RunStep[]);
+    setResult(`Xem lại run — ${run.status}`);
   };
 
   const handleAddSchedule = async () => {
@@ -93,17 +148,14 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       loadSchedules();
     } catch (e) { setSchErr((e as Error).message); }
   };
-
   const handleToggle = async (s: ServerSchedule) => {
     try {
       await objects.schedules.save({
-        id: s.id, workflowId: s.workflowId, cronExpr: s.cronExpr,
-        enabled: !s.enabled,
+        id: s.id, workflowId: s.workflowId, cronExpr: s.cronExpr, enabled: !s.enabled,
       });
       loadSchedules();
     } catch (e) { setSchErr((e as Error).message); }
   };
-
   const handleDeleteSchedule = async (id: string) => {
     const ok = await dialog.confirm("Xoá lịch chạy này?", {
       title: "Xoá lịch", confirmText: "Xoá", danger: true,
@@ -114,13 +166,12 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Vận hành — ${workflowName}`} width={620}>
-      {/* Tabs */}
+    <Modal open={open} onClose={onClose} title={`Vận hành — ${workflowName}`} width={640}>
       <div className="flex gap-1 mb-4 border-b border-border">
         <button type="button" onClick={() => setTab("run")}
           className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
             (tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted")}>
-          Chạy thật
+          Chạy & debug
         </button>
         <button type="button" onClick={() => setTab("schedule")}
           className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
@@ -132,35 +183,46 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       {tab === "run" && (
         <div>
           <div className="text-xs text-muted mb-3">
-            Chạy thật trên server: gọi MCP tool và LLM thật, có thể thay đổi
-            dữ liệu. Mỗi bước được ghi vào bảng workflow_runs.
+            Chạy thật trên server (gọi MCP/LLM thật). Bấm vào một bước để xem
+            payload output — tiện debug.
           </div>
           <Button variant="primary" icon={<I.Play size={13} />} onClick={doRun} disabled={running}>
             {running ? "Đang chạy…" : "Chạy workflow"}
           </Button>
 
           {steps.length > 0 && (
-            <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[320px] overflow-auto">
-              {steps.map((s, i) => (
-                <div key={i} className="px-3 py-2 text-sm flex items-start gap-2">
-                  <span className={"font-mono text-xs shrink-0 " + STEP_COLOR[s.status]}>
-                    {s.status === "ok" ? "✓" : s.status === "error" ? "✗"
-                      : s.status === "paused" ? "⏸" : "○"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium">{s.label} <span className="text-muted text-xs">({s.kind})</span></div>
-                    <div className="text-xs text-muted">{s.detail}</div>
-                  </div>
-                  <span className="text-[10px] text-muted font-mono shrink-0">{s.durationMs}ms</span>
-                </div>
-              ))}
+            <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[300px] overflow-auto">
+              {steps.map((s, i) => <StepRow key={i} step={s} />)}
             </div>
           )}
           {result && (
             <div className={"mt-3 text-sm font-medium " +
               (result.startsWith("✓") ? "text-success"
-                : result.startsWith("⏸") ? "text-warning" : "text-danger")}>
+                : result.startsWith("⏸") ? "text-warning"
+                : result.startsWith("Xem") ? "text-muted" : "text-danger")}>
               {result}
+            </div>
+          )}
+
+          {/* Lịch sử chạy */}
+          {history.length > 0 && (
+            <div className="mt-4">
+              <div className="text-xs font-medium text-muted mb-1">Lịch sử chạy</div>
+              <div className="border border-border rounded-md divide-y divide-border max-h-[180px] overflow-auto">
+                {history.map((r) => (
+                  <button key={r.id} type="button" onClick={() => openRun(r)}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-xs text-left hover:bg-hover/30">
+                    <Chip variant={r.status === "completed" ? "success"
+                      : r.status === "error" ? "danger" : "warning"}>{r.status}</Chip>
+                    <span className="text-muted">
+                      {Array.isArray(r.steps) ? `${r.steps.length} bước` : "—"}
+                    </span>
+                    <span className="text-muted ml-auto font-mono">
+                      {r.startedAt ? new Date(r.startedAt).toLocaleString("vi-VN") : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -172,7 +234,6 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
             Lịch tự động chạy workflow theo cron. Lưu trên server — pg-boss
             chạy nền mỗi phút, không cần mở app.
           </div>
-
           <div className="flex items-end gap-2 mb-3">
             <div className="flex-1">
               <label className="text-xs text-muted block mb-1">Biểu thức cron</label>

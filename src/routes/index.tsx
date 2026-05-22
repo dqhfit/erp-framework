@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button, Kbd, Textarea } from "@/components/ui";
 import { I } from "@/components/Icons";
-import type { IconName } from "@/lib/mock-data";
+import type { IconName } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { useUI } from "@/stores/ui";
 

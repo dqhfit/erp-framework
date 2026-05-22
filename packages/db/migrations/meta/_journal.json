@@ -15,6 +15,41 @@
       "when": 1779330030377,
       "tag": "0001_entity_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779364406624,
+      "tag": "0002_workflow_published",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0003_multi_tenant",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0004_agent_heartbeat",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0005_governance_org_plugins_embed",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0006_entity_sync",
+      "breakpoints": true
     }
   ]
 }

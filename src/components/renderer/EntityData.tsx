@@ -10,7 +10,8 @@ import { Button, Input, Select, FormField, Drawer, Chip } from "@/components/ui"
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { useUserObjects } from "@/stores/userObjects";
 import { createApiDataSource } from "@erp-framework/client";
-import { formatVND, type MockEntity } from "@/lib/mock-data";
+import { formatVND } from "@/lib/format";
+import type { MockEntity } from "@/lib/object-types";
 import { dialog } from "@/lib/dialog";
 
 const api = createApiDataSource("");

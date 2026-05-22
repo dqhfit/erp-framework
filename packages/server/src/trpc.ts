@@ -18,15 +18,25 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
 
-/** Procedure yêu cầu quyền `action` trên `obj` theo vai trò người dùng. */
+/** Procedure yêu cầu quyền `action` trên `obj` theo vai trò người dùng.
+   Đồng thời ép buộc user phải thuộc một công ty (đa công ty) — sau
+   procedure này `ctx.user.companyId` chắc chắn là string. */
 export function rbacProcedure(action: Action, obj: ObjectType) {
   return protectedProcedure.use(({ ctx, next }) => {
+    if (!ctx.user.companyId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Bạn chưa thuộc công ty nào — hãy yêu cầu quản trị viên thêm bạn vào công ty.",
+      });
+    }
     if (!roleCan(ctx.user.role, action, obj)) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Vai trò "${ctx.user.role}" không có quyền ${action}:${obj}`,
       });
     }
-    return next();
+    return next({
+      ctx: { ...ctx, user: { ...ctx.user, companyId: ctx.user.companyId } },
+    });
   });
 }

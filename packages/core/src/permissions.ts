@@ -10,7 +10,7 @@ export type Action = "view" | "create" | "edit" | "delete" | "run";
 
 export type ObjectType =
   | "entity" | "page" | "workflow" | "agent"
-  | "settings" | "activity" | "rbac";
+  | "settings" | "activity" | "rbac" | "company";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
 

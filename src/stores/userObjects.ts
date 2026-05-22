@@ -9,7 +9,7 @@ import { create } from "zustand";
 import { createObjectsClient } from "@erp-framework/client";
 import type {
   MockEntity, MockPage, MockWorkflow, MockAgent, IconName,
-} from "@/lib/mock-data";
+} from "@/lib/object-types";
 
 /* URL tương đối — đi qua proxy /trpc của Vite (dev) hoặc nginx (prod). */
 const api = createObjectsClient("");

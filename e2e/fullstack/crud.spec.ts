@@ -60,3 +60,43 @@ test("mở entity ở chế độ dữ liệu — EntityData đọc record thậ
   const href = await link.getAttribute("href");
   expect(href).toContain("/entities/");
 });
+
+/** Chuyển sang chế độ người dùng — nút thứ 2 của .mode-toggle (Preview). */
+async function switchToConsumer(page: Page): Promise<void> {
+  await page.locator(".mode-toggle button").nth(1).click();
+}
+
+test("chế độ người dùng — màn hình Dữ liệu entity hiện nút thêm bản ghi", async ({ page }) => {
+  await ensureLoggedIn(page);
+  await page.getByRole("link", { name: "Sản phẩm", exact: true }).click();
+  await expect(page).toHaveURL(/\/entities\//);
+  await switchToConsumer(page);
+  await expect(
+    page.getByRole("button", { name: /Thêm bản ghi/ }),
+  ).toBeVisible();
+});
+
+test("chế độ người dùng — mở được form thêm bản ghi (EntityData CRUD)", async ({ page }) => {
+  await ensureLoggedIn(page);
+  await page.getByRole("link", { name: "Sản phẩm", exact: true }).click();
+  await switchToConsumer(page);
+  const addBtn = page.getByRole("button", { name: /Thêm bản ghi/ });
+  await addBtn.waitFor({ state: "visible", timeout: 8000 });
+  await addBtn.click();
+  // Drawer "Thêm …" mở ra — kiểm nút Lưu của form.
+  await expect(
+    page.getByRole("button", { name: "Lưu", exact: true }),
+  ).toBeVisible();
+});
+
+test("mở workflow đã seed → designer có nút Chạy thử / Vận hành", async ({ page }) => {
+  await ensureLoggedIn(page);
+  // Workflow có thể chưa được seed — chỉ kiểm khi tồn tại link.
+  const wf = page.getByRole("link", { name: "Duyệt đơn hàng", exact: true });
+  if (await wf.count() === 0) test.skip(true, "Chưa seed workflow nào");
+  await wf.first().click();
+  await expect(page).toHaveURL(/\/workflows\//);
+  await expect(
+    page.getByRole("button", { name: /Chạy thử \/ Vận hành/ }),
+  ).toBeVisible();
+});

@@ -4,10 +4,11 @@ import {
   type Node, type Edge, type Connection, type NodeProps, MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Button, Chip, FormField, Input, Select, Modal } from "@/components/ui";
+import { Button, Chip, FormField, Input, Select } from "@/components/ui";
 import { I } from "@/components/Icons";
-import type { IconName } from "@/lib/mock-data";
+import type { IconName } from "@/lib/object-types";
 import { pluginRegistry } from "@erp-framework/core";
+import { createObjectsClient } from "@erp-framework/client";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { WorkflowRunPanel } from "@/components/designer/WorkflowRunPanel";
 import { useMcpClient } from "@/hooks/useMcpClient";
@@ -16,6 +17,8 @@ import type { WorkflowDesign } from "@/lib/ai-design-prompts";
 import { useUI } from "@/stores/ui";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/useT";
+
+const objectsClient = createObjectsClient("");
 
 /* (string & {}) — giữ gợi ý 6 kind builtin nhưng cho phép kind tuỳ ý
    do workflow-node plugin thêm vào. */
@@ -99,68 +102,6 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
 
 const NODE_TYPES = { wf: WfNode };
 
-/** Mô phỏng chạy workflow: đi từ trigger theo edges, sinh log từng bước.
- *  Đây là dry-run — KHÔNG gọi MCP/agent thật để tránh tác động dữ liệu. */
-function simulateWorkflow(
-  nodes: Node<WfNodeData>[],
-  edges: Edge[],
-): string[] {
-  const log: string[] = [];
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const triggers = nodes.filter((n) => n.data.kind === "trigger");
-  if (nodes.length === 0) return ["⚠ Workflow trống — chưa có node nào."];
-  if (triggers.length === 0) {
-    return ["⚠ Không có node Trigger — workflow không có điểm bắt đầu."];
-  }
-
-  const visited = new Set<string>();
-  const queue: string[] = triggers.map((t) => t.id);
-  let step = 0;
-
-  while (queue.length && step < 50) {
-    const id = queue.shift()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
-    const n = byId.get(id);
-    if (!n) continue;
-    step++;
-    const cfg = (n.data.config ?? {}) as Record<string, unknown>;
-    const label = n.data.label;
-    switch (n.data.kind) {
-      case "trigger":
-        log.push(`${step}. ⚡ Trigger "${label}" — workflow khởi động${cfg.event ? ` (sự kiện: ${cfg.event})` : ""}`);
-        break;
-      case "action":
-        log.push(`${step}. ⚙ Action "${label}" — gọi tool ${cfg.tool ? `\`${cfg.tool}\`` : "(chưa cấu hình tool)"}`);
-        break;
-      case "condition":
-        log.push(`${step}. ◆ Condition "${label}" — rẽ nhánh${cfg.expr ? ` theo: ${cfg.expr}` : " (chưa có biểu thức)"}`);
-        break;
-      case "agent":
-        log.push(`${step}. ✨ Agent "${label}" — gọi LLM agent${cfg.agentId ? ` \`${cfg.agentId}\`` : ""}`);
-        break;
-      case "approval":
-        log.push(`${step}. ✋ Approval "${label}" — tạm dừng chờ người duyệt`);
-        break;
-      case "delay":
-        log.push(`${step}. ⏱ Delay "${label}" — chờ ${cfg.minutes ?? "?"} phút`);
-        break;
-      default:
-        log.push(`${step}. • "${label}"`);
-    }
-    for (const e of edges.filter((ed) => ed.source === id)) {
-      if (!visited.has(e.target)) queue.push(e.target);
-    }
-  }
-  if (step >= 50) log.push("… (dừng ở 50 bước — workflow có thể đang loop)");
-  log.push(`✓ Mô phỏng xong — ${step} bước, ${visited.size}/${nodes.length} node được duyệt.`);
-  const unreached = nodes.filter((n) => !visited.has(n.id));
-  if (unreached.length) {
-    log.push(`⚠ ${unreached.length} node không đến được từ Trigger: ${unreached.map((n) => n.data.label).join(", ")}`);
-  }
-  return log;
-}
-
 interface Props { workflowId: string }
 
 export function WorkflowDesigner({ workflowId }: Props) {
@@ -184,7 +125,7 @@ function WorkflowInner({ workflowId }: Props) {
   const [aiOpen, setAiOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [testLog, setTestLog] = useState<string[] | null>(null);
+  const [published, setPublished] = useState(false);
   const { tools: mcpTools } = useMcpClient();
   const setWorkflowContent = useUserObjects((s) => s.setWorkflowContent);
 
@@ -202,6 +143,17 @@ function WorkflowInner({ workflowId }: Props) {
     setWorkflowContent(workflowId, { nodes, edges });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+  /* Publish: lưu bản nháp rồi chốt thành bản đang chạy (publishedGraph). */
+  const publish = async () => {
+    save();
+    try {
+      await objectsClient.workflows.publish(workflowId);
+      setPublished(true);
+      setTimeout(() => setPublished(false), 2500);
+    } catch (e) {
+      console.error("[workflow] publish lỗi:", e);
+    }
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -264,17 +216,23 @@ function WorkflowInner({ workflowId }: Props) {
         <Button variant="default" size="sm" icon={<I.Sparkles size={13} />} onClick={() => setAiOpen(true)}>
           AI Assist
         </Button>
+        {/* Một đường chạy DUY NHẤT — mở WorkflowRunPanel (runner thật
+            phía server). Không còn "Test Run" mô phỏng client tách rời. */}
         <Button variant="default" size="sm" icon={<I.Play size={13} />}
-          onClick={() => setTestLog(simulateWorkflow(nodes, edges))}>
-          Test Run
-        </Button>
-        <Button variant="default" size="sm" icon={<I.Zap size={13} />}
           onClick={() => setRunOpen(true)}>
-          Vận hành
+          Chạy thử / Vận hành
+        </Button>
+        <Button variant="default" size="sm" icon={<I.Send size={13} />} onClick={publish}>
+          Publish
         </Button>
         <Button variant="primary" size="sm" icon={<I.Save size={13} />} onClick={save}>
           {t("common.save")}
         </Button>
+        {published && (
+          <span className="text-xs text-accent flex items-center gap-1">
+            <I.Bolt size={11} /> Đã publish
+          </span>
+        )}
         {saved && (
           <span className="text-xs text-success flex items-center gap-1">
             <I.Check size={11} /> {t("designer.saved")}
@@ -302,42 +260,16 @@ function WorkflowInner({ workflowId }: Props) {
         onApply={handleAiApply}
       />
 
-      {/* Vận hành — chạy thật phía server + lịch cron.
-          Server nạp graph từ DB nên không cần truyền nodes/edges. */}
+      {/* Chạy thử / Vận hành — runner THẬT phía server (executeWorkflow)
+          + lịch cron + lịch sử run. Server nạp graph từ DB nên không
+          cần truyền nodes/edges. Đây là đường chạy workflow duy nhất —
+          kết quả chạy thử khớp chính xác với khi chạy nền/cron. */}
       <WorkflowRunPanel
         open={runOpen}
         onClose={() => setRunOpen(false)}
         workflowId={workflowId}
         workflowName={`Workflow ${workflowId}`}
       />
-
-      {/* Test Run — log mô phỏng */}
-      <Modal
-        open={testLog !== null}
-        onClose={() => setTestLog(null)}
-        title="Test Run — mô phỏng workflow"
-        width={560}
-        footer={<Button variant="primary" onClick={() => setTestLog(null)}>Đóng</Button>}
-      >
-        <div className="text-xs text-muted mb-2">
-          Dry-run: đi từ Trigger theo các edge. Không gọi MCP/agent thật.
-        </div>
-        <div className="font-mono text-[12px] leading-relaxed bg-bg-soft border border-border rounded-md p-3 max-h-[400px] overflow-auto whitespace-pre-wrap">
-          {(testLog ?? []).map((line, i) => (
-            <div
-              key={i}
-              className={
-                line.startsWith("⚠") ? "text-warning"
-                : line.startsWith("✓") ? "text-success"
-                : line.startsWith("…") ? "text-muted"
-                : ""
-              }
-            >
-              {line}
-            </div>
-          ))}
-        </div>
-      </Modal>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Palette */}

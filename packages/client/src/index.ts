@@ -3,6 +3,39 @@
 export { LocalStorageDataSource } from "./local-storage";
 export { ApiDataSource, createApiDataSource } from "./api";
 export { createAuthClient } from "./auth";
+export {
+  createCompaniesClient,
+  type CompaniesClient,
+  type CompanyRole,
+} from "./companies";
+export {
+  createHeartbeatsClient,
+  type HeartbeatsClient,
+  type HeartbeatSaveInput,
+} from "./heartbeats";
+export {
+  createEntitySyncClient,
+  type EntitySyncClient,
+  type EntitySyncSaveInput,
+  type EntitySyncRunResult,
+} from "./entity-sync";
+export {
+  createApprovalsClient,
+  type ApprovalsClient,
+  type ApprovalStatus,
+  type ApprovalCreateInput,
+} from "./approvals";
+export { createOrgClient, type OrgClient } from "./org";
+export {
+  createPluginsClient,
+  type PluginsClient,
+  type PluginSaveInput,
+} from "./plugins";
+export {
+  createEmbedClient,
+  type EmbedClient,
+  type EmbedScope,
+} from "./embed";
 export { createConfigClient, type LlmProfileInput } from "./config";
 export {
   createObjectsClient,

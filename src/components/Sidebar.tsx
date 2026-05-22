@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { I } from "@/components/Icons";
-import type { IconName } from "@/lib/mock-data";
+import type { IconName } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { useUI } from "@/stores/ui";
 import { useRbac } from "@/stores/rbac";
@@ -8,7 +8,7 @@ import { roleCan, type ObjectType } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { dialog } from "@/lib/dialog";
 import { useT } from "@/hooks/useT";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 interface SidebarItemProps {
   to: string;
@@ -135,6 +135,34 @@ function SidebarSection({ title, collapsed, items, pathname, onAdd, onAiAdd, onD
           />
         );
       })}
+    </div>
+  );
+}
+
+/* Nhóm điều hướng GỌN LẠI — tiêu đề bấm để mở/đóng. Khi sidebar
+   ở chế độ thu nhỏ (icon-only) thì bỏ tiêu đề, hiện thẳng item. */
+function NavGroup({ title, collapsed, defaultOpen = true, children }: {
+  title: string;
+  collapsed: boolean;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (collapsed) return <>{children}</>;
+  return (
+    <div className="mb-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-1 px-3 mt-2.5 mb-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted hover:text-text"
+      >
+        <I.ChevronRight
+          size={10}
+          className={cn("transition-transform shrink-0", open && "rotate-90")}
+        />
+        <span className="truncate">{title}</span>
+      </button>
+      {open && <div>{children}</div>}
     </div>
   );
 }
@@ -298,16 +326,32 @@ export function Sidebar() {
       </div>
 
       <div className="border-t border-border py-1">
-        <SidebarItem to="/server-data" active={pathname === "/server-data"}
-          icon={<I.Database size={14} />} collapsed={collapsed} label="Dữ liệu Server" />
-        <SidebarItem to="/activity" active={pathname === "/activity"}
-          icon={<I.Activity size={14} />} collapsed={collapsed} label={t("sidebar.activity")} />
-        <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
-          icon={<I.Users size={14} />} collapsed={collapsed} label={t("sidebar.rbac")} />
-        <SidebarItem to="/settings/llm" active={pathname === "/settings/llm"}
-          icon={<I.Sparkles size={14} />} collapsed={collapsed} label={t("sidebar.llm_profiles")} />
-        <SidebarItem to="/settings/mcp" active={pathname === "/settings/mcp"}
-          icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.mcp_server")} />
+        <NavGroup title={t("sidebar.group_ops")} collapsed={collapsed}>
+          <SidebarItem to="/server-data" active={pathname === "/server-data"}
+            icon={<I.Database size={14} />} collapsed={collapsed} label={t("sidebar.server_data")} />
+          <SidebarItem to="/activity" active={pathname === "/activity"}
+            icon={<I.Activity size={14} />} collapsed={collapsed} label={t("sidebar.activity")} />
+          <SidebarItem to="/approvals" active={pathname === "/approvals"}
+            icon={<I.CheckSq size={14} />} collapsed={collapsed} label={t("sidebar.approvals")} />
+          <SidebarItem to="/org-chart" active={pathname === "/org-chart"}
+            icon={<I.GitBranch size={14} />} collapsed={collapsed} label={t("sidebar.org_chart")} />
+        </NavGroup>
+        <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
+          <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
+            icon={<I.Users size={14} />} collapsed={collapsed} label={t("sidebar.rbac")} />
+          <SidebarItem to="/settings/companies" active={pathname === "/settings/companies"}
+            icon={<I.Briefcase size={14} />} collapsed={collapsed} label={t("sidebar.companies")} />
+          <SidebarItem to="/settings/llm" active={pathname === "/settings/llm"}
+            icon={<I.Sparkles size={14} />} collapsed={collapsed} label={t("sidebar.llm_profiles")} />
+          <SidebarItem to="/settings/mcp" active={pathname === "/settings/mcp"}
+            icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.mcp_server")} />
+          <SidebarItem to="/settings/transfer" active={pathname === "/settings/transfer"}
+            icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.transfer")} />
+          <SidebarItem to="/settings/plugins" active={pathname === "/settings/plugins"}
+            icon={<I.Package size={14} />} collapsed={collapsed} label={t("sidebar.plugins")} />
+          <SidebarItem to="/settings/embed" active={pathname === "/settings/embed"}
+            icon={<I.Link size={14} />} collapsed={collapsed} label={t("sidebar.embed")} />
+        </NavGroup>
       </div>
     </aside>
   );

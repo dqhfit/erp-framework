@@ -1,11 +1,12 @@
 /* ==========================================================
    agent-chat.ts — Vòng lặp agent phía SERVER: gọi LLM + thực thi
    MCP tool, phát event theo từng bước (text / tool_call /
-   tool_result / done). Route SSE trong index.ts stream các event
-   này về trình duyệt → chat "chảy" theo tiến trình thật.
-   Hiện hỗ trợ adapter Anthropic (agent mẫu dùng claude).
+   tool_result / done / error). Route SSE trong index.ts stream
+   các event này về trình duyệt.
+   Hỗ trợ Anthropic (content-block tools) và OpenAI-compatible
+   (function-calling — gồm cả ollama qua endpoint OpenAI-compat).
    ========================================================== */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
@@ -14,7 +15,7 @@ type Block =
   | { type: "text"; text: string }
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
-type Msg = { role: "user" | "assistant"; content: string | Block[] };
+type AnthMsg = { role: "user" | "assistant"; content: string | Block[] };
 
 export interface ToolDef {
   name: string;
@@ -30,6 +31,8 @@ export type AgentEvent =
 
 export interface AgentChatOpts {
   db: DB;
+  /** Công ty đang chọn — chọn LLM profile trong phạm vi công ty này. */
+  companyId: string;
   profileName?: string;
   system: string;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -38,6 +41,20 @@ export interface AgentChatOpts {
   onEvent: (e: AgentEvent) => void;
 }
 
+interface ProfileRow {
+  adapter: string;
+  model: string;
+  endpoint: string | null;
+  apiKeyEnc: string | null;
+  temperature: number | null;
+  maxTokens: number | null;
+}
+
+const MAX_ROUNDS = 6;
+const TRIM = 8000;
+const trim = (s: string) => (s.length > TRIM ? s.slice(0, TRIM) + "\n…[cắt bớt]" : s);
+
+/* ─── Anthropic (content-block tools) ─────────────────────── */
 interface AnthropicResp {
   content?: Array<{
     type: string; text?: string;
@@ -47,34 +64,11 @@ interface AnthropicResp {
   usage?: { input_tokens?: number; output_tokens?: number };
 }
 
-const MAX_ROUNDS = 6;
-
-export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
-  const rows = await opt.db.select().from(llmProfiles)
-    .where(opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined)
-    .limit(1);
-  const p = rows[0];
-  if (!p) {
-    opt.onEvent({ type: "error", message: "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key)." });
-    return;
-  }
-  if (p.adapter !== "claude" && p.adapter !== "claude-pro" && p.adapter !== "anthropic") {
-    opt.onEvent({ type: "error", message: `Adapter "${p.adapter}" chưa hỗ trợ ở agent backend (hiện chỉ Anthropic).` });
-    return;
-  }
-  const key = (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "")
-    || process.env.ANTHROPIC_API_KEY || "";
-  if (!key) {
-    opt.onEvent({ type: "error", message: "LLM profile thiếu API key." });
-    return;
-  }
+async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promise<void> {
   const base = (p.endpoint || "https://api.anthropic.com").replace(/\/$/, "");
-
-  const messages: Msg[] = opt.messages.map((m) => ({ role: m.role, content: m.content }));
-  const anthTools = opt.tools.map((t) => ({
-    name: t.name,
-    description: t.description ?? "",
-    input_schema: t.schema,
+  const messages: AnthMsg[] = opt.messages.map((m) => ({ role: m.role, content: m.content }));
+  const tools = opt.tools.map((t) => ({
+    name: t.name, description: t.description ?? "", input_schema: t.schema,
   }));
   const total = { input: 0, output: 0 };
 
@@ -92,7 +86,7 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
         temperature: p.temperature ?? 0.7,
         system: opt.system,
         messages,
-        ...(anthTools.length ? { tools: anthTools } : {}),
+        ...(tools.length ? { tools } : {}),
       }),
     });
     if (!res.ok) {
@@ -111,8 +105,6 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
       opt.onEvent({ type: "done", text, usage: total });
       return;
     }
-
-    // Phản hồi của model (text + tool_use) đưa lại vào hội thoại.
     messages.push({ role: "assistant", content: blocks as Block[] });
     const resultBlocks: Block[] = [];
     for (const tu of toolUses) {
@@ -123,24 +115,122 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
         const out = await opt.callTool(name, args);
         const c = typeof out === "string" ? out : JSON.stringify(out);
         opt.onEvent({ type: "tool_result", name, result: out });
-        resultBlocks.push({
-          type: "tool_result", tool_use_id: tu.id ?? "",
-          content: c.length > 8000 ? c.slice(0, 8000) + "\n…[cắt bớt]" : c,
-        });
+        resultBlocks.push({ type: "tool_result", tool_use_id: tu.id ?? "", content: trim(c) });
       } catch (e) {
         const msg = (e as Error).message;
         opt.onEvent({ type: "tool_result", name, error: msg });
-        resultBlocks.push({
-          type: "tool_result", tool_use_id: tu.id ?? "",
-          content: "ERROR: " + msg, is_error: true,
-        });
+        resultBlocks.push({ type: "tool_result", tool_use_id: tu.id ?? "", content: "ERROR: " + msg, is_error: true });
       }
     }
     messages.push({ role: "user", content: resultBlocks });
   }
-  opt.onEvent({
-    type: "done",
-    text: `(đạt giới hạn ${MAX_ROUNDS} vòng — agent có thể đang loop)`,
-    usage: total,
-  });
+  opt.onEvent({ type: "done", text: `(đạt giới hạn ${MAX_ROUNDS} vòng)`, usage: total });
+}
+
+/* ─── OpenAI-compatible (function-calling) ────────────────── */
+interface OpenAiResp {
+  choices?: Array<{
+    finish_reason?: string;
+    message?: {
+      content?: string | null;
+      tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }>;
+    };
+  }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+async function openaiLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promise<void> {
+  const base = (p.endpoint || "https://api.openai.com").replace(/\/$/, "");
+  const msgs: Array<Record<string, unknown>> = [
+    { role: "system", content: opt.system },
+    ...opt.messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+  const tools = opt.tools.map((t) => ({
+    type: "function",
+    function: { name: t.name, description: t.description ?? "", parameters: t.schema },
+  }));
+  const total = { input: 0, output: 0 };
+
+  for (let i = 0; i < MAX_ROUNDS; i++) {
+    const res = await fetch(base + "/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(key ? { authorization: `Bearer ${key}` } : {}),
+      },
+      body: JSON.stringify({
+        model: p.model,
+        temperature: p.temperature ?? 0.7,
+        max_tokens: p.maxTokens ?? 4096,
+        messages: msgs,
+        ...(tools.length ? { tools } : {}),
+      }),
+    });
+    if (!res.ok) {
+      opt.onEvent({ type: "error", message: `OpenAI-compat ${res.status}: ${(await res.text()).slice(0, 300)}` });
+      return;
+    }
+    const j = (await res.json()) as OpenAiResp;
+    total.input += j.usage?.prompt_tokens ?? 0;
+    total.output += j.usage?.completion_tokens ?? 0;
+    const choice = j.choices?.[0];
+    const m = choice?.message ?? {};
+    const text = m.content ?? "";
+    const toolCalls = m.tool_calls ?? [];
+    if (text) opt.onEvent({ type: "text", text });
+
+    if (choice?.finish_reason !== "tool_calls" || toolCalls.length === 0) {
+      opt.onEvent({ type: "done", text, usage: total });
+      return;
+    }
+    msgs.push(m as Record<string, unknown>);
+    for (const tc of toolCalls) {
+      const name = tc.function?.name ?? "";
+      let args: Record<string, unknown> = {};
+      try { args = JSON.parse(tc.function?.arguments ?? "{}") as Record<string, unknown>; }
+      catch { /* arguments không phải JSON hợp lệ */ }
+      opt.onEvent({ type: "tool_call", name, args });
+      try {
+        const out = await opt.callTool(name, args);
+        const c = typeof out === "string" ? out : JSON.stringify(out);
+        opt.onEvent({ type: "tool_result", name, result: out });
+        msgs.push({ role: "tool", tool_call_id: tc.id ?? "", content: trim(c) });
+      } catch (e) {
+        const msg = (e as Error).message;
+        opt.onEvent({ type: "tool_result", name, error: msg });
+        msgs.push({ role: "tool", tool_call_id: tc.id ?? "", content: "ERROR: " + msg });
+      }
+    }
+  }
+  opt.onEvent({ type: "done", text: `(đạt giới hạn ${MAX_ROUNDS} vòng)`, usage: total });
+}
+
+/* ─── Entry — chọn vòng lặp theo adapter ──────────────────── */
+export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
+  const rows = await opt.db.select().from(llmProfiles)
+    .where(and(
+      eq(llmProfiles.companyId, opt.companyId),
+      opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined,
+    ))
+    .limit(1);
+  const p = rows[0];
+  if (!p) {
+    opt.onEvent({ type: "error", message: "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key)." });
+    return;
+  }
+  const isAnthropic = p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "anthropic";
+  const isOpenAi = p.adapter === "openai" || p.adapter === "ollama";
+  if (!isAnthropic && !isOpenAi) {
+    opt.onEvent({ type: "error", message: `Adapter "${p.adapter}" chưa hỗ trợ ở agent backend.` });
+    return;
+  }
+  const key = (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "")
+    || process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] || "";
+  // ollama (local, OpenAI-compat) thường không cần key.
+  if (!key && p.adapter !== "ollama") {
+    opt.onEvent({ type: "error", message: "LLM profile thiếu API key." });
+    return;
+  }
+  if (isAnthropic) await anthropicLoop(opt, p, key);
+  else await openaiLoop(opt, p, key);
 }

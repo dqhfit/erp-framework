@@ -88,6 +88,8 @@ export function createObjectsClient(baseUrl: string) {
       get: (id: string) => trpc.workflows.get.query(id),
       save: (input: WorkflowSaveInput) => trpc.workflows.save.mutate(input),
       delete: (id: string) => trpc.workflows.delete.mutate(id),
+      // Publish: chốt bản nháp graph → publishedGraph (runner chạy bản này).
+      publish: (id: string) => trpc.workflows.publish.mutate(id),
       // Chạy workflow THẬT phía server (gọi MCP/LLM thật, ghi workflow_runs).
       trigger: (workflowId: string, context?: Record<string, unknown>) =>
         trpc.workflows.trigger.mutate({ workflowId, context }),
@@ -108,6 +110,19 @@ export function createObjectsClient(baseUrl: string) {
     activity: {
       list: () => trpc.activity.list.query(),
       clear: () => trpc.activity.clear.mutate(),
+    },
+    budget: {
+      get: () => trpc.budget.get.query(),
+      save: (monthlyUsd: number) => trpc.budget.save.mutate({ monthlyUsd }),
+    },
+    transfer: {
+      export: () => trpc.transfer.export.query(),
+      import: (bundle: {
+        entities?: Record<string, unknown>[];
+        pages?: Record<string, unknown>[];
+        workflows?: Record<string, unknown>[];
+        agents?: Record<string, unknown>[];
+      }) => trpc.transfer.import.mutate(bundle),
     },
   };
 }

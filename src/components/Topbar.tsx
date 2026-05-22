@@ -6,6 +6,7 @@ import { useSettings } from "@/stores/settings";
 import { llmRegistry } from "@/core/llm";
 import { useT } from "@/hooks/useT";
 import { LanguagePicker } from "@/components/LanguagePicker";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 
 export function Topbar() {
   const t = useT();
@@ -77,11 +78,14 @@ export function Topbar() {
         </div>
       )}
 
+      {/* Công ty đang làm việc (đa công ty) */}
+      <CompanySwitcher />
+
       {/* MCP status */}
       <Link
         to="/settings/mcp"
         className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0"
-        title="MCP connected"
+        title={t("topbar.mcp_connected")}
       >
         <span className="w-1.5 h-1.5 rounded-full bg-success" />
         <I.Server size={14} className="text-muted" />
@@ -92,7 +96,9 @@ export function Topbar() {
       <Link
         to="/settings/llm"
         className="hidden lg:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0"
-        title={activeProfileName ? `Profile: ${activeProfileName}` : "Chưa có LLM profile"}
+        title={activeProfileName
+          ? t("topbar.llm_profile", { name: activeProfileName })
+          : t("topbar.no_llm_profile")}
       >
         <I.Sparkles size={14} className="text-accent" />
         <span className="text-muted">{activeModel ?? t("topbar.no_llm")}</span>
@@ -126,7 +132,7 @@ export function Topbar() {
         variant={tweaksOpen ? "primary" : "ghost"} size="sm"
         onClick={() => setTweaksOpen(!tweaksOpen)}
         icon={<I.Wand size={14} />}
-        title="Tweaks (theme/density/accent)"
+        title={t("topbar.tweaks")}
       />
 
 

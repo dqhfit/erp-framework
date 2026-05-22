@@ -8,6 +8,7 @@
    đơn giản). Bổ sung handshake là phần mở rộng — vì callTool
    được tiêm dạng callback nên nâng cấp không đụng workflow runner.
    ========================================================== */
+import { and, eq } from "drizzle-orm";
 import { mcpConfigs } from "@erp-framework/db";
 import type { DB } from "./db";
 import type { RunWorkflowOptions } from "@erp-framework/core";
@@ -42,10 +43,16 @@ async function mcpToolsCall(
   return j.result;
 }
 
-/** Tạo hàm callTool cho workflow runner — đọc cấu hình MCP từ DB. */
-export function makeCallTool(db: DB): RunWorkflowOptions["callTool"] {
+/** Tạo hàm callTool cho workflow runner — đọc cấu hình MCP của
+   công ty từ DB (đa công ty: mỗi công ty có cấu hình MCP riêng). */
+export function makeCallTool(
+  db: DB,
+  companyId: string,
+): RunWorkflowOptions["callTool"] {
   return async (name, args) => {
-    const rows = await db.select().from(mcpConfigs).limit(1);
+    const rows = await db.select().from(mcpConfigs)
+      .where(and(eq(mcpConfigs.companyId, companyId),
+        eq(mcpConfigs.name, "default")));
     const cfg = rows[0]?.config as McpCfg | undefined;
     if (!cfg || cfg.mode === "demo") {
       // Demo mode / chưa cấu hình MCP — trả placeholder, không gọi mạng.

@@ -16,6 +16,10 @@
     "test:watch": "vitest",
     "bridge": "node scripts/claude-bridge.mjs",
     "new:plugin": "node tooling/create-plugin.mjs",
+    "db:setup": "node tooling/setup-db.mjs",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d db",
+    "db:down": "docker compose -f docker/docker-compose.yml stop db",
+    "db:migrate": "pnpm --filter @erp-framework/db migrate",
     "e2e": "playwright test",
     "e2e:full": "node tooling/e2e-full.mjs"
   },

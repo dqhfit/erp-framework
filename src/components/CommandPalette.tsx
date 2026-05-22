@@ -3,9 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useUI } from "@/stores/ui";
 import { I } from "@/components/Icons";
 import { Kbd } from "@/components/ui";
-import type { IconName } from "@/lib/mock-data";
+import type { IconName } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 interface Item {
   id: string;
@@ -17,6 +18,7 @@ interface Item {
 }
 
 export function CommandPalette() {
+  const t = useT();
   const open = useUI((s) => s.cmdOpen);
   const setOpen = useUI((s) => s.setCmdOpen);
   const setAgentOpen = useUI((s) => s.setAgentOpen);
@@ -29,23 +31,23 @@ export function CommandPalette() {
   const agents = useUserObjects((s) => s.agents);
 
   const items: Item[] = useMemo(() => [
-    { id: "home", label: "Workspace", hint: "Trang chủ", iconName: "Home", to: "/" },
-    { id: "agent", label: "Hỏi Agent", hint: "Mở chat panel", iconName: "Sparkles", action: () => setAgentOpen(true) },
+    { id: "home", label: t("cmd.workspace"), hint: t("cmd.home_hint"), iconName: "Home", to: "/" },
+    { id: "agent", label: t("cmd.ask_agent"), hint: t("cmd.ask_agent_hint"), iconName: "Sparkles", action: () => setAgentOpen(true) },
     ...entities.map<Item>((e) => ({
-      id: `ent-${e.id}`, label: e.name, hint: `Entity · ${e.mcp}`, iconName: e.icon, to: `/entities/${e.id}`,
+      id: `ent-${e.id}`, label: e.name, hint: t("cmd.hint_entity", { mcp: e.mcp }), iconName: e.icon, to: `/entities/${e.id}`,
     })),
     ...pages.map<Item>((p) => ({
-      id: `page-${p.id}`, label: p.name, hint: "Page", iconName: p.icon, to: `/pages/${p.id}`,
+      id: `page-${p.id}`, label: p.name, hint: t("cmd.hint_page"), iconName: p.icon, to: `/pages/${p.id}`,
     })),
     ...workflows.map<Item>((w) => ({
-      id: `wf-${w.id}`, label: w.name, hint: `Workflow · ${w.runs} runs`, iconName: w.icon, to: `/workflows/${w.id}`,
+      id: `wf-${w.id}`, label: w.name, hint: t("cmd.hint_workflow", { runs: w.runs }), iconName: w.icon, to: `/workflows/${w.id}`,
     })),
     ...agents.map<Item>((a) => ({
-      id: `agent-${a.id}`, label: a.name, hint: `Agent · ${a.model}`, iconName: "Bot", to: `/agents/${a.id}`,
+      id: `agent-${a.id}`, label: a.name, hint: t("cmd.hint_agent", { model: a.model }), iconName: "Bot", to: `/agents/${a.id}`,
     })),
-    { id: "set-llm", label: "Cài đặt LLM", hint: "Profile / API key", iconName: "Sparkles", to: "/settings/llm" },
-    { id: "set-mcp", label: "Cài đặt MCP", hint: "Server URL", iconName: "Server", to: "/settings/mcp" },
-  ], [setAgentOpen, entities, pages, workflows, agents]);
+    { id: "set-llm", label: t("cmd.settings_llm"), hint: t("cmd.settings_llm_hint"), iconName: "Sparkles", to: "/settings/llm" },
+    { id: "set-mcp", label: t("cmd.settings_mcp"), hint: t("cmd.settings_mcp_hint"), iconName: "Server", to: "/settings/mcp" },
+  ], [t, setAgentOpen, entities, pages, workflows, agents]);
 
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
@@ -90,14 +92,14 @@ export function CommandPalette() {
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Gõ để tìm entity, page, workflow, lệnh…"
+            placeholder={t("cmd.placeholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted"
           />
           <Kbd>ESC</Kbd>
         </div>
         <div className="flex-1 overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center text-muted text-sm">Không tìm thấy.</div>
+            <div className="px-4 py-8 text-center text-muted text-sm">{t("cmd.empty")}</div>
           ) : (
             filtered.map((item, i) => {
               const IC = I[item.iconName] ?? I.Folder;
@@ -122,9 +124,9 @@ export function CommandPalette() {
           )}
         </div>
         <div className="px-3 h-9 shrink-0 border-t border-border flex items-center gap-3 text-[11px] text-muted">
-          <span className="flex items-center gap-1"><Kbd>↑</Kbd><Kbd>↓</Kbd> Chọn</span>
-          <span className="flex items-center gap-1"><Kbd>↵</Kbd> Mở</span>
-          <span className="flex items-center gap-1 ml-auto"><Kbd>⌘K</Kbd> Toggle</span>
+          <span className="flex items-center gap-1"><Kbd>↑</Kbd><Kbd>↓</Kbd> {t("cmd.nav_select")}</span>
+          <span className="flex items-center gap-1"><Kbd>↵</Kbd> {t("cmd.nav_open")}</span>
+          <span className="flex items-center gap-1 ml-auto"><Kbd>⌘K</Kbd> {t("cmd.nav_toggle")}</span>
         </div>
       </div>
     </div>

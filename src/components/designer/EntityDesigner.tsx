@@ -1,15 +1,18 @@
 import { useEffect, useState, Fragment } from "react";
 import { Button, Chip, FormField, EmptyState, InlineEdit, Switch, Tabs, Input, Select, Textarea } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { type MockEntity, type EntityField } from "@/lib/mock-data";
+import { type MockEntity, type EntityField } from "@/lib/object-types";
 import { getFieldTypes } from "@/lib/field-types";
 import { McpImportModal, type McpImportResult } from "@/components/designer/McpImportModal";
 import { McpBindingsEditor, type McpBindings } from "@/components/designer/McpBindingsEditor";
 import { FormulaEditor } from "@/components/designer/FormulaEditor";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { EntitySyncPanel } from "@/components/EntitySyncPanel";
 import { inferMcpBindings, countBoundOps } from "@/lib/mcp-binding-infer";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useUserObjects } from "@/stores/userObjects";
+import { createApiDataSource } from "@erp-framework/client";
+import { syncEntityFromMcp, inferPkField } from "@/lib/mcp-sync";
 import type { EntityDesign } from "@/lib/ai-design-prompts";
 import { useUI } from "@/stores/ui";
 import { cn } from "@/lib/utils";
@@ -76,7 +79,7 @@ export function EntityDesigner({ entityId }: Props) {
   const selectedField = entity.fields.find((f) => f.id === selected);
 
   const handleMcpImport = (result: McpImportResult) => {
-    const { fields, mode, tool, args, availableTools } = result;
+    const { fields, mode, dataMode, rows, tool, args, availableTools } = result;
     // FieldDef từ schema-infer dùng `key`. EntityField của mock dùng `name`+`label`+`id`.
     const converted: EntityField[] = fields.map((f, i) => ({
       id: "imp_" + Date.now() + "_" + i,
@@ -111,7 +114,14 @@ export function EntityDesigner({ entityId }: Props) {
         mcpBindings: mergedBindings,
       };
     });
-    setImportToast(t("entity.import_toast", { fieldsCount: converted.length, opsBound }));
+    if (dataMode === "snapshot" && rows.length > 0) {
+      setPendingRows(rows);
+      setImportToast(t("entity.import_snapshot_toast", {
+        fieldsCount: converted.length, rows: rows.length,
+      }));
+    } else {
+      setImportToast(t("entity.import_toast", { fieldsCount: converted.length, opsBound }));
+    }
   };
 
   // Áp dụng đề xuất từ AI Assistant — replace toàn bộ schema + bindings
@@ -151,6 +161,8 @@ export function EntityDesigner({ entityId }: Props) {
 
   // Toast hiển thị sau import — fade 4s
   const [importToast, setImportToast] = useState<string | null>(null);
+  // Dòng dữ liệu mẫu MCP chờ ghi vào DB sau khi Lưu (dataMode = snapshot).
+  const [pendingRows, setPendingRows] = useState<Record<string, unknown>[]>([]);
   useEffect(() => {
     if (!importToast) return;
     const t = setTimeout(() => setImportToast(null), 4000);
@@ -159,16 +171,34 @@ export function EntityDesigner({ entityId }: Props) {
 
 
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const upsertEntity = useUserObjects((s) => s.upsertEntity);
   const save = () => {
     setSaving(true);
     upsertEntity(entity);
+    const rows = pendingRows;
+    // Delay để store kịp lưu fields lên DB trước khi tạo record (validate-on-write).
     setTimeout(() => {
-      setSaving(false);
-      setLastSaved(new Date());
-      setImportToast(t("entity.save_toast", { name: entity.name, count: entity.fields.length }));
-    }, 200);
+      void (async () => {
+        if (rows.length > 0) {
+          const ds = createApiDataSource("");
+          let ok = 0;
+          for (const r of rows) {
+            try { await ds.createRecord(entity.id, r); ok++; }
+            catch { /* dòng không hợp lệ với schema — bỏ qua */ }
+          }
+          setPendingRows([]);
+          setImportToast(t("entity.records_imported", { count: ok }));
+        } else {
+          setImportToast(t("entity.save_toast", {
+            name: entity.name, count: entity.fields.length,
+          }));
+        }
+        setSaving(false);
+        setLastSaved(new Date());
+      })();
+    }, 700);
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -177,6 +207,23 @@ export function EntityDesigner({ entityId }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Đồng bộ thủ công: kéo dữ liệu từ MCP, upsert vào DB theo khóa.
+  const doMcpSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const pk = inferPkField(entity.fields.map((f) => f.name));
+      const res = await syncEntityFromMcp(entity.id, entity.mcpBindings, pk);
+      setImportToast(t("entity.sync_done", {
+        created: res.created, updated: res.updated,
+      }));
+    } catch (e) {
+      setImportToast("Lỗi đồng bộ: " + (e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const IconC = I[entity.icon] ?? I.Database;
   const isConsumer = mode === "consumer";
@@ -208,6 +255,18 @@ export function EntityDesigner({ entityId }: Props) {
         <Button variant="default" size="sm" icon={<I.Database size={13} />} onClick={() => setImportOpen(true)}>
           {t("designer.import_from_mcp")}
         </Button>
+        {entity.mcpBindings?.list?.tool && (
+          <Button
+            variant="default" size="sm"
+            icon={syncing
+              ? <I.Loader size={13} className="animate-spin" />
+              : <I.Redo size={13} />}
+            onClick={() => void doMcpSync()}
+            disabled={syncing}
+          >
+            {syncing ? t("entity.syncing") : t("entity.sync_btn")}
+          </Button>
+        )}
         <div className="w-px h-5 bg-border mx-1" />
         <Button variant="ghost" size="sm" icon={<I.Undo size={13} />}>Undo</Button>
         <Button variant="ghost" size="sm" icon={<I.Redo size={13} />} title="Redo" />
@@ -352,6 +411,14 @@ export function EntityDesigner({ entityId }: Props) {
                   toolPrefix={entity.mcp}
                 />
               </div>
+
+              {/* Đồng bộ tự động theo lịch (server-side) — chỉ hiện
+                  khi op 'list' đã được bind tool MCP. */}
+              {entity.mcpBindings?.list?.tool && (
+                <div className="mt-8">
+                  <EntitySyncPanel entityId={entity.id} />
+                </div>
+              )}
             </div>
           )}
         </div>

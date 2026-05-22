@@ -10,6 +10,7 @@ import {
   createApiDataSource, createAuthClient, createConfigClient,
 } from "@erp-framework/client";
 import type { EntityConfig, EntityRecord } from "@erp-framework/core";
+import { useUserObjects } from "@/stores/userObjects";
 
 interface SessionUser {
   email: string;
@@ -41,6 +42,8 @@ function ServerData() {
   const loadEntities = useCallback(async () => {
     try {
       setEntities(await data.listEntities());
+      // Đồng bộ store dùng chung → sidebar/designer cùng thấy entity mới.
+      void useUserObjects.getState().hydrate();
     } catch (e) {
       setStatus("Lỗi tải entity: " + (e as Error).message);
     }

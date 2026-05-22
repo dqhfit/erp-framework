@@ -8,6 +8,8 @@
      trả về key thô để dễ debug.
    ========================================================== */
 
+import { chromeVi, chromeEn } from "./dict-chrome";
+
 export type Lang = "vi" | "en";
 export const LANGS: Array<{ code: Lang; label: string; flag: string }> = [
   { code: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
@@ -63,6 +65,8 @@ const VI: Dict = {
   "sidebar.mcp_server": "MCP Server",
   "sidebar.activity": "Nhật ký & Chi phí",
   "sidebar.rbac": "Vai trò & Quyền",
+  "sidebar.group_ops": "Vận hành",
+  "sidebar.group_settings": "Cấu hình & Hệ thống",
   "sidebar.add_blank": "Tạo {kind} mới (rỗng)",
   "sidebar.add_ai": "Mô tả cho AI để tạo {kind}",
   "sidebar.confirm_delete": "Xoá {kind} \"{id}\"? Không thể hoàn tác.",
@@ -242,6 +246,47 @@ const VI: Dict = {
   "field.wait_minutes": "Đợi (phút)",
   "field.choose_agent": "— chọn agent —",
   "field.approved_by": "Phê duyệt bởi",
+
+  // MCP import modal
+  "mcpimport.title": "Import schema từ MCP",
+  "mcpimport.apply_label": "Áp dụng:",
+  "mcpimport.mode_replace": "Thay thế toàn bộ",
+  "mcpimport.mode_append": "Thêm vào sau",
+  "mcpimport.back": "← Quay lại",
+  "mcpimport.apply_n": "Áp dụng {count} field",
+  "mcpimport.mcp_error": "⚠ Lỗi MCP: {error}",
+  "mcpimport.tool_label": "MCP Tool",
+  "mcpimport.connecting": "Đang kết nối MCP…",
+  "mcpimport.tools_count": "{count} tool có sẵn",
+  "mcpimport.no_tool": "— chưa có tool —",
+  "mcpimport.calling": "Đang gọi tool…",
+  "mcpimport.fetch_btn": "Lấy sample + infer schema",
+  "mcpimport.zero_rows": "Tool trả về 0 row — không thể infer schema",
+  "mcpimport.detected": "Phát hiện",
+  "mcpimport.from": "từ",
+  "mcpimport.n_fields": "{count} field",
+  "mcpimport.tab_schema": "Schema ({count})",
+  "mcpimport.tab_data": "Dữ liệu ({count})",
+  "mcpimport.tab_raw": "Raw JSON",
+  "mcpimport.col_label": "Nhãn",
+  "mcpimport.col_type": "Loại",
+  "mcpimport.col_sample": "Mẫu",
+  "mcpimport.col_null": "Null",
+  "mcpimport.col_unique": "Unique",
+  "mcpimport.null_ratio": "Tỷ lệ null",
+  "mcpimport.unique_count": "Số giá trị unique",
+  "mcpimport.no_data": "Không có dòng dữ liệu để hiển thị.",
+  "mcpimport.rows_limit": "Hiển thị 50 / {total} dòng.",
+  "mcpimport.infer_fail": "Không infer được schema",
+  "mcpimport.retry": "← Thử lại",
+  "mcpimport.data_apply": "Khi áp dụng:",
+  "mcpimport.data_schema_only": "Chỉ schema",
+  "mcpimport.data_snapshot": "Kèm {count} dòng dữ liệu",
+  "entity.import_snapshot_toast": "✓ Đã import {fieldsCount} field — bấm Lưu để nhập {rows} dòng dữ liệu",
+  "entity.records_imported": "✓ Đã lưu schema + nhập {count} bản ghi từ MCP",
+  "entity.sync_btn": "Đồng bộ từ MCP",
+  "entity.syncing": "Đang đồng bộ…",
+  "entity.sync_done": "✓ Đồng bộ MCP: {created} thêm mới, {updated} cập nhật",
 };
 
 // ============= English =============
@@ -291,6 +336,8 @@ const EN: Dict = {
   "sidebar.mcp_server": "MCP Server",
   "sidebar.activity": "Activity & Cost",
   "sidebar.rbac": "Roles & Permissions",
+  "sidebar.group_ops": "Operations",
+  "sidebar.group_settings": "Settings & System",
   "sidebar.add_blank": "New {kind} (blank)",
   "sidebar.add_ai": "Describe to AI to create {kind}",
   "sidebar.confirm_delete": "Delete {kind} \"{id}\"? Cannot undo.",
@@ -470,9 +517,55 @@ const EN: Dict = {
   "field.wait_minutes": "Wait (minutes)",
   "field.choose_agent": "— select agent —",
   "field.approved_by": "Approved by",
+
+  // MCP import modal
+  "mcpimport.title": "Import schema from MCP",
+  "mcpimport.apply_label": "Apply:",
+  "mcpimport.mode_replace": "Replace all",
+  "mcpimport.mode_append": "Append",
+  "mcpimport.back": "← Back",
+  "mcpimport.apply_n": "Apply {count} fields",
+  "mcpimport.mcp_error": "⚠ MCP error: {error}",
+  "mcpimport.tool_label": "MCP Tool",
+  "mcpimport.connecting": "Connecting to MCP…",
+  "mcpimport.tools_count": "{count} tools available",
+  "mcpimport.no_tool": "— no tools —",
+  "mcpimport.calling": "Calling tool…",
+  "mcpimport.fetch_btn": "Fetch sample + infer schema",
+  "mcpimport.zero_rows": "Tool returned 0 rows — cannot infer schema",
+  "mcpimport.detected": "Detected",
+  "mcpimport.from": "from",
+  "mcpimport.n_fields": "{count} fields",
+  "mcpimport.tab_schema": "Schema ({count})",
+  "mcpimport.tab_data": "Data ({count})",
+  "mcpimport.tab_raw": "Raw JSON",
+  "mcpimport.col_label": "Label",
+  "mcpimport.col_type": "Type",
+  "mcpimport.col_sample": "Sample",
+  "mcpimport.col_null": "Null",
+  "mcpimport.col_unique": "Unique",
+  "mcpimport.null_ratio": "Null ratio",
+  "mcpimport.unique_count": "Unique value count",
+  "mcpimport.no_data": "No data rows to display.",
+  "mcpimport.rows_limit": "Showing 50 / {total} rows.",
+  "mcpimport.infer_fail": "Could not infer schema",
+  "mcpimport.retry": "← Retry",
+  "mcpimport.data_apply": "On apply:",
+  "mcpimport.data_schema_only": "Schema only",
+  "mcpimport.data_snapshot": "With {count} data rows",
+  "entity.import_snapshot_toast": "✓ Imported {fieldsCount} fields — click Save to insert {rows} data rows",
+  "entity.records_imported": "✓ Saved schema + imported {count} records from MCP",
+  "entity.sync_btn": "Sync from MCP",
+  "entity.syncing": "Syncing…",
+  "entity.sync_done": "✓ MCP sync: {created} created, {updated} updated",
 };
 
-export const DICT: Record<Lang, Dict> = { vi: VI, en: EN };
+/* DICT gộp map lõi + các map mở rộng theo nhóm (dict-*.ts).
+   Mỗi nhóm i18n bổ sung thêm 1 import + 1 spread ở đây. */
+export const DICT: Record<Lang, Dict> = {
+  vi: { ...VI, ...chromeVi },
+  en: { ...EN, ...chromeEn },
+};
 
 /** Lấy chuỗi dịch, support {var} substitution. */
 export function tFromDict(

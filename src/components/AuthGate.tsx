@@ -6,6 +6,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Input, FormField, Card, Chip } from "@/components/ui";
 import { useAuth } from "@/stores/auth";
+import { useT } from "@/hooks/useT";
 
 function Splash({ text }: { text: string }) {
   return (
@@ -16,6 +17,7 @@ function Splash({ text }: { text: string }) {
 }
 
 function LoginScreen() {
+  const t = useT();
   const login = useAuth((s) => s.login);
   const register = useAuth((s) => s.register);
   const error = useAuth((s) => s.error);
@@ -37,28 +39,26 @@ function LoginScreen() {
       <Card className="w-[380px] space-y-4">
         <div>
           <h1 className="text-lg font-semibold">
-            {mode === "login" ? "Đăng nhập" : "Tạo tài khoản quản trị"}
+            {mode === "login" ? t("auth.login_title") : t("auth.register_title")}
           </h1>
           <div className="text-sm text-muted mt-0.5">
-            {mode === "login"
-              ? "Đăng nhập để dùng ERP Framework."
-              : "Tài khoản đầu tiên sẽ là quản trị viên."}
+            {mode === "login" ? t("auth.login_sub") : t("auth.register_sub")}
           </div>
         </div>
 
-        <FormField label="Email">
-          <Input type="email" value={email} placeholder="ban@congty.com"
+        <FormField label={t("auth.email")}>
+          <Input type="email" value={email} placeholder={t("auth.email_ph")}
             onChange={(e) => setEmail(e.target.value)} />
         </FormField>
 
         {mode === "register" && (
-          <FormField label="Tên hiển thị">
-            <Input value={name} placeholder="Nguyễn Văn A"
+          <FormField label={t("auth.name")}>
+            <Input value={name} placeholder={t("auth.name_ph")}
               onChange={(e) => setName(e.target.value)} />
           </FormField>
         )}
 
-        <FormField label="Mật khẩu" hint={mode === "register" ? "Tối thiểu 8 ký tự" : undefined}>
+        <FormField label={t("auth.password")} hint={mode === "register" ? t("auth.password_hint") : undefined}>
           <Input type="password" value={password} placeholder="••••••••"
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !busy) void submit(); }} />
@@ -69,16 +69,14 @@ function LoginScreen() {
         <Button variant="primary" className="w-full justify-center"
           disabled={busy} onClick={() => void submit()}>
           {busy
-            ? "Đang xử lý…"
-            : mode === "login" ? "Đăng nhập" : "Đăng ký & vào app"}
+            ? t("auth.processing")
+            : mode === "login" ? t("auth.submit_login") : t("auth.submit_register")}
         </Button>
 
         <button type="button"
           className="text-xs text-muted hover:text-text w-full text-center"
           onClick={() => setMode(mode === "login" ? "register" : "login")}>
-          {mode === "login"
-            ? "Chưa có tài khoản? Tạo tài khoản quản trị"
-            : "Đã có tài khoản? Đăng nhập"}
+          {mode === "login" ? t("auth.to_register") : t("auth.to_login")}
         </button>
       </Card>
     </div>
@@ -86,6 +84,7 @@ function LoginScreen() {
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const t = useT();
   const status = useAuth((s) => s.status);
   const check = useAuth((s) => s.check);
 
@@ -93,7 +92,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (status === "checking") void check();
   }, [status, check]);
 
-  if (status === "checking") return <Splash text="Đang kiểm tra phiên…" />;
+  if (status === "checking") return <Splash text={t("auth.checking")} />;
   if (status === "out") return <LoginScreen />;
   return <>{children}</>;
 }
