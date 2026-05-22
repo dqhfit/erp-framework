@@ -8,6 +8,12 @@ import { useSettings } from "@/stores/settings";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { mcpToolsToToolDefs } from "@/core/agent-runner";
 import { useT } from "@/hooks/useT";
+import { useRbac } from "@/stores/rbac";
+import { roleCan } from "@/lib/permissions";
+import { createKnowledgeClient } from "@erp-framework/client";
+
+/* Client Knowledge Base — dùng cho nút "Lưu vào tri thức" trên tin nhắn. */
+const kb = createKnowledgeClient("");
 
 interface Message {
   id: string;
@@ -36,6 +42,10 @@ const SEED: Message[] = [
 
 export function AgentPanel() {
   const t = useT();
+  // RBAC — chỉ hiện nút "Lưu vào tri thức" khi có quyền create:knowledge.
+  const rbacRole = useRbac((s) => s.role);
+  const rbacEnforce = useRbac((s) => s.enforce);
+  const canAddKb = !rbacEnforce || roleCan(rbacRole, "create", "knowledge");
   const open = useUI((s) => s.agentOpen);
   const setOpen = useUI((s) => s.setAgentOpen);
   const llmProfiles = useSettings((s) => s.llmProfiles);
@@ -211,7 +221,9 @@ export function AgentPanel() {
 
       {/* Messages */}
       <div ref={bodyRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.map((m) => <MessageBubble key={m.id} msg={m} onSuggest={send} />)}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} msg={m} onSuggest={send} canSaveKb={canAddKb} />
+        ))}
       </div>
 
       {/* Input */}
@@ -239,9 +251,31 @@ export function AgentPanel() {
   );
 }
 
-function MessageBubble({ msg, onSuggest }: { msg: Message; onSuggest: (text: string) => void }) {
+function MessageBubble({ msg, onSuggest, canSaveKb }: {
+  msg: Message;
+  onSuggest: (text: string) => void;
+  canSaveKb: boolean;
+}) {
   const t = useT();
   const isUser = msg.role === "user";
+  const [kbState, setKbState] = useState<"" | "saving" | "saved" | "err">("");
+
+  // Chỉ cho lưu câu trả lời thật của trợ lý (có nội dung, không lỗi/pending/tool).
+  const canSave = canSaveKb && !isUser && !msg.pending && !msg.error
+    && !msg.toolCall && !!msg.content.trim();
+
+  const saveKb = async () => {
+    setKbState("saving");
+    try {
+      const c = msg.content.trim();
+      const title = c.replace(/\s+/g, " ").slice(0, 60) || "Ghi chú từ chat";
+      await kb.addText(title, c);
+      setKbState("saved");
+    } catch {
+      setKbState("err");
+    }
+  };
+
   return (
     <div className={cn("flex gap-2", isUser && "flex-row-reverse")}>
       <span className={cn(
@@ -267,6 +301,21 @@ function MessageBubble({ msg, onSuggest }: { msg: Message; onSuggest: (text: str
             <Chip variant="accent" className="font-mono">
               <I.Loader size={10} className="animate-spin" /> {msg.toolCall.name}
             </Chip>
+          </div>
+        )}
+        {canSave && (
+          <div className="mt-1.5">
+            <button
+              onClick={saveKb}
+              disabled={kbState === "saving" || kbState === "saved"}
+              className="text-[11px] px-2 py-0.5 rounded border border-border bg-bg-soft hover:bg-hover/40 inline-flex items-center gap-1 disabled:opacity-60"
+            >
+              <I.File size={10} />
+              {kbState === "saved" ? "✓ Đã lưu vào tri thức"
+                : kbState === "saving" ? "Đang lưu…"
+                : kbState === "err" ? "Lỗi — thử lại"
+                : "Lưu vào tri thức"}
+            </button>
           </div>
         )}
         {msg.suggestions && (

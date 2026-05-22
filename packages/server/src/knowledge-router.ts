@@ -42,6 +42,57 @@ export const knowledgeRouter = router({
           eq(knowledgeSources.id, input),
           eq(knowledgeSources.companyId, ctx.user.companyId)));
       }),
+
+    /* Sửa nguồn: tiêu đề (mọi loại), nội dung (chỉ kind=text),
+       lịch tự nạp lại reindexCron (chỉ kind=entity). Sửa nội dung
+       → đặt lại status=pending và nạp lại. */
+    update: rbacProcedure("edit", "knowledge")
+      .input(z.object({
+        id: z.string().uuid(),
+        title: z.string().min(1).optional(),
+        text: z.string().optional(),
+        reindexCron: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const [src] = await ctx.db.select().from(knowledgeSources)
+          .where(and(eq(knowledgeSources.id, input.id),
+            eq(knowledgeSources.companyId, ctx.user.companyId)));
+        if (!src) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Nguồn không tồn tại" });
+        }
+        // Sửa nội dung chỉ cho nguồn text; lịch cron chỉ cho nguồn entity.
+        if (input.text !== undefined && src.kind !== "text") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Chỉ nguồn văn bản dán tay mới sửa được nội dung.",
+          });
+        }
+        if (input.reindexCron && src.kind !== "entity") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tự động nạp lại chỉ áp dụng cho nguồn dữ liệu entity.",
+          });
+        }
+
+        // Sửa nội dung text → đặt lại trạng thái + nạp lại.
+        const reindex = input.text !== undefined;
+        const textPatch = reindex
+          ? {
+              meta: { ...(src.meta as Record<string, unknown>), text: input.text },
+              status: "pending",
+              error: null,
+            }
+          : {};
+
+        await ctx.db.update(knowledgeSources).set({
+          updatedAt: new Date(),
+          ...(input.title !== undefined ? { title: input.title } : {}),
+          ...textPatch,
+          ...(input.reindexCron !== undefined ? { reindexCron: input.reindexCron } : {}),
+        }).where(eq(knowledgeSources.id, input.id));
+        if (reindex) await enqueueKbIngest(input.id);
+        return { ok: true };
+      }),
   }),
 
   /* ── Thêm nguồn: văn bản dán tay ── */

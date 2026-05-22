@@ -6,8 +6,10 @@
    pg-boss dùng pool RIÊNG (max 5) — xem UPGRADE-PLAN 3.2.1.
    ========================================================== */
 import PgBoss from "pg-boss";
-import { eq, sql, lt } from "drizzle-orm";
-import { schedules, agentHeartbeats, entitySyncs, sessions } from "@erp-framework/db";
+import { eq, sql, lt, isNotNull } from "drizzle-orm";
+import {
+  schedules, agentHeartbeats, entitySyncs, sessions, knowledgeSources,
+} from "@erp-framework/db";
 import { cronMatches } from "@erp-framework/core";
 import { db } from "./db";
 import { executeWorkflow } from "./run-workflow";
@@ -135,6 +137,14 @@ export async function startJobs(): Promise<void> {
     for (const sy of syncs) {
       if (cronMatches(sy.cronExpr, now)) {
         await b.send(QUEUE_ENTITY_SYNC, { syncId: sy.id });
+      }
+    }
+    // Knowledge Base — nguồn có reindex_cron tới hạn → nạp lại.
+    const kbSources = await db.select().from(knowledgeSources)
+      .where(isNotNull(knowledgeSources.reindexCron));
+    for (const ks of kbSources) {
+      if (ks.reindexCron && cronMatches(ks.reindexCron, now)) {
+        await b.send(QUEUE_KB_INGEST, { sourceId: ks.id });
       }
     }
   });

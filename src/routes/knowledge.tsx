@@ -9,7 +9,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
   type ChangeEvent,
 } from "react";
-import { Button, Card, Chip, Input, Select, Textarea, FormField } from "@/components/ui";
+import { Button, Card, Chip, Input, Select, Textarea, FormField, Drawer } from "@/components/ui";
 import { I } from "@/components/Icons";
 import {
   createKnowledgeClient,
@@ -27,6 +27,13 @@ const STATUS_LABEL: Record<string, string> = {
   pending: "Chờ xử lý", processing: "Đang xử lý",
   ready: "Sẵn sàng", error: "Lỗi",
 };
+
+/* Cron preset cho "tự động nạp lại" nguồn entity. */
+const CRON_PRESETS: { label: string; expr: string }[] = [
+  { label: "Mỗi 15 phút", expr: "*/15 * * * *" },
+  { label: "Mỗi giờ", expr: "0 * * * *" },
+  { label: "8h sáng hằng ngày", expr: "0 8 * * *" },
+];
 
 function StatusChip({ s }: { s: KnowledgeSource }) {
   if (s.status === "ready") return <Chip variant="success">✓ {STATUS_LABEL.ready}</Chip>;
@@ -51,6 +58,12 @@ function KnowledgePage() {
   const [textBody, setTextBody] = useState("");
   const [entityId, setEntityId] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sửa nguồn
+  const [editing, setEditing] = useState<KnowledgeSource | null>(null);
+  const [edTitle, setEdTitle] = useState("");
+  const [edText, setEdText] = useState("");
+  const [edCron, setEdCron] = useState("");
 
   const load = useCallback(() => {
     kb.list()
@@ -122,6 +135,29 @@ function KnowledgePage() {
       title: "Xoá nguồn tri thức", confirmText: "Xoá", danger: true,
     });
     if (ok) void run(() => kb.remove(s.id).then(() => undefined), "Đã xoá nguồn.");
+  };
+
+  const textOf = (s: KnowledgeSource) =>
+    String((s.meta as { text?: string } | undefined)?.text ?? "");
+
+  const openEdit = (s: KnowledgeSource) => {
+    setEditing(s);
+    setEdTitle(s.title);
+    setEdText(s.kind === "text" ? textOf(s) : "");
+    setEdCron(s.reindexCron ?? "");
+  };
+
+  const saveEdit = () => {
+    const s = editing;
+    if (!s) return;
+    void run(async () => {
+      const patch: { title?: string; text?: string; reindexCron?: string | null } = {};
+      if (edTitle.trim() && edTitle.trim() !== s.title) patch.title = edTitle.trim();
+      if (s.kind === "text" && edText !== textOf(s)) patch.text = edText;
+      if (s.kind === "entity") patch.reindexCron = edCron.trim() || null;
+      await kb.update(s.id, patch);
+      setEditing(null);
+    }, "Đã lưu thay đổi nguồn.");
   };
 
   return (
@@ -244,10 +280,17 @@ function KnowledgePage() {
               <div className="flex items-center gap-2">
                 <Chip className="!text-[10px]">{KIND_LABEL[s.kind] ?? s.kind}</Chip>
                 <span className="font-medium truncate flex-1">{s.title}</span>
+                {s.reindexCron && (
+                  <Chip variant="accent" className="!text-[10px]">
+                    <I.Clock size={9} /> {s.reindexCron}
+                  </Chip>
+                )}
                 <StatusChip s={s} />
                 {s.status === "ready" && (
                   <span className="text-xs text-muted">{s.chunkCount} đoạn</span>
                 )}
+                <Button size="sm" variant="default" icon={<I.Edit size={12} />}
+                  disabled={busy} onClick={() => openEdit(s)}>Sửa</Button>
                 <Button size="sm" variant="default" icon={<I.Redo size={12} />}
                   disabled={busy} onClick={() => doReindex(s)}>Nạp lại</Button>
                 <Button size="sm" variant="danger" icon={<I.Trash size={12} />}
@@ -262,6 +305,74 @@ function KnowledgePage() {
 
         {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
         {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+
+        {/* === Drawer sửa nguồn === */}
+        <Drawer open={!!editing} onClose={() => setEditing(null)}
+          title="Sửa nguồn tri thức">
+          {editing && (
+            <div className="p-4 space-y-3">
+              <FormField label="Tiêu đề">
+                <Input value={edTitle} disabled={busy}
+                  onChange={(e) => setEdTitle(e.target.value)} />
+              </FormField>
+
+              {editing.kind === "text" && (
+                <FormField label="Nội dung">
+                  <Textarea rows={10} value={edText} disabled={busy}
+                    onChange={(e) => setEdText(e.target.value)} />
+                </FormField>
+              )}
+
+              {editing.kind === "entity" && (
+                <FormField label="Tự động nạp lại theo lịch">
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted">
+                      Server tự nạp lại dữ liệu entity vào tri thức theo lịch cron.
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {CRON_PRESETS.map((p) => (
+                        <button
+                          key={p.expr} type="button"
+                          onClick={() => setEdCron(p.expr)}
+                          className={"chip cursor-pointer " + (edCron === p.expr ? "chip-accent" : "")}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button" onClick={() => setEdCron("")}
+                        className={"chip cursor-pointer " + (!edCron ? "chip-accent" : "")}
+                      >
+                        Tắt
+                      </button>
+                    </div>
+                    <Input
+                      className="font-mono text-xs"
+                      placeholder="Biểu thức cron (để trống = tắt)"
+                      value={edCron} disabled={busy}
+                      onChange={(e) => setEdCron(e.target.value)}
+                    />
+                  </div>
+                </FormField>
+              )}
+
+              {editing.kind === "file" && (
+                <div className="text-xs text-muted">
+                  Nguồn tệp chỉ sửa được tiêu đề. Muốn đổi nội dung, hãy xoá rồi
+                  tải tệp mới.
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="ghost" onClick={() => setEditing(null)}>Hủy</Button>
+                <Button variant="primary" icon={<I.Save size={13} />}
+                  disabled={busy} onClick={saveEdit}>
+                  Lưu
+                </Button>
+              </div>
+            </div>
+          )}
+        </Drawer>
       </div>
     </div>
   );

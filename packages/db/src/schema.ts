@@ -362,6 +362,9 @@ export const knowledgeSources = pgTable("knowledge_sources", {
   meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
   error: text("error"),
   chunkCount: integer("chunk_count").notNull().default(0),
+  // reindex_cron: biểu thức cron để tự nạp lại (chỉ nguồn kind=entity).
+  // null = tắt. Scheduler quét cột này — xem jobs.ts.
+  reindexCron: text("reindex_cron"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

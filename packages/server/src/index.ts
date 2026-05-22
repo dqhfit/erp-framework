@@ -42,6 +42,23 @@ const KB_SEARCH_TOOL: ToolDef = {
   },
 };
 
+/* Tool lưu nội dung vào Knowledge Base — chỉ cấp cho vai trò có
+   quyền create:knowledge. Tạo một nguồn tri thức dạng văn bản. */
+const KB_ADD_TOOL: ToolDef = {
+  name: "knowledge_add",
+  description:
+    "Lưu một đoạn nội dung vào Knowledge Base của công ty (tạo nguồn tri thức "
+    + "dạng văn bản). Dùng khi người dùng yêu cầu ghi nhớ / lưu lại thông tin.",
+  schema: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Tiêu đề ngắn cho nội dung" },
+      content: { type: "string", description: "Nội dung cần lưu vào tri thức" },
+    },
+    required: ["title", "content"],
+  },
+};
+
 async function main(): Promise<void> {
   const app = Fastify({ logger: true });
 
@@ -121,16 +138,21 @@ async function main(): Promise<void> {
     const emit = (e: unknown) => raw.write(`data: ${JSON.stringify(e)}\n\n`);
     try {
       await assertWithinBudget(db, active.companyId);
-      // callTool: tool "knowledge_search" xử lý server-side (tra cứu KB);
-      // các tool khác rơi về MCP.
+      // callTool: "knowledge_search"/"knowledge_add" xử lý server-side;
+      // các tool khác rơi về MCP. knowledge_add chỉ cấp khi đủ quyền.
       const mcpCallTool = makeCallTool(db, active.companyId);
+      const canAddKb = roleCan(active.role, "create", "knowledge");
       await runAgentChat({
         db,
         companyId: active.companyId,
         profileName: body.profileName,
         system: body.system ?? "Bạn là trợ lý ERP.",
         messages: body.messages ?? [],
-        tools: [...(body.tools ?? []), KB_SEARCH_TOOL],
+        tools: [
+          ...(body.tools ?? []),
+          KB_SEARCH_TOOL,
+          ...(canAddKb ? [KB_ADD_TOOL] : []),
+        ],
         callTool: async (name, args) => {
           if (name === "knowledge_search") {
             const hits = await knowledgeSearch(
@@ -140,6 +162,23 @@ async function main(): Promise<void> {
               content: h.content,
               score: Number(h.score.toFixed(3)),
             }));
+          }
+          if (name === "knowledge_add") {
+            if (!canAddKb) throw new Error("Không có quyền thêm tri thức.");
+            const title = String(args.title ?? "").trim() || "Ghi chú từ chat";
+            const content = String(args.content ?? "").trim();
+            if (!content) throw new Error("Nội dung lưu vào tri thức bị trống.");
+            const [row] = await db.insert(knowledgeSources).values({
+              companyId: active.companyId,
+              kind: "text",
+              title,
+              status: "pending",
+              meta: { text: content },
+              createdBy: s.userId,
+            }).returning();
+            if (!row) throw new Error("Không tạo được nguồn tri thức.");
+            await enqueueKbIngest(row.id);
+            return { ok: true, sourceId: row.id, title };
           }
           return mcpCallTool(name, args);
         },

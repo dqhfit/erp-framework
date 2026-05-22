@@ -13,6 +13,10 @@ export interface KnowledgeSource {
   status: "pending" | "processing" | "ready" | "error";
   chunkCount: number;
   error: string | null;
+  /** Biểu thức cron tự nạp lại (chỉ nguồn entity); null = tắt. */
+  reindexCron: string | null;
+  /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. */
+  meta?: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -57,6 +61,13 @@ export function createKnowledgeClient(baseUrl: string) {
       trpc.knowledge.addEntity.mutate({ entityId, title }),
     /** Nạp lại một nguồn. */
     reindex: (id: string) => trpc.knowledge.reindex.mutate(id),
+    /** Sửa nguồn: tiêu đề / nội dung văn bản / lịch tự nạp lại
+       (reindexCron: chuỗi cron, hoặc null để tắt). */
+    update: (id: string, patch: {
+      title?: string;
+      text?: string;
+      reindexCron?: string | null;
+    }) => trpc.knowledge.sources.update.mutate({ id, ...patch }),
     /** Tra cứu ANN cosine. */
     search: (query: string, limit?: number) =>
       trpc.knowledge.search.query({ query, limit }),
