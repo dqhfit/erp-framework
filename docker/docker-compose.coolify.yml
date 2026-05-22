@@ -1,0 +1,132 @@
+# =============================================================
+# Triển khai ERP Framework lên Coolify như MỘT dịch vụ (Docker
+# Compose). Trong Coolify: + New Resource → Service → Docker
+# Compose Empty → trỏ repo này, Compose Path = file này.
+# Coolify tự sinh FQDN, mật khẩu, khoá mã hoá qua biến SERVICE_*.
+# Hướng dẫn chi tiết: docs/COOLIFY.md.
+# =============================================================
+
+services:
+  db:
+    # pgvector/pgvector:pg18 — PostgreSQL 18 + extension pgvector
+    # cài sẵn (migration 0007 cần `CREATE EXTENSION vector`).
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_DB}
+      POSTGRES_DB: erp_framework
+    volumes:
+      - erp-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp_framework"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  # Apache Tika — sidecar trích văn bản từ file cho Knowledge Base
+  # (PDF/DOCX/XLSX/PPTX/TXT…). Không expose ra Internet.
+  tika:
+    image: apache/tika:3.2.1.0-full
+    restart: unless-stopped
+    expose:
+      - "9998"
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://erp:${SERVICE_PASSWORD_64_DB}@db:5432/erp_framework
+      PORT: "8910"
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      # ENCRYPTION_KEY — mã hoá API key LLM/sensitive lưu trong DB
+      # (AES-256-GCM). Coolify giữ ổn định qua mọi lần redeploy —
+      # KHÔNG đổi sau khi đã có dữ liệu mã hoá.
+      ENCRYPTION_KEY: ${SERVICE_BASE64_64_KEY}
+      # Server fail-fast ở production nếu thiếu CORS_ORIGIN.
+      # SERVICE_FQDN_APP là URL HTTPS công khai Coolify cấp cho "app".
+      CORS_ORIGIN: ${SERVICE_FQDN_APP}
+      TIKA_URL: http://tika:9998
+      UPLOAD_DIR: /data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      tika:
+        condition: service_started
+    volumes:
+      - erp-uploads:/data/uploads
+    # Chỉ expose nội bộ — nginx (app) proxy /trpc → server:8910.
+    expose:
+      - "8910"
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      # Khai báo biến này → Coolify cấp FQDN HTTPS + route Traefik
+      # tới cổng 80 của nginx. Đây là cửa ra DUY NHẤT của dịch vụ.
+      - SERVICE_FQDN_APP_80
+
+  # Claude Code CLI Bridge — dùng `claude` CLI làm nguồn LLM (auth
+  # subscription Pro/Max thay cho API token). Đăng nhập MỘT LẦN sau
+  # khi container chạy qua Terminal trong Coolify:
+  #   docker exec -it <id-bridge> claude
+  # → mở URL OAuth ở trình duyệt local → đăng nhập. Token lưu vào
+  # volume bridge-data, persist qua mọi lần redeploy.
+  # KHÔNG expose ra Internet — nginx (app) proxy /bridge → bridge:8909.
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    restart: unless-stopped
+    volumes:
+      - bridge-data:/data
+    expose:
+      - "8909"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8909/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Ollama — sinh embedding cục bộ cho Knowledge Base. Server gọi
+  # nội bộ http://ollama:11434 (cấu hình trong app → Cài đặt →
+  # Embedding). Model nomic-embed-text (768 chiều, ~275MB).
+  # KHÔNG expose ra Internet.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    expose:
+      - "11434"
+
+  # Một-lần: chờ ollama sẵn sàng rồi kéo model nomic-embed-text.
+  # Container thoát 0 sau khi xong; redeploy chỉ kiểm tra nhanh
+  # (model đã trong volume).
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
+    restart: "no"
+
+volumes:
+  erp-pgdata:
+  erp-uploads:
+  bridge-data:
+  ollama-data:
