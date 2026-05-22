@@ -191,11 +191,12 @@
   <a class="appbtn" href="/settings/embedding" target="_blank" rel="noopener">Mở Cấu hình Embedding</a>
 
   <h3>Bước 2 — Thêm nguồn tri thức</h3>
-  <p>Vào trang <b>Tri thức</b>. Có 3 cách nạp:</p>
+  <p>Vào trang <b>Tri thức</b>. Có 4 cách nạp:</p>
   <ul>
     <li><b>Văn bản dán tay</b> — dán nội dung (chính sách, ghi chú…) kèm tiêu đề.</li>
     <li><b>Dữ liệu một Entity</b> — chọn Entity để đưa toàn bộ bản ghi vào kho.</li>
     <li><b>Tải file</b> — PDF, DOCX, XLSX, PPTX, TXT… (tối đa 25MB).</li>
+    <li><b>Từ khung chat</b> — lưu câu trả lời của trợ lý AI vào kho (xem mục 7).</li>
   </ul>
   <p>Nguồn mới sẽ chạy nền: <code>Chờ xử lý</code> → <code>Đang xử lý</code> → <code>Sẵn sàng</code>.</p>
   <a class="appbtn" href="/knowledge" target="_blank" rel="noopener">Mở Knowledge Base</a>
@@ -205,6 +206,21 @@
 
   <h3>Bước 4 — Hỏi trợ lý AI</h3>
   <p>Mở Trợ lý AI và đặt câu hỏi — agent tự động tra Knowledge Base để trả lời theo dữ liệu nội bộ của bạn.</p>
+
+  <h3>Bước 5 — Quản lý &amp; cập nhật nguồn</h3>
+  <p>Mỗi nguồn trong danh sách có các thao tác:</p>
+  <ul>
+    <li><b>Sửa</b> — đổi tiêu đề (mọi nguồn); riêng nguồn văn bản dán tay sửa
+      được cả nội dung (lưu xong tự nạp lại).</li>
+    <li><b>Nạp lại</b> — xử lý lại nguồn theo dữ liệu mới nhất.</li>
+    <li><b>Xoá</b> — gỡ nguồn khỏi kho.</li>
+  </ul>
+  <p>
+    <b>Tự động nạp lại (nguồn Entity).</b> Khi bấm <b>Sửa</b> một nguồn kiểu
+    Entity, bạn đặt được <b>lịch tự động nạp lại</b> — mỗi giờ, 8h sáng hằng ngày,
+    mỗi 15 phút, hoặc biểu thức cron tự do. Nhờ đó kho tri thức luôn theo kịp dữ
+    liệu Entity mà không cần nạp lại thủ công. Dòng nguồn có lịch hiện biểu tượng ⏰.
+  </p>
 
   <div class="callout warn">
     <b>Lưu ý:</b> phải hoàn tất Bước 1 (Embedding) trước, nếu không nguồn tri thức sẽ
@@ -220,6 +236,12 @@
     trợ lý luôn hỏi xác nhận.
   </p>
   <p>Cần kết nối một model chat ở <b>Cài đặt → LLM</b> thì trợ lý mới hoạt động.</p>
+  <p>
+    <b>Lưu câu trả lời vào tri thức.</b> Dưới mỗi câu trả lời của trợ lý có nút
+    <b>"Lưu vào tri thức"</b> — bấm để đưa nội dung đó thành một nguồn trong
+    Knowledge Base. Hoặc nói với trợ lý <i>"lưu đoạn này vào kho tri thức"</i> —
+    trợ lý sẽ tự thực hiện.
+  </p>
   <a class="appbtn" href="/settings/llm" target="_blank" rel="noopener">Mở Cài đặt LLM</a>
 </section>
 
