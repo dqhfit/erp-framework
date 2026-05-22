@@ -7,6 +7,7 @@
     "dev": "concurrently -n app,server -c blue,green \"vite\" \"pnpm --filter @erp-framework/server dev\"",
     "dev:app": "vite",
     "dev:server": "pnpm --filter @erp-framework/server dev",
+    "dev:setup": "node tooling/dev-setup.mjs",
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "preview": "vite preview",

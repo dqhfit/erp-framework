@@ -2,6 +2,12 @@
 # (nginx) + Apache Tika + bridge.
 # Chạy:  docker compose -f docker/docker-compose.yml up -d --build
 # Truy cập:  http://localhost:3000   (nginx phục vụ SPA, proxy /trpc → server)
+
+# Tên project Compose — gom container vào nhóm "erp-framework". Mặc định
+# Compose lấy tên theo thư mục chứa file compose ("docker"); khai báo
+# tường minh để tên nhóm rõ nghĩa (container: erp-framework-db-1…).
+name: erp-framework
+
 services:
   db:
     # pgvector/pgvector:pg18 = PostgreSQL 18 + extension pgvector cài sẵn
@@ -51,6 +57,10 @@ services:
       HOST: 0.0.0.0
       NODE_ENV: production
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-please-change-this-encryption-key}
+      # CORS — server kiểm fail-fast ở production (bắt buộc khai báo).
+      # Trình duyệt gọi nginx (cùng origin) nên giá trị này chủ yếu để
+      # qua cửa kiểm; đặt theo domain thật khi mở ra ngoài Internet.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       # Knowledge Base — sidecar Tika + thư mục lưu file tải lên.
       TIKA_URL: http://tika:9998
       UPLOAD_DIR: /data/uploads
@@ -101,7 +111,38 @@ services:
       retries: 5
       start_period: 10s
 
+  # Ollama — sinh embedding cục bộ cho Knowledge Base. Chạy chung với
+  # stack khi deploy. Model nhẹ nomic-embed-text (~275MB, chạy CPU tốt)
+  # do service ollama-pull tự kéo về. Trong app → Cài đặt → Embedding
+  # đặt endpoint = http://ollama:11434
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    # Mở cổng ra host để dev (server chạy trên host) cũng gọi được.
+    ports:
+      - "${ERP_OLLAMA_PORT:-11434}:11434"
+    expose:
+      - "11434"
+
+  # Một-lần: chờ ollama sẵn sàng rồi kéo model embedding, xong thì thoát.
+  # Idempotent — lần deploy sau model đã nằm trong volume, pull chỉ kiểm
+  # tra nhanh. Container này hiện trạng thái Exited(0) sau khi xong.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
+    restart: "no"
+
 volumes:
   erp-pgdata:
   bridge-data:
   erp-uploads:
+  ollama-data:
