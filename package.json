@@ -22,7 +22,9 @@
     "db:down": "docker compose -f docker/docker-compose.yml stop db",
     "db:migrate": "pnpm --filter @erp-framework/db migrate",
     "e2e": "playwright test",
-    "e2e:full": "node tooling/e2e-full.mjs"
+    "e2e:full": "node tooling/e2e-full.mjs",
+    "backup": "node tooling/backup.mjs",
+    "restore": "node tooling/restore.mjs"
   },
   "dependencies": {
     "@erp-framework/core": "workspace:*",

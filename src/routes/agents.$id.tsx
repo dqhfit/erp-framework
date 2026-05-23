@@ -21,7 +21,9 @@ interface AgentState {
   adapter?: string;
 }
 
-function inferAdapterFromModel(model: string): string {
+function inferAdapterFromModel(model: string | undefined | null): string {
+  // Guard — agent mới tạo có thể chưa có model; tránh crash startsWith.
+  if (!model) return "claude";
   if (model.startsWith("claude-")) return "claude";
   if (model.startsWith("gpt-") || /^o[1-9]/.test(model)) return "openai";
   if (model.startsWith("gemini-")) return "gemini";
@@ -49,7 +51,9 @@ function AgentRoute() {
 
   const [state, setState] = useState<AgentState>({
     name: agent.name,
-    model: agent.model,
+    // Fallback nếu agent backend không có model — agent mới tạo, hydrate
+    // race v.v. — tránh propagate undefined xuống useDynamicModels.
+    model: agent.model || "claude-sonnet-4-6",
     systemPrompt:
       "Bạn là trợ lý " + agent.name.toLowerCase() + " cho công ty.\n" +
       "Quy tắc:\n" +

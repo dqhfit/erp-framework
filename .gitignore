@@ -37,6 +37,10 @@ test-results/
 playwright-report/
 .codegraph/
 
+# Backup tarball + Claude session data (local)
+backups/
+.claude/
+
 # compiled output (TS project — .js belongs in dist/ only)
 src/**/*.js
 src/**/*.js.map

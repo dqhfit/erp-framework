@@ -327,8 +327,9 @@ export function Sidebar() {
 
       <div className="border-t border-border py-1">
         <NavGroup title={t("sidebar.group_ops")} collapsed={collapsed}>
-          <SidebarItem to="/server-data" active={pathname === "/server-data"}
-            icon={<I.Database size={14} />} collapsed={collapsed} label={t("sidebar.server_data")} />
+          {/* /server-data ẩn khỏi Sidebar — Sidebar đã auto-hydrate từ
+              __root.tsx; trang chỉ dành cho admin debug raw record/MCP,
+              truy cập trực tiếp qua URL khi cần. */}
           <SidebarItem to="/activity" active={pathname === "/activity"}
             icon={<I.Activity size={14} />} collapsed={collapsed} label={t("sidebar.activity")} />
           <SidebarItem to="/approvals" active={pathname === "/approvals"}

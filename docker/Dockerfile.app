@@ -3,6 +3,7 @@
 #   Stage 2: serve dist/ bằng nginx — SPA fallback + proxy /trpc → server.
 FROM node:22-slim AS build
 RUN npm install -g pnpm@11
+RUN pnpm config set minimum-release-age 0 && pnpm config set verify-deps-before-run false
 WORKDIR /app
 
 # Copy toàn bộ monorepo (node_modules đã bị .dockerignore loại trừ).
@@ -16,7 +17,7 @@ COPY . .
 # esbuild/@swc/core/biome đời mới nạp binary native qua optionalDependencies
 # theo nền tảng (vẫn được cài) nên vite build vẫn chạy; postinstall chỉ là
 # bước tối ưu. pnpm rebuild sau đó chạy lại script cho các gói cần (nếu có).
-RUN pnpm install --ignore-scripts
+RUN pnpm install --ignore-scripts --config.minimum-release-age=0
 RUN pnpm rebuild esbuild @swc/core @biomejs/biome || true
 
 # Chạy thẳng "vite build" thay vì "pnpm build" (tsc && vite build):

@@ -2,6 +2,10 @@
 # node:22-slim (Debian/glibc) — tránh rắc rối native module trên Alpine/musl.
 FROM node:22-slim
 RUN npm install -g pnpm@11
+# pnpm 11 mặc định bật policy chặn cài package mới publish trong ~24h —
+# vỡ build mỗi khi dep vừa lên npm. Tắt một lần qua config user-level.
+RUN pnpm config set minimum-release-age 0 \
+  && pnpm config set verify-deps-before-run false
 WORKDIR /app
 
 # Copy toàn bộ monorepo (node_modules đã bị .dockerignore loại trừ).
@@ -13,7 +17,7 @@ COPY . .
 # coi đó là LỖI (ERR_PNPM_IGNORED_BUILDS, exit 1) khi chạy không tương tác.
 # Cờ này là chỉ thị tường minh → pnpm thoát 0. tsx chạy server dựa trên
 # esbuild — esbuild nạp binary qua optionalDependencies nên vẫn hoạt động.
-RUN pnpm install --filter "@erp-framework/server..." --ignore-scripts
+RUN pnpm install --filter "@erp-framework/server..." --ignore-scripts --config.minimum-release-age=0
 RUN pnpm rebuild esbuild || true
 
 EXPOSE 8910
