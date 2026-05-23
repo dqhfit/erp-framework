@@ -1,8 +1,17 @@
 # Sao lưu & khôi phục lên Google Drive
 
-Một lệnh — `pnpm backup` — đóng gói **đầy đủ** dữ liệu ERP Framework (DB
-PostgreSQL + thư mục file tải lên) thành một tar.gz và đẩy lên Google
-Drive bằng service account.
+Có **2 đường** sao lưu, dùng song song:
+
+| Cách | Dùng khi | Định dạng |
+|---|---|---|
+| **UI** `/settings/backup` (khuyến nghị) | Hằng ngày — chạy server-side, có lịch cron, không treo máy host. | DB dump (file mới mỗi lần) + uploads sync **incremental** (1-1 vào Drive). |
+| **CLI** `pnpm backup` | Ad-hoc / cron host / DR ở máy ngoài. | Tarball đầy đủ DB + uploads. |
+
+**Sync incremental (UI)**: chỉ upload file MỚI hoặc đã ĐỔI (so size +
+mtime). Hàng nghìn file không đổi → bỏ qua, không tốn băng thông.
+
+**Tarball (CLI)**: nén toàn bộ uploads mỗi lần. Phù hợp DR (1 file = 1
+bản chụp đầy đủ) nhưng tốn băng thông nếu uploads lớn.
 
 ## Phạm vi sao lưu
 
@@ -17,6 +26,41 @@ Drive bằng service account.
 - Docker stack đang chạy (`docker compose -f docker/docker-compose.yml ps`).
 - Có thể chạy `docker exec` ở host.
 - Node 22+ (đã có sẵn cho `pnpm dev`).
+
+## Cách 1: UI `/settings/backup` (khuyến nghị)
+
+Sau khi setup service account (mục Setup bên dưới):
+
+1. Mở **Settings → Sao lưu** trong app.
+2. Dán toàn bộ nội dung file JSON service account vào ô **Service
+   account JSON key**.
+3. Dán **Folder ID** Google Drive (lấy từ URL thư mục đã share).
+4. Bấm **Test kết nối** — phải hiện ✓ "Kết nối được — thư mục …".
+5. (Tuỳ chọn) chọn lịch cron — preset "Mỗi ngày 3h sáng" / "Mỗi 6 giờ"…
+6. Bấm **Lưu cấu hình**.
+7. Bấm **Backup ngay** — job chạy server-side, vài giây sau xuất hiện
+   trong "Lịch sử sao lưu". Trạng thái: running → done.
+
+Sau đó cron tự chạy theo lịch — không cần can thiệp.
+
+**Cấu trúc trong Drive folder của bạn:**
+```
+<your-folder>/
+  db/
+    erp-db-2026-05-23T08-30-00-000Z.dump   (file mới mỗi lần backup)
+    erp-db-2026-05-22T03-00-00-000Z.dump
+    ...
+  uploads/
+    <companyId>__<filename>                 (mirror, sync incremental)
+    ...
+```
+
+**Đa công ty**: mỗi công ty một cấu hình riêng (`backup_config` được
+multi-tenant). Mỗi công ty backup vào folder của riêng nó.
+
+## Cách 2: CLI `pnpm backup` (tarball đầy đủ)
+
+Cần Docker stack đang chạy ở host. Đóng gói tất cả thành 1 tarball.
 
 ## Setup Google Drive (một-lần)
 

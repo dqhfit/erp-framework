@@ -447,3 +447,54 @@ export const iotCommands = pgTable("iot_commands", {
   deviceStatusIdx: index("iot_commands_device_status_idx")
     .on(t.deviceId, t.status),
 }));
+
+/* ─── Backup — sao lưu lên Google Drive (UI/cron) ───────── */
+/* Mỗi công ty 1 cấu hình. gdriveKeyEnc = JSON service account key đã
+   mã hoá AES-256-GCM. scheduleCron NULL = chỉ chạy thủ công. */
+export const backupConfig = pgTable("backup_config", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  gdriveKeyEnc: text("gdrive_key_enc").notNull(),
+  gdriveFolderId: text("gdrive_folder_id").notNull(),
+  scheduleCron: text("schedule_cron"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyUidx: uniqueIndex("backup_config_company_uidx").on(t.companyId),
+}));
+
+/* Lịch sử các lần backup. status: running → done | error. */
+export const backupRuns = pgTable("backup_runs", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("running"),
+  trigger: text("trigger").notNull().default("manual"),
+  dbDriveFileId: text("db_drive_file_id"),
+  dbBytes: integer("db_bytes"),
+  uploadsSynced: integer("uploads_synced").notNull().default(0),
+  uploadsSkipped: integer("uploads_skipped").notNull().default(0),
+  uploadsBytes: integer("uploads_bytes").notNull().default(0),
+  error: text("error"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  finishedAt: timestamp("finished_at"),
+}, (t) => ({
+  companyStartedIdx: index("backup_runs_company_started_idx")
+    .on(t.companyId, t.startedAt),
+}));
+
+/* Mapping file local → file Drive. Tránh quét Drive mỗi lần sync. */
+export const uploadSyncState = pgTable("upload_sync_state", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  relPath: text("rel_path").notNull(),
+  driveFileId: text("drive_file_id").notNull(),
+  size: integer("size").notNull(),
+  mtime: timestamp("mtime").notNull(),
+  syncedAt: timestamp("synced_at").defaultNow().notNull(),
+}, (t) => ({
+  companyPathUidx: uniqueIndex("upload_sync_state_company_path_uidx")
+    .on(t.companyId, t.relPath),
+}));

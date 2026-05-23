@@ -61,3 +61,9 @@ export {
   type IotTelemetryRow,
   type IotCommandRow,
 } from "./iot";
+export {
+  createBackupClient,
+  type BackupClient,
+  type BackupConfigView,
+  type BackupRun,
+} from "./backup";

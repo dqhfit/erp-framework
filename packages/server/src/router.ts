@@ -23,6 +23,7 @@ import { pluginsRouter } from "./plugins-router";
 import { embedRouter } from "./embed-router";
 import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
+import { backupRouter } from "./backup-router";
 import { encryptSecret, decryptSecret } from "./crypto";
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
@@ -641,6 +642,9 @@ export const appRouter = router({
 
   /* ── IoT — thiết bị gửi/nhận dữ liệu (REST riêng ở /iot/v1) ── */
   iot: iotRouter,
+
+  /* ── Backup — sao lưu DB + sync uploads lên Google Drive ── */
+  backup: backupRouter,
 
   /* ── Xuất/nhập cấu hình (entity+page+workflow+agent) ── */
   transfer: router({

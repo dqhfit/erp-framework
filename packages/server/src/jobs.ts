@@ -9,6 +9,7 @@ import PgBoss from "pg-boss";
 import { eq, sql, lt, isNotNull } from "drizzle-orm";
 import {
   schedules, agentHeartbeats, entitySyncs, sessions, knowledgeSources,
+  backupConfig, backupRuns,
 } from "@erp-framework/db";
 import { cronMatches } from "@erp-framework/core";
 import { db } from "./db";
@@ -16,6 +17,7 @@ import { executeWorkflow } from "./run-workflow";
 import { runHeartbeat } from "./run-heartbeat";
 import { runEntitySync } from "./run-entity-sync";
 import { runKbIngest } from "./run-kb-ingest";
+import { runBackup } from "./backup";
 
 const QUEUE_RUN = "workflow-run";
 const QUEUE_TICK = "scheduler-tick";
@@ -24,6 +26,8 @@ const QUEUE_ENTITY_SYNC = "entity-sync-run";
 const QUEUE_SESSION_CLEANUP = "session-cleanup";
 /** Queue nạp tri thức Knowledge Base (trích + chunk + embed). */
 export const QUEUE_KB_INGEST = "kb-ingest";
+/** Queue chạy backup lên Google Drive (mỗi company một row). */
+const QUEUE_BACKUP = "backup-run";
 
 interface RunJobData {
   workflowId: string;
@@ -42,6 +46,10 @@ interface EntitySyncJobData {
 interface KbIngestJobData {
   sourceId: string;
 }
+interface BackupJobData {
+  runId: string;
+  companyId: string;
+}
 
 let boss: PgBoss | null = null;
 
@@ -57,6 +65,7 @@ export async function startJobs(): Promise<void> {
   await boss.createQueue(QUEUE_ENTITY_SYNC);
   await boss.createQueue(QUEUE_SESSION_CLEANUP);
   await boss.createQueue(QUEUE_KB_INGEST);
+  await boss.createQueue(QUEUE_BACKUP);
 
   // Worker: chạy workflow khi có job.
   await boss.work<RunJobData>(QUEUE_RUN, async (jobs) => {
@@ -108,6 +117,31 @@ export async function startJobs(): Promise<void> {
     }
   });
 
+  // Worker: chạy backup cho một company. Cập nhật backup_runs.
+  await boss.work<BackupJobData>(QUEUE_BACKUP, async (jobs) => {
+    for (const job of jobs) {
+      const { runId, companyId } = job.data;
+      try {
+        const r = await runBackup(companyId);
+        await db.update(backupRuns).set({
+          status: "done",
+          dbDriveFileId: r.dbDriveFileId,
+          dbBytes: r.dbBytes,
+          uploadsSynced: r.uploadsSynced,
+          uploadsSkipped: r.uploadsSkipped,
+          uploadsBytes: r.uploadsBytes,
+          finishedAt: new Date(),
+        }).where(eq(backupRuns.id, runId));
+      } catch (e) {
+        const msg = (e as Error).message;
+        console.error("[backup] lỗi:", msg);
+        await db.update(backupRuns).set({
+          status: "error", error: msg, finishedAt: new Date(),
+        }).where(eq(backupRuns.id, runId));
+      }
+    }
+  });
+
   // Worker: dọn phiên đăng nhập đã hết hạn — tránh bảng sessions
   // phình vô hạn (phiên TTL 7 ngày nhưng không tự xoá khi hết hạn).
   await boss.work(QUEUE_SESSION_CLEANUP, async () => {
@@ -153,6 +187,17 @@ export async function startJobs(): Promise<void> {
         await b.send(QUEUE_KB_INGEST, { sourceId: ks.id });
       }
     }
+    // Backup — company có schedule_cron tới hạn → tạo run + enqueue.
+    const bcfgs = await db.select().from(backupConfig)
+      .where(isNotNull(backupConfig.scheduleCron));
+    for (const bc of bcfgs) {
+      if (bc.scheduleCron && cronMatches(bc.scheduleCron, now)) {
+        const [run] = await db.insert(backupRuns).values({
+          companyId: bc.companyId, trigger: "cron",
+        }).returning({ id: backupRuns.id });
+        if (run) await b.send(QUEUE_BACKUP, { runId: run.id, companyId: bc.companyId });
+      }
+    }
   });
 
   // Cron: phát một job tick mỗi phút (idempotent — gọi lại chỉ cập nhật).
@@ -188,4 +233,19 @@ export async function enqueueWorkflowRun(
     throw new Error("Job runner chưa sẵn sàng — thử lại sau giây lát.");
   }
   await boss.send(QUEUE_RUN, { workflowId, triggerContext });
+}
+
+/** Tạo backup_runs row + enqueue job. Trả runId để client theo dõi. */
+export async function enqueueBackupRun(
+  companyId: string, trigger: "manual" | "cron" = "manual",
+): Promise<string> {
+  if (!boss) {
+    throw new Error("Job runner chưa sẵn sàng — thử lại sau giây lát.");
+  }
+  const [row] = await db.insert(backupRuns).values({
+    companyId, trigger, status: "running",
+  }).returning({ id: backupRuns.id });
+  if (!row) throw new Error("Không tạo được backup_runs row.");
+  await boss.send(QUEUE_BACKUP, { runId: row.id, companyId });
+  return row.id;
 }

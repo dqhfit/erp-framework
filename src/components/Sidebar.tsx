@@ -354,6 +354,8 @@ export function Sidebar() {
             icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.mcp_server")} />
           <SidebarItem to="/settings/transfer" active={pathname === "/settings/transfer"}
             icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.transfer")} />
+          <SidebarItem to="/settings/backup" active={pathname === "/settings/backup"}
+            icon={<I.Save size={14} />} collapsed={collapsed} label="Sao lưu" />
           <SidebarItem to="/settings/plugins" active={pathname === "/settings/plugins"}
             icon={<I.Package size={14} />} collapsed={collapsed} label={t("sidebar.plugins")} />
           <SidebarItem to="/settings/embed" active={pathname === "/settings/embed"}
