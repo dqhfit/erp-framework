@@ -67,6 +67,8 @@ export const chromeVi: Dict = {
   "auth.checking": "Đang kiểm tra phiên…",
   "auth.login_failed": "Đăng nhập thất bại",
   "auth.register_failed": "Đăng ký thất bại",
+  "auth.error_rate_limit": "Quá nhiều lần thử, vui lòng đợi vài phút.",
+  "auth.banner_first_admin_existed": "Tài khoản quản trị đã được khởi tạo. Vui lòng đăng nhập.",
 
   // oauth callback
   "oauth.verifying": "Đang xác thực với Anthropic...",
@@ -140,6 +142,8 @@ export const chromeEn: Dict = {
   "auth.checking": "Checking session…",
   "auth.login_failed": "Sign-in failed",
   "auth.register_failed": "Registration failed",
+  "auth.error_rate_limit": "Too many attempts, please wait a few minutes.",
+  "auth.banner_first_admin_existed": "Admin account already exists. Please sign in.",
 
   // oauth callback
   "oauth.verifying": "Authenticating with Anthropic...",

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { useUI } from "@/stores/ui";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 import { I } from "@/components/Icons";
 import { Button, Chip, Textarea, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -45,11 +47,22 @@ export function AgentPanel() {
   const t = useT();
   // Khi đang ở /agents/$id → bind chat với agent đó: server đọc memory
   // + dùng model (+ fallback) của agent thay cho profileName của user.
+  // Fallback priority (xem plan ph-n-t-ch-to-n-b-iterative-hammock):
+  //   1. URL /agents/$id   2. primary của user   3. CEO của company   4. null
   const pathname = useLocation({ select: (l) => l.pathname });
+  const primaryAgentId = useAuth((s) => s.primaryAgentId);
+  const allAgents = useUserObjects((s) => s.agents);
   const boundAgentId = useMemo(() => {
     const m = pathname.match(/^\/agents\/([^/?#]+)/);
-    return m && m[1] !== "$id" ? m[1] : null;
-  }, [pathname]);
+    if (m && m[1] !== "$id") return m[1];
+    if (primaryAgentId && allAgents.find((a) => a.id === primaryAgentId)) {
+      return primaryAgentId;
+    }
+    // CEO mặc định: tìm agent tên "CEO" trong company (đã seed). So sánh
+    // case-insensitive để tránh lệch viết hoa.
+    const ceo = allAgents.find((a) => a.name.toLowerCase() === "ceo");
+    return ceo?.id ?? null;
+  }, [pathname, primaryAgentId, allAgents]);
   // RBAC — chỉ hiện nút "Lưu vào tri thức" khi có quyền create:knowledge.
   const rbacRole = useRbac((s) => s.role);
   const rbacEnforce = useRbac((s) => s.enforce);

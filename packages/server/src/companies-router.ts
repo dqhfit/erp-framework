@@ -7,11 +7,38 @@
    Vai trò HIỆU LỰC theo từng công ty — xem company_members.
    ========================================================== */
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { companies, companyMembers, users, sessions } from "@erp-framework/db";
+import { companies, companyMembers, users, sessions, userInvites } from "@erp-framework/db";
 import { router, protectedProcedure, rbacProcedure } from "./trpc";
-import { hashPassword } from "./auth";
+import { hashPassword, newSessionToken } from "./auth";
+import { logActivity } from "./activity";
+import type { DB } from "./db";
+
+/* TTL của invite token: 7 ngày, đồng nhất với session TTL. */
+export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Sinh invite token mới + lưu DB. Trả về raw token (chỉ tồn tại trong
+   bộ nhớ máy gọi — không lưu lại). Reset invite cũ pending của cặp
+   (user, company) — chỉ có 1 invite hoạt động tại một thời điểm. */
+export async function createInvite(
+  db: DB,
+  userId: string, companyId: string, role: "admin"|"editor"|"viewer",
+  invitedBy: string | null,
+): Promise<string> {
+  const token = newSessionToken();
+  // Xoá invite pending cũ (chưa accept) của cặp (user, company).
+  await db.delete(userInvites).where(and(
+    eq(userInvites.userId, userId),
+    eq(userInvites.companyId, companyId),
+    isNull(userInvites.acceptedAt),
+  ));
+  await db.insert(userInvites).values({
+    userId, companyId, token, role, invitedBy,
+    expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+  });
+  return token;
+}
 
 const roleEnum = z.enum(["admin", "editor", "viewer"]);
 
@@ -100,7 +127,9 @@ export const companiesRouter = router({
       return co;
     }),
 
-  /* Thành viên của công ty đang chọn. */
+  /* Thành viên của công ty đang chọn. Kèm "pending = true" nếu user
+     chưa accept invite (passwordHash rỗng — placeholder do addMember
+     tạo). UI hiện chip "chờ accept" + nút "Gửi lại link". */
   members: rbacProcedure("view", "company").query(({ ctx }) =>
     ctx.db
       .select({
@@ -109,14 +138,20 @@ export const companiesRouter = router({
         name: users.name,
         role: companyMembers.role,
         joinedAt: companyMembers.createdAt,
+        // passwordHash rỗng = invite chưa accept → user "pending".
+        pending: sql<boolean>`(${users.passwordHash} = '')`,
       })
       .from(companyMembers)
       .innerJoin(users, eq(companyMembers.userId, users.id))
       .where(eq(companyMembers.companyId, ctx.user.companyId)),
   ),
 
-  /* Thêm thành viên vào công ty đang chọn. Email chưa có tài khoản →
-     tạo user mới (cần password). Email đã có → chỉ gắn quyền. */
+  /* Thêm thành viên vào công ty đang chọn.
+     - input.password CÓ        → tạo user + set password ngay (legacy path).
+     - input.password KHÔNG có   → tạo user với passwordHash="" placeholder,
+                                   sinh invite token, trả về inviteLink.
+     - Email đã có user          → chỉ gắn quyền, KHÔNG đụng password.
+     Return: { ok, inviteLink?, userId, pending } — admin copy link gửi cho user. */
   addMember: rbacProcedure("edit", "company")
     .input(z.object({
       email: z.string().email(),
@@ -126,30 +161,85 @@ export const companiesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const role = input.role ?? "viewer";
-      let [u] = await ctx.db.select({ id: users.id }).from(users)
-        .where(eq(users.email, input.email));
+      let [u] = await ctx.db.select({ id: users.id, passwordHash: users.passwordHash })
+        .from(users).where(eq(users.email, input.email));
+      let createdNew = false;
       if (!u) {
-        if (!input.password) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Email chưa có tài khoản — cần đặt mật khẩu (≥8 ký tự) để tạo mới.",
-          });
-        }
-        [u] = await ctx.db.insert(users).values({
+        // Tạo user mới — password OPTIONAL: nếu không có thì để rỗng
+        // (placeholder), sinh invite link để user tự đặt sau.
+        const passwordHash = input.password
+          ? await hashPassword(input.password)
+          : "";  // empty = "pending invite" — verifyPassword sẽ trả false.
+        const [created] = await ctx.db.insert(users).values({
           email: input.email,
           name: input.name ?? input.email,
-          passwordHash: await hashPassword(input.password),
+          passwordHash,
           role,
-        }).returning({ id: users.id });
+        }).returning({ id: users.id, passwordHash: users.passwordHash });
+        if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        u = created;
+        createdNew = true;
       }
-      if (!u) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await ctx.db.insert(companyMembers)
         .values({ companyId: ctx.user.companyId, userId: u.id, role })
         .onConflictDoUpdate({
           target: [companyMembers.companyId, companyMembers.userId],
           set: { role },
         });
-      return { ok: true };
+
+      const isPending = u.passwordHash === "";
+      let inviteLink: string | undefined;
+      if (isPending) {
+        const token = await createInvite(
+          ctx.db, u.id, ctx.user.companyId, role, ctx.user.id);
+        inviteLink = `/invite?token=${token}`;
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "user.invite_sent",
+          objectType: "user",
+          target: u.id,
+          detail: `${createdNew ? "Tạo + mời" : "Mời lại"} ${input.email} (role=${role})`,
+          actorUserId: ctx.user.id,
+        });
+      }
+      return { ok: true, userId: u.id, pending: isPending, inviteLink };
+    }),
+
+  /** Gửi lại invite cho user pending — sinh token mới, xoá token cũ. */
+  resendInvite: rbacProcedure("edit", "company")
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [u] = await ctx.db.select({
+        id: users.id, email: users.email, passwordHash: users.passwordHash,
+      }).from(users).where(eq(users.id, input.userId));
+      if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "User không tồn tại" });
+      if (u.passwordHash !== "") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User đã đặt mật khẩu — không cần gửi lại link.",
+        });
+      }
+      const [m] = await ctx.db.select({ role: companyMembers.role })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.userId, u.id),
+          eq(companyMembers.companyId, ctx.user.companyId),
+        ));
+      if (!m) {
+        throw new TRPCError({ code: "BAD_REQUEST",
+          message: "User không phải thành viên công ty này." });
+      }
+      const token = await createInvite(
+        ctx.db, u.id, ctx.user.companyId, m.role, ctx.user.id);
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "user.invite_sent",
+        objectType: "user",
+        target: u.id,
+        detail: `Gửi lại link cho ${u.email}`,
+        actorUserId: ctx.user.id,
+      });
+      return { ok: true, inviteLink: `/invite?token=${token}` };
     }),
 
   /* Đổi vai trò một thành viên trong công ty đang chọn. */

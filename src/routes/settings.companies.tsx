@@ -19,6 +19,8 @@ interface CompanyItem {
 interface Member {
   userId: string; email: string; name: string; role: string;
   joinedAt: string | Date;
+  /** true = user được tạo nhưng chưa accept invite (password trống). */
+  pending?: boolean;
 }
 
 const ROLES: CompanyRole[] = ["admin", "editor", "viewer"];
@@ -40,8 +42,10 @@ function CompaniesSettings() {
   // form thêm thành viên
   const [mEmail, setMEmail] = useState("");
   const [mName, setMName] = useState("");
-  const [mPassword, setMPassword] = useState("");
   const [mRole, setMRole] = useState<CompanyRole>("viewer");
+  /** Link invite vừa sinh — hiện modal "Copy link" sau khi addMember. */
+  const [inviteLink, setInviteLink] = useState<string>("");
+  const [inviteEmail, setInviteEmail] = useState<string>("");
 
   const isAdmin = myRole === "admin";
 
@@ -192,7 +196,14 @@ function CompaniesSettings() {
                 {members.map((m) => (
                   <tr key={m.userId} className="border-t border-border">
                     <td className="py-2 pr-3">
-                      <div className="font-medium">{m.name}</div>
+                      <div className="font-medium flex items-center gap-1.5">
+                        {m.name}
+                        {m.pending && (
+                          <Chip variant="warning" className="!h-[16px] !text-[10px]">
+                            chờ accept
+                          </Chip>
+                        )}
+                      </div>
                       <div className="text-xs text-muted">{m.email}</div>
                     </td>
                     <td className="py-2 px-2">
@@ -215,6 +226,22 @@ function CompaniesSettings() {
                       )}
                     </td>
                     <td className="py-2 pl-2 text-right">
+                      {isAdmin && m.pending && (
+                        <Button
+                          variant="default" size="sm" icon={<I.Send size={13} />}
+                          disabled={busy}
+                          title="Sinh lại link đăng ký + copy"
+                          onClick={() => void run(async () => {
+                            const r = await companies.resendInvite(m.userId);
+                            const full = window.location.origin + r.inviteLink;
+                            setInviteLink(full);
+                            setInviteEmail(m.email);
+                            await navigator.clipboard?.writeText(full).catch(() => {});
+                          }, "✓ Đã sinh link mới — đã copy vào clipboard.")}
+                        >
+                          Gửi lại
+                        </Button>
+                      )}
                       {isAdmin && (
                         <Button
                           variant="danger" size="sm" icon={<I.Trash size={13} />}
@@ -245,15 +272,12 @@ function CompaniesSettings() {
 
           {isAdmin && (
             <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-sm font-medium">Thêm thành viên</div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="text-sm font-medium">Mời thành viên qua link đăng ký</div>
+              <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Email" value={mEmail} disabled={busy}
                   onChange={(e) => setMEmail(e.target.value)} />
-                <Input placeholder="Tên (cho tài khoản mới)" value={mName}
+                <Input placeholder="Tên hiển thị (tuỳ chọn)" value={mName}
                   disabled={busy} onChange={(e) => setMName(e.target.value)} />
-                <Input placeholder="Mật khẩu (≥8 ký tự — chỉ khi tạo mới)"
-                  type="password" value={mPassword} disabled={busy}
-                  onChange={(e) => setMPassword(e.target.value)} />
                 <Select value={mRole} disabled={busy}
                   onChange={(e) => setMRole(e.target.value as CompanyRole)}>
                   {ROLES.map((r) => (
@@ -262,27 +286,60 @@ function CompaniesSettings() {
                 </Select>
               </div>
               <Button
-                variant="primary" icon={<I.Plus size={14} />}
+                variant="primary" icon={<I.Send size={14} />}
                 disabled={busy || !mEmail.trim()}
                 onClick={() => void run(async () => {
-                  await companies.addMember({
+                  const r = await companies.addMember({
                     email: mEmail.trim(),
                     name: mName.trim() || undefined,
-                    password: mPassword || undefined,
                     role: mRole,
-                  });
-                  setMEmail(""); setMName(""); setMPassword("");
-                }, "✓ Đã thêm thành viên.")}
+                  }) as { inviteLink?: string; pending?: boolean };
+                  if (r.inviteLink) {
+                    const full = window.location.origin + r.inviteLink;
+                    setInviteLink(full);
+                    setInviteEmail(mEmail.trim());
+                    await navigator.clipboard?.writeText(full).catch(() => {});
+                  }
+                  setMEmail(""); setMName("");
+                }, "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.")}
               >
-                Thêm thành viên
+                Tạo tài khoản + sinh link đăng ký
               </Button>
               <div className="text-xs text-muted">
-                Email chưa có tài khoản → nhập mật khẩu để tạo tài khoản mới.
-                Email đã có → chỉ cần email và vai trò.
+                Server tạo tài khoản với mật khẩu trống, sinh link đăng ký 1 lần
+                có hiệu lực <strong>7 ngày</strong>. Bạn copy link gửi cho user — họ tự đặt
+                mật khẩu khi vào link. Email đã có user → chỉ gán quyền, không sinh link.
               </div>
             </div>
           )}
         </Card>
+
+        {/* === Modal hiển thị invite link vừa sinh === */}
+        {inviteLink && (
+          <Card className="mt-4 border-accent/40 bg-accent/5 space-y-2">
+            <div className="flex items-center gap-2">
+              <I.Send size={14} className="text-accent" />
+              <div className="font-medium text-sm">
+                Link đăng ký cho <span className="font-mono">{inviteEmail}</span>
+              </div>
+              <div className="flex-1" />
+              <Button variant="ghost" size="sm" icon={<I.X size={12} />}
+                onClick={() => setInviteLink("")} title="Đóng" />
+            </div>
+            <div className="flex gap-2">
+              <Input value={inviteLink} readOnly className="flex-1 font-mono text-xs"
+                onFocus={(e) => e.currentTarget.select()} />
+              <Button variant="default" size="sm" icon={<I.Copy size={13} />}
+                onClick={() => void navigator.clipboard?.writeText(inviteLink)}>
+                Copy
+              </Button>
+            </div>
+            <div className="text-xs text-muted">
+              Hết hạn sau 7 ngày. User mở link → đặt mật khẩu → vào app. Có thể
+              sinh lại link bằng nút "Gửi lại" cạnh chip "chờ accept".
+            </div>
+          </Card>
+        )}
 
         {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
         {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}

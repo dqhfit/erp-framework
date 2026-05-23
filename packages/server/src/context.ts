@@ -28,6 +28,8 @@ export interface Context {
   user: SessionUser | null;
   sessionToken: string | null;
   reply: FastifyReply;
+  /** IP client gọi — dùng cho rate-limit. Fastify trả "::1" cho IPv6 localhost. */
+  ip: string;
 }
 
 /** Phân giải công ty hiệu lực + vai trò cho một user.
@@ -79,5 +81,5 @@ export async function createContext(
     }
   }
 
-  return { db, user, sessionToken: token, reply: res };
+  return { db, user, sessionToken: token, reply: res, ip: req.ip };
 }

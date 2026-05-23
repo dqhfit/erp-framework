@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Button, Chip, Kbd } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { useUI } from "@/stores/ui";
 import { useSettings } from "@/stores/settings";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 import { llmRegistry } from "@/core/llm";
 import { useT } from "@/hooks/useT";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
+import { PickPrimaryModal } from "@/components/PickPrimaryModal";
 
 export function Topbar() {
   const t = useT();
@@ -25,6 +29,14 @@ export function Topbar() {
   })();
   const activeModel = activeProfile?.model;
   const activeProfileName = activeProfile?.name;
+
+  // Chip "Agent chính": có primary → avatar + tên; chưa có → chip dashed.
+  const primaryAgentId = useAuth((s) => s.primaryAgentId);
+  const allAgents = useUserObjects((s) => s.agents);
+  const primaryAgent = primaryAgentId
+    ? allAgents.find((a) => a.id === primaryAgentId) ?? null
+    : null;
+  const [primaryPickOpen, setPrimaryPickOpen] = useState(false);
 
   return (
     <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur sticky top-0 z-50 whitespace-nowrap">
@@ -118,6 +130,34 @@ export function Topbar() {
         title={t("topbar.notifications")}
         className="hidden md:inline-flex"
       />
+
+      {/* Agent chính — chip avatar nếu có, chip dashed nếu chưa setup.
+          Click → mở PickPrimaryModal hoặc đi thẳng tới /agents/$id. */}
+      {primaryAgent ? (
+        <Link
+          to="/agents/$id"
+          params={{ id: primaryAgent.id }}
+          className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0 border border-border bg-bg-soft/30"
+          title={`Agent chính: ${primaryAgent.name} (click để mở)`}
+        >
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+            style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+            <I.Bot size={11} />
+          </span>
+          <span className="truncate max-w-[120px]">{primaryAgent.name}</span>
+        </Link>
+      ) : allAgents.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPrimaryPickOpen(true)}
+          className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-xs shrink-0 border border-dashed border-border text-muted hover:text-text"
+          title="Chọn Agent chính của bạn"
+        >
+          <I.Bot size={12} />
+          <span>Chưa chọn Agent chính</span>
+        </button>
+      )}
+      <PickPrimaryModal open={primaryPickOpen} onClose={() => setPrimaryPickOpen(false)} />
 
       <Button
         variant={agentOpen ? "primary" : "default"} size="sm"

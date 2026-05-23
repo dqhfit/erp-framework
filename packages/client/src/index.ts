@@ -51,6 +51,8 @@ export {
   type EntityFieldInput,
   type PageSaveInput,
   type AgentSaveInput,
+  type AgentMemberRole,
+  type AgentMemberRow,
   type WorkflowSaveInput,
   type ScheduleSaveInput,
 } from "./objects";

@@ -52,6 +52,20 @@ export interface AgentSaveInput {
   name: string;
   model: string;
   config?: Record<string, unknown>;
+  /** Manager-agent (org chart). null = gỡ cấp trên. */
+  managerId?: string | null;
+}
+
+/** Role per cặp (user × agent) — quyết định quyền khi agent isPrivate. */
+export type AgentMemberRole = "owner" | "operator" | "observer";
+
+export interface AgentMemberRow {
+  userId: string;
+  role: AgentMemberRole;
+  addedBy: string | null;
+  addedAt: Date | string;
+  userName: string | null;
+  userEmail: string | null;
 }
 export interface WorkflowSaveInput {
   id?: string;
@@ -104,6 +118,21 @@ export function createObjectsClient(baseUrl: string) {
       // 7 template memory mặc định cho UI dùng làm "Khôi phục mặc định".
       memoryTemplates: (id: string) =>
         trpc.agents.memoryTemplates.query(id),
+      // ── Membership (N:M) ──
+      /** Trả về primaryAgentId + danh sách agentId user đang là member. */
+      myAgents: () => trpc.agents.myAgents.query(),
+      /** Đặt agent chính của user (null = bỏ chọn). */
+      setPrimary: (agentId: string | null) =>
+        trpc.agents.setPrimary.mutate({ agentId }),
+      /** Liệt kê thành viên của 1 agent. */
+      listMembers: (agentId: string) =>
+        trpc.agents.listMembers.query(agentId),
+      /** Thêm hoặc đổi role 1 thành viên. */
+      addMember: (input: { agentId: string; userId: string; role: AgentMemberRole }) =>
+        trpc.agents.addMember.mutate(input),
+      /** Gỡ 1 thành viên. */
+      removeMember: (input: { agentId: string; userId: string }) =>
+        trpc.agents.removeMember.mutate(input),
     },
     schedules: {
       list: () => trpc.schedules.list.query(),

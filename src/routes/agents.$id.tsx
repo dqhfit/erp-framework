@@ -3,10 +3,12 @@ import { useState, useEffect, useMemo } from "react";
 import { I } from "@/components/Icons";
 import type { MockAgent } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
+import { useAuth } from "@/stores/auth";
 import { Button, Chip, Card, FormField, Input } from "@/components/ui";
 import { useUI } from "@/stores/ui";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { HeartbeatPanel } from "@/components/HeartbeatPanel";
+import { AgentMembersPane } from "@/components/AgentMembersPane";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { ModelCombobox } from "@/components/ModelCombobox";
 import { inferAdapterFromModel } from "@erp-framework/core";
@@ -40,6 +42,8 @@ interface AgentState {
   /** Danh sách model dự phòng — server thử lần lượt khi model chính gọi
      không được (rate limit, API lỗi…). */
   fallbackModels: string[];
+  /** Hybrid privacy: true → ACL chặt theo agent_members; false → open mode. */
+  isPrivate: boolean;
 }
 
 const DEFAULT_TOOLS = [
@@ -53,7 +57,7 @@ const DEFAULT_TOOLS = [
   "calendar.book",
 ];
 
-type TabKey = "config" | "memory" | "heartbeat";
+type TabKey = "config" | "memory" | "heartbeat" | "members";
 
 function AgentRoute() {
   const { id } = Route.useParams();
@@ -78,6 +82,7 @@ function AgentRoute() {
     tools: DEFAULT_TOOLS.slice(0, agent.tools),
     memory: emptyMemory(),
     fallbackModels: [],
+    isPrivate: false,
   };
   const [state, setState] = useState<AgentState>(initialState);
   const [lastSaved, setLastSaved] = useState<AgentState>(initialState);
@@ -101,6 +106,7 @@ function AgentRoute() {
         ...(stored as AgentState),
         memory: { ...emptyMemory(), ...(stored.memory ?? {}) },
         fallbackModels: stored.fallbackModels ?? [],
+        isPrivate: stored.isPrivate === true,
       };
       setState(next);
       setLastSaved(next);
@@ -410,6 +416,10 @@ function AgentRoute() {
           </Button>
         </div>
 
+        {/* === Banner: "Đặt làm Agent chính?" — ẩn nếu đã là primary
+            hoặc user đã dismiss trong phiên này. === */}
+        <PrimaryBanner agentId={id} agentName={state.name} />
+
         {/* === Tabs === */}
         <div className="flex items-center gap-1 mb-4 border-b border-border">
           <TabBtn active={tab === "config"} onClick={() => setTab("config")}
@@ -423,12 +433,26 @@ function AgentRoute() {
           </TabBtn>
           <TabBtn active={tab === "heartbeat"} onClick={() => setTab("heartbeat")}
             icon={<I.Clock size={13} />}>Nhịp đập</TabBtn>
+          <TabBtn active={tab === "members"} onClick={() => setTab("members")}
+            icon={<I.Users size={13} />}>
+            Thành viên
+            {state.isPrivate && (
+              <Chip variant="accent" className="!h-[16px] !text-[10px] ml-1">riêng tư</Chip>
+            )}
+          </TabBtn>
         </div>
 
         {/* === Tab content === */}
         {tab === "config" && ConfigPane}
         {tab === "memory" && MemoryPane}
         {tab === "heartbeat" && <HeartbeatPanel agentId={id} />}
+        {tab === "members" && (
+          <AgentMembersPane
+            agentId={id}
+            isPrivate={state.isPrivate}
+            onSetPrivate={(next) => setState((s) => ({ ...s, isPrivate: next }))}
+          />
+        )}
       </div>
 
       <AiAssistDrawer
@@ -465,6 +489,29 @@ function TabBtn({ active, onClick, icon, children }: {
       {icon}
       {children}
     </button>
+  );
+}
+
+/* === Banner mời đặt làm primary === */
+function PrimaryBanner({ agentId, agentName }: { agentId: string; agentName: string }) {
+  const primary = useAuth((s) => s.primaryAgentId);
+  const setPrimary = useAuth((s) => s.setPrimary);
+  const [dismissed, setDismissed] = useState(false);
+  if (primary === agentId || dismissed) return null;
+  return (
+    <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-md border border-accent/40 bg-accent/5 text-sm">
+      <I.Star size={14} className="text-accent" />
+      <span className="flex-1 truncate">
+        Đặt <strong>{agentName}</strong> làm Agent chính của bạn?
+        <span className="text-muted ml-1">(Topbar + AgentPanel sẽ ưu tiên bind vào agent này.)</span>
+      </span>
+      <Button variant="primary" size="sm"
+        onClick={() => { void setPrimary(agentId); }}>
+        Đặt làm Agent chính
+      </Button>
+      <Button variant="ghost" size="sm" icon={<I.X size={12} />}
+        onClick={() => setDismissed(true)} title="Bỏ qua trong phiên này" />
+    </div>
   );
 }
 

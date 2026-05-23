@@ -11,7 +11,7 @@
    ========================================================== */
 import {
   pgTable, pgEnum, uuid, text, timestamp, jsonb, boolean, integer,
-  doublePrecision, index, uniqueIndex, vector, type AnyPgColumn,
+  doublePrecision, index, uniqueIndex, vector, primaryKey, type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -26,8 +26,35 @@ export const users = pgTable("users", {
   // role: vai trò mặc định khi tạo công ty mới — vai trò HIỆU LỰC theo
   // từng công ty nằm ở company_members.role.
   role: userRole("role").notNull().default("viewer"),
+  // primaryAgentId: "agent chính" của user — Topbar/AgentPanel ưu tiên bind
+  // vào agent này khi không có route /agents/$id. Optional; null = chưa chọn,
+  // fallback xuống CEO mặc định của công ty (xem AgentPanel).
+  primaryAgentId: uuid("primary_agent_id")
+    .references((): AnyPgColumn => agents.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/* Invite token để admin mời user mới — user dùng link /invite?token=...
+   để tự đặt mật khẩu lần đầu. Token random 32 byte base64url, dùng 1 lần.
+   accepted_at != null = đã consume; expires_at < now = hết hạn. */
+export const userInvites = pgTable("user_invites", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  userId: uuid("user_id").notNull()
+    .references((): AnyPgColumn => users.id, { onDelete: "cascade" }),
+  companyId: uuid("company_id").notNull()
+    .references((): AnyPgColumn => companies.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  role: userRole("role").notNull().default("viewer"),
+  invitedBy: uuid("invited_by")
+    .references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  tokenIdx: uniqueIndex("user_invites_token_idx").on(t.token),
+  userIdx: index("user_invites_user_idx").on(t.userId),
+  companyIdx: index("user_invites_company_idx").on(t.companyId),
+}));
 
 /* ─── Đa công ty (multi-tenant) ─────────────────────────── */
 export const companies = pgTable("companies", {
@@ -146,14 +173,41 @@ export const agents = pgTable("agents", {
     .references(() => companies.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   model: text("model").notNull(),
+  // config.isPrivate (boolean, optional): true → ACL chặt theo agent_members;
+  // false/undefined → fallback về company-RBAC (mọi editor đều edit OK). Xem
+  // packages/server/src/agent-acl.ts.
   config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
   // managerId: agent cấp trên (org chart / phân cấp agent). null = cấp cao nhất.
   managerId: uuid("manager_id")
     .references((): AnyPgColumn => agents.id, { onDelete: "set null" }),
+  // createdBy: ai tạo agent — set khi insert; backfill cũ = NULL.
+  createdBy: uuid("created_by")
+    .references((): AnyPgColumn => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => ({
   companyIdIdx: index("agents_company_id_idx").on(t.companyId),
+}));
+
+/* Pivot N:M user × agent. role per cặp quyết định quyền khi
+   agent.config.isPrivate=true. Khi isPrivate=false (default), table này
+   chỉ dùng cho UI ★ "my agents" + ưu tiên trong sidebar — RBAC fallback
+   về company-role. */
+export const agentMemberRole = pgEnum("agent_member_role", [
+  "owner", "operator", "observer",
+]);
+
+export const agentMembers = pgTable("agent_members", {
+  agentId: uuid("agent_id").notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: agentMemberRole("role").notNull().default("operator"),
+  addedBy: uuid("added_by").references(() => users.id, { onDelete: "set null" }),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.agentId, t.userId] }),
+  userIdx: index("agent_members_user_idx").on(t.userId),
 }));
 
 /* ─── Cấu hình tích hợp ──────────────────────────────────── */

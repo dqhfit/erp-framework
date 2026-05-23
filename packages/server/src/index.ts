@@ -21,6 +21,7 @@ import { SESSION_COOKIE } from "./auth";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import { makeCallTool } from "./mcp-client";
 import { knowledgeSearch } from "./knowledge-search";
+import { canActOnAgentLite } from "./agent-acl";
 import {
   MEMORY_FILES, loadAgentMemory, formatMemoryPreamble, appendMemory,
   type MemoryFile,
@@ -189,10 +190,19 @@ async function main(): Promise<void> {
       let boundAgentId: string | null = null;
       let agentModels: string[] = [];
       if (body.agentId) {
-        const [ag] = await db.select().from(agents).where(and(
+        // ACL per-agent: nếu agent private, user phải là member; nếu open,
+        // RBAC company-wide đã pass ở trên. canActOnAgentLite return false
+        // cũng coi như "không gắn" — phiên chat vẫn chạy nhưng không có
+        // memory + tool memory_remember.
+        const allowed = await canActOnAgentLite(
+          db,
+          { id: s.userId, role: active.role, companyId: active.companyId },
+          body.agentId, "chat",
+        );
+        const [ag] = allowed ? await db.select().from(agents).where(and(
           eq(agents.id, body.agentId),
           eq(agents.companyId, active.companyId),
-        ));
+        )) : [];
         if (ag) {
           const mem = await loadAgentMemory(ag.id, ag.name);
           memoryPreamble = formatMemoryPreamble(mem) + "\n\n---\n\n";

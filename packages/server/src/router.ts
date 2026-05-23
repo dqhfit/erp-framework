@@ -10,11 +10,13 @@ import { and, eq, sql, desc, type SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   entities, entityRecords, users, sessions, mcpConfigs, llmProfiles,
-  pages, agents, workflows, schedules, activityLog,
-  companies, companyMembers,
+  pages, agents, agentMembers, workflows, schedules, activityLog,
+  companies, companyMembers, userInvites,
 } from "@erp-framework/db";
 import { validateRecord, pluginRegistry, type EntityFieldDef } from "@erp-framework/core";
-import { router, publicProcedure, protectedProcedure, rbacProcedure } from "./trpc";
+import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
+import { assertCanActOnAgent } from "./agent-acl";
+import { logActivity } from "./activity";
 import { companiesRouter } from "./companies-router";
 import { heartbeatsRouter } from "./heartbeats-router";
 import { entitySyncRouter } from "./entity-sync-router";
@@ -168,11 +170,27 @@ function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, pa
   return v.data;
 }
 
+/** Khi user tạo agent mới: tự động chèn họ vào `agent_members` với role=owner.
+   Nhờ vậy user có quyền toggle private + thêm/xoá member sau này mà không cần
+   admin can thiệp. Idempotent (ON CONFLICT DO NOTHING). */
+async function autoAddOwner(db: DB, agentId: string, userId: string): Promise<void> {
+  await db.insert(agentMembers).values({
+    agentId, userId, role: "owner", addedBy: userId,
+  }).onConflictDoNothing();
+}
+
 /* ─── AppRouter ──────────────────────────────────────────── */
 export const appRouter = router({
-  /* ── Xác thực ── */
+  /* ── Xác thực ──
+     Rate-limit: 5 lần / 15 phút / IP cho cả register và login (chống
+     brute-force + spam first-admin slot khi DB reset). Vượt giới hạn →
+     TRPCError code "TOO_MANY_REQUESTS". Lưu state in-memory (xem trpc.ts).
+     Activity log: gọi logActivity cho register/login_success/login_failed/
+     logout. login_failed có thể không có companyId nếu email lạ — fallback
+     skip log (chỉ console.warn ở activity.ts catch). */
   auth: router({
     register: publicProcedure
+      .use(rateLimit("auth.register", 5, 15 * 60 * 1000))
       .input(z.object({
         email: z.string().email(),
         name: z.string().min(1),
@@ -203,16 +221,43 @@ export const appRouter = router({
           await ctx.db.insert(companyMembers)
             .values({ companyId: co.id, userId: u.id, role: "admin" })
             .onConflictDoNothing();
+          await logActivity(ctx.db, {
+            companyId: co.id,
+            kind: "auth.register",
+            objectType: "user",
+            target: u.id,
+            detail: `Tạo admin đầu tiên: ${u.email} (IP ${ctx.ip})`,
+            actorUserId: u.id,
+          });
         }
         return { id: u.id, email: u.email, role: u.role };
       }),
 
     login: publicProcedure
+      .use(rateLimit("auth.login", 5, 15 * 60 * 1000))
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const [u] = await ctx.db.select().from(users)
           .where(eq(users.email, input.email));
         if (!u || !(await verifyPassword(input.password, u.passwordHash))) {
+          // Log thất bại nếu user tồn tại (có company để gắn). Email lạ →
+          // skip (không spam log với email tuỳ ý nhập sai).
+          if (u) {
+            const [m] = await ctx.db
+              .select({ companyId: companyMembers.companyId })
+              .from(companyMembers)
+              .where(eq(companyMembers.userId, u.id)).limit(1);
+            if (m) {
+              await logActivity(ctx.db, {
+                companyId: m.companyId,
+                kind: "auth.login_failed",
+                objectType: "user",
+                target: u.id,
+                detail: `Sai mật khẩu (email ${input.email}, IP ${ctx.ip})`,
+                actorUserId: u.id,
+              });
+            }
+          }
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message: "Email hoặc mật khẩu không đúng",
@@ -237,6 +282,16 @@ export const appRouter = router({
           secure: process.env.NODE_ENV === "production",
           maxAge: Math.floor(SESSION_TTL_MS / 1000),
         });
+        if (m) {
+          await logActivity(ctx.db, {
+            companyId: m.companyId,
+            kind: "auth.login_success",
+            objectType: "user",
+            target: u.id,
+            detail: `Đăng nhập thành công (IP ${ctx.ip})`,
+            actorUserId: u.id,
+          });
+        }
         return { id: u.id, email: u.email, name: u.name, role: u.role };
       }),
 
@@ -245,10 +300,113 @@ export const appRouter = router({
         await ctx.db.delete(sessions).where(eq(sessions.id, ctx.sessionToken));
       }
       ctx.reply.clearCookie(SESSION_COOKIE, { path: "/" });
+      if (ctx.user?.companyId) {
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "auth.logout",
+          objectType: "user",
+          target: ctx.user.id,
+          detail: `Đăng xuất (IP ${ctx.ip})`,
+          actorUserId: ctx.user.id,
+        });
+      }
       return { ok: true };
     }),
 
     me: protectedProcedure.query(({ ctx }) => ctx.user),
+
+    /** Preview thông tin invite — public (chưa login). Trả về email, name,
+       company name để trang /invite hiển thị. KHÔNG trả về token. */
+    invitePreview: publicProcedure
+      .use(rateLimit("auth.invitePreview", 20, 15 * 60 * 1000))
+      .input(z.object({ token: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const [inv] = await ctx.db.select({
+          userId: userInvites.userId,
+          companyId: userInvites.companyId,
+          expiresAt: userInvites.expiresAt,
+          acceptedAt: userInvites.acceptedAt,
+        }).from(userInvites).where(eq(userInvites.token, input.token));
+        if (!inv) {
+          return { valid: false as const, reason: "not_found" as const };
+        }
+        if (inv.acceptedAt) {
+          return { valid: false as const, reason: "accepted" as const };
+        }
+        if (inv.expiresAt < new Date()) {
+          return { valid: false as const, reason: "expired" as const };
+        }
+        const [u] = await ctx.db.select({ email: users.email, name: users.name })
+          .from(users).where(eq(users.id, inv.userId));
+        const [co] = await ctx.db.select({ name: companies.name })
+          .from(companies).where(eq(companies.id, inv.companyId));
+        return {
+          valid: true as const,
+          email: u?.email ?? "",
+          name: u?.name ?? "",
+          companyName: co?.name ?? "",
+          expiresAt: inv.expiresAt,
+        };
+      }),
+
+    /** Accept invite: user đặt mật khẩu lần đầu, tạo session, set cookie.
+       Cùng cơ chế rate-limit như login (chống brute-force token). */
+    acceptInvite: publicProcedure
+      .use(rateLimit("auth.acceptInvite", 5, 15 * 60 * 1000))
+      .input(z.object({
+        token: z.string().min(1),
+        password: z.string().min(8),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const [inv] = await ctx.db.select().from(userInvites)
+          .where(eq(userInvites.token, input.token));
+        if (!inv) throw new TRPCError({ code: "NOT_FOUND", message: "Link không hợp lệ" });
+        if (inv.acceptedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã được sử dụng" });
+        }
+        if (inv.expiresAt < new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã hết hạn" });
+        }
+        // Đặt password + đánh dấu invite accepted (cùng transaction logic).
+        await ctx.db.update(users)
+          .set({ passwordHash: await hashPassword(input.password) })
+          .where(eq(users.id, inv.userId));
+        await ctx.db.update(userInvites)
+          .set({ acceptedAt: new Date() })
+          .where(eq(userInvites.id, inv.id));
+
+        // Tự cấp session — user vào app ngay, không cần qua màn login.
+        const token = newSessionToken();
+        await ctx.db.insert(sessions).values({
+          id: token,
+          userId: inv.userId,
+          activeCompanyId: inv.companyId,
+          expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+        });
+        ctx.reply.setCookie(SESSION_COOKIE, token, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          maxAge: Math.floor(SESSION_TTL_MS / 1000),
+        });
+        const [u] = await ctx.db.select().from(users)
+          .where(eq(users.id, inv.userId));
+        await logActivity(ctx.db, {
+          companyId: inv.companyId,
+          kind: "user.invite_accepted",
+          objectType: "user",
+          target: inv.userId,
+          detail: `Chấp nhận lời mời, đặt mật khẩu (IP ${ctx.ip})`,
+          actorUserId: inv.userId,
+        });
+        return {
+          id: u?.id ?? inv.userId,
+          email: u?.email ?? "",
+          name: u?.name ?? "",
+          role: u?.role ?? "viewer",
+        };
+      }),
   }),
 
   /* ── Entity (metadata) — lọc theo công ty đang chọn ── */
@@ -568,23 +726,34 @@ export const appRouter = router({
   }),
 
   /* ── Agent (metadata low-code) — lọc theo công ty đang chọn ── */
+  /* Lớp phân quyền: RBAC company-wide cho list/create; agent-level ACL
+     (xem agent-acl.ts) cho get/save(update)/delete + member CRUD. */
   agents: router({
     list: rbacProcedure("view", "agent")
       .query(({ ctx }) => ctx.db.select().from(agents)
         .where(eq(agents.companyId, ctx.user.companyId))),
 
-    get: rbacProcedure("view", "agent")
+    /* Get: per-agent view check (private agent → chỉ member; open → company-RBAC). */
+    get: protectedProcedure
       .input(z.string().uuid())
       .query(async ({ ctx, input }) => {
+        await assertCanActOnAgent(ctx, input, "view");
         const [row] = await ctx.db.select().from(agents)
-          .where(and(eq(agents.id, input),
-            eq(agents.companyId, ctx.user.companyId)));
+          .where(eq(agents.id, input));
         return row ?? null;
       }),
 
-    save: rbacProcedure("edit", "agent")
+    /* Save: tách CREATE vs UPDATE.
+       - CREATE: dùng RBAC company-edit. Người tạo TỰ ĐỘNG trở thành owner
+         trong agent_members để có quyền toggle private + thêm member sau.
+       - UPDATE: ACL "edit" per-agent. */
+    save: protectedProcedure
       .input(agentInput)
       .mutation(async ({ ctx, input }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        if (!ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Chưa thuộc công ty nào" });
+        }
         const values = {
           name: input.name, model: input.model,
           ...(input.config !== undefined ? { config: input.config } : {}),
@@ -597,26 +766,64 @@ export const appRouter = router({
             throw new TRPCError({ code: "FORBIDDEN", message: "Đối tượng thuộc công ty khác" });
           }
           if (ex) {
+            await assertCanActOnAgent(ctx, input.id, "edit");
             const [row] = await ctx.db.update(agents)
               .set({ ...values, updatedAt: new Date() })
               .where(eq(agents.id, input.id)).returning();
+            await logActivity(ctx.db, {
+              companyId: ctx.user.companyId,
+              kind: "agent.updated",
+              objectType: "agent",
+              target: input.id,
+              detail: `Cập nhật agent "${input.name}"`,
+              actorUserId: ctx.user.id,
+            });
             return row;
           }
+          // Insert với id sẵn → kiểm tra quyền create (company-RBAC).
+          if (!ctx.user.role || ctx.user.role === "viewer") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Không có quyền tạo agent" });
+          }
           const [row] = await ctx.db.insert(agents)
-            .values({ id: input.id, companyId: ctx.user.companyId, ...values })
-            .returning();
+            .values({
+              id: input.id, companyId: ctx.user.companyId,
+              createdBy: ctx.user.id,
+              ...values,
+            }).returning();
+          if (row) await autoAddOwner(ctx.db, row.id, ctx.user.id);
           return row;
         }
+        // Tạo mới (không id) — company-RBAC create.
+        if (!ctx.user.role || ctx.user.role === "viewer") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Không có quyền tạo agent" });
+        }
         const [row] = await ctx.db.insert(agents)
-          .values({ companyId: ctx.user.companyId, ...values }).returning();
+          .values({
+            companyId: ctx.user.companyId,
+            createdBy: ctx.user.id,
+            ...values,
+          }).returning();
+        if (row) await autoAddOwner(ctx.db, row.id, ctx.user.id);
         return row;
       }),
 
-    delete: rbacProcedure("delete", "agent")
+    delete: protectedProcedure
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
+        if (!ctx.user?.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+        await assertCanActOnAgent(ctx, input, "delete");
+        const [row] = await ctx.db.select({ name: agents.name }).from(agents)
+          .where(eq(agents.id, input));
         await ctx.db.delete(agents).where(and(eq(agents.id, input),
           eq(agents.companyId, ctx.user.companyId)));
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "agent.deleted",
+          objectType: "agent",
+          target: input,
+          detail: `Xoá agent "${row?.name ?? input}"`,
+          actorUserId: ctx.user.id,
+        });
       }),
 
     /* Trả về 7 template memory mặc định cho UI dùng làm nội dung
@@ -624,12 +831,142 @@ export const appRouter = router({
     memoryTemplates: rbacProcedure("view", "agent")
       .input(z.string().uuid())
       .query(async ({ ctx, input }) => {
+        await assertCanActOnAgent(ctx, input, "view");
         const [a] = await ctx.db.select().from(agents).where(and(
           eq(agents.id, input),
           eq(agents.companyId, ctx.user.companyId),
         ));
         if (!a) throw new TRPCError({ code: "NOT_FOUND" });
         return allDefaultTemplates(a.name);
+      }),
+
+    /* ── User ↔ Agent membership (N:M) ── */
+
+    /** Đặt agent chính của user hiện tại (hoặc null để bỏ chọn). */
+    setPrimary: protectedProcedure
+      .input(z.object({ agentId: z.string().uuid().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        if (input.agentId) {
+          await assertCanActOnAgent(ctx, input.agentId, "chat");
+        }
+        await ctx.db.update(users)
+          .set({ primaryAgentId: input.agentId })
+          .where(eq(users.id, ctx.user.id));
+        if (ctx.user.companyId) {
+          await logActivity(ctx.db, {
+            companyId: ctx.user.companyId,
+            kind: "user.set_primary_agent",
+            objectType: "user",
+            target: ctx.user.id,
+            detail: input.agentId
+              ? `Đặt agent chính = ${input.agentId}`
+              : "Gỡ agent chính",
+            actorUserId: ctx.user.id,
+          });
+        }
+        return { ok: true };
+      }),
+
+    /** Lấy primary + danh sách (agent_id, role) của user hiện tại. */
+    myAgents: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const [me] = await ctx.db.select({ primaryAgentId: users.primaryAgentId })
+        .from(users).where(eq(users.id, ctx.user.id));
+      const members = await ctx.db.select({
+        agentId: agentMembers.agentId,
+        role: agentMembers.role,
+      }).from(agentMembers).where(eq(agentMembers.userId, ctx.user.id));
+      return {
+        primaryAgentId: me?.primaryAgentId ?? null,
+        members,
+      };
+    }),
+
+    /** Danh sách thành viên của 1 agent (JOIN với users để hiện name/email). */
+    listMembers: protectedProcedure
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        await assertCanActOnAgent(ctx, input, "view");
+        return ctx.db.select({
+          userId: agentMembers.userId,
+          role: agentMembers.role,
+          addedBy: agentMembers.addedBy,
+          addedAt: agentMembers.addedAt,
+          userName: users.name,
+          userEmail: users.email,
+        })
+          .from(agentMembers)
+          .leftJoin(users, eq(agentMembers.userId, users.id))
+          .where(eq(agentMembers.agentId, input));
+      }),
+
+    /** Thêm hoặc đổi role của 1 member. Cần quyền manage_members (owner). */
+    addMember: protectedProcedure
+      .input(z.object({
+        agentId: z.string().uuid(),
+        userId: z.string().uuid(),
+        role: z.enum(["owner", "operator", "observer"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user?.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+        await assertCanActOnAgent(ctx, input.agentId, "manage_members");
+        // Member phải thuộc cùng công ty với agent.
+        const [m] = await ctx.db.select({ companyId: companyMembers.companyId })
+          .from(companyMembers)
+          .where(and(
+            eq(companyMembers.userId, input.userId),
+            eq(companyMembers.companyId, ctx.user.companyId),
+          ));
+        if (!m) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "User không phải thành viên công ty này",
+          });
+        }
+        await ctx.db.insert(agentMembers).values({
+          agentId: input.agentId,
+          userId: input.userId,
+          role: input.role,
+          addedBy: ctx.user.id,
+        }).onConflictDoUpdate({
+          target: [agentMembers.agentId, agentMembers.userId],
+          set: { role: input.role, addedBy: ctx.user.id, addedAt: new Date() },
+        });
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "agent.member_added",
+          objectType: "agent",
+          target: input.agentId,
+          detail: `Thêm/đổi thành viên ${input.userId} role=${input.role}`,
+          actorUserId: ctx.user.id,
+        });
+        return { ok: true };
+      }),
+
+    /** Gỡ 1 member khỏi agent. */
+    removeMember: protectedProcedure
+      .input(z.object({
+        agentId: z.string().uuid(),
+        userId: z.string().uuid(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user?.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+        await assertCanActOnAgent(ctx, input.agentId, "manage_members");
+        await ctx.db.delete(agentMembers)
+          .where(and(
+            eq(agentMembers.agentId, input.agentId),
+            eq(agentMembers.userId, input.userId),
+          ));
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "agent.member_removed",
+          objectType: "agent",
+          target: input.agentId,
+          detail: `Gỡ thành viên ${input.userId}`,
+          actorUserId: ctx.user.id,
+        });
+        return { ok: true };
       }),
   }),
 

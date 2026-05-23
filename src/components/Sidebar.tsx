@@ -4,6 +4,7 @@ import type { IconName } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { useUI } from "@/stores/ui";
 import { useRbac } from "@/stores/rbac";
+import { useAuth } from "@/stores/auth";
 import { roleCan, type ObjectType } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { dialog } from "@/lib/dialog";
@@ -185,6 +186,17 @@ export function Sidebar() {
   const userPages = useUserObjects((s) => s.pages);
   const userWorkflows = useUserObjects((s) => s.workflows);
   const userAgents = useUserObjects((s) => s.agents);
+  // Membership: primary agent + my agents — dùng để pin ★/★★ và sort lên đầu.
+  const primaryAgentId = useAuth((s) => s.primaryAgentId);
+  const myAgentRoles = useAuth((s) => s.myAgentRoles);
+  /** Trọng số sort: primary=0, my-agent=1, khác=2; cùng nhóm thì giữ thứ tự cũ. */
+  const agentWeight = (id: string): number => {
+    if (id === primaryAgentId) return 0;
+    if (myAgentRoles[id]) return 1;
+    return 2;
+  };
+  const sortedAgents = [...userAgents].sort(
+    (a, b) => agentWeight(a.id) - agentWeight(b.id));
   const {
     addEntity, deleteEntity, renameEntity,
     addPage, deletePage, renamePage,
@@ -317,9 +329,12 @@ export function Sidebar() {
           onAiAdd={can("create", "agent") ? () => setAiCreateTarget("agent") : undefined}
           onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
           onRename={can("edit", "agent") ? handleRenameAgent : undefined}
-          items={userAgents.map((a) => ({
+          items={sortedAgents.map((a) => ({
             id: a.id, name: a.name, iconName: "Bot" as const,
             to: `/agents/${a.id}`,
+            // 2★ primary, ★ my-agent, không-marker = thường.
+            badge: a.id === primaryAgentId ? "★★"
+              : myAgentRoles[a.id] ? "★" : undefined,
             userOwned: true,
           }))}
         />
@@ -342,6 +357,8 @@ export function Sidebar() {
             icon={<I.Server size={14} />} collapsed={collapsed} label="Thiết bị IoT" />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
+          <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}
+            icon={<I.Bot size={14} />} collapsed={collapsed} label="Agent của tôi" />
           <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
             icon={<I.Users size={14} />} collapsed={collapsed} label={t("sidebar.rbac")} />
           <SidebarItem to="/settings/companies" active={pathname === "/settings/companies"}

@@ -21,5 +21,11 @@ export function createAuthClient(baseUrl: string) {
       trpc.auth.login.mutate({ email, password }),
     logout: () => trpc.auth.logout.mutate(),
     me: () => trpc.auth.me.query(),
+    /** Preview thông tin invite — public, dùng cho trang /invite. */
+    invitePreview: (token: string) =>
+      trpc.auth.invitePreview.query({ token }),
+    /** Accept invite: đặt mật khẩu lần đầu + auto-login. */
+    acceptInvite: (token: string, password: string) =>
+      trpc.auth.acceptInvite.mutate({ token, password }),
   };
 }

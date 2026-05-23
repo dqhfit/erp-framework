@@ -31,13 +31,18 @@ export function createCompaniesClient(baseUrl: string) {
     rename: (name: string) => trpc.companies.rename.mutate({ name }),
     /** Thành viên của công ty đang chọn. */
     members: () => trpc.companies.members.query(),
-    /** Thêm thành viên — email mới cần password để tạo tài khoản. */
+    /** Thêm thành viên — password optional: không có thì server sinh
+       invite link để user tự đặt mật khẩu sau (recommended). Return
+       gồm `inviteLink` khi user mới (pending). */
     addMember: (input: {
       email: string;
       name?: string;
       password?: string;
       role?: CompanyRole;
     }) => trpc.companies.addMember.mutate(input),
+    /** Gửi lại invite link cho user chưa accept (pending). */
+    resendInvite: (userId: string) =>
+      trpc.companies.resendInvite.mutate({ userId }),
     /** Đổi vai trò một thành viên. */
     setMemberRole: (userId: string, role: CompanyRole) =>
       trpc.companies.setMemberRole.mutate({ userId, role }),
