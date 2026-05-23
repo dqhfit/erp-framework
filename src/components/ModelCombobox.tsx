@@ -16,10 +16,15 @@ import { useSettings } from "@/stores/settings";
 import { useDynamicModels } from "@/hooks/useDynamicModels";
 import { inferAdapterFromModel } from "@erp-framework/core";
 
-/* 4 adapter chính — gọi useDynamicModels cho từng adapter để optgroup
-   nào cũng có discovery list, không phụ thuộc adapter hiện tại. Hook
-   có cache 30 phút trong localStorage nên gọi 4 lần không tốn nhiều. */
-const KNOWN_ADAPTERS = ["claude", "openai", "gemini", "ollama"] as const;
+/* 6 adapter — gọi useDynamicModels cho từng cái để optgroup nào cũng
+   có discovery list. claude/claude-pro/claude-cli cùng họ Claude
+   (FALLBACK_MODELS giống nhau) nhưng KHÁC credential — giữ riêng
+   group để user phân biệt route nào dùng. Cache 30 phút mỗi adapter. */
+const KNOWN_ADAPTERS = [
+  "claude", "claude-pro", "claude-cli",
+  "openai", "gemini", "ollama",
+] as const;
+type KnownAdapter = typeof KNOWN_ADAPTERS[number];
 
 export interface ModelComboboxProps {
   value: string;
@@ -44,31 +49,30 @@ export function ModelCombobox({
   const inferredAdapter = inferAdapterFromModel(value);
   const adapter = lockedAdapter ?? inferredAdapter;
 
-  // Gọi hook cho TỪNG adapter chính — mỗi group sau đó có discovery
-  // riêng (không phụ thuộc adapter của model hiện tại). Hook order
-  // ổn định nhờ KNOWN_ADAPTERS là const tuple.
-  const claudeM = useDynamicModels("claude");
-  const openaiM = useDynamicModels("openai");
-  const geminiM = useDynamicModels("gemini");
-  const ollamaM = useDynamicModels("ollama");
-  const discoveryByAdapter: Record<string, string[]> = {
-    claude: claudeM.models,
-    openai: openaiM.models,
-    gemini: geminiM.models,
-    ollama: ollamaM.models,
+  // Gọi hook cho 6 adapter — mỗi group có discovery riêng, không phụ
+  // thuộc adapter của model hiện tại. Hook order ổn định nhờ
+  // KNOWN_ADAPTERS là const tuple (luôn 6 lệnh hook theo thứ tự).
+  const m = {
+    claude: useDynamicModels("claude"),
+    "claude-pro": useDynamicModels("claude-pro"),
+    "claude-cli": useDynamicModels("claude-cli"),
+    openai: useDynamicModels("openai"),
+    gemini: useDynamicModels("gemini"),
+    ollama: useDynamicModels("ollama"),
+  } satisfies Record<KnownAdapter, ReturnType<typeof useDynamicModels>>;
+  const discoveryByAdapter: Record<KnownAdapter, string[]> = {
+    claude: m.claude.models,
+    "claude-pro": m["claude-pro"].models,
+    "claude-cli": m["claude-cli"].models,
+    openai: m.openai.models,
+    gemini: m.gemini.models,
+    ollama: m.ollama.models,
   };
-  const loading = adapter === "claude" ? claudeM.loading
-    : adapter === "openai" ? openaiM.loading
-    : adapter === "gemini" ? geminiM.loading
-    : adapter === "ollama" ? ollamaM.loading : false;
-  const source = adapter === "claude" ? claudeM.source
-    : adapter === "openai" ? openaiM.source
-    : adapter === "gemini" ? geminiM.source
-    : adapter === "ollama" ? ollamaM.source : null;
-  const refresh = adapter === "claude" ? claudeM.refresh
-    : adapter === "openai" ? openaiM.refresh
-    : adapter === "gemini" ? geminiM.refresh
-    : adapter === "ollama" ? ollamaM.refresh : () => Promise.resolve();
+  const cur = (KNOWN_ADAPTERS as readonly string[]).includes(adapter)
+    ? m[adapter as KnownAdapter] : null;
+  const loading = cur?.loading ?? false;
+  const source = cur?.source ?? null;
+  const refresh = cur?.refresh ?? (() => Promise.resolve());
 
   const groups = useMemo(() => {
     const out: Record<string, { model: string; from: string }[]> = {};
@@ -96,7 +100,12 @@ export function ModelCombobox({
     }
     return out;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [llmProfiles, claudeM.models, openaiM.models, geminiM.models, ollamaM.models, lockedAdapter, excludeModels]);
+  }, [
+    llmProfiles,
+    m.claude.models, m["claude-pro"].models, m["claude-cli"].models,
+    m.openai.models, m.gemini.models, m.ollama.models,
+    lockedAdapter, excludeModels,
+  ]);
 
   // Model đang dùng không có trong groups → hiển thị "custom" để giữ
   // tương thích với agent.config.model lưu tay từ trước.
