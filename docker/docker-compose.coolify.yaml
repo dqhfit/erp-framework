@@ -26,12 +26,13 @@ services:
       start_period: 40s
 
   # Apache Tika — sidecar trích văn bản từ file cho Knowledge Base
-  # (PDF/DOCX/XLSX/PPTX/TXT…). Không expose ra Internet.
-  # Dùng bản KHÔNG -full (~150MB) thay vì -full (~2GB chứa Tesseract OCR
-  # + bộ font đầy đủ). Đủ cho extract văn bản; OCR ảnh không hỗ trợ —
-  # nếu sau này cần OCR thì đổi sang :3.2.1.0-full + pull thủ công trước.
+  # (PDF/DOCX/XLSX/PPTX/TXT + ảnh OCR + scan PDF). Không expose ra Internet.
+  # Bản -full ~2GB: bao gồm Tesseract OCR + bộ font đầy đủ → đọc được
+  # PDF scan, ảnh JPG/PNG có chữ, file có ký tự CJK/Việt. Pull lần đầu
+  # chậm — recommend pre-pull trên Coolify host:
+  #   docker pull apache/tika:3.2.1.0-full
   tika:
-    image: apache/tika:3.2.1.0
+    image: apache/tika:3.2.1.0-full
     restart: unless-stopped
     expose:
       - "9998"
