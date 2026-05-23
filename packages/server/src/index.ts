@@ -12,6 +12,8 @@ import { eq } from "drizzle-orm";
 import { sessions, knowledgeSources } from "@erp-framework/db";
 import { roleCan } from "@erp-framework/core";
 import { appRouter } from "./router";
+import { registerIotRoutes } from "./iot";
+import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { createContext, resolveActiveCompany } from "./context";
 import { startJobs, stopJobs, enqueueKbIngest } from "./jobs";
 import { db } from "./db";
@@ -97,10 +99,14 @@ async function main(): Promise<void> {
     },
   });
 
+  // Route REST cho thiết bị IoT — /iot/v1/* (auth header X-Device-Key).
+  // Tách khỏi tRPC để firmware nhúng (curl/HTTP) dùng được trực tiếp.
+  await registerIotRoutes(app);
+
   app.get("/", async () => ({
     name: "ERP Framework server",
     status: "ok",
-    endpoints: { health: "/health", trpc: "/trpc" },
+    endpoints: { health: "/health", trpc: "/trpc", iot: "/iot/v1" },
   }));
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
 
@@ -256,9 +262,14 @@ async function main(): Promise<void> {
   // Scheduler — KHÔNG chặn boot nếu DB chưa sẵn sàng.
   startJobs().catch((e) =>
     console.warn("pg-boss chưa khởi động (kiểm tra DATABASE_URL):", (e as Error).message));
+
+  // MQTT bridge cho IoT — no-op nếu MQTT_URL không khai báo.
+  startIotMqtt().catch((e) =>
+    console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
 }
 
 async function shutdown(): Promise<void> {
+  await stopIotMqtt();
   await stopJobs();
   process.exit(0);
 }

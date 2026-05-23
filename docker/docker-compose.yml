@@ -64,10 +64,14 @@ services:
       # Knowledge Base — sidecar Tika + thư mục lưu file tải lên.
       TIKA_URL: http://tika:9998
       UPLOAD_DIR: /data/uploads
+      # MQTT bridge cho IoT — server subscribe iot/+/telemetry/+ + ack/+.
+      MQTT_URL: mqtt://mosquitto:1883
     depends_on:
       db:
         condition: service_healthy
       tika:
+        condition: service_started
+      mosquitto:
         condition: service_started
     volumes:
       - erp-uploads:/data/uploads
@@ -141,8 +145,23 @@ services:
       - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
     restart: "no"
 
+  # MQTT broker — IoT devices publish telemetry, server subscribe;
+  # commands gửi ngược lại qua iot/<deviceId>/cmd/<id>. Mở cổng 1883
+  # ra host để thiết bị ngoài LAN kết nối được.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    ports:
+      - "${ERP_MQTT_PORT:-1883}:1883"
+    expose:
+      - "1883"
+
 volumes:
   erp-pgdata:
   bridge-data:
   erp-uploads:
   ollama-data:
+  mosquitto-data:

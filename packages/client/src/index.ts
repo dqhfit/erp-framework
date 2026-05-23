@@ -54,3 +54,10 @@ export {
   type WorkflowSaveInput,
   type ScheduleSaveInput,
 } from "./objects";
+export {
+  createIotClient,
+  type IotClient,
+  type IotDevice,
+  type IotTelemetryRow,
+  type IotCommandRow,
+} from "./iot";

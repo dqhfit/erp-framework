@@ -52,10 +52,14 @@ services:
       CORS_ORIGIN: ${SERVICE_FQDN_APP}
       TIKA_URL: http://tika:9998
       UPLOAD_DIR: /data/uploads
+      # MQTT bridge — server subscribe topic IoT (nội bộ, mosquitto:1883).
+      MQTT_URL: mqtt://mosquitto:1883
     depends_on:
       db:
         condition: service_healthy
       tika:
+        condition: service_started
+      mosquitto:
         condition: service_started
     volumes:
       - erp-uploads:/data/uploads
@@ -110,6 +114,20 @@ services:
     expose:
       - "11434"
 
+  # MQTT broker — IoT realtime push/pull. Nội bộ Docker network,
+  # KHÔNG expose ra Internet trong template này (security). Thiết bị
+  # ngoài cloud nên dùng REST /iot/v1/telemetry qua HTTPS (cùng FQDN
+  # với app). Cần MQTT public: thêm SERVICE_FQDN_MQTT_1883 + cấu hình
+  # auth thay cho allow_anonymous (xem docker/mosquitto.conf).
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    expose:
+      - "1883"
+
   # Một-lần: chờ ollama sẵn sàng rồi kéo model nomic-embed-text.
   # Container thoát 0 sau khi xong; redeploy chỉ kiểm tra nhanh
   # (model đã trong volume).
@@ -130,3 +148,4 @@ volumes:
   erp-uploads:
   bridge-data:
   ollama-data:
+  mosquitto-data:

@@ -13,6 +13,8 @@ const OBJECTS: { key: ObjectType; label: string }[] = [
   { key: "workflow", label: "Workflow" },
   { key: "agent", label: "Agent" },
   { key: "activity", label: "Nhật ký" },
+  { key: "knowledge", label: "Tri thức" },
+  { key: "iot", label: "IoT" },
   { key: "settings", label: "Cấu hình" },
   { key: "rbac", label: "Vai trò" },
 ];

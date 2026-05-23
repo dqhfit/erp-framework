@@ -337,6 +337,8 @@ export function Sidebar() {
             icon={<I.GitBranch size={14} />} collapsed={collapsed} label={t("sidebar.org_chart")} />
           <SidebarItem to="/knowledge" active={pathname === "/knowledge"}
             icon={<I.File size={14} />} collapsed={collapsed} label={t("sidebar.knowledge")} />
+          <SidebarItem to="/iot" active={pathname.startsWith("/iot")}
+            icon={<I.Server size={14} />} collapsed={collapsed} label="Thiết bị IoT" />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}

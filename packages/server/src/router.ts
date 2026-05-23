@@ -22,6 +22,7 @@ import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
 import { embedRouter } from "./embed-router";
 import { knowledgeRouter } from "./knowledge-router";
+import { iotRouter } from "./iot-router";
 import { encryptSecret, decryptSecret } from "./crypto";
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
@@ -637,6 +638,9 @@ export const appRouter = router({
 
   /* ── Knowledge Base — nạp tri thức + tra cứu RAG ── */
   knowledge: knowledgeRouter,
+
+  /* ── IoT — thiết bị gửi/nhận dữ liệu (REST riêng ở /iot/v1) ── */
+  iot: iotRouter,
 
   /* ── Xuất/nhập cấu hình (entity+page+workflow+agent) ── */
   transfer: router({

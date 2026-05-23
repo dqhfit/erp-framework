@@ -28,6 +28,10 @@ export const QUEUE_KB_INGEST = "kb-ingest";
 interface RunJobData {
   workflowId: string;
   scheduleId?: string;
+  // Vars khởi tạo cho workflow run — chèn vào opts.context của
+  // executeWorkflow. Dùng cho trigger iot_telemetry (truyền device +
+  // payload xuống workflow), webhook (request body)…
+  triggerContext?: Record<string, unknown>;
 }
 interface HeartbeatJobData {
   heartbeatId: string;
@@ -57,8 +61,10 @@ export async function startJobs(): Promise<void> {
   // Worker: chạy workflow khi có job.
   await boss.work<RunJobData>(QUEUE_RUN, async (jobs) => {
     for (const job of jobs) {
-      const { workflowId, scheduleId } = job.data;
-      const r = await executeWorkflow(db, workflowId, { scheduleId });
+      const { workflowId, scheduleId, triggerContext } = job.data;
+      const r = await executeWorkflow(db, workflowId, {
+        scheduleId, context: triggerContext,
+      });
       if (scheduleId) {
         await db.update(schedules).set({
           lastRun: new Date(),
@@ -170,4 +176,16 @@ export async function enqueueKbIngest(sourceId: string): Promise<void> {
     throw new Error("Job runner chưa sẵn sàng — thử lại sau giây lát.");
   }
   await boss.send(QUEUE_KB_INGEST, { sourceId });
+}
+
+/** Enqueue một workflow run thủ công với context vars. Dùng cho
+   trigger iot_telemetry (truyền device + payload), webhook… */
+export async function enqueueWorkflowRun(
+  workflowId: string,
+  triggerContext?: Record<string, unknown>,
+): Promise<void> {
+  if (!boss) {
+    throw new Error("Job runner chưa sẵn sàng — thử lại sau giây lát.");
+  }
+  await boss.send(QUEUE_RUN, { workflowId, triggerContext });
 }
