@@ -34,8 +34,11 @@ services:
       - "9998"
 
   server:
+    # Coolify chạy `docker compose --project-directory <repo-root>` →
+     # build.context relative theo project-directory, KHÔNG theo vị trí
+     # compose file. Phải dùng "." (repo root) thay vì ".." (parent).
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.server
     restart: unless-stopped
     environment:
@@ -69,7 +72,7 @@ services:
 
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.app
     restart: unless-stopped
     depends_on:
@@ -88,7 +91,7 @@ services:
   # KHÔNG expose ra Internet — nginx (app) proxy /bridge → bridge:8909.
   bridge:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.bridge
     restart: unless-stopped
     volumes:
@@ -123,7 +126,9 @@ services:
     image: eclipse-mosquitto:2
     restart: unless-stopped
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      # Path tương đối theo project-directory (= repo root khi Coolify
+      # chạy), không theo vị trí compose file.
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
     expose:
       - "1883"
