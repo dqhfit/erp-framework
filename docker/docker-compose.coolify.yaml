@@ -17,7 +17,13 @@ services:
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_DB}
       POSTGRES_DB: erp_framework
     volumes:
-      - erp-pgdata:/var/lib/postgresql/data
+      # PG 18+ store data ở /var/lib/postgresql/<major>/data (subdir theo
+      # version để hỗ trợ pg_upgrade --link). Mount parent /var/lib/postgresql
+      # — KHÔNG mount /var/lib/postgresql/data như PG 16/17. Image sẽ
+      # complain "PostgreSQL data in /var/lib/postgresql/data (unused
+      # mount/volume)" và refuse boot nếu vẫn mount path cũ.
+      # Ref: https://github.com/docker-library/postgres/pull/1259
+      - erp-pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U erp -d erp_framework"]
       interval: 5s
