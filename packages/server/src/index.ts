@@ -93,7 +93,15 @@ const KB_ADD_TOOL: ToolDef = {
 async function main(): Promise<void> {
   // maxParamLength cao — tRPC httpBatchLink gộp nhiều procedure vào URL
   // (/trpc/a,b,c…); mặc định Fastify 100 ký tự sẽ làm batch lớn bị 404.
-  const app = Fastify({ logger: true, maxParamLength: 5000 });
+  // trustProxy — đọc X-Forwarded-For từ nginx/Traefik phía trước (Coolify
+  // có 2 lớp proxy: Traefik → nginx → server). Mặc định Fastify trả IP
+  // của connection peer (= nginx container) → rate-limit sẽ chung 1 IP
+  // cho mọi user. Bật trustProxy để req.ip lấy IP client thật.
+  const app = Fastify({
+    logger: true,
+    maxParamLength: 5000,
+    trustProxy: true,
+  });
 
   // CORS — cho frontend (origin khác) gọi kèm cookie phiên.
   // Production BẮT BUỘC khai báo CORS_ORIGIN tường minh: phản chiếu
