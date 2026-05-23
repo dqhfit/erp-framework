@@ -157,10 +157,12 @@ services:
       - ollama-data:/root/.ollama
     expose:
       - "11434"
-    # Image ollama dựa Ubuntu, có sẵn curl. /api/tags trả JSON list model
-    # (kể cả khi chưa pull gì). start_period 30s — ollama bind port khá nhanh.
+    # Ollama image KHÔNG có curl/wget/nc — chỉ có bash + binary ollama.
+    # `ollama list` tự gọi http://localhost:11434/api/tags qua client
+    # nội bộ → exit 0 khi API up, exit !=0 khi server chưa sẵn sàng.
+    # Đúng pattern mà ollama-pull entrypoint cũng dùng.
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 5s
       retries: 5
