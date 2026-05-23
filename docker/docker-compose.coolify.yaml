@@ -125,14 +125,21 @@ services:
   # KHÔNG expose ra Internet trong template này (security). Thiết bị
   # ngoài cloud nên dùng REST /iot/v1/telemetry qua HTTPS (cùng FQDN
   # với app). Cần MQTT public: thêm SERVICE_FQDN_MQTT_1883 + cấu hình
-  # auth thay cho allow_anonymous (xem docker/mosquitto.conf).
+  # auth thay cho allow_anonymous.
+  #
+  # Cấu hình mosquitto inline qua Docker `configs` (compose 2.20+) thay
+  # vì bind-mount ./docker/mosquitto.conf. Bind-mount file đơn lẻ trên
+  # Coolify hay vỡ "not a directory: mount directory onto file" vì cách
+  # Coolify checkout repo + bind volume runtime. Inline content tránh
+  # mọi path resolution trên host.
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
+    configs:
+      - source: mosquitto_conf
+        target: /mosquitto/config/mosquitto.conf
+        mode: 0444
     volumes:
-      # Path tương đối theo project-directory (= repo root khi Coolify
-      # chạy), không theo vị trí compose file.
-      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
     expose:
       - "1883"
@@ -158,3 +165,17 @@ volumes:
   bridge-data:
   ollama-data:
   mosquitto-data:
+
+# Cấu hình inline cho mosquitto — đồng bộ với docker/mosquitto.conf.
+# Nếu sửa file kia, nhớ cập nhật content ở đây (chỉ cho Coolify compose).
+configs:
+  mosquitto_conf:
+    content: |
+      listener 1883 0.0.0.0
+      allow_anonymous true
+      persistence true
+      persistence_location /mosquitto/data/
+      log_dest stdout
+      log_type error
+      log_type warning
+      log_type notice
