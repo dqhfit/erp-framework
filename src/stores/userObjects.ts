@@ -287,7 +287,20 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     saveAgentById(get, id);
   },
   setAgentContent: (id, data) => {
-    set((s) => ({ agentContent: { ...s.agentContent, [id]: data } }));
+    // Đồng bộ tên + model hiển thị (sidebar dùng agents[].name) — UI
+    // `/agents/$id` cho sửa cả 2 trong content, không qua renameAgent.
+    // Nếu không sync, agents.name (cột bảng) lệch khỏi config.name.
+    const d = (data ?? {}) as { name?: string; model?: string };
+    set((s) => ({
+      agentContent: { ...s.agentContent, [id]: data },
+      agents: (d.name || d.model)
+        ? s.agents.map((x) => x.id === id ? {
+            ...x,
+            ...(d.name ? { name: d.name } : {}),
+            ...(d.model ? { model: d.model } : {}),
+          } : x)
+        : s.agents,
+    }));
     saveAgentById(get, id);
   },
 }));
