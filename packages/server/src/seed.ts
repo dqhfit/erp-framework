@@ -207,13 +207,31 @@ function loadCEOMemory(): Record<string, string> {
 }
 
 /** Agent CEO mặc định — đứng đầu org chart (managerId = null). Đọc
-   persona từ docs/CEO/*.md. Idempotent. */
+   persona từ docs/CEO/*.md. Idempotent: nếu CEO đã có nhưng memory
+   rỗng (vd seed cũ trước khi có tính năng) → tự backfill. */
 async function seedCEO(companyId: string): Promise<void> {
   const name = "CEO";
-  const [exist] = await db.select({ id: agents.id }).from(agents)
-    .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
-  if (exist) { console.log(`• Bỏ qua agent "${name}" — đã tồn tại`); return; }
   const memory = loadCEOMemory();
+  const memCount = Object.keys(memory).length;
+
+  const [exist] = await db.select().from(agents)
+    .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
+  if (exist) {
+    const cfg = (exist.config ?? {}) as { memory?: Record<string, unknown> };
+    const have = cfg.memory ? Object.keys(cfg.memory).length : 0;
+    if (have > 0) {
+      console.log(`• Bỏ qua agent "${name}" — đã có ${have} memory file`);
+      return;
+    }
+    // CEO tồn tại nhưng memory rỗng → backfill từ docs/CEO/.
+    await db.update(agents).set({
+      config: { ...(exist.config as object), memory },
+      updatedAt: new Date(),
+    }).where(eq(agents.id, exist.id));
+    console.log(`✓ Agent "${name}" — backfill ${memCount}/7 memory file`);
+    return;
+  }
+
   await db.insert(agents).values({
     companyId, name, model: "claude-sonnet-4-6",
     config: {
@@ -227,8 +245,7 @@ async function seedCEO(companyId: string): Promise<void> {
       memory,
     },
   });
-  const count = Object.keys(memory).length;
-  console.log(`✓ Agent "${name}" — CEO với ${count}/7 file memory`);
+  console.log(`✓ Agent "${name}" — CEO mới với ${memCount}/7 file memory`);
 }
 
 async function seed(): Promise<void> {
