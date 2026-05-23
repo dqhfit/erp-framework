@@ -27,8 +27,11 @@ services:
 
   # Apache Tika — sidecar trích văn bản từ file cho Knowledge Base
   # (PDF/DOCX/XLSX/PPTX/TXT…). Không expose ra Internet.
+  # Dùng bản KHÔNG -full (~150MB) thay vì -full (~2GB chứa Tesseract OCR
+  # + bộ font đầy đủ). Đủ cho extract văn bản; OCR ảnh không hỗ trợ —
+  # nếu sau này cần OCR thì đổi sang :3.2.1.0-full + pull thủ công trước.
   tika:
-    image: apache/tika:3.2.1.0-full
+    image: apache/tika:3.2.1.0
     restart: unless-stopped
     expose:
       - "9998"
