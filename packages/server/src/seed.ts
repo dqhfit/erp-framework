@@ -6,11 +6,22 @@
    Chạy: pnpm --filter @erp-framework/server seed
    ========================================================== */
 import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 import {
   entities, entityRecords, pages, workflows, agents, companies,
 } from "@erp-framework/db";
 import { db } from "./db";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+/* docs/CEO/ chứa 7 file mô tả persona Giám đốc điều hành. Anchor
+   theo vị trí seed.ts (packages/server/src) → repo root. */
+const CEO_DOCS_DIR = join(__dirname, "..", "..", "..", "docs", "CEO");
+const MEMORY_FILES = [
+  "IDENTITY", "SOUL", "USER", "TOOLS", "AGENTS", "HEARTBEAT", "BOOTSTRAP",
+] as const;
 
 interface SeedEntity {
   name: string;
@@ -181,12 +192,52 @@ async function seedAgent(companyId: string): Promise<void> {
   console.log(`✓ Agent "${name}"`);
 }
 
+/** Đọc 7 file memory từ docs/CEO/. Thiếu file → bỏ qua (server
+   fallback default template lúc runtime). */
+function loadCEOMemory(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of MEMORY_FILES) {
+    try {
+      out[f] = readFileSync(join(CEO_DOCS_DIR, `${f}.md`), "utf8");
+    } catch {
+      console.log(`  (CEO: thiếu ${f}.md — bỏ qua, dùng default)`);
+    }
+  }
+  return out;
+}
+
+/** Agent CEO mặc định — đứng đầu org chart (managerId = null). Đọc
+   persona từ docs/CEO/*.md. Idempotent. */
+async function seedCEO(companyId: string): Promise<void> {
+  const name = "CEO";
+  const [exist] = await db.select({ id: agents.id }).from(agents)
+    .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
+  if (exist) { console.log(`• Bỏ qua agent "${name}" — đã tồn tại`); return; }
+  const memory = loadCEOMemory();
+  await db.insert(agents).values({
+    companyId, name, model: "claude-sonnet-4-6",
+    config: {
+      name, model: "claude-sonnet-4-6",
+      systemPrompt:
+        "Bạn là Giám đốc điều hành (CEO) của công ty. Tuân theo IDENTITY/" +
+        "SOUL/USER trong memory. Khi xung đột giữa các file, SOUL.md ưu " +
+        "tiên cao nhất. Trước khi quyết định lớn, đọc lại BOOTSTRAP.md.",
+      temperature: 0.5,  // CEO thận trọng hơn assistant thông thường.
+      tools: [],
+      memory,
+    },
+  });
+  const count = Object.keys(memory).length;
+  console.log(`✓ Agent "${name}" — CEO với ${count}/7 file memory`);
+}
+
 async function seed(): Promise<void> {
   const companyId = await defaultCompanyId();
   const ids = await seedEntities(companyId);
   await seedPage(companyId, ids);
   await seedWorkflow(companyId);
   await seedAgent(companyId);
+  await seedCEO(companyId);
   console.log("Seed xong.");
 }
 
