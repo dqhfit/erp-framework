@@ -172,27 +172,37 @@ services:
   # với app). Cần MQTT public: thêm SERVICE_FQDN_MQTT_1883 + cấu hình
   # auth thay cho allow_anonymous.
   #
-  # Cấu hình mosquitto inline qua Docker `configs` (compose 2.20+) thay
-  # vì bind-mount ./docker/mosquitto.conf. Bind-mount file đơn lẻ trên
-  # Coolify hay vỡ "not a directory: mount directory onto file" vì cách
-  # Coolify checkout repo + bind volume runtime. Inline content tránh
-  # mọi path resolution trên host.
+  # Cấu hình mosquitto inline qua entrypoint (heredoc → file) thay vì
+  # bind-mount ./docker/mosquitto.conf hay Docker `configs:` (yêu cầu
+  # Compose 2.23+, không chắc Coolify có).
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
-    configs:
-      - source: mosquitto_conf
-        target: /mosquitto/config/mosquitto.conf
-        mode: 0444
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /mosquitto/config/mosquitto.conf <<'CONF'
+        listener 1883 0.0.0.0
+        allow_anonymous true
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest stdout
+        log_type error
+        log_type warning
+        log_type notice
+        CONF
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
     volumes:
       - mosquitto-data:/mosquitto/data
     expose:
       - "1883"
-    # Image eclipse-mosquitto:2 alpine có sẵn mosquitto_sub CLI. Subscribe
-    # rồi disconnect ngay (-C 1 -W 1 = nhận 1 msg hoặc 1s rồi thoát). Đủ
-    # để xác nhận broker chạy + chấp nhận kết nối anonymous.
+    # TCP probe đơn giản — eclipse-mosquitto:2 alpine có nc sẵn. Chỉ
+    # check port 1883 listening, không full MQTT handshake. Đủ cho mục
+    # đích Coolify nhận biết broker up. Tránh edge case với mosquitto_sub
+    # subscribe wildcard topic system ($SYS) trên một số deploy.
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 1883 -t '$$SYS/#' -C 1 -W 2 -E || exit 1"]
+      test: ["CMD", "nc", "-z", "localhost", "1883"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -220,17 +230,3 @@ volumes:
   bridge-data:
   ollama-data:
   mosquitto-data:
-
-# Cấu hình inline cho mosquitto — đồng bộ với docker/mosquitto.conf.
-# Nếu sửa file kia, nhớ cập nhật content ở đây (chỉ cho Coolify compose).
-configs:
-  mosquitto_conf:
-    content: |
-      listener 1883 0.0.0.0
-      allow_anonymous true
-      persistence true
-      persistence_location /mosquitto/data/
-      log_dest stdout
-      log_type error
-      log_type warning
-      log_type notice
