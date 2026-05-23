@@ -22,8 +22,10 @@ services:
       test: ["CMD-SHELL", "pg_isready -U erp -d erp_framework"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 40s
+      retries: 30
+      # PG 18 init lần đầu (initdb + tạo user + CREATE EXTENSION vector)
+      # chậm hơn 16/17 đáng kể. Cho 90s grace để tránh "Error" giả.
+      start_period: 90s
 
   # Apache Tika — sidecar trích văn bản từ file cho Knowledge Base
   # (PDF/DOCX/XLSX/PPTX/TXT + ảnh OCR + scan PDF). Không expose ra Internet.
