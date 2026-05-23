@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { I } from "@/components/Icons";
 import type { MockAgent } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
@@ -10,6 +10,21 @@ import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useDynamicModels } from "@/hooks/useDynamicModels";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
+import { createObjectsClient } from "@erp-framework/client";
+
+// 7 file memory chuẩn giống paperclip/openclaw — agent đọc thành
+// preamble system prompt, có thể tự ghi nhớ qua tool memory_remember.
+const MEMORY_FILES = [
+  "IDENTITY", "SOUL", "USER", "TOOLS", "AGENTS", "HEARTBEAT", "BOOTSTRAP",
+] as const;
+type MemoryFile = typeof MEMORY_FILES[number];
+const MEMORY_LABEL: Record<MemoryFile, string> = {
+  IDENTITY: "Danh tính", SOUL: "Tinh thần / Giá trị", USER: "Người dùng",
+  TOOLS: "Công cụ", AGENTS: "Các agent khác", HEARTBEAT: "Nhịp đập",
+  BOOTSTRAP: "Khởi động",
+};
+const emptyMemory = (): Record<MemoryFile, string> =>
+  Object.fromEntries(MEMORY_FILES.map((f) => [f, ""])) as Record<MemoryFile, string>;
 
 interface AgentState {
   name: string;
@@ -19,6 +34,8 @@ interface AgentState {
   tools: string[];
   /** Adapter để biết list model nào — dùng đầu model name để đoán nếu chưa có */
   adapter?: string;
+  /** Memory files persona — server nạp vào system preamble + tool ghi nhớ. */
+  memory: Record<MemoryFile, string>;
 }
 
 function inferAdapterFromModel(model: string | undefined | null): string {
@@ -62,17 +79,34 @@ function AgentRoute() {
       "- Dùng các tool MCP có sẵn để truy vấn dữ liệu thật.",
     temperature: 0.7,
     tools: DEFAULT_TOOLS.slice(0, agent.tools),
+    memory: emptyMemory(),
   });
+  const [templates, setTemplates] = useState<Record<MemoryFile, string> | null>(null);
+  const api = useMemo(() => createObjectsClient(""), []);
   const [aiOpen, setAiOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const setAgentContent = useUserObjects((s) => s.setAgentContent);
 
   // Load config đã lưu khi đổi agent
   useEffect(() => {
-    const stored = useUserObjects.getState().agentContent[id] as AgentState | undefined;
-    if (stored) setState(stored);
+    const stored = useUserObjects.getState().agentContent[id] as
+      Partial<AgentState> | undefined;
+    if (stored) {
+      // Agent cũ chưa có memory → điền key trống cho UI không crash.
+      setState({
+        ...(stored as AgentState),
+        memory: { ...emptyMemory(), ...(stored.memory ?? {}) },
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Lấy 7 template mặc định (server đã chèn tên agent vào).
+  useEffect(() => {
+    api.agents.memoryTemplates(id)
+      .then((t) => setTemplates(t as Record<MemoryFile, string>))
+      .catch(() => { /* chưa đăng nhập / agent chưa có ở backend */ });
+  }, [id, api]);
 
   const save = () => {
     setAgentContent(id, state);
@@ -95,6 +129,7 @@ function AgentRoute() {
 
   const handleAiApply = (design: AgentDesign) => {
     setState({
+      ...state,  // giữ memory + adapter
       name: design.name ?? state.name,
       model: design.model ?? state.model,
       systemPrompt: design.systemPrompt ?? state.systemPrompt,
@@ -102,6 +137,13 @@ function AgentRoute() {
       tools: design.tools ?? state.tools,
     });
     setAiOpen(false);
+  };
+
+  const setMemory = (file: MemoryFile, content: string) =>
+    setState((s) => ({ ...s, memory: { ...s.memory, [file]: content } }));
+  const restoreDefault = (file: MemoryFile) => {
+    if (!templates) return;
+    setMemory(file, templates[file]);
   };
 
   const toggleTool = (t: string) => {
@@ -243,6 +285,48 @@ function AgentRoute() {
         <div className="mt-4">
           <HeartbeatPanel agentId={id} />
         </div>
+
+        {/* === Memory files (paperclip/openclaw-style persona) === */}
+        <Card className="mt-4">
+          <div className="flex items-center gap-2 mb-1">
+            <I.Bot size={14} className="text-accent" />
+            <div className="font-semibold">Bộ nhớ agent (Memory files)</div>
+            <div className="flex-1" />
+            <span className="text-xs text-muted">
+              Để trống → server dùng template mặc định khi chạy.
+            </span>
+          </div>
+          <div className="text-xs text-muted mb-3">
+            7 file nhúng vào system prompt mỗi lần agent chạy (chat / nhịp).
+            Agent có thể tự gọi <code>memory_remember</code> để append cái mới
+            (vd học sở thích người dùng → ghi vào USER.md).
+          </div>
+          <div className="space-y-3">
+            {MEMORY_FILES.map((f) => (
+              <div key={f} className="rounded-md border border-border p-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="font-mono text-xs">{f}.md</span>
+                  <span className="text-xs text-muted">— {MEMORY_LABEL[f]}</span>
+                  <div className="flex-1" />
+                  {templates && (
+                    <Button size="sm" variant="ghost"
+                      icon={<I.Undo size={11} />}
+                      onClick={() => restoreDefault(f)}>
+                      Khôi phục mặc định
+                    </Button>
+                  )}
+                </div>
+                <textarea
+                  className="input font-mono text-xs w-full"
+                  rows={6}
+                  placeholder={templates?.[f] ?? ""}
+                  value={state.memory[f] ?? ""}
+                  onChange={(e) => setMemory(f, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <AiAssistDrawer

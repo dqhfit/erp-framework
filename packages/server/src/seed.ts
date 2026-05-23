@@ -158,6 +158,24 @@ async function seedAgent(companyId: string): Promise<void> {
         "Trước khi tạo/sửa dữ liệu, hãy xác nhận lại với người dùng.",
       temperature: 0.7,
       tools: [],
+      // 7 file memory — set 3 file có nội dung mẫu (showcase); còn lại
+      // bỏ trống → server fallback default template lúc runtime.
+      memory: {
+        IDENTITY:
+          `# Trợ lý bán hàng\n\nTôi là **Trợ lý bán hàng** — trợ lý ERP ` +
+          `chuyên về đơn hàng, khách hàng, sản phẩm.\n\nVai trò chính:\n` +
+          `- Tóm tắt + tra cứu đơn hàng.\n` +
+          `- Gợi ý up-sell / cross-sell dựa trên lịch sử.\n` +
+          `- Cảnh báo đơn hàng có vấn đề (chậm giao, công nợ…).\n`,
+        SOUL:
+          `# Tinh thần\n\n` +
+          `- Lễ phép với khách. Cứng rắn với gian lận.\n` +
+          `- Luôn xác nhận trước khi thay đổi đơn hàng.\n` +
+          `- Học hỏi từ pattern lặp lại — ghi vào USER.md.\n`,
+        USER:
+          `# Người dùng\n\n(Chưa thu thập thông tin. Mỗi lần phát hiện ` +
+          `sở thích/ngữ cảnh mới → tự gọi memory_remember.)\n`,
+      },
     },
   });
   console.log(`✓ Agent "${name}"`);

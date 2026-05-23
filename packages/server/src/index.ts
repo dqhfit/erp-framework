@@ -8,8 +8,8 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
-import { eq } from "drizzle-orm";
-import { sessions, knowledgeSources } from "@erp-framework/db";
+import { and, eq } from "drizzle-orm";
+import { agents, sessions, knowledgeSources } from "@erp-framework/db";
 import { roleCan } from "@erp-framework/core";
 import { appRouter } from "./router";
 import { registerIotRoutes } from "./iot";
@@ -21,6 +21,10 @@ import { SESSION_COOKIE } from "./auth";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import { makeCallTool } from "./mcp-client";
 import { knowledgeSearch } from "./knowledge-search";
+import {
+  MEMORY_FILES, loadAgentMemory, formatMemoryPreamble, appendMemory,
+  type MemoryFile,
+} from "./agent-memory";
 import { assertWithinBudget } from "./budget";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 
@@ -41,6 +45,30 @@ const KB_SEARCH_TOOL: ToolDef = {
       query: { type: "string", description: "Câu hỏi hoặc từ khoá cần tra cứu" },
     },
     required: ["query"],
+  },
+};
+
+/* Tool agent tự ghi nhớ vào memory file của chính nó. Chỉ cấp khi
+   agentId được client truyền (route /agent/chat đã xác minh agent
+   thuộc đúng công ty). Append-only — không cho ghi đè cả file. */
+const MEMORY_REMEMBER_TOOL: ToolDef = {
+  name: "memory_remember",
+  description:
+    "Ghi nhớ một điều mới vào memory file của agent (vd USER.md cho sở "
+    + "thích người dùng). Append theo dòng kèm dấu thời gian.",
+  schema: {
+    type: "object",
+    properties: {
+      file: {
+        type: "string",
+        enum: [...MEMORY_FILES],
+        description: "Tên file memory cần ghi (IDENTITY, SOUL, USER, …).",
+      },
+      content: {
+        type: "string", description: "Nội dung ngắn cần lưu (1-3 câu).",
+      },
+    },
+    required: ["file", "content"],
   },
 };
 
@@ -135,6 +163,9 @@ async function main(): Promise<void> {
       system?: string;
       messages?: Array<{ role: "user" | "assistant"; content: string }>;
       tools?: Array<{ name: string; description?: string; schema: Record<string, unknown> }>;
+      // Khi chat được "gắn" với một agent cụ thể (vd đang ở /agents/$id):
+      // load memory files của agent vào preamble + cấp tool memory_remember.
+      agentId?: string;
     };
     reply.hijack();
     const raw = reply.raw;
@@ -150,18 +181,48 @@ async function main(): Promise<void> {
       // các tool khác rơi về MCP. knowledge_add chỉ cấp khi đủ quyền.
       const mcpCallTool = makeCallTool(db, active.companyId);
       const canAddKb = roleCan(active.role, "create", "knowledge");
+
+      // Nếu request gắn với một agent cụ thể (cùng công ty): nạp 7 file
+      // memory thành preamble + cấp tool memory_remember.
+      let memoryPreamble = "";
+      let boundAgentId: string | null = null;
+      if (body.agentId) {
+        const [ag] = await db.select().from(agents).where(and(
+          eq(agents.id, body.agentId),
+          eq(agents.companyId, active.companyId),
+        ));
+        if (ag) {
+          const mem = await loadAgentMemory(ag.id, ag.name);
+          memoryPreamble = formatMemoryPreamble(mem) + "\n\n---\n\n";
+          boundAgentId = ag.id;
+        }
+      }
+      const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.");
+
       await runAgentChat({
         db,
         companyId: active.companyId,
         profileName: body.profileName,
-        system: body.system ?? "Bạn là trợ lý ERP.",
+        system: finalSystem,
         messages: body.messages ?? [],
         tools: [
           ...(body.tools ?? []),
           KB_SEARCH_TOOL,
           ...(canAddKb ? [KB_ADD_TOOL] : []),
+          ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
         ],
         callTool: async (name, args) => {
+          if (name === "memory_remember") {
+            if (!boundAgentId) throw new Error("Chưa gắn agent cho phiên này.");
+            const f = String(args.file ?? "") as MemoryFile;
+            const content = String(args.content ?? "").trim();
+            if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
+            if (!MEMORY_FILES.includes(f)) {
+              throw new Error(`File memory không hợp lệ: ${f}`);
+            }
+            await appendMemory(boundAgentId, f, content);
+            return { ok: true, file: f };
+          }
           if (name === "knowledge_search") {
             const hits = await knowledgeSearch(
               db, active.companyId, String(args.query ?? ""), 5);

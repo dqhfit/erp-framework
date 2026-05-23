@@ -33,6 +33,7 @@ import {
 } from "./auth";
 import type { DB } from "./db";
 import { executeWorkflow, recentRuns } from "./run-workflow";
+import { allDefaultTemplates } from "./agent-memory";
 
 /* ─── Schema input ───────────────────────────────────────── */
 /* Khoá phụ tầng app (id field, ref lookup) khai báo TƯỜNG MINH để
@@ -616,6 +617,19 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await ctx.db.delete(agents).where(and(eq(agents.id, input),
           eq(agents.companyId, ctx.user.companyId)));
+      }),
+
+    /* Trả về 7 template memory mặc định cho UI dùng làm nội dung
+       "Khôi phục mặc định". Đã nhúng tên agent vào template. */
+    memoryTemplates: rbacProcedure("view", "agent")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        const [a] = await ctx.db.select().from(agents).where(and(
+          eq(agents.id, input),
+          eq(agents.companyId, ctx.user.companyId),
+        ));
+        if (!a) throw new TRPCError({ code: "NOT_FOUND" });
+        return allDefaultTemplates(a.name);
       }),
   }),
 

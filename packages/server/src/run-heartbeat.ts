@@ -13,6 +13,29 @@ import { runAgentChat, type ToolDef } from "./agent-chat";
 import { makeCallTool } from "./mcp-client";
 import { logActivity } from "./activity";
 import { assertWithinBudget } from "./budget";
+import {
+  MEMORY_FILES, loadAgentMemory, formatMemoryPreamble, appendMemory,
+  type MemoryFile,
+} from "./agent-memory";
+
+/* Tool memory_remember — heartbeat agent có thể tự ghi nhớ giữa các
+   nhịp (vd học được routine, ghi vào HEARTBEAT.md). Tool def chia
+   sẻ với /agent/chat ở index.ts; copy ở đây để run-heartbeat khỏi
+   phụ thuộc index.ts. */
+const MEMORY_REMEMBER_TOOL: ToolDef = {
+  name: "memory_remember",
+  description:
+    "Ghi nhớ một điều mới vào memory file của agent (USER, HEARTBEAT, "
+    + "AGENTS, …). Append theo dòng kèm dấu thời gian.",
+  schema: {
+    type: "object",
+    properties: {
+      file: { type: "string", enum: [...MEMORY_FILES] },
+      content: { type: "string" },
+    },
+    required: ["file", "content"],
+  },
+};
 
 interface AgentCfg {
   systemPrompt?: string;
@@ -44,18 +67,38 @@ export async function runHeartbeat(
       && typeof (t as ToolDef).schema === "object",
   );
 
+  // Nạp memory files → preamble cho system prompt; cấp tool
+  // memory_remember để agent tự học giữa các nhịp.
+  const memory = await loadAgentMemory(agent.id, agent.name);
+  const memoryPreamble = formatMemoryPreamble(memory) + "\n\n---\n\n";
+  const baseSystem = cfg.systemPrompt
+    ?? "Bạn là agent ERP tự động. Thực hiện chỉ dẫn ngắn gọn, súc tích.";
+
   let finalText = "";
   let usage = { input: 0, output: 0 };
   let errMsg = "";
 
+  const mcpCallTool = makeCallTool(db, hb.companyId);
+
   await runAgentChat({
     db,
     companyId: hb.companyId,
-    system: cfg.systemPrompt
-      ?? "Bạn là agent ERP tự động. Thực hiện chỉ dẫn ngắn gọn, súc tích.",
+    system: memoryPreamble + baseSystem,
     messages: [{ role: "user", content: hb.prompt }],
-    tools,
-    callTool: makeCallTool(db, hb.companyId),
+    tools: [...tools, MEMORY_REMEMBER_TOOL],
+    callTool: async (name, args) => {
+      if (name === "memory_remember") {
+        const f = String(args.file ?? "") as MemoryFile;
+        const content = String(args.content ?? "").trim();
+        if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
+        if (!MEMORY_FILES.includes(f)) {
+          throw new Error(`File memory không hợp lệ: ${f}`);
+        }
+        await appendMemory(agent.id, f, content);
+        return { ok: true, file: f };
+      }
+      return mcpCallTool(name, args);
+    },
     onEvent: (e) => {
       if (e.type === "done") { finalText = e.text; usage = e.usage; }
       else if (e.type === "error") { errMsg = e.message; }

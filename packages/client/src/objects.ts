@@ -101,6 +101,9 @@ export function createObjectsClient(baseUrl: string) {
       get: (id: string) => trpc.agents.get.query(id),
       save: (input: AgentSaveInput) => trpc.agents.save.mutate(input),
       delete: (id: string) => trpc.agents.delete.mutate(id),
+      // 7 template memory mặc định cho UI dùng làm "Khôi phục mặc định".
+      memoryTemplates: (id: string) =>
+        trpc.agents.memoryTemplates.query(id),
     },
     schedules: {
       list: () => trpc.schedules.list.query(),
