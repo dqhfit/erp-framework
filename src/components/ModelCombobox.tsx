@@ -16,6 +16,11 @@ import { useSettings } from "@/stores/settings";
 import { useDynamicModels } from "@/hooks/useDynamicModels";
 import { inferAdapterFromModel } from "@erp-framework/core";
 
+/* 4 adapter chính — gọi useDynamicModels cho từng adapter để optgroup
+   nào cũng có discovery list, không phụ thuộc adapter hiện tại. Hook
+   có cache 30 phút trong localStorage nên gọi 4 lần không tốn nhiều. */
+const KNOWN_ADAPTERS = ["claude", "openai", "gemini", "ollama"] as const;
+
 export interface ModelComboboxProps {
   value: string;
   onChange: (model: string) => void;
@@ -38,9 +43,32 @@ export function ModelCombobox({
   const llmProfiles = useSettings((s) => s.llmProfiles);
   const inferredAdapter = inferAdapterFromModel(value);
   const adapter = lockedAdapter ?? inferredAdapter;
-  const {
-    models: discovery, loading, source, refresh,
-  } = useDynamicModels(adapter);
+
+  // Gọi hook cho TỪNG adapter chính — mỗi group sau đó có discovery
+  // riêng (không phụ thuộc adapter của model hiện tại). Hook order
+  // ổn định nhờ KNOWN_ADAPTERS là const tuple.
+  const claudeM = useDynamicModels("claude");
+  const openaiM = useDynamicModels("openai");
+  const geminiM = useDynamicModels("gemini");
+  const ollamaM = useDynamicModels("ollama");
+  const discoveryByAdapter: Record<string, string[]> = {
+    claude: claudeM.models,
+    openai: openaiM.models,
+    gemini: geminiM.models,
+    ollama: ollamaM.models,
+  };
+  const loading = adapter === "claude" ? claudeM.loading
+    : adapter === "openai" ? openaiM.loading
+    : adapter === "gemini" ? geminiM.loading
+    : adapter === "ollama" ? ollamaM.loading : false;
+  const source = adapter === "claude" ? claudeM.source
+    : adapter === "openai" ? openaiM.source
+    : adapter === "gemini" ? geminiM.source
+    : adapter === "ollama" ? ollamaM.source : null;
+  const refresh = adapter === "claude" ? claudeM.refresh
+    : adapter === "openai" ? openaiM.refresh
+    : adapter === "gemini" ? geminiM.refresh
+    : adapter === "ollama" ? ollamaM.refresh : () => Promise.resolve();
 
   const groups = useMemo(() => {
     const out: Record<string, { model: string; from: string }[]> = {};
@@ -50,11 +78,16 @@ export function ModelCombobox({
       const list = (out[ad] = out[ad] ?? []);
       if (!list.find((x) => x.model === model)) list.push({ model, from });
     };
+    // 1. Model từ profile của user (mỗi profile 1 model).
     for (const p of Object.values(llmProfiles)) {
       push(p.adapter, p.model, `profile "${p.name}"`);
     }
-    for (const m of discovery) push(adapter, m, "discovery");
-    // Loại các model bị exclude.
+    // 2. Discovery của mọi adapter chính — bảo đảm group nào cũng có
+    //    danh sách đầy đủ, không chỉ adapter của model hiện tại.
+    for (const ad of KNOWN_ADAPTERS) {
+      for (const m of discoveryByAdapter[ad] ?? []) push(ad, m, "discovery");
+    }
+    // 3. Loại các model bị exclude (dùng cho fallback list).
     if (excludeModels?.length) {
       for (const ad of Object.keys(out)) {
         out[ad] = (out[ad] ?? []).filter((x) => !excludeModels.includes(x.model));
@@ -62,7 +95,8 @@ export function ModelCombobox({
       }
     }
     return out;
-  }, [llmProfiles, discovery, adapter, lockedAdapter, excludeModels]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [llmProfiles, claudeM.models, openaiM.models, geminiM.models, ollamaM.models, lockedAdapter, excludeModels]);
 
   // Model đang dùng không có trong groups → hiển thị "custom" để giữ
   // tương thích với agent.config.model lưu tay từ trước.
