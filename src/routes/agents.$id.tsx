@@ -9,6 +9,7 @@ import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useDynamicModels } from "@/hooks/useDynamicModels";
+import { useSettings } from "@/stores/settings";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
 import { createObjectsClient } from "@erp-framework/client";
 
@@ -148,6 +149,34 @@ function AgentRoute() {
   const { models: availableModels, loading: modelsLoading, refresh: refreshModels, source: modelsSource } =
     useDynamicModels(adapter);
 
+  // Gộp model từ 2 nguồn để dropdown khớp với cài đặt LLM profile:
+  // - llmProfiles của user (model thực sự đã setup + có API key).
+  // - useDynamicModels(adapter) cho discovery model mới của adapter
+  //   hiện tại (API list / fallback).
+  // Group theo adapter để Select hiện <optgroup> rõ ràng.
+  const llmProfiles = useSettings((s) => s.llmProfiles);
+  const groupedModels = useMemo(() => {
+    const groups: Record<string, { model: string; from: string }[]> = {};
+    const push = (ad: string, model: string, from: string) => {
+      if (!model) return;
+      const list = (groups[ad] = groups[ad] ?? []);
+      if (!list.find((x) => x.model === model)) list.push({ model, from });
+    };
+    for (const p of Object.values(llmProfiles)) {
+      push(p.adapter, p.model, `profile "${p.name}"`);
+    }
+    for (const m of availableModels) push(adapter, m, "discovery");
+    return groups;
+  }, [llmProfiles, availableModels, adapter]);
+  // Tất cả model có thể chọn — phẳng — cho fallback Select.
+  const allModelsFlat = useMemo(() => {
+    const out: string[] = [];
+    for (const list of Object.values(groupedModels)) {
+      for (const x of list) if (!out.includes(x.model)) out.push(x.model);
+    }
+    return out;
+  }, [groupedModels]);
+
   const handleAiApply = (design: AgentDesign) => {
     setState({
       ...state,  // giữ memory + adapter
@@ -229,9 +258,17 @@ function AgentRoute() {
             <div className="flex gap-1">
               <Select value={state.model}
                 onChange={(e) => setState({ ...state, model: e.target.value })}
-                disabled={modelsLoading && availableModels.length === 0}>
-                {availableModels.map((m) => <option key={m} value={m}>{m}</option>)}
-                {!availableModels.includes(state.model) && state.model && (
+                disabled={modelsLoading && allModelsFlat.length === 0}>
+                {Object.entries(groupedModels).map(([ad, list]) => (
+                  <optgroup key={ad} label={ad}>
+                    {list.map(({ model, from }) => (
+                      <option key={model} value={model}>
+                        {model}{from !== "discovery" ? ` — ${from}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                {!allModelsFlat.includes(state.model) && state.model && (
                   <option value={state.model}>{state.model} (custom)</option>
                 )}
               </Select>
@@ -283,9 +320,20 @@ function AgentRoute() {
             <Select value="" disabled={modelsLoading}
               onChange={(e) => { addFallback(e.target.value); e.currentTarget.value = ""; }}>
               <option value="">+ Thêm model dự phòng…</option>
-              {availableModels
-                .filter((m) => m !== state.model && !state.fallbackModels.includes(m))
-                .map((m) => <option key={m} value={m}>{m}</option>)}
+              {Object.entries(groupedModels).map(([ad, list]) => {
+                const rows = list.filter((x) =>
+                  x.model !== state.model && !state.fallbackModels.includes(x.model));
+                if (rows.length === 0) return null;
+                return (
+                  <optgroup key={ad} label={ad}>
+                    {rows.map(({ model, from }) => (
+                      <option key={model} value={model}>
+                        {model}{from !== "discovery" ? ` — ${from}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </Select>
           </div>
         </FormField>
