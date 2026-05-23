@@ -115,6 +115,11 @@ services:
       # tới cổng 80 của nginx. Đây là cửa ra DUY NHẤT của dịch vụ.
       # Coolify đọc healthcheck dưới để mark deployment "live".
       - SERVICE_FQDN_APP_80
+    # Traefik của Coolify cần thấy `expose` trong compose để biết
+    # forward sang cổng nào của container. Thiếu dòng này → router
+    # được tạo nhưng không có upstream → "no available server".
+    expose:
+      - "80"
     # nginx:1.27-alpine có wget. Test SPA index trả 200.
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
