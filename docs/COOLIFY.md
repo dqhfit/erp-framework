@@ -16,7 +16,7 @@ embedding) được Coolify quản lý dưới một resource duy nhất.
 
 1. Trong Coolify → **+ New Resource → Service → Docker Compose Empty**.
 2. **Source:** chọn repo này; **Branch:** `main` (hoặc nhánh muốn deploy).
-3. **Compose Path:** `docker/docker-compose.coolify.yml`.
+3. **Compose Path:** `docker/docker-compose.coolify.yaml`.
 4. Lưu — Coolify đọc compose và **tự sinh các biến**:
    - `SERVICE_PASSWORD_64_DB` — mật khẩu PostgreSQL.
    - `SERVICE_BASE64_64_KEY` — khoá AES-256-GCM mã hoá API key LLM.
