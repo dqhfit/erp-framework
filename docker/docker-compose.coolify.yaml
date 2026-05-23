@@ -44,6 +44,15 @@ services:
     restart: unless-stopped
     expose:
       - "9998"
+    # Tika expose /tika trả "This is Tika Server (Apache Tika x.y.z)…".
+    # Image dựa trên eclipse-temurin có wget sẵn. start_period 60s vì
+    # JVM warm-up lần đầu + load font/OCR (bản -full) chậm.
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   server:
     # Coolify chạy `docker compose --project-directory <repo-root>` →
@@ -81,18 +90,38 @@ services:
     # Chỉ expose nội bộ — nginx (app) proxy /trpc → server:8910.
     expose:
       - "8910"
+    # GET /health trả {ok:true,ts}. Node 22 có fetch global → không cần
+    # curl/wget (node:22-slim không có). start_period 120s vì lần đầu
+    # phải chạy migration 0000-0012 + seed CEO/ERP trước khi listen.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8910/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
 
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile.app
     restart: unless-stopped
+    # Chờ server healthy (đã migrate xong + seed xong + listen :8910)
+    # trước khi nginx start, tránh user vào sớm gặp 502 lúc proxy /trpc.
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       # Khai báo biến này → Coolify cấp FQDN HTTPS + route Traefik
       # tới cổng 80 của nginx. Đây là cửa ra DUY NHẤT của dịch vụ.
+      # Coolify đọc healthcheck dưới để mark deployment "live".
       - SERVICE_FQDN_APP_80
+    # nginx:1.27-alpine có wget. Test SPA index trả 200.
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   # Claude Code CLI Bridge — dùng `claude` CLI làm nguồn LLM (auth
   # subscription Pro/Max thay cho API token). Đăng nhập MỘT LẦN sau
@@ -128,6 +157,14 @@ services:
       - ollama-data:/root/.ollama
     expose:
       - "11434"
+    # Image ollama dựa Ubuntu, có sẵn curl. /api/tags trả JSON list model
+    # (kể cả khi chưa pull gì). start_period 30s — ollama bind port khá nhanh.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # MQTT broker — IoT realtime push/pull. Nội bộ Docker network,
   # KHÔNG expose ra Internet trong template này (security). Thiết bị
@@ -151,6 +188,15 @@ services:
       - mosquitto-data:/mosquitto/data
     expose:
       - "1883"
+    # Image eclipse-mosquitto:2 alpine có sẵn mosquitto_sub CLI. Subscribe
+    # rồi disconnect ngay (-C 1 -W 1 = nhận 1 msg hoặc 1s rồi thoát). Đủ
+    # để xác nhận broker chạy + chấp nhận kết nối anonymous.
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 1883 -t '$$SYS/#' -C 1 -W 2 -E || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Một-lần: chờ ollama sẵn sàng rồi kéo model nomic-embed-text.
   # Container thoát 0 sau khi xong; redeploy chỉ kiểm tra nhanh
@@ -158,7 +204,8 @@ services:
   ollama-pull:
     image: ollama/ollama:latest
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
     entrypoint:
