@@ -36,6 +36,9 @@ interface AgentState {
   adapter?: string;
   /** Memory files persona — server nạp vào system preamble + tool ghi nhớ. */
   memory: Record<MemoryFile, string>;
+  /** Danh sách model dự phòng — server thử lần lượt khi model chính gọi
+     không được (rate limit, API lỗi…). */
+  fallbackModels: string[];
 }
 
 function inferAdapterFromModel(model: string | undefined | null): string {
@@ -82,6 +85,7 @@ function AgentRoute() {
     temperature: 0.7,
     tools: DEFAULT_TOOLS.slice(0, agent.tools),
     memory: emptyMemory(),
+    fallbackModels: [],
   };
   const [state, setState] = useState<AgentState>(initialState);
   const [lastSaved, setLastSaved] = useState<AgentState>(initialState);
@@ -99,10 +103,12 @@ function AgentRoute() {
     const stored = useUserObjects.getState().agentContent[id] as
       Partial<AgentState> | undefined;
     if (stored) {
-      // Agent cũ chưa có memory → điền key trống cho UI không crash.
+      // Agent cũ chưa có memory/fallbackModels → điền giá trị mặc định
+      // để UI không crash khi đọc.
       const next: AgentState = {
         ...(stored as AgentState),
         memory: { ...emptyMemory(), ...(stored.memory ?? {}) },
+        fallbackModels: stored.fallbackModels ?? [],
       };
       setState(next);
       setLastSaved(next);
@@ -173,6 +179,26 @@ function AgentRoute() {
     }));
   };
 
+  const addFallback = (m: string) => {
+    if (!m || m === state.model || state.fallbackModels.includes(m)) return;
+    setState((s) => ({ ...s, fallbackModels: [...s.fallbackModels, m] }));
+  };
+  const removeFallback = (m: string) =>
+    setState((s) => ({ ...s, fallbackModels: s.fallbackModels.filter((x) => x !== m) }));
+  const moveFallback = (m: string, dir: -1 | 1) => {
+    setState((s) => {
+      const i = s.fallbackModels.indexOf(m);
+      if (i < 0) return s;
+      const j = i + dir;
+      if (j < 0 || j >= s.fallbackModels.length) return s;
+      const next = [...s.fallbackModels];
+      const tmp = next[i]!;
+      next[i] = next[j]!;
+      next[j] = tmp;
+      return { ...s, fallbackModels: next };
+    });
+  };
+
   const availableToolNames = mcpTools.length
     ? mcpTools.map((t) => t.name)
     : DEFAULT_TOOLS;
@@ -225,6 +251,43 @@ function AgentRoute() {
             onChange={(e) => setState({ ...state, temperature: parseFloat(e.target.value) })}
             className="w-full accent-[hsl(var(--accent))]"
           />
+        </FormField>
+
+        <FormField
+          label="Model dự phòng"
+          hint={state.fallbackModels.length > 0
+            ? "Server sẽ thử lần lượt khi model chính gọi không được (rate limit, API lỗi, model unavailable…)."
+            : "Để trống = không fallback. Thêm vài model adapter khác (vd OpenAI làm dự phòng cho Claude) để tăng độ bền."}
+        >
+          <div className="space-y-2">
+            {state.fallbackModels.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {state.fallbackModels.map((m, i) => (
+                  <span key={m} className="chip font-mono inline-flex items-center gap-1">
+                    <span className="text-muted">{i + 1}.</span>
+                    {m}
+                    <button type="button" onClick={() => moveFallback(m, -1)}
+                      disabled={i === 0}
+                      className="text-muted hover:text-accent disabled:opacity-30"
+                      title="Lên">▲</button>
+                    <button type="button" onClick={() => moveFallback(m, 1)}
+                      disabled={i === state.fallbackModels.length - 1}
+                      className="text-muted hover:text-accent disabled:opacity-30"
+                      title="Xuống">▼</button>
+                    <button type="button" onClick={() => removeFallback(m)}
+                      className="text-muted hover:text-danger" title="Xoá">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <Select value="" disabled={modelsLoading}
+              onChange={(e) => { addFallback(e.target.value); e.currentTarget.value = ""; }}>
+              <option value="">+ Thêm model dự phòng…</option>
+              {availableModels
+                .filter((m) => m !== state.model && !state.fallbackModels.includes(m))
+                .map((m) => <option key={m} value={m}>{m}</option>)}
+            </Select>
+          </div>
         </FormField>
       </Card>
 

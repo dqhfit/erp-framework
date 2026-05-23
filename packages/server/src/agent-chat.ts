@@ -6,10 +6,30 @@
    Hỗ trợ Anthropic (content-block tools) và OpenAI-compatible
    (function-calling — gồm cả ollama qua endpoint OpenAI-compat).
    ========================================================== */
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
+
+/** Suy adapter từ tên model — server-side mirror của hook UI. */
+export function inferAdapterFromModel(model: string): string {
+  if (!model) return "claude";
+  if (model.startsWith("claude-")) return "claude";
+  if (model.startsWith("gpt-") || /^o[1-9]/.test(model)) return "openai";
+  if (model.startsWith("gemini-")) return "gemini";
+  if (model.includes(":") || model.startsWith("llama")
+    || model.startsWith("mistral") || model.startsWith("qwen")) {
+    return "ollama";
+  }
+  return "claude";
+}
+
+/** Họ adapter — nhiều profile khác adapter nhưng cùng họ (claude-pro
+   cùng họ với claude). */
+function adapterFamily(adapter: string): string[] {
+  if (adapter === "claude") return ["claude", "claude-pro", "anthropic"];
+  return [adapter];
+}
 
 type Block =
   | { type: "text"; text: string }
@@ -34,6 +54,9 @@ export interface AgentChatOpts {
   /** Công ty đang chọn — chọn LLM profile trong phạm vi công ty này. */
   companyId: string;
   profileName?: string;
+  /** Override model — chọn profile theo adapter suy ra từ model thay
+     vì theo profileName. Dùng cho agent có model + fallback list. */
+  modelOverride?: string;
   system: string;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   tools: ToolDef[];
@@ -207,15 +230,37 @@ async function openaiLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promi
 
 /* ─── Entry — chọn vòng lặp theo adapter ──────────────────── */
 export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
-  const rows = await opt.db.select().from(llmProfiles)
-    .where(and(
-      eq(llmProfiles.companyId, opt.companyId),
-      opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined,
-    ))
-    .limit(1);
-  const p = rows[0];
+  // Chọn LLM profile:
+  // - modelOverride: chọn theo adapter suy ra từ model (cho agent
+  //   có model riêng + fallback).
+  // - profileName: chọn theo tên (luồng AgentPanel cũ).
+  let p:
+    | { adapter: string; model: string; endpoint: string | null;
+        apiKeyEnc: string | null; temperature: number | null; maxTokens: number | null }
+    | undefined;
+  if (opt.modelOverride) {
+    const family = adapterFamily(inferAdapterFromModel(opt.modelOverride));
+    const rows = await opt.db.select().from(llmProfiles)
+      .where(and(
+        eq(llmProfiles.companyId, opt.companyId),
+        eq(llmProfiles.kind, "chat"),
+        inArray(llmProfiles.adapter, family),
+      ))
+      .limit(1);
+    if (rows[0]) p = { ...rows[0], model: opt.modelOverride };
+  } else {
+    const rows = await opt.db.select().from(llmProfiles)
+      .where(and(
+        eq(llmProfiles.companyId, opt.companyId),
+        opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined,
+      ))
+      .limit(1);
+    p = rows[0];
+  }
   if (!p) {
-    opt.onEvent({ type: "error", message: "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key)." });
+    opt.onEvent({ type: "error", message: opt.modelOverride
+      ? `Không tìm thấy LLM profile cho model "${opt.modelOverride}" — thêm profile cùng adapter ở Cài đặt → LLM.`
+      : "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key)." });
     return;
   }
   const isAnthropic = p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "anthropic";

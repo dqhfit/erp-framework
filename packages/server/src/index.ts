@@ -183,9 +183,11 @@ async function main(): Promise<void> {
       const canAddKb = roleCan(active.role, "create", "knowledge");
 
       // Nếu request gắn với một agent cụ thể (cùng công ty): nạp 7 file
-      // memory thành preamble + cấp tool memory_remember.
+      // memory thành preamble + cấp tool memory_remember + dùng model
+      // của agent (+ fallback list) thay cho profileName của body.
       let memoryPreamble = "";
       let boundAgentId: string | null = null;
+      let agentModels: string[] = [];
       if (body.agentId) {
         const [ag] = await db.select().from(agents).where(and(
           eq(agents.id, body.agentId),
@@ -195,64 +197,110 @@ async function main(): Promise<void> {
           const mem = await loadAgentMemory(ag.id, ag.name);
           memoryPreamble = formatMemoryPreamble(mem) + "\n\n---\n\n";
           boundAgentId = ag.id;
+          const cfg = (ag.config ?? {}) as
+            { model?: string; fallbackModels?: string[] };
+          const primary = cfg.model || ag.model;
+          if (primary) agentModels.push(primary);
+          if (Array.isArray(cfg.fallbackModels)) {
+            for (const m of cfg.fallbackModels) {
+              if (typeof m === "string" && m && !agentModels.includes(m)) {
+                agentModels.push(m);
+              }
+            }
+          }
         }
       }
       const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.");
 
-      await runAgentChat({
-        db,
-        companyId: active.companyId,
-        profileName: body.profileName,
-        system: finalSystem,
-        messages: body.messages ?? [],
-        tools: [
-          ...(body.tools ?? []),
-          KB_SEARCH_TOOL,
-          ...(canAddKb ? [KB_ADD_TOOL] : []),
-          ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
-        ],
-        callTool: async (name, args) => {
-          if (name === "memory_remember") {
-            if (!boundAgentId) throw new Error("Chưa gắn agent cho phiên này.");
-            const f = String(args.file ?? "") as MemoryFile;
-            const content = String(args.content ?? "").trim();
-            if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
-            if (!MEMORY_FILES.includes(f)) {
-              throw new Error(`File memory không hợp lệ: ${f}`);
+      const tools = [
+        ...(body.tools ?? []),
+        KB_SEARCH_TOOL,
+        ...(canAddKb ? [KB_ADD_TOOL] : []),
+        ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
+      ];
+      const callTool = async (name: string, args: Record<string, unknown>) => {
+        if (name === "memory_remember") {
+          if (!boundAgentId) throw new Error("Chưa gắn agent cho phiên này.");
+          const f = String(args.file ?? "") as MemoryFile;
+          const content = String(args.content ?? "").trim();
+          if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
+          if (!MEMORY_FILES.includes(f)) {
+            throw new Error(`File memory không hợp lệ: ${f}`);
+          }
+          await appendMemory(boundAgentId, f, content);
+          return { ok: true, file: f };
+        }
+        if (name === "knowledge_search") {
+          const hits = await knowledgeSearch(
+            db, active.companyId, String(args.query ?? ""), 5);
+          return hits.map((h) => ({
+            source: h.sourceTitle,
+            content: h.content,
+            score: Number(h.score.toFixed(3)),
+          }));
+        }
+        if (name === "knowledge_add") {
+          if (!canAddKb) throw new Error("Không có quyền thêm tri thức.");
+          const title = String(args.title ?? "").trim() || "Ghi chú từ chat";
+          const content = String(args.content ?? "").trim();
+          if (!content) throw new Error("Nội dung lưu vào tri thức bị trống.");
+          const [row] = await db.insert(knowledgeSources).values({
+            companyId: active.companyId,
+            kind: "text",
+            title,
+            status: "pending",
+            meta: { text: content },
+            createdBy: s.userId,
+          }).returning();
+          if (!row) throw new Error("Không tạo được nguồn tri thức.");
+          await enqueueKbIngest(row.id);
+          return { ok: true, sourceId: row.id, title };
+        }
+        return mcpCallTool(name, args);
+      };
+
+      // Khi agent có model + fallback: thử lần lượt; chỉ retry khi
+      // chưa stream event nào (lỗi pre-stream: auth, rate limit, model
+      // unavailable…). Đã stream rồi mà lỗi giữa chừng → trả thẳng.
+      if (agentModels.length > 0) {
+        let lastErr = "";
+        for (const m of agentModels) {
+          let attemptStreamed = false;
+          let attemptErr = "";
+          const innerEmit = (e: { type: string; message?: string }) => {
+            if (e.type === "error" && !attemptStreamed) {
+              attemptErr = e.message ?? "unknown";
+              return;  // giữ lại, có thể thử model tiếp
             }
-            await appendMemory(boundAgentId, f, content);
-            return { ok: true, file: f };
-          }
-          if (name === "knowledge_search") {
-            const hits = await knowledgeSearch(
-              db, active.companyId, String(args.query ?? ""), 5);
-            return hits.map((h) => ({
-              source: h.sourceTitle,
-              content: h.content,
-              score: Number(h.score.toFixed(3)),
-            }));
-          }
-          if (name === "knowledge_add") {
-            if (!canAddKb) throw new Error("Không có quyền thêm tri thức.");
-            const title = String(args.title ?? "").trim() || "Ghi chú từ chat";
-            const content = String(args.content ?? "").trim();
-            if (!content) throw new Error("Nội dung lưu vào tri thức bị trống.");
-            const [row] = await db.insert(knowledgeSources).values({
-              companyId: active.companyId,
-              kind: "text",
-              title,
-              status: "pending",
-              meta: { text: content },
-              createdBy: s.userId,
-            }).returning();
-            if (!row) throw new Error("Không tạo được nguồn tri thức.");
-            await enqueueKbIngest(row.id);
-            return { ok: true, sourceId: row.id, title };
-          }
-          return mcpCallTool(name, args);
-        },
-        onEvent: emit,
-      });
+            attemptStreamed = true;
+            emit(e);
+          };
+          await runAgentChat({
+            db, companyId: active.companyId,
+            modelOverride: m,
+            system: finalSystem,
+            messages: body.messages ?? [],
+            tools, callTool, onEvent: innerEmit,
+          });
+          if (attemptStreamed) { raw.end(); return; }
+          lastErr = attemptErr || "Không có event nào phát ra";
+          console.log(`[agent-fallback] ${m} thất bại → ${lastErr}`);
+        }
+        emit({
+          type: "error",
+          message: `Tất cả ${agentModels.length} model trong cấu hình agent đều thất bại. `
+            + `Lỗi cuối: ${lastErr}`,
+        });
+      } else {
+        // Không gắn agent → flow cũ, theo profileName.
+        await runAgentChat({
+          db, companyId: active.companyId,
+          profileName: body.profileName,
+          system: finalSystem,
+          messages: body.messages ?? [],
+          tools, callTool, onEvent: emit,
+        });
+      }
     } catch (e) {
       emit({ type: "error", message: (e as Error).message });
     }

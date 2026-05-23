@@ -40,6 +40,7 @@ const MEMORY_REMEMBER_TOOL: ToolDef = {
 interface AgentCfg {
   systemPrompt?: string;
   model?: string;
+  fallbackModels?: string[];
   tools?: unknown;
 }
 
@@ -80,30 +81,70 @@ export async function runHeartbeat(
 
   const mcpCallTool = makeCallTool(db, hb.companyId);
 
-  await runAgentChat({
-    db,
-    companyId: hb.companyId,
-    system: memoryPreamble + baseSystem,
-    messages: [{ role: "user", content: hb.prompt }],
-    tools: [...tools, MEMORY_REMEMBER_TOOL],
-    callTool: async (name, args) => {
-      if (name === "memory_remember") {
-        const f = String(args.file ?? "") as MemoryFile;
-        const content = String(args.content ?? "").trim();
-        if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
-        if (!MEMORY_FILES.includes(f)) {
-          throw new Error(`File memory không hợp lệ: ${f}`);
-        }
-        await appendMemory(agent.id, f, content);
-        return { ok: true, file: f };
+  // Danh sách model thử (chính + fallback). Không có model nào → để
+  // runAgentChat tự chọn profile mặc định (luồng cũ).
+  const primary = cfg.model || agent.model || "";
+  const models: string[] = [];
+  if (primary) models.push(primary);
+  if (Array.isArray(cfg.fallbackModels)) {
+    for (const m of cfg.fallbackModels) {
+      if (typeof m === "string" && m && !models.includes(m)) models.push(m);
+    }
+  }
+  const callTool = async (name: string, args: Record<string, unknown>) => {
+    if (name === "memory_remember") {
+      const f = String(args.file ?? "") as MemoryFile;
+      const content = String(args.content ?? "").trim();
+      if (!content) throw new Error("Nội dung ghi nhớ rỗng.");
+      if (!MEMORY_FILES.includes(f)) {
+        throw new Error(`File memory không hợp lệ: ${f}`);
       }
-      return mcpCallTool(name, args);
-    },
-    onEvent: (e) => {
-      if (e.type === "done") { finalText = e.text; usage = e.usage; }
-      else if (e.type === "error") { errMsg = e.message; }
-    },
-  });
+      await appendMemory(agent.id, f, content);
+      return { ok: true, file: f };
+    }
+    return mcpCallTool(name, args);
+  };
+  const onEventBase = (e: { type: string; text?: string; usage?: { input: number; output: number }; message?: string }) => {
+      if (e.type === "done") { finalText = e.text ?? ""; usage = e.usage ?? usage; }
+      else if (e.type === "error") { errMsg = e.message ?? "unknown"; }
+  };
+
+  if (models.length > 0) {
+    // Loop fallback: chỉ retry nếu chưa có done/text — tức lỗi
+    // pre-stream (auth, rate limit, model unavailable…).
+    let succeeded = false;
+    for (const m of models) {
+      finalText = ""; errMsg = "";
+      let streamed = false;
+      await runAgentChat({
+        db, companyId: hb.companyId,
+        modelOverride: m,
+        system: memoryPreamble + baseSystem,
+        messages: [{ role: "user", content: hb.prompt }],
+        tools: [...tools, MEMORY_REMEMBER_TOOL],
+        callTool,
+        onEvent: (e) => {
+          if (e.type !== "error") streamed = true;
+          onEventBase(e);
+        },
+      });
+      if (streamed && !errMsg) { succeeded = true; break; }
+      if (errMsg) console.log(`[heartbeat-fallback] ${m} → ${errMsg}`);
+    }
+    if (!succeeded && !errMsg) {
+      errMsg = `Tất cả ${models.length} model thất bại`;
+    }
+  } else {
+    await runAgentChat({
+      db,
+      companyId: hb.companyId,
+      system: memoryPreamble + baseSystem,
+      messages: [{ role: "user", content: hb.prompt }],
+      tools: [...tools, MEMORY_REMEMBER_TOOL],
+      callTool,
+      onEvent: onEventBase,
+    });
+  }
 
   // status suy ra SAU khi chạy — TS không theo dõi gán trong closure.
   const status: "completed" | "error" = errMsg ? "error" : "completed";

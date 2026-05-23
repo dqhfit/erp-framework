@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "@tanstack/react-router";
 import { useUI } from "@/stores/ui";
 import { I } from "@/components/Icons";
 import { Button, Chip, Textarea, Select } from "@/components/ui";
@@ -42,6 +43,13 @@ const SEED: Message[] = [
 
 export function AgentPanel() {
   const t = useT();
+  // Khi đang ở /agents/$id → bind chat với agent đó: server đọc memory
+  // + dùng model (+ fallback) của agent thay cho profileName của user.
+  const pathname = useLocation({ select: (l) => l.pathname });
+  const boundAgentId = useMemo(() => {
+    const m = pathname.match(/^\/agents\/([^/?#]+)/);
+    return m && m[1] !== "$id" ? m[1] : null;
+  }, [pathname]);
   // RBAC — chỉ hiện nút "Lưu vào tri thức" khi có quyền create:knowledge.
   const rbacRole = useRbac((s) => s.role);
   const rbacEnforce = useRbac((s) => s.enforce);
@@ -116,6 +124,9 @@ export function AgentPanel() {
             : ""),
           messages: [...history, { role: "user", content: text }],
           tools: toolDefs,
+          // Đang ở /agents/$id → bind với agent đó: server dùng model
+          // (+ fallback) và memory files của agent thay cho profileName.
+          ...(boundAgentId ? { agentId: boundAgentId } : {}),
         }),
       });
       if (!res.ok || !res.body) throw new Error(`Server ${res.status}`);
