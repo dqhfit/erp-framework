@@ -217,15 +217,27 @@ export function AgentPanel() {
         <Button variant="ghost" size="sm" icon={<I.X size={14} />} onClick={() => setOpen(false)} />
       </div>
 
-      {/* Profile selector */}
+      {/* Profile selector — group theo adapter (combobox xổ xuống). */}
       {profileNames.length > 0 && (
         <div className="px-3 py-2 border-b border-border shrink-0 bg-panel-2/30">
           <Select value={profileName} onChange={(e) => setProfileName(e.target.value)} className="text-xs">
-            {profileNames.map((n) => {
-              const p = llmProfiles[n];
-              const usable = p ? llmRegistry.isUsable(p) : false;
-              return <option key={n} value={n}>{n} {usable ? t("agent.usable") : t("agent.not_usable")}</option>;
-            })}
+            {Object.entries(profileNames.reduce<Record<string, string[]>>((acc, n) => {
+              const ad = llmProfiles[n]?.adapter ?? "khác";
+              (acc[ad] = acc[ad] ?? []).push(n);
+              return acc;
+            }, {})).map(([ad, names]) => (
+              <optgroup key={ad} label={ad}>
+                {names.map((n) => {
+                  const p = llmProfiles[n];
+                  const usable = p ? llmRegistry.isUsable(p) : false;
+                  return (
+                    <option key={n} value={n}>
+                      {n} — {p?.model ?? "?"} {usable ? t("agent.usable") : t("agent.not_usable")}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
           </Select>
         </div>
       )}

@@ -4,7 +4,7 @@
    ========================================================== */
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useDynamicModels } from "@/hooks/useDynamicModels";
+import { ModelCombobox } from "@/components/ModelCombobox";
 import { dialog } from "@/lib/dialog";
 import type { LLMProfile } from "@/types/llm";
 
@@ -19,13 +19,7 @@ interface Props {
 }
 
 export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDelete }: Props) {
-  const { models, loading, source, error, refresh } = useDynamicModels(p.adapter, {
-    apiKey: p.apiKey,
-    endpoint: p.endpoint,
-  });
-
-  // Đảm bảo p.model nằm trong list — nếu không thì auto-fix về model đầu
-  const modelInList = models.includes(p.model);
+  // useDynamicModels được gọi trong ModelCombobox — không cần ở đây nữa.
 
   return (
     <Card>
@@ -68,41 +62,12 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
           </Select>
         </FormField>
 
-        <FormField
-          label={
-            <span className="flex items-center gap-1.5">
-              Model
-              {source && (
-                <span className={`text-[10px] font-normal ${
-                  source === "api" ? "text-success" :
-                  source === "cache" ? "text-muted" : "text-warning"
-                }`}>
-                  · {source}
-                </span>
-              )}
-            </span>
-          }
-          hint={error ? `⚠ ${error}` : loading ? "Đang load model..." : undefined}
-        >
-          <div className="flex gap-1">
-            <Select
-              value={p.model || models[0] || ""}
-              onChange={(e) => onChange({ ...p, model: e.target.value })}
-              disabled={loading && models.length === 0}
-            >
-              {!modelInList && p.model && (
-                <option value={p.model}>{p.model} (custom)</option>
-              )}
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </Select>
-            <Button
-              variant="ghost" size="sm"
-              icon={loading ? <I.Loader size={12} className="animate-spin" /> : <I.Redo size={12} />}
-              onClick={() => refresh()}
-              title="Refresh model list"
-              disabled={loading}
-            />
-          </div>
+        <FormField label="Model" hint={`Adapter: ${p.adapter}`}>
+          <ModelCombobox
+            value={p.model || ""}
+            onChange={(m) => onChange({ ...p, model: m })}
+            lockedAdapter={p.adapter}
+          />
         </FormField>
 
         {!NO_KEY_ADAPTERS.has(p.adapter) && (

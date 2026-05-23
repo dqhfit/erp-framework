@@ -8,28 +8,12 @@
    ========================================================== */
 import { and, eq, inArray } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
+import { inferAdapterFromModel, adapterFamily } from "@erp-framework/core";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
 
-/** Suy adapter từ tên model — server-side mirror của hook UI. */
-export function inferAdapterFromModel(model: string): string {
-  if (!model) return "claude";
-  if (model.startsWith("claude-")) return "claude";
-  if (model.startsWith("gpt-") || /^o[1-9]/.test(model)) return "openai";
-  if (model.startsWith("gemini-")) return "gemini";
-  if (model.includes(":") || model.startsWith("llama")
-    || model.startsWith("mistral") || model.startsWith("qwen")) {
-    return "ollama";
-  }
-  return "claude";
-}
-
-/** Họ adapter — nhiều profile khác adapter nhưng cùng họ (claude-pro
-   cùng họ với claude). */
-function adapterFamily(adapter: string): string[] {
-  if (adapter === "claude") return ["claude", "claude-pro", "anthropic"];
-  return [adapter];
-}
+// inferAdapterFromModel + adapterFamily đã chuyển sang @erp-framework/core
+// để client (UI dropdown) và server (chọn profile) dùng chung nguồn.
 
 type Block =
   | { type: "text"; text: string }

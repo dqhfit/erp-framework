@@ -3,13 +3,13 @@ import { useState, useEffect, useMemo } from "react";
 import { I } from "@/components/Icons";
 import type { MockAgent } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
-import { Button, Chip, Card, FormField, Input, Select } from "@/components/ui";
+import { Button, Chip, Card, FormField, Input } from "@/components/ui";
 import { useUI } from "@/stores/ui";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { useMcpClient } from "@/hooks/useMcpClient";
-import { useDynamicModels } from "@/hooks/useDynamicModels";
-import { useSettings } from "@/stores/settings";
+import { ModelCombobox } from "@/components/ModelCombobox";
+import { inferAdapterFromModel } from "@erp-framework/core";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
 import { createObjectsClient } from "@erp-framework/client";
 
@@ -40,15 +40,6 @@ interface AgentState {
   /** Danh sách model dự phòng — server thử lần lượt khi model chính gọi
      không được (rate limit, API lỗi…). */
   fallbackModels: string[];
-}
-
-function inferAdapterFromModel(model: string | undefined | null): string {
-  // Guard — agent mới tạo có thể chưa có model; tránh crash startsWith.
-  if (!model) return "claude";
-  if (model.startsWith("claude-")) return "claude";
-  if (model.startsWith("gpt-") || /^o[1-9]/.test(model)) return "openai";
-  if (model.startsWith("gemini-")) return "gemini";
-  return "claude";
 }
 
 const DEFAULT_TOOLS = [
@@ -144,38 +135,8 @@ function AgentRoute() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, id]);
 
-  // Dynamic model list theo adapter suy ra từ model hiện tại
+  // Adapter chỉ dùng để hiển thị hint — ModelCombobox tự suy bên trong.
   const adapter = state.adapter ?? inferAdapterFromModel(state.model);
-  const { models: availableModels, loading: modelsLoading, refresh: refreshModels, source: modelsSource } =
-    useDynamicModels(adapter);
-
-  // Gộp model từ 2 nguồn để dropdown khớp với cài đặt LLM profile:
-  // - llmProfiles của user (model thực sự đã setup + có API key).
-  // - useDynamicModels(adapter) cho discovery model mới của adapter
-  //   hiện tại (API list / fallback).
-  // Group theo adapter để Select hiện <optgroup> rõ ràng.
-  const llmProfiles = useSettings((s) => s.llmProfiles);
-  const groupedModels = useMemo(() => {
-    const groups: Record<string, { model: string; from: string }[]> = {};
-    const push = (ad: string, model: string, from: string) => {
-      if (!model) return;
-      const list = (groups[ad] = groups[ad] ?? []);
-      if (!list.find((x) => x.model === model)) list.push({ model, from });
-    };
-    for (const p of Object.values(llmProfiles)) {
-      push(p.adapter, p.model, `profile "${p.name}"`);
-    }
-    for (const m of availableModels) push(adapter, m, "discovery");
-    return groups;
-  }, [llmProfiles, availableModels, adapter]);
-  // Tất cả model có thể chọn — phẳng — cho fallback Select.
-  const allModelsFlat = useMemo(() => {
-    const out: string[] = [];
-    for (const list of Object.values(groupedModels)) {
-      for (const x of list) if (!out.includes(x.model)) out.push(x.model);
-    }
-    return out;
-  }, [groupedModels]);
 
   const handleAiApply = (design: AgentDesign) => {
     setState({
@@ -241,43 +202,11 @@ function AgentRoute() {
             <Input value={state.name}
               onChange={(e) => setState({ ...state, name: e.target.value })} />
           </FormField>
-          <FormField
-            label={
-              <span className="flex items-center gap-1.5">
-                Model
-                {modelsSource && (
-                  <span className={`text-[10px] font-normal ${
-                    modelsSource === "api" ? "text-success" :
-                    modelsSource === "cache" ? "text-muted" : "text-warning"
-                  }`}>· {modelsSource}</span>
-                )}
-              </span>
-            }
-            hint={`Adapter: ${adapter}`}
-          >
-            <div className="flex gap-1">
-              <Select value={state.model}
-                onChange={(e) => setState({ ...state, model: e.target.value })}
-                disabled={modelsLoading && allModelsFlat.length === 0}>
-                {Object.entries(groupedModels).map(([ad, list]) => (
-                  <optgroup key={ad} label={ad}>
-                    {list.map(({ model, from }) => (
-                      <option key={model} value={model}>
-                        {model}{from !== "discovery" ? ` — ${from}` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-                {!allModelsFlat.includes(state.model) && state.model && (
-                  <option value={state.model}>{state.model} (custom)</option>
-                )}
-              </Select>
-              <Button variant="ghost" size="sm"
-                icon={modelsLoading
-                  ? <I.Loader size={12} className="animate-spin" />
-                  : <I.Redo size={12} />}
-                onClick={() => refreshModels()} title="Refresh list" disabled={modelsLoading} />
-            </div>
+          <FormField label="Model" hint={`Adapter: ${adapter}`}>
+            <ModelCombobox
+              value={state.model}
+              onChange={(m) => setState({ ...state, model: m })}
+            />
           </FormField>
         </div>
         <FormField label={`Temperature (${state.temperature.toFixed(1)})`}
@@ -317,24 +246,18 @@ function AgentRoute() {
                 ))}
               </div>
             )}
-            <Select value="" disabled={modelsLoading}
-              onChange={(e) => { addFallback(e.target.value); e.currentTarget.value = ""; }}>
-              <option value="">+ Thêm model dự phòng…</option>
-              {Object.entries(groupedModels).map(([ad, list]) => {
-                const rows = list.filter((x) =>
-                  x.model !== state.model && !state.fallbackModels.includes(x.model));
-                if (rows.length === 0) return null;
-                return (
-                  <optgroup key={ad} label={ad}>
-                    {rows.map(({ model, from }) => (
-                      <option key={model} value={model}>
-                        {model}{from !== "discovery" ? ` — ${from}` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </Select>
+            <ModelCombobox
+              value=""
+              emptyOption="+ Thêm model dự phòng…"
+              onChange={(m) => addFallback(m)}
+              excludeModels={[state.model, ...state.fallbackModels]}
+              showRefresh={false}
+            />
+            {state.fallbackModels.length === 0 && (
+              <div className="text-[11px] text-muted mt-1">
+                Mẹo: thêm vài model adapter khác (vd OpenAI cho Claude) để tăng độ bền.
+              </div>
+            )}
           </div>
         </FormField>
       </Card>

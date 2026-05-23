@@ -158,10 +158,18 @@ export function AiAssistDrawer<T extends DesignObjectType>({
           {profiles.length ? (
             <>
               <Select className="h-7 text-xs flex-1 min-w-0" value={profile} onChange={(e) => setProfile(e.target.value)}>
-                {profiles.map((p) => {
-                  const m = llmProfiles[p]?.model;
-                  return <option key={p} value={p}>{m ? `${p} — ${m}` : p}</option>;
-                })}
+                {Object.entries(profiles.reduce<Record<string, string[]>>((acc, p) => {
+                  const ad = llmProfiles[p]?.adapter ?? "khác";
+                  (acc[ad] = acc[ad] ?? []).push(p);
+                  return acc;
+                }, {})).map(([ad, names]) => (
+                  <optgroup key={ad} label={ad}>
+                    {names.map((p) => {
+                      const m = llmProfiles[p]?.model;
+                      return <option key={p} value={p}>{m ? `${p} — ${m}` : p}</option>;
+                    })}
+                  </optgroup>
+                ))}
               </Select>
               {activeModel && (
                 <Chip className="text-[10px] font-mono shrink-0" title="Model đang dùng">{activeModel}</Chip>
