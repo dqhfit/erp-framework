@@ -115,6 +115,13 @@ services:
       # tới cổng 80 của nginx. Đây là cửa ra DUY NHẤT của dịch vụ.
       # Coolify đọc healthcheck dưới để mark deployment "live".
       - SERVICE_FQDN_APP_80
+    labels:
+      # Coolify-proxy (Traefik) join nhiều network — không có label này,
+      # Traefik chọn network arbitrary cho upstream IP và có thể chọn
+      # nhầm network app không có mặt → "no available server" (503).
+      # ${COMPOSE_PROJECT_NAME} = hash project Coolify generate, resolve
+      # ở deploy-time bởi docker-compose.
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}"
     # Traefik của Coolify cần thấy `expose` trong compose để biết
     # forward sang cổng nào của container. Thiếu dòng này → router
     # được tạo nhưng không có upstream → "no available server".
