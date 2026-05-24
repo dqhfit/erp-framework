@@ -115,21 +115,27 @@ services:
       # tới cổng 80 của nginx. Đây là cửa ra DUY NHẤT của dịch vụ.
       # Coolify đọc healthcheck dưới để mark deployment "live".
       - SERVICE_FQDN_APP_80
+    # Attach app vào CẢ network mặc định (giao tiếp nội bộ với server/
+    # bridge/tika...) VÀ network `coolify` chia sẻ toàn cluster, nơi
+    # Traefik (coolify-proxy) sẵn sàng nhận traffic.
+    networks:
+      - default
+      - coolify
     labels:
       # Coolify-proxy (Traefik) join nhiều network — không có label này,
-      # Traefik chọn network arbitrary cho upstream IP và có thể chọn
+      # Traefik chọn arbitrary network cho upstream IP, có thể chọn
       # nhầm network app không có mặt → "no available server" (503).
-      # ${COMPOSE_PROJECT_NAME} = hash project Coolify generate, resolve
-      # ở deploy-time bởi docker-compose.
-      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}"
-    # Traefik của Coolify cần thấy `expose` trong compose để biết
-    # forward sang cổng nào của container. Thiếu dòng này → router
-    # được tạo nhưng không có upstream → "no available server".
+      # Chỉ định tường minh `coolify` — network shared với proxy.
+      - "traefik.docker.network=coolify"
+    # Traefik cần thấy `expose` để biết forward sang cổng nào.
     expose:
       - "80"
-    # nginx:1.27-alpine có wget. Test SPA index trả 200.
+    # nginx:1.27-alpine có wget (busybox). Dùng 127.0.0.1 thay vì
+    # localhost — nginx config chỉ `listen 80` (IPv4), localhost
+    # resolve thành ::1 (IPv6) trên container → healthcheck fail dù
+    # nginx thực tế đang serve.
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
       interval: 15s
       timeout: 3s
       retries: 5
@@ -244,3 +250,12 @@ volumes:
   bridge-data:
   ollama-data:
   mosquitto-data:
+
+# `coolify` là network shared toàn cluster Coolify, đã tồn tại sẵn,
+# coolify-proxy (Traefik) đã join. App attach vào đây để Traefik có
+# đường route tường minh tới cổng 80 nginx. `default` (network tự sinh
+# của project) vẫn dùng cho giao tiếp nội bộ với server/bridge/tika.
+networks:
+  coolify:
+    external: true
+    name: coolify
