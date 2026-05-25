@@ -10,6 +10,9 @@ import type { Context } from "./context";
 const t = initTRPC.context<Context>().create();
 
 export const router = t.router;
+/** Factory tạo caller server-side cho unit test — gọi procedure trực
+ *  tiếp với mock context, bỏ qua HTTP layer. */
+export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure;
 
 /* ─── Rate-limit ──────────────────────────────────────────────
