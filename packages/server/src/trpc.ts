@@ -97,6 +97,39 @@ export const approvedProcedure = protectedProcedure.use(({ ctx, next }) => {
   });
 });
 
+/** Generic per-resource procedure factory (P2.4). Trích resourceId
+ *  từ input (string UUID hoặc object có `.id`/`.resourceId`/`.<typeId>`)
+ *  rồi gọi `policyCheck(ctx, resourceId, action)` — policy thuộc về
+ *  từng resource type (vd agent-acl.assertCanActOnAgent).
+ *  Build trên approvedProcedure để tự động enforce member status. */
+export function resourceProcedure<Action extends string>(
+  action: Action,
+  policyCheck: (
+    ctx: Context & { user: NonNullable<Context["user"]> & { companyId: string } },
+    resourceId: string,
+    action: Action,
+  ) => Promise<void>,
+  idField = "id",
+) {
+  return approvedProcedure.use(async ({ ctx, input, next }) => {
+    let id: string | undefined;
+    if (typeof input === "string") id = input;
+    else if (input && typeof input === "object") {
+      const obj = input as Record<string, unknown>;
+      const cand = obj[idField] ?? obj.resourceId ?? obj.id;
+      if (typeof cand === "string") id = cand;
+    }
+    if (!id) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Thiếu ${idField} trong input để xác định resource`,
+      });
+    }
+    await policyCheck(ctx, id, action);
+    return next();
+  });
+}
+
 /** Procedure yêu cầu quyền `action` trên `obj` theo vai trò người dùng.
    Đồng thời ép buộc user phải thuộc một công ty (đa công ty) — sau
    procedure này `ctx.user.companyId` chắc chắn là string. */

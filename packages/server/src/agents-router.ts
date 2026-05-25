@@ -3,13 +3,14 @@
    Tách khỏi router.ts (Sprint 1 P2.8 step 7).
    ========================================================== */
 
-import { agentMembers, agents, companyMembers, users } from "@erp-framework/db";
+import { agentMembers, agents, companyMembers, resourceMembers, users } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { logActivity } from "./activity";
 import { assertCanActOnAgent } from "./agent-acl";
 import { allDefaultTemplates } from "./agent-memory";
+import { listResourceMembers, removeResourceMember, upsertResourceMember } from "./resource-acl";
 import { agentInput, autoAddOwner } from "./router-helpers";
 import { approvedProcedure, rbacProcedure, router } from "./trpc";
 
@@ -158,41 +159,56 @@ export const agentsRouter = router({
       return { ok: true };
     }),
 
-  /** Lấy primary + danh sách (agent_id, role) của user hiện tại. */
+  /** Lấy primary + danh sách (agent_id, role) của user hiện tại.
+   *  Đọc từ resource_members (P2.3) — JOIN agents để filter theo company. */
   myAgents: approvedProcedure.query(async ({ ctx }) => {
     if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
     const [me] = await ctx.db
       .select({ primaryAgentId: users.primaryAgentId })
       .from(users)
       .where(eq(users.id, ctx.user.id));
-    const members = await ctx.db
+    // resource_members + JOIN agents (filter company) — đảm bảo không
+    // leak member của agent công ty khác (theoretically đã guard ở
+    // addMember nhưng defensive).
+    const rows = await ctx.db
       .select({
-        agentId: agentMembers.agentId,
-        role: agentMembers.role,
+        agentId: resourceMembers.resourceId,
+        role: resourceMembers.role,
       })
-      .from(agentMembers)
-      .where(eq(agentMembers.userId, ctx.user.id));
+      .from(resourceMembers)
+      .innerJoin(agents, eq(agents.id, resourceMembers.resourceId))
+      .where(
+        and(
+          eq(resourceMembers.resourceType, "agent"),
+          eq(resourceMembers.userId, ctx.user.id),
+          eq(agents.companyId, ctx.user.companyId),
+        ),
+      );
     return {
       primaryAgentId: me?.primaryAgentId ?? null,
-      members,
+      members: rows,
     };
   }),
 
-  /** Danh sách thành viên của 1 agent (JOIN với users để hiện name/email). */
+  /** Danh sách thành viên của 1 agent. Đọc từ resource_members (P2.3),
+   *  JOIN users để hiện name/email. */
   listMembers: approvedProcedure.input(z.string().uuid()).query(async ({ ctx, input }) => {
     await assertCanActOnAgent(ctx, input, "view");
-    return ctx.db
-      .select({
-        userId: agentMembers.userId,
-        role: agentMembers.role,
-        addedBy: agentMembers.addedBy,
-        addedAt: agentMembers.addedAt,
-        userName: users.name,
-        userEmail: users.email,
-      })
-      .from(agentMembers)
-      .leftJoin(users, eq(agentMembers.userId, users.id))
-      .where(eq(agentMembers.agentId, input));
+    const members = await listResourceMembers(ctx.db, "agent", input);
+    if (members.length === 0) return [];
+    // Resolve user info — 1 query batch thay vì JOIN (resource_members
+    // không có FK chéo nên Drizzle không sinh được join).
+    const userIds = members.map((m) => m.userId);
+    const userRows = await ctx.db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(inArray(users.id, userIds));
+    const userMap = new Map(userRows.map((u) => [u.id, u]));
+    return members.map((m) => ({
+      ...m,
+      userName: userMap.get(m.userId)?.name ?? null,
+      userEmail: userMap.get(m.userId)?.email ?? null,
+    }));
   }),
 
   /** Thêm hoặc đổi role của 1 member. Cần quyền manage_members (owner). */
@@ -223,6 +239,16 @@ export const agentsRouter = router({
           message: "User không phải thành viên công ty này",
         });
       }
+      // Upsert resource_members (P2.3) + dual-write agent_members
+      // cho backward-compat 1 sprint.
+      await upsertResourceMember(
+        ctx.db,
+        "agent",
+        input.agentId,
+        input.userId,
+        input.role,
+        ctx.user.id,
+      );
       await ctx.db
         .insert(agentMembers)
         .values({
@@ -257,6 +283,8 @@ export const agentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user?.companyId) throw new TRPCError({ code: "FORBIDDEN" });
       await assertCanActOnAgent(ctx, input.agentId, "manage_members");
+      // Remove from resource_members (P2.3) + dual-write agent_members.
+      await removeResourceMember(ctx.db, "agent", input.agentId, input.userId);
       await ctx.db
         .delete(agentMembers)
         .where(and(eq(agentMembers.agentId, input.agentId), eq(agentMembers.userId, input.userId)));

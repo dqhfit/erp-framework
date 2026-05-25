@@ -11,18 +11,22 @@
    - Validation: assertValid, assertUnique
    - Utility: deepEqual, resolveProcBinding, autoAddOwner, nextSequence
    ========================================================== */
-import { z } from "zod";
-import { and, eq, sql, type SQL } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+
 import {
-  entities, entityRecords, agentMembers,
-} from "@erp-framework/db";
-import {
-  validateRecord, pluginRegistry, fieldCan,
-  type EntityFieldDef, type OnDeleteBehavior, type Role,
+  type EntityFieldDef,
+  fieldCan,
+  type OnDeleteBehavior,
+  pluginRegistry,
+  type Role,
+  validateRecord,
 } from "@erp-framework/core";
+import { agentMembers, entities, entityRecords } from "@erp-framework/db";
+import { TRPCError } from "@trpc/server";
+import { and, eq, type SQL, sql } from "drizzle-orm";
+import { z } from "zod";
+import { decryptSecret, encryptSecret } from "./crypto";
 import type { DB } from "./db";
-import { encryptSecret, decryptSecret } from "./crypto";
+import { upsertResourceMember } from "./resource-acl";
 
 /* ─── Crypto helpers ─────────────────────────────────────── */
 
@@ -40,11 +44,18 @@ export function decryptField(v: unknown): unknown {
   if (typeof v !== "string") return v;
   if (!v.startsWith(ENC_PREFIX)) return v; // plaintext legacy
   const dec = decryptSecret(v.slice(ENC_PREFIX.length));
-  try { return JSON.parse(dec); } catch { return dec; }
+  try {
+    return JSON.parse(dec);
+  } catch {
+    return dec;
+  }
 }
 
 /** Encrypt field marked `encrypted: true` trước khi insert/update. */
-export function encryptDataIn(fields: EntityFieldDef[], data: Record<string, unknown>): Record<string, unknown> {
+export function encryptDataIn(
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { ...data };
   for (const f of fields) {
     if (f.encrypted && f.name in out && out[f.name] != null) {
@@ -55,7 +66,10 @@ export function encryptDataIn(fields: EntityFieldDef[], data: Record<string, unk
 }
 
 /** Decrypt field marked `encrypted: true` trước khi serve. */
-export function decryptDataOut(fields: EntityFieldDef[], data: Record<string, unknown>): Record<string, unknown> {
+export function decryptDataOut(
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { ...data };
   for (const f of fields) {
     if (f.encrypted && f.name in out) {
@@ -74,7 +88,7 @@ export function decryptDataOut(fields: EntityFieldDef[], data: Record<string, un
 export const fieldDef = z.object({
   name: z.string(),
   label: z.string(),
-  type: z.string(),  // chuỗi tuỳ ý — cho phép cả kiểu do plugin thêm
+  type: z.string(), // chuỗi tuỳ ý — cho phép cả kiểu do plugin thêm
   required: z.boolean().optional(),
   options: z.array(z.string()).optional(),
   relationEntityId: z.string().optional(),
@@ -131,14 +145,16 @@ export const scheduleInput = z.object({
 
 export const filterOp = z.enum(["=", "!=", ">", ">=", "<", "<=", "contains", "in"]);
 
-export const queryParams = z.object({
-  filters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
-  sort: z.object({ field: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
-  limit: z.number().int().positive().max(500).optional(),
-  offset: z.number().int().nonnegative().optional(),
-  /** Full-text search — match @@ trên search_tsv (Postgres). */
-  q: z.string().optional(),
-}).optional();
+export const queryParams = z
+  .object({
+    filters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
+    sort: z.object({ field: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
+    limit: z.number().int().positive().max(500).optional(),
+    offset: z.number().int().nonnegative().optional(),
+    /** Full-text search — match @@ trên search_tsv (Postgres). */
+    q: z.string().optional(),
+  })
+  .optional();
 
 export type QueryParamsInput = z.infer<typeof queryParams>;
 
@@ -161,20 +177,35 @@ export function buildRecordWhere(
   if (!includeDeleted) {
     conds.push(sql`${entityRecords.deletedAt} IS NULL`);
   }
-  if (query?.q && query.q.trim()) {
-    conds.push(sql`${entityRecords.searchTsv}::tsvector @@ websearch_to_tsquery('simple', ${query.q.trim()})`);
+  if (query?.q?.trim()) {
+    conds.push(
+      sql`${entityRecords.searchTsv}::tsvector @@ websearch_to_tsquery('simple', ${query.q.trim()})`,
+    );
   }
   for (const [field, cond] of Object.entries(query?.filters ?? {})) {
     const txt = sql`(${entityRecords.data}->>${field})`;
     switch (cond.op) {
-      case "=":  conds.push(sql`${txt} = ${String(cond.value)}`); break;
-      case "!=": conds.push(sql`${txt} <> ${String(cond.value)}`); break;
+      case "=":
+        conds.push(sql`${txt} = ${String(cond.value)}`);
+        break;
+      case "!=":
+        conds.push(sql`${txt} <> ${String(cond.value)}`);
+        break;
       case "contains":
-        conds.push(sql`${txt} ILIKE ${"%" + String(cond.value) + "%"}`); break;
-      case ">":  conds.push(sql`${txt}::numeric >  ${Number(cond.value)}`); break;
-      case ">=": conds.push(sql`${txt}::numeric >= ${Number(cond.value)}`); break;
-      case "<":  conds.push(sql`${txt}::numeric <  ${Number(cond.value)}`); break;
-      case "<=": conds.push(sql`${txt}::numeric <= ${Number(cond.value)}`); break;
+        conds.push(sql`${txt} ILIKE ${`%${String(cond.value)}%`}`);
+        break;
+      case ">":
+        conds.push(sql`${txt}::numeric >  ${Number(cond.value)}`);
+        break;
+      case ">=":
+        conds.push(sql`${txt}::numeric >= ${Number(cond.value)}`);
+        break;
+      case "<":
+        conds.push(sql`${txt}::numeric <  ${Number(cond.value)}`);
+        break;
+      case "<=":
+        conds.push(sql`${txt}::numeric <= ${Number(cond.value)}`);
+        break;
       case "in": {
         const arr = Array.isArray(cond.value) ? cond.value.map(String) : [];
         conds.push(sql`${txt} = ANY(${arr})`);
@@ -192,7 +223,8 @@ export async function loadEntityFields(
   companyId: string,
   entityId: string,
 ): Promise<EntityFieldDef[]> {
-  const [row] = await db.select({ fields: entities.fields })
+  const [row] = await db
+    .select({ fields: entities.fields })
     .from(entities)
     .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại" });
@@ -200,13 +232,16 @@ export async function loadEntityFields(
 }
 
 /** Ném BAD_REQUEST nếu validate-on-write thất bại. */
-export function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, partial: boolean) {
+export function assertValid(
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+  partial: boolean,
+) {
   const v = validateRecord(fields, data, { partial, registry: pluginRegistry });
   if (!v.ok) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Dữ liệu không hợp lệ — "
-        + v.errors.map((e) => `${e.field}: ${e.message}`).join("; "),
+      message: `Dữ liệu không hợp lệ — ${v.errors.map((e) => `${e.field}: ${e.message}`).join("; ")}`,
     });
   }
   return v.data;
@@ -215,45 +250,79 @@ export function assertValid(fields: EntityFieldDef[], data: Record<string, unkno
 /** Quét tất cả entity trong công ty có field lookup/multi-lookup, tìm các
  *  record active đang trỏ tới targetRecordId. */
 export async function scanBackRefs(
-  db: DB, companyId: string, targetRecordId: string,
-): Promise<Array<{
-  entityId: string; entityName: string; entityLabel: string;
-  fieldKey: string; fieldType: string; count: number; sampleIds: string[];
-}>> {
-  const ents = await db.select({
-    id: entities.id, name: entities.name, label: entities.label,
-    fields: entities.fields,
-  }).from(entities).where(eq(entities.companyId, companyId));
+  db: DB,
+  companyId: string,
+  targetRecordId: string,
+): Promise<
+  Array<{
+    entityId: string;
+    entityName: string;
+    entityLabel: string;
+    fieldKey: string;
+    fieldType: string;
+    count: number;
+    sampleIds: string[];
+  }>
+> {
+  const ents = await db
+    .select({
+      id: entities.id,
+      name: entities.name,
+      label: entities.label,
+      fields: entities.fields,
+    })
+    .from(entities)
+    .where(eq(entities.companyId, companyId));
 
   const out: Array<{
-    entityId: string; entityName: string; entityLabel: string;
-    fieldKey: string; fieldType: string; count: number; sampleIds: string[];
+    entityId: string;
+    entityName: string;
+    entityLabel: string;
+    fieldKey: string;
+    fieldType: string;
+    count: number;
+    sampleIds: string[];
   }> = [];
 
   for (const ent of ents) {
     const fields = (ent.fields ?? []) as Array<{
-      name: string; type: string; relationEntityId?: string;
+      name: string;
+      type: string;
+      relationEntityId?: string;
     }>;
     for (const f of fields) {
-      if (f.type !== "lookup" && f.type !== "multilookup"
-          && f.type !== "multi-lookup" && f.type !== "relation") continue;
+      if (
+        f.type !== "lookup" &&
+        f.type !== "multilookup" &&
+        f.type !== "multi-lookup" &&
+        f.type !== "relation"
+      )
+        continue;
       const isMulti = f.type === "multilookup" || f.type === "multi-lookup";
       const filter = isMulti
         ? sql`${entityRecords.data}->${f.name} @> ${JSON.stringify(targetRecordId)}::jsonb`
         : sql`${entityRecords.data}->>${f.name} = ${targetRecordId}`;
-      const rows = await db.select({ id: entityRecords.id }).from(entityRecords)
-        .where(and(
-          eq(entityRecords.companyId, companyId),
-          eq(entityRecords.entityId, ent.id),
-          sql`${entityRecords.deletedAt} IS NULL`,
-          filter,
-        ))
+      const rows = await db
+        .select({ id: entityRecords.id })
+        .from(entityRecords)
+        .where(
+          and(
+            eq(entityRecords.companyId, companyId),
+            eq(entityRecords.entityId, ent.id),
+            sql`${entityRecords.deletedAt} IS NULL`,
+            filter,
+          ),
+        )
         .limit(50);
       if (rows.length > 0) {
         out.push({
-          entityId: ent.id, entityName: ent.name, entityLabel: ent.label,
-          fieldKey: f.name, fieldType: f.type,
-          count: rows.length, sampleIds: rows.slice(0, 5).map((r) => r.id),
+          entityId: ent.id,
+          entityName: ent.name,
+          entityLabel: ent.label,
+          fieldKey: f.name,
+          fieldType: f.type,
+          count: rows.length,
+          sampleIds: rows.slice(0, 5).map((r) => r.id),
         });
       }
     }
@@ -264,17 +333,31 @@ export async function scanBackRefs(
 /** Áp dụng hành vi onDelete (restrict/setnull/cascade) cho mọi back-ref.
  *  Default = restrict (an toàn nhất). */
 export async function applyCascadeOnDelete(
-  db: DB, companyId: string, targetRecordId: string, actorUserId: string,
+  db: DB,
+  companyId: string,
+  targetRecordId: string,
+  actorUserId: string,
 ): Promise<void> {
   const backRefs = await scanBackRefs(db, companyId, targetRecordId);
   if (backRefs.length === 0) return;
 
-  const ents = await db.select({
-    id: entities.id, fields: entities.fields,
-  }).from(entities).where(eq(entities.companyId, companyId));
-  const entFields = new Map(ents.map((e) => [e.id, (e.fields ?? []) as Array<{
-    name: string; type: string; onDelete?: OnDeleteBehavior;
-  }>]));
+  const ents = await db
+    .select({
+      id: entities.id,
+      fields: entities.fields,
+    })
+    .from(entities)
+    .where(eq(entities.companyId, companyId));
+  const entFields = new Map(
+    ents.map((e) => [
+      e.id,
+      (e.fields ?? []) as Array<{
+        name: string;
+        type: string;
+        onDelete?: OnDeleteBehavior;
+      }>,
+    ]),
+  );
 
   for (const ref of backRefs) {
     const f = entFields.get(ref.entityId)?.find((ff) => ff.name === ref.fieldKey);
@@ -287,16 +370,23 @@ export async function applyCascadeOnDelete(
       });
     }
 
-    const allRefs = await db.select({
-      id: entityRecords.id, data: entityRecords.data, version: entityRecords.version,
-    }).from(entityRecords).where(and(
-      eq(entityRecords.companyId, companyId),
-      eq(entityRecords.entityId, ref.entityId),
-      sql`${entityRecords.deletedAt} IS NULL`,
-      ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup"
-        ? sql`${entityRecords.data}->${ref.fieldKey} @> ${JSON.stringify(targetRecordId)}::jsonb`
-        : sql`${entityRecords.data}->>${ref.fieldKey} = ${targetRecordId}`,
-    ));
+    const allRefs = await db
+      .select({
+        id: entityRecords.id,
+        data: entityRecords.data,
+        version: entityRecords.version,
+      })
+      .from(entityRecords)
+      .where(
+        and(
+          eq(entityRecords.companyId, companyId),
+          eq(entityRecords.entityId, ref.entityId),
+          sql`${entityRecords.deletedAt} IS NULL`,
+          ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup"
+            ? sql`${entityRecords.data}->${ref.fieldKey} @> ${JSON.stringify(targetRecordId)}::jsonb`
+            : sql`${entityRecords.data}->>${ref.fieldKey} = ${targetRecordId}`,
+        ),
+      );
 
     if (behavior === "setnull") {
       for (const r of allRefs) {
@@ -307,16 +397,25 @@ export async function applyCascadeOnDelete(
         } else {
           data[ref.fieldKey] = null;
         }
-        await db.update(entityRecords).set({
-          data, version: r.version + 1, updatedAt: new Date(),
-        }).where(eq(entityRecords.id, r.id));
+        await db
+          .update(entityRecords)
+          .set({
+            data,
+            version: r.version + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(entityRecords.id, r.id));
       }
     } else if (behavior === "cascade") {
       for (const r of allRefs) {
         await applyCascadeOnDelete(db, companyId, r.id, actorUserId);
-        await db.update(entityRecords).set({
-          deletedAt: new Date(), updatedAt: new Date(),
-        }).where(eq(entityRecords.id, r.id));
+        await db
+          .update(entityRecords)
+          .set({
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(entityRecords.id, r.id));
       }
     }
   }
@@ -324,16 +423,18 @@ export async function applyCascadeOnDelete(
 
 /** Sinh giá trị sequence atomic per (company, entity, field). */
 export async function nextSequence(
-  db: DB, companyId: string, entityName: string,
+  db: DB,
+  companyId: string,
+  entityName: string,
   field: { name: string; sequencePrefix?: string; sequencePadding?: number },
 ): Promise<string> {
-  const [row] = await db.execute(sql`
+  const [row] = (await db.execute(sql`
     INSERT INTO entity_sequences (company_id, entity_name, field_key, next_value)
     VALUES (${companyId}::uuid, ${entityName}, ${field.name}, 2)
     ON CONFLICT (company_id, entity_name, field_key)
     DO UPDATE SET next_value = entity_sequences.next_value + 1, updated_at = now()
     RETURNING next_value - 1 AS used
-  `) as unknown as Array<{ used: number }>;
+  `)) as unknown as Array<{ used: number }>;
   const used = row?.used ?? 1;
   const pad = field.sequencePadding ?? 0;
   const num = pad > 0 ? String(used).padStart(pad, "0") : String(used);
@@ -344,12 +445,17 @@ export async function nextSequence(
 
 /** Loại bỏ key user không có quyền GHI (writableBy) trước khi validate. */
 export function stripUnwritableFields(
-  fields: EntityFieldDef[], data: Record<string, unknown>, role: Role,
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+  role: Role,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     const f = fields.find((ff) => ff.name === k);
-    if (!f) { out[k] = v; continue; }
+    if (!f) {
+      out[k] = v;
+      continue;
+    }
     if (fieldCan(role, "write", f)) out[k] = v;
   }
   return out;
@@ -357,12 +463,17 @@ export function stripUnwritableFields(
 
 /** Loại bỏ key user không có quyền ĐỌC (readableBy) khỏi response. */
 export function stripUnreadableFields(
-  fields: EntityFieldDef[], data: Record<string, unknown>, role: Role,
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+  role: Role,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     const f = fields.find((ff) => ff.name === k);
-    if (!f) { out[k] = v; continue; }
+    if (!f) {
+      out[k] = v;
+      continue;
+    }
     if (fieldCan(role, "read", f)) out[k] = v;
   }
   return out;
@@ -372,22 +483,30 @@ export function stripUnreadableFields(
 
 /** Kiểm unique cho các field đánh `unique: true`. */
 export async function assertUnique(
-  db: DB, companyId: string, entityId: string, fields: EntityFieldDef[],
-  data: Record<string, unknown>, excludeRecordId?: string,
+  db: DB,
+  companyId: string,
+  entityId: string,
+  fields: EntityFieldDef[],
+  data: Record<string, unknown>,
+  excludeRecordId?: string,
 ): Promise<void> {
   for (const f of fields) {
     if (!f.unique) continue;
     if (!(f.name in data)) continue;
     const val = data[f.name];
     if (val == null || val === "") continue;
-    const dup = await db.select({ id: entityRecords.id }).from(entityRecords)
-      .where(and(
-        eq(entityRecords.companyId, companyId),
-        eq(entityRecords.entityId, entityId),
-        sql`${entityRecords.deletedAt} IS NULL`,
-        sql`${entityRecords.data}->>${f.name} = ${String(val)}`,
-        excludeRecordId ? sql`${entityRecords.id} <> ${excludeRecordId}::uuid` : sql`true`,
-      ))
+    const dup = await db
+      .select({ id: entityRecords.id })
+      .from(entityRecords)
+      .where(
+        and(
+          eq(entityRecords.companyId, companyId),
+          eq(entityRecords.entityId, entityId),
+          sql`${entityRecords.deletedAt} IS NULL`,
+          sql`${entityRecords.data}->>${f.name} = ${String(val)}`,
+          excludeRecordId ? sql`${entityRecords.id} <> ${excludeRecordId}::uuid` : sql`true`,
+        ),
+      )
       .limit(1);
     if (dup.length > 0) {
       throw new TRPCError({
@@ -400,10 +519,13 @@ export async function assertUnique(
 
 /* ─── Utility ────────────────────────────────────────────── */
 
-/** Deep equality nông cho JSONB primitive/object. */
+/** Deep equality nông cho JSONB primitive/object. null/undefined coi như
+ *  nhau (JSONB không phân biệt). */
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (a == null || b == null) return a == b;
+  const aNullish = a === null || a === undefined;
+  const bNullish = b === null || b === undefined;
+  if (aNullish || bNullish) return aNullish && bNullish;
   if (typeof a !== typeof b) return false;
   if (typeof a !== "object") return false;
   return JSON.stringify(a) === JSON.stringify(b);
@@ -411,19 +533,32 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 
 /** Đọc entity.meta.bindings[op]; trả tên procedure nếu prefix là "proc:". */
 export async function resolveProcBinding(
-  db: DB, companyId: string, entityId: string,
+  db: DB,
+  companyId: string,
+  entityId: string,
   op: "list" | "get" | "create" | "update" | "delete",
 ): Promise<string | null> {
-  const [row] = await db.select({ meta: entities.meta }).from(entities)
+  const [row] = await db
+    .select({ meta: entities.meta })
+    .from(entities)
     .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
   const b = (row?.meta as { bindings?: Record<string, string> } | null)?.bindings?.[op];
   if (!b || typeof b !== "string") return null;
   return b.startsWith("proc:") ? b.slice(5).trim() : null;
 }
 
-/** Khi user tạo agent mới: tự động chèn họ vào `agent_members` với role=owner. */
+/** Khi user tạo agent mới: tự động chèn họ vào resource_members với role=owner.
+ *  Dual-write agent_members song song để backward-compat 1 sprint (sẽ
+ *  drop agent_members ở migration sau khi mọi code đọc đã chuyển hẳn). */
 export async function autoAddOwner(db: DB, agentId: string, userId: string): Promise<void> {
-  await db.insert(agentMembers).values({
-    agentId, userId, role: "owner", addedBy: userId,
-  }).onConflictDoNothing();
+  await upsertResourceMember(db, "agent", agentId, userId, "owner", userId);
+  await db
+    .insert(agentMembers)
+    .values({
+      agentId,
+      userId,
+      role: "owner",
+      addedBy: userId,
+    })
+    .onConflictDoNothing();
 }

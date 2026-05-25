@@ -17,12 +17,14 @@
    - Action "manage_members" và "delete" + toggle `isPrivate` LUÔN cần
      owner-role hoặc admin, kể cả khi isPrivate=false (xem `OWNER_ONLY`).
    ========================================================== */
-import { and, eq } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
-import { agents, agentMembers, type agentMemberRole } from "@erp-framework/db";
+
 import { roleCan } from "@erp-framework/core";
+import { type agentMemberRole, agents } from "@erp-framework/db";
+import { TRPCError } from "@trpc/server";
+import { and, eq } from "drizzle-orm";
 import type { Context } from "./context";
-import { protectedProcedure } from "./trpc";
+import { getResourceRole } from "./resource-acl";
+import { approvedProcedure } from "./trpc";
 
 export type AgentAction = "view" | "chat" | "edit" | "delete" | "manage_members";
 export type MemberRole = (typeof agentMemberRole.enumValues)[number]; // "owner"|"operator"|"observer"
@@ -38,34 +40,36 @@ interface AgentRow {
 
 /** Bảng quyền per-role trong private mode. */
 const PRIVATE_MATRIX: Record<MemberRole, AgentAction[]> = {
-  owner:    ["view", "chat", "edit", "delete", "manage_members"],
+  owner: ["view", "chat", "edit", "delete", "manage_members"],
   operator: ["view", "chat", "edit"],
   observer: ["view", "chat"],
 };
 
-/** Tra `agent_members.role` cho cặp (agentId, userId). Trả null nếu chưa add. */
+/** Tra membership role cho cặp (agentId, userId). Trả null nếu chưa add.
+ *  Đọc từ resource_members (P2.3) — agent_members chỉ còn dual-write
+ *  song song cho backward-compat, không còn là nguồn sự thật. */
 export async function getMemberRole(
-  ctx: Context, agentId: string, userId: string,
+  ctx: Context,
+  agentId: string,
+  userId: string,
 ): Promise<MemberRole | null> {
-  const [row] = await ctx.db.select({ role: agentMembers.role })
-    .from(agentMembers)
-    .where(and(eq(agentMembers.agentId, agentId), eq(agentMembers.userId, userId)));
-  return (row?.role as MemberRole | undefined) ?? null;
+  const role = await getResourceRole(ctx.db, "agent", agentId, userId);
+  return role as MemberRole | null;
 }
 
 /** Load agent + companyId guard. Ném NOT_FOUND nếu agent không thuộc công ty. */
-export async function loadAgentInCompany(
-  ctx: Context, agentId: string,
-): Promise<AgentRow> {
+export async function loadAgentInCompany(ctx: Context, agentId: string): Promise<AgentRow> {
   if (!ctx.user?.companyId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Chưa thuộc công ty nào" });
   }
-  const [row] = await ctx.db.select({
-    id: agents.id, companyId: agents.companyId, config: agents.config,
-  }).from(agents).where(and(
-    eq(agents.id, agentId),
-    eq(agents.companyId, ctx.user.companyId),
-  ));
+  const [row] = await ctx.db
+    .select({
+      id: agents.id,
+      companyId: agents.companyId,
+      config: agents.config,
+    })
+    .from(agents)
+    .where(and(eq(agents.id, agentId), eq(agents.companyId, ctx.user.companyId)));
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Agent không tồn tại" });
   return row;
 }
@@ -82,21 +86,21 @@ export async function canActOnAgentLite(
 ): Promise<boolean> {
   if (user.role === "admin") return true;
 
-  const [agent] = await db.select({
-    id: agents.id, companyId: agents.companyId, config: agents.config,
-  }).from(agents).where(and(
-    eq(agents.id, agentId),
-    eq(agents.companyId, user.companyId),
-  ));
+  const [agent] = await db
+    .select({
+      id: agents.id,
+      companyId: agents.companyId,
+      config: agents.config,
+    })
+    .from(agents)
+    .where(and(eq(agents.id, agentId), eq(agents.companyId, user.companyId)));
   if (!agent) return false;
 
   const cfg = (agent.config ?? {}) as { isPrivate?: boolean };
   const isPrivate = cfg.isPrivate === true;
 
-  const [m] = await db.select({ role: agentMembers.role })
-    .from(agentMembers)
-    .where(and(eq(agentMembers.agentId, agentId), eq(agentMembers.userId, user.id)));
-  const memberRole = (m?.role as MemberRole | undefined) ?? null;
+  const roleStr = await getResourceRole(db, "agent", agentId, user.id);
+  const memberRole = roleStr as MemberRole | null;
 
   if (OWNER_ONLY.includes(action)) return memberRole === "owner";
   if (isPrivate) {
@@ -104,8 +108,11 @@ export async function canActOnAgentLite(
     return PRIVATE_MATRIX[memberRole].includes(action);
   }
   const rbacAction = action === "chat" ? "run" : action;
-  return roleCan(user.role as "admin"|"editor"|"viewer",
-    rbacAction as "view"|"edit"|"run", "agent");
+  return roleCan(
+    user.role as "admin" | "editor" | "viewer",
+    rbacAction as "view" | "edit" | "run",
+    "agent",
+  );
 }
 
 /**
@@ -113,19 +120,30 @@ export async function canActOnAgentLite(
  * Caller tự ném FORBIDDEN khi cần (xem `agentProcedure`).
  */
 export async function canActOnAgent(
-  ctx: Context, agentId: string, action: AgentAction,
+  ctx: Context,
+  agentId: string,
+  action: AgentAction,
 ): Promise<boolean> {
   if (!ctx.user?.companyId) return false;
-  return canActOnAgentLite(ctx.db, {
-    id: ctx.user.id, role: ctx.user.role, companyId: ctx.user.companyId,
-  }, agentId, action);
+  return canActOnAgentLite(
+    ctx.db,
+    {
+      id: ctx.user.id,
+      role: ctx.user.role,
+      companyId: ctx.user.companyId,
+    },
+    agentId,
+    action,
+  );
 }
 
 /** Throw FORBIDDEN nếu user không có quyền hành động. */
 export async function assertCanActOnAgent(
-  ctx: Context, agentId: string, action: AgentAction,
+  ctx: Context,
+  agentId: string,
+  action: AgentAction,
 ): Promise<void> {
-  if (!await canActOnAgent(ctx, agentId, action)) {
+  if (!(await canActOnAgent(ctx, agentId, action))) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `Không có quyền ${action} trên agent này`,
@@ -135,13 +153,15 @@ export async function assertCanActOnAgent(
 
 /* Procedure wrapper cho tRPC. Đoán agentId từ input (string UUID hoặc
    object có { id }/{ agentId }). Dùng cho agents.get/save(update)/
-   delete + member CRUD. */
+   delete + member CRUD. Build trên approvedProcedure để tự động
+   enforce member status (approved + !disabled). */
 export function agentProcedure(action: AgentAction) {
-  return protectedProcedure.use(async ({ ctx, input, next }) => {
-    const id = typeof input === "string"
-      ? input
-      : (input as { id?: string; agentId?: string })?.id
-        ?? (input as { agentId?: string })?.agentId;
+  return approvedProcedure.use(async ({ ctx, input, next }) => {
+    const id =
+      typeof input === "string"
+        ? input
+        : ((input as { id?: string; agentId?: string })?.id ??
+          (input as { agentId?: string })?.agentId);
     if (!id) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Thiếu agentId" });
     }
