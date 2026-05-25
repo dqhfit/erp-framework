@@ -47,6 +47,11 @@ export function CommandPalette() {
     })),
     { id: "set-llm", label: t("cmd.settings_llm"), hint: t("cmd.settings_llm_hint"), iconName: "Sparkles", to: "/settings/llm" },
     { id: "set-mcp", label: t("cmd.settings_mcp"), hint: t("cmd.settings_mcp_hint"), iconName: "Server", to: "/settings/mcp" },
+    /* Các route mới — chưa có i18n key nên dùng label trực tiếp. */
+    { id: "tools", label: "Tools", hint: "Khám phá + chạy tools ngoài (web-app, MCP, CLI)", iconName: "Wand", to: "/tools" },
+    { id: "feedback", label: "Phản hồi", hint: "Gửi bất cập + đề xuất cải thiện hệ thống", iconName: "HelpCircle", to: "/feedback" },
+    { id: "procedures", label: "Thủ tục", hint: "Native procedure JS chạy server-side", iconName: "Terminal", to: "/procedures" },
+    { id: "enums", label: "Danh mục", hint: "Bộ giá trị tái dùng cho field enum/multi-enum", iconName: "Tag", to: "/enums" },
   ], [t, setAgentOpen, entities, pages, workflows, agents]);
 
   const filtered = useMemo(() => {
