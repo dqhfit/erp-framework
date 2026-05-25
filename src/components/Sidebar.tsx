@@ -225,6 +225,8 @@ export function Sidebar() {
   // Membership: primary agent + my agents — dùng để pin ★/★★ và sort lên đầu.
   const primaryAgentId = useAuth((s) => s.primaryAgentId);
   const myAgentRoles = useAuth((s) => s.myAgentRoles);
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
   /** Trọng số sort: primary=0, my-agent=1, khác=2; cùng nhóm thì giữ thứ tự cũ. */
   const agentWeight = (id: string): number => {
     if (id === primaryAgentId) return 0;
@@ -548,6 +550,38 @@ export function Sidebar() {
             label={t("sidebar.embed")}
           />
         </NavGroup>
+      </div>
+
+      {/* === User info + Đăng xuất === */}
+      <div className="shrink-0 border-t border-border px-2 py-2">
+        {collapsed ? (
+          <button
+            type="button"
+            title={t("sidebar.logout")}
+            onClick={() => void logout()}
+            className="w-full h-9 flex items-center justify-center rounded-md hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+          >
+            <I.LogOut size={15} />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-semibold shrink-0 select-none">
+              {user?.name?.[0]?.toUpperCase() ?? "?"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium truncate">{user?.name ?? ""}</div>
+              <div className="text-[10px] text-muted truncate">{user?.email ?? ""}</div>
+            </div>
+            <button
+              type="button"
+              title={t("sidebar.logout")}
+              onClick={() => void logout()}
+              className="w-7 h-7 rounded-md hover:bg-danger/10 text-muted hover:text-danger flex items-center justify-center transition-colors shrink-0"
+            >
+              <I.LogOut size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

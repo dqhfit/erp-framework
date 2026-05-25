@@ -15,6 +15,7 @@ export const chromeVi: Dict = {
   "sidebar.transfer": "Xuất / Nhập cấu hình",
   "sidebar.plugins": "Plugin",
   "sidebar.embed": "Nhúng (Embed)",
+  "sidebar.logout": "Đăng xuất",
 
   // topbar — title/nhãn còn sót
   "topbar.mcp_connected": "MCP đã kết nối",
@@ -100,6 +101,7 @@ export const chromeEn: Dict = {
   "sidebar.transfer": "Export / Import",
   "sidebar.plugins": "Plugins",
   "sidebar.embed": "Embed",
+  "sidebar.logout": "Log out",
 
   // topbar
   "topbar.mcp_connected": "MCP connected",
