@@ -41,6 +41,8 @@ export interface FieldDef {
   /** Display in list */
   showInList?: boolean;
   width?: number;
+  /** Đưa giá trị field vào full-text search index (search_tsv) — chỉ text. */
+  searchable?: boolean;
 }
 
 /** Binding entity → backend op.

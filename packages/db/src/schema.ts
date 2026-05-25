@@ -122,6 +122,10 @@ export const entityRecords = pgTable("entity_records", {
   data: jsonb("data").notNull(),
   version: integer("version").notNull().default(0),
   deletedAt: timestamp("deleted_at"),
+  // search_tsv được trigger Postgres cập nhật tự động từ field
+  // entities.fields[].searchable=true (xem migration 0016). Drizzle
+  // chỉ khai báo cột để TypeScript biết — không bind dynamic queries.
+  searchTsv: text("search_tsv"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -36,6 +36,8 @@ export interface EntityFieldDef {
   /** Cờ điều khiển sinh index — xem data governance UPGRADE-PLAN 3.5 */
   filterable?: boolean;
   sortable?: boolean;
+  /** Đưa giá trị field vào search_tsv (FTS) — chỉ field text/textarea. */
+  searchable?: boolean;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

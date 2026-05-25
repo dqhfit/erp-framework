@@ -112,6 +112,8 @@ const queryParams = z.object({
   sort: z.object({ field: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
   limit: z.number().int().positive().max(500).optional(),
   offset: z.number().int().nonnegative().optional(),
+  /** Full-text search — match @@ trên search_tsv (Postgres). */
+  q: z.string().optional(),
 }).optional();
 type QueryParamsInput = z.infer<typeof queryParams>;
 
@@ -131,6 +133,12 @@ function buildRecordWhere(
   ];
   if (!includeDeleted) {
     conds.push(sql`${entityRecords.deletedAt} IS NULL`);
+  }
+  // Full-text search: dùng search_tsv column được trigger Postgres update từ
+  // field được mark searchable. websearch_to_tsquery tha thứ syntax (quote,
+  // OR, dấu trừ) — phù hợp input UI search bar.
+  if (query?.q && query.q.trim()) {
+    conds.push(sql`${entityRecords.searchTsv}::tsvector @@ websearch_to_tsquery('simple', ${query.q.trim()})`);
   }
   for (const [field, cond] of Object.entries(query?.filters ?? {})) {
     const txt = sql`(${entityRecords.data}->>${field})`;
@@ -884,6 +892,150 @@ export const appRouter = router({
           }
         }
         return row;
+      }),
+
+    /* ── Bulk operations — cap 1000 ids/rows/lần. Lớn hơn → async job.
+       Mỗi op write tạo audit version riêng. Báo cáo per-item errors. */
+    bulkUpdate: rbacProcedure("edit", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        ids: z.array(z.string().uuid()).min(1).max(1000),
+        patch: z.record(z.unknown()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, input.entityId);
+        const data = assertValid(fields, input.patch, true);
+        let updated = 0;
+        const errors: Array<{ id: string; message: string }> = [];
+        for (const id of input.ids) {
+          try {
+            const [cur] = await ctx.db.select({
+              data: entityRecords.data, version: entityRecords.version,
+              deletedAt: entityRecords.deletedAt,
+            }).from(entityRecords).where(and(
+              eq(entityRecords.id, id),
+              eq(entityRecords.companyId, ctx.user.companyId),
+              eq(entityRecords.entityId, input.entityId),
+            ));
+            if (!cur || cur.deletedAt) { errors.push({ id, message: "Không tồn tại hoặc đã xoá" }); continue; }
+            const oldData = (cur.data ?? {}) as Record<string, unknown>;
+            const diff: Record<string, { old: unknown; new: unknown }> = {};
+            for (const [k, v] of Object.entries(data)) {
+              if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
+            }
+            const [row] = await ctx.db.update(entityRecords).set({
+              data: sql`${entityRecords.data} || ${JSON.stringify(data)}::jsonb`,
+              version: cur.version + 1,
+              updatedAt: new Date(),
+            }).where(eq(entityRecords.id, id)).returning();
+            if (row && Object.keys(diff).length > 0) {
+              await ctx.db.insert(entityRecordVersions).values({
+                companyId: ctx.user.companyId,
+                recordId: id, version: row.version,
+                data: row.data as Record<string, unknown>,
+                diff, actorUserId: ctx.user.id,
+              });
+            }
+            updated += 1;
+          } catch (e) {
+            errors.push({ id, message: (e as Error).message });
+          }
+        }
+        return { updated, errors };
+      }),
+
+    bulkDelete: rbacProcedure("delete", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        ids: z.array(z.string().uuid()).min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        let deleted = 0;
+        const errors: Array<{ id: string; message: string }> = [];
+        for (const id of input.ids) {
+          try {
+            await applyCascadeOnDelete(ctx.db, ctx.user.companyId, id, ctx.user.id);
+            await ctx.db.update(entityRecords)
+              .set({ deletedAt: new Date(), updatedAt: new Date() })
+              .where(and(
+                eq(entityRecords.id, id),
+                eq(entityRecords.companyId, ctx.user.companyId),
+              ));
+            deleted += 1;
+          } catch (e) {
+            errors.push({ id, message: (e as Error).message });
+          }
+        }
+        return { deleted, errors };
+      }),
+
+    bulkImport: rbacProcedure("create", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        rows: z.array(z.record(z.unknown())).min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, input.entityId);
+        let imported = 0;
+        const errors: Array<{ index: number; message: string }> = [];
+        for (let i = 0; i < input.rows.length; i++) {
+          try {
+            const r = input.rows[i]!;
+            const v = validateRecord(fields, r, { registry: pluginRegistry });
+            if (!v.ok) {
+              errors.push({ index: i,
+                message: v.errors.map((e) => `${e.field}: ${e.message}`).join("; ") });
+              continue;
+            }
+            await ctx.db.insert(entityRecords).values({
+              companyId: ctx.user.companyId,
+              entityId: input.entityId,
+              data: v.data,
+              createdBy: ctx.user.id,
+            });
+            imported += 1;
+          } catch (e) {
+            errors.push({ index: i, message: (e as Error).message });
+          }
+        }
+        return { imported, errors };
+      }),
+
+    export: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        format: z.enum(["csv", "json"]),
+        query: queryParams,
+      }))
+      .query(async ({ ctx, input }) => {
+        const where = buildRecordWhere(
+          ctx.user.companyId, input.entityId, input.query, false);
+        const rows = await ctx.db.select().from(entityRecords)
+          .where(where).limit(5000);
+        if (input.format === "json") {
+          return { format: "json" as const, content: JSON.stringify(rows.map((r) => r.data), null, 2) };
+        }
+        // CSV: collect headers từ tất cả keys, escape RFC 4180 (quote tất cả).
+        const allKeys = new Set<string>();
+        for (const r of rows) {
+          for (const k of Object.keys((r.data ?? {}) as Record<string, unknown>)) {
+            allKeys.add(k);
+          }
+        }
+        const headers = [...allKeys];
+        const esc = (v: unknown): string => {
+          if (v == null) return "";
+          const s = typeof v === "string" ? v : JSON.stringify(v);
+          return `"${s.replace(/"/g, '""')}"`;
+        };
+        const body = rows.map((r) => {
+          const d = (r.data ?? {}) as Record<string, unknown>;
+          return headers.map((h) => esc(d[h])).join(",");
+        }).join("\n");
+        const content = headers.map((h) => `"${h}"`).join(",") + "\n" + body;
+        return { format: "csv" as const, content };
       }),
   }),
 
