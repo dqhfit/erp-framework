@@ -11,6 +11,24 @@ export default defineConfig({
   // loại khỏi vitest để không bị gom nhầm.
   test: {
     exclude: [...configDefaults.exclude, "e2e/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      // Chỉ đo coverage cho code thực sự (src/ + packages/*/src/),
+      // loại test file, types, route tree generated, config.
+      include: ["packages/*/src/**/*.{ts,tsx}", "src/**/*.{ts,tsx}"],
+      exclude: [
+        "**/*.test.ts", "**/*.spec.ts",
+        "**/*.d.ts",
+        "**/routeTree.gen.ts",
+        "**/types/**",
+        "**/migrations/**",
+      ],
+      // Baseline 2026-05-26: 2.92% statements / 1.49% functions.
+      // Threshold = baseline + buffer 0.1% để chống regression — KHÔNG
+      // gate CI. Ratchet up sau mỗi sprint viết test router.
+      thresholds: { lines: 3, statements: 2.5, functions: 1.4, branches: 1.7 },
+    },
   },
   server: {
     // Bind IPv4 — tránh EACCES khi Windows chặn IPv6 (::1) trên cổng này.
