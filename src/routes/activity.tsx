@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { formatUsd } from "@/lib/pricing";
 import { createObjectsClient } from "@erp-framework/client";
@@ -26,16 +27,17 @@ interface ActivityRow {
   cost?: number | null;
 }
 
-const KIND_LABEL: Record<string, string> = {
-  create: "Tạo",
-  update: "Cập nhật",
-  delete: "Xoá",
-  run_workflow: "Chạy workflow",
-  run_agent: "Chạy agent",
-  mcp_call: "Gọi MCP",
-  login: "Đăng nhập",
-  error: "Lỗi",
+const KIND_KEY: Record<string, string> = {
+  create: "activity.kind_create",
+  update: "activity.kind_update",
+  delete: "activity.kind_delete",
+  run_workflow: "activity.kind_run_workflow",
+  run_agent: "activity.kind_run_agent",
+  mcp_call: "activity.kind_mcp_call",
+  login: "activity.kind_login",
+  error: "activity.kind_error",
 };
+const kindLabel = (t: (k: string) => string, k: string) => t(KIND_KEY[k] ?? k);
 const KIND_VARIANT: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
   create: "success",
   update: "accent",
@@ -46,7 +48,6 @@ const KIND_VARIANT: Record<string, "default" | "accent" | "success" | "warning" 
   login: "default",
   error: "danger",
 };
-const kindLabel = (k: string) => KIND_LABEL[k] ?? k;
 const kindVariant = (k: string) => KIND_VARIANT[k] ?? "default";
 
 function fmtTime(ts: string | Date): string {
@@ -73,6 +74,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 function ActivityDashboard() {
+  const t = useT();
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -121,9 +123,9 @@ function ActivityDashboard() {
   const shown = filter === "all" ? rows : rows.filter((e) => e.kind === filter);
 
   const handleClear = async () => {
-    const ok = await dialog.confirm("Xoá toàn bộ nhật ký hoạt động?", {
-      title: "Xoá nhật ký",
-      confirmText: "Xoá",
+    const ok = await dialog.confirm(t("activity.clear_confirm"), {
+      title: t("activity.clear_title"),
+      confirmText: t("activity.clear_confirm_btn"),
       danger: true,
     });
     if (!ok) return;
@@ -135,58 +137,58 @@ function ActivityDashboard() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[1000px] mx-auto p-8">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Nhật ký & Chi phí</h1>
+          <h1 className="text-xl font-semibold">{t("activity.title")}</h1>
           {rows.length > 0 && (
             <Button variant="danger" icon={<I.Trash size={13} />} onClick={handleClear}>
-              Xoá nhật ký
+              {t("activity.clear_btn")}
             </Button>
           )}
         </div>
         <div className="text-sm text-muted mb-5">
-          Hành động ghi nhận trên server (activity_log) — workflow run, chi phí token.
+          {t("activity.subtitle")}
         </div>
 
         <div className="flex gap-3 mb-5">
           <Stat
-            label="Tổng chi phí"
+            label={t("activity.stat_cost")}
             value={formatUsd(totalCost)}
-            sub={`${withTokens} lần có token`}
+            sub={t("activity.stat_tokens_used", { count: String(withTokens) })}
           />
-          <Stat label="Token vào" value={tokIn.toLocaleString("vi-VN")} />
-          <Stat label="Token ra" value={tokOut.toLocaleString("vi-VN")} />
-          <Stat label="Số sự kiện" value={rows.length.toLocaleString("vi-VN")} />
+          <Stat label={t("activity.stat_token_in")} value={tokIn.toLocaleString("vi-VN")} />
+          <Stat label={t("activity.stat_token_out")} value={tokOut.toLocaleString("vi-VN")} />
+          <Stat label={t("activity.stat_events")} value={rows.length.toLocaleString("vi-VN")} />
         </div>
 
         {/* Ngân sách tháng — chặn cứng khi vượt */}
         <Card className="mb-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="text-xs text-muted uppercase tracking-wide">Ngân sách tháng</div>
+              <div className="text-xs text-muted uppercase tracking-wide">{t("activity.budget_label")}</div>
               <div className="text-sm mt-1">
-                Đã dùng <b>{formatUsd(budget.usedUsd)}</b>
+                {t("activity.budget_used")} <b>{formatUsd(budget.usedUsd)}</b>
                 {budget.monthlyUsd > 0 ? (
                   <>
                     {" "}
-                    {" / "} hạn mức <b>{formatUsd(budget.monthlyUsd)}</b>
+                    {" / "} {t("activity.budget_limit")} <b>{formatUsd(budget.monthlyUsd)}</b>
                   </>
                 ) : (
                   <>
                     {" "}
                     {" · "}
-                    <span className="text-muted">chưa đặt hạn mức</span>
+                    <span className="text-muted">{t("activity.budget_no_limit")}</span>
                   </>
                 )}
               </div>
               {overBudget && (
                 <div className="mt-1">
-                  <Chip variant="danger">Đã chạm hạn mức — workflow & agent bị chặn</Chip>
+                  <Chip variant="danger">{t("activity.budget_over")}</Chip>
                 </div>
               )}
             </div>
             <div className="flex items-end gap-2">
               <div>
                 <label className="text-xs text-muted block mb-1">
-                  Hạn mức USD/tháng (0 = không giới hạn)
+                  {t("activity.budget_field_label")}
                 </label>
                 <Input
                   type="number"
@@ -197,19 +199,19 @@ function ActivityDashboard() {
                 />
               </div>
               <Button variant="primary" onClick={saveBudget}>
-                Lưu hạn mức
+                {t("activity.budget_save_btn")}
               </Button>
             </div>
           </div>
         </Card>
 
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm text-muted">Lọc theo loại:</span>
+          <span className="text-sm text-muted">{t("activity.filter_label")}</span>
           <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-48">
-            <option value="all">Tất cả</option>
+            <option value="all">{t("activity.filter_all")}</option>
             {kinds.map((k) => (
               <option key={k} value={k}>
-                {kindLabel(k)}
+                {kindLabel(t, k)}
               </option>
             ))}
           </Select>
@@ -218,7 +220,7 @@ function ActivityDashboard() {
         {shown.length === 0 ? (
           <Card>
             <div className="text-center text-muted py-12 text-sm">
-              {loading ? "Đang tải…" : "Chưa có hoạt động nào được ghi nhận."}
+              {loading ? t("activity.loading") : t("activity.empty")}
             </div>
           </Card>
         ) : (
@@ -226,11 +228,11 @@ function ActivityDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-muted text-xs uppercase tracking-wide border-b border-border">
-                  <th className="text-left py-2 px-3 font-semibold">Thời gian</th>
-                  <th className="text-left py-2 px-3 font-semibold">Loại</th>
-                  <th className="text-left py-2 px-3 font-semibold">Chi tiết</th>
-                  <th className="text-right py-2 px-3 font-semibold">Token</th>
-                  <th className="text-right py-2 px-3 font-semibold">Chi phí</th>
+                  <th className="text-left py-2 px-3 font-semibold">{t("activity.col_time")}</th>
+                  <th className="text-left py-2 px-3 font-semibold">{t("activity.col_type")}</th>
+                  <th className="text-left py-2 px-3 font-semibold">{t("activity.col_detail")}</th>
+                  <th className="text-right py-2 px-3 font-semibold">{t("activity.col_token")}</th>
+                  <th className="text-right py-2 px-3 font-semibold">{t("activity.col_cost")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +242,7 @@ function ActivityDashboard() {
                       {fmtTime(e.at)}
                     </td>
                     <td className="py-2 px-3">
-                      <Chip variant={kindVariant(e.kind)}>{kindLabel(e.kind)}</Chip>
+                      <Chip variant={kindVariant(e.kind)}>{kindLabel(t, e.kind)}</Chip>
                     </td>
                     <td className="py-2 px-3">
                       <div>{e.detail}</div>

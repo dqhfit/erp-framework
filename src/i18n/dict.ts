@@ -8,8 +8,12 @@
      trả về key thô để dễ debug.
    ========================================================== */
 
+import { activityEn, activityVi } from "./dict-activity";
+import { approvalsEn, approvalsVi } from "./dict-approvals";
 import { chromeEn, chromeVi } from "./dict-chrome";
+import { feedbackEn, feedbackVi } from "./dict-feedback";
 import { homeEn, homeVi } from "./dict-home";
+import { settingsEn, settingsVi } from "./dict-settings";
 
 export type Lang = "vi" | "en";
 export const LANGS: Array<{ code: Lang; label: string; flag: string }> = [
@@ -600,8 +604,8 @@ const EN: Dict = {
 /* DICT gộp map lõi + các map mở rộng theo nhóm (dict-*.ts).
    Mỗi nhóm i18n bổ sung thêm 1 import + 1 spread ở đây. */
 export const DICT: Record<Lang, Dict> = {
-  vi: { ...VI, ...chromeVi, ...homeVi },
-  en: { ...EN, ...chromeEn, ...homeEn },
+  vi: { ...VI, ...chromeVi, ...homeVi, ...activityVi, ...approvalsVi, ...feedbackVi, ...settingsVi },
+  en: { ...EN, ...chromeEn, ...homeEn, ...activityEn, ...approvalsEn, ...feedbackEn, ...settingsEn },
 };
 
 /** Lấy chuỗi dịch, support {var} substitution. */

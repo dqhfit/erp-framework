@@ -15,23 +15,9 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
    - Submit thành công → nav tới /feedback/$id
    ========================================================== */
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
-
-const AREA_OPTS: Array<{ value: FeedbackArea; label: string }> = [
-  { value: "entity", label: "Entity / dữ liệu" },
-  { value: "workflow", label: "Workflow" },
-  { value: "agent", label: "Agent / AI" },
-  { value: "settings", label: "Cài đặt" },
-  { value: "ui", label: "Giao diện" },
-  { value: "performance", label: "Hiệu năng" },
-  { value: "other", label: "Khác" },
-];
-const SEVERITY_OPTS: Array<{ value: FeedbackSeverity; label: string }> = [
-  { value: "nice_to_have", label: "Mong muốn" },
-  { value: "normal", label: "Bình thường" },
-  { value: "blocker", label: "Chặn nghiêm trọng" },
-];
 
 interface Props {
   open: boolean;
@@ -39,6 +25,21 @@ interface Props {
 }
 
 export function SubmitFeedbackModal({ open, onClose }: Props) {
+  const t = useT();
+  const AREA_OPTS: Array<{ value: FeedbackArea; label: string }> = [
+    { value: "entity", label: t("feedback.area_entity") },
+    { value: "workflow", label: t("feedback.area_workflow") },
+    { value: "agent", label: t("feedback.area_agent") },
+    { value: "settings", label: t("feedback.area_settings") },
+    { value: "ui", label: t("feedback.area_ui") },
+    { value: "performance", label: t("feedback.area_performance") },
+    { value: "other", label: t("feedback.area_other") },
+  ];
+  const SEVERITY_OPTS: Array<{ value: FeedbackSeverity; label: string }> = [
+    { value: "nice_to_have", label: t("feedback.sev_nice_to_have") },
+    { value: "normal", label: t("feedback.sev_normal") },
+    { value: "blocker", label: t("feedback.sev_blocker") },
+  ];
   const loc = useLocation();
   const nav = useNavigate();
   const [title, setTitle] = useState("");
@@ -109,11 +110,11 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
       open={open}
       onClose={onClose}
       width={640}
-      title="Gửi phản hồi / đề xuất cải thiện"
+      title={t("feedback.modal_title")}
       footer={
         <>
           <Button variant="default" onClick={onClose} disabled={busy}>
-            Huỷ
+            {t("feedback.cancel_btn")}
           </Button>
           <Button
             variant="primary"
@@ -121,14 +122,14 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
             disabled={busy || title.trim().length < 3 || body.trim().length < 10}
             icon={<I.Send size={14} />}
           >
-            Gửi
+            {t("feedback.send_btn")}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          <FormField label="Khu vực">
+          <FormField label={t("feedback.area_label")}>
             <Select value={area} onChange={(e) => setArea(e.target.value as FeedbackArea)}>
               {AREA_OPTS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -137,7 +138,7 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
               ))}
             </Select>
           </FormField>
-          <FormField label="Mức độ">
+          <FormField label={t("feedback.severity_label")}>
             <Select
               value={severity}
               onChange={(e) => setSeverity(e.target.value as FeedbackSeverity)}
@@ -150,11 +151,11 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
             </Select>
           </FormField>
         </div>
-        <FormField label="Tiêu đề">
+        <FormField label={t("feedback.title_label")}>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Mô tả ngắn gọn bất cập gặp phải"
+            placeholder={t("feedback.title_placeholder")}
             maxLength={200}
           />
         </FormField>
@@ -162,7 +163,7 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
         {similar.length > 0 && (
           <div className="rounded-md border border-warning/40 bg-warning/5 p-2 text-xs">
             <div className="font-medium mb-1 flex items-center gap-1">
-              <I.AlertCircle size={12} /> Có thể trùng với:
+              <I.AlertCircle size={12} /> {t("feedback.similar_warn")}
             </div>
             <ul className="space-y-0.5">
               {similar.map((s) => (
@@ -177,7 +178,7 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
                   </Link>{" "}
                   <Chip className="!text-[10px]">{s.status}</Chip>
                   <span className="text-muted ml-1">
-                    ({Math.round(s.similarity * 100)}% tương tự)
+                    ({Math.round(s.similarity * 100)}% {t("feedback.similar_pct")})
                   </span>
                 </li>
               ))}
@@ -186,27 +187,27 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
         )}
 
         <FormField
-          label="Mô tả bất cập"
-          hint="Bạn gặp vấn đề gì, lặp lại thế nào, ảnh hưởng ra sao."
+          label={t("feedback.body_label")}
+          hint={t("feedback.body_hint")}
         >
           <Textarea
             rows={5}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="VD: Khi nhập email vào form đăng nhập, lần sau quay lại không nhớ giúp."
+            placeholder={t("feedback.body_placeholder")}
           />
         </FormField>
-        <FormField label="Đề xuất cải thiện (tuỳ chọn)">
+        <FormField label={t("feedback.suggestion_field_label")}>
           <Textarea
             rows={3}
             value={suggestion}
             onChange={(e) => setSuggestion(e.target.value)}
-            placeholder="VD: Thêm tuỳ chọn 'Ghi nhớ tôi' giống các app khác."
+            placeholder={t("feedback.suggestion_placeholder")}
           />
         </FormField>
 
         <div className="text-[11px] text-muted">
-          Trang hiện tại: <code>{url}</code> sẽ được đính kèm tự động.
+          {t("feedback.current_page")} <code>{url}</code> sẽ được đính kèm tự động.
         </div>
         {err && <Chip variant="danger">{err}</Chip>}
       </div>

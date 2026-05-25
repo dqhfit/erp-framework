@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { createApprovalsClient } from "@erp-framework/client";
 /* ==========================================================
    approvals — Hộp phê duyệt (governance). Tạo yêu cầu phê duyệt,
@@ -34,6 +35,7 @@ const STATUS_CHIP: Record<string, "default" | "success" | "warning" | "danger"> 
 };
 
 function ApprovalsRoute() {
+  const t = useT();
   const [list, setList] = useState<ApprovalReq[]>([]);
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
@@ -92,7 +94,7 @@ function ApprovalsRoute() {
         </div>
         {r.detail && <div className="text-sm text-muted whitespace-pre-wrap">{r.detail}</div>}
         <div className="text-xs text-muted">
-          Đã duyệt {approved}/{r.requiredApprovals} · {r.decisions.length} quyết định
+          {t("approvals.approved_count", { approved: String(approved), required: String(r.requiredApprovals), decisions: String(r.decisions.length) })}
         </div>
         {r.status === "pending" && (
           <div className="flex items-center gap-2">
@@ -103,7 +105,7 @@ function ApprovalsRoute() {
               disabled={busy}
               onClick={() => void run(() => approvals.decide(r.id, "approve").then(() => {}))}
             >
-              Duyệt
+              {t("approvals.approve_btn")}
             </Button>
             <Button
               size="sm"
@@ -112,7 +114,7 @@ function ApprovalsRoute() {
               disabled={busy}
               onClick={() => void run(() => approvals.decide(r.id, "reject").then(() => {}))}
             >
-              Từ chối
+              {t("approvals.reject_btn")}
             </Button>
           </div>
         )}
@@ -123,16 +125,15 @@ function ApprovalsRoute() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[820px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Phê duyệt (Governance)</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("approvals.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Yêu cầu phê duyệt nhiều tầng — cần đủ số người duyệt mới chuyển sang "approved"; một người
-          từ chối là "rejected".
+          {t("approvals.subtitle")}
         </div>
 
         <Card className="mb-4 space-y-2">
-          <div className="font-semibold">Tạo yêu cầu phê duyệt</div>
+          <div className="font-semibold">{t("approvals.create_title")}</div>
           <Input
-            placeholder="Tiêu đề"
+            placeholder={t("approvals.title_input")}
             value={title}
             disabled={busy}
             onChange={(e) => setTitle(e.target.value)}
@@ -140,13 +141,13 @@ function ApprovalsRoute() {
           <textarea
             className="input w-full text-sm"
             rows={2}
-            placeholder="Chi tiết (tuỳ chọn)"
+            placeholder={t("approvals.detail_input")}
             value={detail}
             disabled={busy}
             onChange={(e) => setDetail(e.target.value)}
           />
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted">Số tầng duyệt cần đạt:</span>
+            <span className="text-sm text-muted">{t("approvals.required_label")}</span>
             <Input
               type="number"
               min={1}
@@ -163,22 +164,22 @@ function ApprovalsRoute() {
               disabled={busy || !title.trim()}
               onClick={create}
             >
-              Tạo yêu cầu
+              {t("approvals.create_btn")}
             </Button>
           </div>
         </Card>
 
         <Card className="mb-4 space-y-2">
-          <div className="font-semibold">Chờ duyệt ({pending.length})</div>
+          <div className="font-semibold">{t("approvals.pending_title", { count: String(pending.length) })}</div>
           {pending.length === 0 && (
-            <div className="text-sm text-muted">Không có yêu cầu nào chờ duyệt.</div>
+            <div className="text-sm text-muted">{t("approvals.pending_empty")}</div>
           )}
           {pending.map(renderReq)}
         </Card>
 
         {done.length > 0 && (
           <Card className="space-y-2">
-            <div className="font-semibold">Đã quyết định ({done.length})</div>
+            <div className="font-semibold">{t("approvals.done_title", { count: String(done.length) })}</div>
             {done.map(renderReq)}
           </Card>
         )}

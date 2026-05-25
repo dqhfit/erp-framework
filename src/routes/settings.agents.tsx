@@ -1,6 +1,7 @@
 import { I } from "@/components/Icons";
 import { PickPrimaryModal } from "@/components/PickPrimaryModal";
 import { Button, Card, Chip, EmptyState } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 /* ==========================================================
@@ -14,6 +15,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 function SettingsAgents() {
+  const t = useT();
   const primaryAgentId = useAuth((s) => s.primaryAgentId);
   const myAgentRoles = useAuth((s) => s.myAgentRoles);
   const setPrimary = useAuth((s) => s.setPrimary);
@@ -32,10 +34,9 @@ function SettingsAgents() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8 space-y-4">
-        <h1 className="text-xl font-semibold mb-1">Agent của tôi</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.agents.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Đặt agent chính bạn hay làm việc cùng và quản lý các agent mà bạn là thành viên. Khi chưa
-          đặt, app vẫn dùng được — Topbar/AgentPanel sẽ ưu tiên CEO mặc định của công ty.
+          {t("settings.agents.subtitle")}
         </div>
 
         {/* === Card Agent chính === */}
@@ -52,7 +53,7 @@ function SettingsAgents() {
                   <I.Bot size={18} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-muted">Agent chính</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted">{t("settings.agents.primary_label")}</div>
                   <div className="font-semibold truncate">{primaryAgent.name}</div>
                   <div className="text-xs text-muted font-mono truncate">{primaryAgent.model}</div>
                 </div>
@@ -61,7 +62,7 @@ function SettingsAgents() {
                   size="sm"
                   onClick={() => navigate({ to: "/agents/$id", params: { id: primaryAgent.id } })}
                 >
-                  Mở
+                  {t("settings.agents.open_btn")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -69,7 +70,7 @@ function SettingsAgents() {
                   icon={<I.Edit size={12} />}
                   onClick={() => setPickOpen(true)}
                 >
-                  Đổi
+                  {t("settings.agents.change_btn")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -78,9 +79,9 @@ function SettingsAgents() {
                   onClick={() => {
                     void setPrimary(null);
                   }}
-                  title="Bỏ chọn"
+                  title={t("settings.agents.deselect_btn")}
                 >
-                  Bỏ chọn
+                  {t("settings.agents.deselect_btn")}
                 </Button>
               </>
             ) : (
@@ -89,9 +90,9 @@ function SettingsAgents() {
                   <I.Bot size={18} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-muted">Agent chính</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted">{t("settings.agents.primary_label")}</div>
                   <div className="text-sm text-muted">
-                    Chưa chọn — app dùng CEO của công ty làm assistant mặc định.
+                    {t("settings.agents.primary_unset")}
                   </div>
                 </div>
                 <Button
@@ -100,7 +101,7 @@ function SettingsAgents() {
                   icon={<I.Sparkles size={12} />}
                   onClick={() => setPickOpen(true)}
                 >
-                  Chọn Agent chính
+                  {t("settings.agents.pick_btn")}
                 </Button>
               </>
             )}
@@ -111,14 +112,14 @@ function SettingsAgents() {
         <Card>
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Agent tôi quản ({myAgents.length})
+              {t("settings.agents.my_agents_title", { count: String(myAgents.length) })}
             </div>
-            <span className="text-xs text-muted">Mở từng agent qua Sidebar →</span>
+            <span className="text-xs text-muted">{t("settings.agents.sidebar_hint")}</span>
           </div>
           {myAgents.length === 0 ? (
             <EmptyState
-              title="Bạn chưa được gán làm thành viên của agent nào"
-              hint="Khi bạn tạo agent mới, bạn tự động trở thành owner. Nhờ admin thêm bạn vào các agent có sẵn."
+              title={t("settings.agents.empty_title")}
+              hint={t("settings.agents.empty_hint")}
               icon={<I.Users size={28} className="text-muted" />}
             />
           ) : (
@@ -136,7 +137,7 @@ function SettingsAgents() {
                       {a.name}
                       {a.id === primaryAgentId && (
                         <Chip className="!h-[16px] !text-[9px]" variant="success">
-                          chính
+                          {t("settings.agents.primary_chip")}
                         </Chip>
                       )}
                     </div>
@@ -157,9 +158,7 @@ function SettingsAgents() {
         </Card>
 
         <div className="text-[11px] text-muted">
-          Quyền chi tiết: <strong>owner</strong> = toàn quyền + quản thành viên + xoá;{" "}
-          <strong>operator</strong> = chat + edit cấu hình; <strong>observer</strong> = chỉ xem +
-          chat. Có thể đổi/gỡ ở tab "Thành viên" của trang agent (chỉ owner).
+          {t("settings.agents.role_note")}
         </div>
 
         <PickPrimaryModal open={pickOpen} onClose={() => setPickOpen(false)} />

@@ -1,6 +1,7 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input, Select } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { useT } from "@/hooks/useT";
 import { type CompanyRole, createCompaniesClient } from "@erp-framework/client";
 /* ==========================================================
    settings.companies — Quản lý đa công ty:
@@ -31,11 +32,6 @@ interface Member {
 }
 
 const ROLES: CompanyRole[] = ["admin", "editor", "viewer"];
-const ROLE_LABEL: Record<string, string> = {
-  admin: "Quản trị",
-  editor: "Biên tập",
-  viewer: "Xem",
-};
 
 function CompaniesSettings() {
   const [list, setList] = useState<CompanyItem[]>([]);
@@ -58,6 +54,14 @@ function CompaniesSettings() {
   /** Reset password: user đang được đặt lại mật khẩu. */
   const [resetTarget, setResetTarget] = useState<{ userId: string; email: string } | null>(null);
   const [resetPwd, setResetPwd] = useState("");
+
+  const t = useT();
+
+  const ROLE_LABEL: Record<string, string> = {
+    admin: t("settings.companies.role_admin"),
+    editor: t("settings.companies.role_editor"),
+    viewer: t("settings.companies.role_viewer"),
+  };
 
   const isAdmin = myRole === "admin";
 
@@ -111,15 +115,14 @@ function CompaniesSettings() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[820px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Quản lý công ty</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.companies.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Mỗi công ty có dữ liệu riêng (entity, trang, workflow, agent, nhật ký…). Người dùng có thể
-          thuộc nhiều công ty và chuyển qua lại.
+          {t("settings.companies.subtitle")}
         </div>
 
         {/* === Công ty hiện tại === */}
         <Card className="mb-4 space-y-3">
-          <div className="font-semibold">Công ty đang làm việc</div>
+          <div className="font-semibold">{t("settings.companies.current_company")}</div>
           <div className="flex items-center gap-2">
             <Input
               value={currentName}
@@ -135,22 +138,22 @@ function CompaniesSettings() {
                 onClick={() =>
                   void run(
                     () => companies.rename(currentName.trim()).then(() => {}),
-                    "✓ Đã đổi tên công ty.",
+                    t("settings.companies.renamed_ok"),
                   )
                 }
               >
-                Đổi tên
+                {t("settings.companies.rename_btn")}
               </Button>
             )}
           </div>
           <div className="text-xs text-muted">
-            Vai trò của bạn ở công ty này: <Chip>{ROLE_LABEL[myRole] ?? myRole}</Chip>
+            {t("settings.companies.your_role")} <Chip>{ROLE_LABEL[myRole] ?? myRole}</Chip>
           </div>
         </Card>
 
         {/* === Danh sách công ty === */}
         <Card className="mb-4 space-y-3">
-          <div className="font-semibold">Công ty của bạn</div>
+          <div className="font-semibold">{t("settings.companies.my_companies")}</div>
           <div className="space-y-1.5">
             {list.map((c) => (
               <div
@@ -161,19 +164,19 @@ function CompaniesSettings() {
                 <span className="flex-1 truncate">{c.name}</span>
                 <Chip>{ROLE_LABEL[c.role] ?? c.role}</Chip>
                 {c.isActive ? (
-                  <Chip variant="success">Đang dùng</Chip>
+                  <Chip variant="success">{t("settings.companies.active_chip")}</Chip>
                 ) : (
                   <Button size="sm" disabled={busy} onClick={() => void doSwitch(c.id)}>
-                    Chuyển đến
+                    {t("settings.companies.switch_btn")}
                   </Button>
                 )}
               </div>
             ))}
-            {list.length === 0 && <div className="text-sm text-muted">Chưa thuộc công ty nào.</div>}
+            {list.length === 0 && <div className="text-sm text-muted">{t("settings.companies.no_company")}</div>}
           </div>
           <div className="border-t border-border pt-3 flex items-center gap-2">
             <Input
-              placeholder="Tên công ty mới…"
+              placeholder={t("settings.companies.new_company_placeholder")}
               value={newName}
               disabled={busy}
               onChange={(e) => setNewName(e.target.value)}
@@ -187,25 +190,25 @@ function CompaniesSettings() {
                 void run(async () => {
                   await companies.create(newName.trim());
                   setNewName("");
-                }, "✓ Đã tạo công ty mới.")
+                }, t("settings.companies.create_ok"))
               }
             >
-              Tạo công ty
+              {t("settings.companies.create_btn")}
             </Button>
           </div>
-          <div className="text-xs text-muted">Bạn sẽ là quản trị viên của công ty vừa tạo.</div>
+          <div className="text-xs text-muted">{t("settings.companies.admin_hint")}</div>
         </Card>
 
         {/* === Thành viên === */}
         <Card className="space-y-3">
-          <div className="font-semibold">Thành viên công ty</div>
+          <div className="font-semibold">{t("settings.companies.members_title")}</div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="text-muted text-xs uppercase tracking-wide">
-                  <th className="text-left py-2 pr-3 font-semibold">Người dùng</th>
-                  <th className="text-left py-2 px-2 font-semibold">Vai trò</th>
-                  <th className="py-2 pl-2 font-semibold text-right">Thao tác</th>
+                  <th className="text-left py-2 pr-3 font-semibold">{t("settings.companies.col_user")}</th>
+                  <th className="text-left py-2 px-2 font-semibold">{t("settings.companies.col_role")}</th>
+                  <th className="py-2 pl-2 font-semibold text-right">{t("settings.companies.col_actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,7 +219,7 @@ function CompaniesSettings() {
                         {m.name}
                         {m.pending && (
                           <Chip variant="warning" className="!h-[16px] !text-[10px]">
-                            chờ accept
+                            {t("settings.companies.pending_chip")}
                           </Chip>
                         )}
                       </div>
@@ -233,7 +236,7 @@ function CompaniesSettings() {
                                 companies
                                   .setMemberRole(m.userId, e.target.value as CompanyRole)
                                   .then(() => {}),
-                              "✓ Đã đổi vai trò.",
+                              t("settings.companies.role_changed_ok"),
                             )
                           }
                         >
@@ -263,10 +266,10 @@ function CompaniesSettings() {
                                 setInviteLink(full);
                                 setInviteEmail(m.email);
                                 await navigator.clipboard?.writeText(full).catch(() => {});
-                              }, "✓ Đã sinh link mới — đã copy vào clipboard.")
+                              }, t("settings.companies.resend_ok"))
                             }
                           >
-                            Gửi lại
+                            {t("settings.companies.resend_btn")}
                           </Button>
                         )}
                         {isAdmin && !m.pending && (
@@ -281,7 +284,7 @@ function CompaniesSettings() {
                               setResetPwd("");
                             }}
                           >
-                            Reset pass
+                            {t("settings.companies.reset_pass_btn")}
                           </Button>
                         )}
                         {isAdmin && (
@@ -291,14 +294,14 @@ function CompaniesSettings() {
                             icon={<I.Trash size={13} />}
                             disabled={busy}
                             onClick={async () => {
-                              const ok = await dialog.confirm(`Gỡ ${m.email} khỏi công ty?`, {
-                                title: "Gỡ thành viên",
-                                confirmText: "Gỡ",
+                              const ok = await dialog.confirm(t("settings.companies.remove_confirm", { email: m.email }), {
+                                title: t("settings.companies.remove_title"),
+                                confirmText: t("settings.companies.remove_confirm_btn"),
                               });
                               if (ok)
                                 void run(
                                   () => companies.removeMember(m.userId).then(() => {}),
-                                  "✓ Đã gỡ thành viên.",
+                                  t("settings.companies.removed_ok"),
                                 );
                             }}
                           />
@@ -310,7 +313,7 @@ function CompaniesSettings() {
                 {members.length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-3 text-muted text-sm">
-                      Chưa có thành viên nào hiển thị.
+                      {t("settings.companies.no_members")}
                     </td>
                   </tr>
                 )}
@@ -320,16 +323,16 @@ function CompaniesSettings() {
 
           {isAdmin && (
             <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-sm font-medium">Mời thành viên qua link đăng ký</div>
+              <div className="text-sm font-medium">{t("settings.companies.invite_title")}</div>
               <div className="grid grid-cols-3 gap-2">
                 <Input
-                  placeholder="Email"
+                  placeholder={t("settings.companies.invite_email_ph")}
                   value={mEmail}
                   disabled={busy}
                   onChange={(e) => setMEmail(e.target.value)}
                 />
                 <Input
-                  placeholder="Tên hiển thị (tuỳ chọn)"
+                  placeholder={t("settings.companies.invite_name_ph")}
                   value={mName}
                   disabled={busy}
                   onChange={(e) => setMName(e.target.value)}
@@ -365,15 +368,13 @@ function CompaniesSettings() {
                     }
                     setMEmail("");
                     setMName("");
-                  }, "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.")
+                  }, t("settings.companies.invite_ok"))
                 }
               >
-                Tạo tài khoản + sinh link đăng ký
+                {t("settings.companies.invite_btn")}
               </Button>
               <div className="text-xs text-muted">
-                Server tạo tài khoản với mật khẩu trống, sinh link đăng ký 1 lần có hiệu lực{" "}
-                <strong>7 ngày</strong>. Bạn copy link gửi cho user — họ tự đặt mật khẩu khi vào
-                link. Email đã có user → chỉ gán quyền, không sinh link.
+                {t("settings.companies.invite_hint")}
               </div>
             </div>
           )}
@@ -385,7 +386,7 @@ function CompaniesSettings() {
             <div className="flex items-center gap-2">
               <I.Send size={14} className="text-accent" />
               <div className="font-medium text-sm">
-                Link đăng ký cho <span className="font-mono">{inviteEmail}</span>
+                {t("settings.companies.link_label")} <span className="font-mono">{inviteEmail}</span>
               </div>
               <div className="flex-1" />
               <Button
@@ -413,8 +414,7 @@ function CompaniesSettings() {
               </Button>
             </div>
             <div className="text-xs text-muted">
-              Hết hạn sau 7 ngày. User mở link → đặt mật khẩu → vào app. Có thể sinh lại link bằng
-              nút "Gửi lại" cạnh chip "chờ accept".
+              {t("settings.companies.link_expires")}
             </div>
           </Card>
         )}
@@ -425,7 +425,7 @@ function CompaniesSettings() {
             <div className="flex items-center gap-2">
               <I.Lock size={14} className="text-warning" />
               <div className="font-medium text-sm">
-                Đặt lại mật khẩu cho <span className="font-mono">{resetTarget.email}</span>
+                {t("settings.companies.reset_panel_title")} <span className="font-mono">{resetTarget.email}</span>
               </div>
               <div className="flex-1" />
               <Button
@@ -439,7 +439,7 @@ function CompaniesSettings() {
             <div className="flex gap-2">
               <Input
                 type="password"
-                placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
+                placeholder={t("settings.companies.reset_pwd_ph")}
                 value={resetPwd}
                 disabled={busy}
                 onChange={(e) => setResetPwd(e.target.value)}
@@ -453,14 +453,14 @@ function CompaniesSettings() {
                     await companies.resetMemberPassword(resetTarget.userId, resetPwd);
                     setResetTarget(null);
                     setResetPwd("");
-                  }, `✓ Đã đặt lại mật khẩu cho ${resetTarget.email}. Mọi phiên của user đó đã bị đăng xuất.`)
+                  }, t("settings.companies.reset_ok", { email: resetTarget.email }))
                 }
               >
-                Xác nhận đặt lại
+                {t("settings.companies.reset_confirm_btn")}
               </Button>
             </div>
             <div className="text-xs text-muted">
-              User sẽ bị đăng xuất khỏi tất cả thiết bị và phải đăng nhập lại bằng mật khẩu mới.
+              {t("settings.companies.reset_hint")}
             </div>
           </Card>
         )}

@@ -13,26 +13,9 @@ import {
    ========================================================== */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
-
-const STATUS_OPTS: Array<{ value: "" | FeedbackStatus; label: string }> = [
-  { value: "", label: "Tất cả trạng thái" },
-  { value: "new", label: "Mới" },
-  { value: "in_progress", label: "Đang xử lý" },
-  { value: "done", label: "Hoàn tất" },
-  { value: "wontfix", label: "Sẽ không xử lý" },
-];
-const AREA_OPTS: Array<{ value: "" | FeedbackArea; label: string }> = [
-  { value: "", label: "Tất cả khu vực" },
-  { value: "entity", label: "Entity" },
-  { value: "workflow", label: "Workflow" },
-  { value: "agent", label: "Agent" },
-  { value: "settings", label: "Cài đặt" },
-  { value: "ui", label: "Giao diện" },
-  { value: "performance", label: "Hiệu năng" },
-  { value: "other", label: "Khác" },
-];
 
 function statusVariant(s: FeedbackStatus) {
   if (s === "done") return "success" as const;
@@ -42,6 +25,24 @@ function statusVariant(s: FeedbackStatus) {
 }
 
 function FeedbackIndex() {
+  const t = useT();
+  const STATUS_OPTS: Array<{ value: "" | FeedbackStatus; label: string }> = [
+    { value: "", label: t("feedback.status_all") },
+    { value: "new", label: t("feedback.status_new") },
+    { value: "in_progress", label: t("feedback.status_in_progress") },
+    { value: "done", label: t("feedback.status_done") },
+    { value: "wontfix", label: t("feedback.status_wontfix") },
+  ];
+  const AREA_OPTS: Array<{ value: "" | FeedbackArea; label: string }> = [
+    { value: "", label: t("feedback.area_all") },
+    { value: "entity", label: t("feedback.area_entity") },
+    { value: "workflow", label: t("feedback.area_workflow") },
+    { value: "agent", label: t("feedback.area_agent") },
+    { value: "settings", label: t("feedback.area_settings") },
+    { value: "ui", label: t("feedback.area_ui") },
+    { value: "performance", label: t("feedback.area_performance") },
+    { value: "other", label: t("feedback.area_other") },
+  ];
   const [tab, setTab] = useState<"all" | "mine">("all");
   const [status, setStatus] = useState<"" | FeedbackStatus>("");
   const [area, setArea] = useState<"" | FeedbackArea>("");
@@ -72,20 +73,19 @@ function FeedbackIndex() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[1100px] mx-auto p-6">
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-xl font-semibold flex-1">Phản hồi & đề xuất</h1>
+          <h1 className="text-xl font-semibold flex-1">{t("feedback.title")}</h1>
           <Button variant="primary" icon={<I.Plus size={14} />} onClick={() => setSubmitOpen(true)}>
-            Gửi phản hồi
+            {t("feedback.submit_btn")}
           </Button>
         </div>
         <div className="text-sm text-muted mb-4">
-          Báo cáo bất cập gặp phải khi dùng hệ thống và đề xuất hướng cải thiện. AI tự sinh tóm tắt
-          + tag, phát hiện feedback tương tự, admin theo dõi pipeline.
+          {t("feedback.subtitle")}
         </div>
 
         <Tabs<"all" | "mine">
           options={[
-            { value: "all", label: "Tất cả" },
-            { value: "mine", label: "Của tôi" },
+            { value: "all", label: t("feedback.tab_all") },
+            { value: "mine", label: t("feedback.tab_mine") },
           ]}
           value={tab}
           onChange={setTab}
@@ -108,13 +108,13 @@ function FeedbackIndex() {
           </Select>
         </div>
 
-        {loading && <div className="text-sm text-muted">Đang tải…</div>}
+        {loading && <div className="text-sm text-muted">{t("feedback.loading")}</div>}
         {err && <Chip variant="danger">{err}</Chip>}
         {!loading && list.length === 0 && (
           <EmptyState
             icon={<I.HelpCircle size={28} />}
-            title="Chưa có phản hồi nào"
-            hint='Bấm "Gửi phản hồi" hoặc nút HelpCircle ở thanh trên để bắt đầu.'
+            title={t("feedback.empty_title")}
+            hint={t("feedback.empty_hint")}
           />
         )}
 

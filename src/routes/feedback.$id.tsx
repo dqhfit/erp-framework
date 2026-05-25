@@ -13,15 +13,9 @@ import {
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
-
-const STATUS_OPTS: Array<{ value: FeedbackStatus; label: string }> = [
-  { value: "new", label: "Mới" },
-  { value: "in_progress", label: "Đang xử lý" },
-  { value: "done", label: "Hoàn tất" },
-  { value: "wontfix", label: "Sẽ không xử lý" },
-];
 
 function statusVariant(s: FeedbackStatus) {
   if (s === "done") return "success" as const;
@@ -30,6 +24,13 @@ function statusVariant(s: FeedbackStatus) {
 }
 
 function FeedbackDetailRoute() {
+  const t = useT();
+  const STATUS_OPTS: Array<{ value: FeedbackStatus; label: string }> = [
+    { value: "new", label: t("feedback.status_new") },
+    { value: "in_progress", label: t("feedback.status_in_progress") },
+    { value: "done", label: t("feedback.status_done") },
+    { value: "wontfix", label: t("feedback.status_wontfix") },
+  ];
   const { id } = Route.useParams();
   const nav = useNavigate();
   const role = useAuth((s) => s.user?.role);
@@ -105,7 +106,7 @@ function FeedbackDetailRoute() {
     }
   };
 
-  if (!fb && !err) return <div className="p-6 text-sm text-muted">Đang tải…</div>;
+  if (!fb && !err) return <div className="p-6 text-sm text-muted">{t("feedback.loading")}</div>;
   if (err && !fb)
     return (
       <div className="p-6">
@@ -124,7 +125,7 @@ function FeedbackDetailRoute() {
             icon={<I.ChevronLeft size={14} />}
             onClick={() => void nav({ to: "/feedback" })}
           >
-            Quay lại
+            {t("feedback.back_btn")}
           </Button>
           <Chip variant={statusVariant(fb.status)}>{fb.status}</Chip>
           <Chip>{fb.area}</Chip>
@@ -137,20 +138,20 @@ function FeedbackDetailRoute() {
             disabled={busy}
             onClick={vote}
           >
-            {fb.myVote ? "Đã vote" : "Vote"} ({fb.voteCount})
+            {fb.myVote ? t("feedback.voted") : "Vote"} ({fb.voteCount})
           </Button>
         </div>
 
         <h1 className="text-2xl font-semibold mb-1">{fb.title}</h1>
         {fb.url && (
           <div className="text-xs text-muted mb-3">
-            Trang gốc: <code>{fb.url}</code>
+            {t("feedback.source_page")} <code>{fb.url}</code>
           </div>
         )}
 
         {fb.aiSummary && (
           <Card className="mb-3 bg-accent/5 border-accent/20">
-            <div className="text-xs uppercase text-accent font-semibold mb-1">✨ AI tóm tắt</div>
+            <div className="text-xs uppercase text-accent font-semibold mb-1">✨ {t("feedback.ai_summary_label")}</div>
             <div className="text-sm">{fb.aiSummary}</div>
             {fb.aiTags && fb.aiTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -165,13 +166,13 @@ function FeedbackDetailRoute() {
         )}
 
         <Card className="mb-3">
-          <div className="text-xs uppercase text-muted font-semibold mb-1">Mô tả bất cập</div>
+          <div className="text-xs uppercase text-muted font-semibold mb-1">{t("feedback.issue_label")}</div>
           <div className="whitespace-pre-wrap text-sm">{fb.body}</div>
         </Card>
 
         {fb.suggestion && (
           <Card className="mb-3">
-            <div className="text-xs uppercase text-muted font-semibold mb-1">Đề xuất cải thiện</div>
+            <div className="text-xs uppercase text-muted font-semibold mb-1">{t("feedback.suggestion_label")}</div>
             <div className="whitespace-pre-wrap text-sm">{fb.suggestion}</div>
           </Card>
         )}
@@ -179,7 +180,7 @@ function FeedbackDetailRoute() {
         {fb.resolutionNote && (
           <Card className="mb-3">
             <div className="text-xs uppercase text-muted font-semibold mb-1">
-              Ghi chú giải quyết
+              {t("feedback.resolution_label")}
             </div>
             <div className="whitespace-pre-wrap text-sm">{fb.resolutionNote}</div>
           </Card>
@@ -187,7 +188,7 @@ function FeedbackDetailRoute() {
 
         {isAdmin && (
           <Card className="mb-3 border-warning/40">
-            <div className="font-semibold mb-2">Admin — đổi trạng thái</div>
+            <div className="font-semibold mb-2">{t("feedback.admin_status_title")}</div>
             <div className="grid grid-cols-3 gap-2">
               <Select
                 value={newStatus}
@@ -201,7 +202,7 @@ function FeedbackDetailRoute() {
               </Select>
               <Input
                 className="col-span-2"
-                placeholder="Ghi chú giải quyết (tuỳ chọn)"
+                placeholder={t("feedback.resolution_placeholder")}
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
               />
@@ -213,15 +214,15 @@ function FeedbackDetailRoute() {
               disabled={busy || newStatus === fb.status}
               onClick={applyStatus}
             >
-              Cập nhật
+              {t("feedback.update_btn")}
             </Button>
           </Card>
         )}
 
         <Card className="mb-3">
-          <div className="font-semibold mb-2">Bình luận ({comments.length})</div>
+          <div className="font-semibold mb-2">{t("feedback.comments_title", { count: String(comments.length) })}</div>
           <div className="space-y-2 mb-3">
-            {comments.length === 0 && <div className="text-sm text-muted">Chưa có bình luận.</div>}
+            {comments.length === 0 && <div className="text-sm text-muted">{t("feedback.comments_empty")}</div>}
             {comments.map((c) => (
               <div key={c.id} className="border-l-2 border-border pl-3 py-1">
                 <div className="text-xs text-muted">{new Date(c.createdAt).toLocaleString()}</div>
@@ -229,7 +230,7 @@ function FeedbackDetailRoute() {
               </div>
             ))}
           </div>
-          <FormField label="Thêm bình luận" hint="Dùng @username để ping ai đó.">
+          <FormField label={t("feedback.add_comment_label")} hint={t("feedback.add_comment_hint")}>
             <Textarea
               rows={3}
               value={commentBody}
@@ -244,7 +245,7 @@ function FeedbackDetailRoute() {
             onClick={submitComment}
             icon={<I.Send size={14} />}
           >
-            Gửi
+            {t("feedback.send_btn")}
           </Button>
         </Card>
 

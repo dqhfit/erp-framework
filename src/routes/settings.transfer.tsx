@@ -1,6 +1,7 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { useT } from "@/hooks/useT";
 import { useUserObjects } from "@/stores/userObjects";
 import { createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
@@ -14,6 +15,7 @@ import { useRef, useState } from "react";
 const objects = createObjectsClient("");
 
 function TransferSettings() {
+  const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -32,7 +34,7 @@ function TransferSettings() {
       a.download = `erp-config-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setMsg("✓ Đã tải xuống gói cấu hình.");
+      setMsg(t("settings.transfer.export_ok"));
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -47,9 +49,9 @@ function TransferSettings() {
     try {
       const text = await file.text();
       const bundle = JSON.parse(text);
-      const ok = await dialog.confirm("Nhập cấu hình sẽ ghi đè các đối tượng trùng id. Tiếp tục?", {
-        title: "Nhập cấu hình",
-        confirmText: "Nhập",
+      const ok = await dialog.confirm(t("settings.transfer.import_confirm"), {
+        title: t("settings.transfer.import_confirm_title"),
+        confirmText: t("settings.transfer.import_confirm_btn"),
       });
       if (!ok) {
         setBusy(false);
@@ -63,11 +65,10 @@ function TransferSettings() {
       });
       await useUserObjects.getState().hydrate();
       setMsg(
-        `✓ Đã nhập: ${counts.entities} entity · ${counts.pages} page · ` +
-          `${counts.workflows} workflow · ${counts.agents} agent.`,
+        t("settings.transfer.import_ok", { entities: String(counts.entities), pages: String(counts.pages), workflows: String(counts.workflows), agents: String(counts.agents) }),
       );
     } catch (e) {
-      setErr(`Lỗi nhập: ${(e as Error).message}`);
+      setErr(`${t("settings.transfer.import_error")} ${(e as Error).message}`);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -77,26 +78,25 @@ function TransferSettings() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[720px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Xuất / Nhập cấu hình</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.transfer.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Đóng gói toàn bộ entity, page, workflow, agent thành một file JSON — để sao lưu hoặc chia
-          sẻ "ERP mẫu". (Dữ liệu bản ghi và plugin không nằm trong gói này.)
+          {t("settings.transfer.subtitle")}
         </div>
 
         <Card className="space-y-3 mb-4">
-          <div className="font-semibold">Xuất cấu hình</div>
+          <div className="font-semibold">{t("settings.transfer.export_title")}</div>
           <div className="text-xs text-muted">
-            Tải về một file JSON chứa mọi đối tượng low-code đang có.
+            {t("settings.transfer.export_desc")}
           </div>
           <Button variant="primary" icon={<I.Save size={14} />} disabled={busy} onClick={doExport}>
-            Tải gói cấu hình
+            {t("settings.transfer.export_btn")}
           </Button>
         </Card>
 
         <Card className="space-y-3">
-          <div className="font-semibold">Nhập cấu hình</div>
+          <div className="font-semibold">{t("settings.transfer.import_title")}</div>
           <div className="text-xs text-muted">
-            Chọn file JSON đã xuất. Đối tượng trùng id sẽ bị ghi đè.
+            {t("settings.transfer.import_desc")}
           </div>
           <input
             ref={fileRef}
@@ -114,7 +114,7 @@ function TransferSettings() {
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            Chọn file để nhập
+            {t("settings.transfer.import_btn")}
           </Button>
         </Card>
 

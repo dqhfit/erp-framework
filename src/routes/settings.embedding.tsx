@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { createKnowledgeClient } from "@erp-framework/client";
 /* ==========================================================
    settings.embedding — Cấu hình profile embedding cho Knowledge
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 const kb = createKnowledgeClient("");
 
 function EmbeddingSettings() {
+  const t = useT();
   const [adapter, setAdapter] = useState<"ollama" | "openai">("ollama");
   const [model, setModel] = useState("nomic-embed-text");
   const [endpoint, setEndpoint] = useState("");
@@ -46,7 +48,7 @@ function EmbeddingSettings() {
         endpoint: endpoint.trim() || undefined,
         apiKeyEnc: apiKey.trim() || undefined,
       });
-      setMsg("Đã lưu cấu hình embedding.");
+      setMsg(t("settings.embedding.save_ok"));
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -57,16 +59,13 @@ function EmbeddingSettings() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[760px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Cấu hình Embedding</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.embedding.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Profile sinh embedding cho Knowledge Base. Vector cố định{" "}
-          <span className="font-mono">768</span> chiều — chọn model trả đúng số chiều này (Ollama{" "}
-          <span className="font-mono">nomic-embed-text</span>, OpenAI{" "}
-          <span className="font-mono">text-embedding-3-small</span>).
+          {t("settings.embedding.subtitle")}
         </div>
 
         <Card className="space-y-3">
-          <FormField label="Nhà cung cấp">
+          <FormField label={t("settings.embedding.provider_label")}>
             <Select
               value={adapter}
               disabled={busy}
@@ -81,7 +80,7 @@ function EmbeddingSettings() {
             </Select>
           </FormField>
 
-          <FormField label="Model">
+          <FormField label={t("settings.embedding.model_label")}>
             <Input
               value={model}
               disabled={busy}
@@ -91,11 +90,11 @@ function EmbeddingSettings() {
           </FormField>
 
           <FormField
-            label="Endpoint"
+            label={t("settings.embedding.endpoint_label")}
             hint={
               adapter === "ollama"
-                ? "Để trống dùng http://localhost:11434"
-                : "Để trống dùng https://api.openai.com. Gemini: nhập URL OpenAI-compat."
+                ? t("settings.embedding.endpoint_hint_ollama")
+                : t("settings.embedding.endpoint_hint_openai")
             }
           >
             <Input
@@ -109,7 +108,7 @@ function EmbeddingSettings() {
           </FormField>
 
           {adapter === "openai" && (
-            <FormField label="API Key" hint="Mã hoá AES-256-GCM trước khi lưu vào DB">
+            <FormField label={t("settings.embedding.apikey_label")} hint={t("settings.embedding.apikey_hint")}>
               <Input
                 type="password"
                 value={apiKey}
@@ -127,7 +126,7 @@ function EmbeddingSettings() {
               disabled={busy || !model.trim()}
               onClick={save}
             >
-              Lưu cấu hình
+              {t("settings.embedding.save_btn")}
             </Button>
             {msg && <Chip variant="success">{msg}</Chip>}
             {err && <Chip variant="danger">{err}</Chip>}

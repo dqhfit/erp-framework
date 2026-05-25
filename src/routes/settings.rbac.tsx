@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Card, Chip, Switch } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import {
   ALL_ACTIONS,
   ALL_ROLES,
@@ -11,38 +12,38 @@ import {
 import { useRbac } from "@/stores/rbac";
 import { createFileRoute } from "@tanstack/react-router";
 
-const OBJECTS: { key: ObjectType; label: string }[] = [
-  { key: "entity", label: "Đối tượng" },
-  { key: "page", label: "Trang" },
-  { key: "workflow", label: "Workflow" },
-  { key: "agent", label: "Agent" },
-  { key: "activity", label: "Nhật ký" },
-  { key: "knowledge", label: "Tri thức" },
-  { key: "iot", label: "IoT" },
-  { key: "settings", label: "Cấu hình" },
-  { key: "rbac", label: "Vai trò" },
-];
-
-const ACTION_LABEL: Record<string, string> = {
-  view: "Xem",
-  create: "Tạo",
-  edit: "Sửa",
-  delete: "Xoá",
-  run: "Chạy",
-};
-
 function RbacSettings() {
+  const t = useT();
   const role = useRbac((s) => s.role);
   const enforce = useRbac((s) => s.enforce);
   const setRole = useRbac((s) => s.setRole);
   const setEnforce = useRbac((s) => s.setEnforce);
 
+  const OBJECTS: { key: ObjectType; label: string }[] = [
+    { key: "entity", label: t("settings.rbac.obj_entity") },
+    { key: "page", label: t("settings.rbac.obj_page") },
+    { key: "workflow", label: t("settings.rbac.obj_workflow") },
+    { key: "agent", label: t("settings.rbac.obj_agent") },
+    { key: "activity", label: t("settings.rbac.obj_activity") },
+    { key: "knowledge", label: t("settings.rbac.obj_knowledge") },
+    { key: "iot", label: t("settings.rbac.obj_iot") },
+    { key: "settings", label: t("settings.rbac.obj_settings") },
+    { key: "rbac", label: t("settings.rbac.obj_rbac") },
+  ];
+  const ACTION_LABEL: Record<string, string> = {
+    view: t("settings.rbac.action_view"),
+    create: t("settings.rbac.action_create"),
+    edit: t("settings.rbac.action_edit"),
+    delete: t("settings.rbac.action_delete"),
+    run: t("settings.rbac.action_run"),
+  };
+
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Vai trò & Quyền (RBAC)</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.rbac.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Phân quyền theo vai trò. UI sẽ ẩn/khoá thao tác mà vai trò hiện tại không được phép.
+          {t("settings.rbac.subtitle")}
         </div>
 
         {/* === Enforcement toggle === */}
@@ -57,15 +58,14 @@ function RbacSettings() {
               <I.Power size={18} />
             </span>
             <div className="flex-1">
-              <div className="font-semibold">Bật kiểm soát quyền</div>
+              <div className="font-semibold">{t("settings.rbac.enforce_title")}</div>
               <div className="text-sm text-muted mt-0.5 mb-2">
-                Khi tắt, mọi thao tác được phép (tiện cho dev một người). Khi bật, UI tuân theo vai
-                trò bên dưới.
+                {t("settings.rbac.enforce_desc")}
               </div>
               <Switch
                 checked={enforce}
                 onChange={setEnforce}
-                label={enforce ? "Đang kiểm soát" : "Đang tắt (toàn quyền)"}
+                label={enforce ? t("settings.rbac.enforce_on") : t("settings.rbac.enforce_off")}
               />
             </div>
           </div>
@@ -73,7 +73,7 @@ function RbacSettings() {
 
         {/* === Role picker === */}
         <Card className="mb-4">
-          <div className="font-semibold mb-2">Vai trò phiên hiện tại</div>
+          <div className="font-semibold mb-2">{t("settings.rbac.session_role")}</div>
           <div className="grid grid-cols-3 gap-2">
             {ALL_ROLES.map((r) => (
               <button
@@ -86,7 +86,7 @@ function RbacSettings() {
               >
                 <div className="font-semibold flex items-center gap-2">
                   {ROLE_LABEL[r]}
-                  {role === r && <Chip variant="success">Đang dùng</Chip>}
+                  {role === r && <Chip variant="success">{t("settings.rbac.active_chip")}</Chip>}
                 </div>
                 <div className="text-xs text-muted mt-1">{ROLE_DESC[r]}</div>
               </button>
@@ -97,13 +97,13 @@ function RbacSettings() {
         {/* === Permission matrix === */}
         <Card>
           <div className="font-semibold mb-3">
-            Ma trận quyền — vai trò <span className="text-accent">{ROLE_LABEL[role]}</span>
+            {t("settings.rbac.matrix_title")} <span className="text-accent">{ROLE_LABEL[role]}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="text-muted text-xs uppercase tracking-wide">
-                  <th className="text-left py-2 pr-3 font-semibold">Object</th>
+                  <th className="text-left py-2 pr-3 font-semibold">{t("settings.rbac.col_object")}</th>
                   {ALL_ACTIONS.map((a) => (
                     <th key={a} className="py-2 px-2 font-semibold text-center">
                       {ACTION_LABEL[a]}
@@ -133,8 +133,7 @@ function RbacSettings() {
             </table>
           </div>
           <div className="text-xs text-muted mt-3">
-            Lưu ý: đây là RBAC phía client (chặn UI). Khi triển khai production đa người dùng, vai
-            trò cần được xác thực lại ở backend/bridge.
+            {t("settings.rbac.note")}
           </div>
         </Card>
       </div>

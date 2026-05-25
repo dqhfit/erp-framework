@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Textarea } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { type BackupConfigView, type BackupRun, createBackupClient } from "@erp-framework/client";
 /* ==========================================================
    settings.backup — Cấu hình sao lưu Google Drive + chạy thủ công.
@@ -10,12 +11,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
 const bk = createBackupClient("");
-
-const CRON_PRESETS = [
-  { label: "Mỗi ngày 3h sáng", expr: "0 3 * * *" },
-  { label: "Mỗi 6 giờ", expr: "0 */6 * * *" },
-  { label: "Thứ Hai 2h sáng", expr: "0 2 * * 1" },
-];
 
 function fmtBytes(n: number | null): string {
   if (n === null || n === undefined) return "—";
@@ -31,6 +26,14 @@ function fmtTime(d: string | Date | null | undefined): string {
 }
 
 function BackupPage() {
+  const t = useT();
+
+  const CRON_PRESETS = [
+    { label: "Mỗi ngày 3h sáng", expr: "0 3 * * *" },
+    { label: "Mỗi 6 giờ", expr: "0 */6 * * *" },
+    { label: "Thứ Hai 2h sáng", expr: "0 2 * * 1" },
+  ];
+
   const [cfg, setCfg] = useState<BackupConfigView | null>(null);
   const [keyJson, setKeyJson] = useState("");
   const [folderId, setFolderId] = useState("");
@@ -106,39 +109,33 @@ function BackupPage() {
       });
       setKeyJson(""); // không giữ key trong UI sau khi lưu.
       loadConfig();
-    }, "Đã lưu cấu hình.");
+    }, t("settings.backup.save_ok"));
 
   const runNow = () =>
     wrap(async () => {
       await bk.runNow();
       loadRuns();
-    }, "Đã đưa job backup vào hàng đợi.");
+    }, t("settings.backup.run_ok"));
 
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8">
-        <h1 className="text-xl font-semibold mb-1">Sao lưu Google Drive</h1>
+        <h1 className="text-xl font-semibold mb-1">{t("settings.backup.title")}</h1>
         <div className="text-sm text-muted mb-6">
-          Dump PostgreSQL + đồng bộ thư mục <code>/data/uploads</code> lên một thư mục Google Drive
-          bạn chọn. Files sync <b>incremental</b> (không re-upload file chưa đổi). Xem hướng dẫn
-          setup service account ở{" "}
-          <a href="/docs/BACKUP" className="text-accent hover:underline">
-            docs/BACKUP.md
-          </a>
-          .
+          {t("settings.backup.subtitle")}
         </div>
 
         {/* === Cấu hình === */}
         <Card className="mb-4 space-y-3">
-          <div className="font-semibold">Cấu hình</div>
+          <div className="font-semibold">{t("settings.backup.config_title")}</div>
 
           {/* Hướng dẫn đăng nhập Drive trên web + lấy Folder ID. */}
           <details className="rounded-md border border-border bg-surface-2/40 text-sm group">
             <summary className="cursor-pointer select-none px-3 py-2 font-medium flex items-center gap-2 hover:bg-surface-2/70">
               <I.HelpCircle size={14} />
-              <span>Hướng dẫn đăng nhập Google Drive (web) & lấy Folder ID</span>
-              <span className="ml-auto text-xs text-muted group-open:hidden">Mở</span>
-              <span className="ml-auto text-xs text-muted hidden group-open:inline">Đóng</span>
+              <span>{t("settings.backup.guide_title")}</span>
+              <span className="ml-auto text-xs text-muted group-open:hidden">{t("settings.backup.guide_open")}</span>
+              <span className="ml-auto text-xs text-muted hidden group-open:inline">{t("settings.backup.guide_close")}</span>
             </summary>
             <div className="px-3 pb-3 pt-1 space-y-3 text-[13px] leading-relaxed">
               <ol className="list-decimal pl-5 space-y-1.5">
@@ -194,11 +191,11 @@ function BackupPage() {
           </details>
 
           <FormField
-            label="Service account JSON key"
+            label={t("settings.backup.key_label")}
             hint={
               cfg?.hasKey
-                ? "Đã có key — chỉ điền nếu muốn thay key mới."
-                : "Dán toàn bộ nội dung file JSON (từ GCP → Service Accounts → Keys)."
+                ? t("settings.backup.key_hint_has")
+                : t("settings.backup.key_hint_no")
             }
           >
             <Textarea
@@ -212,8 +209,8 @@ function BackupPage() {
           </FormField>
 
           <FormField
-            label="Folder ID Google Drive"
-            hint="Đoạn sau /folders/ trong URL Drive (xem mục Hướng dẫn ở trên). Phải share quyền Editor cho email service account."
+            label={t("settings.backup.folder_label")}
+            hint={t("settings.backup.folder_hint")}
           >
             <Input
               placeholder="1AbCdEfGh..."
@@ -224,8 +221,8 @@ function BackupPage() {
           </FormField>
 
           <FormField
-            label="Lịch tự động (cron)"
-            hint="Để trống = chỉ chạy thủ công khi bấm Backup ngay."
+            label={t("settings.backup.cron_label")}
+            hint={t("settings.backup.cron_hint")}
           >
             <div className="space-y-2">
               <div className="flex flex-wrap gap-1.5">
@@ -244,7 +241,7 @@ function BackupPage() {
                   onClick={() => setCron("")}
                   className={`chip cursor-pointer ${!cron ? "chip-accent" : ""}`}
                 >
-                  Tắt
+                  {t("settings.backup.cron_off")}
                 </button>
               </div>
               <Input
@@ -259,7 +256,7 @@ function BackupPage() {
 
           <div className="flex gap-2 pt-1">
             <Button variant="default" icon={<I.Power size={13} />} disabled={busy} onClick={test}>
-              Test kết nối
+              {t("settings.backup.test_btn")}
             </Button>
             <Button
               variant="primary"
@@ -267,7 +264,7 @@ function BackupPage() {
               disabled={busy || !folderId.trim()}
               onClick={save}
             >
-              Lưu cấu hình
+              {t("settings.backup.save_btn")}
             </Button>
             <div className="flex-1" />
             <Button
@@ -276,16 +273,16 @@ function BackupPage() {
               disabled={busy || !cfg?.hasKey}
               onClick={runNow}
             >
-              Backup ngay
+              {t("settings.backup.run_btn")}
             </Button>
           </div>
         </Card>
 
         {/* === Lịch sử === */}
         <Card className="space-y-2">
-          <div className="font-semibold">Lịch sử sao lưu</div>
+          <div className="font-semibold">{t("settings.backup.history_title")}</div>
           {runs.length === 0 && (
-            <div className="text-sm text-muted py-3 text-center">Chưa có lần backup nào.</div>
+            <div className="text-sm text-muted py-3 text-center">{t("settings.backup.history_empty")}</div>
           )}
           {runs.map((r) => (
             <div key={r.id} className="rounded-md border border-border p-3 text-sm">
