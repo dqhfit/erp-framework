@@ -107,7 +107,7 @@ router({
       }),
 
     create: rbacProcedure("create", "entity")
-      .input(z.object({ entityId: z.string().uuid(), data: z.record(z.unknown()) }))
+      .input(z.object({ entityId: z.string().uuid(), data: z.record(z.string(), z.unknown()) }))
       .mutation(async ({ ctx, input }) => {
         const fields = await loadEntityFields(
           ctx.db, ctx.user.companyId, input.entityId);
@@ -157,7 +157,7 @@ router({
     update: rbacProcedure("edit", "entity")
       .input(z.object({
         recordId: z.string().uuid(),
-        data: z.record(z.unknown()),
+        data: z.record(z.string(), z.unknown()),
         expectedVersion: z.number().int().nonnegative().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -360,7 +360,7 @@ router({
         fieldName: z.string().min(1),
         value: z.number(),
         ts: z.string().datetime().optional(),
-        meta: z.record(z.unknown()).optional(),
+        meta: z.record(z.string(), z.unknown()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Verify record cùng company.
@@ -421,7 +421,7 @@ router({
       .input(z.object({
         entityId: z.string().uuid(),
         fields: z.array(z.string()).min(1),
-        values: z.record(z.string()),
+        values: z.record(z.string(), z.string()),
         limit: z.number().int().positive().max(20).optional(),
       }))
       .query(async ({ ctx, input }) => {
@@ -612,7 +612,7 @@ router({
       .input(z.object({
         entityId: z.string().uuid(),
         ids: z.array(z.string().uuid()).min(1).max(1000),
-        patch: z.record(z.unknown()),
+        patch: z.record(z.string(), z.unknown()),
       }))
       .mutation(async ({ ctx, input }) => {
         const fields = await loadEntityFields(
@@ -685,7 +685,7 @@ router({
     bulkImport: rbacProcedure("create", "entity")
       .input(z.object({
         entityId: z.string().uuid(),
-        rows: z.array(z.record(z.unknown())).min(1).max(1000),
+        rows: z.array(z.record(z.string(), z.unknown())).min(1).max(1000),
       }))
       .mutation(async ({ ctx, input }) => {
         const fields = await loadEntityFields(

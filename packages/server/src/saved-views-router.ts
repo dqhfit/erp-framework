@@ -11,7 +11,7 @@ import { router, rbacProcedure } from "./trpc";
 const viewInput = z.object({
   entityId: z.string().uuid(),
   name: z.string().min(1).max(80),
-  query: z.record(z.unknown()).optional(),
+  query: z.record(z.string(), z.unknown()).optional(),
   columns: z.array(z.string()).optional(),
   isDefault: z.boolean().optional(),
 });

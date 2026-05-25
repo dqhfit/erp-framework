@@ -16,7 +16,7 @@ const webhookInput = z.object({
   name: z.string().min(1),
   url: z.string().url(),
   events: z.array(z.enum(["create", "update", "delete"])).optional(),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   secret: z.string().optional(),
   enabled: z.boolean().optional(),
 });

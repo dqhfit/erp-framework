@@ -174,7 +174,7 @@ export const toolsRouter = router({
     .input(z.object({
       toolId: z.string().uuid(),
       enabled: z.boolean(),
-      config: z.record(z.unknown()).optional(),
+      config: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const [existing] = await ctx.db.select({ id: companyTools.id })
@@ -237,7 +237,7 @@ export const toolsRouter = router({
     .input(z.object({
       toolId: z.string().uuid(),
       action: z.string().min(1),
-      args: z.record(z.unknown()).default({}),
+      args: z.record(z.string(), z.unknown()).default({}),
     }))
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db.select().from(toolsTable)

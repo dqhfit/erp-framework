@@ -23,8 +23,8 @@ const procInput = z.object({
   name: z.string().regex(NAME_RE, "name phải snake_case bắt đầu bằng chữ"),
   label: z.string().min(1),
   description: z.string().optional(),
-  paramsSchema: z.array(z.record(z.unknown())).optional(),
-  returnSchema: z.record(z.unknown()).optional(),
+  paramsSchema: z.array(z.record(z.string(), z.unknown())).optional(),
+  returnSchema: z.record(z.string(), z.unknown()).optional(),
   code: z.string().min(1),
   enabled: z.boolean().optional(),
 });
@@ -101,7 +101,7 @@ export const proceduresRouter = router({
   invoke: rbacProcedure("run", "procedure")
     .input(z.object({
       name: z.string(),
-      args: z.record(z.unknown()).optional(),
+      args: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const invoke = makeInvokeProcedure({
@@ -131,7 +131,7 @@ export const proceduresRouter = router({
   test: rbacProcedure("edit", "procedure")
     .input(z.object({
       code: z.string().min(1),
-      args: z.record(z.unknown()).optional(),
+      args: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Tận dụng invoke bằng cách insert tạm? Đơn giản hơn: import

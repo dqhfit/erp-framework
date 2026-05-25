@@ -92,7 +92,7 @@ export const entityInput = z.object({
   icon: z.string().optional(),
   fields: z.array(fieldDef),
   // meta: dữ liệu phụ tầng app (mcp, mcpBindings…) — không ràng buộc schema.
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 /* Trang / workflow / agent — metadata low-code do designer tạo. */
@@ -101,14 +101,14 @@ export const pageInput = z.object({
   name: z.string().min(1),
   label: z.string().min(1),
   icon: z.string().optional(),
-  content: z.record(z.unknown()).optional(),
+  content: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const agentInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1),
   model: z.string().min(1),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   // managerId: agent cấp trên (org chart). null = gỡ cấp trên.
   managerId: z.string().uuid().nullable().optional(),
 });
@@ -117,7 +117,7 @@ export const workflowInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1),
   triggerType: z.enum(["manual", "webhook", "cron", "entity_changed"]).optional(),
-  graph: z.record(z.unknown()).optional(),
+  graph: z.record(z.string(), z.unknown()).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -132,7 +132,7 @@ export const scheduleInput = z.object({
 export const filterOp = z.enum(["=", "!=", ">", ">=", "<", "<=", "contains", "in"]);
 
 export const queryParams = z.object({
-  filters: z.record(z.object({ op: filterOp, value: z.unknown() })).optional(),
+  filters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
   sort: z.object({ field: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
   limit: z.number().int().positive().max(500).optional(),
   offset: z.number().int().nonnegative().optional(),

@@ -18,7 +18,7 @@ const ZIO = z.object({
   required: z.boolean().optional(),
   mediaType: z.string().optional(),
   description: z.string().optional(),
-  schema: z.record(z.unknown()).optional(),
+  schema: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
 
 const ZAction = z.object({
@@ -43,9 +43,9 @@ export const ZPaperclipManifest = z.object({
   inputs: z.array(ZIO).optional(),
   outputs: z.array(ZIO).optional(),
   actions: z.array(ZAction).optional(),
-  integrations: z.record(z.unknown()).optional(),
+  integrations: z.record(z.string(), z.unknown()).optional(),
   permissions: z.array(z.string()).optional(),
-  dependencies: z.record(z.unknown()).optional(),
+  dependencies: z.record(z.string(), z.unknown()).optional(),
   tags: z.array(z.string()).optional(),
   icon: z.string().optional(),
 }).passthrough();
@@ -60,7 +60,7 @@ export const ZErpOverride = z.object({
     command: z.string(),
     args: z.array(z.string()).optional(),
     cwd: z.string().optional(),
-    env: z.record(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
     port: z.number().int().optional(),
     healthPath: z.string().optional(),
     autoStart: z.boolean().optional(),

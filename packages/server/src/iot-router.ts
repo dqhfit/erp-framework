@@ -32,7 +32,7 @@ export const iotRouter = router({
       .input(z.object({
         name: z.string().min(1),
         label: z.string().optional(),
-        meta: z.record(z.unknown()).optional(),
+        meta: z.record(z.string(), z.unknown()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const key = newDeviceKey();
@@ -115,7 +115,7 @@ export const iotRouter = router({
     queue: rbacProcedure("create", "iot")
       .input(z.object({
         deviceId: z.string().uuid(),
-        payload: z.record(z.unknown()),
+        payload: z.record(z.string(), z.unknown()),
       }))
       .mutation(async ({ ctx, input }) => {
         // Đảm bảo thiết bị thuộc cùng công ty.

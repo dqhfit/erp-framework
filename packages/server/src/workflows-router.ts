@@ -159,7 +159,7 @@ router({
     trigger: rbacProcedure("run", "workflow")
       .input(z.object({
         workflowId: z.string().uuid(),
-        context: z.record(z.unknown()).optional(),
+        context: z.record(z.string(), z.unknown()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const r = await executeWorkflow(ctx.db, input.workflowId, {

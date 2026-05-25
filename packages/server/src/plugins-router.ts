@@ -24,7 +24,7 @@ export const pluginsRouter = router({
     .input(z.object({
       name: z.string().min(1),
       version: z.string().optional(),
-      manifest: z.record(z.unknown()).optional(),
+      manifest: z.record(z.string(), z.unknown()).optional(),
       enabled: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {

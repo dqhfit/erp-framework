@@ -465,10 +465,10 @@ export const appRouter = router({
       .query(({ ctx }) => exportBundle(ctx.db, ctx.user.companyId)),
     import: rbacProcedure("edit", "settings")
       .input(z.object({
-        entities: z.array(z.record(z.unknown())).optional(),
-        pages: z.array(z.record(z.unknown())).optional(),
-        workflows: z.array(z.record(z.unknown())).optional(),
-        agents: z.array(z.record(z.unknown())).optional(),
+        entities: z.array(z.record(z.string(), z.unknown())).optional(),
+        pages: z.array(z.record(z.string(), z.unknown())).optional(),
+        workflows: z.array(z.record(z.string(), z.unknown())).optional(),
+        agents: z.array(z.record(z.string(), z.unknown())).optional(),
       }))
       .mutation(({ ctx, input }) => importBundle(ctx.db, ctx.user.companyId, input)),
   }),
@@ -510,7 +510,7 @@ export const appRouter = router({
       return row?.config ?? null;
     }),
     save: rbacProcedure("edit", "settings")
-      .input(z.object({ config: z.record(z.unknown()) }))
+      .input(z.object({ config: z.record(z.string(), z.unknown()) }))
       .mutation(async ({ ctx, input }) => {
         const [ex] = await ctx.db.select({ id: mcpConfigs.id })
           .from(mcpConfigs).where(and(eq(mcpConfigs.name, "default"),
