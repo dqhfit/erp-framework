@@ -67,7 +67,7 @@ function OAuthCallback() {
               <I.AlertCircle size={24} />
             </div>
             <div className="font-semibold text-lg">{t("oauth.failed")}</div>
-            <div className="text-sm text-danger mt-2 font-mono text-left bg-bg-soft p-2 rounded">
+            <div className="text-sm text-danger mt-2 font-mono text-left bg-bg-soft p-2 rounded-sm">
               {err}
             </div>
             <Button

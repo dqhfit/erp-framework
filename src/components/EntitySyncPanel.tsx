@@ -185,7 +185,7 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         </div>
       )}
       {cfg?.lastSummary && (
-        <div className="text-xs bg-bg-soft rounded p-2 whitespace-pre-wrap">{cfg.lastSummary}</div>
+        <div className="text-xs bg-bg-soft rounded-sm p-2 whitespace-pre-wrap">{cfg.lastSummary}</div>
       )}
 
       {/* Hành động */}

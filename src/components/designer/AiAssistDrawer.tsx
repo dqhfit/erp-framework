@@ -310,7 +310,7 @@ function MessageBubble<T>({ msg, onApply }: { msg: ChatMessage<T>; onApply: () =
           </span>
         )}
       </div>
-      <pre className="text-[11px] font-mono leading-relaxed bg-bg-soft/50 rounded p-2 max-h-60 overflow-auto whitespace-pre-wrap">
+      <pre className="text-[11px] font-mono leading-relaxed bg-bg-soft/50 rounded-sm p-2 max-h-60 overflow-auto whitespace-pre-wrap">
         {msg.text}
       </pre>
       <div className="mt-2 flex gap-2">

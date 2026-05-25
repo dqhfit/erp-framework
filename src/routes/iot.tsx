@@ -90,7 +90,7 @@ function IotPage() {
             <div className="font-semibold mb-2">
               ✓ Đã tạo "{newKey.device.name}" — lưu device key NGAY (chỉ hiện 1 lần):
             </div>
-            <div className="font-mono text-xs break-all p-2 bg-bg-soft border border-border rounded">
+            <div className="font-mono text-xs break-all p-2 bg-bg-soft border border-border rounded-sm">
               {newKey.key}
             </div>
             <div className="flex gap-2 mt-2">
@@ -162,11 +162,11 @@ function IotPage() {
                 {d.label && <span className="text-xs text-muted truncate">— {d.label}</span>}
                 <div className="flex-1" />
                 {d.lastSeenAt ? (
-                  <Chip variant="success" className="!text-[10px]">
+                  <Chip variant="success" className="text-[10px]!">
                     {new Date(d.lastSeenAt).toLocaleString("vi-VN")}
                   </Chip>
                 ) : (
-                  <Chip className="!text-[10px]">Chưa kết nối</Chip>
+                  <Chip className="text-[10px]!">Chưa kết nối</Chip>
                 )}
                 <Button
                   size="sm"

@@ -130,12 +130,12 @@ function FeedbackIndex() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{f.title}</span>
-                      <Chip variant={statusVariant(f.status)} className="!text-[10px]">
+                      <Chip variant={statusVariant(f.status)} className="text-[10px]!">
                         {f.status}
                       </Chip>
-                      <Chip className="!text-[10px]">{f.area}</Chip>
+                      <Chip className="text-[10px]!">{f.area}</Chip>
                       {f.severity === "blocker" && (
-                        <Chip variant="danger" className="!text-[10px]">
+                        <Chip variant="danger" className="text-[10px]!">
                           blocker
                         </Chip>
                       )}
@@ -146,7 +146,7 @@ function FeedbackIndex() {
                     {f.aiTags && f.aiTags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {f.aiTags.map((t) => (
-                          <Chip key={t} className="!text-[10px]">
+                          <Chip key={t} className="text-[10px]!">
                             #{t}
                           </Chip>
                         ))}

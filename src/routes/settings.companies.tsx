@@ -218,7 +218,7 @@ function CompaniesSettings() {
                       <div className="font-medium flex items-center gap-1.5">
                         {m.name}
                         {m.pending && (
-                          <Chip variant="warning" className="!h-[16px] !text-[10px]">
+                          <Chip variant="warning" className="h-[16px]! text-[10px]!">
                             {t("settings.companies.pending_chip")}
                           </Chip>
                         )}

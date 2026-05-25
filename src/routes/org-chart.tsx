@@ -76,14 +76,14 @@ function OrgChartRoute() {
           {depth > 0 && <I.ChevronRight size={12} className="text-muted shrink-0" />}
           <I.Bot size={15} className="text-accent shrink-0" />
           <span className="font-medium">{a.name}</span>
-          <Chip className="!text-[10px]">{a.model}</Chip>
+          <Chip className="text-[10px]!">{a.model}</Chip>
           <div className="flex-1" />
           <span className="text-xs text-muted">Cấp trên:</span>
           <Select
             value={a.managerId ?? ""}
             disabled={busy}
             onChange={(e) => void setManager(a, e.target.value || null)}
-            className="!h-7 !text-xs max-w-[200px]"
+            className="h-7! text-xs! max-w-[200px]"
           >
             <option value="">— (cấp cao nhất)</option>
             {agents
@@ -108,12 +108,12 @@ function OrgChartRoute() {
     return (
       <div key={a.id} className="flex flex-col items-center">
         {/* Hộp agent */}
-        <div className="rounded-lg border border-border bg-panel px-3 py-2 shadow-sm flex flex-col items-center gap-1 min-w-[150px]">
+        <div className="rounded-lg border border-border bg-panel px-3 py-2 shadow-xs flex flex-col items-center gap-1 min-w-[150px]">
           <div className="flex items-center gap-1.5">
             <I.Bot size={15} className="text-accent shrink-0" />
             <span className="font-medium text-sm">{a.name}</span>
           </div>
-          <Chip className="!text-[10px]">{a.model}</Chip>
+          <Chip className="text-[10px]!">{a.model}</Chip>
         </div>
 
         {kids.length > 0 && (

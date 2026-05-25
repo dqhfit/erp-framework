@@ -33,8 +33,8 @@ export function TweaksPanel() {
   return (
     <>
       {/* Backdrop click outside */}
-      <div className="fixed inset-0 z-[699]" onClick={() => setTweaksOpen(false)} />
-      <aside className="fixed top-14 right-4 z-[700] w-[300px] panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-80px)] overflow-hidden">
+      <div className="fixed inset-0 z-699" onClick={() => setTweaksOpen(false)} />
+      <aside className="fixed top-14 right-4 z-700 w-[300px] panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-80px)] overflow-hidden">
         <div className="h-10 px-3 flex items-center justify-between border-b border-border shrink-0">
           <div className="font-semibold text-sm flex items-center gap-2">
             <I.Wand size={14} className="text-accent" />
@@ -42,7 +42,7 @@ export function TweaksPanel() {
           </div>
           <button
             onClick={() => setTweaksOpen(false)}
-            className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+            className="w-6 h-6 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted"
           >
             <I.X size={13} />
           </button>
@@ -160,7 +160,7 @@ function Radio({ value, options, onChange }: RadioProps) {
           key={opt.id}
           onClick={() => onChange(opt.id)}
           className={cn(
-            "flex-1 px-2 py-1 rounded text-xs flex items-center justify-center gap-1.5 transition-colors",
+            "flex-1 px-2 py-1 rounded-sm text-xs flex items-center justify-center gap-1.5 transition-colors",
             value === opt.id
               ? "bg-panel-2 text-text shadow-[0_1px_0_hsl(var(--border))]"
               : "text-muted hover:text-text",

@@ -167,7 +167,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
       {step === "select" && (
         <div className="space-y-4">
           {mcpError && (
-            <div className="text-xs bg-danger/10 border border-danger/30 text-danger rounded p-2">
+            <div className="text-xs bg-danger/10 border border-danger/30 text-danger rounded-sm p-2">
               {t("mcpimport.mcp_error", { error: mcpError })}
             </div>
           )}
@@ -193,7 +193,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             </Select>
           </FormField>
           {selectedTool?.description && (
-            <div className="text-xs text-muted bg-bg-soft border border-border rounded p-2">
+            <div className="text-xs text-muted bg-bg-soft border border-border rounded-sm p-2">
               {selectedTool.description}
             </div>
           )}
@@ -252,7 +252,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
           />
 
           {previewTab === "schema" && (
-            <div className="border border-border rounded overflow-hidden">
+            <div className="border border-border rounded-sm overflow-hidden">
               <table className="w-full text-xs">
                 <thead className="bg-panel-2 text-muted uppercase tracking-wide">
                   <tr>
@@ -286,7 +286,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
                       <td className="px-2 py-1.5 font-mono text-muted">{f.key}</td>
                       <td className="px-2 py-1.5">
                         <input
-                          className="input !h-6 !text-xs !px-1.5"
+                          className="input h-6! text-xs! px-1.5!"
                           value={f.label}
                           onChange={(e) => {
                             const next = [...inferred];
@@ -320,7 +320,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             (inferred.length === 0 || sampleRows.length === 0 ? (
               <div className="text-xs text-muted p-3">{t("mcpimport.no_data")}</div>
             ) : (
-              <div className="border border-border rounded overflow-auto max-h-[340px]">
+              <div className="border border-border rounded-sm overflow-auto max-h-[340px]">
                 <table className="w-full text-xs">
                   <thead className="bg-panel-2 text-muted uppercase tracking-wide">
                     <tr>
@@ -360,7 +360,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             ))}
 
           {previewTab === "raw" && (
-            <pre className="bg-bg-soft border border-border rounded p-2 max-h-[340px] overflow-auto font-mono text-xs">
+            <pre className="bg-bg-soft border border-border rounded-sm p-2 max-h-[340px] overflow-auto font-mono text-xs">
               {JSON.stringify(sampleData, null, 2).slice(0, 5000)}
             </pre>
           )}
@@ -373,7 +373,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             <I.AlertCircle size={24} />
           </div>
           <div className="font-semibold mb-1">{t("mcpimport.infer_fail")}</div>
-          <pre className="text-xs text-danger bg-bg-soft border border-border rounded p-2 mt-3 text-left max-h-[200px] overflow-auto">
+          <pre className="text-xs text-danger bg-bg-soft border border-border rounded-sm p-2 mt-3 text-left max-h-[200px] overflow-auto">
             {errMsg}
           </pre>
           <Button variant="default" onClick={() => setStep("select")} className="mt-3">

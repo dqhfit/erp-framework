@@ -165,7 +165,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[950] flex items-start justify-center pt-[15vh] p-4"
+      className="fixed inset-0 z-950 flex items-start justify-center pt-[15vh] p-4"
       onMouseDown={() => setOpen(false)}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" />
@@ -179,7 +179,7 @@ export function CommandPalette() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("cmd.placeholder")}
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted"
+            className="flex-1 bg-transparent outline-hidden text-sm placeholder:text-muted"
           />
           <Kbd>ESC</Kbd>
         </div>

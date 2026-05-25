@@ -468,9 +468,9 @@ function WorkflowInner({ workflowId }: Props) {
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={18} size={1} color="hsl(var(--border) / 0.7)" />
-            <Controls className="!bg-panel !border !border-border" />
+            <Controls className="bg-panel! border! border-border!" />
             <MiniMap
-              className="!bg-panel !border !border-border"
+              className="bg-panel! border! border-border!"
               nodeColor={(n) => {
                 const meta = getNodePalette().find((p) => p.kind === (n.data as WfNodeData).kind);
                 return meta?.color ?? "var(--muted)";
@@ -605,7 +605,7 @@ function WorkflowInner({ workflowId }: Props) {
                     <FormField label="JS code (sandbox)">
                       <Textarea
                         rows={12}
-                        className="!font-mono !text-xs leading-relaxed"
+                        className="font-mono! text-xs! leading-relaxed"
                         placeholder={`// vars: workflow variables; mutate then return\nconst r = await callTool("ping", {});\nconsole.log("got", r);\nvars.result = r;\nreturn vars;`}
                         value={
                           typeof sel.data.config?.code === "string" ? sel.data.config.code : ""

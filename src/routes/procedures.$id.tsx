@@ -136,7 +136,7 @@ function ProcedureDesigner() {
             <FormField label="Code (JS)">
               <Textarea
                 rows={20}
-                className="!font-mono !text-xs leading-relaxed"
+                className="font-mono! text-xs! leading-relaxed"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
               />
@@ -156,7 +156,7 @@ function ProcedureDesigner() {
             <FormField label="args (JSON)">
               <Textarea
                 rows={4}
-                className="!font-mono !text-xs"
+                className="font-mono! text-xs!"
                 value={argsText}
                 onChange={(e) => setArgsText(e.target.value)}
               />
@@ -174,7 +174,7 @@ function ProcedureDesigner() {
               <Textarea
                 rows={16}
                 readOnly
-                className="!font-mono !text-xs !bg-bg-soft"
+                className="font-mono! text-xs! bg-bg-soft!"
                 value={testResult}
               />
             </FormField>

@@ -111,7 +111,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
           {amOwner ? (
             <Switch checked={isPrivate} onChange={(c) => onSetPrivate(c)} label="Riêng tư" />
           ) : (
-            <Chip variant={isPrivate ? "accent" : "default"} className="!text-[10px]">
+            <Chip variant={isPrivate ? "accent" : "default"} className="text-[10px]!">
               {isPrivate ? "Riêng tư" : "Open"}
             </Chip>
           )}
@@ -147,7 +147,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
           {members.map((m) => (
             <div
               key={m.userId}
-              className="flex items-center gap-2 px-2 py-1.5 rounded border border-border"
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm border border-border"
             >
               <span className="w-7 h-7 rounded-full flex items-center justify-center bg-bg-soft text-accent shrink-0">
                 <I.User size={12} />
@@ -160,7 +160,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
               </div>
               {amOwner ? (
                 <Select
-                  className="!h-7 !text-xs w-[120px]"
+                  className="h-7! text-xs! w-[120px]"
                   value={m.role}
                   onChange={(e) => changeRole(m.userId, e.target.value as AgentMemberRole)}
                   title={ROLE_HINT[m.role]}
@@ -172,7 +172,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
                   ))}
                 </Select>
               ) : (
-                <Chip className="!text-[10px]" title={ROLE_HINT[m.role]}>
+                <Chip className="text-[10px]!" title={ROLE_HINT[m.role]}>
                   {ROLE_LABEL[m.role]}
                 </Chip>
               )}
@@ -191,7 +191,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
         {!amOwner && (
           <div className="text-[11px] text-muted mt-2 pt-2 border-t border-border">
             Chỉ <strong>owner</strong> mới sửa được danh sách thành viên. Vai trò của bạn:{" "}
-            <Chip className="!text-[10px]">{myRole ?? "không phải member"}</Chip>
+            <Chip className="text-[10px]!">{myRole ?? "không phải member"}</Chip>
           </div>
         )}
       </Card>

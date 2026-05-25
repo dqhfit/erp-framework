@@ -93,25 +93,25 @@ function ToolsGallery() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-1 mt-2">
-                    <Chip className="!text-[10px]">{t.kind}</Chip>
-                    <Chip className="!text-[10px]">{t.runtime}</Chip>
+                    <Chip className="text-[10px]!">{t.kind}</Chip>
+                    <Chip className="text-[10px]!">{t.runtime}</Chip>
                     {t.enabledForCompany && (
-                      <Chip variant="success" className="!text-[10px]">
+                      <Chip variant="success" className="text-[10px]!">
                         đã bật
                       </Chip>
                     )}
                     {t.status === "running" && (
-                      <Chip variant="success" className="!text-[10px]">
+                      <Chip variant="success" className="text-[10px]!">
                         running
                       </Chip>
                     )}
                     {t.status === "error" && (
-                      <Chip variant="danger" className="!text-[10px]">
+                      <Chip variant="danger" className="text-[10px]!">
                         lỗi
                       </Chip>
                     )}
                     {(t.manifest.tags ?? []).slice(0, 3).map((tag) => (
-                      <Chip key={tag} className="!text-[10px]">
+                      <Chip key={tag} className="text-[10px]!">
                         #{tag}
                       </Chip>
                     ))}

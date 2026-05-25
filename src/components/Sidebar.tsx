@@ -65,7 +65,7 @@ function SidebarItem({
                 e.stopPropagation();
                 onRename();
               }}
-              className="w-5 h-5 rounded hover:bg-hover/80 flex items-center justify-center text-muted hover:text-text"
+              className="w-5 h-5 rounded-sm hover:bg-hover/80 flex items-center justify-center text-muted hover:text-text"
               title={t("common.rename")}
             >
               <I.Edit size={11} />
@@ -79,7 +79,7 @@ function SidebarItem({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="w-5 h-5 rounded hover:bg-danger/20 flex items-center justify-center text-muted hover:text-danger"
+              className="w-5 h-5 rounded-sm hover:bg-danger/20 flex items-center justify-center text-muted hover:text-danger"
               title={t("common.delete")}
             >
               <I.Trash size={11} />
@@ -133,7 +133,7 @@ function SidebarSection({
               <button
                 type="button"
                 onClick={onAiAdd}
-                className="w-5 h-5 rounded hover:bg-accent/20 flex items-center justify-center text-accent hover:text-accent"
+                className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent hover:text-accent"
                 title={t("sidebar.add_ai", { kind: title.toLowerCase() })}
               >
                 <I.Sparkles size={11} />
@@ -143,7 +143,7 @@ function SidebarSection({
               type="button"
               onClick={onAdd}
               disabled={!onAdd}
-              className="w-5 h-5 rounded hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text disabled:opacity-40 disabled:cursor-not-allowed"
               title={t("sidebar.add_blank", { kind: title.toLowerCase() })}
             >
               <I.Plus size={12} />

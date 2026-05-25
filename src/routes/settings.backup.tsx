@@ -157,7 +157,7 @@ function BackupPage() {
                 </li>
                 <li>
                   Vào thư mục đó. Nhìn vào thanh địa chỉ trình duyệt — URL có dạng:
-                  <div className="my-1 font-mono text-xs bg-surface-2 rounded px-2 py-1 break-all">
+                  <div className="my-1 font-mono text-xs bg-surface-2 rounded-sm px-2 py-1 break-all">
                     https://drive.google.com/drive/folders/
                     <b className="text-accent">1AbCdEfGhIjKlMnOpQrStUv...</b>
                   </div>

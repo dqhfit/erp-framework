@@ -84,7 +84,7 @@ export function FieldRow({
             e.stopPropagation();
             onDuplicate();
           }}
-          className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+          className="w-6 h-6 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted"
           title="Duplicate"
         >
           <I.Copy size={12} />
@@ -95,7 +95,7 @@ export function FieldRow({
             e.stopPropagation();
             onDelete();
           }}
-          className="w-6 h-6 rounded hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger"
+          className="w-6 h-6 rounded-sm hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger"
           title="Delete"
         >
           <I.Trash size={12} />

@@ -74,7 +74,7 @@ export function CompanySwitcher() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 w-64 panel rounded-lg shadow-2xl border border-border py-1 z-[800]">
+        <div className="absolute right-0 top-9 w-64 panel rounded-lg shadow-2xl border border-border py-1 z-800">
           <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted">
             {t("company.your_companies")}
           </div>
@@ -90,7 +90,7 @@ export function CompanySwitcher() {
             >
               <I.Briefcase size={14} className="text-muted shrink-0" />
               <span className="truncate flex-1">{c.name}</span>
-              <Chip className="!h-[18px] !text-[10px]">{c.role}</Chip>
+              <Chip className="h-[18px]! text-[10px]!">{c.role}</Chip>
               {c.isActive && <I.Check size={14} className="text-success shrink-0" />}
             </button>
           ))}

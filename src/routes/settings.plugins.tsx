@@ -111,7 +111,7 @@ function PluginsSettings() {
             <div key={p.id} className="flex items-center gap-2 p-2 rounded-md border border-border">
               <I.Folder size={15} className="text-muted shrink-0" />
               <span className="font-medium">{p.name}</span>
-              <Chip className="!text-[10px]">v{p.version}</Chip>
+              <Chip className="text-[10px]!">v{p.version}</Chip>
               <Chip variant={p.enabled ? "success" : "default"}>{p.enabled ? t("settings.plugins.enabled_chip") : t("settings.plugins.disabled_chip")}</Chip>
               <div className="flex-1" />
               <Switch

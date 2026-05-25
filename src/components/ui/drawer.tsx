@@ -17,7 +17,7 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
   const titleId = useId();
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[800]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-800" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
         ref={containerRef}
@@ -25,7 +25,7 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="absolute top-0 right-0 h-full panel border-l border-border shadow-2xl flex flex-col outline-none"
+        className="absolute top-0 right-0 h-full panel border-l border-border shadow-2xl flex flex-col outline-hidden"
         style={{ width }}
         onMouseDown={(e) => e.stopPropagation()}
       >

@@ -218,8 +218,8 @@ function ToolRow({
           <code>{t.slug}</code> · v{t.manifest.version}
         </div>
       </div>
-      <Chip className="!text-[10px]">{t.kind}</Chip>
-      <Chip className="!text-[10px]">{t.runtime}</Chip>
+      <Chip className="text-[10px]!">{t.kind}</Chip>
+      <Chip className="text-[10px]!">{t.runtime}</Chip>
       <Chip
         variant={
           t.status === "running" || t.status === "mounted"
@@ -228,7 +228,7 @@ function ToolRow({
               ? "danger"
               : "default"
         }
-        className="!text-[10px]"
+        className="text-[10px]!"
       >
         {t.status}
       </Chip>

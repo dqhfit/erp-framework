@@ -227,7 +227,7 @@ function KnowledgePage() {
                   <div className="flex items-center gap-2 mb-1">
                     <I.File size={12} className="text-muted shrink-0" />
                     <span className="text-xs font-medium truncate">{h.sourceTitle}</span>
-                    <Chip className="!text-[10px]">{(h.score * 100).toFixed(0)}%</Chip>
+                    <Chip className="text-[10px]!">{(h.score * 100).toFixed(0)}%</Chip>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{h.content}</div>
                 </div>
@@ -327,10 +327,10 @@ function KnowledgePage() {
           {sources.map((s) => (
             <div key={s.id} className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
-                <Chip className="!text-[10px]">{KIND_LABEL[s.kind] ?? s.kind}</Chip>
+                <Chip className="text-[10px]!">{KIND_LABEL[s.kind] ?? s.kind}</Chip>
                 <span className="font-medium truncate flex-1">{s.title}</span>
                 {s.reindexCron && (
-                  <Chip variant="accent" className="!text-[10px]">
+                  <Chip variant="accent" className="text-[10px]!">
                     <I.Clock size={9} /> {s.reindexCron}
                   </Chip>
                 )}

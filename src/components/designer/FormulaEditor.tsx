@@ -141,7 +141,7 @@ export function FormulaEditor({
                 key={f.key}
                 type="button"
                 onClick={() => insertField(f.key)}
-                className="px-2 h-7 rounded text-xs border border-border bg-panel-2 hover:bg-hover/40 font-mono flex items-center gap-1.5"
+                className="px-2 h-7 rounded-sm text-xs border border-border bg-panel-2 hover:bg-hover/40 font-mono flex items-center gap-1.5"
                 title={`${f.label}${f.type ? ` (${f.type})` : ""}`}
               >
                 <I.Plus size={10} /> {`{${f.key}}`}
@@ -189,7 +189,7 @@ export function FormulaEditor({
                       key={fn.name}
                       type="button"
                       onClick={() => insertFn(fn)}
-                      className="px-2 h-7 rounded text-xs border border-border bg-panel-2 hover:bg-hover/40 hover:border-accent/50 font-mono flex items-center gap-1"
+                      className="px-2 h-7 rounded-sm text-xs border border-border bg-panel-2 hover:bg-hover/40 hover:border-accent/50 font-mono flex items-center gap-1"
                       title={`${fn.name}${fn.args} — ${fn.hint}\nVí dụ: ${fn.example}`}
                     >
                       {fn.name}
@@ -226,7 +226,7 @@ function CatPill({
       type="button"
       onClick={onClick}
       className={cn(
-        "px-2 h-6 rounded text-[11px] border",
+        "px-2 h-6 rounded-sm text-[11px] border",
         active
           ? "bg-accent text-white border-accent"
           : "bg-panel-2 border-border text-muted hover:bg-hover/40",

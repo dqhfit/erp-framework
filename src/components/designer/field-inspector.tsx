@@ -60,7 +60,7 @@ export function FieldInspector({
     <aside className="w-[320px] shrink-0 border-l border-border bg-panel flex flex-col">
       <div className="h-11 shrink-0 px-3 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded bg-panel-2 border border-border flex items-center justify-center text-muted">
+          <div className="w-6 h-6 rounded-sm bg-panel-2 border border-border flex items-center justify-center text-muted">
             <IC size={12} />
           </div>
           <div className="text-sm font-semibold truncate">{field.label}</div>
@@ -68,7 +68,7 @@ export function FieldInspector({
         <button
           type="button"
           onClick={onDelete}
-          className="w-7 h-7 rounded hover:bg-danger/15 text-muted hover:text-danger flex items-center justify-center"
+          className="w-7 h-7 rounded-sm hover:bg-danger/15 text-muted hover:text-danger flex items-center justify-center"
           title="Delete field"
         >
           <I.Trash size={13} />

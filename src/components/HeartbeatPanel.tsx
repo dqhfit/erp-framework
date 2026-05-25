@@ -137,7 +137,7 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
         {list.map((h) => (
           <div key={h.id} className="rounded-md border border-border p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <code className="text-xs bg-bg-soft px-1.5 py-0.5 rounded">{h.cronExpr}</code>
+              <code className="text-xs bg-bg-soft px-1.5 py-0.5 rounded-sm">{h.cronExpr}</code>
               <Chip variant={h.enabled ? "success" : "default"}>
                 {h.enabled ? "Đang bật" : "Tắt"}
               </Chip>
@@ -158,7 +158,7 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
               )}
             </div>
             {h.lastSummary && (
-              <div className="text-xs bg-bg-soft rounded p-2 whitespace-pre-wrap">
+              <div className="text-xs bg-bg-soft rounded-sm p-2 whitespace-pre-wrap">
                 {h.lastSummary}
               </div>
             )}

@@ -41,7 +41,7 @@ export function Topbar() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
-    <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur sticky top-0 z-50 whitespace-nowrap">
+    <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
       {/* Brand */}
       <button
         onClick={() => navigate({ to: "/" })}
@@ -56,7 +56,7 @@ export function Topbar() {
           <I.Bolt size={14} strokeWidth={2.5} />
         </span>
         <span className="font-semibold tracking-tight">{t("topbar.brand")}</span>
-        <Chip className="!h-[18px] !text-[10px]">v1.0</Chip>
+        <Chip className="h-[18px]! text-[10px]!">v1.0</Chip>
       </button>
 
       <div className="w-px h-5 bg-border mx-1" />

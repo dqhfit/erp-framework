@@ -84,16 +84,16 @@ export function PickPrimaryModal({ open, onClose }: Props) {
                 <div className="text-sm font-medium truncate flex items-center gap-1.5">
                   {a.name}
                   {isCeo && (
-                    <Chip className="!h-[16px] !text-[9px]" variant="accent">
+                    <Chip className="h-[16px]! text-[9px]!" variant="accent">
                       CEO
                     </Chip>
                   )}
                   {isPrimary && (
-                    <Chip className="!h-[16px] !text-[9px]" variant="success">
+                    <Chip className="h-[16px]! text-[9px]!" variant="success">
                       đang chọn
                     </Chip>
                   )}
-                  {role && !isPrimary && <Chip className="!h-[16px] !text-[9px]">{role}</Chip>}
+                  {role && !isPrimary && <Chip className="h-[16px]! text-[9px]!">{role}</Chip>}
                 </div>
                 <div className="text-xs text-muted truncate font-mono">{a.model}</div>
               </div>

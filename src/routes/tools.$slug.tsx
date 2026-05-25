@@ -60,8 +60,8 @@ function Runner() {
           Tools
         </Button>
         <h1 className="font-semibold">{tool.displayName ?? tool.name}</h1>
-        <Chip className="!text-[10px]">{tool.kind}</Chip>
-        <Chip className="!text-[10px]">{tool.runtime}</Chip>
+        <Chip className="text-[10px]!">{tool.kind}</Chip>
+        <Chip className="text-[10px]!">{tool.runtime}</Chip>
         <Chip
           variant={
             tool.status === "running" || tool.status === "mounted"
@@ -70,13 +70,13 @@ function Runner() {
                 ? "danger"
                 : "default"
           }
-          className="!text-[10px]"
+          className="text-[10px]!"
         >
           {tool.status}
         </Chip>
         <div className="flex-1" />
         {!tool.enabledForCompany && (
-          <Chip variant="warning" className="!text-[10px]">
+          <Chip variant="warning" className="text-[10px]!">
             Chưa bật cho công ty
           </Chip>
         )}
@@ -240,7 +240,7 @@ function CliRunner({ tool }: { tool: ToolListItem }) {
             <FormField label="Args (JSON)">
               <Textarea
                 rows={8}
-                className="!font-mono !text-xs"
+                className="font-mono! text-xs!"
                 value={argsText}
                 onChange={(e) => setArgsText(e.target.value)}
               />

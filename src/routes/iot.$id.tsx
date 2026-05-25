@@ -124,7 +124,7 @@ function IotDeviceDetail() {
         {rotated && (
           <Card className="mb-4 border-warning/40 bg-warning/5">
             <div className="font-semibold mb-2">⚠ Key MỚI (lưu NGAY, chỉ hiện 1 lần):</div>
-            <div className="font-mono text-xs break-all p-2 bg-bg-soft border border-border rounded">
+            <div className="font-mono text-xs break-all p-2 bg-bg-soft border border-border rounded-sm">
               {rotated}
             </div>
             <div className="flex gap-2 mt-2">
@@ -186,10 +186,10 @@ function IotDeviceDetail() {
             {telemetry.map((t) => (
               <div
                 key={t.id}
-                className="text-xs font-mono p-2 bg-bg-soft border border-border rounded"
+                className="text-xs font-mono p-2 bg-bg-soft border border-border rounded-sm"
               >
                 <div className="flex items-center gap-2 text-muted mb-1">
-                  <Chip className="!text-[10px]">{t.channel}</Chip>
+                  <Chip className="text-[10px]!">{t.channel}</Chip>
                   <span>{new Date(t.ts).toLocaleString("vi-VN")}</span>
                 </div>
                 <pre className="whitespace-pre-wrap break-all">
@@ -205,10 +205,10 @@ function IotDeviceDetail() {
           <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
             {commands.length === 0 && <div className="text-sm text-muted py-2">Chưa có lệnh.</div>}
             {commands.map((c) => (
-              <div key={c.id} className="text-xs p-2 bg-bg-soft border border-border rounded">
+              <div key={c.id} className="text-xs p-2 bg-bg-soft border border-border rounded-sm">
                 <div className="flex items-center gap-2 mb-1">
                   <Chip
-                    className="!text-[10px]"
+                    className="text-[10px]!"
                     variant={
                       c.status === "ack"
                         ? "success"

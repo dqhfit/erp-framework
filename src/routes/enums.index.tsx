@@ -167,7 +167,7 @@ function EnumsList() {
                 {e.name}
               </Link>
               <span className="text-xs text-muted truncate">{e.label}</span>
-              <Chip className="!text-[10px]">{e.values?.length ?? 0} giá trị</Chip>
+              <Chip className="text-[10px]!">{e.values?.length ?? 0} giá trị</Chip>
               <Chip variant={e.enabled ? "success" : "default"}>{e.enabled ? "Bật" : "Tắt"}</Chip>
               <div className="flex-1" />
               <Switch

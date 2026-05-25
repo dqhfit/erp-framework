@@ -388,7 +388,7 @@ function MessageBubble({
       <div className="flex-1 min-w-0 max-w-[85%]">
         <div
           className={cn(
-            "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
+            "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap wrap-break-word",
             msg.error
               ? "bg-danger/10 border border-danger/30 text-danger"
               : isUser
@@ -416,7 +416,7 @@ function MessageBubble({
             <button
               onClick={saveKb}
               disabled={kbState === "saving" || kbState === "saved"}
-              className="text-[11px] px-2 py-0.5 rounded border border-border bg-bg-soft hover:bg-hover/40 inline-flex items-center gap-1 disabled:opacity-60"
+              className="text-[11px] px-2 py-0.5 rounded-sm border border-border bg-bg-soft hover:bg-hover/40 inline-flex items-center gap-1 disabled:opacity-60"
             >
               <I.File size={10} />
               {kbState === "saved"
@@ -435,7 +435,7 @@ function MessageBubble({
               <button
                 key={i}
                 onClick={() => onSuggest(s)}
-                className="text-[11px] px-2 py-0.5 rounded border border-border bg-bg-soft hover:bg-hover/40"
+                className="text-[11px] px-2 py-0.5 rounded-sm border border-border bg-bg-soft hover:bg-hover/40"
               >
                 {s}
               </button>

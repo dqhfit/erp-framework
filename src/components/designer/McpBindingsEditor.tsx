@@ -193,7 +193,7 @@ interface ArgsTableProps {
 function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
   if (args.length === 0) {
     return (
-      <div className="text-xs text-muted italic p-3 border border-dashed border-border rounded text-center">
+      <div className="text-xs text-muted italic p-3 border border-dashed border-border rounded-sm text-center">
         Chưa có arg
       </div>
     );

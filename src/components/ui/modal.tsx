@@ -19,7 +19,7 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
   if (!open) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[900] overflow-y-auto"
+      className="fixed inset-0 z-900 overflow-y-auto"
       onMouseDown={onClose}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-none" />
@@ -30,7 +30,7 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden w-full outline-none"
+        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden w-full outline-hidden"
         style={{ maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >

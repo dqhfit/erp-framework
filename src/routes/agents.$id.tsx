@@ -322,7 +322,7 @@ function AgentRoute() {
             Tools ({state.tools.length}/{availableToolNames.length})
           </div>
           {mcpTools.length === 0 && (
-            <Chip variant="warning" className="!text-[10px]">
+            <Chip variant="warning" className="text-[10px]!">
               Chưa kết nối MCP — dùng default list
             </Chip>
           )}
@@ -349,7 +349,7 @@ function AgentRoute() {
   const MemoryPane = (
     <div className="grid grid-cols-[220px_1fr] gap-4">
       {/* Sidebar — danh sách file */}
-      <Card className="!p-2 self-start">
+      <Card className="p-2! self-start">
         <div className="text-[10px] uppercase tracking-wider text-muted px-2 py-1.5">
           7 file memory
         </div>
@@ -390,7 +390,7 @@ function AgentRoute() {
           <span className="font-mono text-sm">{activeMem}.md</span>
           <span className="text-xs text-muted">— {MEMORY_LABEL[activeMem]}</span>
           {isMemoryEdited(activeMem) && (
-            <Chip variant="accent" className="!text-[10px]">
+            <Chip variant="accent" className="text-[10px]!">
               Đã sửa
             </Chip>
           )}
@@ -490,7 +490,7 @@ function AgentRoute() {
           >
             Bộ nhớ
             {editedCount > 0 && (
-              <Chip variant="accent" className="!h-[16px] !text-[10px] ml-1">
+              <Chip variant="accent" className="h-[16px]! text-[10px]! ml-1">
                 {editedCount}
               </Chip>
             )}
@@ -509,7 +509,7 @@ function AgentRoute() {
           >
             Thành viên
             {state.isPrivate && (
-              <Chip variant="accent" className="!h-[16px] !text-[10px] ml-1">
+              <Chip variant="accent" className="h-[16px]! text-[10px]! ml-1">
                 riêng tư
               </Chip>
             )}

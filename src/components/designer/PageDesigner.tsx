@@ -474,7 +474,7 @@ function ComponentCard({ comp, selected, onSelect, onRemove, isConsumer }: Compo
               e.stopPropagation();
               onRemove();
             }}
-            className="w-5 h-5 rounded hover:bg-danger/15 hover:text-danger flex items-center justify-center"
+            className="w-5 h-5 rounded-sm hover:bg-danger/15 hover:text-danger flex items-center justify-center"
           >
             <I.X size={11} />
           </button>

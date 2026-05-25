@@ -87,7 +87,7 @@ function EmbedSettings() {
         <h1 className="text-xl font-semibold mb-1">Nhúng builder (Embed)</h1>
         <div className="text-sm text-muted mb-6">
           Tạo token để nhúng trang designer vào sản phẩm khác qua iframe. Thêm{" "}
-          <code className="bg-bg-soft px-1 rounded">?embed=1</code> vào URL để ẩn thanh điều hướng —
+          <code className="bg-bg-soft px-1 rounded-sm">?embed=1</code> vào URL để ẩn thanh điều hướng —
           chỉ hiện nội dung.
         </div>
 
@@ -126,7 +126,7 @@ function EmbedSettings() {
               <div className="flex items-center gap-2">
                 <I.Link size={14} className="text-muted shrink-0" />
                 <span className="font-medium">{t.label || "(không nhãn)"}</span>
-                <Chip className="!text-[10px]">{t.scope}</Chip>
+                <Chip className="text-[10px]!">{t.scope}</Chip>
                 <div className="flex-1" />
                 <Button
                   size="sm"
@@ -138,8 +138,8 @@ function EmbedSettings() {
                   Thu hồi
                 </Button>
               </div>
-              <code className="block text-xs bg-bg-soft rounded p-2 break-all">{t.token}</code>
-              <pre className="text-[11px] bg-bg-soft rounded p-2 overflow-x-auto whitespace-pre-wrap">
+              <code className="block text-xs bg-bg-soft rounded-sm p-2 break-all">{t.token}</code>
+              <pre className="text-[11px] bg-bg-soft rounded-sm p-2 overflow-x-auto whitespace-pre-wrap">
                 {snippet(t)}
               </pre>
               <Button

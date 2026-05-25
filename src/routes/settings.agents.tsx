@@ -127,7 +127,7 @@ function SettingsAgents() {
               {myAgents.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-hover/40 transition-colors"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-sm border border-border hover:bg-hover/40 transition-colors"
                 >
                   <span className="w-7 h-7 rounded-md flex items-center justify-center bg-bg-soft text-accent shrink-0">
                     <I.Bot size={12} />
@@ -136,14 +136,14 @@ function SettingsAgents() {
                     <div className="text-sm font-medium truncate flex items-center gap-1.5">
                       {a.name}
                       {a.id === primaryAgentId && (
-                        <Chip className="!h-[16px] !text-[9px]" variant="success">
+                        <Chip className="h-[16px]! text-[9px]!" variant="success">
                           {t("settings.agents.primary_chip")}
                         </Chip>
                       )}
                     </div>
                     <div className="text-xs text-muted truncate font-mono">{a.model}</div>
                   </div>
-                  <Chip className="!text-[10px]">{a.role}</Chip>
+                  <Chip className="text-[10px]!">{a.role}</Chip>
                   <Button
                     variant="ghost"
                     size="sm"

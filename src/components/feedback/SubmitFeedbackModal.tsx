@@ -176,7 +176,7 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
                   >
                     {s.title}
                   </Link>{" "}
-                  <Chip className="!text-[10px]">{s.status}</Chip>
+                  <Chip className="text-[10px]!">{s.status}</Chip>
                   <span className="text-muted ml-1">
                     ({Math.round(s.similarity * 100)}% {t("feedback.similar_pct")})
                   </span>
