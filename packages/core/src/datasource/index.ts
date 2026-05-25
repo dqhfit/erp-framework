@@ -12,7 +12,21 @@ export type FieldType =
   | "text" | "number" | "boolean" | "date" | "datetime"
   | "select" | "multiselect" | "enum" | "multienum"
   | "relation" | "lookup" | "multilookup"
-  | "sequence" | "formula" | "json";
+  | "sequence" | "rollup" | "formula" | "json";
+
+/** Cấu hình field "rollup" — gom giá trị từ entity khác trỏ vào.
+ *  vd customer.total_orders = COUNT(order WHERE order.customer_id = customer.id). */
+export type RollupAgg = "count" | "sum" | "avg" | "min" | "max";
+export interface RollupConfig {
+  /** Entity nguồn (vd "order"). */
+  fromEntityName: string;
+  /** Field ở entity nguồn trỏ ngược về (vd "customer_id"). */
+  fkField: string;
+  /** Hàm gom: count (không cần valueField) / sum/avg/min/max. */
+  agg: RollupAgg;
+  /** Field giá trị (cần cho sum/avg/min/max). */
+  valueField?: string;
+}
 
 /** Rule điều kiện cho requiredIf/visibleIf — DSL nhỏ, sync, pure.
  *  Hỗ trợ AND/OR cấp 1 + so sánh primitive. Phức tạp hơn → dùng formula. */
@@ -69,6 +83,11 @@ export interface EntityFieldDef {
   /** Mã hoá at-rest qua ENCRYPTION_KEY (AES-256-GCM). Áp dụng cho field
    *  text/json chứa PII (CMND, lương, số TK ngân hàng). Decrypt khi serve. */
   encrypted?: boolean;
+  /** Cho field type "rollup" — config aggregate cross-row. */
+  rollup?: RollupConfig;
+  /** Đánh dấu field cho semantic search (embedding) — server hook khi
+   *  save sẽ build embedding từ giá trị các field này gộp. */
+  embedSearchable?: boolean;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

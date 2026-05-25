@@ -137,6 +137,24 @@ export const entityRecords = pgTable("entity_records", {
     .using("gin", sql`${t.data} jsonb_path_ops`),
 }));
 
+/* Embedding semantic search per record — gom field marked embedSearchable
+   thành 1 chuỗi → embed → index. 768 chiều cho nomic-embed-text. */
+export const entityRecordEmbeddings = pgTable("entity_record_embeddings", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  recordId: uuid("record_id").notNull()
+    .references(() => entityRecords.id, { onDelete: "cascade" }),
+  entityId: uuid("entity_id").notNull()
+    .references(() => entities.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  embedding: vector("embedding", { dimensions: 768 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  recordUidx: uniqueIndex("ere_record_uidx").on(t.recordId),
+  entityIdx: index("ere_entity_idx").on(t.entityId),
+}));
+
 /* Comments per record + nested replies (parent_id self-ref). Soft delete. */
 export const recordComments = pgTable("record_comments", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),

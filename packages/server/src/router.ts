@@ -29,6 +29,9 @@ import { savedViewsRouter } from "./saved-views-router";
 import { recordCommentsRouter } from "./record-comments-router";
 import { entityWebhooksRouter, fireEntityWebhooks } from "./entity-webhooks-router";
 import { apiKeysRouter } from "./api-keys-router";
+import { applyRollups } from "./rollup";
+import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
+import { findDuplicateRecords } from "./duplicate-detection";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -815,7 +818,14 @@ export const appRouter = router({
           })(proc, { id: input, row });
           return r.output ?? row;
         }
-        return row;
+        // Decrypt + apply rollup fields + strip unreadable trước khi serve.
+        const fields = await loadEntityFields(ctx.db, ctx.user.companyId, row.entityId);
+        const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
+        const withRollups = await applyRollups(ctx.db, ctx.user.companyId, fields, row.id, decoded);
+        return {
+          ...row,
+          data: stripUnreadableFields(fields, withRollups, ctx.user.role),
+        };
       }),
 
     create: rbacProcedure("create", "entity")
@@ -849,6 +859,9 @@ export const appRouter = router({
           companyId: ctx.user.companyId, entityId: input.entityId,
           event: "create", record: row,
         });
+        // Index embedding (best-effort, không block).
+        indexRecordEmbedding(ctx.db, ctx.user.companyId, input.entityId,
+          fields, row.id, data);
         // Decrypt + ẩn field user không có quyền read trước khi trả response.
         const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
         return {
@@ -933,8 +946,38 @@ export const appRouter = router({
             companyId: ctx.user.companyId, entityId: rec.entityId,
             event: "update", record: row, before: oldData, after: row.data,
           });
+          // Re-index embedding (best-effort).
+          indexRecordEmbedding(ctx.db, ctx.user.companyId, rec.entityId,
+            fields, row.id, row.data as Record<string, unknown>);
         }
         return row;
+      }),
+
+    semanticSearch: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityName: z.string().min(1),
+        query: z.string().min(1),
+        limit: z.number().int().positive().max(50).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return semanticSearchRecords(
+          ctx.db, ctx.user.companyId,
+          input.entityName, input.query, input.limit ?? 10,
+        );
+      }),
+
+    findDuplicates: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        fields: z.array(z.string()).min(1),
+        values: z.record(z.string()),
+        limit: z.number().int().positive().max(20).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return findDuplicateRecords(
+          ctx.db, ctx.user.companyId,
+          input.entityId, input.fields, input.values, input.limit ?? 5,
+        );
       }),
 
     delete: rbacProcedure("delete", "entity")
