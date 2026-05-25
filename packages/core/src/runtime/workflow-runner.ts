@@ -177,6 +177,38 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
           }
           break;
         }
+        case "agent_chain": {
+          // Chained agent: chạy N step sequential, output step trước
+          // làm input bổ sung step sau (qua vars.chain_prev). Mỗi step
+          // dùng config riêng (prompts[i] / models[i]) hoặc share.
+          if (!opt.callAgent) {
+            step = mkStep(node, "skipped", "Không có agent runner", t0);
+            break;
+          }
+          const steps = (cfg.steps as Array<Record<string, unknown>>) ?? [];
+          const maxChainSteps = Math.min(Number(cfg.maxSteps ?? 5), 20);
+          if (!Array.isArray(steps) || steps.length === 0) {
+            step = mkStep(node, "skipped", "agent_chain cần config.steps[]", t0);
+            break;
+          }
+          let totalIn = 0, totalOut = 0;
+          let prevText = "";
+          const outputs: string[] = [];
+          for (let i = 0; i < Math.min(steps.length, maxChainSteps); i++) {
+            const stepCfg = { ...steps[i], chain_prev: prevText };
+            const r = await opt.callAgent(stepCfg, { ...vars, chain_prev: prevText });
+            outputs.push(r.text);
+            prevText = r.text;
+            totalIn += r.usage.input_tokens;
+            totalOut += r.usage.output_tokens;
+          }
+          vars[`agent_chain_${node.id}`] = outputs;
+          step = mkStep(node, "ok",
+            `Chain ${outputs.length}/${steps.length} agent (${prevText.length} ký tự cuối)`,
+            t0, outputs);
+          step.tokens = { input_tokens: totalIn, output_tokens: totalOut };
+          break;
+        }
         case "delay": {
           const mins = Number(cfg.minutes ?? 0);
           const realWait = Math.min(mins * 60_000, maxDelayMs);

@@ -359,6 +359,8 @@ export function Sidebar() {
             icon={<I.Terminal size={14} />} collapsed={collapsed} label="Procedures" />
           <SidebarItem to="/enums" active={pathname.startsWith("/enums")}
             icon={<I.Tag size={14} />} collapsed={collapsed} label="Enums" />
+          <SidebarItem to="/tools" active={pathname.startsWith("/tools")}
+            icon={<I.Wand size={14} />} collapsed={collapsed} label="Tools" />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}
@@ -379,6 +381,8 @@ export function Sidebar() {
             icon={<I.Save size={14} />} collapsed={collapsed} label="Sao lưu" />
           <SidebarItem to="/settings/plugins" active={pathname === "/settings/plugins"}
             icon={<I.Package size={14} />} collapsed={collapsed} label={t("sidebar.plugins")} />
+          <SidebarItem to="/settings/tools" active={pathname === "/settings/tools"}
+            icon={<I.Wand size={14} />} collapsed={collapsed} label="Quản lý Tools" />
           <SidebarItem to="/settings/embed" active={pathname === "/settings/embed"}
             icon={<I.Link size={14} />} collapsed={collapsed} label={t("sidebar.embed")} />
         </NavGroup>
