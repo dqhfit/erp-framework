@@ -3,8 +3,9 @@
    - protectedProcedure: yêu cầu đăng nhập
    - rbacProcedure()   : yêu cầu quyền cụ thể theo RBAC (permissions.ts)
    - rateLimit()       : middleware giới hạn tốc độ theo IP (xem dưới) */
+
+import { type Action, type ObjectType, roleCan } from "@erp-framework/core";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { roleCan, type Action, type ObjectType } from "@erp-framework/core";
 import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create();
@@ -20,7 +21,10 @@ export const publicProcedure = t.procedure;
    self-host single-node là use case chính; restart server reset
    bộ đếm — chấp nhận được cho mục đích chống brute-force.
    Cleanup tự động: mỗi lần check, xoá entry đã hết hạn. */
-interface Slot { count: number; resetAt: number; }
+interface Slot {
+  count: number;
+  resetAt: number;
+}
 const buckets: Map<string, Map<string, Slot>> = new Map();
 
 /** Trả về middleware tRPC giới hạn `max` request mỗi `windowMs` từ 1 IP.
@@ -29,7 +33,10 @@ export function rateLimit(bucket: string, max: number, windowMs: number) {
   return t.middleware(({ ctx, next }) => {
     const now = Date.now();
     let bm = buckets.get(bucket);
-    if (!bm) { bm = new Map(); buckets.set(bucket, bm); }
+    if (!bm) {
+      bm = new Map();
+      buckets.set(bucket, bm);
+    }
     // Cleanup nhẹ: 1/16 lần check xoá các entry hết hạn của bucket này.
     if ((now & 0xf) === 0) {
       for (const [k, v] of bm) if (v.resetAt <= now) bm.delete(k);
@@ -51,11 +58,43 @@ export function rateLimit(bucket: string, max: number, windowMs: number) {
   });
 }
 
+/** Yêu cầu đăng nhập. KHÔNG enforce approved/disabled — chỉ dùng cho
+ *  endpoint white-list: auth.logout, auth.me, companies.list (user pending
+ *  cần biết trạng thái), notifications.unreadCount (UI cần hide chip).
+ *  Mọi endpoint khác THAO TÁC DATA phải dùng approvedProcedure hoặc
+ *  rbacProcedure. */
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Cần đăng nhập" });
   }
   return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+/** Yêu cầu đăng nhập + thuộc 1 công ty + được phê duyệt + không bị disable.
+ *  Dùng cho endpoint user-personal không cần RBAC matrix nhưng vẫn phải
+ *  block khi pending/disabled (vd agents.save, notifications.list). */
+export const approvedProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!ctx.user.companyId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Ban chua thuoc cong ty nao -- hay yeu cau quan tri vien them ban vao cong ty.",
+    });
+  }
+  if (!ctx.user.companyApproved) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tai khoan cua ban dang cho quan tri vien phe duyet.",
+    });
+  }
+  if (ctx.user.companyDisabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tai khoan cua ban da bi vo hieu hoa.",
+    });
+  }
+  return next({
+    ctx: { ...ctx, user: { ...ctx.user, companyId: ctx.user.companyId } },
+  });
 });
 
 /** Procedure yêu cầu quyền `action` trên `obj` theo vai trò người dùng.
