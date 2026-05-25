@@ -3,11 +3,13 @@
 ## Mục lục
 
 1. [Thiết lập môi trường DEV](#1-thiết-lập-môi-trường-dev)
-2. [Git workflow](#2-git-workflow)
-3. [Migration database](#3-migration-database)
-4. [Secrets và biến môi trường](#4-secrets-và-biến-môi-trường)
-5. [Coding convention](#5-coding-convention)
-6. [Kiểm tra trước khi tạo PR](#6-kiểm-tra-trước-khi-tạo-pr)
+2. [Cấu trúc monorepo](#2-cấu-trúc-monorepo)
+3. [Git workflow](#3-git-workflow)
+4. [Migration database](#4-migration-database)
+5. [Secrets và biến môi trường](#5-secrets-và-biến-môi-trường)
+6. [Coding convention](#6-coding-convention)
+7. [Kiểm tra trước khi tạo PR](#7-kiểm-tra-trước-khi-tạo-pr)
+8. [Troubleshooting](#8-troubleshooting)
 
 ---
 
@@ -35,7 +37,9 @@ pnpm dev:setup
 # 3. Sao chép file env và điền giá trị
 cp packages/server/.env.example packages/server/.env
 # Mở packages/server/.env và đặt ENCRYPTION_KEY (bắt buộc)
-# Sinh key: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Sinh key (Git Bash / macOS / Linux):  openssl rand -hex 32
+# Sinh key (Windows PowerShell):
+#   node -e "import('node:crypto').then(m => console.log(m.randomBytes(32).toString('hex')))"
 
 # 4. Bật dev server
 pnpm dev
@@ -58,7 +62,37 @@ pnpm dev
 
 ---
 
-## 2. Git workflow
+## 2. Cấu trúc monorepo
+
+```
+erp-framework/
+├── src/                     <- Frontend React (Vite, TanStack Router)
+│   ├── routes/              <- Pages (file-based routing)
+│   ├── components/          <- UI components + shared widgets
+│   ├── stores/              <- Zustand state (auth, userObjects...)
+│   └── i18n/                <- Chuỗi dịch VI/EN
+├── packages/
+│   ├── core/                <- Shared: RBAC, types, utils (FE + BE dùng chung)
+│   ├── db/                  <- Drizzle schema + migrations + migrate runner
+│   ├── server/              <- Fastify + tRPC backend
+│   ├── client/              <- tRPC client wrappers cho frontend
+│   └── plugins/             <- Server-side plugin registry
+├── tooling/                 <- Dev scripts (dev-setup, check-journal, e2e-full...)
+└── docker/                  <- Docker Compose (local + Coolify production)
+```
+
+**Rule nhập khẩu (quan trọng):**
+
+| Layer | Import được từ |
+|---|---|
+| `src/` (frontend) | `@erp-framework/core`, `@erp-framework/client` |
+| `packages/server/` | `@erp-framework/core`, `@erp-framework/db` |
+| `packages/client/` | `@erp-framework/core` |
+| **Cấm** | `src/` import từ `packages/server/` |
+
+---
+
+## 3. Git workflow
 
 Dùng **GitHub Flow** — nhánh ngắn, merge nhanh.
 
@@ -75,6 +109,17 @@ main (protected)
 - Không push thẳng lên `main`
 - Không dùng `--force` lên `main`
 - Mỗi PR nên nhỏ và tập trung vào 1 việc
+
+### Bật branch protection (admin, làm 1 lần trên GitHub)
+
+> Repository → **Settings** → **Branches** → **Add branch protection rule**
+>
+> - Branch name pattern: `main`
+> - Bật: ✅ Require a pull request before merging → 1 required approval
+> - Bật: ✅ Require status checks to pass → chọn jobs: `check`, `migration`
+> - Bật: ✅ Do not allow bypassing the above settings
+
+---
 
 ### Commit message
 
@@ -94,7 +139,7 @@ docs: cập nhật CONTRIBUTING.md
 
 ---
 
-## 3. Migration database
+## 4. Migration database
 
 ### Quy tắc quan trọng nhất
 
@@ -158,11 +203,24 @@ CI sẽ chạy check này tự động — nếu lỗi, PR không thể merge.
 Nếu hai nhánh tạo migration cùng số idx (ví dụ cả hai tạo `0044_*`):
 
 1. Dev merge trước: giữ nguyên
-2. Dev merge sau: đổi idx thành số tiếp theo (`0045_*`), sinh `when` mới, cập nhật `_journal.json`
+2. Dev merge sau làm theo thứ tự:
+
+```bash
+# 1. Đổi tên file SQL (bắt buộc)
+mv packages/db/migrations/0044_ten_cu.sql packages/db/migrations/0045_ten_cu.sql
+
+# 2. Sinh timestamp mới
+node -e "console.log(Date.now())"   # ví dụ: 1748900000000
+
+# 3. Cập nhật _journal.json: idx 44→45, when→timestamp mới, tag→"0045_ten_cu"
+
+# 4. Kiểm tra
+pnpm check:journal
+```
 
 ---
 
-## 4. Secrets và biến môi trường
+## 5. Secrets và biến môi trường
 
 ### Nguyên tắc
 
@@ -175,7 +233,7 @@ Nếu hai nhánh tạo migration cùng số idx (ví dụ cả hai tạo `0044_*
 
 ```bash
 DATABASE_URL=postgres://erp:erp@localhost:5432/erp_framework
-ENCRYPTION_KEY=<tạo bằng openssl rand -hex 32>
+ENCRYPTION_KEY=<openssl rand -hex 32>
 ```
 
 Xem đầy đủ các biến và giải thích tại `packages/server/.env.example`.
@@ -190,7 +248,7 @@ Khi thêm `process.env.MY_NEW_VAR` vào code:
 
 ---
 
-## 5. Coding convention
+## 6. Coding convention
 
 ### Ngôn ngữ
 
@@ -221,11 +279,11 @@ Khi thêm `process.env.MY_NEW_VAR` vào code:
 
 ---
 
-## 6. Kiểm tra trước khi tạo PR
+## 7. Kiểm tra trước khi tạo PR
 
 ```bash
-# Type check toàn monorepo
-pnpm typecheck
+# Type check toàn monorepo (bao gồm tất cả packages)
+pnpm -r typecheck
 
 # Test unit
 pnpm test
@@ -250,3 +308,18 @@ Husky đã được cấu hình để tự động lint-check các file TypeScri
 # Bỏ qua hook trong trường hợp khẩn cấp (không nên dùng thường xuyên)
 git commit --no-verify -m "fix: urgent hotfix"
 ```
+
+---
+
+## 8. Troubleshooting
+
+| Triệu chứng | Nguyên nhân | Fix |
+|---|---|---|
+| Port 5173 hoặc 8910 đã dùng | Process cũ chưa tắt | `npx kill-port 5173 8910` |
+| Ollama tải model >30 phút | Mạng chậm | Theo dõi: `docker compose -f docker/docker-compose.yml logs -f ollama-pull` |
+| Migration fail "already exists" | DB cũ không xoá hết | `pnpm db:setup` (reset + migrate lại) |
+| Husky hook không chạy trên Windows | Git dùng CMD thiếu `sh` | Dùng **Git Bash** hoặc WSL để commit |
+| `pnpm install` fail khi build `isolated-vm` | Thiếu C++ build tools | Cài [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) |
+| `ENCRYPTION_KEY` lỗi "not 32 bytes" | Key quá ngắn | `openssl rand -hex 32` → ra đúng 64 ký tự hex |
+| `check:journal` báo duplicate `when` | Hai migration trùng timestamp | Xem mục [Migration conflict](#khi-có-conflict-migration-giữa-2-dev) |
+| `tsx: command not found` khi chạy server | tsx chưa cài | `pnpm install` lại; nếu vẫn lỗi: `pnpm add -D tsx` ở packages/server |
