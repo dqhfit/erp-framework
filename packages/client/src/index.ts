@@ -50,6 +50,17 @@ export {
   type SavedViewSaveInput,
 } from "./saved-views";
 export {
+  createRecordCommentsClient,
+  type RecordCommentsClient,
+  type RecordComment,
+} from "./record-comments";
+export {
+  createEntityWebhooksClient,
+  type EntityWebhooksClient,
+  type EntityWebhook,
+  type EntityWebhookSaveInput,
+} from "./entity-webhooks";
+export {
   createEmbedClient,
   type EmbedClient,
   type EmbedScope,

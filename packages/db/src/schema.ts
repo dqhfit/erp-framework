@@ -137,6 +137,46 @@ export const entityRecords = pgTable("entity_records", {
     .using("gin", sql`${t.data} jsonb_path_ops`),
 }));
 
+/* Comments per record + nested replies (parent_id self-ref). Soft delete. */
+export const recordComments = pgTable("record_comments", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  recordId: uuid("record_id").notNull(),
+  parentId: uuid("parent_id"),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (t) => ({
+  recordIdx: index("record_comments_record_idx").on(t.recordId),
+  parentIdx: index("record_comments_parent_idx").on(t.parentId),
+}));
+
+/* Outgoing webhooks per entity — fire-and-forget HTTP POST khi event
+   create/update/delete. HMAC-SHA256 signature qua secret + body. */
+export const entityWebhooks = pgTable("entity_webhooks", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  entityId: uuid("entity_id").notNull()
+    .references(() => entities.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  events: jsonb("events").notNull().default(sql`'["create","update","delete"]'::jsonb`),
+  headers: jsonb("headers"),
+  secret: text("secret"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastFiredAt: timestamp("last_fired_at"),
+  lastStatus: integer("last_status"),
+}, (t) => ({
+  entityIdx: index("entity_webhooks_entity_idx").on(t.entityId),
+}));
+
 /* Lịch sử bản ghi entity — mỗi update tạo 1 row. Cho phép audit (ai,
    khi nào, đổi gì từ X→Y) + revert về version trước. */
 export const entityRecordVersions = pgTable("entity_record_versions", {

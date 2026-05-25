@@ -26,6 +26,8 @@ import { pluginsRouter } from "./plugins-router";
 import { proceduresRouter } from "./procedures-router";
 import { enumsRouter } from "./enums-router";
 import { savedViewsRouter } from "./saved-views-router";
+import { recordCommentsRouter } from "./record-comments-router";
+import { entityWebhooksRouter, fireEntityWebhooks } from "./entity-webhooks-router";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -803,6 +805,11 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         }).returning();
         if (!row) return row;
+        // Fire outgoing webhooks (best-effort, không block).
+        fireEntityWebhooks(ctx.db, {
+          companyId: ctx.user.companyId, entityId: input.entityId,
+          event: "create", record: row,
+        });
         // Ẩn field user không có quyền read trước khi trả response.
         return {
           ...row,
@@ -879,12 +886,22 @@ export const appRouter = router({
             console.error("[records.update] ghi version lỗi:", (e as Error).message);
           }
         }
+        if (row) {
+          fireEntityWebhooks(ctx.db, {
+            companyId: ctx.user.companyId, entityId: rec.entityId,
+            event: "update", record: row, before: oldData, after: row.data,
+          });
+        }
         return row;
       }),
 
     delete: rbacProcedure("delete", "entity")
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
+        // Lấy record trước khi xoá để gửi webhook.
+        const [before] = await ctx.db.select().from(entityRecords)
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
         // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
         // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
         await applyCascadeOnDelete(
@@ -894,6 +911,12 @@ export const appRouter = router({
           .set({ deletedAt: new Date(), updatedAt: new Date() })
           .where(and(eq(entityRecords.id, input),
             eq(entityRecords.companyId, ctx.user.companyId)));
+        if (before) {
+          fireEntityWebhooks(ctx.db, {
+            companyId: ctx.user.companyId, entityId: before.entityId,
+            event: "delete", record: before,
+          });
+        }
       }),
 
     backRefs: rbacProcedure("view", "entity")
@@ -1605,6 +1628,12 @@ export const appRouter = router({
 
   /* ── Saved views — per-user query + columns combo cho entity ── */
   savedViews: savedViewsRouter,
+
+  /* ── Record comments + replies (collaboration) ── */
+  recordComments: recordCommentsRouter,
+
+  /* ── Entity webhooks — outgoing HTTP POST trên record event ── */
+  entityWebhooks: entityWebhooksRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,
