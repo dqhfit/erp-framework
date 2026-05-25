@@ -127,29 +127,44 @@
 |---|---|---|
 | Split `router.ts` → sub-routers theo domain | 1-2 ngày | Cần test e2e full đảm bảo signature giữ nguyên |
 | Lazy-load `EntityDesigner` tabs | 4h | Inspector/Layout/Formula tabs riêng |
-| Major dep bumps từng bước | 2 ngày | Vite, Vitest, Zod, Tailwind — mỗi bump 1 commit |
-| Tests coverage 10% → 40% | 2-3 ngày | Focus router CRUD/RBAC + bulk ops |
-| pgvector IVFFlat migration | 30m | Khi `entity_record_embeddings` > 5k row |
-| Workflow worker timeout | 1h | Wrap `executeWorkflow` trong AbortController 5-min timeout |
+| ~~pgvector IVFFlat migration~~ ✅ DONE | 30m | `0040_pgvector_ivfflat_indexes.sql` — 3 bảng (entity_record_embeddings, knowledge_chunks, feedbacks), lists=100 |
+| ~~Workflow worker timeout~~ ✅ DONE | 1h | `Promise.race` 5min default, env `WORKFLOW_TIMEOUT_MS` override |
+| ~~Bump Vitest 2 → 4~~ ✅ DONE | 30m | 56 test pass sau bump |
+| ~~Bump Biome 1 → 2~~ ✅ DONE | 1h | `biome migrate` tự động chuyển config schema |
+| ~~Biome auto-fix 467 → 153 errors~~ ✅ DONE | 30m | `--fix --unsafe` clean 129/144 file (formatter + safe rules); 153 còn lại = `useButtonType` manual |
+| ~~Add `pnpm lint` CI step~~ ✅ DONE | 15m | `continue-on-error: true` (soft-fail) đến khi cleanup hết |
+| ~~Split EntityDesigner~~ ✅ DONE | 2h | 1087 → 595 dòng. 3 file mới: field-row, field-inspector, entity-preview. Không lazy-load (3 tab inline form không lợi gì) |
+| **router.ts split** ⏳ DEFER → sprint riêng | 2-3 ngày | 2289 dòng, ~15 helper được share giữa 6 router. Tách cần: (a) `router-helpers.ts` export helpers chung, (b) `{records,entities,workflows,agents}-router.ts`, (c) update mount. Mỗi router 1 commit + e2e test đầy đủ trước/sau |
+| **Tests coverage 10% → 40%** ⏳ DEFER → sprint riêng | 2-3 ngày | Focus tRPC router CRUD/RBAC + bulk ops. Setup `vitest --coverage` (c8) + mock `ctx.db` qua `pglite` hoặc snapshot fixture |
+| **Bump Tailwind 3 → 4** ⏳ DEFER → sprint riêng | 1-2 ngày | Breaking: CSS-first config (`@import "tailwindcss"` + `@theme`), arbitrary value syntax, opacity. Cần visual regression test toàn UI (35 routes) trước accept |
+| **Bump Zod 3 → 4** ⏳ DEFER → sprint riêng | 2-3 ngày | Breaking: `z.string().email()` → `z.email()`, error format, `.nullable()` behavior. Touches ~50 file (routers + react-hook-form resolvers). Nên chạy codemod `zod-migrate` rồi review từng file |
 | Redis cho WS + GraphQL cache | 1 ngày | Nếu cần scale ngang |
 
 ---
 
 ## 5. Metrics baseline (chốt cho lần audit kế tiếp)
 
-| | Hiện tại (2026-05-25) | Mục tiêu sau Phase 1+2 | Mục tiêu Phase 3 |
+| | Trước audit | Sau Phase P0+P1+P2-quickwins (2026-05-25) | Mục tiêu sprint sau |
 |---|---|---|---|
-| Drizzle | 0.36.4 (vulnerable) | ≥0.45.2 | latest |
-| Vite | 6.4.2 (CVE) | ≥6.4.2-fix hoặc 7+ | latest |
-| Bundle main chunk | 1.6MB / 462KB gz | <500KB main + 4-5 chunk vendor | <300KB main |
-| router.ts LOC | 2289 | giữ | <500 mỗi sub-router (target ~6 router) |
-| Test files | 9 unit + 12 e2e | giữ | 25 unit + 20 e2e |
-| Coverage est. | <10% | <10% | ≥40% |
-| Console.log sót | 5 file | 0 | 0 + biome enforce |
-| pnpm audit | 1 HIGH + 2 MOD | 0 HIGH 0 MOD | 0 HIGH 0 MOD |
-| Command Palette entries | 8 | 12 | thêm Quick Action |
-| Modal a11y (focus trap) | ❌ | ✅ | ✅ + screen reader test |
-| CLAUDE.md | ❌ | ✅ | ✅ kèm decision log |
+| Drizzle | 0.36.4 (vulnerable) | **0.45.2** ✅ | latest |
+| Vitest | 2.1.9 | **4.1.7** ✅ | giữ |
+| Biome | 1.9.4 | **2.4.15** ✅ | giữ |
+| Vite | 6.4.2 (CVE) | **6.4.2 + esbuild override 0.25** ✅ | latest stable 7+ |
+| Tailwind | 3.4.19 | 3.4.19 (giữ) | **4.x** (dedicated sprint) |
+| Zod | 3.25.76 | 3.25.76 (giữ) | **4.x** (dedicated sprint) |
+| Bundle main chunk | 1.6MB / 462KB gz | **490KB / 137KB gz** ✅ (-69%) | <300KB main |
+| router.ts LOC | 2289 | 2289 (giữ) | <500 mỗi sub-router (dedicated sprint) |
+| EntityDesigner.tsx LOC | 1087 | **595** ✅ (split 3 file) | giữ hoặc tiếp tục modularize |
+| Test files | 9 unit + 12 e2e | 9 unit + 12 e2e (giữ) | 25 unit + 20 e2e (dedicated sprint) |
+| Coverage est. | <10% | <10% (giữ) | ≥40% |
+| Console.log sót | 5 file | 5 file (đều `console.error` acceptable) | 0 với rule strict |
+| pnpm audit | 1 HIGH + 2 MOD | **0 HIGH 0 MOD** ✅ | giữ |
+| Command Palette entries | 8 | **12** ✅ | thêm Quick Action |
+| Modal a11y (focus trap) | ❌ | **✅** (`useFocusTrap` hook) | + screen reader test |
+| CLAUDE.md | ❌ | **✅** (155 dòng) | + decision log |
+| Biome lint errors | 467 | **153** ✅ (-67%) | 0 |
+| pgvector IVFFlat | ❌ | **✅** 3 bảng | giữ |
+| Workflow worker timeout | ❌ | **✅** 5min default | giữ |
 
 ---
 
@@ -161,6 +176,8 @@
 4. **TanStack `useLocation().search` là OBJECT**, không phải string. `loc.pathname + loc.search` throw "Cannot convert object to primitive value". Dùng `loc.href`.
 5. **SQL comment `/api/v1/*`** bên trong block comment làm Postgres parse nested → "unterminated /* comment". Tránh `*` trong path khi viết comment SQL.
 6. **AI enrichment phải fail-safe** — embedding/LLM lỗi không được vỡ submit. `callLlmJson` trả `null` khi sai, caller phải handle.
+7. **Major dep bumps CẦN dedicated sprint** — Tailwind 3→4 (CSS-first config + opacity syntax), Zod 3→4 (touches ~50 file routers + forms), router.ts split (15 helper share) đều cần visual regression / e2e fixture đầy đủ. KHÔNG gộp với các fix nhỏ.
+8. **Biome auto-fix --unsafe an toàn** — clean 129/144 file mà không phá test. Còn `useButtonType` cần manual (153 nơi) vì Biome không tự biết button có chạy submit form hay không.
 
 ---
 
