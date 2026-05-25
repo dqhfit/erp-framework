@@ -1,11 +1,11 @@
-/* 0034_field_ops.sql — Real-time co-edit operations log.
-   Mỗi op text trên 1 (record, field) lưu theo seq tăng dần. Server
-   apply OT (operational transform) đơn giản: insert/delete tại pos.
-   Khi 2 user edit cùng lúc, server xử lý tuần tự theo seq, không
-   conflict miễn ops gửi đúng baseSeq.
+/* 0034_field_ops.sql -- Real-time co-edit operations log.
+   Moi op text tren 1 (record, field) luu theo seq tang dan. Server
+   apply OT (operational transform) don gian: insert/delete tai pos.
+   Khi 2 user edit cung luc, server xu ly tuan tu theo seq, khong
+   conflict mien ops gui dung baseSeq.
 
-   Sau N op, gộp lại snapshot vào entity_records.data (debounce 5s
-   sau im lặng) để giữ row chính canonical. */
+   Sau N op, gop lai snapshot vao entity_records.data (debounce 5s
+   sau im lang) de giu row chinh canonical. */
 
 CREATE TABLE IF NOT EXISTS "record_field_ops" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

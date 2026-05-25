@@ -1,6 +1,6 @@
-/* 0004_agent_heartbeat.sql — Heartbeat: agent tự thức dậy theo
-   lịch cron và hành động (khác cron chạy workflow). Bảng mới, không
-   cần backfill. */
+/* 0004_agent_heartbeat.sql -- Heartbeat: agent tu thuc day theo
+   lich cron va hanh dong (khac cron chay workflow). Bang moi, khong
+   can backfill. */
 
 CREATE TABLE IF NOT EXISTS "agent_heartbeats" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

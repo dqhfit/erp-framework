@@ -96,15 +96,190 @@
     {
       "idx": 13,
       "version": "7",
-      "when": 1780700000000,
-      "tag": "0030_tools",
+      "when": 1782600000000,
+      "tag": "0013_procedures",
       "breakpoints": true
     },
     {
       "idx": 14,
       "version": "7",
-      "when": 1780800000000,
+      "when": 1782700000000,
+      "tag": "0014_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1780900000000,
+      "tag": "0015_record_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1781000000000,
+      "tag": "0016_record_fts",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781100000000,
+      "tag": "0017_field_governance",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781200000000,
+      "tag": "0018_saved_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781300000000,
+      "tag": "0019_record_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781400000000,
+      "tag": "0020_entity_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781500000000,
+      "tag": "0021_api_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781600000000,
+      "tag": "0022_record_embeddings",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781700000000,
+      "tag": "0023_entity_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781800000000,
+      "tag": "0024_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0025_record_presence",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0026_rollup_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782100000000,
+      "tag": "0027_perf_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0028_approval_link_timeseries",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782300000000,
+      "tag": "0029_materialized_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782400000000,
+      "tag": "0030_tools",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782500000000,
       "tag": "0031_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782600000001,
+      "tag": "0032_oauth_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1782700000000,
+      "tag": "0033_audit_immutable",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1782800000000,
+      "tag": "0034_pgcrypto",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1782900000000,
+      "tag": "0035_cdc_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1783000000000,
+      "tag": "0036_field_ops",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1783100000000,
+      "tag": "0037_encryption_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783200000000,
+      "tag": "0038_workflow_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783300000000,
+      "tag": "0039_compliance_theming",
       "breakpoints": true
     }
   ]

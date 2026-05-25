@@ -1,7 +1,7 @@
-/* 0029_materialized_views.sql — Custom materialized view per company.
+/* 0029_materialized_views.sql -- Custom materialized view per company.
    Pre-compute heavy aggregation (dashboard summary, monthly report)
-   theo schedule cron; cache data JSONB. Cho phép dashboard load nhanh
-   mà không phải tính lại mỗi lần. */
+   theo schedule cron; cache data JSONB. Cho phep dashboard load nhanh
+   ma khong phai tinh lai moi lan. */
 
 CREATE TABLE IF NOT EXISTS "entity_materialized_views" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -31,7 +31,7 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "emv_company_name_idx" ON "entity_materialized_views" ("company_id", "name");
 --> statement-breakpoint
 
-/* OAuth client_credentials cho api_keys — client_id để identify ngoài
+/* OAuth client_credentials cho api_keys -- client_id de identify ngoai
    key plaintext (cho dev UX), client_secret_hash cho rotation. */
 ALTER TABLE "api_keys" ADD COLUMN IF NOT EXISTS "client_id" text;
 --> statement-breakpoint

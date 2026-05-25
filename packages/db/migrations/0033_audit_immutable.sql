@@ -1,8 +1,8 @@
-/* 0031_audit_immutable.sql — Write-once audit log cho compliance.
-   activity_log hiện cho phép UPDATE/DELETE (admin có thể che giấu).
-   audit_log_immutable: trigger BEFORE UPDATE OR DELETE → RAISE EXCEPTION
-   → không ai (kể cả superuser app role) sửa/xoá được sau INSERT.
-   Production cần kết hợp PG role grants để siết hơn nữa. */
+/* 0031_audit_immutable.sql -- Write-once audit log cho compliance.
+   activity_log hien cho phep UPDATE/DELETE (admin co the che giau).
+   audit_log_immutable: trigger BEFORE UPDATE OR DELETE -> RAISE EXCEPTION
+   -> khong ai (ke ca superuser app role) sua/xoa duoc sau INSERT.
+   Production can ket hop PG role grants de siet hon nua. */
 
 CREATE TABLE IF NOT EXISTS "audit_log_immutable" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -20,14 +20,14 @@ CREATE TABLE IF NOT EXISTS "audit_log_immutable" (
 );
 --> statement-breakpoint
 
-/* Trigger function — ném exception nếu UPDATE/DELETE. INSERT vẫn OK. */
+/* Trigger function -- nem exception neu UPDATE/DELETE. INSERT van OK. */
 CREATE OR REPLACE FUNCTION audit_log_immutable_guard()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'UPDATE' THEN
-    RAISE EXCEPTION 'audit_log_immutable: UPDATE bị cấm (write-once)';
+    RAISE EXCEPTION 'audit_log_immutable: UPDATE bi cam (write-once)';
   ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'audit_log_immutable: DELETE bị cấm (write-once)';
+    RAISE EXCEPTION 'audit_log_immutable: DELETE bi cam (write-once)';
   END IF;
   RETURN NEW;
 END;

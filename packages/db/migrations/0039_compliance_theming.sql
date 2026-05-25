@@ -1,6 +1,6 @@
-/* 0037_compliance_theming.sql — Per-tenant theming + audit report metadata.
+/* 0037_compliance_theming.sql -- Per-tenant theming + audit report metadata.
    - companies.theme JSONB: { primaryColor, logoUrl, productName, faviconUrl }.
-   - audit_reports tracking: ai/khi nào export báo cáo (immutable evidence). */
+   - audit_reports tracking: ai/khi nao export bao cao (immutable evidence). */
 
 ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "theme" jsonb;
 --> statement-breakpoint

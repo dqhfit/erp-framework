@@ -1,10 +1,10 @@
-/* 0007_knowledge_base.sql — Knowledge Base (RAG).
-   - Bật extension pgvector (image DB phải là pgvector/pgvector:pg18).
-   - llm_profiles.kind: phân biệt profile chat với profile embedding.
-   - knowledge_sources + knowledge_chunks: nguồn tri thức + đoạn có
-     embedding vector(768). Index HNSW cosine cho tra cứu ANN —
-     drizzle-kit không sinh kiểu index này nên viết tay ở đây.
-   Bảng mới, không cần backfill. */
+/* 0007_knowledge_base.sql -- Knowledge Base (RAG).
+   - Bat extension pgvector (image DB phai la pgvector/pgvector:pg18).
+   - llm_profiles.kind: phan biet profile chat voi profile embedding.
+   - knowledge_sources + knowledge_chunks: nguon tri thuc + doan co
+     embedding vector(768). Index HNSW cosine cho tra cuu ANN --
+     drizzle-kit khong sinh kieu index nay nen viet tay o day.
+   Bang moi, khong can backfill. */
 
 CREATE EXTENSION IF NOT EXISTS vector;
 --> statement-breakpoint

@@ -1,5 +1,5 @@
-/* 0025_record_presence.sql — Presence "đang xem" per record per user.
-   UPSERT mỗi lần user mở record (ping). TTL implicit 30s qua filter
+/* 0025_record_presence.sql -- Presence "dang xem" per record per user.
+   UPSERT moi lan user mo record (ping). TTL implicit 30s qua filter
    server (WHERE last_seen > now() - interval '30 seconds'). */
 
 CREATE TABLE IF NOT EXISTS "record_presence" (

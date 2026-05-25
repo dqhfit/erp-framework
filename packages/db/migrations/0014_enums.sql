@@ -1,6 +1,6 @@
-/* 0014_enums.sql — Reusable enum (option set) per company, đa ngôn ngữ.
+/* 0014_enums.sql -- Reusable enum (option set) per company, da ngon ngu.
    values JSONB: Array<{ value: string, label: string, labelEn?: string }>.
-   Field type "enum"/"multi-enum" tham chiếu qua enum_id. */
+   Field type "enum"/"multi-enum" tham chieu qua enum_id. */
 
 CREATE TABLE IF NOT EXISTS "enums" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

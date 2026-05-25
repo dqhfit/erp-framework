@@ -1,6 +1,6 @@
-/* 0013_procedures.sql — Native procedure registry.
-   JS procedure đăng ký runtime, chạy server qua isolated-vm với
-   db/entity bindings. Thay dần stored proc MSSQL bên MCP. */
+/* 0013_procedures.sql -- Native procedure registry.
+   JS procedure dang ky runtime, chay server qua isolated-vm voi
+   db/entity bindings. Thay dan stored proc MSSQL ben MCP. */
 
 CREATE TABLE IF NOT EXISTS "procedures" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

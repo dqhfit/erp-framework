@@ -1,7 +1,7 @@
-/* 0035_encryption_keys.sql — Encryption key rotation registry.
-   active = true cho key dùng để encrypt mới; decrypt thử mọi key
-   (theo created_at DESC) để support data đã encrypt với key cũ.
-   key_material chỉ bộ phận cho dev — production lấy từ KMS / vault. */
+/* 0035_encryption_keys.sql -- Encryption key rotation registry.
+   active = true cho key dung de encrypt moi; decrypt thu moi key
+   (theo created_at DESC) de support data da encrypt voi key cu.
+   key_material chi bo phan cho dev -- production lay tu KMS / vault. */
 
 CREATE TABLE IF NOT EXISTS "encryption_keys" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

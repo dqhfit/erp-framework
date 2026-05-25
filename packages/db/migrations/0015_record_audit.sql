@@ -1,8 +1,8 @@
-/* 0015_record_audit.sql — Audit & Lifecycle cho entity_records.
-   - deleted_at: soft delete; restore khả thi.
-   - version: optimistic lock counter (tăng mỗi update).
-   - entity_record_versions: lưu nguyên snapshot + diff per-field
-     (cũ → mới) mỗi lần update. Đủ cho audit + revert. */
+/* 0015_record_audit.sql -- Audit & Lifecycle cho entity_records.
+   - deleted_at: soft delete; restore kha thi.
+   - version: optimistic lock counter (tang moi update).
+   - entity_record_versions: luu nguyen snapshot + diff per-field
+     (cu -> moi) moi lan update. Du cho audit + revert. */
 
 ALTER TABLE "entity_records" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;
 --> statement-breakpoint

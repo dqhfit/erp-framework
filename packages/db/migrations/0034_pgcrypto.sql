@@ -1,15 +1,15 @@
-/* 0032_pgcrypto.sql — Native column encryption qua pgcrypto.
-   Bổ sung cho app-layer encryption (S8 crypto.ts) — caller có thể chọn
-   layer nào tuỳ workload. pgcrypto: tốc độ cao hơn cho large data,
-   không cần round-trip qua Node. App-layer: portable hơn (không cần
-   extension), key mgmt linh hoạt hơn. */
+/* 0032_pgcrypto.sql -- Native column encryption qua pgcrypto.
+   Bo sung cho app-layer encryption (S8 crypto.ts) -- caller co the chon
+   layer nao tuy workload. pgcrypto: toc do cao hon cho large data,
+   khong can round-trip qua Node. App-layer: portable hon (khong can
+   extension), key mgmt linh hoat hon. */
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 --> statement-breakpoint
 
-/* Helper function — wrap pgp_sym_encrypt với key derived từ
-   pgsetting hoặc tham số. Caller pass key qua second arg.
-   Trả NULL khi input rỗng. */
+/* Helper function -- wrap pgp_sym_encrypt voi key derived tu
+   pgsetting hoac tham so. Caller pass key qua second arg.
+   Tra NULL khi input rong. */
 CREATE OR REPLACE FUNCTION erp_encrypt(plain text, encryption_key text)
 RETURNS text AS $$
 BEGIN
@@ -25,7 +25,7 @@ BEGIN
   IF cipher IS NULL OR cipher = '' THEN RETURN NULL; END IF;
   RETURN pgp_sym_decrypt(decode(cipher, 'base64'), encryption_key);
 EXCEPTION WHEN OTHERS THEN
-  -- Sai key hoặc data corrupted → trả NULL để không leak info.
+  -- Sai key hoac data corrupted -> tra NULL de khong leak info.
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;

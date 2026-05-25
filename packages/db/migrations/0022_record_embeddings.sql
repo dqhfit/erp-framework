@@ -1,7 +1,7 @@
-/* 0022_record_embeddings.sql — Embedding semantic search per record.
-   1 record = 1 embedding tổng hợp từ các field marked embedSearchable.
-   Dùng pgvector (đã có ở migration 0007). 768 chiều cho nomic-embed-text
-   của Ollama. Khác chiều adapter → migration extra cần plan. */
+/* 0022_record_embeddings.sql -- Embedding semantic search per record.
+   1 record = 1 embedding tong hop tu cac field marked embedSearchable.
+   Dung pgvector (da co o migration 0007). 768 chieu cho nomic-embed-text
+   cua Ollama. Khac chieu adapter -> migration extra can plan. */
 
 CREATE TABLE IF NOT EXISTS "entity_record_embeddings" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -29,5 +29,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ere_record_uidx" ON "entity_record_embeddings
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "ere_entity_idx" ON "entity_record_embeddings" ("entity_id");
 --> statement-breakpoint
-/* IVFFlat index — pgvector require analyse trước khi build hiệu quả; bỏ
-   qua ở v1 (recordset nhỏ vẫn nhanh với sequential scan). */
+/* IVFFlat index -- pgvector require analyse truoc khi build hieu qua; bo
+   qua o v1 (recordset nho van nhanh voi sequential scan). */

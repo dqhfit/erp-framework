@@ -1,7 +1,7 @@
-/* 0018_saved_views.sql — Saved views per entity per user.
-   Mỗi view lưu query (filter/sort/q) + columns config; user mở view
-   nào thì áp dụng — KHÔNG phải re-filter mỗi lần. is_default = mặc
-   định mở entity sẽ load view này. */
+/* 0018_saved_views.sql -- Saved views per entity per user.
+   Moi view luu query (filter/sort/q) + columns config; user mo view
+   nao thi ap dung -- KHONG phai re-filter moi lan. is_default = mac
+   dinh mo entity se load view nay. */
 
 CREATE TABLE IF NOT EXISTS "saved_views" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

@@ -1,20 +1,20 @@
-/* 0010_backup.sql — Backup lên Google Drive qua UI/cron.
-   Mỗi công ty cấu hình riêng (service account key được mã hoá ở
-   app layer trước khi lưu — xem crypto.ts). Upload đi 2 đường:
-   - DB: pg_dump custom-format → 1 file mới mỗi lần backup.
-   - Files: thư mục /data/uploads sync 1-1 vào folder con uploads/
-     trong Drive (incremental — không re-upload file đã có/không đổi).
-   `upload_sync_state` cache (path, size, mtime, drive_file_id) để
-   tránh quét lại Drive mỗi lần. */
+/* 0010_backup.sql -- Backup len Google Drive qua UI/cron.
+   Moi cong ty cau hinh rieng (service account key duoc ma hoa o
+   app layer truoc khi luu -- xem crypto.ts). Upload di 2 duong:
+   - DB: pg_dump custom-format -> 1 file moi moi lan backup.
+   - Files: thu muc /data/uploads sync 1-1 vao folder con uploads/
+     trong Drive (incremental -- khong re-upload file da co/khong doi).
+   `upload_sync_state` cache (path, size, mtime, drive_file_id) de
+   tranh quet lai Drive moi lan. */
 
 CREATE TABLE IF NOT EXISTS "backup_config" (
   "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "company_id" uuid NOT NULL REFERENCES "companies"("id") ON DELETE CASCADE,
-  /* JSON service account key đã mã hoá AES-256-GCM (xem crypto.ts). */
+  /* JSON service account key da ma hoa AES-256-GCM (xem crypto.ts). */
   "gdrive_key_enc" text NOT NULL,
-  /* ID thư mục Drive đã share quyền Editor cho service account. */
+  /* ID thu muc Drive da share quyen Editor cho service account. */
   "gdrive_folder_id" text NOT NULL,
-  /* Cron expr (5 trường). NULL = không tự động, chỉ chạy thủ công. */
+  /* Cron expr (5 truong). NULL = khong tu dong, chi chay thu cong. */
   "schedule_cron" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "updated_at" timestamp NOT NULL DEFAULT now()
@@ -39,16 +39,16 @@ CREATE TABLE IF NOT EXISTS "backup_runs" (
 CREATE INDEX IF NOT EXISTS "backup_runs_company_started_idx"
   ON "backup_runs"("company_id", "started_at" DESC);
 
-/* Cache mapping file local → file ở Drive. Lookup nhanh khi sync —
-   không cần list Drive mỗi lần để dò file đã upload. */
+/* Cache mapping file local -> file o Drive. Lookup nhanh khi sync --
+   khong can list Drive moi lan de do file da upload. */
 CREATE TABLE IF NOT EXISTS "upload_sync_state" (
   "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "company_id" uuid NOT NULL REFERENCES "companies"("id") ON DELETE CASCADE,
-  /* Đường dẫn tương đối trong /data/uploads (vd "company-uuid/foo.pdf"). */
+  /* Duong dan tuong doi trong /data/uploads (vd "company-uuid/foo.pdf"). */
   "rel_path" text NOT NULL,
   "drive_file_id" text NOT NULL,
   "size" bigint NOT NULL,
-  /* mtime của file lúc upload — đổi → re-upload. */
+  /* mtime cua file luc upload -- doi -> re-upload. */
   "mtime" timestamp NOT NULL,
   "synced_at" timestamp NOT NULL DEFAULT now()
 );

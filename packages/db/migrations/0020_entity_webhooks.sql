@@ -1,7 +1,7 @@
-/* 0020_entity_webhooks.sql — Outgoing webhooks per entity (record events).
-   Server fire-and-forget HTTP POST khi events khớp với create/update/delete.
-   secret_hash dùng HMAC-SHA256 ký body, gửi qua header X-ERP-Signature.
-   Đơn giản hơn workflow webhook trigger (không cần thiết kế graph). */
+/* 0020_entity_webhooks.sql -- Outgoing webhooks per entity (record events).
+   Server fire-and-forget HTTP POST khi events khop voi create/update/delete.
+   secret_hash dung HMAC-SHA256 ky body, gui qua header X-ERP-Signature.
+   Don gian hon workflow webhook trigger (khong can thiet ke graph). */
 
 CREATE TABLE IF NOT EXISTS "entity_webhooks" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

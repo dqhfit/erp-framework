@@ -1,10 +1,10 @@
-/* 0009_iot.sql — Module IoT.
-   - Mở rộng workflow_trigger: thêm 'iot_telemetry' để workflow kích
-     hoạt khi nhận telemetry khớp filter.
-   - Thêm cột trigger_config (jsonb) vào workflows — chứa filter
-     device/channel cho iot_telemetry (và cấu hình trigger khác sau này).
-   - 3 bảng mới: iot_devices (registry), iot_telemetry (stream
-     append-only), iot_commands (queue gửi xuống thiết bị).
+/* 0009_iot.sql -- Module IoT.
+   - Mo rong workflow_trigger: them 'iot_telemetry' de workflow kich
+     hoat khi nhan telemetry khop filter.
+   - Them cot trigger_config (jsonb) vao workflows -- chua filter
+     device/channel cho iot_telemetry (va cau hinh trigger khac sau nay).
+   - 3 bang moi: iot_devices (registry), iot_telemetry (stream
+     append-only), iot_commands (queue gui xuong thiet bi).
    Multi-tenant qua company_id. */
 
 ALTER TYPE "workflow_trigger" ADD VALUE IF NOT EXISTS 'iot_telemetry';
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "iot_devices" (
   "company_id" uuid NOT NULL REFERENCES "companies"("id") ON DELETE CASCADE,
   "name" text NOT NULL,
   "label" text,
-  /* Hash SHA-256 hex của device key — key chỉ hiện 1 lần lúc tạo. */
+  /* Hash SHA-256 hex cua device key -- key chi hien 1 lan luc tao. */
   "device_key_hash" text NOT NULL,
   "meta" jsonb NOT NULL DEFAULT '{}'::jsonb,
   "last_seen_at" timestamp,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS "iot_commands" (
   "company_id" uuid NOT NULL REFERENCES "companies"("id") ON DELETE CASCADE,
   "device_id" uuid NOT NULL REFERENCES "iot_devices"("id") ON DELETE CASCADE,
   "payload" jsonb NOT NULL,
-  /* pending → sent → ack | error */
+  /* pending -> sent -> ack | error */
   "status" text NOT NULL DEFAULT 'pending',
   "result" jsonb,
   "sent_at" timestamp,

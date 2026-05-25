@@ -1,8 +1,8 @@
-/* 0030_tools.sql — Tool system tables.
-   `tools` = artifact ngoài monorepo (web-app/mcp-server/cli/plugin)
-   discover qua TOOLS_DIR auto-scan hoặc register-remote.
+/* 0030_tools.sql -- Tool system tables.
+   `tools` = artifact ngoai monorepo (web-app/mcp-server/cli/plugin)
+   discover qua TOOLS_DIR auto-scan hoac register-remote.
    `company_tools` = per-tenant enable + config (multi-tenant pattern).
-   Cả hai dùng IF NOT EXISTS để an toàn khi journal & DB lệch nhau. */
+   Ca hai dung IF NOT EXISTS de an toan khi journal & DB lech nhau. */
 
 CREATE TABLE IF NOT EXISTS "tools" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

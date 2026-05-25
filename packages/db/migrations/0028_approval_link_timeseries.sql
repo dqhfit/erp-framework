@@ -1,12 +1,12 @@
-/* 0028_approval_link_timeseries.sql — Link approval với entity record
-   + bảng time-series cho field type "timeseries".
+/* 0028_approval_link_timeseries.sql -- Link approval voi entity record
+   + bang time-series cho field type "timeseries".
 
-   approval_requests thêm:
-   - entity_id + record_id: link tới record cụ thể.
-   - patch: JSONB chứa thay đổi pending — server apply khi approve.
+   approval_requests them:
+   - entity_id + record_id: link toi record cu the.
+   - patch: JSONB chua thay doi pending -- server apply khi approve.
 
-   entity_record_timeseries: lưu giá trị theo thời gian per (record, field).
-   Dùng cho temperature/sensor/stock-price/heart-rate. */
+   entity_record_timeseries: luu gia tri theo thoi gian per (record, field).
+   Dung cho temperature/sensor/stock-price/heart-rate. */
 
 ALTER TABLE "approval_requests" ADD COLUMN IF NOT EXISTS "entity_id" uuid;
 --> statement-breakpoint

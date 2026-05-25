@@ -1,5 +1,5 @@
-/* 0019_record_comments.sql — Comments per record + nested replies.
-   parent_id NULL = top-level; non-null = reply tới comment khác. */
+/* 0019_record_comments.sql -- Comments per record + nested replies.
+   parent_id NULL = top-level; non-null = reply toi comment khac. */
 
 CREATE TABLE IF NOT EXISTS "record_comments" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

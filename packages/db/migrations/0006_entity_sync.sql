@@ -1,6 +1,6 @@
-/* 0006_entity_sync.sql — Đồng bộ tự động dữ liệu MCP → entity_records.
-   Bảng mới, không cần backfill. Mỗi entity tối đa 1 cấu hình sync
-   (unique index trên entity_id). */
+/* 0006_entity_sync.sql -- Dong bo tu dong du lieu MCP -> entity_records.
+   Bang moi, khong can backfill. Moi entity toi da 1 cau hinh sync
+   (unique index tren entity_id). */
 
 CREATE TABLE IF NOT EXISTS "entity_syncs" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

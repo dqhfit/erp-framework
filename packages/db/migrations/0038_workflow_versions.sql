@@ -1,7 +1,7 @@
-/* 0036_workflow_versions.sql — Workflow versioning + A/B testing.
-   Mỗi publish snapshot graph vào row mới; nhiều version active song
-   song với weight % cho A/B test. weight=100 = chỉ chạy version này;
-   weight=50 + version khác weight=50 = split 50/50. */
+/* 0036_workflow_versions.sql -- Workflow versioning + A/B testing.
+   Moi publish snapshot graph vao row moi; nhieu version active song
+   song voi weight % cho A/B test. weight=100 = chi chay version nay;
+   weight=50 + version khac weight=50 = split 50/50. */
 
 CREATE TABLE IF NOT EXISTS "workflow_versions" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

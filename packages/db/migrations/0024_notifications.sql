@@ -1,6 +1,6 @@
-/* 0024_notifications.sql — In-app notifications.
+/* 0024_notifications.sql -- In-app notifications.
    kind: mention | comment | webhook_failure | ...
-   target_record_id: link nhảy tới record (entity render đoán từ context). */
+   target_record_id: link nhay toi record (entity render doan tu context). */
 
 CREATE TABLE IF NOT EXISTS "notifications" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

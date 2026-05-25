@@ -1,5 +1,5 @@
-/* 0021_api_keys.sql — API key per company cho REST /api/v1/* endpoints.
-   Key plaintext chỉ hiện 1 lần lúc tạo (sk_xxx); lưu hash để verify.
+/* 0021_api_keys.sql -- API key per company cho REST /api/v1/... endpoints.
+   Key plaintext chi hien 1 lan luc tao (sk_xxx); luu hash de verify.
    scopes JSONB array vd ["entity:customer:read", "entity:order:write"].
    Empty scopes = full access (admin-equivalent). */
 

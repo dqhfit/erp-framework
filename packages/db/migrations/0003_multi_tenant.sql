@@ -1,7 +1,7 @@
-/* 0003_multi_tenant.sql — Đa công ty (multi-tenant).
-   Tạo bảng companies + company_members, gắn company_id vào mọi
-   bảng dữ liệu. Backfill: dữ liệu cũ gán hết vào "Công ty mặc định".
-   Mọi user hiện có trở thành thành viên công ty mặc định, giữ role cũ. */
+/* 0003_multi_tenant.sql -- Da cong ty (multi-tenant).
+   Tao bang companies + company_members, gan company_id vao moi
+   bang du lieu. Backfill: du lieu cu gan het vao "Cong ty mac dinh".
+   Moi user hien co tro thanh thanh vien cong ty mac dinh, giu role cu. */
 
 CREATE TABLE IF NOT EXISTS "companies" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS "companies" (
 );
 --> statement-breakpoint
 INSERT INTO "companies" ("id", "name", "slug")
-VALUES ('00000000-0000-0000-0000-000000000001', 'Công ty mặc định', 'default')
+VALUES ('00000000-0000-0000-0000-000000000001', 'Cong ty mac dinh', 'default')
 ON CONFLICT ("slug") DO NOTHING;
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "company_members" (

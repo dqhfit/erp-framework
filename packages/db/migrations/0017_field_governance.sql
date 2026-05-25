@@ -1,9 +1,9 @@
-/* 0017_field_governance.sql — Field-level governance.
+/* 0017_field_governance.sql -- Field-level governance.
    - entity_sequences: counter atomic cho field type "sequence" (vd
-     INV-001, INV-002…). Unique theo (company, entity_name, field_key).
+     INV-001, INV-002...). Unique theo (company, entity_name, field_key).
      Server SELECT FOR UPDATE + INCREMENT trong transaction.
-   - Field-level RBAC, unique constraint, sequence config được lưu
-     trong entities.fields[] (JSONB), không cần migration cột mới. */
+   - Field-level RBAC, unique constraint, sequence config duoc luu
+     trong entities.fields[] (JSONB), khong can migration cot moi. */
 
 CREATE TABLE IF NOT EXISTS "entity_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

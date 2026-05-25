@@ -1,9 +1,9 @@
-/* 0031_feedback.sql — Feedback system: user báo bất cập + đề xuất.
+/* 0031_feedback.sql -- Feedback system: user bao bat cap + de xuat.
    feedbacks: title/body/suggestion + area + status pipeline + AI fields.
    feedback_votes: upvote idempotent PK (feedback_id, user_id).
-   feedback_comments: comments thread riêng (record_comments FK vào
-   entity_records không trỏ feedback được).
-   Pattern IF NOT EXISTS để an toàn khi journal-DB lệch nhau. */
+   feedback_comments: comments thread rieng (record_comments FK vao
+   entity_records khong tro feedback duoc).
+   Pattern IF NOT EXISTS de an toan khi journal-DB lech nhau. */
 
 DO $$ BEGIN
  CREATE TYPE "feedback_status" AS ENUM ('new', 'in_progress', 'done', 'wontfix');

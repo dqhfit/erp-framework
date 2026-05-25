@@ -1,6 +1,6 @@
-/* 0030_oauth_tokens.sql — OAuth 2.0 refresh tokens + PKCE auth codes.
-   refresh_tokens: long-lived, rotate khi dùng (issue new + revoke cũ).
-   auth_codes: short-lived (10 phút), PKCE code_challenge + verifier. */
+/* 0030_oauth_tokens.sql -- OAuth 2.0 refresh tokens + PKCE auth codes.
+   refresh_tokens: long-lived, rotate khi dung (issue new + revoke cu).
+   auth_codes: short-lived (10 phut), PKCE code_challenge + verifier. */
 
 CREATE TABLE IF NOT EXISTS "oauth_refresh_tokens" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

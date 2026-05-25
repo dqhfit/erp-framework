@@ -1,6 +1,6 @@
-/* 0005 — Governance (approval_requests) + Org chart (agents.manager_id)
+/* 0005 -- Governance (approval_requests) + Org chart (agents.manager_id)
    + Plugin registry (plugin_registrations) + Embed (embed_tokens).
-   Bảng/cột mới, không cần backfill. */
+   Bang/cot moi, khong can backfill. */
 
 DO $$ BEGIN
  CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');

@@ -1,17 +1,17 @@
-/* 0011_user_agent_membership.sql — Gán user ↔ agent (N:M).
+/* 0011_user_agent_membership.sql -- Gan user <-> agent (N:M).
 
-   Bổ sung:
-   - users.primary_agent_id: agent "chính" cá nhân của mỗi user (1:1, optional).
-     AgentPanel/Topbar dùng cột này để bind nhanh khi user mở app.
-   - agent_members(agent_id, user_id, role): pivot N:M phân quyền per cặp.
-     role = owner | operator | observer. Owner mới được toggle isPrivate +
-     thêm/xoá member.
-   - agents.created_by: tracking ai tạo agent (backfill NULL — không phá data cũ).
-   - agents.config sẽ chứa thêm khoá tự do "isPrivate" (boolean) — không cần
-     ALTER, vì cột config đã là jsonb.
+   Bo sung:
+   - users.primary_agent_id: agent "chinh" ca nhan cua moi user (1:1, optional).
+     AgentPanel/Topbar dung cot nay de bind nhanh khi user mo app.
+   - agent_members(agent_id, user_id, role): pivot N:M phan quyen per cap.
+     role = owner | operator | observer. Owner moi duoc toggle isPrivate +
+     them/xoa member.
+   - agents.created_by: tracking ai tao agent (backfill NULL -- khong pha data cu).
+   - agents.config se chua them khoa tu do "isPrivate" (boolean) -- khong can
+     ALTER, vi cot config da la jsonb.
 
-   Hybrid privacy model: agent_members ưu tiên khi agent.config.isPrivate=true;
-   ngược lại fallback về company-RBAC như cũ. Logic ở agent-acl.ts. */
+   Hybrid privacy model: agent_members uu tien khi agent.config.isPrivate=true;
+   nguoc lai fallback ve company-RBAC nhu cu. Logic o agent-acl.ts. */
 
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "primary_agent_id" uuid;
 --> statement-breakpoint

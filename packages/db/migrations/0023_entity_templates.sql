@@ -1,5 +1,5 @@
-/* 0023_entity_templates.sql — Templates print/email per entity.
-   Mustache-like {{field}} substitution với record data. */
+/* 0023_entity_templates.sql -- Templates print/email per entity.
+   Mustache-like {{field}} substitution voi record data. */
 
 CREATE TABLE IF NOT EXISTS "entity_templates" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,

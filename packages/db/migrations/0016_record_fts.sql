@@ -1,17 +1,17 @@
-/* 0016_record_fts.sql — Full-text search cho entity_records.
-   - search_tsv tsvector: cập nhật từ trigger gộp giá trị các field
-     được mark "searchable" trong entities.fields[].searchable=true.
-   - GIN index trên tsvector để truy vấn nhanh @@.
-   - search dùng config "simple" (không stemming) cho đa ngôn ngữ;
-     tiếng Việt unaccent nếu cần làm v2. */
+/* 0016_record_fts.sql -- Full-text search cho entity_records.
+   - search_tsv tsvector: cap nhat tu trigger gop gia tri cac field
+     duoc mark "searchable" trong entities.fields[].searchable=true.
+   - GIN index tren tsvector de truy van nhanh @@.
+   - search dung config "simple" (khong stemming) cho da ngon ngu;
+     tieng Viet unaccent neu can lam v2. */
 
 ALTER TABLE "entity_records" ADD COLUMN IF NOT EXISTS "search_tsv" tsvector;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "entity_records_search_tsv_idx" ON "entity_records" USING gin ("search_tsv");
 --> statement-breakpoint
 
-/* Trigger function — duyệt fields của entity, gom các field searchable
-   thành 1 chuỗi rồi to_tsvector. Nếu không có field nào searchable, set
+/* Trigger function -- duyet fields cua entity, gom cac field searchable
+   thanh 1 chuoi roi to_tsvector. Neu khong co field nao searchable, set
    tsv = NULL. */
 CREATE OR REPLACE FUNCTION entity_records_update_tsv()
 RETURNS TRIGGER AS $$
