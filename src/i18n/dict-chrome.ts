@@ -70,6 +70,16 @@ export const chromeVi: Dict = {
   "auth.error_rate_limit": "Quá nhiều lần thử, vui lòng đợi vài phút.",
   "auth.banner_first_admin_existed": "Tài khoản quản trị đã được khởi tạo. Vui lòng đăng nhập.",
 
+  // sidebar — nav bổ sung (chưa có trong dict.ts)
+  "sidebar.iot": "Thiết bị IoT",
+  "sidebar.procedures": "Thủ tục",
+  "sidebar.enums": "Danh mục",
+  "sidebar.tools": "Tools",
+  "sidebar.feedback": "Phản hồi",
+  "sidebar.my_agents": "Agent của tôi",
+  "sidebar.backup": "Sao lưu",
+  "sidebar.tools_mgmt": "Quản lý Tools",
+
   // oauth callback
   "oauth.verifying": "Đang xác thực với Anthropic...",
   "oauth.please_wait": "Vui lòng đợi.",
@@ -144,6 +154,16 @@ export const chromeEn: Dict = {
   "auth.register_failed": "Registration failed",
   "auth.error_rate_limit": "Too many attempts, please wait a few minutes.",
   "auth.banner_first_admin_existed": "Admin account already exists. Please sign in.",
+
+  // sidebar — nav additions
+  "sidebar.iot": "IoT Devices",
+  "sidebar.procedures": "Procedures",
+  "sidebar.enums": "Categories",
+  "sidebar.tools": "Tools",
+  "sidebar.feedback": "Feedback",
+  "sidebar.my_agents": "My Agents",
+  "sidebar.backup": "Backup",
+  "sidebar.tools_mgmt": "Manage Tools",
 
   // oauth callback
   "oauth.verifying": "Authenticating with Anthropic...",

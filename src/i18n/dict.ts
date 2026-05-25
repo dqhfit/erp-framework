@@ -9,6 +9,7 @@
    ========================================================== */
 
 import { chromeVi, chromeEn } from "./dict-chrome";
+import { homeVi, homeEn } from "./dict-home";
 
 export type Lang = "vi" | "en";
 export const LANGS: Array<{ code: Lang; label: string; flag: string }> = [
@@ -567,8 +568,8 @@ const EN: Dict = {
 /* DICT gộp map lõi + các map mở rộng theo nhóm (dict-*.ts).
    Mỗi nhóm i18n bổ sung thêm 1 import + 1 spread ở đây. */
 export const DICT: Record<Lang, Dict> = {
-  vi: { ...VI, ...chromeVi },
-  en: { ...EN, ...chromeEn },
+  vi: { ...VI, ...chromeVi, ...homeVi },
+  en: { ...EN, ...chromeEn, ...homeEn },
 };
 
 /** Lấy chuỗi dịch, support {var} substitution. */

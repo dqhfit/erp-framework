@@ -4,12 +4,16 @@ import { I } from "@/components/Icons";
 import type { IconName } from "@/lib/object-types";
 import { useUserObjects } from "@/stores/userObjects";
 import { useUI } from "@/stores/ui";
+import { useAuth } from "@/stores/auth";
+import { useT } from "@/hooks/useT";
 
-const templates: Array<{ name: string; desc: string; icon: IconName; tint: "accent" | "accent-2" | "success" | "warning" }> = [
-  { name: "CRM cơ bản",       desc: "Khách hàng, Cơ hội, Hợp đồng",       icon: "Users",     tint: "accent" },
-  { name: "Quản lý đơn hàng", desc: "Đơn, Khách hàng, Sản phẩm",          icon: "Cart",      tint: "accent-2" },
-  { name: "Kho thông minh",   desc: "Kho, Sản phẩm, Phiếu nhập xuất",     icon: "Warehouse", tint: "success" },
-  { name: "HR + Chấm công",   desc: "Nhân viên, Chấm công, Nghỉ phép",    icon: "Briefcase", tint: "warning" },
+type Tint = "accent" | "accent-2" | "success" | "warning";
+
+const templateDefs: Array<{ nameKey: string; descKey: string; icon: IconName; tint: Tint }> = [
+  { nameKey: "home.tpl_crm_name",       descKey: "home.tpl_crm_desc",       icon: "Users",     tint: "accent" },
+  { nameKey: "home.tpl_orders_name",    descKey: "home.tpl_orders_desc",    icon: "Cart",      tint: "accent-2" },
+  { nameKey: "home.tpl_warehouse_name", descKey: "home.tpl_warehouse_desc", icon: "Warehouse", tint: "success" },
+  { nameKey: "home.tpl_hr_name",        descKey: "home.tpl_hr_desc",        icon: "Briefcase", tint: "warning" },
 ];
 
 const tintBg: Record<string, string> = {
@@ -19,12 +23,17 @@ const tintBg: Record<string, string> = {
   warning: "bg-warning/15 text-warning",
 };
 
-function getGreeting() {
+function getGreeting(t: (k: string) => string) {
   const h = new Date().getHours();
-  return h < 11 ? "Chào buổi sáng" : h < 14 ? "Chào buổi trưa" : h < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+  return h < 11 ? t("home.greeting_morning")
+       : h < 14 ? t("home.greeting_noon")
+       : h < 18 ? t("home.greeting_evening")
+       : t("home.greeting_night");
 }
 
 function Home() {
+  const t = useT();
+  const user = useAuth((s) => s.user);
   const setAgentOpen = useUI((s) => s.setAgentOpen);
   const setAiCreateTarget = useUI((s) => s.setAiCreateTarget);
   const uEntities = useUserObjects((s) => s.entities);
@@ -32,15 +41,13 @@ function Home() {
   const uWorkflows = useUserObjects((s) => s.workflows);
   const uAgents = useUserObjects((s) => s.agents);
 
-  // Stats = đếm đối tượng từ backend.
-  const stats: Array<{ label: string; value: number; icon: IconName; tint: "accent" | "accent-2" | "success" | "warning" }> = [
-    { label: "Entities",  value: uEntities.length,  icon: "Database", tint: "accent" },
-    { label: "Pages",     value: uPages.length,     icon: "Layout",   tint: "accent-2" },
-    { label: "Workflows", value: uWorkflows.length, icon: "Workflow", tint: "success" },
-    { label: "Agents",    value: uAgents.length,    icon: "Bot",      tint: "warning" },
+  const stats: Array<{ labelKey: string; value: number; icon: IconName; tint: Tint }> = [
+    { labelKey: "sidebar.entities",  value: uEntities.length,  icon: "Database", tint: "accent" },
+    { labelKey: "sidebar.pages",     value: uPages.length,     icon: "Layout",   tint: "accent-2" },
+    { labelKey: "sidebar.workflows", value: uWorkflows.length, icon: "Workflow", tint: "success" },
+    { labelKey: "sidebar.agents",    value: uAgents.length,    icon: "Bot",      tint: "warning" },
   ];
 
-  // "Gần đây" = đối tượng thật từ backend (không còn link tĩnh chết).
   const recents: Array<{ kind: string; name: string; icon: IconName; to: string }> = [
     ...uEntities.map((e) => ({ kind: "Entity", name: e.name, icon: e.icon, to: `/entities/${e.id}` })),
     ...uPages.map((p) => ({ kind: "Page", name: p.name, icon: p.icon, to: `/pages/${p.id}` })),
@@ -52,22 +59,22 @@ function Home() {
       <div className="max-w-[1180px] mx-auto px-8 py-10">
         {/* Hero */}
         <div className="mb-8">
-          <div className="text-sm text-muted mb-1">{getGreeting()}, Toàn</div>
+          <div className="text-sm text-muted mb-1">{getGreeting(t)}, {user?.name ?? ""}</div>
           <h1 className="text-[34px] leading-[1.15] font-semibold tracking-tight mb-4">
-            Bạn muốn xây gì hôm nay?
+            {t("home.hero_title")}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" size="lg" icon={<I.Database size={14} />} onClick={() => setAiCreateTarget("entity")}>
-              + Entity mới
+              {t("home.btn_entity")}
             </Button>
             <Button variant="default" size="lg" icon={<I.Layout size={14} />} onClick={() => setAiCreateTarget("page")}>
-              + Page mới
+              {t("home.btn_page")}
             </Button>
             <Button variant="default" size="lg" icon={<I.Workflow size={14} />} onClick={() => setAiCreateTarget("workflow")}>
-              + Workflow mới
+              {t("home.btn_workflow")}
             </Button>
             <Button variant="ghost" size="lg" icon={<I.Sparkles size={14} />} onClick={() => setAiCreateTarget("agent")}>
-              + Agent mới
+              {t("home.btn_agent")}
             </Button>
           </div>
         </div>
@@ -77,10 +84,10 @@ function Home() {
           {stats.map((s) => {
             const IconC = I[s.icon];
             return (
-              <div key={s.label} className="card p-4 hover:border-hover transition-colors cursor-pointer">
+              <div key={s.labelKey} className="card p-4 hover:border-hover transition-colors cursor-pointer">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-xs text-muted uppercase tracking-wider">{s.label}</div>
+                    <div className="text-xs text-muted uppercase tracking-wider">{t(s.labelKey)}</div>
                     <div className="text-[28px] font-semibold mt-1 leading-none">{s.value}</div>
                   </div>
                   <div className={`w-8 h-8 rounded-md flex items-center justify-center ${tintBg[s.tint]}`}>
@@ -95,13 +102,13 @@ function Home() {
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
           <div>
             <div className="flex items-baseline justify-between mb-3">
-              <h2 className="text-lg font-semibold">Gần đây</h2>
-              <button className="text-xs text-muted hover:text-text">Xem tất cả</button>
+              <h2 className="text-lg font-semibold">{t("home.recent_title")}</h2>
+              <button className="text-xs text-muted hover:text-text">{t("home.recent_view_all")}</button>
             </div>
             <div className="card divide-y divide-border">
               {recents.length === 0 && (
                 <div className="p-6 text-center text-sm text-muted">
-                  Chưa có đối tượng nào. Bấm "+ Entity mới" để bắt đầu.
+                  {t("home.recent_empty")}
                 </div>
               )}
               {recents.map((r, i) => {
@@ -124,19 +131,19 @@ function Home() {
               })}
             </div>
 
-            <h2 className="text-lg font-semibold mt-8 mb-3">Bắt đầu nhanh với template</h2>
+            <h2 className="text-lg font-semibold mt-8 mb-3">{t("home.templates_title")}</h2>
             <div className="grid sm:grid-cols-2 gap-3">
-              {templates.map((t) => {
-                const IconC = I[t.icon];
+              {templateDefs.map((tpl) => {
+                const IconC = I[tpl.icon];
                 return (
-                  <div key={t.name} className="card p-4 hover:border-accent/50 cursor-pointer transition-colors group">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${tintBg[t.tint]}`}>
+                  <div key={tpl.nameKey} className="card p-4 hover:border-accent/50 cursor-pointer transition-colors group">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${tintBg[tpl.tint]}`}>
                       <IconC size={18} />
                     </div>
-                    <div className="font-semibold">{t.name}</div>
-                    <div className="text-xs text-muted mt-0.5">{t.desc}</div>
+                    <div className="font-semibold">{t(tpl.nameKey)}</div>
+                    <div className="text-xs text-muted mt-0.5">{t(tpl.descKey)}</div>
                     <div className="mt-3 text-xs text-accent opacity-0 group-hover:opacity-100 flex items-center gap-1">
-                      Dùng template <I.ArrowRight size={11} />
+                      {t("home.template_use")} <I.ArrowRight size={11} />
                     </div>
                   </div>
                 );
@@ -152,21 +159,21 @@ function Home() {
                       style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
                   <I.Sparkles size={14} className="text-white" />
                 </span>
-                <div className="font-semibold">Trợ lý ERP</div>
+                <div className="font-semibold">{t("agent.title")}</div>
               </div>
               <p className="text-sm text-muted mb-3">
-                Mô tả nhu cầu, AI sẽ phác thảo entity + workflow giúp bạn.
+                {t("home.ai_desc")}
               </p>
               <Textarea rows={3} className="mb-2"
-                placeholder="Ví dụ: Tôi muốn quản lý đơn hàng, tự duyệt nếu < 5tr, gửi email khi đã giao." />
+                placeholder={t("home.ai_placeholder")} />
               <Button variant="primary" className="w-full justify-center" icon={<I.Sparkles size={14} />} onClick={() => setAgentOpen(true)}>
-                Phác thảo bằng AI
+                {t("home.ai_btn")}
               </Button>
             </div>
 
             <div className="card p-4">
               <div className="font-semibold mb-3 flex items-center gap-2">
-                <I.Activity size={14} className="text-success" /> Hoạt động hệ thống
+                <I.Activity size={14} className="text-success" /> {t("home.activity_title")}
               </div>
               <ul className="space-y-2.5 text-sm">
                 <li className="flex items-start gap-2">
@@ -201,7 +208,7 @@ function Home() {
             </div>
 
             <div className="card p-4 bg-bg-soft">
-              <div className="text-sm mb-3">Mở Command Palette để tìm nhanh mọi thứ.</div>
+              <div className="text-sm mb-3">{t("home.cmd_hint")}</div>
               <div className="flex items-center gap-1">
                 <Kbd>⌘</Kbd><Kbd>K</Kbd>
               </div>
@@ -218,8 +225,8 @@ function Home() {
                 <I.File size={16} />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold">Hướng dẫn sử dụng</div>
-                <div className="text-xs text-muted">Cách dùng hệ thống, từng bước</div>
+                <div className="font-semibold">{t("home.guide_title")}</div>
+                <div className="text-xs text-muted">{t("home.guide_desc")}</div>
               </div>
               <I.ChevronRight size={14} className="text-muted group-hover:text-accent" />
             </a>

@@ -3,10 +3,8 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Button, Chip, Kbd } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { useUI } from "@/stores/ui";
-import { useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
-import { llmRegistry } from "@/core/llm";
 import { useT } from "@/hooks/useT";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
@@ -21,15 +19,6 @@ export function Topbar() {
     agentOpen, setAgentOpen, setCmdOpen, tweaksOpen, setTweaksOpen } = useUI();
 
   const isDesignerRoute = /^\/(entities|pages|workflows)\//.test(matches);
-
-  // Hiển thị model active đầu tiên — ưu tiên profile usable
-  const llmProfiles = useSettings((s) => s.llmProfiles);
-  const activeProfile = (() => {
-    const list = Object.values(llmProfiles);
-    return list.find((p) => llmRegistry.isUsable(p)) ?? list[0];
-  })();
-  const activeModel = activeProfile?.model;
-  const activeProfileName = activeProfile?.name;
 
   // Chip "Agent chính": có primary → avatar + tên; chưa có → chip dashed.
   const primaryAgentId = useAuth((s) => s.primaryAgentId);
@@ -94,29 +83,6 @@ export function Topbar() {
 
       {/* Công ty đang làm việc (đa công ty) */}
       <CompanySwitcher />
-
-      {/* MCP status */}
-      <Link
-        to="/settings/mcp"
-        className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0"
-        title={t("topbar.mcp_connected")}
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-success" />
-        <I.Server size={14} className="text-muted" />
-        <span className="text-muted">{t("topbar.mcp")}</span>
-      </Link>
-
-      {/* LLM profile */}
-      <Link
-        to="/settings/llm"
-        className="hidden lg:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0"
-        title={activeProfileName
-          ? t("topbar.llm_profile", { name: activeProfileName })
-          : t("topbar.no_llm_profile")}
-      >
-        <I.Sparkles size={14} className="text-accent" />
-        <span className="text-muted">{activeModel ?? t("topbar.no_llm")}</span>
-      </Link>
 
       <Button
         variant="ghost" size="sm"

@@ -354,19 +354,19 @@ export function Sidebar() {
           <SidebarItem to="/knowledge" active={pathname === "/knowledge"}
             icon={<I.File size={14} />} collapsed={collapsed} label={t("sidebar.knowledge")} />
           <SidebarItem to="/iot" active={pathname.startsWith("/iot")}
-            icon={<I.Server size={14} />} collapsed={collapsed} label="Thiết bị IoT" />
+            icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.iot")} />
           <SidebarItem to="/procedures" active={pathname.startsWith("/procedures")}
-            icon={<I.Terminal size={14} />} collapsed={collapsed} label="Thủ tục" />
+            icon={<I.Terminal size={14} />} collapsed={collapsed} label={t("sidebar.procedures")} />
           <SidebarItem to="/enums" active={pathname.startsWith("/enums")}
-            icon={<I.Tag size={14} />} collapsed={collapsed} label="Danh mục" />
+            icon={<I.Tag size={14} />} collapsed={collapsed} label={t("sidebar.enums")} />
           <SidebarItem to="/tools" active={pathname.startsWith("/tools")}
-            icon={<I.Wand size={14} />} collapsed={collapsed} label="Tools" />
+            icon={<I.Wand size={14} />} collapsed={collapsed} label={t("sidebar.tools")} />
           <SidebarItem to="/feedback" active={pathname.startsWith("/feedback")}
-            icon={<I.HelpCircle size={14} />} collapsed={collapsed} label="Phản hồi" />
+            icon={<I.HelpCircle size={14} />} collapsed={collapsed} label={t("sidebar.feedback")} />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}
-            icon={<I.Bot size={14} />} collapsed={collapsed} label="Agent của tôi" />
+            icon={<I.Bot size={14} />} collapsed={collapsed} label={t("sidebar.my_agents")} />
           <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
             icon={<I.Users size={14} />} collapsed={collapsed} label={t("sidebar.rbac")} />
           <SidebarItem to="/settings/companies" active={pathname === "/settings/companies"}
@@ -380,11 +380,11 @@ export function Sidebar() {
           <SidebarItem to="/settings/transfer" active={pathname === "/settings/transfer"}
             icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.transfer")} />
           <SidebarItem to="/settings/backup" active={pathname === "/settings/backup"}
-            icon={<I.Save size={14} />} collapsed={collapsed} label="Sao lưu" />
+            icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.backup")} />
           <SidebarItem to="/settings/plugins" active={pathname === "/settings/plugins"}
             icon={<I.Package size={14} />} collapsed={collapsed} label={t("sidebar.plugins")} />
           <SidebarItem to="/settings/tools" active={pathname === "/settings/tools"}
-            icon={<I.Wand size={14} />} collapsed={collapsed} label="Quản lý Tools" />
+            icon={<I.Wand size={14} />} collapsed={collapsed} label={t("sidebar.tools_mgmt")} />
           <SidebarItem to="/settings/embed" active={pathname === "/settings/embed"}
             icon={<I.Link size={14} />} collapsed={collapsed} label={t("sidebar.embed")} />
         </NavGroup>
