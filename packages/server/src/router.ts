@@ -10,6 +10,7 @@ import { and, eq, sql, desc, type SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   entities, entityRecords, entityRecordVersions,
+  entityRecordTimeseries, approvalRequests,
   users, sessions, mcpConfigs, llmProfiles,
   pages, agents, agentMembers, workflows, schedules, activityLog,
   companies, companyMembers, userInvites,
@@ -1013,6 +1014,29 @@ export const appRouter = router({
         }
         await assertUnique(ctx.db, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
 
+        // Approval gate — nếu touch field requiresApproval, tạo approval
+        // pending thay vì update thẳng. Editor trở lên có thể tự duyệt
+        // sau ở UI approvals; viewer thì phải chờ admin.
+        const touchedApprovalFields = fields.filter((f) =>
+          f.requiresApproval && (f.name in data));
+        if (touchedApprovalFields.length > 0 && ctx.user.role !== "admin") {
+          const [appr] = await ctx.db.insert(approvalRequests).values({
+            companyId: ctx.user.companyId,
+            title: `Sửa ${touchedApprovalFields.map((f) => f.label || f.name).join(", ")}`,
+            detail: `Record ${input.recordId.slice(0, 8)}`,
+            kind: "entity_update",
+            entityId: rec.entityId,
+            recordId: input.recordId,
+            patch: data,
+            createdBy: ctx.user.id,
+          }).returning();
+          return {
+            status: "pending_approval" as const,
+            approvalId: appr?.id,
+            message: "Thay đổi đã gửi duyệt — sẽ áp dụng sau khi được approve.",
+          };
+        }
+
         // Tính diff per-field (cũ vs mới) — chỉ trên field có trong patch.
         const oldData = (rec.data ?? {}) as Record<string, unknown>;
         const diff: Record<string, { old: unknown; new: unknown }> = {};
@@ -1128,6 +1152,72 @@ export const appRouter = router({
           SELECT id, data, level FROM tree WHERE level > 0 ORDER BY level
         `) as unknown as Array<{ id: string; data: unknown; level: number }>;
         return rows;
+      }),
+
+    /* Time-series endpoints — ghi/đọc giá trị theo thời gian cho field
+       type "timeseries" (sensor/telemetry/price). Tách bảng riêng để
+       index theo (record, field, ts DESC) tốt cho query range. */
+    appendTimeseries: rbacProcedure("edit", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fieldName: z.string().min(1),
+        value: z.number(),
+        ts: z.string().datetime().optional(),
+        meta: z.record(z.unknown()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Verify record cùng company.
+        const [rec] = await ctx.db.select({ id: entityRecords.id }).from(entityRecords)
+          .where(and(eq(entityRecords.id, input.recordId),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        const [row] = await ctx.db.insert(entityRecordTimeseries).values({
+          companyId: ctx.user.companyId,
+          recordId: input.recordId,
+          fieldName: input.fieldName,
+          ts: input.ts ? new Date(input.ts) : new Date(),
+          value: input.value,
+          meta: input.meta ?? null,
+        }).returning();
+        return row;
+      }),
+
+    queryTimeseries: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fieldName: z.string().min(1),
+        fromTs: z.string().datetime().optional(),
+        toTs: z.string().datetime().optional(),
+        limit: z.number().int().positive().max(5000).optional(),
+        agg: z.enum(["raw", "avg", "min", "max", "sum"]).optional(),
+        bucket: z.enum(["minute", "hour", "day"]).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const limit = input.limit ?? 1000;
+        if (input.agg && input.agg !== "raw" && input.bucket) {
+          // Aggregated query — date_trunc + agg.
+          const aggFn = sql.raw(input.agg);
+          const bucket = sql.raw(`'${input.bucket}'`);
+          const rows = await ctx.db.execute(sql`
+            SELECT date_trunc(${bucket}, ts) AS bucket, ${aggFn}(value)::float AS value
+            FROM entity_record_timeseries
+            WHERE company_id = ${ctx.user.companyId}::uuid
+              AND record_id = ${input.recordId}::uuid
+              AND field_name = ${input.fieldName}
+              ${input.fromTs ? sql`AND ts >= ${input.fromTs}::timestamp` : sql``}
+              ${input.toTs ? sql`AND ts <= ${input.toTs}::timestamp` : sql``}
+            GROUP BY bucket ORDER BY bucket DESC LIMIT ${limit}
+          `) as unknown as Array<{ bucket: string; value: number }>;
+          return rows;
+        }
+        // Raw query.
+        return ctx.db.select().from(entityRecordTimeseries).where(and(
+          eq(entityRecordTimeseries.companyId, ctx.user.companyId),
+          eq(entityRecordTimeseries.recordId, input.recordId),
+          eq(entityRecordTimeseries.fieldName, input.fieldName),
+          input.fromTs ? sql`${entityRecordTimeseries.ts} >= ${input.fromTs}::timestamp` : sql`true`,
+          input.toTs ? sql`${entityRecordTimeseries.ts} <= ${input.toTs}::timestamp` : sql`true`,
+        )).orderBy(desc(entityRecordTimeseries.ts)).limit(limit);
       }),
 
     findDuplicates: rbacProcedure("view", "entity")

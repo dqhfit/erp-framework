@@ -12,7 +12,7 @@ export type FieldType =
   | "text" | "number" | "boolean" | "date" | "datetime"
   | "select" | "multiselect" | "enum" | "multienum"
   | "relation" | "lookup" | "multilookup"
-  | "sequence" | "rollup" | "formula" | "json";
+  | "sequence" | "rollup" | "timeseries" | "formula" | "json";
 
 /** Cấu hình field "rollup" — gom giá trị từ entity khác trỏ vào.
  *  vd customer.total_orders = COUNT(order WHERE order.customer_id = customer.id). */
@@ -88,6 +88,10 @@ export interface EntityFieldDef {
   /** Đánh dấu field cho semantic search (embedding) — server hook khi
    *  save sẽ build embedding từ giá trị các field này gộp. */
   embedSearchable?: boolean;
+  /** Update vào field này yêu cầu phê duyệt (records.update → tạo
+   *  approval_request thay vì update thẳng). v1: per-field; per-entity
+   *  qua entity.meta.requiresApproval bool. */
+  requiresApproval?: boolean;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

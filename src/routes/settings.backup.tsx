@@ -115,6 +115,64 @@ function BackupPage() {
         <Card className="mb-4 space-y-3">
           <div className="font-semibold">Cấu hình</div>
 
+          {/* Hướng dẫn đăng nhập Drive trên web + lấy Folder ID. */}
+          <details className="rounded-md border border-border bg-surface-2/40 text-sm group">
+            <summary className="cursor-pointer select-none px-3 py-2 font-medium flex items-center gap-2 hover:bg-surface-2/70">
+              <I.HelpCircle size={14} />
+              <span>Hướng dẫn đăng nhập Google Drive (web) & lấy Folder ID</span>
+              <span className="ml-auto text-xs text-muted group-open:hidden">Mở</span>
+              <span className="ml-auto text-xs text-muted hidden group-open:inline">Đóng</span>
+            </summary>
+            <div className="px-3 pb-3 pt-1 space-y-3 text-[13px] leading-relaxed">
+              <ol className="list-decimal pl-5 space-y-1.5">
+                <li>
+                  Mở{" "}
+                  <a href="https://drive.google.com/" target="_blank" rel="noreferrer"
+                    className="text-accent hover:underline">drive.google.com</a>{" "}
+                  trên trình duyệt và <b>đăng nhập</b> bằng tài khoản Google sẽ
+                  dùng để lưu backup (có thể là tài khoản cá nhân hoặc Workspace).
+                </li>
+                <li>
+                  Tạo một thư mục đích, ví dụ <code>ERP Backups</code>
+                  {" "}(hoặc mở thư mục đã có).
+                </li>
+                <li>
+                  Vào thư mục đó. Nhìn vào thanh địa chỉ trình duyệt — URL có dạng:
+                  <div className="my-1 font-mono text-xs bg-surface-2 rounded px-2 py-1 break-all">
+                    https://drive.google.com/drive/folders/<b className="text-accent">1AbCdEfGhIjKlMnOpQrStUv...</b>
+                  </div>
+                  Phần in đậm sau <code>/folders/</code> chính là{" "}
+                  <b>Folder ID</b> — copy và dán vào ô bên dưới.
+                </li>
+                <li>
+                  Bấm chuột phải vào thư mục → <b>Share</b> (Chia sẻ) → dán
+                  email service account (dạng{" "}
+                  <code>...@&lt;project&gt;.iam.gserviceaccount.com</code>) →
+                  chọn quyền <b>Editor</b> → <b>Send</b>. Bước này bắt buộc,
+                  nếu không service account sẽ không nhìn thấy thư mục.
+                </li>
+                <li>
+                  Quay lại đây, bấm <b>Test kết nối</b> để xác minh, rồi{" "}
+                  <b>Lưu cấu hình</b>.
+                </li>
+              </ol>
+              <div className="text-xs text-muted">
+                Mẹo: nếu URL có thêm tham số kiểu <code>?usp=sharing</code>,
+                chỉ lấy đoạn ID phía trước dấu <code>?</code>. Không lấy nhầm
+                ID của <i>file</i> (URL có <code>/file/d/</code>) — phải là{" "}
+                <code>/drive/folders/</code>.
+              </div>
+              <div className="text-xs text-muted">
+                Chưa có service account? Xem{" "}
+                <a href="/docs/BACKUP" className="text-accent hover:underline">
+                  docs/BACKUP.md
+                </a>{" "}
+                — mục "Setup Google Drive (một-lần)" hướng dẫn tạo project
+                GCP, bật Drive API và tạo JSON key.
+              </div>
+            </div>
+          </details>
+
           <FormField
             label="Service account JSON key"
             hint={cfg?.hasKey
@@ -130,7 +188,7 @@ function BackupPage() {
           </FormField>
 
           <FormField label="Folder ID Google Drive"
-            hint="Lấy từ URL: drive.google.com/drive/folders/<ID>. Phải share quyền Editor cho email service account.">
+            hint="Đoạn sau /folders/ trong URL Drive (xem mục Hướng dẫn ở trên). Phải share quyền Editor cho email service account.">
             <Input placeholder="1AbCdEfGh..."
               value={folderId} disabled={busy}
               onChange={(e) => setFolderId(e.target.value)} />

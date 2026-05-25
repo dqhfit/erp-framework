@@ -128,6 +128,7 @@ export function validateRecord(
   for (const f of fields) {
     if (f.type === "formula") continue;            // server tự tính
     if (f.type === "rollup") continue;             // server compute cross-row
+    if (f.type === "timeseries") continue;         // ghi qua endpoint riêng
     const present = f.name in input;
     if (opts.partial && !present) continue;        // partial: bỏ field vắng mặt
 

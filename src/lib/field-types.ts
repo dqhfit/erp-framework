@@ -37,6 +37,7 @@ export const FIELD_TYPES: FieldType[] = [
   { id: "formula",     name: "Formula",      icon: "Wand",      desc: "Computed" },
   { id: "sequence",    name: "Sequence",     icon: "Hash",      desc: "Auto-number (INV-001)" },
   { id: "rollup",      name: "Rollup",       icon: "BarChart",  desc: "Aggregate từ entity con" },
+  { id: "timeseries",  name: "Time-series",  icon: "Activity",  desc: "Chuỗi giá trị theo thời gian" },
   { id: "tag",         name: "Tag",          icon: "Tag",       desc: "Color tags" },
 ];
 

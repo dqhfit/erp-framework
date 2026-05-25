@@ -481,11 +481,35 @@ export const approvalRequests = pgTable("approval_requests", {
   requiredApprovals: integer("required_approvals").notNull().default(1),
   // decisions: [{ userId, decision: "approve"|"reject", comment, at }]
   decisions: jsonb("decisions").notNull().default(sql`'[]'::jsonb`),
+  // entity_id + record_id: link approval với record cụ thể (v4).
+  entityId: uuid("entity_id"),
+  recordId: uuid("record_id"),
+  // patch: JSONB thay đổi pending — server apply khi approved.
+  patch: jsonb("patch"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   decidedAt: timestamp("decided_at"),
 }, (t) => ({
   companyIdIdx: index("approval_requests_company_id_idx").on(t.companyId),
+  recordIdIdx: index("approval_requests_record_idx").on(t.recordId),
+}));
+
+/* Time-series data per record per field — cho field type "timeseries"
+   (sensor, stock price, telemetry). Tách bảng riêng để index theo
+   (record_id, field_name, ts DESC) tốt cho query range gần đây. */
+export const entityRecordTimeseries = pgTable("entity_record_timeseries", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  recordId: uuid("record_id").notNull()
+    .references(() => entityRecords.id, { onDelete: "cascade" }),
+  fieldName: text("field_name").notNull(),
+  ts: timestamp("ts").defaultNow().notNull(),
+  value: doublePrecision("value").notNull(),
+  meta: jsonb("meta"),
+}, (t) => ({
+  recordFieldTsIdx: index("ert_record_field_ts_idx").on(t.recordId, t.fieldName, t.ts),
+  tsIdx: index("ert_ts_idx").on(t.ts),
 }));
 
 /* ─── Plugin — đăng ký/bật-tắt plugin theo công ty ───────── */

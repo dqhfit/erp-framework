@@ -4,7 +4,7 @@ export type FieldType =
   | "select" | "multi-select" | "enum" | "multi-enum"
   | "lookup" | "multi-lookup"
   | "file" | "image" | "url" | "email" | "phone"
-  | "sequence" | "rollup" | "json" | "formula";
+  | "sequence" | "rollup" | "timeseries" | "json" | "formula";
 
 /** Hành vi khi record đích của lookup bị xoá. */
 export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
