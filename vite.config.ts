@@ -1,10 +1,11 @@
 import { defineConfig, configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import path from "node:path";
 
 export default defineConfig({
-  plugins: [TanStackRouterVite(), react()],
+  plugins: [TanStackRouterVite(), react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   // Vitest — unit test cho src/. Thư mục e2e/ là Playwright spec,
   // loại khỏi vitest để không bị gom nhầm.
