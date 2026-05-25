@@ -41,6 +41,32 @@ import { bootstrapTools, shutdownTools } from "./tools";
 
 const PORT = Number(process.env.PORT ?? 8910);
 const HOST = process.env.HOST ?? "127.0.0.1";
+
+/* P4.1 — WS channel allowlist + scope check (cross-tenant guard).
+   Mỗi pattern bind channel với scope (userId hoặc companyId). Channel
+   không khớp pattern hoặc scope sai → reject silently.
+   Patterns hiện hữu:
+   - notifications:<userId>            — chỉ user của chính mình
+   - record:<entityName>:<companyId>   — chỉ company hiện tại
+   - presence:<recordId>               — UUID; KHÔNG check company-bound
+                                         ở đây (cần DB lookup, defer);
+                                         worst case: nhận event không
+                                         liên quan, không leak data vì
+                                         presence payload chỉ là user
+                                         list editing.
+   - approval:<userId>                 — approval flow notifications */
+const RECORD_CH = /^record:[a-z][a-z0-9_]*:([0-9a-f-]{36})$/;
+const UUID_RE = /^[0-9a-f-]{36}$/;
+function isChannelAllowed(channel: string, userId: string, companyId: string): boolean {
+  if (channel === `notifications:${userId}`) return true;
+  if (channel === `approval:${userId}`) return true;
+  const m = channel.match(RECORD_CH);
+  if (m) return m[1] === companyId;
+  if (channel.startsWith("presence:")) {
+    return UUID_RE.test(channel.slice("presence:".length));
+  }
+  return false;
+}
 /** Thư mục lưu file tải lên Knowledge Base (volume Docker erp-uploads). */
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/data/uploads";
 
@@ -245,12 +271,11 @@ async function main(): Promise<void> {
       try {
         const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
         if (!m.channel) return;
-        // Authorization per channel — user chỉ được subscribe notifications của mình
-        // hoặc presence record cùng công ty.
-        if (m.channel.startsWith("notifications:") && m.channel !== `notifications:${s.userId}`)
-          return;
-        // presence:<recordId> sẽ verify record cùng company qua presence.ping;
-        // ở đây tin tưởng caller — worst case nhận event không liên quan, không leak.
+        // P4.1 — channel allowlist. Mọi channel phải khớp 1 trong các
+        // pattern + scope theo user/company hiện tại. Channel ngoài
+        // whitelist hoặc cross-tenant → silently drop (không reply
+        // error để tránh oracle).
+        if (!isChannelAllowed(m.channel, s.userId, active.companyId)) return;
         if (m.action === "subscribe") subscribe(conn, m.channel);
         else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
       } catch {

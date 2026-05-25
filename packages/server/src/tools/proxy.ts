@@ -5,25 +5,22 @@
    header X-ERP-* khi proxy.forwardAuth=true.
    ========================================================== */
 import { createHmac } from "node:crypto";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import { type ToolManifest, toolRegistry } from "@erp-framework/core";
+import { companyTools, sessions, tools as toolsTable } from "@erp-framework/db";
 import httpProxy from "@fastify/http-proxy";
-import { sessions } from "@erp-framework/db";
-import { eq } from "drizzle-orm";
-import { toolRegistry, type ToolManifest } from "@erp-framework/core";
-import type { DB } from "../db";
+import { and, eq } from "drizzle-orm";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { SESSION_COOKIE } from "../auth";
 import { resolveActiveCompany } from "../context";
+import type { DB } from "../db";
 import { getRunningPort } from "./subprocess";
 
 /** Secret HMAC cho X-ERP-* — bật bằng env TOOL_SIGNING_SECRET.
  *  Khi thiếu, dùng giá trị dev (vẫn hoạt động nhưng không an toàn). */
-const SIGNING_SECRET = process.env.TOOL_SIGNING_SECRET
-  ?? "dev-only-tool-secret-change-me";
+const SIGNING_SECRET = process.env.TOOL_SIGNING_SECRET ?? "dev-only-tool-secret-change-me";
 
 function signHeaders(values: string[]): string {
-  return createHmac("sha256", SIGNING_SECRET)
-    .update(values.join("|"))
-    .digest("hex");
+  return createHmac("sha256", SIGNING_SECRET).update(values.join("|")).digest("hex");
 }
 
 function resolveUpstream(manifest: ToolManifest): string | undefined {
@@ -45,7 +42,7 @@ async function registerOne(app: FastifyInstance, db: DB, manifest: ToolManifest)
   const forwardAuth = manifest.proxy?.forwardAuth ?? true;
 
   await app.register(httpProxy, {
-    upstream: "http://placeholder.invalid",  // override mỗi request
+    upstream: "http://placeholder.invalid", // override mỗi request
     prefix: mountPath,
     rewritePrefix: "",
     replyOptions: {
@@ -72,22 +69,57 @@ async function registerOne(app: FastifyInstance, db: DB, manifest: ToolManifest)
       for (const k of Object.keys(req.headers)) {
         if (k.toLowerCase().startsWith("x-erp-")) delete req.headers[k];
       }
-      if (!forwardAuth) return;
-      const ctx = await readSessionCtx(db, req);
-      if (!ctx) return;  // tool có thể chọn xử lý anonymous
-      req.headers["x-erp-user-id"] = ctx.userId;
-      req.headers["x-erp-company-id"] = ctx.companyId;
-      req.headers["x-erp-role"] = ctx.role;
-      req.headers["x-erp-sig"] = signHeaders([
-        ctx.userId, ctx.companyId, ctx.role,
-      ]);
+      // P4.2 — Tool company-isolation. Pre-flight check user phải đăng
+      // nhập + company hiện tại đã enable tool. Auth-anonymous tool
+      // (forwardAuth=false) bypass — vd tool public/static.
+      if (forwardAuth) {
+        const ctx = await readSessionCtx(db, req);
+        if (!ctx) {
+          reply.code(401).send({ error: "Cần đăng nhập để dùng tool" });
+          return;
+        }
+        const enabled = await isToolEnabledForCompany(db, manifest.id, ctx.companyId);
+        if (!enabled) {
+          reply.code(403).send({
+            error: "Tool chưa được kích hoạt cho công ty này",
+            toolId: manifest.id,
+          });
+          return;
+        }
+        req.headers["x-erp-user-id"] = ctx.userId;
+        req.headers["x-erp-company-id"] = ctx.companyId;
+        req.headers["x-erp-role"] = ctx.role;
+        req.headers["x-erp-sig"] = signHeaders([ctx.userId, ctx.companyId, ctx.role]);
+      }
     },
   });
 }
 
-async function readSessionCtx(db: DB, req: FastifyRequest): Promise<
-  { userId: string; companyId: string; role: string } | undefined
-> {
+/** Tool có được enable cho company không. Trả false nếu chưa hydrate
+ *  (manifest.id không match row trong DB) — fail-closed. */
+async function isToolEnabledForCompany(
+  db: DB,
+  manifestToolId: string,
+  companyId: string,
+): Promise<boolean> {
+  // manifestToolId là tool.slug (text) — lookup row trong tools để lấy uuid.
+  const [t] = await db
+    .select({ id: toolsTable.id, enabledGlobal: toolsTable.enabledGlobal })
+    .from(toolsTable)
+    .where(eq(toolsTable.slug, manifestToolId));
+  if (!t) return false;
+  if (!t.enabledGlobal) return false;
+  const [ct] = await db
+    .select({ enabled: companyTools.enabled })
+    .from(companyTools)
+    .where(and(eq(companyTools.toolId, t.id), eq(companyTools.companyId, companyId)));
+  return ct?.enabled === true;
+}
+
+async function readSessionCtx(
+  db: DB,
+  req: FastifyRequest,
+): Promise<{ userId: string; companyId: string; role: string } | undefined> {
   const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
   if (!sid) return undefined;
   const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
@@ -103,8 +135,9 @@ export async function initToolsProxy(app: FastifyInstance, db: DB): Promise<void
     if (t.manifest.kind !== "web-app" && t.manifest.kind !== "mcp-server") continue;
     try {
       await registerOne(app, db, t.manifest);
-      toolRegistry.setStatus(t.id, "mounted",
-        { mountPath: t.manifest.proxy?.mountPath ?? `/tools/${t.id}` });
+      toolRegistry.setStatus(t.id, "mounted", {
+        mountPath: t.manifest.proxy?.mountPath ?? `/tools/${t.id}`,
+      });
     } catch (e) {
       console.error(`[tools/proxy] ${t.id}: ${(e as Error).message}`);
       toolRegistry.setStatus(t.id, "error", undefined, (e as Error).message);
