@@ -9,6 +9,7 @@
    ========================================================== */
 import type { EntityFieldDef } from "./datasource/index";
 import type { PluginRegistry } from "./plugin/registry";
+import { evalFieldRule } from "./field-rule";
 
 export interface ValidationError {
   field: string;
@@ -131,7 +132,9 @@ export function validateRecord(
 
     const raw = input[f.name];
     if (isEmpty(raw)) {
-      if (f.required) errors.push({ field: f.name, message: "Bắt buộc nhập" });
+      // Required tĩnh + requiredIf động (đè khi rule khớp).
+      const required = f.required || evalFieldRule(f.requiredIf, input);
+      if (required) errors.push({ field: f.name, message: "Bắt buộc nhập" });
       continue;                                     // bỏ hẳn key rỗng
     }
 

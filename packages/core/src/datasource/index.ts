@@ -14,6 +14,20 @@ export type FieldType =
   | "relation" | "lookup" | "multilookup"
   | "sequence" | "formula" | "json";
 
+/** Rule điều kiện cho requiredIf/visibleIf — DSL nhỏ, sync, pure.
+ *  Hỗ trợ AND/OR cấp 1 + so sánh primitive. Phức tạp hơn → dùng formula. */
+export type FieldRuleOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "notin" | "empty" | "nonempty";
+export interface FieldRuleCondition {
+  field: string;
+  op: FieldRuleOp;
+  value?: unknown;
+}
+export interface FieldRule {
+  /** any: ít nhất 1 cond đúng (OR) · all: tất cả đúng (AND). Default: all. */
+  combinator?: "all" | "any";
+  conditions: FieldRuleCondition[];
+}
+
 /** Hành vi khi record được trỏ tới bị xoá (lookup/multilookup).
  *  - restrict: chặn xoá nếu còn ref (mặc định an toàn).
  *  - setnull : xoá ref khỏi field (null hoá lookup, xoá value khỏi multilookup).
@@ -46,6 +60,12 @@ export interface EntityFieldDef {
   /** Cho field type "sequence" — prefix + padding (vd "INV-", 4 → INV-0001). */
   sequencePrefix?: string;
   sequencePadding?: number;
+  /** Nhãn tiếng Anh (i18n). Fallback xuống `label` nếu thiếu. */
+  labelEn?: string;
+  /** Required theo điều kiện — đè cờ `required` tĩnh khi rule khớp. */
+  requiredIf?: FieldRule;
+  /** Ẩn field theo điều kiện — UI bỏ render khi rule khớp false. */
+  visibleIf?: FieldRule;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

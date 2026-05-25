@@ -16,9 +16,24 @@ export interface FieldOption {
   labelEn?: string;
 }
 
+/** Rule điều kiện dạng DSL nhẹ, sync, pure — match shape của core FieldRule.
+ *  AND/OR cấp 1 + so sánh primitive. */
+export type FieldRuleOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "notin" | "empty" | "nonempty";
+export interface FieldRuleCondition { field: string; op: FieldRuleOp; value?: unknown; }
+export interface FieldRule {
+  combinator?: "all" | "any";
+  conditions: FieldRuleCondition[];
+}
+
 export interface FieldDef {
   key: string;
   label: string;
+  /** Nhãn tiếng Anh (i18n) — fallback xuống label nếu thiếu. */
+  labelEn?: string;
+  /** Required theo điều kiện — bổ sung cho cờ required tĩnh. */
+  requiredIf?: FieldRule;
+  /** Ẩn field theo điều kiện — UI bỏ render khi rule khớp false. */
+  visibleIf?: FieldRule;
   type: FieldType;
   required?: boolean;
   default?: unknown;

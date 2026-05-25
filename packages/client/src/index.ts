@@ -44,6 +44,12 @@ export {
   type EnumValue,
 } from "./enums";
 export {
+  createSavedViewsClient,
+  type SavedViewsClient,
+  type SavedView,
+  type SavedViewSaveInput,
+} from "./saved-views";
+export {
   createEmbedClient,
   type EmbedClient,
   type EmbedScope,

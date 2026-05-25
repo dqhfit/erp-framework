@@ -12,7 +12,7 @@ import type { I as IconSet } from "@/components/Icons";
 export type IconName = keyof typeof IconSet;
 
 export interface EntityField {
-  id: string; name: string; label: string; type: string;
+  id: string; name: string; label: string; labelEn?: string; type: string;
   required?: boolean; options?: string[]; ref?: string;
   /** Cho field type "formula" */
   formula?: string;

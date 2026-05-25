@@ -15,12 +15,15 @@ import { I } from "@/components/Icons";
 import { Button, Input, Select, FormField, Drawer, Chip } from "@/components/ui";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { useUserObjects } from "@/stores/userObjects";
-import { createApiDataSource } from "@erp-framework/client";
+import { createApiDataSource, createSavedViewsClient, type SavedView } from "@erp-framework/client";
 import { formatVND } from "@/lib/format";
 import type { MockEntity } from "@/lib/object-types";
 import { dialog } from "@/lib/dialog";
+import { pickFieldLabel } from "@/lib/enum-label";
+import { useLocale } from "@/stores/locale";
 
 const api = createApiDataSource("");
+const savedViewsApi = createSavedViewsClient("");
 
 type Row = Record<string, unknown> & {
   __id: string;
@@ -45,6 +48,47 @@ export function EntityData({ entityId }: { entityId: string }) {
   const [saveErr, setSaveErr] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [historyOpen, setHistoryOpen] = useState<string | null>(null);
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [currentViewId, setCurrentViewId] = useState<string>("");
+
+  // Load saved views per entity; auto-apply view default lần đầu mount.
+  useEffect(() => {
+    savedViewsApi.list(entityId)
+      .then((vs) => {
+        const list = vs as unknown as SavedView[];
+        setViews(list);
+        const def = list.find((v) => v.isDefault);
+        if (def) {
+          setCurrentViewId(def.id);
+          const qv = def.query as { q?: string; tab?: Tab } | undefined;
+          if (qv?.q) setQ(qv.q);
+          if (qv?.tab) setTab(qv.tab);
+        }
+      })
+      .catch(() => { /* chưa migrate hoặc chưa đăng nhập */ });
+  }, [entityId]);
+
+  const applyView = (v: SavedView) => {
+    setCurrentViewId(v.id);
+    const qv = v.query as { q?: string; tab?: Tab };
+    setQ(qv?.q ?? "");
+    setTab((qv?.tab as Tab) ?? "active");
+  };
+
+  const saveCurrentView = async () => {
+    const name = (await dialog.prompt("Tên view mới?", "View 1", {
+      title: "Lưu view", confirmText: "Lưu",
+    }))?.trim();
+    if (!name) return;
+    try {
+      const v = await savedViewsApi.save({
+        entityId, name, query: { q, tab },
+      }) as SavedView | null;
+      const fresh = (await savedViewsApi.list(entityId)) as unknown as SavedView[];
+      setViews(fresh);
+      if (v) setCurrentViewId(v.id);
+    } catch (e) { setErr((e as Error).message); }
+  };
 
   const reload = useCallback(() => {
     setLoading(true); setErr("");
@@ -72,6 +116,7 @@ export function EntityData({ entityId }: { entityId: string }) {
   useEffect(() => { reload(); }, [reload]);
 
   const fields = ent?.fields ?? [];
+  const lang = useLocale((s) => s.lang);
 
   const openAdd = () => {
     setForm(Object.fromEntries(fields.map((f) => [f.name, ""])));
@@ -165,7 +210,7 @@ export function EntityData({ entityId }: { entityId: string }) {
     },
     ...fields.slice(0, 7).map((f) => ({
       accessorKey: f.name,
-      header: f.label,
+      header: pickFieldLabel(f, lang),
       cell: (c: { getValue: () => unknown }) => {
         const v = c.getValue();
         if (f.type === "currency") return formatVND(Number(v ?? 0));
@@ -193,7 +238,7 @@ export function EntityData({ entityId }: { entityId: string }) {
       ),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [fields, selected, rows.length, tab]);
+  ], [fields, selected, rows.length, tab, lang]);
 
   if (!ent) {
     return (
@@ -235,6 +280,20 @@ export function EntityData({ entityId }: { entityId: string }) {
             <Input className="pl-7" placeholder="Tìm kiếm full-text..."
               value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
+          {/* Saved views dropdown */}
+          <Select value={currentViewId} onChange={(e) => {
+            const id = e.target.value;
+            if (!id) { setCurrentViewId(""); return; }
+            const v = views.find((vv) => vv.id === id);
+            if (v) applyView(v);
+          }} className="w-[160px]">
+            <option value="">— View —</option>
+            {views.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}{v.isDefault ? " ★" : ""}</option>
+            ))}
+          </Select>
+          <Button size="sm" variant="default" icon={<I.Save size={11} />}
+            onClick={saveCurrentView}>Lưu view</Button>
         </div>
 
         {/* Bulk actions toolbar — chỉ hiện khi có row được chọn */}
@@ -279,7 +338,7 @@ export function EntityData({ entityId }: { entityId: string }) {
         title={`Thêm ${ent.name}`}>
         <div className="p-4 space-y-3">
           {fields.map((f) => (
-            <FormField key={f.id} label={f.label + (f.required ? " *" : "")}>
+            <FormField key={f.id} label={pickFieldLabel(f, lang) + (f.required ? " *" : "")}>
               {f.type === "select" && f.options?.length ? (
                 <Select value={form[f.name] ?? ""}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}>

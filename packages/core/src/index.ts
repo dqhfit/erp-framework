@@ -6,6 +6,7 @@
    @erp-framework/client.
    ========================================================== */
 export * from "./datasource/index";
+export * from "./field-rule";
 export * from "./permissions";
 export * from "./validate";
 export * from "./cron";

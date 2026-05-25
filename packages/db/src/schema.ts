@@ -566,6 +566,27 @@ export const backupRuns = pgTable("backup_runs", {
     .on(t.companyId, t.startedAt),
 }));
 
+/* Saved views per entity per user — mỗi view lưu query + columns config.
+   is_default = entity mở mặc định load view này. Không enforce unique tên
+   để user tự đặt tự do. */
+export const savedViews = pgTable("saved_views", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  entityId: uuid("entity_id").notNull()
+    .references(() => entities.id, { onDelete: "cascade" }),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  query: jsonb("query").notNull().default(sql`'{}'::jsonb`),
+  columns: jsonb("columns"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  entityIdx: index("saved_views_entity_idx").on(t.entityId),
+  userEntityIdx: index("saved_views_user_entity_idx").on(t.createdBy, t.entityId),
+}));
+
 /* Counter atomic cho field type "sequence" — sinh chuỗi tăng dần per
    (company, entity, field). Server SELECT FOR UPDATE + INCREMENT khi
    records.create để không trùng. */

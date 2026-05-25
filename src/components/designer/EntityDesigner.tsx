@@ -631,6 +631,11 @@ function FieldInspector({ field, onUpdate, onDelete, tab, setTab, siblingFields 
             <FormField label={t("field.label")}>
               <Input value={field.label} onChange={(e) => onUpdate({ label: e.target.value })} />
             </FormField>
+            <FormField label="Label (en)" hint="i18n nhãn tiếng Anh — vắng = fallback xuống label">
+              <Input value={field.labelEn ?? ""}
+                placeholder="Optional English label"
+                onChange={(e) => onUpdate({ labelEn: e.target.value } as Partial<EntityField>)} />
+            </FormField>
             <FormField label={t("field.name")} hint={t("field.name_hint")}>
               <Input className="font-mono" value={field.name} onChange={(e) => onUpdate({ name: e.target.value })} />
             </FormField>

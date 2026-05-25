@@ -25,6 +25,7 @@ import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
 import { proceduresRouter } from "./procedures-router";
 import { enumsRouter } from "./enums-router";
+import { savedViewsRouter } from "./saved-views-router";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -1601,6 +1602,9 @@ export const appRouter = router({
 
   /* ── Enum registry — reusable option set đa ngôn ngữ ── */
   enums: enumsRouter,
+
+  /* ── Saved views — per-user query + columns combo cho entity ── */
+  savedViews: savedViewsRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,
