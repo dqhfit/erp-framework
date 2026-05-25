@@ -9,9 +9,19 @@ export type Role = "admin" | "editor" | "viewer";
 export type Action = "view" | "create" | "edit" | "delete" | "run";
 
 export type ObjectType =
-  | "entity" | "page" | "workflow" | "agent"
-  | "settings" | "activity" | "rbac" | "company" | "knowledge" | "iot"
-  | "procedure" | "enum";
+  | "entity"
+  | "page"
+  | "workflow"
+  | "agent"
+  | "settings"
+  | "activity"
+  | "rbac"
+  | "company"
+  | "knowledge"
+  | "iot"
+  | "procedure"
+  | "enum"
+  | "feedback";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
 
@@ -20,16 +30,36 @@ const MATRIX: Record<Role, string[]> = {
   admin: ["*:*"],
   editor: [
     "view:*",
-    "create:entity", "edit:entity", "run:entity",
-    "create:page", "edit:page", "run:page",
-    "create:workflow", "edit:workflow", "run:workflow",
-    "create:agent", "edit:agent", "run:agent",
-    "create:knowledge", "edit:knowledge", "delete:knowledge",
-    "create:iot", "edit:iot", "delete:iot",
-    "create:procedure", "edit:procedure", "run:procedure",
-    "create:enum", "edit:enum", "delete:enum",
+    "create:entity",
+    "edit:entity",
+    "run:entity",
+    "create:page",
+    "edit:page",
+    "run:page",
+    "create:workflow",
+    "edit:workflow",
+    "run:workflow",
+    "create:agent",
+    "edit:agent",
+    "run:agent",
+    "create:knowledge",
+    "edit:knowledge",
+    "delete:knowledge",
+    "create:iot",
+    "edit:iot",
+    "delete:iot",
+    "create:procedure",
+    "edit:procedure",
+    "run:procedure",
+    "create:enum",
+    "edit:enum",
+    "delete:enum",
+    "create:feedback",
+    "edit:feedback",
+    "delete:feedback",
   ],
-  viewer: ["view:*", "run:workflow", "run:agent", "run:procedure"],
+  // viewer được "create:feedback" để mọi user gửi phản hồi sản phẩm được.
+  viewer: ["view:*", "run:workflow", "run:agent", "run:procedure", "create:feedback"],
 };
 
 /** Vai trò `role` có được phép `action` trên `obj` không. */

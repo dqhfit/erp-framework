@@ -4,20 +4,25 @@
    AI enrichment async qua pg-boss queue feedback-ai.
    Tương tác: upvote idempotent + comments + @mention + notify admin.
    ========================================================== */
-import { z } from "zod";
-import { and, desc, eq, inArray, isNull, sql, asc } from "drizzle-orm";
+
+import { feedbackComments, feedbacks, feedbackVotes, users } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import {
-  feedbacks, feedbackVotes, feedbackComments, users,
-} from "@erp-framework/db";
-import { router, rbacProcedure } from "./trpc";
-import { notifyAdmins, notifyMentions } from "./notifications-router";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
 import { logActivity } from "./activity";
 import { embedTexts } from "./embeddings";
 import { enqueueFeedbackAi } from "./feedback-ai";
+import { notifyAdmins, notifyMentions } from "./notifications-router";
+import { rbacProcedure, router } from "./trpc";
 
 const AREA_VALUES = [
-  "entity", "workflow", "agent", "settings", "ui", "performance", "other",
+  "entity",
+  "workflow",
+  "agent",
+  "settings",
+  "ui",
+  "performance",
+  "other",
 ] as const;
 const ZArea = z.enum(AREA_VALUES);
 const ZSeverity = z.enum(["nice_to_have", "normal", "blocker"]);
@@ -31,33 +36,35 @@ function canMutate(authorId: string, role: string, createdAt: Date, userId: stri
 }
 
 export const feedbackRouter = router({
-  list: rbacProcedure("view", "activity")
-    .input(z.object({
-      status: ZStatus.optional(),
-      area: ZArea.optional(),
-      mine: z.boolean().optional(),
-      limit: z.number().int().positive().max(200).optional(),
-    }).optional())
+  list: rbacProcedure("view", "feedback")
+    .input(
+      z
+        .object({
+          status: ZStatus.optional(),
+          area: ZArea.optional(),
+          mine: z.boolean().optional(),
+          limit: z.number().int().positive().max(200).optional(),
+        })
+        .optional(),
+    )
     .query(async ({ ctx, input }) => {
-      const conds = [
-        eq(feedbacks.companyId, ctx.user.companyId),
-        isNull(feedbacks.deletedAt),
-      ];
+      const conds = [eq(feedbacks.companyId, ctx.user.companyId), isNull(feedbacks.deletedAt)];
       if (input?.status) conds.push(eq(feedbacks.status, input.status));
       if (input?.area) conds.push(eq(feedbacks.area, input.area));
       if (input?.mine) conds.push(eq(feedbacks.authorUserId, ctx.user.id));
-      const rows = await ctx.db.select({
-        id: feedbacks.id,
-        title: feedbacks.title,
-        area: feedbacks.area,
-        severity: feedbacks.severity,
-        status: feedbacks.status,
-        voteCount: feedbacks.voteCount,
-        aiSummary: feedbacks.aiSummary,
-        aiTags: feedbacks.aiTags,
-        authorUserId: feedbacks.authorUserId,
-        createdAt: feedbacks.createdAt,
-      })
+      const rows = await ctx.db
+        .select({
+          id: feedbacks.id,
+          title: feedbacks.title,
+          area: feedbacks.area,
+          severity: feedbacks.severity,
+          status: feedbacks.status,
+          voteCount: feedbacks.voteCount,
+          aiSummary: feedbacks.aiSummary,
+          aiTags: feedbacks.aiTags,
+          authorUserId: feedbacks.authorUserId,
+          createdAt: feedbacks.createdAt,
+        })
         .from(feedbacks)
         .where(and(...conds))
         .orderBy(desc(feedbacks.voteCount), desc(feedbacks.createdAt))
@@ -65,58 +72,70 @@ export const feedbackRouter = router({
       return rows;
     }),
 
-  get: rbacProcedure("view", "activity")
+  get: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(feedbacks).where(and(
-        eq(feedbacks.id, input),
-        eq(feedbacks.companyId, ctx.user.companyId),
-        isNull(feedbacks.deletedAt),
-      ));
+      const [row] = await ctx.db
+        .select()
+        .from(feedbacks)
+        .where(
+          and(
+            eq(feedbacks.id, input),
+            eq(feedbacks.companyId, ctx.user.companyId),
+            isNull(feedbacks.deletedAt),
+          ),
+        );
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Feedback không tồn tại" });
-      const [vote] = await ctx.db.select({ userId: feedbackVotes.userId })
-        .from(feedbackVotes).where(and(
-          eq(feedbackVotes.feedbackId, input),
-          eq(feedbackVotes.userId, ctx.user.id),
-        ));
+      const [vote] = await ctx.db
+        .select({ userId: feedbackVotes.userId })
+        .from(feedbackVotes)
+        .where(and(eq(feedbackVotes.feedbackId, input), eq(feedbackVotes.userId, ctx.user.id)));
       // KHÔNG trả embedding (768 floats) ra client — tốn băng thông, không dùng.
       const { embedding: _omit, ...safe } = row;
       void _omit;
       return { ...safe, myVote: !!vote };
     }),
 
-  create: rbacProcedure("view", "activity")
-    .input(z.object({
-      title: z.string().min(3).max(200),
-      body: z.string().min(10).max(10_000),
-      suggestion: z.string().max(10_000).optional(),
-      area: ZArea,
-      url: z.string().max(500).optional(),
-      entityRef: z.object({
-        entityId: z.string().uuid().optional(),
-        recordId: z.string().uuid().optional(),
-      }).optional(),
-      severity: ZSeverity.optional(),
-    }))
+  create: rbacProcedure("create", "feedback")
+    .input(
+      z.object({
+        title: z.string().min(3).max(200),
+        body: z.string().min(10).max(10_000),
+        suggestion: z.string().max(10_000).optional(),
+        area: ZArea,
+        url: z.string().max(500).optional(),
+        entityRef: z
+          .object({
+            entityId: z.string().uuid().optional(),
+            recordId: z.string().uuid().optional(),
+          })
+          .optional(),
+        severity: ZSeverity.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.insert(feedbacks).values({
-        companyId: ctx.user.companyId,
-        authorUserId: ctx.user.id,
-        title: input.title.trim(),
-        body: input.body,
-        suggestion: input.suggestion?.trim() || null,
-        area: input.area,
-        url: input.url ?? null,
-        entityRef: input.entityRef ?? null,
-        severity: input.severity ?? "normal",
-        status: "new",
-      }).returning();
+      const [row] = await ctx.db
+        .insert(feedbacks)
+        .values({
+          companyId: ctx.user.companyId,
+          authorUserId: ctx.user.id,
+          title: input.title.trim(),
+          body: input.body,
+          suggestion: input.suggestion?.trim() || null,
+          area: input.area,
+          url: input.url ?? null,
+          entityRef: input.entityRef ?? null,
+          severity: input.severity ?? "normal",
+          status: "new",
+        })
+        .returning();
       if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const url = `/feedback/${row.id}`;
       // Fire-and-forget — không chặn user response.
       void enqueueFeedbackAi(row.id).catch((e) =>
-        console.warn("[feedback] enqueue AI lỗi:", (e as Error).message));
+        console.warn("[feedback] enqueue AI lỗi:", (e as Error).message),
+      );
       void notifyAdmins(ctx.db, {
         companyId: ctx.user.companyId,
         actorUserId: ctx.user.id,
@@ -141,20 +160,22 @@ export const feedbackRouter = router({
       return row;
     }),
 
-  update: rbacProcedure("view", "activity")
-    .input(z.object({
-      id: z.string().uuid(),
-      title: z.string().min(3).max(200).optional(),
-      body: z.string().min(10).max(10_000).optional(),
-      suggestion: z.string().max(10_000).optional(),
-      area: ZArea.optional(),
-      severity: ZSeverity.optional(),
-    }))
+  update: rbacProcedure("edit", "feedback")
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        title: z.string().min(3).max(200).optional(),
+        body: z.string().min(10).max(10_000).optional(),
+        suggestion: z.string().max(10_000).optional(),
+        area: ZArea.optional(),
+        severity: ZSeverity.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(feedbacks).where(and(
-        eq(feedbacks.id, input.id),
-        eq(feedbacks.companyId, ctx.user.companyId),
-      ));
+      const [row] = await ctx.db
+        .select()
+        .from(feedbacks)
+        .where(and(eq(feedbacks.id, input.id), eq(feedbacks.companyId, ctx.user.companyId)));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       if (!canMutate(row.authorUserId, ctx.user.role, row.createdAt, ctx.user.id)) {
         throw new TRPCError({
@@ -176,30 +197,37 @@ export const feedbackRouter = router({
       return { ok: true };
     }),
 
-  setStatus: rbacProcedure("edit", "activity")
-    .input(z.object({
-      id: z.string().uuid(),
-      status: ZStatus,
-      resolutionNote: z.string().max(2000).optional(),
-    }))
+  setStatus: rbacProcedure("edit", "feedback")
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: ZStatus,
+        resolutionNote: z.string().max(2000).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(feedbacks).where(and(
-        eq(feedbacks.id, input.id),
-        eq(feedbacks.companyId, ctx.user.companyId),
-      ));
+      const [row] = await ctx.db
+        .select()
+        .from(feedbacks)
+        .where(and(eq(feedbacks.id, input.id), eq(feedbacks.companyId, ctx.user.companyId)));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       if (row.status === input.status) return { ok: true };
-      await ctx.db.update(feedbacks).set({
-        status: input.status,
-        resolutionNote: input.resolutionNote ?? row.resolutionNote,
-        updatedAt: new Date(),
-      }).where(eq(feedbacks.id, input.id));
+      await ctx.db
+        .update(feedbacks)
+        .set({
+          status: input.status,
+          resolutionNote: input.resolutionNote ?? row.resolutionNote,
+          updatedAt: new Date(),
+        })
+        .where(eq(feedbacks.id, input.id));
 
       // Notify author + những người đã comment.
       const targets = new Set<string>();
       if (row.authorUserId !== ctx.user.id) targets.add(row.authorUserId);
-      const cs = await ctx.db.select({ authorUserId: feedbackComments.authorUserId })
-        .from(feedbackComments).where(eq(feedbackComments.feedbackId, input.id));
+      const cs = await ctx.db
+        .select({ authorUserId: feedbackComments.authorUserId })
+        .from(feedbackComments)
+        .where(eq(feedbackComments.feedbackId, input.id));
       for (const c of cs) if (c.authorUserId !== ctx.user.id) targets.add(c.authorUserId);
       const url = `/feedback/${input.id}`;
       const body = `Feedback "${row.title}" đổi trạng thái → ${input.status}`;
@@ -226,15 +254,16 @@ export const feedbackRouter = router({
       return { ok: true };
     }),
 
-  delete: rbacProcedure("view", "activity")
+  delete: rbacProcedure("delete", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select({
-        authorUserId: feedbacks.authorUserId, createdAt: feedbacks.createdAt,
-      }).from(feedbacks).where(and(
-        eq(feedbacks.id, input),
-        eq(feedbacks.companyId, ctx.user.companyId),
-      ));
+      const [row] = await ctx.db
+        .select({
+          authorUserId: feedbacks.authorUserId,
+          createdAt: feedbacks.createdAt,
+        })
+        .from(feedbacks)
+        .where(and(eq(feedbacks.id, input), eq(feedbacks.companyId, ctx.user.companyId)));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       if (!canMutate(row.authorUserId, ctx.user.role, row.createdAt, ctx.user.id)) {
         throw new TRPCError({
@@ -242,19 +271,24 @@ export const feedbackRouter = router({
           message: "Chỉ author trong 1h hoặc admin được xoá",
         });
       }
-      await ctx.db.update(feedbacks)
+      await ctx.db
+        .update(feedbacks)
         .set({ deletedAt: new Date(), updatedAt: new Date() })
         .where(eq(feedbacks.id, input));
       return { ok: true };
     }),
 
-  vote: rbacProcedure("view", "activity")
+  vote: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
       // ON CONFLICT DO NOTHING — idempotent.
-      await ctx.db.insert(feedbackVotes).values({
-        feedbackId: input, userId: ctx.user.id,
-      }).onConflictDoNothing();
+      await ctx.db
+        .insert(feedbackVotes)
+        .values({
+          feedbackId: input,
+          userId: ctx.user.id,
+        })
+        .onConflictDoNothing();
       await ctx.db.execute(sql`
         UPDATE feedbacks SET vote_count = (
           SELECT count(*) FROM feedback_votes WHERE feedback_id = ${input}
@@ -263,13 +297,12 @@ export const feedbackRouter = router({
       return { ok: true };
     }),
 
-  unvote: rbacProcedure("view", "activity")
+  unvote: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.delete(feedbackVotes).where(and(
-        eq(feedbackVotes.feedbackId, input),
-        eq(feedbackVotes.userId, ctx.user.id),
-      ));
+      await ctx.db
+        .delete(feedbackVotes)
+        .where(and(eq(feedbackVotes.feedbackId, input), eq(feedbackVotes.userId, ctx.user.id)));
       await ctx.db.execute(sql`
         UPDATE feedbacks SET vote_count = (
           SELECT count(*) FROM feedback_votes WHERE feedback_id = ${input}
@@ -279,47 +312,53 @@ export const feedbackRouter = router({
     }),
 
   /* ── Comments — clone style record-comments-router.ts ─────────── */
-  listComments: rbacProcedure("view", "activity")
+  listComments: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      const [fb] = await ctx.db.select({ id: feedbacks.id }).from(feedbacks)
-        .where(and(
-          eq(feedbacks.id, input),
-          eq(feedbacks.companyId, ctx.user.companyId),
-        ));
+      const [fb] = await ctx.db
+        .select({ id: feedbacks.id })
+        .from(feedbacks)
+        .where(and(eq(feedbacks.id, input), eq(feedbacks.companyId, ctx.user.companyId)));
       if (!fb) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.select({
-        id: feedbackComments.id,
-        parentId: feedbackComments.parentId,
-        authorUserId: feedbackComments.authorUserId,
-        body: feedbackComments.body,
-        createdAt: feedbackComments.createdAt,
-      }).from(feedbackComments).where(and(
-        eq(feedbackComments.feedbackId, input),
-        isNull(feedbackComments.deletedAt),
-      )).orderBy(asc(feedbackComments.createdAt));
+      return ctx.db
+        .select({
+          id: feedbackComments.id,
+          parentId: feedbackComments.parentId,
+          authorUserId: feedbackComments.authorUserId,
+          body: feedbackComments.body,
+          createdAt: feedbackComments.createdAt,
+        })
+        .from(feedbackComments)
+        .where(and(eq(feedbackComments.feedbackId, input), isNull(feedbackComments.deletedAt)))
+        .orderBy(asc(feedbackComments.createdAt));
     }),
 
-  addComment: rbacProcedure("view", "activity")
-    .input(z.object({
-      feedbackId: z.string().uuid(),
-      parentId: z.string().uuid().optional(),
-      body: z.string().min(1).max(5000),
-    }))
+  addComment: rbacProcedure("view", "feedback")
+    .input(
+      z.object({
+        feedbackId: z.string().uuid(),
+        parentId: z.string().uuid().optional(),
+        body: z.string().min(1).max(5000),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [fb] = await ctx.db.select({ id: feedbacks.id, title: feedbacks.title })
-        .from(feedbacks).where(and(
-          eq(feedbacks.id, input.feedbackId),
-          eq(feedbacks.companyId, ctx.user.companyId),
-        ));
+      const [fb] = await ctx.db
+        .select({ id: feedbacks.id, title: feedbacks.title })
+        .from(feedbacks)
+        .where(
+          and(eq(feedbacks.id, input.feedbackId), eq(feedbacks.companyId, ctx.user.companyId)),
+        );
       if (!fb) throw new TRPCError({ code: "NOT_FOUND" });
-      const [row] = await ctx.db.insert(feedbackComments).values({
-        companyId: ctx.user.companyId,
-        feedbackId: input.feedbackId,
-        parentId: input.parentId ?? null,
-        authorUserId: ctx.user.id,
-        body: input.body,
-      }).returning();
+      const [row] = await ctx.db
+        .insert(feedbackComments)
+        .values({
+          companyId: ctx.user.companyId,
+          feedbackId: input.feedbackId,
+          parentId: input.parentId ?? null,
+          authorUserId: ctx.user.id,
+          body: input.body,
+        })
+        .returning();
       void notifyMentions(ctx.db, {
         companyId: ctx.user.companyId,
         actorUserId: ctx.user.id,
@@ -330,21 +369,24 @@ export const feedbackRouter = router({
       return row;
     }),
 
-  deleteComment: rbacProcedure("view", "activity")
+  deleteComment: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      const [c] = await ctx.db.select({
-        authorUserId: feedbackComments.authorUserId,
-        createdAt: feedbackComments.createdAt,
-      }).from(feedbackComments).where(and(
-        eq(feedbackComments.id, input),
-        eq(feedbackComments.companyId, ctx.user.companyId),
-      ));
+      const [c] = await ctx.db
+        .select({
+          authorUserId: feedbackComments.authorUserId,
+          createdAt: feedbackComments.createdAt,
+        })
+        .from(feedbackComments)
+        .where(
+          and(eq(feedbackComments.id, input), eq(feedbackComments.companyId, ctx.user.companyId)),
+        );
       if (!c) throw new TRPCError({ code: "NOT_FOUND" });
       if (!canMutate(c.authorUserId, ctx.user.role, c.createdAt, ctx.user.id)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      await ctx.db.update(feedbackComments)
+      await ctx.db
+        .update(feedbackComments)
         .set({ deletedAt: new Date() })
         .where(eq(feedbackComments.id, input));
       return { ok: true };
@@ -352,17 +394,18 @@ export const feedbackRouter = router({
 
   /* Tìm feedback tương tự qua cosine (<=>). Gọi từ submit modal trước
      khi user bấm Submit — chặn duplicate sớm. */
-  findSimilar: rbacProcedure("view", "activity")
-    .input(z.object({
-      title: z.string().min(3),
-      body: z.string().optional().default(""),
-      limit: z.number().int().positive().max(10).optional(),
-    }))
+  findSimilar: rbacProcedure("view", "feedback")
+    .input(
+      z.object({
+        title: z.string().min(3),
+        body: z.string().optional().default(""),
+        limit: z.number().int().positive().max(10).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       let vec: number[];
       try {
-        const r = await embedTexts(ctx.db, ctx.user.companyId,
-          [`${input.title}\n${input.body}`]);
+        const r = await embedTexts(ctx.db, ctx.user.companyId, [`${input.title}\n${input.body}`]);
         if (!r[0]) return [];
         vec = r[0];
       } catch (e) {
@@ -374,8 +417,11 @@ export const feedbackRouter = router({
       // pgvector: <=> = cosine distance (0 = giống nhất). Similarity = 1 - dist.
       const vecLit = sql`${"[" + vec.join(",") + "]"}::vector`;
       const rows = await ctx.db.execute<{
-        id: string; title: string; status: string;
-        vote_count: number; similarity: number;
+        id: string;
+        title: string;
+        status: string;
+        vote_count: number;
+        similarity: number;
       }>(sql`
         SELECT id, title, status, vote_count,
                1 - (embedding <=> ${vecLit}) AS similarity
@@ -388,10 +434,13 @@ export const feedbackRouter = router({
         LIMIT ${limit}
       `);
       // pg trả ResultRow — chuẩn hoá ra mảng.
-      const list = Array.isArray(rows) ? rows : (rows as unknown as { rows: typeof rows[] }).rows ?? [];
+      const list = Array.isArray(rows)
+        ? rows
+        : ((rows as unknown as { rows: (typeof rows)[] }).rows ?? []);
       return list.filter((r: { similarity: number }) => r.similarity > 0.6);
     }),
 });
 
 // Suppress unused import warning — users dùng trong notify pattern khác về sau.
-void users; void inArray;
+void users;
+void inArray;
