@@ -733,6 +733,27 @@ export const apiKeys = pgTable("api_keys", {
    dashboard/report. Query SQL custom (admin viết); refresh cron schedule
    ghi data JSONB. Render từ data field — nhanh hơn re-execute query. */
 
+/* Write-once audit log cho compliance — trigger BEFORE UPDATE OR DELETE
+   ném exception. Mirror activity_log nhưng cho event critical (auth,
+   record write, RBAC change). Ai cũng không sửa/xoá được sau INSERT. */
+export const auditLogImmutable = pgTable("audit_log_immutable", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id"),
+  kind: text("kind").notNull(),
+  objectType: text("object_type"),
+  target: text("target"),
+  targetId: uuid("target_id"),
+  actorUserId: uuid("actor_user_id"),
+  detail: text("detail").notNull(),
+  diff: jsonb("diff"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  companyKindIdx: index("ali_company_kind_idx").on(t.companyId, t.kind, t.createdAt),
+  targetIdx: index("ali_target_idx").on(t.targetId),
+}));
+
 /* OAuth refresh tokens — long-lived; rotate khi dùng (issue new + revoke cũ).
    Token plaintext "rt_<hex>" → sha256 → token_hash. */
 export const oauthRefreshTokens = pgTable("oauth_refresh_tokens", {

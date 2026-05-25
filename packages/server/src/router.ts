@@ -38,6 +38,7 @@ import { presenceRouter } from "./presence-router";
 import { applyRollups, invalidateRollupsFor } from "./rollup";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { findDuplicateRecords } from "./duplicate-detection";
+import { logAuditImmutable } from "./audit-immutable";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -1083,6 +1084,17 @@ export const appRouter = router({
           const [ent] = await ctx.db.select({ name: entities.name }).from(entities)
             .where(eq(entities.id, rec.entityId));
           if (ent) void invalidateRollupsFor(ctx.db, ctx.user.companyId, ent.name);
+          // Immutable audit cho compliance — không sửa/xoá được sau insert.
+          void logAuditImmutable(ctx.db, {
+            companyId: ctx.user.companyId,
+            kind: "record_update",
+            objectType: "entity",
+            target: ent?.name,
+            targetId: input.recordId,
+            actorUserId: ctx.user.id,
+            detail: `Update record ${input.recordId} v${row.version}`,
+            diff,
+          });
         }
         return row;
       }),
