@@ -3,9 +3,13 @@
    Đọc bảng llm_profiles; hỗ trợ Anthropic API và các endpoint
    OpenAI-compatible (openai, ollama).
 
-   Khoá API: hiện đọc llm_profiles.api_key_enc như plaintext —
-   TODO: giải mã thật ở tầng app; có fallback biến môi trường
-   ANTHROPIC_API_KEY / OPENAI_API_KEY.
+   Khoá API: lưu encrypted ở llm_profiles.api_key_enc (prefix
+   "enc:v1:"), decrypt qua crypto.ts (AES-256-GCM, key từ
+   ENCRYPTION_KEY env). Fallback env var ANTHROPIC_API_KEY /
+   OPENAI_API_KEY CHỈ kích hoạt khi opt-in bằng env
+   ERP_ALLOW_ENV_LLM_KEY=1 — mặc định tắt để tránh leak tenant
+   isolation (company A vô tình dùng key của ENV chung).
+   Ollama không cần key (local) nên fallback luôn cho phép.
    ========================================================== */
 import { eq } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
@@ -122,12 +126,26 @@ export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent
       ? cfg.prompt
       : `Dữ liệu workflow hiện tại:\n${JSON.stringify(vars, null, 2)}`;
 
-    const key = p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "";
+    const profileKey = p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "";
+    const allowEnvFallback = process.env.ERP_ALLOW_ENV_LLM_KEY === "1";
+    /* Khi profile thiếu key, chỉ Ollama (local) là tự do fallback.
+       Provider thương mại — yêu cầu opt-in env để tránh leak key chung
+       sang tenant chưa setup. Throw lỗi rõ ràng nếu thiếu key. */
+    const resolveKey = (adapter: string, envVar: string): string => {
+      if (profileKey) return profileKey;
+      if (adapter === "ollama") return ""; // local, không cần key
+      if (allowEnvFallback) return process.env[envVar] || "";
+      throw new Error(
+        `LLM profile "${p.adapter}" thiếu API key. Vào Cài đặt → LLM `
+        + "để khai báo, hoặc set ERP_ALLOW_ENV_LLM_KEY=1 để cho phép "
+        + `dùng env var ${envVar} (không khuyến nghị production).`,
+      );
+    };
     if (p.adapter === "claude" || p.adapter === "claude-pro") {
-      return callAnthropic(p, key || process.env.ANTHROPIC_API_KEY || "", system, prompt);
+      return callAnthropic(p, resolveKey(p.adapter, "ANTHROPIC_API_KEY"), system, prompt);
     }
     if (p.adapter === "openai" || p.adapter === "ollama") {
-      return callOpenAiCompat(p, key || process.env.OPENAI_API_KEY || "", system, prompt);
+      return callOpenAiCompat(p, resolveKey(p.adapter, "OPENAI_API_KEY"), system, prompt);
     }
     throw new Error(`Adapter "${p.adapter}" chưa hỗ trợ ở server runtime`);
   };
