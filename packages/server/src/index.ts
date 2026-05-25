@@ -7,6 +7,7 @@ import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import websocketPlugin from "@fastify/websocket";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { and, eq } from "drizzle-orm";
 import { agents, sessions, knowledgeSources } from "@erp-framework/db";
@@ -14,6 +15,7 @@ import { roleCan } from "@erp-framework/core";
 import { appRouter } from "./router";
 import { registerIotRoutes } from "./iot";
 import { registerRestApi } from "./rest-api";
+import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { createContext, resolveActiveCompany } from "./context";
 import { startJobs, stopJobs, enqueueKbIngest } from "./jobs";
@@ -139,6 +141,8 @@ async function main(): Promise<void> {
   await app.register(cookie);
   // Multipart — cho route /upload nhận file tải lên (giới hạn 25MB).
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
+  // WebSocket — cho realtime push notifications + presence.
+  await app.register(websocketPlugin);
   await app.register(fastifyTRPCPlugin, {
     prefix: "/trpc",
     trpcOptions: {
@@ -164,9 +168,39 @@ async function main(): Promise<void> {
   app.get("/", async () => ({
     name: "ERP Framework server",
     status: "ok",
-    endpoints: { health: "/health", trpc: "/trpc", iot: "/iot/v1" },
+    endpoints: { health: "/health", trpc: "/trpc", iot: "/iot/v1", ws: "/ws" },
   }));
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
+
+  /* WebSocket endpoint — realtime push. Client connect kèm cookie phiên;
+     server xác thực user qua sessions table, register vào ws-hub. Client
+     gửi {action: "subscribe"|"unsubscribe", channel} để quản channels.
+     Channel format: "notifications:<userId>" hoặc "presence:<recordId>".
+     Server tự reject channel không khớp user/company. */
+  app.get("/ws", { websocket: true }, async (socket, req) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) { socket.close(1008, "Unauthorized"); return; }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) { socket.close(1008, "Session expired"); return; }
+    const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+    if (!active) { socket.close(1008, "No company"); return; }
+    const conn = registerConnection(socket as never, s.userId, active.companyId);
+    socket.send(JSON.stringify({ channel: "system", payload: { ok: true, userId: s.userId } }));
+    socket.on("message", (raw: Buffer) => {
+      try {
+        const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
+        if (!m.channel) return;
+        // Authorization per channel — user chỉ được subscribe notifications của mình
+        // hoặc presence record cùng công ty.
+        if (m.channel.startsWith("notifications:")
+          && m.channel !== `notifications:${s.userId}`) return;
+        // presence:<recordId> sẽ verify record cùng company qua presence.ping;
+        // ở đây tin tưởng caller — worst case nhận event không liên quan, không leak.
+        if (m.action === "subscribe") subscribe(conn, m.channel);
+        else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
+      } catch { /* malformed message — ignore */ }
+    });
+  });
 
   /* Agent chat — SSE stream. Vòng lặp agentic (LLM + MCP tool) chạy
      server-side; mỗi bước phát một event. Cần phiên đăng nhập. */

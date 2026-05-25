@@ -7,6 +7,7 @@ import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { recordPresence, entityRecords, users } from "@erp-framework/db";
 import { router, rbacProcedure } from "./trpc";
+import { publish } from "./ws-hub";
 
 const TTL_SECONDS = 30;
 
@@ -27,6 +28,11 @@ export const presenceRouter = router({
       }).onConflictDoUpdate({
         target: [recordPresence.recordId, recordPresence.userId],
         set: { lastSeen: new Date() },
+      });
+      // Broadcast cho subscribers presence:<recordId> — UI nhận update
+      // mà không cần poll list lại.
+      publish(`presence:${input}`, {
+        type: "ping", userId: ctx.user.id, ts: Date.now(),
       });
       return { ok: true };
     }),

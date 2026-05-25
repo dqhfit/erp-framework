@@ -8,6 +8,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { notifications, users } from "@erp-framework/db";
 import { router, protectedProcedure } from "./trpc";
 import type { DB } from "./db";
+import { publish } from "./ws-hub";
 
 export const notificationsRouter = router({
   list: protectedProcedure
@@ -94,7 +95,7 @@ export async function notifyMentions(
     }
     if (matched.length === 0) return;
     const dedupe = new Map(matched.map((m) => [m.id, m]));
-    await db.insert(notifications).values([...dedupe.values()].map((u) => ({
+    const inserted = await db.insert(notifications).values([...dedupe.values()].map((u) => ({
       companyId: args.companyId,
       userId: u.id,
       kind: args.kind ?? "mention",
@@ -102,7 +103,13 @@ export async function notifyMentions(
       targetUrl: args.targetUrl ?? null,
       actorUserId: args.actorUserId,
       body: args.body.slice(0, 500),
-    })));
+    }))).returning();
+    // Push realtime cho từng user qua WS hub (best-effort).
+    for (const n of inserted) {
+      publish(`notifications:${n.userId}`, {
+        type: "new", notification: n,
+      });
+    }
   } catch (e) {
     console.error("[notifyMentions] lỗi:", (e as Error).message);
   }
