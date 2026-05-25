@@ -49,6 +49,9 @@ export function createCompaniesClient(baseUrl: string) {
     /** Gỡ một thành viên khỏi công ty. */
     removeMember: (userId: string) =>
       trpc.companies.removeMember.mutate({ userId }),
+    /** Admin đặt lại mật khẩu cho một thành viên. Xoá toàn bộ session của user đó. */
+    resetMemberPassword: (userId: string, newPassword: string) =>
+      trpc.companies.resetMemberPassword.mutate({ userId, newPassword }),
   };
 }
 

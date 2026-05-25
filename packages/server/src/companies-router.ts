@@ -271,4 +271,53 @@ export const companiesRouter = router({
         ));
       return { ok: true };
     }),
+
+  /* Admin đặt lại mật khẩu cho một thành viên.
+     - Chỉ admin mới gọi được (RBAC edit + kiểm role).
+     - Không tự reset mật khẩu chính mình (dùng change-password thay thế).
+     - Xoá toàn bộ session hiện tại của user đó để buộc đăng nhập lại. */
+  resetMemberPassword: rbacProcedure("edit", "company")
+    .input(z.object({
+      userId: z.string().uuid(),
+      newPassword: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin được reset mật khẩu" });
+      }
+      if (input.userId === ctx.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Không thể reset mật khẩu của chính mình qua tính năng này",
+        });
+      }
+      const [m] = await ctx.db
+        .select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      if (!m) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User không phải thành viên công ty này" });
+      }
+      const [u] = await ctx.db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, input.userId));
+      await ctx.db.update(users)
+        .set({ passwordHash: await hashPassword(input.newPassword) })
+        .where(eq(users.id, input.userId));
+      // Buộc đăng xuất khỏi tất cả thiết bị.
+      await ctx.db.delete(sessions).where(eq(sessions.userId, input.userId));
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "user.password_reset",
+        objectType: "user",
+        target: input.userId,
+        detail: `Admin reset mật khẩu cho ${u?.email ?? input.userId}`,
+        actorUserId: ctx.user.id,
+      });
+      return { ok: true };
+    }),
 });

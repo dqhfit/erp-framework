@@ -46,6 +46,9 @@ function CompaniesSettings() {
   /** Link invite vừa sinh — hiện modal "Copy link" sau khi addMember. */
   const [inviteLink, setInviteLink] = useState<string>("");
   const [inviteEmail, setInviteEmail] = useState<string>("");
+  /** Reset password: user đang được đặt lại mật khẩu. */
+  const [resetTarget, setResetTarget] = useState<{ userId: string; email: string } | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
 
   const isAdmin = myRole === "admin";
 
@@ -226,38 +229,50 @@ function CompaniesSettings() {
                       )}
                     </td>
                     <td className="py-2 pl-2 text-right">
-                      {isAdmin && m.pending && (
-                        <Button
-                          variant="default" size="sm" icon={<I.Send size={13} />}
-                          disabled={busy}
-                          title="Sinh lại link đăng ký + copy"
-                          onClick={() => void run(async () => {
-                            const r = await companies.resendInvite(m.userId);
-                            const full = window.location.origin + r.inviteLink;
-                            setInviteLink(full);
-                            setInviteEmail(m.email);
-                            await navigator.clipboard?.writeText(full).catch(() => {});
-                          }, "✓ Đã sinh link mới — đã copy vào clipboard.")}
-                        >
-                          Gửi lại
-                        </Button>
-                      )}
-                      {isAdmin && (
-                        <Button
-                          variant="danger" size="sm" icon={<I.Trash size={13} />}
-                          disabled={busy}
-                          onClick={async () => {
-                            const ok = await dialog.confirm(
-                              `Gỡ ${m.email} khỏi công ty?`,
-                              { title: "Gỡ thành viên", confirmText: "Gỡ" },
-                            );
-                            if (ok) void run(
-                              () => companies.removeMember(m.userId).then(() => {}),
-                              "✓ Đã gỡ thành viên.",
-                            );
-                          }}
-                        />
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        {isAdmin && m.pending && (
+                          <Button
+                            variant="default" size="sm" icon={<I.Send size={13} />}
+                            disabled={busy}
+                            title="Sinh lại link đăng ký + copy"
+                            onClick={() => void run(async () => {
+                              const r = await companies.resendInvite(m.userId);
+                              const full = window.location.origin + r.inviteLink;
+                              setInviteLink(full);
+                              setInviteEmail(m.email);
+                              await navigator.clipboard?.writeText(full).catch(() => {});
+                            }, "✓ Đã sinh link mới — đã copy vào clipboard.")}
+                          >
+                            Gửi lại
+                          </Button>
+                        )}
+                        {isAdmin && !m.pending && (
+                          <Button
+                            variant="default" size="sm" icon={<I.Lock size={13} />}
+                            disabled={busy}
+                            title="Đặt lại mật khẩu cho user này"
+                            onClick={() => { setResetTarget({ userId: m.userId, email: m.email }); setResetPwd(""); }}
+                          >
+                            Reset pass
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="danger" size="sm" icon={<I.Trash size={13} />}
+                            disabled={busy}
+                            onClick={async () => {
+                              const ok = await dialog.confirm(
+                                `Gỡ ${m.email} khỏi công ty?`,
+                                { title: "Gỡ thành viên", confirmText: "Gỡ" },
+                              );
+                              if (ok) void run(
+                                () => companies.removeMember(m.userId).then(() => {}),
+                                "✓ Đã gỡ thành viên.",
+                              );
+                            }}
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -337,6 +352,45 @@ function CompaniesSettings() {
             <div className="text-xs text-muted">
               Hết hạn sau 7 ngày. User mở link → đặt mật khẩu → vào app. Có thể
               sinh lại link bằng nút "Gửi lại" cạnh chip "chờ accept".
+            </div>
+          </Card>
+        )}
+
+        {/* === Panel đặt lại mật khẩu === */}
+        {resetTarget && (
+          <Card className="mt-4 border-warning/40 bg-warning/5 space-y-3">
+            <div className="flex items-center gap-2">
+              <I.Lock size={14} className="text-warning" />
+              <div className="font-medium text-sm">
+                Đặt lại mật khẩu cho <span className="font-mono">{resetTarget.email}</span>
+              </div>
+              <div className="flex-1" />
+              <Button variant="ghost" size="sm" icon={<I.X size={12} />}
+                onClick={() => setResetTarget(null)} title="Đóng" />
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
+                value={resetPwd}
+                disabled={busy}
+                onChange={(e) => setResetPwd(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                variant="danger"
+                disabled={busy || resetPwd.length < 8}
+                onClick={() => void run(async () => {
+                  await companies.resetMemberPassword(resetTarget.userId, resetPwd);
+                  setResetTarget(null);
+                  setResetPwd("");
+                }, `✓ Đã đặt lại mật khẩu cho ${resetTarget.email}. Mọi phiên của user đó đã bị đăng xuất.`)}
+              >
+                Xác nhận đặt lại
+              </Button>
+            </div>
+            <div className="text-xs text-muted">
+              User sẽ bị đăng xuất khỏi tất cả thiết bị và phải đăng nhập lại bằng mật khẩu mới.
             </div>
           </Card>
         )}
