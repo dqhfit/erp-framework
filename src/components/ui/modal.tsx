@@ -1,5 +1,6 @@
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { type ReactNode, useId } from "react";
+import { createPortal } from "react-dom";
 import { I } from "../Icons";
 import { Button } from "./button";
 
@@ -16,7 +17,7 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
   const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
   const titleId = useId();
   if (!open) return null;
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[900] overflow-y-auto"
       onMouseDown={onClose}
@@ -47,6 +48,7 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
         )}
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
