@@ -24,10 +24,10 @@ export default defineConfig({
         "**/types/**",
         "**/migrations/**",
       ],
-      // Baseline 2026-05-26: 2.92% statements / 1.49% functions.
-      // Threshold = baseline + buffer 0.1% để chống regression — KHÔNG
-      // gate CI. Ratchet up sau mỗi sprint viết test router.
-      thresholds: { lines: 3, statements: 2.5, functions: 1.4, branches: 1.7 },
+      // Ratchet baseline 2026-05-26 sau Phase D (enums-router test +14):
+      //   2.92% → 3.65% statements; 1.49% → 2.49% functions
+      // Threshold ép minimum mới — sprint sau test thêm router, tăng dần.
+      thresholds: { lines: 3.9, statements: 3.5, functions: 2.4, branches: 2.3 },
     },
   },
   server: {

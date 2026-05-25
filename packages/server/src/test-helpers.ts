@@ -23,14 +23,16 @@ export interface MockUserInput {
   companyDisabled?: boolean;
 }
 
-/** Tạo SessionUser với defaults sane. */
+/** Tạo SessionUser với defaults sane.
+ *  Dùng `'key' in overrides` để PHÂN BIỆT explicit `null` với undefined —
+ *  tránh `null ?? default` ép null thành default (bug ban đầu). */
 export function makeMockUser(overrides: MockUserInput = {}): SessionUser {
   return {
     id: overrides.id ?? "user_test_1",
     email: overrides.email ?? "test@example.com",
     name: overrides.name ?? "Test User",
     role: overrides.role ?? "admin",
-    companyId: overrides.companyId ?? "co_test_1",
+    companyId: "companyId" in overrides ? (overrides.companyId ?? null) : "co_test_1",
     companyApproved: overrides.companyApproved ?? true,
     companyDisabled: overrides.companyDisabled ?? false,
   };
