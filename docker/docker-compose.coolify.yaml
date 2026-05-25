@@ -123,6 +123,7 @@ services:
       - coolify
     labels:
       - "traefik.docker.network=coolify"
+      - "traefik.http.services.https-0-bnz7uw5qok10rxqqe9tat1cx-app.loadbalancer.server.port=80"
     # Traefik cần thấy `expose` để biết forward sang cổng nào.
     expose:
       - "80"
