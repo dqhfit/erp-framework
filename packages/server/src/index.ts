@@ -1,38 +1,41 @@
 /* index.ts — Bootstrap Fastify + tRPC + scheduler pg-boss.
    Cổng 8910 (tránh đụng bridge 8909). */
 import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
-import { writeFile, mkdir } from "node:fs/promises";
-import { join, extname } from "node:path";
-import Fastify from "fastify";
+import { mkdir, writeFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+import { roleCan } from "@erp-framework/core";
+import { agents, apiKeys, knowledgeSources, sessions } from "@erp-framework/db";
+import { runMigrations } from "@erp-framework/db/migrate";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import websocketPlugin from "@fastify/websocket";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
-import { and, eq } from "drizzle-orm";
-import { agents, sessions, knowledgeSources } from "@erp-framework/db";
-import { roleCan } from "@erp-framework/core";
-import { appRouter } from "./router";
-import { registerIotRoutes } from "./iot";
-import { registerRestApi } from "./rest-api";
-import { registerGraphQL } from "./graphql";
-import { registerOAuth } from "./oauth";
-import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
-import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
-import { createContext, resolveActiveCompany } from "./context";
-import { startJobs, stopJobs, enqueueKbIngest } from "./jobs";
-import { db } from "./db";
-import { runMigrations } from "@erp-framework/db/migrate";
-import { SESSION_COOKIE } from "./auth";
-import { runAgentChat, type ToolDef } from "./agent-chat";
-import { makeCallTool } from "./mcp-client";
-import { knowledgeSearch } from "./knowledge-search";
+import { and, eq, sql } from "drizzle-orm";
+import Fastify from "fastify";
 import { canActOnAgentLite } from "./agent-acl";
+import { runAgentChat, type ToolDef } from "./agent-chat";
 import {
-  MEMORY_FILES, loadAgentMemory, formatMemoryPreamble, appendMemory,
+  appendMemory,
+  formatMemoryPreamble,
+  loadAgentMemory,
+  MEMORY_FILES,
   type MemoryFile,
 } from "./agent-memory";
+import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
+import { createContext, resolveActiveCompany } from "./context";
+import { db } from "./db";
+import { registerGraphQL } from "./graphql";
+import { registerIotRoutes } from "./iot";
+import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
+import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
+import { knowledgeSearch } from "./knowledge-search";
+import { makeCallTool } from "./mcp-client";
+import { registerOAuth } from "./oauth";
+import { registerRestApi } from "./rest-api";
+import { appRouter } from "./router";
+import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 import { bootstrapTools, shutdownTools } from "./tools";
 
@@ -45,8 +48,8 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/data/uploads";
 const KB_SEARCH_TOOL: ToolDef = {
   name: "knowledge_search",
   description:
-    "Tra cứu Knowledge Base nội bộ của công ty (tài liệu đã tải lên, dữ liệu "
-    + "ERP, ghi chú). Dùng khi cần thông tin nội bộ để trả lời.",
+    "Tra cứu Knowledge Base nội bộ của công ty (tài liệu đã tải lên, dữ liệu " +
+    "ERP, ghi chú). Dùng khi cần thông tin nội bộ để trả lời.",
   schema: {
     type: "object",
     properties: {
@@ -62,8 +65,8 @@ const KB_SEARCH_TOOL: ToolDef = {
 const MEMORY_REMEMBER_TOOL: ToolDef = {
   name: "memory_remember",
   description:
-    "Ghi nhớ một điều mới vào memory file của agent (vd USER.md cho sở "
-    + "thích người dùng). Append theo dòng kèm dấu thời gian.",
+    "Ghi nhớ một điều mới vào memory file của agent (vd USER.md cho sở " +
+    "thích người dùng). Append theo dòng kèm dấu thời gian.",
   schema: {
     type: "object",
     properties: {
@@ -73,7 +76,8 @@ const MEMORY_REMEMBER_TOOL: ToolDef = {
         description: "Tên file memory cần ghi (IDENTITY, SOUL, USER, …).",
       },
       content: {
-        type: "string", description: "Nội dung ngắn cần lưu (1-3 câu).",
+        type: "string",
+        description: "Nội dung ngắn cần lưu (1-3 câu).",
       },
     },
     required: ["file", "content"],
@@ -85,8 +89,8 @@ const MEMORY_REMEMBER_TOOL: ToolDef = {
 const KB_ADD_TOOL: ToolDef = {
   name: "knowledge_add",
   description:
-    "Lưu một đoạn nội dung vào Knowledge Base của công ty (tạo nguồn tri thức "
-    + "dạng văn bản). Dùng khi người dùng yêu cầu ghi nhớ / lưu lại thông tin.",
+    "Lưu một đoạn nội dung vào Knowledge Base của công ty (tạo nguồn tri thức " +
+    "dạng văn bản). Dùng khi người dùng yêu cầu ghi nhớ / lưu lại thông tin.",
   schema: {
     type: "object",
     properties: {
@@ -112,6 +116,28 @@ async function main(): Promise<void> {
     throw e;
   }
 
+  // Audit security: scan api_keys có scopes=[] (deny-by-default sẽ chặn
+  // mọi request từ key này). Cảnh báo admin để cấp scope phù hợp hoặc
+  // disable key. Không auto-fix vì không biết quyền user thật sự muốn.
+  try {
+    const insecure = await db
+      .select({ id: apiKeys.id, label: apiKeys.label, companyId: apiKeys.companyId })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.enabled, true), sql`jsonb_array_length(${apiKeys.scopes}) = 0`));
+    if (insecure.length > 0) {
+      console.warn(
+        `[security] ${insecure.length} API key đang enabled với scopes=[] — ` +
+          "tất cả request sẽ bị từ chối (deny-by-default). Cập nhật scopes qua " +
+          "apiKeys.updateScopes hoặc disable key:",
+      );
+      for (const k of insecure) {
+        console.warn(`  - id=${k.id} label="${k.label}" company=${k.companyId}`);
+      }
+    }
+  } catch (e) {
+    console.warn("[security] không scan được api_keys:", (e as Error).message);
+  }
+
   // maxParamLength cao — tRPC httpBatchLink gộp nhiều procedure vào URL
   // (/trpc/a,b,c…); mặc định Fastify 100 ký tự sẽ làm batch lớn bị 404.
   // trustProxy — đọc X-Forwarded-For từ nginx/Traefik phía trước (Coolify
@@ -131,13 +157,16 @@ async function main(): Promise<void> {
   const corsOrigin = process.env.CORS_ORIGIN;
   if (process.env.NODE_ENV === "production" && !corsOrigin) {
     throw new Error(
-      "CORS_ORIGIN bắt buộc ở production — khai báo (các) origin được "
-      + "phép, phân tách bằng dấu phẩy nếu nhiều.",
+      "CORS_ORIGIN bắt buộc ở production — khai báo (các) origin được " +
+        "phép, phân tách bằng dấu phẩy nếu nhiều.",
     );
   }
   await app.register(cors, {
     origin: corsOrigin
-      ? corsOrigin.split(",").map((s) => s.trim()).filter(Boolean)
+      ? corsOrigin
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : true,
     credentials: true,
   });
@@ -196,11 +225,20 @@ async function main(): Promise<void> {
      Server tự reject channel không khớp user/company. */
   app.get("/ws", { websocket: true }, async (socket, req) => {
     const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
-    if (!sid) { socket.close(1008, "Unauthorized"); return; }
+    if (!sid) {
+      socket.close(1008, "Unauthorized");
+      return;
+    }
     const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
-    if (!s || s.expiresAt < new Date()) { socket.close(1008, "Session expired"); return; }
+    if (!s || s.expiresAt < new Date()) {
+      socket.close(1008, "Session expired");
+      return;
+    }
     const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
-    if (!active) { socket.close(1008, "No company"); return; }
+    if (!active) {
+      socket.close(1008, "No company");
+      return;
+    }
     const conn = registerConnection(socket as never, s.userId, active.companyId);
     socket.send(JSON.stringify({ channel: "system", payload: { ok: true, userId: s.userId } }));
     socket.on("message", (raw: Buffer) => {
@@ -209,13 +247,15 @@ async function main(): Promise<void> {
         if (!m.channel) return;
         // Authorization per channel — user chỉ được subscribe notifications của mình
         // hoặc presence record cùng công ty.
-        if (m.channel.startsWith("notifications:")
-          && m.channel !== `notifications:${s.userId}`) return;
+        if (m.channel.startsWith("notifications:") && m.channel !== `notifications:${s.userId}`)
+          return;
         // presence:<recordId> sẽ verify record cùng company qua presence.ping;
         // ở đây tin tưởng caller — worst case nhận event không liên quan, không leak.
         if (m.action === "subscribe") subscribe(conn, m.channel);
         else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
-      } catch { /* malformed message — ignore */ }
+      } catch {
+        /* malformed message — ignore */
+      }
     });
   });
 
@@ -223,15 +263,20 @@ async function main(): Promise<void> {
      server-side; mỗi bước phát một event. Cần phiên đăng nhập. */
   app.post("/agent/chat", async (req, reply) => {
     const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
-    if (!sid) { reply.code(401).send({ error: "Chưa đăng nhập" }); return; }
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
     const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
     if (!s || s.expiresAt < new Date()) {
-      reply.code(401).send({ error: "Phiên hết hạn" }); return;
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
     }
     // Đa công ty: phân giải công ty đang chọn của phiên.
     const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
     if (!active) {
-      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" }); return;
+      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+      return;
     }
     // RBAC — endpoint này nằm ngoài tRPC nên phải tự kiểm quyền,
     // đồng nhất với rbacProcedure("run","agent") của các route khác.
@@ -253,7 +298,7 @@ async function main(): Promise<void> {
     raw.writeHead(200, {
       "content-type": "text/event-stream",
       "cache-control": "no-cache",
-      "connection": "keep-alive",
+      connection: "keep-alive",
     });
     const emit = (e: unknown) => raw.write(`data: ${JSON.stringify(e)}\n\n`);
     try {
@@ -268,7 +313,7 @@ async function main(): Promise<void> {
       // của agent (+ fallback list) thay cho profileName của body.
       let memoryPreamble = "";
       let boundAgentId: string | null = null;
-      let agentModels: string[] = [];
+      const agentModels: string[] = [];
       if (body.agentId) {
         // ACL per-agent: nếu agent private, user phải là member; nếu open,
         // RBAC company-wide đã pass ở trên. canActOnAgentLite return false
@@ -277,18 +322,20 @@ async function main(): Promise<void> {
         const allowed = await canActOnAgentLite(
           db,
           { id: s.userId, role: active.role, companyId: active.companyId },
-          body.agentId, "chat",
+          body.agentId,
+          "chat",
         );
-        const [ag] = allowed ? await db.select().from(agents).where(and(
-          eq(agents.id, body.agentId),
-          eq(agents.companyId, active.companyId),
-        )) : [];
+        const [ag] = allowed
+          ? await db
+              .select()
+              .from(agents)
+              .where(and(eq(agents.id, body.agentId), eq(agents.companyId, active.companyId)))
+          : [];
         if (ag) {
           const mem = await loadAgentMemory(ag.id, ag.name);
           memoryPreamble = formatMemoryPreamble(mem) + "\n\n---\n\n";
           boundAgentId = ag.id;
-          const cfg = (ag.config ?? {}) as
-            { model?: string; fallbackModels?: string[] };
+          const cfg = (ag.config ?? {}) as { model?: string; fallbackModels?: string[] };
           const primary = cfg.model || ag.model;
           if (primary) agentModels.push(primary);
           if (Array.isArray(cfg.fallbackModels)) {
@@ -321,8 +368,7 @@ async function main(): Promise<void> {
           return { ok: true, file: f };
         }
         if (name === "knowledge_search") {
-          const hits = await knowledgeSearch(
-            db, active.companyId, String(args.query ?? ""), 5);
+          const hits = await knowledgeSearch(db, active.companyId, String(args.query ?? ""), 5);
           return hits.map((h) => ({
             source: h.sourceTitle,
             content: h.content,
@@ -334,14 +380,17 @@ async function main(): Promise<void> {
           const title = String(args.title ?? "").trim() || "Ghi chú từ chat";
           const content = String(args.content ?? "").trim();
           if (!content) throw new Error("Nội dung lưu vào tri thức bị trống.");
-          const [row] = await db.insert(knowledgeSources).values({
-            companyId: active.companyId,
-            kind: "text",
-            title,
-            status: "pending",
-            meta: { text: content },
-            createdBy: s.userId,
-          }).returning();
+          const [row] = await db
+            .insert(knowledgeSources)
+            .values({
+              companyId: active.companyId,
+              kind: "text",
+              title,
+              status: "pending",
+              meta: { text: content },
+              createdBy: s.userId,
+            })
+            .returning();
           if (!row) throw new Error("Không tạo được nguồn tri thức.");
           await enqueueKbIngest(row.id);
           return { ok: true, sourceId: row.id, title };
@@ -360,35 +409,45 @@ async function main(): Promise<void> {
           const innerEmit = (e: { type: string; message?: string }) => {
             if (e.type === "error" && !attemptStreamed) {
               attemptErr = e.message ?? "unknown";
-              return;  // giữ lại, có thể thử model tiếp
+              return; // giữ lại, có thể thử model tiếp
             }
             attemptStreamed = true;
             emit(e);
           };
           await runAgentChat({
-            db, companyId: active.companyId,
+            db,
+            companyId: active.companyId,
             modelOverride: m,
             system: finalSystem,
             messages: body.messages ?? [],
-            tools, callTool, onEvent: innerEmit,
+            tools,
+            callTool,
+            onEvent: innerEmit,
           });
-          if (attemptStreamed) { raw.end(); return; }
+          if (attemptStreamed) {
+            raw.end();
+            return;
+          }
           lastErr = attemptErr || "Không có event nào phát ra";
           console.log(`[agent-fallback] ${m} thất bại → ${lastErr}`);
         }
         emit({
           type: "error",
-          message: `Tất cả ${agentModels.length} model trong cấu hình agent đều thất bại. `
-            + `Lỗi cuối: ${lastErr}`,
+          message:
+            `Tất cả ${agentModels.length} model trong cấu hình agent đều thất bại. ` +
+            `Lỗi cuối: ${lastErr}`,
         });
       } else {
         // Không gắn agent → flow cũ, theo profileName.
         await runAgentChat({
-          db, companyId: active.companyId,
+          db,
+          companyId: active.companyId,
           profileName: body.profileName,
           system: finalSystem,
           messages: body.messages ?? [],
-          tools, callTool, onEvent: emit,
+          tools,
+          callTool,
+          onEvent: emit,
         });
       }
     } catch (e) {
@@ -403,14 +462,19 @@ async function main(): Promise<void> {
      ngoài tRPC nên tự kiểm phiên + RBAC như /agent/chat. */
   app.post("/upload", async (req, reply) => {
     const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
-    if (!sid) { reply.code(401).send({ error: "Chưa đăng nhập" }); return; }
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
     const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
     if (!s || s.expiresAt < new Date()) {
-      reply.code(401).send({ error: "Phiên hết hạn" }); return;
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
     }
     const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
     if (!active) {
-      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" }); return;
+      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+      return;
     }
     if (!roleCan(active.role, "create", "knowledge")) {
       reply.code(403).send({ error: 'Vai trò không có quyền "create:knowledge"' });
@@ -418,7 +482,10 @@ async function main(): Promise<void> {
     }
 
     const file = await req.file();
-    if (!file) { reply.code(400).send({ error: "Thiếu file tải lên" }); return; }
+    if (!file) {
+      reply.code(400).send({ error: "Thiếu file tải lên" });
+      return;
+    }
     let buf: Buffer;
     try {
       buf = await file.toBuffer();
@@ -430,21 +497,28 @@ async function main(): Promise<void> {
     const originalName = file.filename || "tài-liệu";
     const mime = file.mimetype || "application/octet-stream";
 
-    const [row] = await db.insert(knowledgeSources).values({
-      companyId: active.companyId,
-      kind: "file",
-      title: originalName,
-      status: "pending",
-      meta: { originalName, mime, size: buf.length },
-      createdBy: s.userId,
-    }).returning();
-    if (!row) { reply.code(500).send({ error: "Không tạo được nguồn" }); return; }
+    const [row] = await db
+      .insert(knowledgeSources)
+      .values({
+        companyId: active.companyId,
+        kind: "file",
+        title: originalName,
+        status: "pending",
+        meta: { originalName, mime, size: buf.length },
+        createdBy: s.userId,
+      })
+      .returning();
+    if (!row) {
+      reply.code(500).send({ error: "Không tạo được nguồn" });
+      return;
+    }
 
     const dir = join(UPLOAD_DIR, active.companyId);
     const path = join(dir, row.id + extname(originalName));
     await mkdir(dir, { recursive: true });
     await writeFile(path, buf);
-    await db.update(knowledgeSources)
+    await db
+      .update(knowledgeSources)
       .set({
         meta: { originalName, mime, size: buf.length, path },
         updatedAt: new Date(),
@@ -460,11 +534,11 @@ async function main(): Promise<void> {
 
   // Scheduler — KHÔNG chặn boot nếu DB chưa sẵn sàng.
   startJobs().catch((e) =>
-    console.warn("pg-boss chưa khởi động (kiểm tra DATABASE_URL):", (e as Error).message));
+    console.warn("pg-boss chưa khởi động (kiểm tra DATABASE_URL):", (e as Error).message),
+  );
 
   // MQTT bridge cho IoT — no-op nếu MQTT_URL không khai báo.
-  startIotMqtt().catch((e) =>
-    console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
+  startIotMqtt().catch((e) => console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
 }
 
 async function shutdown(): Promise<void> {
