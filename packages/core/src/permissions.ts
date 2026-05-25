@@ -6,7 +6,16 @@
 
 export type Role = "admin" | "editor" | "viewer";
 
-export type Action = "view" | "create" | "edit" | "delete" | "run";
+export type Action =
+  | "view"
+  | "create"
+  | "edit"
+  | "delete"
+  | "run"
+  // Action mở rộng (P2.2):
+  | "manage_members" // quản lý thành viên resource (agent, page, record share)
+  | "publish" // chuyển workflow/entity sang public/active
+  | "approve"; // duyệt thành viên công ty hoặc nội dung chờ duyệt
 
 export type ObjectType =
   | "entity"
@@ -21,10 +30,25 @@ export type ObjectType =
   | "iot"
   | "procedure"
   | "enum"
-  | "feedback";
+  | "feedback"
+  // Object mở rộng (P2.2):
+  | "tool" // tool registry (MCP/HTTP)
+  | "notification" // in-app notifications
+  | "comment" // record/feedback comments
+  | "view" // saved views
+  | "member"; // company member (CRUD + approve)
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
-export const ALL_ACTIONS: Action[] = ["view", "create", "edit", "delete", "run"];
+export const ALL_ACTIONS: Action[] = [
+  "view",
+  "create",
+  "edit",
+  "delete",
+  "run",
+  "manage_members",
+  "publish",
+  "approve",
+];
 
 /** Danh sách ObjectType — dùng cho UI hiển thị + permissionsOf(). */
 export const ALL_OBJECT_TYPES: ObjectType[] = [
@@ -41,6 +65,11 @@ export const ALL_OBJECT_TYPES: ObjectType[] = [
   "procedure",
   "enum",
   "feedback",
+  "tool",
+  "notification",
+  "comment",
+  "view",
+  "member",
 ];
 
 /** Nhãn hiển thị (VI) cho role — UI labels. */
@@ -64,15 +93,19 @@ const MATRIX: Record<Role, string[]> = {
     "create:entity",
     "edit:entity",
     "run:entity",
+    "publish:entity",
     "create:page",
     "edit:page",
     "run:page",
+    "publish:page",
     "create:workflow",
     "edit:workflow",
     "run:workflow",
+    "publish:workflow",
     "create:agent",
     "edit:agent",
     "run:agent",
+    "manage_members:agent",
     "create:knowledge",
     "edit:knowledge",
     "delete:knowledge",
@@ -88,9 +121,35 @@ const MATRIX: Record<Role, string[]> = {
     "create:feedback",
     "edit:feedback",
     "delete:feedback",
+    // Object mở rộng (P2.2):
+    "edit:tool", // rescan, registerRemote, enable, spawn, stop
+    "create:view",
+    "edit:view",
+    "delete:view",
+    "create:comment",
+    "edit:comment",
+    "delete:comment",
+    "edit:notification", // mark read / dismiss của user
   ],
-  // viewer được "create:feedback" để mọi user gửi phản hồi sản phẩm được.
-  viewer: ["view:*", "run:workflow", "run:agent", "run:procedure", "create:feedback"],
+  // viewer: chỉ xem + chạy + tham gia cá nhân. CRUD đầy đủ trên view +
+  // comment cá nhân (handler chịu trách nhiệm filter createdBy=user.id
+  // để chỉ tác động lên record của chính user). Feedback chỉ create —
+  // sửa/xoá feedback đi qua canMutate() trong handler (author trong 1h
+  // hoặc admin).
+  viewer: [
+    "view:*",
+    "run:workflow",
+    "run:agent",
+    "run:procedure",
+    "create:feedback",
+    "create:comment",
+    "edit:comment",
+    "delete:comment",
+    "create:view",
+    "edit:view",
+    "delete:view",
+    "edit:notification",
+  ],
 };
 
 /** Vai trò `role` có được phép `action` trên `obj` không. */

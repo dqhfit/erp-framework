@@ -8,11 +8,11 @@ import { companyMembers, notifications, users } from "@erp-framework/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "./db";
-import { approvedProcedure, protectedProcedure, router } from "./trpc";
+import { protectedProcedure, rbacProcedure, router } from "./trpc";
 import { publish } from "./ws-hub";
 
 export const notificationsRouter = router({
-  list: approvedProcedure
+  list: rbacProcedure("view", "notification")
     .input(
       z
         .object({
@@ -42,15 +42,17 @@ export const notificationsRouter = router({
     return { count: rows.length };
   }),
 
-  markRead: approvedProcedure.input(z.string().uuid()).mutation(async ({ ctx, input }) => {
-    await ctx.db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(and(eq(notifications.id, input), eq(notifications.userId, ctx.user.id)));
-    return { ok: true };
-  }),
+  markRead: rbacProcedure("edit", "notification")
+    .input(z.string().uuid())
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(notifications)
+        .set({ readAt: new Date() })
+        .where(and(eq(notifications.id, input), eq(notifications.userId, ctx.user.id)));
+      return { ok: true };
+    }),
 
-  markAllRead: approvedProcedure.mutation(async ({ ctx }) => {
+  markAllRead: rbacProcedure("edit", "notification").mutation(async ({ ctx }) => {
     await ctx.db
       .update(notifications)
       .set({ readAt: new Date() })

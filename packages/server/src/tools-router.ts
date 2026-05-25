@@ -5,22 +5,26 @@
    - enableForCompany / spawn / stop       : admin lifecycle
    - invokeAction                          : kind-aware dispatch
    ========================================================== */
-import { z } from "zod";
-import { and, desc, eq } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
-import { tools as toolsTable, companyTools } from "@erp-framework/db";
-import { toolRegistry, type ToolManifest } from "@erp-framework/core";
-import { router, rbacProcedure } from "./trpc";
-import {
-  scanTools, registerRemoteTool, startTool, stopTool, getRunningPort,
-  invokeCli,
-} from "./tools";
-import { makeCallTool } from "./mcp-client";
-import { logActivity } from "./activity";
 
-const DEFAULT_TOOLS_DIR = process.platform === "win32"
-  ? "D:\\code\\cowok\\Tools"
-  : "/code/cowok/Tools";
+import { type ToolManifest, toolRegistry } from "@erp-framework/core";
+import { companyTools, tools as toolsTable } from "@erp-framework/db";
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { logActivity } from "./activity";
+import { makeCallTool } from "./mcp-client";
+import {
+  getRunningPort,
+  invokeCli,
+  registerRemoteTool,
+  scanTools,
+  startTool,
+  stopTool,
+} from "./tools";
+import { rbacProcedure, router } from "./trpc";
+
+const DEFAULT_TOOLS_DIR =
+  process.platform === "win32" ? "D:\\code\\cowok\\Tools" : "/code/cowok/Tools";
 
 function toolsDir(): string {
   return process.env.TOOLS_DIR ?? DEFAULT_TOOLS_DIR;
@@ -41,10 +45,10 @@ function isPrivateHost(host: string): boolean {
 }
 
 async function getEnabledMap(
-  db: import("./db").DB, companyId: string,
+  db: import("./db").DB,
+  companyId: string,
 ): Promise<Map<string, { enabled: boolean; config: Record<string, unknown> }>> {
-  const rows = await db.select().from(companyTools)
-    .where(eq(companyTools.companyId, companyId));
+  const rows = await db.select().from(companyTools).where(eq(companyTools.companyId, companyId));
   const map = new Map<string, { enabled: boolean; config: Record<string, unknown> }>();
   for (const r of rows) {
     map.set(r.toolId, {
@@ -56,36 +60,33 @@ async function getEnabledMap(
 }
 
 export const toolsRouter = router({
-  list: rbacProcedure("view", "settings")
-    .query(async ({ ctx }) => {
-      const rows = await ctx.db.select().from(toolsTable)
-        .orderBy(desc(toolsTable.createdAt));
-      const enabled = await getEnabledMap(ctx.db, ctx.user.companyId);
-      return rows.map((r) => {
-        const reg = toolRegistry.getById(r.slug);
-        return {
-          id: r.id,
-          slug: r.slug,
-          name: r.name,
-          displayName: r.displayName,
-          kind: r.kind,
-          runtime: r.runtime,
-          manifest: r.manifest as ToolManifest,
-          source: r.source,
-          enabledGlobal: r.enabledGlobal,
-          enabledForCompany: enabled.get(r.id)?.enabled ?? false,
-          status: reg?.status ?? "discovered",
-          runtimeMeta: reg?.runtimeMeta,
-          updatedAt: r.updatedAt,
-        };
-      });
-    }),
+  list: rbacProcedure("view", "tool").query(async ({ ctx }) => {
+    const rows = await ctx.db.select().from(toolsTable).orderBy(desc(toolsTable.createdAt));
+    const enabled = await getEnabledMap(ctx.db, ctx.user.companyId);
+    return rows.map((r) => {
+      const reg = toolRegistry.getById(r.slug);
+      return {
+        id: r.id,
+        slug: r.slug,
+        name: r.name,
+        displayName: r.displayName,
+        kind: r.kind,
+        runtime: r.runtime,
+        manifest: r.manifest as ToolManifest,
+        source: r.source,
+        enabledGlobal: r.enabledGlobal,
+        enabledForCompany: enabled.get(r.id)?.enabled ?? false,
+        status: reg?.status ?? "discovered",
+        runtimeMeta: reg?.runtimeMeta,
+        updatedAt: r.updatedAt,
+      };
+    });
+  }),
 
-  get: rbacProcedure("view", "settings")
+  get: rbacProcedure("view", "tool")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(toolsTable)
-        .where(eq(toolsTable.id, input));
+      const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Tool không tồn tại" });
       const reg = toolRegistry.getById(row.slug);
       return {
@@ -95,11 +96,13 @@ export const toolsRouter = router({
       };
     }),
 
-  getStatus: rbacProcedure("view", "settings")
+  getStatus: rbacProcedure("view", "tool")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select({ slug: toolsTable.slug })
-        .from(toolsTable).where(eq(toolsTable.id, input));
+      const [row] = await ctx.db
+        .select({ slug: toolsTable.slug })
+        .from(toolsTable)
+        .where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       const reg = toolRegistry.getById(row.slug);
       return {
@@ -110,30 +113,28 @@ export const toolsRouter = router({
     }),
 
   /** Trả URL nhúng iframe — luôn cùng-origin với ERP (qua proxy). */
-  getProxyUrl: rbacProcedure("view", "settings")
+  getProxyUrl: rbacProcedure("view", "tool")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(toolsTable)
-        .where(eq(toolsTable.id, input));
+      const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       const m = row.manifest as ToolManifest;
       const mountPath = m.proxy?.mountPath ?? `/tools/${row.slug}`;
       return { url: mountPath };
     }),
 
-  rescan: rbacProcedure("edit", "settings")
-    .mutation(async ({ ctx }) => {
-      const res = await scanTools(ctx.db, { toolsDir: toolsDir() });
-      await logActivity(ctx.db, {
-        companyId: ctx.user.companyId,
-        kind: "tool.rescan",
-        detail: `added=${res.added.length} updated=${res.updated.length} errors=${res.errors.length}`,
-        actorUserId: ctx.user.id,
-      });
-      return res;
-    }),
+  rescan: rbacProcedure("edit", "tool").mutation(async ({ ctx }) => {
+    const res = await scanTools(ctx.db, { toolsDir: toolsDir() });
+    await logActivity(ctx.db, {
+      companyId: ctx.user.companyId,
+      kind: "tool.rescan",
+      detail: `added=${res.added.length} updated=${res.updated.length} errors=${res.errors.length}`,
+      actorUserId: ctx.user.id,
+    });
+    return res;
+  }),
 
-  registerRemote: rbacProcedure("edit", "settings")
+  registerRemote: rbacProcedure("edit", "tool")
     .input(z.object({ manifestUrl: z.string().url() }))
     .mutation(async ({ ctx, input }) => {
       const url = new URL(input.manifestUrl);
@@ -141,7 +142,8 @@ export const toolsRouter = router({
       if (!allowPrivate && isPrivateHost(url.hostname)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Không cho phép URL private/loopback (set TOOLS_ALLOW_PRIVATE_REMOTE=1 để bỏ qua)",
+          message:
+            "Không cho phép URL private/loopback (set TOOLS_ALLOW_PRIVATE_REMOTE=1 để bỏ qua)",
         });
       }
       const r = await fetch(input.manifestUrl, {
@@ -170,23 +172,33 @@ export const toolsRouter = router({
       return { id: manifest.id, kind: manifest.kind, runtime: manifest.runtime };
     }),
 
-  enableForCompany: rbacProcedure("edit", "settings")
-    .input(z.object({
-      toolId: z.string().uuid(),
-      enabled: z.boolean(),
-      config: z.record(z.string(), z.unknown()).optional(),
-    }))
+  enableForCompany: rbacProcedure("edit", "tool")
+    .input(
+      z.object({
+        toolId: z.string().uuid(),
+        enabled: z.boolean(),
+        config: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [existing] = await ctx.db.select({ id: companyTools.id })
-        .from(companyTools).where(and(
-          eq(companyTools.companyId, ctx.user.companyId),
-          eq(companyTools.toolId, input.toolId)));
+      const [existing] = await ctx.db
+        .select({ id: companyTools.id })
+        .from(companyTools)
+        .where(
+          and(
+            eq(companyTools.companyId, ctx.user.companyId),
+            eq(companyTools.toolId, input.toolId),
+          ),
+        );
       if (existing) {
-        await ctx.db.update(companyTools).set({
-          enabled: input.enabled,
-          ...(input.config !== undefined ? { config: input.config } : {}),
-          updatedAt: new Date(),
-        }).where(eq(companyTools.id, existing.id));
+        await ctx.db
+          .update(companyTools)
+          .set({
+            enabled: input.enabled,
+            ...(input.config !== undefined ? { config: input.config } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(companyTools.id, existing.id));
       } else {
         await ctx.db.insert(companyTools).values({
           companyId: ctx.user.companyId,
@@ -205,11 +217,10 @@ export const toolsRouter = router({
       return { ok: true };
     }),
 
-  spawn: rbacProcedure("edit", "settings")
+  spawn: rbacProcedure("edit", "tool")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(toolsTable)
-        .where(eq(toolsTable.id, input));
+      const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       const manifest = row.manifest as ToolManifest;
       if (manifest.runtime !== "spawn") {
@@ -222,11 +233,13 @@ export const toolsRouter = router({
       return { ok: true, ...meta };
     }),
 
-  stop: rbacProcedure("edit", "settings")
+  stop: rbacProcedure("edit", "tool")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select({ slug: toolsTable.slug })
-        .from(toolsTable).where(eq(toolsTable.id, input));
+      const [row] = await ctx.db
+        .select({ slug: toolsTable.slug })
+        .from(toolsTable)
+        .where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       const ok = stopTool(row.slug);
       return { ok };
@@ -234,14 +247,15 @@ export const toolsRouter = router({
 
   /** Invoke 1 action — dispatch theo manifest.kind. */
   invokeAction: rbacProcedure("run", "agent")
-    .input(z.object({
-      toolId: z.string().uuid(),
-      action: z.string().min(1),
-      args: z.record(z.string(), z.unknown()).default({}),
-    }))
+    .input(
+      z.object({
+        toolId: z.string().uuid(),
+        action: z.string().min(1),
+        args: z.record(z.string(), z.unknown()).default({}),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select().from(toolsTable)
-        .where(eq(toolsTable.id, input.toolId));
+      const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input.toolId));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       const manifest = row.manifest as ToolManifest;
       switch (manifest.kind) {
@@ -256,9 +270,12 @@ export const toolsRouter = router({
         }
         case "web-app": {
           const port = getRunningPort(manifest.id);
-          const base = manifest.runtime === "spawn"
-            ? (port ? `http://127.0.0.1:${port}` : undefined)
-            : manifest.remoteUrl;
+          const base =
+            manifest.runtime === "spawn"
+              ? port
+                ? `http://127.0.0.1:${port}`
+                : undefined
+              : manifest.remoteUrl;
           if (!base) {
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
@@ -272,7 +289,11 @@ export const toolsRouter = router({
           });
           const text = await r.text();
           let body: unknown = text;
-          try { body = JSON.parse(text); } catch { /* plain text */ }
+          try {
+            body = JSON.parse(text);
+          } catch {
+            /* plain text */
+          }
           return { ok: r.ok, status: r.status, body };
         }
         case "plugin":
