@@ -34,11 +34,14 @@ import { apiKeysRouter } from "./api-keys-router";
 import { materializedViewsRouter } from "./materialized-views-router";
 import { entityTemplatesRouter } from "./entity-templates-router";
 import { notificationsRouter } from "./notifications-router";
+import { feedbackRouter } from "./feedback-router";
 import { presenceRouter } from "./presence-router";
+import { fieldOpsRouter } from "./field-ops-router";
 import { applyRollups, invalidateRollupsFor } from "./rollup";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { findDuplicateRecords } from "./duplicate-detection";
 import { logAuditImmutable } from "./audit-immutable";
+import { publish as publishWs } from "./ws-hub";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -970,6 +973,10 @@ export const appRouter = router({
           fields, row.id, data);
         // Invalidate rollup cache ở entity đích (best-effort).
         void invalidateRollupsFor(ctx.db, ctx.user.companyId, entName);
+        // Publish event cho GraphQL subscriptions + WS clients.
+        publishWs(`record:${entName}:${ctx.user.companyId}`, {
+          type: "create", entityName: entName, recordId: row.id, data: row.data,
+        });
         // Decrypt + ẩn field user không có quyền read trước khi trả response.
         const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
         return {
@@ -1095,6 +1102,13 @@ export const appRouter = router({
             detail: `Update record ${input.recordId} v${row.version}`,
             diff,
           });
+          // Publish event cho GraphQL subscriptions + WS clients.
+          if (ent) {
+            publishWs(`record:${ent.name}:${ctx.user.companyId}`, {
+              type: "update", entityName: ent.name,
+              recordId: input.recordId, data: row.data,
+            });
+          }
         }
         return row;
       }),
@@ -2005,8 +2019,14 @@ export const appRouter = router({
   /* ── Notifications (in-app, @mentions) ── */
   notifications: notificationsRouter,
 
+  /* ── Feedback — user báo bất cập + đề xuất cải thiện ── */
+  feedback: feedbackRouter,
+
   /* ── Presence "đang xem" per record ── */
   presence: presenceRouter,
+
+  /* ── Real-time co-edit OT ops cho text field ── */
+  fieldOps: fieldOpsRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,

@@ -84,16 +84,41 @@ if (REDIS_URL) {
   }
 }
 
+/* ─── Internal subscribers (server-side, cùng process) ──
+   Cho phép GraphQL subscriptions / workflow triggers bind vào event
+   channel mà không qua WebSocket. Callback chạy đồng bộ trong publish. */
+const internalSubs = new Map<string, Set<(payload: unknown) => void>>();
+export function subscribeChannel(channel: string, cb: (payload: unknown) => void): void {
+  let set = internalSubs.get(channel);
+  if (!set) { set = new Set(); internalSubs.set(channel, set); }
+  set.add(cb);
+}
+export function unsubscribeChannel(channel: string, cb: (payload: unknown) => void): void {
+  const set = internalSubs.get(channel);
+  if (set) {
+    set.delete(cb);
+    if (set.size === 0) internalSubs.delete(channel);
+  }
+}
+
 /** Publish event lên 1 channel. Nếu Redis enabled, broadcast qua Redis
- *  (mọi node receive); ngược lại chỉ broadcast local. */
+ *  (mọi node receive); ngược lại chỉ broadcast local. Cũng dispatch cho
+ *  internal subscribers (GraphQL subscriptions, workflow triggers). */
 export function publish(channel: string, payload: unknown): void {
   const msg = JSON.stringify({ channel, payload, ts: Date.now() });
   if (pubClient) {
-    // Redis sub callback ở mọi node (kể cả node này) sẽ broadcastLocal.
     pubClient.publish(REDIS_CHANNEL, msg).catch((e) =>
       console.error("[ws-hub] Redis publish lỗi:", e.message));
   } else {
     broadcastLocal(channel, msg);
+  }
+  const subs = internalSubs.get(channel);
+  if (subs) {
+    for (const cb of subs) {
+      try { cb(payload); } catch (e) {
+        console.error("[ws-hub] internal sub cb lỗi:", (e as Error).message);
+      }
+    }
   }
 }
 

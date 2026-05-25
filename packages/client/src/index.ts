@@ -44,6 +44,18 @@ export {
   type ToolInvokeArgs,
 } from "./tools";
 export {
+  createFeedbackClient,
+  type FeedbackClient,
+  type FeedbackArea,
+  type FeedbackStatus,
+  type FeedbackSeverity,
+  type FeedbackListItem,
+  type FeedbackDetail,
+  type FeedbackCommentRow,
+  type FeedbackCreateInput,
+  type SimilarHit,
+} from "./feedback";
+export {
   createProceduresClient,
   type ProceduresClient,
   type ProcedureSaveInput,

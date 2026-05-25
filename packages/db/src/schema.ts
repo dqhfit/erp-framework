@@ -176,6 +176,29 @@ export const recordComments = pgTable("record_comments", {
   parentIdx: index("record_comments_parent_idx").on(t.parentId),
 }));
 
+/* Real-time co-edit ops log per (record, field). seq = op sequence
+   monotonic; base_seq = client's known seq lúc gửi op (transform nếu
+   base_seq < server seq). op = "insert" | "delete". */
+export const recordFieldOps = pgTable("record_field_ops", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  recordId: uuid("record_id").notNull()
+    .references(() => entityRecords.id, { onDelete: "cascade" }),
+  fieldName: text("field_name").notNull(),
+  seq: integer("seq").notNull(),
+  baseSeq: integer("base_seq").notNull(),
+  op: text("op").notNull(),
+  pos: integer("pos").notNull(),
+  chars: text("chars"),
+  length: integer("length"),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  recordFieldSeqIdx: uniqueIndex("rfo_record_field_seq_idx")
+    .on(t.recordId, t.fieldName, t.seq),
+}));
+
 /* In-app notifications — mention / comment / webhook_failure / system.
    read_at NULL = chưa đọc. user_id = recipient; actor_user_id = ai gây ra. */
 export const notifications = pgTable("notifications", {
@@ -941,4 +964,72 @@ export const uploadSyncState = pgTable("upload_sync_state", {
 }, (t) => ({
   companyPathUidx: uniqueIndex("upload_sync_state_company_path_uidx")
     .on(t.companyId, t.relPath),
+}));
+
+/* ─── Feedback — user báo bất cập + đề xuất cải thiện ───────────
+   Pipeline 3 bước (new → in_progress → done) + nhánh wontfix.
+   Anchor: area (taxonomy text) + url hiện tại + optional entityRef.
+   AI enrichment async qua pg-boss: aiSummary + aiTags + embedding.
+   Tương tác: upvote (bảng riêng) + comments thread (bảng riêng). */
+export const feedbackStatus = pgEnum("feedback_status",
+  ["new", "in_progress", "done", "wontfix"]);
+export const feedbackSeverity = pgEnum("feedback_severity",
+  ["nice_to_have", "normal", "blocker"]);
+
+export const feedbacks = pgTable("feedbacks", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  authorUserId: uuid("author_user_id").notNull()
+    .references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),                  // mô tả bất cập
+  suggestion: text("suggestion"),                // đề xuất cải thiện
+  area: text("area").notNull(),                  // entity|workflow|agent|settings|ui|performance|other
+  url: text("url"),                              // URL trang khi submit (auto-capture)
+  entityRef: jsonb("entity_ref"),                // {entityId?, recordId?}
+  severity: feedbackSeverity("severity").notNull().default("normal"),
+  status: feedbackStatus("status").notNull().default("new"),
+  resolutionNote: text("resolution_note"),       // admin điền khi đóng
+  /* AI-generated, lazy fill qua queue feedback-ai. NULL khi worker chưa chạy. */
+  aiSummary: text("ai_summary"),
+  aiTags: jsonb("ai_tags"),                      // string[]
+  embedding: vector("embedding", { dimensions: 768 }),  // cùng model với knowledge
+  voteCount: integer("vote_count").notNull().default(0),  // denormalize cho list sort
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (t) => ({
+  companyStatusIdx: index("feedbacks_company_status_idx").on(t.companyId, t.status),
+  companyAreaIdx: index("feedbacks_company_area_idx").on(t.companyId, t.area),
+  authorIdx: index("feedbacks_author_idx").on(t.authorUserId),
+}));
+
+/* Upvote idempotent qua PK composite — bấm 2 lần không nhân đôi. */
+export const feedbackVotes = pgTable("feedback_votes", {
+  feedbackId: uuid("feedback_id").notNull()
+    .references(() => feedbacks.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.feedbackId, t.userId] }),
+}));
+
+/* Bảng riêng — record_comments FK cứng vào entity_records nên không trỏ
+   feedback được. Clone cấu trúc, hỗ trợ nested reply qua parentId. */
+export const feedbackComments = pgTable("feedback_comments", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  feedbackId: uuid("feedback_id").notNull()
+    .references(() => feedbacks.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
+  authorUserId: uuid("author_user_id").notNull()
+    .references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (t) => ({
+  feedbackIdx: index("feedback_comments_feedback_idx").on(t.feedbackId),
 }));

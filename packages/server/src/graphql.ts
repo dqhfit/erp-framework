@@ -94,6 +94,17 @@ ${queries || "  _empty: String"}
 type Mutation {
 ${mutations || "  _empty: String"}
 }
+
+type RecordEvent {
+  type: String!
+  entityName: String!
+  recordId: ID!
+  data: JSON
+}
+
+type Subscription {
+  onRecord(entityName: String!): RecordEvent!
+}
 `;
 
   const resolvers = {
@@ -118,6 +129,35 @@ ${mutations || "  _empty: String"}
           createOne(ctx, e.id, args.input, e.fields),
       ];
     })),
+    Subscription: {
+      onRecord: {
+        // Subscribe nhận event "record:<entityName>:<companyId>" từ WS hub.
+        // graphql-yoga supports async iterables — bridge với in-process queue.
+        subscribe: async function* (_: unknown, args: { entityName: string }, ctx: YogaContext) {
+          if (!ctx.companyId) throw new Error("Unauthorized");
+          const channel = `record:${args.entityName}:${ctx.companyId}`;
+          const { subscribeChannel, unsubscribeChannel } = await import("./ws-hub");
+          const queue: unknown[] = [];
+          let resolve: ((v: unknown) => void) | null = null;
+          const onMsg = (payload: unknown) => {
+            if (resolve) { resolve(payload); resolve = null; }
+            else queue.push(payload);
+          };
+          subscribeChannel(channel, onMsg);
+          try {
+            while (true) {
+              const next = queue.length > 0
+                ? queue.shift()
+                : await new Promise((r) => { resolve = r; });
+              yield { onRecord: next };
+            }
+          } finally {
+            unsubscribeChannel(channel, onMsg);
+          }
+        },
+        resolve: (payload: { onRecord: unknown }) => payload.onRecord,
+      },
+    },
   };
   return createSchema({ typeDefs: sdl, resolvers });
 }

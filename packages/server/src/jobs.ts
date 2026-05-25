@@ -18,6 +18,10 @@ import { runHeartbeat } from "./run-heartbeat";
 import { runEntitySync } from "./run-entity-sync";
 import { runKbIngest } from "./run-kb-ingest";
 import { runBackup } from "./backup";
+import {
+  QUEUE_FEEDBACK_AI, runFeedbackAi, registerEnqueueFeedbackAi,
+  type FeedbackAiJobData,
+} from "./feedback-ai";
 
 const QUEUE_RUN = "workflow-run";
 const QUEUE_TICK = "scheduler-tick";
@@ -66,6 +70,7 @@ export async function startJobs(): Promise<void> {
   await boss.createQueue(QUEUE_SESSION_CLEANUP);
   await boss.createQueue(QUEUE_KB_INGEST);
   await boss.createQueue(QUEUE_BACKUP);
+  await boss.createQueue(QUEUE_FEEDBACK_AI);
 
   // Worker: chạy workflow khi có job.
   await boss.work<RunJobData>(QUEUE_RUN, async (jobs) => {
@@ -104,6 +109,24 @@ export async function startJobs(): Promise<void> {
         console.error("[entity-sync] lỗi:", (e as Error).message);
       }
     }
+  });
+
+  // Worker: enrichment feedback (embedding + LLM summary/tags).
+  await boss.work<FeedbackAiJobData>(QUEUE_FEEDBACK_AI, async (jobs) => {
+    for (const job of jobs) {
+      try {
+        await runFeedbackAi(db, job.data.feedbackId);
+      } catch (e) {
+        console.error("[feedback-ai] lỗi:", (e as Error).message);
+      }
+    }
+  });
+
+  // DI: cho phép feedback-router gọi enqueue mà không phải import jobs.ts
+  // (tránh circular: jobs.ts → feedback-ai → … nếu lại import jobs.ts).
+  registerEnqueueFeedbackAi(async (id) => {
+    if (!boss) throw new Error("Job runner chưa sẵn sàng");
+    await boss.send(QUEUE_FEEDBACK_AI, { feedbackId: id });
   });
 
   // Worker: nạp một nguồn tri thức vào Knowledge Base.

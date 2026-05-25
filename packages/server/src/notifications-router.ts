@@ -5,7 +5,7 @@
    ========================================================== */
 import { z } from "zod";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { notifications, users } from "@erp-framework/db";
+import { notifications, users, companyMembers } from "@erp-framework/db";
 import { router, protectedProcedure } from "./trpc";
 import type { DB } from "./db";
 import { publish } from "./ws-hub";
@@ -112,5 +112,45 @@ export async function notifyMentions(
     }
   } catch (e) {
     console.error("[notifyMentions] lỗi:", (e as Error).message);
+  }
+}
+
+/** Notify tất cả admin của công ty. Skip actor để không tự ping mình.
+ *  Best-effort: lỗi không cản caller. */
+export async function notifyAdmins(
+  db: DB, args: {
+    companyId: string;
+    actorUserId: string;
+    body: string;
+    targetUrl?: string;
+    targetRecordId?: string;
+    kind: string;
+  },
+): Promise<void> {
+  try {
+    const admins = await db.select({ userId: companyMembers.userId })
+      .from(companyMembers)
+      .where(and(
+        eq(companyMembers.companyId, args.companyId),
+        eq(companyMembers.role, "admin"),
+      ));
+    const targets = admins
+      .map((r) => r.userId)
+      .filter((uid) => uid !== args.actorUserId);
+    if (targets.length === 0) return;
+    const inserted = await db.insert(notifications).values(targets.map((uid) => ({
+      companyId: args.companyId,
+      userId: uid,
+      kind: args.kind,
+      targetRecordId: args.targetRecordId ?? null,
+      targetUrl: args.targetUrl ?? null,
+      actorUserId: args.actorUserId,
+      body: args.body.slice(0, 500),
+    }))).returning();
+    for (const n of inserted) {
+      publish(`notifications:${n.userId}`, { type: "new", notification: n });
+    }
+  } catch (e) {
+    console.error("[notifyAdmins] lỗi:", (e as Error).message);
   }
 }
