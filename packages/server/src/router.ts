@@ -24,6 +24,7 @@ import { heartbeatsRouter } from "./heartbeats-router";
 import { entitySyncRouter } from "./entity-sync-router";
 import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
+import { toolsRouter } from "./tools-router";
 import { proceduresRouter } from "./procedures-router";
 import { enumsRouter } from "./enums-router";
 import { savedViewsRouter } from "./saved-views-router";
@@ -1959,6 +1960,11 @@ export const appRouter = router({
 
   /* ── Plugin registry — đăng ký/bật-tắt plugin theo công ty ── */
   plugins: pluginsRouter,
+
+  /* ── Tool registry — artifact ngoài monorepo (D:\code\cowok\Tools\*).
+       Khác plugin: là ứng dụng độc lập (web-app/mcp-server/cli/plugin),
+       có manifest, discover qua auto-scan + registerRemote URL. ── */
+  tools: toolsRouter,
 
   /* ── Procedure registry — native JS procedure (thay stored proc MSSQL) ── */
   procedures: proceduresRouter,

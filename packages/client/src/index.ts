@@ -32,6 +32,18 @@ export {
   type PluginSaveInput,
 } from "./plugins";
 export {
+  createToolsClient,
+  type ToolsClient,
+  type ToolKind,
+  type ToolRuntime,
+  type ToolStatus,
+  type ToolListItem,
+  type ToolManifestView,
+  type ToolActionDef,
+  type ToolIODef,
+  type ToolInvokeArgs,
+} from "./tools";
+export {
   createProceduresClient,
   type ProceduresClient,
   type ProcedureSaveInput,

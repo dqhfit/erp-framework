@@ -732,6 +732,43 @@ export const apiKeys = pgTable("api_keys", {
 /* Materialized views per company — pre-computed heavy aggregation cho
    dashboard/report. Query SQL custom (admin viết); refresh cron schedule
    ghi data JSONB. Render từ data field — nhanh hơn re-execute query. */
+
+/* OAuth refresh tokens — long-lived; rotate khi dùng (issue new + revoke cũ).
+   Token plaintext "rt_<hex>" → sha256 → token_hash. */
+export const oauthRefreshTokens = pgTable("oauth_refresh_tokens", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  apiKeyId: uuid("api_key_id").notNull()
+    .references(() => apiKeys.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  tokenHashIdx: uniqueIndex("ort_token_hash_idx").on(t.tokenHash),
+}));
+
+/* OAuth authorization codes — short-lived (10 phút), PKCE bắt buộc.
+   code_challenge = sha256(verifier) base64url. Method "S256" only. */
+export const oauthAuthCodes = pgTable("oauth_auth_codes", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  codeHash: text("code_hash").notNull(),
+  clientId: text("client_id").notNull(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  apiKeyId: uuid("api_key_id").notNull()
+    .references(() => apiKeys.id, { onDelete: "cascade" }),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  codeChallengeMethod: text("code_challenge_method").notNull().default("S256"),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  codeHashIdx: uniqueIndex("oac_code_hash_idx").on(t.codeHash),
+}));
+
 export const entityMaterializedViews = pgTable("entity_materialized_views", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),
   companyId: uuid("company_id").notNull()
@@ -831,6 +868,43 @@ export const procedures = pgTable("procedures", {
 }, (t) => ({
   companyNameIdx: uniqueIndex("procedures_company_name_idx")
     .on(t.companyId, t.name),
+}));
+
+/* ─── Tools — artifact ngoài monorepo (D:\code\cowok\Tools\*) ──
+   Khác plugin (in-process TS module): tool là ứng dụng độc lập có
+   manifest (paperclip.manifest.json + erp.tool.json override),
+   discover qua TOOLS_DIR auto-scan hoặc đăng ký URL remote.
+   `tools` global; `company_tools` cho per-tenant enable/config. */
+export const tools = pgTable("tools", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  slug: text("slug").notNull(),           // = manifest.id; globally unique
+  name: text("name").notNull(),
+  displayName: text("display_name"),
+  kind: text("kind").notNull(),           // web-app | mcp-server | cli | plugin
+  runtime: text("runtime").notNull(),     // embedded | spawn | remote
+  manifest: jsonb("manifest").notNull(),  // ToolManifest đã merge
+  source: jsonb("source").notNull(),      // {kind:local,path,overridePath} | {kind:remote,manifestUrl}
+  enabledGlobal: boolean("enabled_global").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  slugUidx: uniqueIndex("tools_slug_uidx").on(t.slug),
+}));
+
+export const companyTools = pgTable("company_tools", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  toolId: uuid("tool_id").notNull()
+    .references(() => tools.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(false),
+  /* Per-tenant config: token API, endpoint override, runtime port cache… */
+  config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyToolUidx: uniqueIndex("company_tools_company_tool_uidx")
+    .on(t.companyId, t.toolId),
 }));
 
 /* Mapping file local → file Drive. Tránh quét Drive mỗi lần sync. */

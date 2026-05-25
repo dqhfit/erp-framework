@@ -34,6 +34,7 @@ import {
 } from "./agent-memory";
 import { assertWithinBudget } from "./budget";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
+import { bootstrapTools, shutdownTools } from "./tools";
 
 const PORT = Number(process.env.PORT ?? 8910);
 const HOST = process.env.HOST ?? "127.0.0.1";
@@ -175,6 +176,11 @@ async function main(): Promise<void> {
   // OAuth 2.0 client_credentials grant — POST /oauth/token. Wrapper
   // standard trên api_keys; trả lại chính sk_xxx làm access_token.
   registerOAuth(app, db);
+
+  // Tool system — hydrate từ DB, quét TOOLS_DIR, mount HTTP proxy cho
+  // web-app/mcp-server, auto-start tools có spawn.autoStart=true.
+  // KHÔNG fail-fast: nếu thư mục tools không tồn tại → log warn, bỏ qua.
+  await bootstrapTools(app, db);
 
   app.get("/", async () => ({
     name: "ERP Framework server",
@@ -459,11 +465,16 @@ async function main(): Promise<void> {
   // MQTT bridge cho IoT — no-op nếu MQTT_URL không khai báo.
   startIotMqtt().catch((e) =>
     console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
+
+  // Tools subsystem bootstrap — registry plugin tools, watcher, etc.
+  bootstrapTools(app, db).catch((e) =>
+    console.warn("[tools] bootstrap lỗi:", (e as Error).message));
 }
 
 async function shutdown(): Promise<void> {
   await stopIotMqtt();
   await stopJobs();
+  await shutdownTools();
   process.exit(0);
 }
 process.on("SIGINT", shutdown);

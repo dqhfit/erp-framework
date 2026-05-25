@@ -1,13 +1,15 @@
 /* ==========================================================
-   ws-hub.ts — In-process pub/sub + WebSocket hub.
+   ws-hub.ts — Pub/sub + WebSocket hub.
    Mỗi connection subscribe theo channel string vd:
      "notifications:<userId>" — push notification mới cho user.
      "presence:<recordId>"    — broadcast presence update.
    Server code publish event qua publish(channel, payload).
 
-   Hạn chế: single-process. Multi-node deploy cần Redis pub/sub
-   (TODO v5). Đủ cho self-host hiện tại.
+   Multi-node (v5): nếu REDIS_URL env set, fan out qua Redis Pub/Sub
+   channel "erp:ws" — mọi node receive event và broadcast cho client
+   local. Single-node fallback giữ nguyên in-process.
    ========================================================== */
+import Redis from "ioredis";
 /** Minimal WebSocket-like type — chỉ method/prop chúng ta dùng. Tránh
  *  phụ thuộc @types/ws (peer của @fastify/websocket nhưng không cần
  *  riêng vì plugin tự re-export interface). */
@@ -44,13 +46,54 @@ export function unsubscribe(conn: Connection, channel: string): void {
   conn.channels.delete(channel);
 }
 
-/** Publish event lên 1 channel — broadcast cho mọi conn subscribe. */
-export function publish(channel: string, payload: unknown): void {
-  const msg = JSON.stringify({ channel, payload, ts: Date.now() });
+/** Broadcast cho mọi local conn subscribe channel (không qua Redis). */
+function broadcastLocal(channel: string, msg: string): void {
   for (const c of connections) {
     if (!c.channels.has(channel)) continue;
     if (c.ws.readyState !== 1 /* OPEN */) continue;
-    try { c.ws.send(msg); } catch { /* dead conn — sẽ close event xoá */ }
+    try { c.ws.send(msg); } catch { /* dead conn — close event sẽ xoá */ }
+  }
+}
+
+/* Redis Pub/Sub bridge — 2 client (pub + sub) vì ioredis subscribe mode
+   không gửi command khác được. Channel cố định "erp:ws"; message format
+   { channel, payload, ts } JSON. Mọi node receive → broadcast local. */
+const REDIS_URL = process.env.REDIS_URL;
+const REDIS_CHANNEL = "erp:ws";
+let pubClient: Redis | null = null;
+let subClient: Redis | null = null;
+if (REDIS_URL) {
+  try {
+    pubClient = new Redis(REDIS_URL, { lazyConnect: false });
+    subClient = new Redis(REDIS_URL, { lazyConnect: false });
+    subClient.subscribe(REDIS_CHANNEL).catch((e) =>
+      console.error("[ws-hub] Redis subscribe lỗi:", e.message));
+    subClient.on("message", (_ch, raw) => {
+      try {
+        const { channel } = JSON.parse(raw) as { channel: string };
+        // Broadcast local — message đã serialized sẵn.
+        broadcastLocal(channel, raw);
+      } catch { /* malformed — ignore */ }
+    });
+    pubClient.on("error", (e) => console.error("[ws-hub] Redis pub lỗi:", e.message));
+    subClient.on("error", (e) => console.error("[ws-hub] Redis sub lỗi:", e.message));
+    console.log("[ws-hub] Redis pub/sub enabled →", REDIS_URL);
+  } catch (e) {
+    console.error("[ws-hub] Redis init lỗi, fallback single-node:", (e as Error).message);
+    pubClient = null; subClient = null;
+  }
+}
+
+/** Publish event lên 1 channel. Nếu Redis enabled, broadcast qua Redis
+ *  (mọi node receive); ngược lại chỉ broadcast local. */
+export function publish(channel: string, payload: unknown): void {
+  const msg = JSON.stringify({ channel, payload, ts: Date.now() });
+  if (pubClient) {
+    // Redis sub callback ở mọi node (kể cả node này) sẽ broadcastLocal.
+    pubClient.publish(REDIS_CHANNEL, msg).catch((e) =>
+      console.error("[ws-hub] Redis publish lỗi:", e.message));
+  } else {
+    broadcastLocal(channel, msg);
   }
 }
 
