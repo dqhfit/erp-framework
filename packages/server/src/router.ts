@@ -29,6 +29,7 @@ import { savedViewsRouter } from "./saved-views-router";
 import { recordCommentsRouter } from "./record-comments-router";
 import { entityWebhooksRouter, fireEntityWebhooks } from "./entity-webhooks-router";
 import { apiKeysRouter } from "./api-keys-router";
+import { entityTemplatesRouter } from "./entity-templates-router";
 import { applyRollups } from "./rollup";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { findDuplicateRecords } from "./duplicate-detection";
@@ -1722,6 +1723,9 @@ export const appRouter = router({
 
   /* ── API keys — cho REST /api/v1/* endpoints ── */
   apiKeys: apiKeysRouter,
+
+  /* ── Entity templates — print/email Mustache-like ── */
+  entityTemplates: entityTemplatesRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,

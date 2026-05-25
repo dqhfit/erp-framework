@@ -255,6 +255,171 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
+/** Widget "calendar" — render record theo dateField, group by ngày. */
+function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  const entityId = cfg.entity as string | undefined;
+  const dateField = (cfg.dateField as string) || "date";
+  const titleField = (cfg.titleField as string) || "name";
+  const ent = useEntity(entityId);
+  const { rows, loading, err } = useRecords(entityId);
+
+  if (!entityId || !ent) return <div className="p-3 text-xs text-muted">Calendar chưa bind entity.</div>;
+  if (loading) return <div className="p-3 text-xs text-muted">đang tải…</div>;
+  if (err) return <div className="p-3 text-xs text-danger">Lỗi: {err}</div>;
+
+  const byDate = new Map<string, Record<string, unknown>[]>();
+  for (const r of rows) {
+    const raw = r[dateField];
+    if (!raw) continue;
+    const d = new Date(String(raw));
+    if (isNaN(d.getTime())) continue;
+    const key = d.toISOString().slice(0, 10);
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key)!.push(r);
+  }
+  const sorted = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(0, 30);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
+        <I.Calendar size={11} /> {ent.name} · theo "{dateField}"
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1.5">
+        {sorted.length === 0 && (
+          <div className="text-xs text-muted">Chưa có bản ghi có ngày.</div>
+        )}
+        {sorted.map(([date, items]) => (
+          <div key={date} className="border border-border rounded-md">
+            <div className="text-xs font-medium px-2 py-1 bg-bg-soft border-b border-border flex justify-between">
+              <span>{new Date(date).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}</span>
+              <span className="text-muted">{items.length}</span>
+            </div>
+            <div className="p-1.5 space-y-1">
+              {items.slice(0, 5).map((it, i) => (
+                <div key={i} className="text-xs truncate">{String(it[titleField] ?? "(không tên)")}</div>
+              ))}
+              {items.length > 5 && <div className="text-[10px] text-muted">+{items.length - 5} nữa</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Widget "map" — hiển thị record có field geo {lat, lng}. v1 placeholder
+ *  list, integration map tile (Leaflet) làm sau. */
+function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  const entityId = cfg.entity as string | undefined;
+  const geoField = (cfg.geoField as string) || "location";
+  const titleField = (cfg.titleField as string) || "name";
+  const ent = useEntity(entityId);
+  const { rows, loading, err } = useRecords(entityId);
+
+  if (!entityId || !ent) return <div className="p-3 text-xs text-muted">Map chưa bind entity.</div>;
+  if (loading) return <div className="p-3 text-xs text-muted">đang tải…</div>;
+  if (err) return <div className="p-3 text-xs text-danger">Lỗi: {err}</div>;
+
+  const points = rows.flatMap((r) => {
+    const g = r[geoField];
+    if (g && typeof g === "object" && "lat" in g && "lng" in g) {
+      return [{ lat: (g as { lat: number }).lat, lng: (g as { lng: number }).lng, title: String(r[titleField] ?? "") }];
+    }
+    return [];
+  });
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
+        <I.MapPin size={11} /> {ent.name} · {points.length} điểm
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1">
+        {points.length === 0 && (
+          <div className="text-xs text-muted">
+            Chưa có record có geo. Field "{geoField}" cần shape {`{lat, lng}`}.
+          </div>
+        )}
+        {points.slice(0, 50).map((p, i) => (
+          <div key={i} className="text-xs border border-border rounded p-1.5">
+            <div className="font-medium truncate">{p.title || "(không tên)"}</div>
+            <div className="text-[10px] text-muted font-mono">{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Widget "pivot" — cross-tab aggregation: rows × cols → value (sum/count). */
+function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  const entityId = cfg.entity as string | undefined;
+  const rowField = (cfg.rowField as string) || "category";
+  const colField = (cfg.colField as string) || "status";
+  const valueField = cfg.valueField as string | undefined;
+  const agg = (cfg.agg as string) || "count";
+  const ent = useEntity(entityId);
+  const { rows, loading, err } = useRecords(entityId);
+
+  if (!entityId || !ent) return <div className="p-3 text-xs text-muted">Pivot chưa bind entity.</div>;
+  if (loading) return <div className="p-3 text-xs text-muted">đang tải…</div>;
+  if (err) return <div className="p-3 text-xs text-danger">Lỗi: {err}</div>;
+
+  const rowKeys = new Set<string>();
+  const colKeys = new Set<string>();
+  const matrix = new Map<string, Map<string, number[]>>(); // row → col → values
+  for (const r of rows) {
+    const rk = String(r[rowField] ?? "(trống)");
+    const ck = String(r[colField] ?? "(trống)");
+    rowKeys.add(rk); colKeys.add(ck);
+    if (!matrix.has(rk)) matrix.set(rk, new Map());
+    const m = matrix.get(rk)!;
+    if (!m.has(ck)) m.set(ck, []);
+    const v = valueField ? Number(r[valueField] ?? 0) : 1;
+    m.get(ck)!.push(v);
+  }
+  const reduce = (vs: number[]): number => {
+    if (vs.length === 0) return 0;
+    if (agg === "count") return vs.length;
+    if (agg === "sum") return vs.reduce((a, b) => a + b, 0);
+    if (agg === "avg") return vs.reduce((a, b) => a + b, 0) / vs.length;
+    if (agg === "min") return Math.min(...vs);
+    if (agg === "max") return Math.max(...vs);
+    return 0;
+  };
+  const rowList = [...rowKeys].sort();
+  const colList = [...colKeys].sort();
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
+        <I.Table size={11} /> {ent.name} · {agg}({valueField ?? "rows"}) by {rowField} × {colField}
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto p-2">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr>
+              <th className="border border-border px-2 py-1 bg-bg-soft sticky top-0">{rowField}\\{colField}</th>
+              {colList.map((c) => <th key={c} className="border border-border px-2 py-1 bg-bg-soft text-right sticky top-0">{c}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rowList.map((r) => (
+              <tr key={r}>
+                <td className="border border-border px-2 py-1 font-medium">{r}</td>
+                {colList.map((c) => {
+                  const vs = matrix.get(r)?.get(c) ?? [];
+                  const v = reduce(vs);
+                  return <td key={c} className="border border-border px-2 py-1 text-right font-mono">{vs.length === 0 ? "·" : v.toLocaleString("vi-VN")}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /** Render một widget theo kind. */
 function Widget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
@@ -275,6 +440,9 @@ function Widget({ comp }: { comp: PageComponent }) {
   }
   if (comp.kind === "form") return <FormWidget cfg={cfg} />;
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
+  if (comp.kind === "calendar") return <CalendarWidget cfg={cfg} />;
+  if (comp.kind === "map") return <MapWidget cfg={cfg} />;
+  if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "html") {
     return (
       <div className="p-3 text-sm"

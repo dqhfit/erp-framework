@@ -172,6 +172,26 @@ export const recordComments = pgTable("record_comments", {
   parentIdx: index("record_comments_parent_idx").on(t.parentId),
 }));
 
+/* Templates print/email per entity — Mustache-like {{field}} substitution
+   với record data. kind: "print" (HTML cho in/PDF) hoặc "email" (subject+body). */
+export const entityTemplates = pgTable("entity_templates", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  entityId: uuid("entity_id").notNull()
+    .references(() => entities.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  entityIdx: index("et_entity_idx").on(t.entityId, t.kind),
+}));
+
 /* Outgoing webhooks per entity — fire-and-forget HTTP POST khi event
    create/update/delete. HMAC-SHA256 signature qua secret + body. */
 export const entityWebhooks = pgTable("entity_webhooks", {
