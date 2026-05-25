@@ -1,0 +1,753 @@
+/* ==========================================================
+   records-router.ts — CRUD dữ liệu động (entity records).
+   Tách khỏi router.ts (Sprint 1 P2.8 step 2).
+   - list/get/create/update + bulk ops
+   - delete/restore/hardDelete + cascade onDelete behavior
+   - history/asOf/revert (version)
+   - semanticSearch + findDuplicates
+   - descendants/ancestors (tree self-ref)
+   - appendTimeseries/queryTimeseries
+   - export (CSV)
+   ========================================================== */
+import { z } from "zod";
+import { and, eq, sql, desc } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import {
+  entities, entityRecords, entityRecordVersions,
+  entityRecordTimeseries, approvalRequests,
+} from "@erp-framework/db";
+import { validateRecord, pluginRegistry } from "@erp-framework/core";
+import { router, rbacProcedure } from "./trpc";
+import {
+  encryptDataIn, decryptDataOut, queryParams,
+  buildRecordWhere, loadEntityFields, assertValid, scanBackRefs,
+  applyCascadeOnDelete, nextSequence, stripUnwritableFields,
+  stripUnreadableFields, assertUnique, deepEqual, resolveProcBinding,
+} from "./router-helpers";
+import { fireEntityWebhooks } from "./entity-webhooks-router";
+import { applyRollups, invalidateRollupsFor } from "./rollup";
+import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
+import { findDuplicateRecords } from "./duplicate-detection";
+import { logAuditImmutable } from "./audit-immutable";
+import { publish as publishWs } from "./ws-hub";
+import { makeInvokeProcedure } from "./procedure-runner";
+import { makeCallTool } from "./mcp-client";
+
+export const recordsRouter =
+router({
+    list: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        query: queryParams,
+        includeDeleted: z.boolean().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        // Procedure binding dispatch — nếu entity.meta.bindings.list = "proc:<name>",
+        // delegate sang procedure-runner. Procedure phải trả { rows, total } | rows[].
+        const proc = await resolveProcBinding(
+          ctx.db, ctx.user.companyId, input.entityId, "list");
+        if (proc) {
+          const r = await makeInvokeProcedure({
+            db: ctx.db, companyId: ctx.user.companyId,
+            callTool: makeCallTool(ctx.db, ctx.user.companyId),
+            actorUserId: ctx.user.id,
+          })(proc, { query: input.query ?? {} });
+          const out = r.output as { rows?: unknown[]; total?: number } | unknown[] | null;
+          const rows = Array.isArray(out) ? out : (out?.rows ?? []);
+          const total = Array.isArray(out) ? rows.length : (out?.total ?? rows.length);
+          return { rows, total };
+        }
+        const where = buildRecordWhere(
+          ctx.user.companyId, input.entityId, input.query, input.includeDeleted ?? false);
+        let q = ctx.db.select().from(entityRecords).where(where).$dynamic();
+        const sort = input.query?.sort;
+        if (sort) {
+          const dir = sort.dir === "desc" ? sql`desc` : sql`asc`;
+          q = q.orderBy(sql`(${entityRecords.data}->>${sort.field}) ${dir}`);
+        }
+        const rows = await q
+          .limit(input.query?.limit ?? 100)
+          .offset(input.query?.offset ?? 0);
+        const [c] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(entityRecords).where(where);
+        return { rows, total: c?.count ?? 0 };
+      }),
+
+    get: rbacProcedure("view", "entity")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        // Trả cả khi soft-deleted để UI cho phép restore từ trang chi tiết.
+        const [row] = await ctx.db.select().from(entityRecords)
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!row) return null;
+        // Procedure get-binding: cho phép procedure decorate/enrich row trả về.
+        const proc = await resolveProcBinding(
+          ctx.db, ctx.user.companyId, row.entityId, "get");
+        if (proc) {
+          const r = await makeInvokeProcedure({
+            db: ctx.db, companyId: ctx.user.companyId,
+            callTool: makeCallTool(ctx.db, ctx.user.companyId),
+            actorUserId: ctx.user.id,
+          })(proc, { id: input, row });
+          return r.output ?? row;
+        }
+        // Decrypt + apply rollup fields (with cache) + strip unreadable.
+        const fields = await loadEntityFields(ctx.db, ctx.user.companyId, row.entityId);
+        const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
+        const withRollups = await applyRollups(
+          ctx.db, ctx.user.companyId, fields, row.id, decoded,
+          { rollupCache: row.rollupCache, rollupInvalidated: row.rollupInvalidated },
+        );
+        return {
+          ...row,
+          data: stripUnreadableFields(fields, withRollups, ctx.user.role),
+        };
+      }),
+
+    create: rbacProcedure("create", "entity")
+      .input(z.object({ entityId: z.string().uuid(), data: z.record(z.unknown()) }))
+      .mutation(async ({ ctx, input }) => {
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, input.entityId);
+        // Strip field user không có quyền write (field-level RBAC).
+        const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+        const data = assertValid(fields, writable, false);
+        // Sinh value cho field type "sequence" — server-side, atomic.
+        const [ent] = await ctx.db.select({ name: entities.name }).from(entities)
+          .where(eq(entities.id, input.entityId));
+        const entName = ent?.name ?? input.entityId;
+        for (const f of fields) {
+          if (f.type === "sequence" && data[f.name] == null) {
+            data[f.name] = await nextSequence(ctx.db, ctx.user.companyId, entName, f);
+          }
+        }
+        await assertUnique(ctx.db, ctx.user.companyId, input.entityId, fields, data);
+        const encrypted = encryptDataIn(fields, data);
+        const [row] = await ctx.db.insert(entityRecords).values({
+          companyId: ctx.user.companyId,
+          entityId: input.entityId,
+          data: encrypted,
+          createdBy: ctx.user.id,
+        }).returning();
+        if (!row) return row;
+        // Fire outgoing webhooks (best-effort, không block).
+        fireEntityWebhooks(ctx.db, {
+          companyId: ctx.user.companyId, entityId: input.entityId,
+          event: "create", record: row,
+        });
+        // Index embedding (best-effort, không block).
+        indexRecordEmbedding(ctx.db, ctx.user.companyId, input.entityId,
+          fields, row.id, data);
+        // Invalidate rollup cache ở entity đích (best-effort).
+        void invalidateRollupsFor(ctx.db, ctx.user.companyId, entName);
+        // Publish event cho GraphQL subscriptions + WS clients.
+        publishWs(`record:${entName}:${ctx.user.companyId}`, {
+          type: "create", entityName: entName, recordId: row.id, data: row.data,
+        });
+        // Decrypt + ẩn field user không có quyền read trước khi trả response.
+        const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
+        return {
+          ...row,
+          data: stripUnreadableFields(fields, decoded, ctx.user.role),
+        };
+      }),
+
+    update: rbacProcedure("edit", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        data: z.record(z.unknown()),
+        expectedVersion: z.number().int().nonnegative().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Lấy state hiện tại để check version + tính diff.
+        const [rec] = await ctx.db
+          .select({
+            entityId: entityRecords.entityId,
+            data: entityRecords.data,
+            version: entityRecords.version,
+            deletedAt: entityRecords.deletedAt,
+          })
+          .from(entityRecords).where(and(eq(entityRecords.id, input.recordId),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!rec) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        }
+        if (rec.deletedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST",
+            message: "Record đã xoá — restore trước khi sửa" });
+        }
+        if (input.expectedVersion !== undefined && input.expectedVersion !== rec.version) {
+          throw new TRPCError({ code: "CONFLICT",
+            message: `Version mismatch: bạn đang sửa bản v${input.expectedVersion}, hiện tại đã là v${rec.version}` });
+        }
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, rec.entityId);
+        // Strip field user không có quyền write trước khi validate.
+        const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+        const data = assertValid(fields, writable, true);
+        // Sequence không cho update — bỏ key sequence ra khỏi data.
+        for (const f of fields) {
+          if (f.type === "sequence") delete data[f.name];
+        }
+        await assertUnique(ctx.db, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
+
+        // Approval gate — nếu touch field requiresApproval, tạo approval
+        // pending thay vì update thẳng. Editor trở lên có thể tự duyệt
+        // sau ở UI approvals; viewer thì phải chờ admin.
+        const touchedApprovalFields = fields.filter((f) =>
+          f.requiresApproval && (f.name in data));
+        if (touchedApprovalFields.length > 0 && ctx.user.role !== "admin") {
+          const [appr] = await ctx.db.insert(approvalRequests).values({
+            companyId: ctx.user.companyId,
+            title: `Sửa ${touchedApprovalFields.map((f) => f.label || f.name).join(", ")}`,
+            detail: `Record ${input.recordId.slice(0, 8)}`,
+            kind: "entity_update",
+            entityId: rec.entityId,
+            recordId: input.recordId,
+            patch: data,
+            createdBy: ctx.user.id,
+          }).returning();
+          return {
+            status: "pending_approval" as const,
+            approvalId: appr?.id,
+            message: "Thay đổi đã gửi duyệt — sẽ áp dụng sau khi được approve.",
+          };
+        }
+
+        // Tính diff per-field (cũ vs mới) — chỉ trên field có trong patch.
+        const oldData = (rec.data ?? {}) as Record<string, unknown>;
+        const diff: Record<string, { old: unknown; new: unknown }> = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
+        }
+
+        // Encrypt field marked encrypted trước khi merge.
+        const encrypted = encryptDataIn(fields, data);
+        // Merge JSONB + tăng version atomic. Audit version ghi sau khi update OK.
+        const [row] = await ctx.db.update(entityRecords).set({
+          data: sql`${entityRecords.data} || ${JSON.stringify(encrypted)}::jsonb`,
+          version: rec.version + 1,
+          updatedAt: new Date(),
+        }).where(and(eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId))).returning();
+
+        // Ghi audit version (best-effort: lỗi không rollback update).
+        if (row && Object.keys(diff).length > 0) {
+          try {
+            await ctx.db.insert(entityRecordVersions).values({
+              companyId: ctx.user.companyId,
+              recordId: input.recordId,
+              version: row.version,
+              data: row.data as Record<string, unknown>,
+              diff,
+              actorUserId: ctx.user.id,
+            });
+          } catch (e) {
+            console.error("[records.update] ghi version lỗi:", (e as Error).message);
+          }
+        }
+        if (row) {
+          fireEntityWebhooks(ctx.db, {
+            companyId: ctx.user.companyId, entityId: rec.entityId,
+            event: "update", record: row, before: oldData, after: row.data,
+          });
+          // Re-index embedding (best-effort).
+          indexRecordEmbedding(ctx.db, ctx.user.companyId, rec.entityId,
+            fields, row.id, row.data as Record<string, unknown>);
+          // Invalidate rollup cache (best-effort) — cần entity name.
+          const [ent] = await ctx.db.select({ name: entities.name }).from(entities)
+            .where(eq(entities.id, rec.entityId));
+          if (ent) void invalidateRollupsFor(ctx.db, ctx.user.companyId, ent.name);
+          // Immutable audit cho compliance — không sửa/xoá được sau insert.
+          void logAuditImmutable(ctx.db, {
+            companyId: ctx.user.companyId,
+            kind: "record_update",
+            objectType: "entity",
+            target: ent?.name,
+            targetId: input.recordId,
+            actorUserId: ctx.user.id,
+            detail: `Update record ${input.recordId} v${row.version}`,
+            diff,
+          });
+          // Publish event cho GraphQL subscriptions + WS clients.
+          if (ent) {
+            publishWs(`record:${ent.name}:${ctx.user.companyId}`, {
+              type: "update", entityName: ent.name,
+              recordId: input.recordId, data: row.data,
+            });
+          }
+        }
+        return row;
+      }),
+
+    semanticSearch: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityName: z.string().min(1),
+        query: z.string().min(1),
+        limit: z.number().int().positive().max(50).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return semanticSearchRecords(
+          ctx.db, ctx.user.companyId,
+          input.entityName, input.query, input.limit ?? 10,
+        );
+      }),
+
+    /* Tree traversal — entity có lookup self-ref (vd folder.parent_id trỏ
+       folder.id). Trả id + level (depth from anchor). Recursive CTE PG. */
+    descendants: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fkField: z.string().min(1),
+        maxDepth: z.number().int().positive().max(20).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const maxD = input.maxDepth ?? 10;
+        const rows = await ctx.db.execute(sql`
+          WITH RECURSIVE tree AS (
+            SELECT id, data, 0 AS level FROM entity_records
+            WHERE id = ${input.recordId}::uuid
+              AND company_id = ${ctx.user.companyId}::uuid
+              AND deleted_at IS NULL
+            UNION ALL
+            SELECT er.id, er.data, tree.level + 1
+            FROM entity_records er
+            JOIN tree ON er.data->>${input.fkField} = tree.id::text
+            WHERE er.company_id = ${ctx.user.companyId}::uuid
+              AND er.deleted_at IS NULL
+              AND tree.level < ${sql.raw(String(maxD))}
+          )
+          SELECT id, data, level FROM tree WHERE level > 0 ORDER BY level
+        `) as unknown as Array<{ id: string; data: unknown; level: number }>;
+        return rows;
+      }),
+
+    ancestors: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fkField: z.string().min(1),
+        maxDepth: z.number().int().positive().max(20).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const maxD = input.maxDepth ?? 10;
+        const rows = await ctx.db.execute(sql`
+          WITH RECURSIVE tree AS (
+            SELECT id, data, 0 AS level FROM entity_records
+            WHERE id = ${input.recordId}::uuid
+              AND company_id = ${ctx.user.companyId}::uuid
+              AND deleted_at IS NULL
+            UNION ALL
+            SELECT er.id, er.data, tree.level + 1
+            FROM entity_records er
+            JOIN tree ON tree.data->>${input.fkField} = er.id::text
+            WHERE er.company_id = ${ctx.user.companyId}::uuid
+              AND er.deleted_at IS NULL
+              AND tree.level < ${sql.raw(String(maxD))}
+          )
+          SELECT id, data, level FROM tree WHERE level > 0 ORDER BY level
+        `) as unknown as Array<{ id: string; data: unknown; level: number }>;
+        return rows;
+      }),
+
+    /* Time-series endpoints — ghi/đọc giá trị theo thời gian cho field
+       type "timeseries" (sensor/telemetry/price). Tách bảng riêng để
+       index theo (record, field, ts DESC) tốt cho query range. */
+    appendTimeseries: rbacProcedure("edit", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fieldName: z.string().min(1),
+        value: z.number(),
+        ts: z.string().datetime().optional(),
+        meta: z.record(z.unknown()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Verify record cùng company.
+        const [rec] = await ctx.db.select({ id: entityRecords.id }).from(entityRecords)
+          .where(and(eq(entityRecords.id, input.recordId),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        const [row] = await ctx.db.insert(entityRecordTimeseries).values({
+          companyId: ctx.user.companyId,
+          recordId: input.recordId,
+          fieldName: input.fieldName,
+          ts: input.ts ? new Date(input.ts) : new Date(),
+          value: input.value,
+          meta: input.meta ?? null,
+        }).returning();
+        return row;
+      }),
+
+    queryTimeseries: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        fieldName: z.string().min(1),
+        fromTs: z.string().datetime().optional(),
+        toTs: z.string().datetime().optional(),
+        limit: z.number().int().positive().max(5000).optional(),
+        agg: z.enum(["raw", "avg", "min", "max", "sum"]).optional(),
+        bucket: z.enum(["minute", "hour", "day"]).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const limit = input.limit ?? 1000;
+        if (input.agg && input.agg !== "raw" && input.bucket) {
+          // Aggregated query — date_trunc + agg.
+          const aggFn = sql.raw(input.agg);
+          const bucket = sql.raw(`'${input.bucket}'`);
+          const rows = await ctx.db.execute(sql`
+            SELECT date_trunc(${bucket}, ts) AS bucket, ${aggFn}(value)::float AS value
+            FROM entity_record_timeseries
+            WHERE company_id = ${ctx.user.companyId}::uuid
+              AND record_id = ${input.recordId}::uuid
+              AND field_name = ${input.fieldName}
+              ${input.fromTs ? sql`AND ts >= ${input.fromTs}::timestamp` : sql``}
+              ${input.toTs ? sql`AND ts <= ${input.toTs}::timestamp` : sql``}
+            GROUP BY bucket ORDER BY bucket DESC LIMIT ${limit}
+          `) as unknown as Array<{ bucket: string; value: number }>;
+          return rows;
+        }
+        // Raw query.
+        return ctx.db.select().from(entityRecordTimeseries).where(and(
+          eq(entityRecordTimeseries.companyId, ctx.user.companyId),
+          eq(entityRecordTimeseries.recordId, input.recordId),
+          eq(entityRecordTimeseries.fieldName, input.fieldName),
+          input.fromTs ? sql`${entityRecordTimeseries.ts} >= ${input.fromTs}::timestamp` : sql`true`,
+          input.toTs ? sql`${entityRecordTimeseries.ts} <= ${input.toTs}::timestamp` : sql`true`,
+        )).orderBy(desc(entityRecordTimeseries.ts)).limit(limit);
+      }),
+
+    findDuplicates: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        fields: z.array(z.string()).min(1),
+        values: z.record(z.string()),
+        limit: z.number().int().positive().max(20).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return findDuplicateRecords(
+          ctx.db, ctx.user.companyId,
+          input.entityId, input.fields, input.values, input.limit ?? 5,
+        );
+      }),
+
+    delete: rbacProcedure("delete", "entity")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        // Lấy record trước khi xoá để gửi webhook.
+        const [before] = await ctx.db.select().from(entityRecords)
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
+        // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
+        await applyCascadeOnDelete(
+          ctx.db, ctx.user.companyId, input, ctx.user.id);
+        // SOFT delete bản thân: set deleted_at; data còn nguyên cho restore.
+        await ctx.db.update(entityRecords)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (before) {
+          fireEntityWebhooks(ctx.db, {
+            companyId: ctx.user.companyId, entityId: before.entityId,
+            event: "delete", record: before,
+          });
+        }
+      }),
+
+    backRefs: rbacProcedure("view", "entity")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        // Trả danh sách entity-source + count + sampleIds cho các record
+        // active có field lookup/multi-lookup trỏ tới recordId này.
+        return scanBackRefs(ctx.db, ctx.user.companyId, input);
+      }),
+
+    restore: rbacProcedure("edit", "entity")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db.update(entityRecords)
+          .set({ deletedAt: null, updatedAt: new Date() })
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        return { ok: true };
+      }),
+
+    hardDelete: rbacProcedure("delete", "entity")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        // Xoá thật sự — cascade xoá luôn entity_record_versions (FK cascade).
+        // Yêu cầu thêm: chỉ admin mới được xoá vĩnh viễn.
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN",
+            message: "Chỉ admin được xoá vĩnh viễn (hardDelete)" });
+        }
+        await ctx.db.delete(entityRecords).where(and(eq(entityRecords.id, input),
+          eq(entityRecords.companyId, ctx.user.companyId)));
+      }),
+
+    history: rbacProcedure("view", "entity")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        // Verify record thuộc đúng công ty trước khi trả version list.
+        const [rec] = await ctx.db.select({ id: entityRecords.id }).from(entityRecords)
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        return ctx.db.select().from(entityRecordVersions)
+          .where(and(eq(entityRecordVersions.recordId, input),
+            eq(entityRecordVersions.companyId, ctx.user.companyId)))
+          .orderBy(desc(entityRecordVersions.version));
+      }),
+
+    /* Time-travel query — trả state record tại timestamp ts.
+       Chiến thuật: tìm version cuối có createdAt <= ts → return data
+       snapshot. Nếu không có version nào trước ts → record chưa tồn tại
+       hoặc chưa có history (trả record hiện tại nếu createdAt <= ts). */
+    asOf: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        ts: z.string().datetime(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const targetTs = new Date(input.ts);
+        const [rec] = await ctx.db.select().from(entityRecords).where(and(
+          eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId),
+        ));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        // Tìm version snapshot mới nhất trước ts.
+        const [version] = await ctx.db.select().from(entityRecordVersions)
+          .where(and(
+            eq(entityRecordVersions.recordId, input.recordId),
+            eq(entityRecordVersions.companyId, ctx.user.companyId),
+            sql`${entityRecordVersions.createdAt} <= ${targetTs.toISOString()}::timestamp`,
+          ))
+          .orderBy(desc(entityRecordVersions.version))
+          .limit(1);
+        if (version) {
+          return {
+            recordId: input.recordId,
+            asOf: input.ts,
+            version: version.version,
+            data: version.data,
+          };
+        }
+        // Không có version nào trước ts; nếu record đã tồn tại trước ts
+        // (createdAt <= ts) → data hiện tại nhưng không có lịch sử ghi
+        // version → có thể đã được sửa nhưng chưa kịp ghi. Trả null
+        // hoặc current data tuỳ ngữ nghĩa user mong đợi.
+        if (rec.createdAt <= targetTs) {
+          return {
+            recordId: input.recordId,
+            asOf: input.ts,
+            version: 0,
+            data: rec.data,
+            note: "Không có version snapshot — data hiện tại đoán đúng vì record tồn tại trước ts",
+          };
+        }
+        return null;
+      }),
+
+    revert: rbacProcedure("edit", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        targetVersion: z.number().int().nonnegative(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Lấy snapshot của version đích.
+        const [target] = await ctx.db.select().from(entityRecordVersions)
+          .where(and(
+            eq(entityRecordVersions.recordId, input.recordId),
+            eq(entityRecordVersions.companyId, ctx.user.companyId),
+            eq(entityRecordVersions.version, input.targetVersion)));
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND",
+            message: `Không tìm thấy version ${input.targetVersion}` });
+        }
+        const [cur] = await ctx.db.select({
+          version: entityRecords.version,
+          data: entityRecords.data,
+        }).from(entityRecords).where(and(eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!cur) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+
+        // Replace toàn bộ data (không merge — revert là thay nguyên khối).
+        const targetData = target.data as Record<string, unknown>;
+        const oldData = (cur.data ?? {}) as Record<string, unknown>;
+        const diff: Record<string, { old: unknown; new: unknown }> = {};
+        const allKeys = new Set([...Object.keys(oldData), ...Object.keys(targetData)]);
+        for (const k of allKeys) {
+          if (!deepEqual(oldData[k], targetData[k])) {
+            diff[k] = { old: oldData[k] ?? null, new: targetData[k] ?? null };
+          }
+        }
+        const [row] = await ctx.db.update(entityRecords).set({
+          data: targetData,
+          version: cur.version + 1,
+          updatedAt: new Date(),
+        }).where(and(eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId))).returning();
+
+        if (row) {
+          try {
+            await ctx.db.insert(entityRecordVersions).values({
+              companyId: ctx.user.companyId,
+              recordId: input.recordId,
+              version: row.version,
+              data: targetData,
+              diff,
+              actorUserId: ctx.user.id,
+            });
+          } catch (e) {
+            console.error("[records.revert] ghi version lỗi:", (e as Error).message);
+          }
+        }
+        return row;
+      }),
+
+    /* ── Bulk operations — cap 1000 ids/rows/lần. Lớn hơn → async job.
+       Mỗi op write tạo audit version riêng. Báo cáo per-item errors. */
+    bulkUpdate: rbacProcedure("edit", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        ids: z.array(z.string().uuid()).min(1).max(1000),
+        patch: z.record(z.unknown()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, input.entityId);
+        const data = assertValid(fields, input.patch, true);
+        let updated = 0;
+        const errors: Array<{ id: string; message: string }> = [];
+        for (const id of input.ids) {
+          try {
+            const [cur] = await ctx.db.select({
+              data: entityRecords.data, version: entityRecords.version,
+              deletedAt: entityRecords.deletedAt,
+            }).from(entityRecords).where(and(
+              eq(entityRecords.id, id),
+              eq(entityRecords.companyId, ctx.user.companyId),
+              eq(entityRecords.entityId, input.entityId),
+            ));
+            if (!cur || cur.deletedAt) { errors.push({ id, message: "Không tồn tại hoặc đã xoá" }); continue; }
+            const oldData = (cur.data ?? {}) as Record<string, unknown>;
+            const diff: Record<string, { old: unknown; new: unknown }> = {};
+            for (const [k, v] of Object.entries(data)) {
+              if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
+            }
+            const [row] = await ctx.db.update(entityRecords).set({
+              data: sql`${entityRecords.data} || ${JSON.stringify(data)}::jsonb`,
+              version: cur.version + 1,
+              updatedAt: new Date(),
+            }).where(eq(entityRecords.id, id)).returning();
+            if (row && Object.keys(diff).length > 0) {
+              await ctx.db.insert(entityRecordVersions).values({
+                companyId: ctx.user.companyId,
+                recordId: id, version: row.version,
+                data: row.data as Record<string, unknown>,
+                diff, actorUserId: ctx.user.id,
+              });
+            }
+            updated += 1;
+          } catch (e) {
+            errors.push({ id, message: (e as Error).message });
+          }
+        }
+        return { updated, errors };
+      }),
+
+    bulkDelete: rbacProcedure("delete", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        ids: z.array(z.string().uuid()).min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        let deleted = 0;
+        const errors: Array<{ id: string; message: string }> = [];
+        for (const id of input.ids) {
+          try {
+            await applyCascadeOnDelete(ctx.db, ctx.user.companyId, id, ctx.user.id);
+            await ctx.db.update(entityRecords)
+              .set({ deletedAt: new Date(), updatedAt: new Date() })
+              .where(and(
+                eq(entityRecords.id, id),
+                eq(entityRecords.companyId, ctx.user.companyId),
+              ));
+            deleted += 1;
+          } catch (e) {
+            errors.push({ id, message: (e as Error).message });
+          }
+        }
+        return { deleted, errors };
+      }),
+
+    bulkImport: rbacProcedure("create", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        rows: z.array(z.record(z.unknown())).min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fields = await loadEntityFields(
+          ctx.db, ctx.user.companyId, input.entityId);
+        let imported = 0;
+        const errors: Array<{ index: number; message: string }> = [];
+        for (let i = 0; i < input.rows.length; i++) {
+          try {
+            const r = input.rows[i]!;
+            const v = validateRecord(fields, r, { registry: pluginRegistry });
+            if (!v.ok) {
+              errors.push({ index: i,
+                message: v.errors.map((e: { field: string; message: string }) =>
+                  `${e.field}: ${e.message}`).join("; ") });
+              continue;
+            }
+            await ctx.db.insert(entityRecords).values({
+              companyId: ctx.user.companyId,
+              entityId: input.entityId,
+              data: v.data,
+              createdBy: ctx.user.id,
+            });
+            imported += 1;
+          } catch (e) {
+            errors.push({ index: i, message: (e as Error).message });
+          }
+        }
+        return { imported, errors };
+      }),
+
+    export: rbacProcedure("view", "entity")
+      .input(z.object({
+        entityId: z.string().uuid(),
+        format: z.enum(["csv", "json"]),
+        query: queryParams,
+      }))
+      .query(async ({ ctx, input }) => {
+        const where = buildRecordWhere(
+          ctx.user.companyId, input.entityId, input.query, false);
+        const rows = await ctx.db.select().from(entityRecords)
+          .where(where).limit(5000);
+        if (input.format === "json") {
+          return { format: "json" as const, content: JSON.stringify(rows.map((r) => r.data), null, 2) };
+        }
+        // CSV: collect headers từ tất cả keys, escape RFC 4180 (quote tất cả).
+        const allKeys = new Set<string>();
+        for (const r of rows) {
+          for (const k of Object.keys((r.data ?? {}) as Record<string, unknown>)) {
+            allKeys.add(k);
+          }
+        }
+        const headers = [...allKeys];
+        const esc = (v: unknown): string => {
+          if (v == null) return "";
+          const s = typeof v === "string" ? v : JSON.stringify(v);
+          return `"${s.replace(/"/g, '""')}"`;
+        };
+        const body = rows.map((r) => {
+          const d = (r.data ?? {}) as Record<string, unknown>;
+          return headers.map((h) => esc(d[h])).join(",");
+        }).join("\n");
+        const content = headers.map((h) => `"${h}"`).join(",") + "\n" + body;
+        return { format: "csv" as const, content };
+      }),
+});
