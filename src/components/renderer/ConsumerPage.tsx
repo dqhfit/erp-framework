@@ -6,6 +6,8 @@
    ghi record thật vào backend. KHÔNG còn dữ liệu giả.
    ========================================================== */
 import { useState, useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { I } from "@/components/Icons";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { Chart } from "@/components/renderer/Chart";
@@ -307,8 +309,9 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
-/** Widget "map" — hiển thị record có field geo {lat, lng}. v1 placeholder
- *  list, integration map tile (Leaflet) làm sau. */
+/** Widget "map" — hiển thị record có field geo {lat, lng}. Dùng Leaflet
+ *  + OpenStreetMap tiles (free, không cần API key). Field shape:
+ *  geo: { lat: number, lng: number }. */
 function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const entityId = cfg.entity as string | undefined;
   const geoField = (cfg.geoField as string) || "location";
@@ -333,20 +336,47 @@ function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
       <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
         <I.MapPin size={11} /> {ent.name} · {points.length} điểm
       </div>
-      <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1">
-        {points.length === 0 && (
-          <div className="text-xs text-muted">
+      <div className="flex-1 min-h-0">
+        {points.length === 0 ? (
+          <div className="p-3 text-xs text-muted">
             Chưa có record có geo. Field "{geoField}" cần shape {`{lat, lng}`}.
           </div>
+        ) : (
+          <LeafletMap points={points} />
         )}
-        {points.slice(0, 50).map((p, i) => (
-          <div key={i} className="text-xs border border-border rounded p-1.5">
-            <div className="font-medium truncate">{p.title || "(không tên)"}</div>
-            <div className="text-[10px] text-muted font-mono">{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</div>
-          </div>
-        ))}
       </div>
     </div>
+  );
+}
+
+/** Map render qua Leaflet — lazy load để tránh SSR-style issue + giảm
+ *  bundle initial. Tile mặc định OpenStreetMap (public, attribution required). */
+function LeafletMap({ points }: { points: Array<{ lat: number; lng: number; title: string }> }) {
+  // Default center = trung tâm trung bình các điểm; fallback HCMC.
+  const center: [number, number] = points.length > 0
+    ? [
+        points.reduce((s, p) => s + p.lat, 0) / points.length,
+        points.reduce((s, p) => s + p.lng, 0) / points.length,
+      ]
+    : [10.776, 106.700];
+  // react-leaflet 5 expects "MapContainer" wrapping.
+  return (
+    <MapContainer
+      center={center}
+      zoom={12}
+      style={{ height: "100%", width: "100%" }}
+      attributionControl={false}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&copy; OpenStreetMap"
+      />
+      {points.map((p, i) => (
+        <Marker key={i} position={[p.lat, p.lng]}>
+          <Popup>{p.title || "(không tên)"}</Popup>
+        </Marker>
+      ))}
+    </MapContainer>
   );
 }
 

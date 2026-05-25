@@ -126,6 +126,10 @@ export const entityRecords = pgTable("entity_records", {
   // entities.fields[].searchable=true (xem migration 0016). Drizzle
   // chỉ khai báo cột để TypeScript biết — không bind dynamic queries.
   searchTsv: text("search_tsv"),
+  // Rollup cache — { fieldName: { v, computedAt } }. Invalidated khi
+  // source entity records.create/update/delete → set rollup_invalidated.
+  rollupCache: jsonb("rollup_cache"),
+  rollupInvalidated: boolean("rollup_invalidated").notNull().default(true),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

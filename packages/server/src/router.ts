@@ -32,7 +32,7 @@ import { apiKeysRouter } from "./api-keys-router";
 import { entityTemplatesRouter } from "./entity-templates-router";
 import { notificationsRouter } from "./notifications-router";
 import { presenceRouter } from "./presence-router";
-import { applyRollups } from "./rollup";
+import { applyRollups, invalidateRollupsFor } from "./rollup";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { findDuplicateRecords } from "./duplicate-detection";
 import { makeInvokeProcedure } from "./procedure-runner";
@@ -917,10 +917,13 @@ export const appRouter = router({
           })(proc, { id: input, row });
           return r.output ?? row;
         }
-        // Decrypt + apply rollup fields + strip unreadable trước khi serve.
+        // Decrypt + apply rollup fields (with cache) + strip unreadable.
         const fields = await loadEntityFields(ctx.db, ctx.user.companyId, row.entityId);
         const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
-        const withRollups = await applyRollups(ctx.db, ctx.user.companyId, fields, row.id, decoded);
+        const withRollups = await applyRollups(
+          ctx.db, ctx.user.companyId, fields, row.id, decoded,
+          { rollupCache: row.rollupCache, rollupInvalidated: row.rollupInvalidated },
+        );
         return {
           ...row,
           data: stripUnreadableFields(fields, withRollups, ctx.user.role),
@@ -961,6 +964,8 @@ export const appRouter = router({
         // Index embedding (best-effort, không block).
         indexRecordEmbedding(ctx.db, ctx.user.companyId, input.entityId,
           fields, row.id, data);
+        // Invalidate rollup cache ở entity đích (best-effort).
+        void invalidateRollupsFor(ctx.db, ctx.user.companyId, entName);
         // Decrypt + ẩn field user không có quyền read trước khi trả response.
         const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
         return {
@@ -1048,6 +1053,10 @@ export const appRouter = router({
           // Re-index embedding (best-effort).
           indexRecordEmbedding(ctx.db, ctx.user.companyId, rec.entityId,
             fields, row.id, row.data as Record<string, unknown>);
+          // Invalidate rollup cache (best-effort) — cần entity name.
+          const [ent] = await ctx.db.select({ name: entities.name }).from(entities)
+            .where(eq(entities.id, rec.entityId));
+          if (ent) void invalidateRollupsFor(ctx.db, ctx.user.companyId, ent.name);
         }
         return row;
       }),

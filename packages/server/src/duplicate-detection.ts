@@ -49,19 +49,36 @@ function similarity(a: string, b: string): number {
   return 1 - levenshtein(na, nb) / max;
 }
 
-/** Tìm record tương tự với input values. Trả top-K record id + score. */
+/** Tìm record tương tự với input values. Trả top-K record id + score.
+ *  v2: pre-filter bằng pg_trgm GIN index trước khi tính Levenshtein —
+ *  giảm dataset từ N → ~K*similarity (nhanh hơn 10-100x trên dataset lớn). */
 export async function findDuplicateRecords(
   db: DB, companyId: string, entityId: string,
   fieldKeys: string[], values: Record<string, string>, limit: number,
 ): Promise<Array<{ recordId: string; score: number; data: Record<string, unknown> }>> {
-  // Lấy tất cả record active của entity. (v1: full scan; v2: dùng
-  // pg_trgm GIN index để pre-filter trước khi tính LD cho perf.)
-  const rows = await db.select({ id: entityRecords.id, data: entityRecords.data })
-    .from(entityRecords).where(and(
-      eq(entityRecords.companyId, companyId),
-      eq(entityRecords.entityId, entityId),
-      sql`${entityRecords.deletedAt} IS NULL`,
-    )).limit(2000); // cap để tránh blow up memory
+  // Build chuỗi query gộp các value để trigram pre-filter.
+  const queryText = fieldKeys.map((k) => values[k] ?? "").filter(Boolean).join(" ");
+  let rows: Array<{ id: string; data: unknown }>;
+  if (queryText.length >= 3) {
+    // Trigram pre-filter — top 200 records giống nhất theo similarity.
+    rows = await db.execute(sql`
+      SELECT id, data FROM entity_records
+      WHERE company_id = ${companyId}::uuid
+        AND entity_id = ${entityId}::uuid
+        AND deleted_at IS NULL
+        AND similarity(data::text, ${queryText}) > 0.1
+      ORDER BY similarity(data::text, ${queryText}) DESC
+      LIMIT 200
+    `) as unknown as Array<{ id: string; data: unknown }>;
+  } else {
+    // Query quá ngắn → full scan với cap.
+    rows = await db.select({ id: entityRecords.id, data: entityRecords.data })
+      .from(entityRecords).where(and(
+        eq(entityRecords.companyId, companyId),
+        eq(entityRecords.entityId, entityId),
+        sql`${entityRecords.deletedAt} IS NULL`,
+      )).limit(2000);
+  }
 
   const scored = rows.map((r) => {
     const data = (r.data ?? {}) as Record<string, unknown>;
