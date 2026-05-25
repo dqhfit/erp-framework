@@ -20,6 +20,16 @@ export interface EntityField {
   enumId?: string;
   /** Cho field type "lookup" / "multi-lookup" — hành vi khi record đích bị xoá. */
   onDelete?: "restrict" | "setnull" | "cascade";
+  /** Full-text search index (search_tsv). */
+  searchable?: boolean;
+  /** Unique constraint per company+entity (server-enforce). */
+  unique?: boolean;
+  /** Field-level RBAC — role nào đọc/ghi được. */
+  readableBy?: Array<"admin" | "editor" | "viewer">;
+  writableBy?: Array<"admin" | "editor" | "viewer">;
+  /** Cho field type "sequence". */
+  sequencePrefix?: string;
+  sequencePadding?: number;
 }
 export interface MockEntity {
   id: string; name: string; icon: IconName; mcp: string;

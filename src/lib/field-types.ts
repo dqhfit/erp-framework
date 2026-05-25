@@ -35,6 +35,7 @@ export const FIELD_TYPES: FieldType[] = [
   { id: "lookup",      name: "Lookup",       icon: "Link",      desc: "Ref 1 entity" },
   { id: "multi-lookup", name: "Multi-lookup", icon: "Link",     desc: "Ref nhiều entity (M2M)" },
   { id: "formula",     name: "Formula",      icon: "Wand",      desc: "Computed" },
+  { id: "sequence",    name: "Sequence",     icon: "Hash",      desc: "Auto-number (INV-001)" },
   { id: "tag",         name: "Tag",          icon: "Tag",       desc: "Color tags" },
 ];
 

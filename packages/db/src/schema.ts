@@ -566,6 +566,23 @@ export const backupRuns = pgTable("backup_runs", {
     .on(t.companyId, t.startedAt),
 }));
 
+/* Counter atomic cho field type "sequence" — sinh chuỗi tăng dần per
+   (company, entity, field). Server SELECT FOR UPDATE + INCREMENT khi
+   records.create để không trùng. */
+export const entitySequences = pgTable("entity_sequences", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  entityName: text("entity_name").notNull(),
+  fieldKey: text("field_key").notNull(),
+  nextValue: integer("next_value").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  uidx: uniqueIndex("entity_sequences_uidx")
+    .on(t.companyId, t.entityName, t.fieldKey),
+}));
+
 /* Reusable enum (option set) — tái sử dụng giữa nhiều entity field, có
    nhãn đa ngôn ngữ (vi/en). values JSONB:
      Array<{ value: string, label: string, labelEn?: string }>.

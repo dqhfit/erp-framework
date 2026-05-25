@@ -14,7 +14,7 @@ import {
   pages, agents, agentMembers, workflows, schedules, activityLog,
   companies, companyMembers, userInvites,
 } from "@erp-framework/db";
-import { validateRecord, pluginRegistry, type EntityFieldDef, type OnDeleteBehavior } from "@erp-framework/core";
+import { validateRecord, pluginRegistry, fieldCan, type EntityFieldDef, type OnDeleteBehavior, type Role } from "@erp-framework/core";
 import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
 import { assertCanActOnAgent } from "./agent-acl";
 import { logActivity } from "./activity";
@@ -306,6 +306,85 @@ async function applyCascadeOnDelete(
           deletedAt: new Date(), updatedAt: new Date(),
         }).where(eq(entityRecords.id, r.id));
       }
+    }
+  }
+}
+
+/** Sinh giá trị sequence atomic per (company, entity, field) — SELECT FOR
+ *  UPDATE + INCREMENT. Lần đầu tạo row entity_sequences (next_value=2 sau khi
+ *  dùng 1). Định dạng: prefix + str(value).padStart(padding, '0'). */
+async function nextSequence(
+  db: DB, companyId: string, entityName: string,
+  field: { name: string; sequencePrefix?: string; sequencePadding?: number },
+): Promise<string> {
+  // Postgres-side atomic: INSERT ... ON CONFLICT DO UPDATE returning.
+  const [row] = await db.execute(sql`
+    INSERT INTO entity_sequences (company_id, entity_name, field_key, next_value)
+    VALUES (${companyId}::uuid, ${entityName}, ${field.name}, 2)
+    ON CONFLICT (company_id, entity_name, field_key)
+    DO UPDATE SET next_value = entity_sequences.next_value + 1, updated_at = now()
+    RETURNING next_value - 1 AS used
+  `) as unknown as Array<{ used: number }>;
+  const used = row?.used ?? 1;
+  const pad = field.sequencePadding ?? 0;
+  const num = pad > 0 ? String(used).padStart(pad, "0") : String(used);
+  return (field.sequencePrefix ?? "") + num;
+}
+
+/** Loại bỏ key user không có quyền GHI (writableBy) trước khi validate.
+ *  Bảo vệ field như "salary" không bị user viewer override. */
+function stripUnwritableFields(
+  fields: EntityFieldDef[], data: Record<string, unknown>, role: Role,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    const f = fields.find((ff) => ff.name === k);
+    if (!f) { out[k] = v; continue; }
+    if (fieldCan(role, "write", f)) out[k] = v;
+  }
+  return out;
+}
+
+/** Loại bỏ key user không có quyền ĐỌC (readableBy) khỏi response.
+ *  KHÔNG xoá khỏi DB — chỉ ẩn ở tầng API. */
+function stripUnreadableFields(
+  fields: EntityFieldDef[], data: Record<string, unknown>, role: Role,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    const f = fields.find((ff) => ff.name === k);
+    if (!f) { out[k] = v; continue; }
+    if (fieldCan(role, "read", f)) out[k] = v;
+  }
+  return out;
+}
+
+/** Kiểm unique cho các field đánh `unique: true`. Throw nếu trùng (không
+ *  tính bản thân record đang update). Chạy ở app-layer (không Postgres
+ *  partial unique index — lazy v2 nếu cần performance). */
+async function assertUnique(
+  db: DB, companyId: string, entityId: string, fields: EntityFieldDef[],
+  data: Record<string, unknown>, excludeRecordId?: string,
+): Promise<void> {
+  for (const f of fields) {
+    if (!f.unique) continue;
+    if (!(f.name in data)) continue;
+    const val = data[f.name];
+    if (val == null || val === "") continue;
+    const dup = await db.select({ id: entityRecords.id }).from(entityRecords)
+      .where(and(
+        eq(entityRecords.companyId, companyId),
+        eq(entityRecords.entityId, entityId),
+        sql`${entityRecords.deletedAt} IS NULL`,
+        sql`${entityRecords.data}->>${f.name} = ${String(val)}`,
+        excludeRecordId ? sql`${entityRecords.id} <> ${excludeRecordId}::uuid` : sql`true`,
+      ))
+      .limit(1);
+    if (dup.length > 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `Trùng giá trị unique: field "${f.label || f.name}" đã có record khác`,
+      });
     }
   }
 }
@@ -703,14 +782,31 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const fields = await loadEntityFields(
           ctx.db, ctx.user.companyId, input.entityId);
-        const data = assertValid(fields, input.data, false);
+        // Strip field user không có quyền write (field-level RBAC).
+        const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+        const data = assertValid(fields, writable, false);
+        // Sinh value cho field type "sequence" — server-side, atomic.
+        const [ent] = await ctx.db.select({ name: entities.name }).from(entities)
+          .where(eq(entities.id, input.entityId));
+        const entName = ent?.name ?? input.entityId;
+        for (const f of fields) {
+          if (f.type === "sequence" && data[f.name] == null) {
+            data[f.name] = await nextSequence(ctx.db, ctx.user.companyId, entName, f);
+          }
+        }
+        await assertUnique(ctx.db, ctx.user.companyId, input.entityId, fields, data);
         const [row] = await ctx.db.insert(entityRecords).values({
           companyId: ctx.user.companyId,
           entityId: input.entityId,
           data,
           createdBy: ctx.user.id,
         }).returning();
-        return row;
+        if (!row) return row;
+        // Ẩn field user không có quyền read trước khi trả response.
+        return {
+          ...row,
+          data: stripUnreadableFields(fields, row.data as Record<string, unknown>, ctx.user.role),
+        };
       }),
 
     update: rbacProcedure("edit", "entity")
@@ -743,7 +839,14 @@ export const appRouter = router({
         }
         const fields = await loadEntityFields(
           ctx.db, ctx.user.companyId, rec.entityId);
-        const data = assertValid(fields, input.data, true);
+        // Strip field user không có quyền write trước khi validate.
+        const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+        const data = assertValid(fields, writable, true);
+        // Sequence không cho update — bỏ key sequence ra khỏi data.
+        for (const f of fields) {
+          if (f.type === "sequence") delete data[f.name];
+        }
+        await assertUnique(ctx.db, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
 
         // Tính diff per-field (cũ vs mới) — chỉ trên field có trong patch.
         const oldData = (rec.data ?? {}) as Record<string, unknown>;

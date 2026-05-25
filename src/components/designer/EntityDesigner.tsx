@@ -689,6 +689,79 @@ function FieldInspector({ field, onUpdate, onDelete, tab, setTab, siblingFields 
               </>
             )}
 
+            {field.type === "sequence" && (
+              <>
+                <FormField label="Prefix" hint='vd "INV-" → INV-0001'>
+                  <Input
+                    value={field.sequencePrefix ?? ""}
+                    placeholder="INV-"
+                    onChange={(e) => onUpdate({ sequencePrefix: e.target.value } as Partial<EntityField>)}
+                  />
+                </FormField>
+                <FormField label="Padding" hint="Số chữ số tối thiểu, vd 4 → 0001">
+                  <Input type="number" min={0} max={12}
+                    value={field.sequencePadding ?? 0}
+                    onChange={(e) => onUpdate({ sequencePadding: Number(e.target.value) } as Partial<EntityField>)}
+                  />
+                </FormField>
+              </>
+            )}
+
+            {/* Governance controls — áp dụng cho mọi field type. */}
+            <FormField label="Governance">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!field.unique}
+                    onChange={(e) => onUpdate({ unique: e.target.checked } as Partial<EntityField>)} />
+                  Unique (chặn trùng giá trị)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!field.searchable}
+                    onChange={(e) => onUpdate({ searchable: e.target.checked } as Partial<EntityField>)} />
+                  Searchable (full-text search)
+                </label>
+              </div>
+            </FormField>
+            <FormField label="Đọc bởi (Read RBAC)"
+              hint="Bỏ chọn hết = mọi role có quyền entity đều đọc">
+              <div className="flex gap-3 text-sm">
+                {(["admin", "editor", "viewer"] as const).map((r) => {
+                  const cur = (field.readableBy ?? []);
+                  const on = cur.includes(r);
+                  return (
+                    <label key={r} className="flex items-center gap-1">
+                      <input type="checkbox" checked={on}
+                        onChange={(e) => onUpdate({
+                          readableBy: e.target.checked
+                            ? [...cur, r]
+                            : cur.filter((x) => x !== r),
+                        } as Partial<EntityField>)} />
+                      {r}
+                    </label>
+                  );
+                })}
+              </div>
+            </FormField>
+            <FormField label="Ghi bởi (Write RBAC)" hint="Tương tự, bỏ chọn = mở">
+              <div className="flex gap-3 text-sm">
+                {(["admin", "editor", "viewer"] as const).map((r) => {
+                  const cur = (field.writableBy ?? []);
+                  const on = cur.includes(r);
+                  return (
+                    <label key={r} className="flex items-center gap-1">
+                      <input type="checkbox" checked={on}
+                        onChange={(e) => onUpdate({
+                          writableBy: e.target.checked
+                            ? [...cur, r]
+                            : cur.filter((x) => x !== r),
+                        } as Partial<EntityField>)} />
+                      {r}
+                    </label>
+                  );
+                })}
+              </div>
+            </FormField>
+
             {field.type === "formula" && (
               <FormulaEditor
                 value={field.formula ?? ""}

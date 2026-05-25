@@ -12,7 +12,7 @@ export type FieldType =
   | "text" | "number" | "boolean" | "date" | "datetime"
   | "select" | "multiselect" | "enum" | "multienum"
   | "relation" | "lookup" | "multilookup"
-  | "formula" | "json";
+  | "sequence" | "formula" | "json";
 
 /** Hành vi khi record được trỏ tới bị xoá (lookup/multilookup).
  *  - restrict: chặn xoá nếu còn ref (mặc định an toàn).
@@ -38,6 +38,14 @@ export interface EntityFieldDef {
   sortable?: boolean;
   /** Đưa giá trị field vào search_tsv (FTS) — chỉ field text/textarea. */
   searchable?: boolean;
+  /** Unique constraint — server enforce qua validation lookup. */
+  unique?: boolean;
+  /** Field-level RBAC. Mặc định = mọi role có quyền entity được đọc/ghi. */
+  readableBy?: Array<"admin" | "editor" | "viewer">;
+  writableBy?: Array<"admin" | "editor" | "viewer">;
+  /** Cho field type "sequence" — prefix + padding (vd "INV-", 4 → INV-0001). */
+  sequencePrefix?: string;
+  sequencePadding?: number;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

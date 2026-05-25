@@ -41,3 +41,15 @@ export function roleCan(role: Role, action: Action, obj: ObjectType): boolean {
     return (a === "*" || a === action) && (o === "*" || o === obj);
   });
 }
+
+/** Field-level RBAC — kiểm tra role có được đọc/ghi field theo cờ
+ *  readableBy/writableBy. Default (cờ vắng) = cho phép. */
+export function fieldCan(
+  role: Role,
+  action: "read" | "write",
+  field: { readableBy?: Role[]; writableBy?: Role[] },
+): boolean {
+  const allowed = action === "read" ? field.readableBy : field.writableBy;
+  if (!allowed || allowed.length === 0) return true;
+  return allowed.includes(role);
+}

@@ -4,7 +4,7 @@ export type FieldType =
   | "select" | "multi-select" | "enum" | "multi-enum"
   | "lookup" | "multi-lookup"
   | "file" | "image" | "url" | "email" | "phone"
-  | "json" | "formula";
+  | "sequence" | "json" | "formula";
 
 /** Hành vi khi record đích của lookup bị xoá. */
 export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
@@ -43,6 +43,14 @@ export interface FieldDef {
   width?: number;
   /** Đưa giá trị field vào full-text search index (search_tsv) — chỉ text. */
   searchable?: boolean;
+  /** Unique constraint server-side (chỉ áp dụng cho record active). */
+  unique?: boolean;
+  /** Field-level RBAC — role nào đọc/ghi được. Vắng = mọi role có quyền entity. */
+  readableBy?: Array<"admin" | "editor" | "viewer">;
+  writableBy?: Array<"admin" | "editor" | "viewer">;
+  /** Cho field type "sequence" — vd prefix "INV-", padding 4 → "INV-0001". */
+  sequencePrefix?: string;
+  sequencePadding?: number;
 }
 
 /** Binding entity → backend op.
