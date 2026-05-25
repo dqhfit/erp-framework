@@ -16,7 +16,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useT } from "@/hooks/useT";
-import { getFieldTypes } from "@/lib/field-types";
+import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
@@ -105,9 +105,9 @@ export function FieldInspector({
             </FormField>
             <FormField label={t("field.type")}>
               <Select value={field.type} onChange={(e) => onUpdate({ type: e.target.value })}>
-                {getFieldTypes().map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+                {getFieldTypes().map((ft) => (
+                  <option key={ft.id} value={ft.id}>
+                    {ftLabel(ft, t)}
                   </option>
                 ))}
               </Select>

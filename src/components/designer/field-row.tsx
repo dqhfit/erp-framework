@@ -6,7 +6,7 @@
 import { I } from "@/components/Icons";
 import { Chip } from "@/components/ui";
 import { useT } from "@/hooks/useT";
-import { getFieldTypes } from "@/lib/field-types";
+import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -76,7 +76,7 @@ export function FieldRow({
         <div className="font-medium truncate">{field.label}</div>
         <span className="font-mono text-[11px] text-muted truncate">{field.name}</span>
       </div>
-      <Chip>{ft.name}</Chip>
+      <Chip>{ftLabel(ft, t)}</Chip>
       {field.required && <Chip variant="warning">{t("field.required")}</Chip>}
       {field.type === "lookup" && field.ref && <Chip variant="accent">→ {field.ref}</Chip>}
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">

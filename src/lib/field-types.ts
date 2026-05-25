@@ -44,6 +44,12 @@ export const FIELD_TYPES: FieldType[] = [
   { id: "tag", name: "Tag", icon: "Tag", desc: "Color tags" },
 ];
 
+/** Trả về tên hiển thị đã dịch của field type. Fallback về English name nếu chưa có key. */
+export function ftLabel(ft: FieldType, t: (k: string) => string): string {
+  const translated = t(`ft.${ft.id}`);
+  return translated === `ft.${ft.id}` ? ft.name : translated;
+}
+
 /** Kiểu field cho designer = builtin + plugin (bỏ trùng theo id). */
 export function getFieldTypes(): FieldType[] {
   const builtinIds = new Set(FIELD_TYPES.map((f) => f.id));

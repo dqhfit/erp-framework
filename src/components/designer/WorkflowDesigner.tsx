@@ -168,6 +168,7 @@ interface WfNodeData {
 }
 
 function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
+  const t = useT();
   const meta = getNodePalette().find((p) => p.kind === data.kind);
   const IC = I[(meta?.icon ?? "Bot") as IconName];
   return (
@@ -183,7 +184,7 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
       </span>
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-          {meta?.label}
+          {t(`wf.node.${data.kind}`)}
         </div>
         <div className="text-sm font-medium truncate">{data.label}</div>
       </div>
@@ -429,8 +430,8 @@ function WorkflowInner({ workflowId }: Props) {
                       <IC size={12} />
                     </span>
                     <div className="min-w-0">
-                      <div className="font-medium">{p.label}</div>
-                      <div className="text-[10px] text-muted truncate">{p.desc}</div>
+                      <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
+                      <div className="text-[10px] text-muted truncate">{t(`wf.node.${p.kind}.desc`)}</div>
                     </div>
                   </div>
                 );

@@ -272,7 +272,7 @@ export function PageDesigner({ pageId }: Props) {
                     )}
                   >
                     <IC size={14} className="text-muted shrink-0" />
-                    <span className="font-medium">{p.label}</span>
+                    <span className="font-medium">{t(`page.comp.${p.kind}`)}</span>
                   </div>
                 );
               })}

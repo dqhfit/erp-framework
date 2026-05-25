@@ -10,7 +10,7 @@ import { Button, EmptyState, InlineEdit, Input } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
 import type { EntityDesign } from "@/lib/ai-design-prompts";
-import { getFieldTypes } from "@/lib/field-types";
+import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import { countBoundOps, inferMcpBindings } from "@/lib/mcp-binding-infer";
 import { inferPkField, syncEntityFromMcp } from "@/lib/mcp-sync";
 import type { EntityField, MockEntity } from "@/lib/object-types";
@@ -366,11 +366,11 @@ export function EntityDesigner({ entityId }: Props) {
                       "flex flex-col items-center gap-1 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 hover:bg-hover/40 cursor-grab active:cursor-grabbing",
                       dragFromPalette === ft.id && "dragging",
                     )}
-                    title={`${ft.name} — ${ft.desc} (double-click to add)`}
+                    title={`${ftLabel(ft, t)} — ${ft.desc} (double-click to add)`}
                   >
                     <IC size={14} className="text-muted" />
                     <div className="text-[11px] font-medium leading-tight text-center">
-                      {ft.name}
+                      {ftLabel(ft, t)}
                     </div>
                   </div>
                 );
