@@ -66,6 +66,8 @@ export interface FieldDef {
   /** Cho field type "sequence" — vd prefix "INV-", padding 4 → "INV-0001". */
   sequencePrefix?: string;
   sequencePadding?: number;
+  /** Mã hoá at-rest (PII) — server encrypt khi save, decrypt khi serve. */
+  encrypted?: boolean;
 }
 
 /** Binding entity → backend op.

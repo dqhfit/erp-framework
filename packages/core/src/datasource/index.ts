@@ -66,6 +66,9 @@ export interface EntityFieldDef {
   requiredIf?: FieldRule;
   /** Ẩn field theo điều kiện — UI bỏ render khi rule khớp false. */
   visibleIf?: FieldRule;
+  /** Mã hoá at-rest qua ENCRYPTION_KEY (AES-256-GCM). Áp dụng cho field
+   *  text/json chứa PII (CMND, lương, số TK ngân hàng). Decrypt khi serve. */
+  encrypted?: boolean;
 }
 
 /** Định nghĩa một entity (metadata low-code). */

@@ -13,6 +13,7 @@ import { agents, sessions, knowledgeSources } from "@erp-framework/db";
 import { roleCan } from "@erp-framework/core";
 import { appRouter } from "./router";
 import { registerIotRoutes } from "./iot";
+import { registerRestApi } from "./rest-api";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { createContext, resolveActiveCompany } from "./context";
 import { startJobs, stopJobs, enqueueKbIngest } from "./jobs";
@@ -154,6 +155,11 @@ async function main(): Promise<void> {
   // Route REST cho thiết bị IoT — /iot/v1/* (auth header X-Device-Key).
   // Tách khỏi tRPC để firmware nhúng (curl/HTTP) dùng được trực tiếp.
   await registerIotRoutes(app);
+
+  // Route REST tự sinh cho entity records — /api/v1/entities/:name/*
+  // (auth header X-API-Key, scopes per entity). Mobile/external/3rd-party
+  // dùng được thẳng, không cần codegen tRPC.
+  registerRestApi(app, db);
 
   app.get("/", async () => ({
     name: "ERP Framework server",

@@ -606,6 +606,26 @@ export const backupRuns = pgTable("backup_runs", {
     .on(t.companyId, t.startedAt),
 }));
 
+/* API keys per company — auth cho REST /api/v1/* endpoints. key_hash =
+   sha256 của plaintext (sk_...); plaintext chỉ trả 1 lần lúc tạo. scopes
+   JSONB array vd ["entity:customer:read"]; empty = full access. */
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  keyHash: text("key_hash").notNull(),
+  prefix: text("prefix").notNull(),
+  scopes: jsonb("scopes").notNull().default(sql`'[]'::jsonb`),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  lastUsedAt: timestamp("last_used_at"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  hashIdx: uniqueIndex("api_keys_hash_idx").on(t.keyHash),
+  companyIdx: index("api_keys_company_idx").on(t.companyId),
+}));
+
 /* Saved views per entity per user — mỗi view lưu query + columns config.
    is_default = entity mở mặc định load view này. Không enforce unique tên
    để user tự đặt tự do. */

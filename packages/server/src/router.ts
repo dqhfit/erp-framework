@@ -28,6 +28,7 @@ import { enumsRouter } from "./enums-router";
 import { savedViewsRouter } from "./saved-views-router";
 import { recordCommentsRouter } from "./record-comments-router";
 import { entityWebhooksRouter, fireEntityWebhooks } from "./entity-webhooks-router";
+import { apiKeysRouter } from "./api-keys-router";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
@@ -35,6 +36,43 @@ import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
 import { encryptSecret, decryptSecret } from "./crypto";
+
+/** Tag để phân biệt giá trị đã encrypt với plaintext cũ. Decrypt thử nhiều
+ *  format để backward-compat (legacy chưa encrypt vẫn đọc được). */
+const ENC_PREFIX = "enc:v1:";
+
+function encryptField(plain: unknown): string {
+  if (plain == null) return "";
+  const s = typeof plain === "string" ? plain : JSON.stringify(plain);
+  return ENC_PREFIX + encryptSecret(s);
+}
+function decryptField(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  if (!v.startsWith(ENC_PREFIX)) return v; // plaintext legacy
+  const dec = decryptSecret(v.slice(ENC_PREFIX.length));
+  try { return JSON.parse(dec); } catch { return dec; }
+}
+
+/** Encrypt field marked `encrypted: true` trước khi insert/update. */
+function encryptDataIn(fields: EntityFieldDef[], data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data };
+  for (const f of fields) {
+    if (f.encrypted && f.name in out && out[f.name] != null) {
+      out[f.name] = encryptField(out[f.name]);
+    }
+  }
+  return out;
+}
+/** Decrypt field marked `encrypted: true` trước khi serve. */
+function decryptDataOut(fields: EntityFieldDef[], data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data };
+  for (const f of fields) {
+    if (f.encrypted && f.name in out) {
+      out[f.name] = decryptField(out[f.name]);
+    }
+  }
+  return out;
+}
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
 import {
@@ -798,10 +836,11 @@ export const appRouter = router({
           }
         }
         await assertUnique(ctx.db, ctx.user.companyId, input.entityId, fields, data);
+        const encrypted = encryptDataIn(fields, data);
         const [row] = await ctx.db.insert(entityRecords).values({
           companyId: ctx.user.companyId,
           entityId: input.entityId,
-          data,
+          data: encrypted,
           createdBy: ctx.user.id,
         }).returning();
         if (!row) return row;
@@ -810,10 +849,11 @@ export const appRouter = router({
           companyId: ctx.user.companyId, entityId: input.entityId,
           event: "create", record: row,
         });
-        // Ẩn field user không có quyền read trước khi trả response.
+        // Decrypt + ẩn field user không có quyền read trước khi trả response.
+        const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
         return {
           ...row,
-          data: stripUnreadableFields(fields, row.data as Record<string, unknown>, ctx.user.role),
+          data: stripUnreadableFields(fields, decoded, ctx.user.role),
         };
       }),
 
@@ -863,9 +903,11 @@ export const appRouter = router({
           if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
         }
 
+        // Encrypt field marked encrypted trước khi merge.
+        const encrypted = encryptDataIn(fields, data);
         // Merge JSONB + tăng version atomic. Audit version ghi sau khi update OK.
         const [row] = await ctx.db.update(entityRecords).set({
-          data: sql`${entityRecords.data} || ${JSON.stringify(data)}::jsonb`,
+          data: sql`${entityRecords.data} || ${JSON.stringify(encrypted)}::jsonb`,
           version: rec.version + 1,
           updatedAt: new Date(),
         }).where(and(eq(entityRecords.id, input.recordId),
@@ -1634,6 +1676,9 @@ export const appRouter = router({
 
   /* ── Entity webhooks — outgoing HTTP POST trên record event ── */
   entityWebhooks: entityWebhooksRouter,
+
+  /* ── API keys — cho REST /api/v1/* endpoints ── */
+  apiKeys: apiKeysRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,
