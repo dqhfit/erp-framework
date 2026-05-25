@@ -137,7 +137,7 @@
 | **router.ts split** ⏳ DEFER → sprint riêng | 2-3 ngày | 2289 dòng, ~15 helper được share giữa 6 router. Tách cần: (a) `router-helpers.ts` export helpers chung, (b) `{records,entities,workflows,agents}-router.ts`, (c) update mount. Mỗi router 1 commit + e2e test đầy đủ trước/sau |
 | **Tests coverage 10% → 40%** ⏳ DEFER → sprint riêng | 2-3 ngày | Focus tRPC router CRUD/RBAC + bulk ops. Setup `vitest --coverage` (c8) + mock `ctx.db` qua `pglite` hoặc snapshot fixture |
 | **Bump Tailwind 3 → 4** ⏳ DEFER → sprint riêng | 1-2 ngày | Breaking: CSS-first config (`@import "tailwindcss"` + `@theme`), arbitrary value syntax, opacity. Cần visual regression test toàn UI (35 routes) trước accept |
-| **Bump Zod 3 → 4** ⏳ DEFER → sprint riêng | 2-3 ngày | Breaking: `z.string().email()` → `z.email()`, error format, `.nullable()` behavior. Touches ~50 file (routers + react-hook-form resolvers). Nên chạy codemod `zod-migrate` rồi review từng file |
+| ~~Bump Zod 3 → 4~~ ✅ DONE (Sprint 3) | 1.5h | `zod 3.25 → 4.4`, `@hookform/resolvers 3.10 → 5.4`. Breaking duy nhất: `z.record()` signature đổi sang 2-arg (32 instance, sed batch fix). Tất cả 143 `.uuid()`/`.email()`/`.url()` giữ nguyên (Zod 4 backward-compat). 0 error parse, 0 async refinement, 0 `.brand<T>` → migration cleaner hơn dự đoán. Bundle main +4KB gz (acceptable). |
 | Redis cho WS + GraphQL cache | 1 ngày | Nếu cần scale ngang |
 
 ---
