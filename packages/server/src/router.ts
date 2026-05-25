@@ -9,7 +9,8 @@ import { z } from "zod";
 import { and, eq, sql, desc, type SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
-  entities, entityRecords, users, sessions, mcpConfigs, llmProfiles,
+  entities, entityRecords, entityRecordVersions,
+  users, sessions, mcpConfigs, llmProfiles,
   pages, agents, agentMembers, workflows, schedules, activityLog,
   companies, companyMembers, userInvites,
 } from "@erp-framework/db";
@@ -115,16 +116,22 @@ const queryParams = z.object({
 type QueryParamsInput = z.infer<typeof queryParams>;
 
 /* Dựng WHERE cho record động. Toán tử khoảng cần expression
-   index mới nhanh — xem UPGRADE-PLAN 3.5. */
+   index mới nhanh — xem UPGRADE-PLAN 3.5.
+   - includeDeleted=false (mặc định): chỉ lấy record active (deleted_at IS NULL).
+   - includeDeleted=true: lấy hết để UI hiện tab "Đã xoá". */
 function buildRecordWhere(
   companyId: string,
   entityId: string,
   query: QueryParamsInput,
+  includeDeleted: boolean = false,
 ): SQL | undefined {
   const conds: SQL[] = [
     eq(entityRecords.companyId, companyId),
     eq(entityRecords.entityId, entityId),
   ];
+  if (!includeDeleted) {
+    conds.push(sql`${entityRecords.deletedAt} IS NULL`);
+  }
   for (const [field, cond] of Object.entries(query?.filters ?? {})) {
     const txt = sql`(${entityRecords.data}->>${field})`;
     switch (cond.op) {
@@ -172,6 +179,17 @@ function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, pa
     });
   }
   return v.data;
+}
+
+/** Deep equality nông cho JSONB primitive/object — dùng tính diff records.update.
+   Đủ cho field cấp 1 (validateRecord chỉ sinh key phẳng); object/array so chuỗi
+   JSON canonicalized không thực sự cần ở v1. */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return a == b;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== "object") return false;
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** Đọc entity.meta.bindings[op]; trả tên procedure nếu prefix là "proc:".
@@ -482,10 +500,20 @@ export const appRouter = router({
       }),
   }),
 
-  /* ── Record (dữ liệu động) — lọc theo công ty đang chọn ── */
+  /* ── Record (dữ liệu động) — lọc theo công ty đang chọn ──
+     - Soft delete: delete = set deleted_at. hardDelete = thật sự xoá (admin).
+     - Optimistic lock: update bắt buộc nhận expectedVersion (mặc định 0 cho
+       legacy client), mismatch → CONFLICT 409.
+     - Audit: mỗi update insert entity_record_versions với data + diff per-field.
+     - Lifecycle: restore (đảo deleted_at), history (list version), revert (apply
+       lại data của version cũ → tạo version mới). */
   records: router({
     list: rbacProcedure("view", "entity")
-      .input(z.object({ entityId: z.string().uuid(), query: queryParams }))
+      .input(z.object({
+        entityId: z.string().uuid(),
+        query: queryParams,
+        includeDeleted: z.boolean().optional(),
+      }))
       .query(async ({ ctx, input }) => {
         // Procedure binding dispatch — nếu entity.meta.bindings.list = "proc:<name>",
         // delegate sang procedure-runner. Procedure phải trả { rows, total } | rows[].
@@ -503,7 +531,7 @@ export const appRouter = router({
           return { rows, total };
         }
         const where = buildRecordWhere(
-          ctx.user.companyId, input.entityId, input.query);
+          ctx.user.companyId, input.entityId, input.query, input.includeDeleted ?? false);
         let q = ctx.db.select().from(entityRecords).where(where).$dynamic();
         const sort = input.query?.sort;
         if (sort) {
@@ -522,6 +550,7 @@ export const appRouter = router({
     get: rbacProcedure("view", "entity")
       .input(z.string().uuid())
       .query(async ({ ctx, input }) => {
+        // Trả cả khi soft-deleted để UI cho phép restore từ trang chi tiết.
         const [row] = await ctx.db.select().from(entityRecords)
           .where(and(eq(entityRecords.id, input),
             eq(entityRecords.companyId, ctx.user.companyId)));
@@ -556,37 +585,172 @@ export const appRouter = router({
       }),
 
     update: rbacProcedure("edit", "entity")
-      .input(z.object({ recordId: z.string().uuid(), data: z.record(z.unknown()) }))
+      .input(z.object({
+        recordId: z.string().uuid(),
+        data: z.record(z.unknown()),
+        expectedVersion: z.number().int().nonnegative().optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
+        // Lấy state hiện tại để check version + tính diff.
         const [rec] = await ctx.db
-          .select({ entityId: entityRecords.entityId })
+          .select({
+            entityId: entityRecords.entityId,
+            data: entityRecords.data,
+            version: entityRecords.version,
+            deletedAt: entityRecords.deletedAt,
+          })
           .from(entityRecords).where(and(eq(entityRecords.id, input.recordId),
             eq(entityRecords.companyId, ctx.user.companyId)));
         if (!rec) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
         }
+        if (rec.deletedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST",
+            message: "Record đã xoá — restore trước khi sửa" });
+        }
+        if (input.expectedVersion !== undefined && input.expectedVersion !== rec.version) {
+          throw new TRPCError({ code: "CONFLICT",
+            message: `Version mismatch: bạn đang sửa bản v${input.expectedVersion}, hiện tại đã là v${rec.version}` });
+        }
         const fields = await loadEntityFields(
           ctx.db, ctx.user.companyId, rec.entityId);
         const data = assertValid(fields, input.data, true);
-        // Merge NÔNG bằng toán tử jsonb `||` — CÓ CHỦ ĐÍCH, không
-        // phải thiếu sót: record là tập field phẳng (validateRecord
-        // chỉ sinh key cấp 1). Update từng phần = thay trọn giá trị
-        // các field có mặt trong input, giữ nguyên field vắng mặt.
-        // Field kiểu `json` là MỘT giá trị → thay nguyên khối, không
-        // trộn sâu, đúng ngữ nghĩa "một field một giá trị".
+
+        // Tính diff per-field (cũ vs mới) — chỉ trên field có trong patch.
+        const oldData = (rec.data ?? {}) as Record<string, unknown>;
+        const diff: Record<string, { old: unknown; new: unknown }> = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
+        }
+
+        // Merge JSONB + tăng version atomic. Audit version ghi sau khi update OK.
         const [row] = await ctx.db.update(entityRecords).set({
           data: sql`${entityRecords.data} || ${JSON.stringify(data)}::jsonb`,
+          version: rec.version + 1,
           updatedAt: new Date(),
         }).where(and(eq(entityRecords.id, input.recordId),
           eq(entityRecords.companyId, ctx.user.companyId))).returning();
+
+        // Ghi audit version (best-effort: lỗi không rollback update).
+        if (row && Object.keys(diff).length > 0) {
+          try {
+            await ctx.db.insert(entityRecordVersions).values({
+              companyId: ctx.user.companyId,
+              recordId: input.recordId,
+              version: row.version,
+              data: row.data as Record<string, unknown>,
+              diff,
+              actorUserId: ctx.user.id,
+            });
+          } catch (e) {
+            console.error("[records.update] ghi version lỗi:", (e as Error).message);
+          }
+        }
         return row;
       }),
 
     delete: rbacProcedure("delete", "entity")
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
+        // SOFT delete: set deleted_at; data còn nguyên cho restore.
+        await ctx.db.update(entityRecords)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+      }),
+
+    restore: rbacProcedure("edit", "entity")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db.update(entityRecords)
+          .set({ deletedAt: null, updatedAt: new Date() })
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        return { ok: true };
+      }),
+
+    hardDelete: rbacProcedure("delete", "entity")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        // Xoá thật sự — cascade xoá luôn entity_record_versions (FK cascade).
+        // Yêu cầu thêm: chỉ admin mới được xoá vĩnh viễn.
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN",
+            message: "Chỉ admin được xoá vĩnh viễn (hardDelete)" });
+        }
         await ctx.db.delete(entityRecords).where(and(eq(entityRecords.id, input),
           eq(entityRecords.companyId, ctx.user.companyId)));
+      }),
+
+    history: rbacProcedure("view", "entity")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        // Verify record thuộc đúng công ty trước khi trả version list.
+        const [rec] = await ctx.db.select({ id: entityRecords.id }).from(entityRecords)
+          .where(and(eq(entityRecords.id, input),
+            eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        return ctx.db.select().from(entityRecordVersions)
+          .where(and(eq(entityRecordVersions.recordId, input),
+            eq(entityRecordVersions.companyId, ctx.user.companyId)))
+          .orderBy(desc(entityRecordVersions.version));
+      }),
+
+    revert: rbacProcedure("edit", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        targetVersion: z.number().int().nonnegative(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Lấy snapshot của version đích.
+        const [target] = await ctx.db.select().from(entityRecordVersions)
+          .where(and(
+            eq(entityRecordVersions.recordId, input.recordId),
+            eq(entityRecordVersions.companyId, ctx.user.companyId),
+            eq(entityRecordVersions.version, input.targetVersion)));
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND",
+            message: `Không tìm thấy version ${input.targetVersion}` });
+        }
+        const [cur] = await ctx.db.select({
+          version: entityRecords.version,
+          data: entityRecords.data,
+        }).from(entityRecords).where(and(eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId)));
+        if (!cur) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+
+        // Replace toàn bộ data (không merge — revert là thay nguyên khối).
+        const targetData = target.data as Record<string, unknown>;
+        const oldData = (cur.data ?? {}) as Record<string, unknown>;
+        const diff: Record<string, { old: unknown; new: unknown }> = {};
+        const allKeys = new Set([...Object.keys(oldData), ...Object.keys(targetData)]);
+        for (const k of allKeys) {
+          if (!deepEqual(oldData[k], targetData[k])) {
+            diff[k] = { old: oldData[k] ?? null, new: targetData[k] ?? null };
+          }
+        }
+        const [row] = await ctx.db.update(entityRecords).set({
+          data: targetData,
+          version: cur.version + 1,
+          updatedAt: new Date(),
+        }).where(and(eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId))).returning();
+
+        if (row) {
+          try {
+            await ctx.db.insert(entityRecordVersions).values({
+              companyId: ctx.user.companyId,
+              recordId: input.recordId,
+              version: row.version,
+              data: targetData,
+              diff,
+              actorUserId: ctx.user.id,
+            });
+          } catch (e) {
+            console.error("[records.revert] ghi version lỗi:", (e as Error).message);
+          }
+        }
+        return row;
       }),
   }),
 

@@ -103,12 +103,44 @@ export class ApiDataSource implements DataSource {
   async updateRecord(
     recordId: string,
     data: Record<string, unknown>,
+    expectedVersion?: number,
   ): Promise<EntityRecord> {
-    const row = await this.trpc.records.update.mutate({ recordId, data });
+    const row = await this.trpc.records.update.mutate({
+      recordId, data, expectedVersion,
+    });
     return toRecord(row as RawRecord);
   }
   async deleteRecord(recordId: string): Promise<void> {
+    // Soft delete: server set deleted_at; bản ghi vẫn restore được.
     await this.trpc.records.delete.mutate(recordId);
+  }
+  async restoreRecord(recordId: string): Promise<void> {
+    await this.trpc.records.restore.mutate(recordId);
+  }
+  async hardDeleteRecord(recordId: string): Promise<void> {
+    await this.trpc.records.hardDelete.mutate(recordId);
+  }
+  async getRecordHistory(recordId: string): Promise<Array<{
+    id: string; version: number; data: Record<string, unknown>;
+    diff: Record<string, { old: unknown; new: unknown }>;
+    actorUserId: string | null; createdAt: string;
+  }>> {
+    const rows = await this.trpc.records.history.query(recordId);
+    return (rows as Array<{
+      id: string; version: number; data: unknown; diff: unknown;
+      actorUserId: string | null; createdAt: string | Date;
+    }>).map((r) => ({
+      id: r.id,
+      version: r.version,
+      data: (r.data ?? {}) as Record<string, unknown>,
+      diff: (r.diff ?? {}) as Record<string, { old: unknown; new: unknown }>,
+      actorUserId: r.actorUserId,
+      createdAt: isoOf(r.createdAt),
+    }));
+  }
+  async revertRecord(recordId: string, targetVersion: number): Promise<EntityRecord> {
+    const row = await this.trpc.records.revert.mutate({ recordId, targetVersion });
+    return toRecord(row as RawRecord);
   }
 
   async triggerWorkflow(

@@ -109,7 +109,9 @@ export const entities = pgTable("entities", {
 }));
 
 /* Dữ liệu thực tế của entity động — JSONB. Index: btree(entityId)
-   + GIN(data) riêng; index khoảng/sort viết SQL thô trong migration. */
+   + GIN(data) riêng; index khoảng/sort viết SQL thô trong migration.
+   - deletedAt: soft delete; null = active, ts = đã xoá nhưng còn restore được.
+   - version: optimistic lock counter — caller update phải gửi expectedVersion. */
 export const entityRecords = pgTable("entity_records", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),
   companyId: uuid("company_id").notNull()
@@ -118,14 +120,36 @@ export const entityRecords = pgTable("entity_records", {
     .references(() => entities.id, { onDelete: "cascade" }),
   schemaVersion: text("schema_version").notNull().default("1"),
   data: jsonb("data").notNull(),
+  version: integer("version").notNull().default(0),
+  deletedAt: timestamp("deleted_at"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => ({
   entityIdIdx: index("entity_records_entity_id_idx").on(t.entityId),
   companyIdIdx: index("entity_records_company_id_idx").on(t.companyId),
+  deletedAtIdx: index("entity_records_deleted_at_idx").on(t.deletedAt),
   dataGinIdx: index("entity_records_data_gin_idx")
     .using("gin", sql`${t.data} jsonb_path_ops`),
+}));
+
+/* Lịch sử bản ghi entity — mỗi update tạo 1 row. Cho phép audit (ai,
+   khi nào, đổi gì từ X→Y) + revert về version trước. */
+export const entityRecordVersions = pgTable("entity_record_versions", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  recordId: uuid("record_id").notNull()
+    .references(() => entityRecords.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  data: jsonb("data").notNull(),
+  diff: jsonb("diff").notNull().default(sql`'{}'::jsonb`),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  recordIdIdx: index("entity_record_versions_record_id_idx").on(t.recordId),
+  recordVersionIdx: index("entity_record_versions_record_version_idx")
+    .on(t.recordId, t.version),
 }));
 
 export const pages = pgTable("pages", {
