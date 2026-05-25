@@ -16,6 +16,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "check:journal": "node tooling/check-journal.mjs",
     "bridge": "node scripts/claude-bridge.mjs",
     "new:plugin": "node tooling/create-plugin.mjs",
     "db:setup": "node tooling/setup-db.mjs",
@@ -25,7 +26,13 @@
     "e2e": "playwright test",
     "e2e:full": "node tooling/e2e-full.mjs",
     "backup": "node tooling/backup.mjs",
-    "restore": "node tooling/restore.mjs"
+    "restore": "node tooling/restore.mjs",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "biome check --no-errors-on-unmatched --files-ignore-unknown=true"
+    ]
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -69,7 +76,9 @@
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
     "vitest": "^4.1.0",
-    "@vitest/coverage-v8": "^4.1.0"
+    "@vitest/coverage-v8": "^4.1.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.3.0"
   },
   "pnpm": {
     "overrides": {

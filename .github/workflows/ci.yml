@@ -38,6 +38,17 @@ jobs:
         run: pnpm lint
         continue-on-error: true
 
+  migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kiểm tra _journal.json (không có duplicate idx/when)
+        run: node tooling/check-journal.mjs
+
   e2e:
     runs-on: ubuntu-latest
     steps:
