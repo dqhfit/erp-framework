@@ -356,9 +356,9 @@ export function Sidebar() {
           <SidebarItem to="/iot" active={pathname.startsWith("/iot")}
             icon={<I.Server size={14} />} collapsed={collapsed} label="Thiết bị IoT" />
           <SidebarItem to="/procedures" active={pathname.startsWith("/procedures")}
-            icon={<I.Terminal size={14} />} collapsed={collapsed} label="Procedures" />
+            icon={<I.Terminal size={14} />} collapsed={collapsed} label="Thủ tục" />
           <SidebarItem to="/enums" active={pathname.startsWith("/enums")}
-            icon={<I.Tag size={14} />} collapsed={collapsed} label="Enums" />
+            icon={<I.Tag size={14} />} collapsed={collapsed} label="Danh mục" />
           <SidebarItem to="/tools" active={pathname.startsWith("/tools")}
             icon={<I.Wand size={14} />} collapsed={collapsed} label="Tools" />
           <SidebarItem to="/feedback" active={pathname.startsWith("/feedback")}

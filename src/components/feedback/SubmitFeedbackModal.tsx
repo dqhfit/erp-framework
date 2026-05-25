@@ -47,7 +47,9 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
   const [err, setErr] = useState("");
   const [similar, setSimilar] = useState<SimilarHit[]>([]);
 
-  const url = useMemo(() => loc.pathname + (loc.search ?? ""), [loc]);
+  // TanStack: loc.search là OBJECT parsed; chuỗi gốc nằm ở loc.searchStr.
+  // Dùng href = pathname + searchStr + hash đầy đủ.
+  const url = useMemo(() => loc.href, [loc.href]);
 
   // Reset khi mở lại.
   useEffect(() => {

@@ -20,6 +20,15 @@ export interface EnumSaveInput {
   enabled?: boolean;
 }
 
+/** AI sinh draft Danh mục từ mô tả tiếng Việt. Trả về form đã điền sẵn. */
+export interface EnumAiDraft {
+  name: string;
+  label: string;
+  labelEn?: string;
+  description?: string;
+  values: EnumValue[];
+}
+
 export function createEnumsClient(baseUrl: string) {
   const trpc = createTRPCClient<AppRouter>({
     links: [httpBatchLink({
@@ -34,6 +43,9 @@ export function createEnumsClient(baseUrl: string) {
     setEnabled: (id: string, enabled: boolean) =>
       trpc.enums.setEnabled.mutate({ id, enabled }),
     delete: (id: string) => trpc.enums.delete.mutate(id),
+    /** AI sinh draft từ mô tả tiếng Việt — gọi xong client preview rồi save. */
+    generateAi: (prompt: string, hintCount?: number) =>
+      trpc.enums.generateAi.mutate({ prompt, hintCount }) as unknown as Promise<EnumAiDraft>,
   };
 }
 

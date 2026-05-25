@@ -15,6 +15,7 @@ import { router, rbacProcedure } from "./trpc";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { makeCallTool } from "./mcp-client";
 import { logActivity } from "./activity";
+import { callLlmJson } from "./llm-json";
 
 const NAME_RE = /^[a-z][a-z0-9_]*$/;
 
@@ -163,5 +164,86 @@ export const proceduresRouter = router({
           await ctx.db.delete(procedures).where(eq(procedures.id, row.id));
         }
       }
+    }),
+
+  /** AI: sinh draft Thủ tục (procedure) từ mô tả tiếng Việt.
+   *  Vd: "Tính tổng giá trị đơn hàng theo tháng" → name + label + code JS.
+   *  Trả về { name, label, description, paramsSchema, code } —
+   *  client preview/test trước khi save. */
+  generateAi: rbacProcedure("create", "procedure")
+    .input(z.object({
+      prompt: z.string().min(5).max(1000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await callLlmJson<{
+        name?: string; label?: string; description?: string;
+        paramsSchema?: Array<Record<string, unknown>>;
+        code?: string;
+      }>(ctx.db, ctx.user.companyId, {
+        system:
+          "Bạn là trợ lý viết Thủ tục (native JS procedure) cho hệ thống ERP. "
+          + "Thủ tục chạy server-side trong isolated-vm (timeout 5s, RAM 128MB).\n\n"
+          + "API có sẵn trong scope global (KHÔNG cần import):\n"
+          + "- args: Record<string, unknown>  // tham số gọi vào\n"
+          + "- db.queryRecords(entityName, filter)  // SELECT records\n"
+          + "- db.findById(entityName, id)\n"
+          + "- entity.insert(entityName, data)\n"
+          + "- entity.update(entityName, id, patch)\n"
+          + "- entity.delete(entityName, id)\n"
+          + "- callTool(name, args)   // gọi MCP tool\n"
+          + "- callProc(name, args)   // gọi thủ tục khác\n"
+          + "- fetch(url, init)       // HTTP\n"
+          + "- console.log(...)       // log debug\n"
+          + "Mọi op tự động scope theo công ty user.\n\n"
+          + 'Trả về CHỈ MỘT JSON object dạng:\n'
+          + '{\n'
+          + '  "name": "<snake_case, vd tinh_tong_don_hang>",\n'
+          + '  "label": "<nhãn tiếng Việt ngắn>",\n'
+          + '  "description": "<1-2 câu mô tả>",\n'
+          + '  "paramsSchema": [\n'
+          + '    {"name":"<paramName>", "type":"string|number|boolean|date", "required":true, "description":"<...>"},\n'
+          + '    ...\n'
+          + '  ],\n'
+          + '  "code": "<JS code, async function, dùng args + helper, return giá trị>"\n'
+          + '}\n\n'
+          + "code là 1 async function body (KHÔNG bọc `async function() {}` ngoài) — "
+          + "server tự wrap. Dùng async/await. Return data hoặc throw new Error(msg). "
+          + "KHÔNG kèm markdown, KHÔNG giải thích.",
+        user: input.prompt,
+        maxTokens: 2500,
+        temperature: 0.2,
+      });
+
+      if (!r || !r.code) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI không sinh được Thủ tục hợp lệ — kiểm tra LLM profile hoặc thử lại với mô tả rõ hơn.",
+        });
+      }
+
+      // Validate code parse được (chỉ syntax, không exec).
+      try {
+        new Function(r.code);
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `AI sinh code lỗi syntax: ${(e as Error).message}. Thử lại hoặc viết tay.`,
+        });
+      }
+
+      const slugify = (s: string) => String(s)
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9_]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 50);
+
+      return {
+        name: slugify(r.name ?? input.prompt),
+        label: String(r.label ?? "").trim() || input.prompt.slice(0, 80),
+        description: r.description ? String(r.description).trim() : undefined,
+        paramsSchema: Array.isArray(r.paramsSchema) ? r.paramsSchema : [],
+        code: r.code,
+      };
     }),
 });

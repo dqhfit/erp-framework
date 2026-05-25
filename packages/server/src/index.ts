@@ -465,10 +465,6 @@ async function main(): Promise<void> {
   // MQTT bridge cho IoT — no-op nếu MQTT_URL không khai báo.
   startIotMqtt().catch((e) =>
     console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
-
-  // Tools subsystem bootstrap — registry plugin tools, watcher, etc.
-  bootstrapTools(app, db).catch((e) =>
-    console.warn("[tools] bootstrap lỗi:", (e as Error).message));
 }
 
 async function shutdown(): Promise<void> {

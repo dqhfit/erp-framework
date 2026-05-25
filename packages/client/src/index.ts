@@ -60,12 +60,14 @@ export {
   type ProceduresClient,
   type ProcedureSaveInput,
   type ProcedureInvokeResult,
+  type ProcedureAiDraft,
 } from "./procedures";
 export {
   createEnumsClient,
   type EnumsClient,
   type EnumSaveInput,
   type EnumValue,
+  type EnumAiDraft,
 } from "./enums";
 export {
   createSavedViewsClient,

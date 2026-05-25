@@ -21,6 +21,15 @@ export interface ProcedureInvokeResult {
   durationMs: number;
 }
 
+/** AI sinh draft Thủ tục từ mô tả tiếng Việt. */
+export interface ProcedureAiDraft {
+  name: string;
+  label: string;
+  description?: string;
+  paramsSchema: Array<Record<string, unknown>>;
+  code: string;
+}
+
 export function createProceduresClient(baseUrl: string) {
   const trpc = createTRPCClient<AppRouter>({
     links: [httpBatchLink({
@@ -39,6 +48,9 @@ export function createProceduresClient(baseUrl: string) {
       trpc.procedures.invoke.mutate({ name, args }),
     test: (code: string, args?: Record<string, unknown>) =>
       trpc.procedures.test.mutate({ code, args }),
+    /** AI sinh draft procedure từ mô tả tiếng Việt. */
+    generateAi: (prompt: string) =>
+      trpc.procedures.generateAi.mutate({ prompt }) as unknown as Promise<ProcedureAiDraft>,
   };
 }
 
