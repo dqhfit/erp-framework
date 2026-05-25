@@ -9,20 +9,24 @@ import { createHash, randomBytes } from "node:crypto";
 import { apiKeys } from "@erp-framework/db";
 import { router, rbacProcedure } from "./trpc";
 
-/** Sinh key plaintext "sk_<48 hex>". prefix = "sk_" + 8 ký tự đầu để
- *  hiển thị partial trong UI ("sk_a3f4..."). hash sha256 lưu DB. */
-function generateApiKey(): { plaintext: string; hash: string; prefix: string } {
+/** Sinh key plaintext "sk_<48 hex>" + client_id (cho OAuth flow).
+ *  prefix = "sk_" + 8 ký tự đầu để hiển thị partial trong UI. */
+function generateApiKey(): {
+  plaintext: string; hash: string; prefix: string; clientId: string;
+} {
   const rand = randomBytes(24).toString("hex");
   const plaintext = `sk_${rand}`;
   const hash = createHash("sha256").update(plaintext).digest("hex");
   const prefix = `sk_${rand.slice(0, 8)}`;
-  return { plaintext, hash, prefix };
+  const clientId = `cli_${randomBytes(8).toString("hex")}`;
+  return { plaintext, hash, prefix, clientId };
 }
 
 export const apiKeysRouter = router({
   list: rbacProcedure("view", "settings")
     .query(({ ctx }) => ctx.db.select({
       id: apiKeys.id, label: apiKeys.label, prefix: apiKeys.prefix,
+      clientId: apiKeys.clientId,
       scopes: apiKeys.scopes, enabled: apiKeys.enabled,
       lastUsedAt: apiKeys.lastUsedAt, createdAt: apiKeys.createdAt,
     }).from(apiKeys)
@@ -35,16 +39,17 @@ export const apiKeysRouter = router({
       scopes: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { plaintext, hash, prefix } = generateApiKey();
+      const { plaintext, hash, prefix, clientId } = generateApiKey();
       const [row] = await ctx.db.insert(apiKeys).values({
         companyId: ctx.user.companyId,
         label: input.label,
         keyHash: hash,
         prefix,
+        clientId,
         scopes: input.scopes ?? [],
         createdBy: ctx.user.id,
       }).returning();
-      return { id: row?.id, plaintext, prefix };
+      return { id: row?.id, plaintext, prefix, clientId };
     }),
 
   setEnabled: rbacProcedure("edit", "settings")

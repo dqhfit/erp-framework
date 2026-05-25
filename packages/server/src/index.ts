@@ -15,6 +15,8 @@ import { roleCan } from "@erp-framework/core";
 import { appRouter } from "./router";
 import { registerIotRoutes } from "./iot";
 import { registerRestApi } from "./rest-api";
+import { registerGraphQL } from "./graphql";
+import { registerOAuth } from "./oauth";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { createContext, resolveActiveCompany } from "./context";
@@ -164,6 +166,15 @@ async function main(): Promise<void> {
   // (auth header X-API-Key, scopes per entity). Mobile/external/3rd-party
   // dùng được thẳng, không cần codegen tRPC.
   registerRestApi(app, db);
+
+  // GraphQL endpoint song song REST — /graphql với schema tự sinh từ
+  // entity meta. Auth X-API-Key. v1 minimal: entity/records query +
+  // createRecord mutation.
+  registerGraphQL(app, db);
+
+  // OAuth 2.0 client_credentials grant — POST /oauth/token. Wrapper
+  // standard trên api_keys; trả lại chính sk_xxx làm access_token.
+  registerOAuth(app, db);
 
   app.get("/", async () => ({
     name: "ERP Framework server",

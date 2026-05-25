@@ -13,4 +13,5 @@ export * from "./cron";
 export * from "./formula/index";
 export * from "./runtime/workflow-runner";
 export * from "./plugin/index";
+export * from "./tool/index";
 export * from "./llm-adapter";

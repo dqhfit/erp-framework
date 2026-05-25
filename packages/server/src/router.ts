@@ -30,6 +30,7 @@ import { savedViewsRouter } from "./saved-views-router";
 import { recordCommentsRouter } from "./record-comments-router";
 import { entityWebhooksRouter, fireEntityWebhooks } from "./entity-webhooks-router";
 import { apiKeysRouter } from "./api-keys-router";
+import { materializedViewsRouter } from "./materialized-views-router";
 import { entityTemplatesRouter } from "./entity-templates-router";
 import { notificationsRouter } from "./notifications-router";
 import { presenceRouter } from "./presence-router";
@@ -1976,6 +1977,9 @@ export const appRouter = router({
 
   /* ── API keys — cho REST /api/v1/* endpoints ── */
   apiKeys: apiKeysRouter,
+
+  /* ── Materialized views — pre-computed query cache cho dashboard ── */
+  materializedViews: materializedViewsRouter,
 
   /* ── Entity templates — print/email Mustache-like ── */
   entityTemplates: entityTemplatesRouter,

@@ -708,7 +708,8 @@ export const backupRuns = pgTable("backup_runs", {
 
 /* API keys per company — auth cho REST /api/v1/* endpoints. key_hash =
    sha256 của plaintext (sk_...); plaintext chỉ trả 1 lần lúc tạo. scopes
-   JSONB array vd ["entity:customer:read"]; empty = full access. */
+   JSONB array vd ["entity:customer:read"]; empty = full access.
+   client_id (v4 OAuth): cho client_credentials flow — POST /oauth/token. */
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),
   companyId: uuid("company_id").notNull()
@@ -717,13 +718,38 @@ export const apiKeys = pgTable("api_keys", {
   keyHash: text("key_hash").notNull(),
   prefix: text("prefix").notNull(),
   scopes: jsonb("scopes").notNull().default(sql`'[]'::jsonb`),
+  clientId: text("client_id"),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   lastUsedAt: timestamp("last_used_at"),
   enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   hashIdx: uniqueIndex("api_keys_hash_idx").on(t.keyHash),
+  clientIdx: uniqueIndex("api_keys_client_id_idx").on(t.clientId),
   companyIdx: index("api_keys_company_idx").on(t.companyId),
+}));
+
+/* Materialized views per company — pre-computed heavy aggregation cho
+   dashboard/report. Query SQL custom (admin viết); refresh cron schedule
+   ghi data JSONB. Render từ data field — nhanh hơn re-execute query. */
+export const entityMaterializedViews = pgTable("entity_materialized_views", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  label: text("label").notNull(),
+  sqlQuery: text("sql_query").notNull(),
+  scheduleCron: text("schedule_cron"),
+  data: jsonb("data"),
+  rowCount: integer("row_count"),
+  lastRefreshedAt: timestamp("last_refreshed_at"),
+  lastError: text("last_error"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyNameIdx: uniqueIndex("emv_company_name_idx").on(t.companyId, t.name),
 }));
 
 /* Saved views per entity per user — mỗi view lưu query + columns config.
