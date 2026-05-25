@@ -77,6 +77,10 @@ export interface QueryParams {
   sort?: { field: string; dir: "asc" | "desc" };
   limit?: number;
   offset?: number;
+  /** Full-text search — match @@ trên search_tsv (xem migration 0016). */
+  q?: string;
+  /** Bao gồm cả record đã soft-delete; default false. */
+  includeDeleted?: boolean;
 }
 
 export interface Paginated<T> {

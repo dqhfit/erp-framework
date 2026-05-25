@@ -83,11 +83,40 @@ export class ApiDataSource implements DataSource {
     entityId: string,
     query?: QueryParams,
   ): Promise<Paginated<EntityRecord>> {
-    const res = await this.trpc.records.list.query({ entityId, query });
+    // Tách includeDeleted ra cấp ngoài (server router nhận như input phẳng).
+    const { includeDeleted, ...serverQuery } = query ?? {};
+    const res = await this.trpc.records.list.query({
+      entityId,
+      query: Object.keys(serverQuery).length ? serverQuery : undefined,
+      includeDeleted,
+    });
     return {
       rows: (res.rows as RawRecord[]).map(toRecord),
       total: res.total,
     };
+  }
+  /** Bulk delete - cap 1000 ids. Trả {deleted, errors[]}. */
+  async bulkDeleteRecords(entityId: string, ids: string[]): Promise<{
+    deleted: number; errors: Array<{ id: string; message: string }>;
+  }> {
+    return this.trpc.records.bulkDelete.mutate({ entityId, ids });
+  }
+  /** Bulk update - cap 1000. patch áp dụng cho tất cả ids. */
+  async bulkUpdateRecords(
+    entityId: string, ids: string[], patch: Record<string, unknown>,
+  ): Promise<{ updated: number; errors: Array<{ id: string; message: string }> }> {
+    return this.trpc.records.bulkUpdate.mutate({ entityId, ids, patch });
+  }
+  /** Export records as CSV/JSON. */
+  async exportRecords(
+    entityId: string, format: "csv" | "json", query?: QueryParams,
+  ): Promise<{ format: "csv" | "json"; content: string }> {
+    const { includeDeleted: _, ...serverQuery } = query ?? {};
+    const r = await this.trpc.records.export.query({
+      entityId, format,
+      query: Object.keys(serverQuery).length ? serverQuery : undefined,
+    });
+    return r;
   }
   async getRecord(recordId: string): Promise<EntityRecord | null> {
     const row = await this.trpc.records.get.query(recordId);
