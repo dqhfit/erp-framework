@@ -1331,6 +1331,55 @@ export const appRouter = router({
           .orderBy(desc(entityRecordVersions.version));
       }),
 
+    /* Time-travel query — trả state record tại timestamp ts.
+       Chiến thuật: tìm version cuối có createdAt <= ts → return data
+       snapshot. Nếu không có version nào trước ts → record chưa tồn tại
+       hoặc chưa có history (trả record hiện tại nếu createdAt <= ts). */
+    asOf: rbacProcedure("view", "entity")
+      .input(z.object({
+        recordId: z.string().uuid(),
+        ts: z.string().datetime(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const targetTs = new Date(input.ts);
+        const [rec] = await ctx.db.select().from(entityRecords).where(and(
+          eq(entityRecords.id, input.recordId),
+          eq(entityRecords.companyId, ctx.user.companyId),
+        ));
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
+        // Tìm version snapshot mới nhất trước ts.
+        const [version] = await ctx.db.select().from(entityRecordVersions)
+          .where(and(
+            eq(entityRecordVersions.recordId, input.recordId),
+            eq(entityRecordVersions.companyId, ctx.user.companyId),
+            sql`${entityRecordVersions.createdAt} <= ${targetTs.toISOString()}::timestamp`,
+          ))
+          .orderBy(desc(entityRecordVersions.version))
+          .limit(1);
+        if (version) {
+          return {
+            recordId: input.recordId,
+            asOf: input.ts,
+            version: version.version,
+            data: version.data,
+          };
+        }
+        // Không có version nào trước ts; nếu record đã tồn tại trước ts
+        // (createdAt <= ts) → data hiện tại nhưng không có lịch sử ghi
+        // version → có thể đã được sửa nhưng chưa kịp ghi. Trả null
+        // hoặc current data tuỳ ngữ nghĩa user mong đợi.
+        if (rec.createdAt <= targetTs) {
+          return {
+            recordId: input.recordId,
+            asOf: input.ts,
+            version: 0,
+            data: rec.data,
+            note: "Không có version snapshot — data hiện tại đoán đúng vì record tồn tại trước ts",
+          };
+        }
+        return null;
+      }),
+
     revert: rbacProcedure("edit", "entity")
       .input(z.object({
         recordId: z.string().uuid(),

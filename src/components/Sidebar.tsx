@@ -361,6 +361,8 @@ export function Sidebar() {
             icon={<I.Tag size={14} />} collapsed={collapsed} label="Enums" />
           <SidebarItem to="/tools" active={pathname.startsWith("/tools")}
             icon={<I.Wand size={14} />} collapsed={collapsed} label="Tools" />
+          <SidebarItem to="/feedback" active={pathname.startsWith("/feedback")}
+            icon={<I.HelpCircle size={14} />} collapsed={collapsed} label="Phản hồi" />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}

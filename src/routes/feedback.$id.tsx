@@ -1,0 +1,211 @@
+/* ==========================================================
+   /feedback/$id — Chi tiết 1 feedback: vote, AI summary/tags,
+   comments thread, admin đổi status.
+   ========================================================== */
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import {
+  Button, Card, Chip, FormField, Input, Select, Textarea,
+} from "@/components/ui";
+import { I } from "@/components/Icons";
+import { useAuth } from "@/stores/auth";
+import {
+  createFeedbackClient,
+  type FeedbackCommentRow, type FeedbackDetail, type FeedbackStatus,
+} from "@erp-framework/client";
+
+const client = createFeedbackClient("");
+
+const STATUS_OPTS: Array<{ value: FeedbackStatus; label: string }> = [
+  { value: "new", label: "Mới" },
+  { value: "in_progress", label: "Đang xử lý" },
+  { value: "done", label: "Hoàn tất" },
+  { value: "wontfix", label: "Sẽ không xử lý" },
+];
+
+function statusVariant(s: FeedbackStatus) {
+  if (s === "done") return "success" as const;
+  if (s === "in_progress") return "warning" as const;
+  return "default" as const;
+}
+
+function FeedbackDetailRoute() {
+  const { id } = Route.useParams();
+  const nav = useNavigate();
+  const role = useAuth((s) => s.user?.role);
+  const isAdmin = role === "admin";
+
+  const [fb, setFb] = useState<FeedbackDetail | null>(null);
+  const [comments, setComments] = useState<FeedbackCommentRow[]>([]);
+  const [commentBody, setCommentBody] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [newStatus, setNewStatus] = useState<FeedbackStatus>("new");
+  const [resolution, setResolution] = useState("");
+
+  const load = () => {
+    client.get(id).then((d) => {
+      setFb(d);
+      setNewStatus(d.status);
+      setResolution(d.resolutionNote ?? "");
+    }).catch((e) => setErr((e as Error).message));
+    client.listComments(id).then(setComments).catch(() => {});
+  };
+  useEffect(load, [id]);
+
+  const vote = () => void (async () => {
+    if (!fb) return;
+    setBusy(true);
+    try {
+      if (fb.myVote) await client.unvote(id); else await client.vote(id);
+      load();
+    } finally { setBusy(false); }
+  })();
+
+  const submitComment = async () => {
+    if (!commentBody.trim()) return;
+    setBusy(true); setErr("");
+    try {
+      await client.addComment({ feedbackId: id, body: commentBody });
+      setCommentBody("");
+      load();
+    } catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const applyStatus = async () => {
+    if (!fb || newStatus === fb.status) return;
+    setBusy(true); setErr("");
+    try {
+      await client.setStatus({
+        id, status: newStatus,
+        resolutionNote: resolution.trim() || undefined,
+      });
+      load();
+    } catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  if (!fb && !err) return <div className="p-6 text-sm text-muted">Đang tải…</div>;
+  if (err && !fb) return <div className="p-6"><Chip variant="danger">{err}</Chip></div>;
+  if (!fb) return null;
+
+  return (
+    <div className="overflow-y-auto h-full">
+      <div className="max-w-[900px] mx-auto p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Button size="sm" variant="default" icon={<I.ChevronLeft size={14} />}
+            onClick={() => void nav({ to: "/feedback" })}>Quay lại</Button>
+          <Chip variant={statusVariant(fb.status)}>{fb.status}</Chip>
+          <Chip>{fb.area}</Chip>
+          {fb.severity === "blocker" && <Chip variant="danger">blocker</Chip>}
+          <div className="flex-1" />
+          <Button size="sm"
+            variant={fb.myVote ? "primary" : "default"}
+            icon={<I.ChevronUp size={14} />}
+            disabled={busy} onClick={vote}>
+            {fb.myVote ? "Đã vote" : "Vote"} ({fb.voteCount})
+          </Button>
+        </div>
+
+        <h1 className="text-2xl font-semibold mb-1">{fb.title}</h1>
+        {fb.url && (
+          <div className="text-xs text-muted mb-3">
+            Trang gốc: <code>{fb.url}</code>
+          </div>
+        )}
+
+        {fb.aiSummary && (
+          <Card className="mb-3 bg-accent/5 border-accent/20">
+            <div className="text-xs uppercase text-accent font-semibold mb-1">
+              ✨ AI tóm tắt
+            </div>
+            <div className="text-sm">{fb.aiSummary}</div>
+            {fb.aiTags && fb.aiTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {fb.aiTags.map((t) => (
+                  <Chip key={t} className="!text-[10px]">#{t}</Chip>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        <Card className="mb-3">
+          <div className="text-xs uppercase text-muted font-semibold mb-1">
+            Mô tả bất cập
+          </div>
+          <div className="whitespace-pre-wrap text-sm">{fb.body}</div>
+        </Card>
+
+        {fb.suggestion && (
+          <Card className="mb-3">
+            <div className="text-xs uppercase text-muted font-semibold mb-1">
+              Đề xuất cải thiện
+            </div>
+            <div className="whitespace-pre-wrap text-sm">{fb.suggestion}</div>
+          </Card>
+        )}
+
+        {fb.resolutionNote && (
+          <Card className="mb-3">
+            <div className="text-xs uppercase text-muted font-semibold mb-1">
+              Ghi chú giải quyết
+            </div>
+            <div className="whitespace-pre-wrap text-sm">{fb.resolutionNote}</div>
+          </Card>
+        )}
+
+        {isAdmin && (
+          <Card className="mb-3 border-warning/40">
+            <div className="font-semibold mb-2">Admin — đổi trạng thái</div>
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as FeedbackStatus)}>
+                {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </Select>
+              <Input className="col-span-2"
+                placeholder="Ghi chú giải quyết (tuỳ chọn)"
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)} />
+            </div>
+            <Button className="mt-2" variant="primary" size="sm"
+              disabled={busy || newStatus === fb.status} onClick={applyStatus}>
+              Cập nhật
+            </Button>
+          </Card>
+        )}
+
+        <Card className="mb-3">
+          <div className="font-semibold mb-2">Bình luận ({comments.length})</div>
+          <div className="space-y-2 mb-3">
+            {comments.length === 0 && (
+              <div className="text-sm text-muted">Chưa có bình luận.</div>
+            )}
+            {comments.map((c) => (
+              <div key={c.id} className="border-l-2 border-border pl-3 py-1">
+                <div className="text-xs text-muted">
+                  {new Date(c.createdAt).toLocaleString()}
+                </div>
+                <div className="text-sm whitespace-pre-wrap">{c.body}</div>
+              </div>
+            ))}
+          </div>
+          <FormField label="Thêm bình luận" hint="Dùng @username để ping ai đó.">
+            <Textarea rows={3} value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)} />
+          </FormField>
+          <Button className="mt-2" variant="primary" size="sm"
+            disabled={busy || !commentBody.trim()} onClick={submitComment}
+            icon={<I.Send size={14} />}>Gửi</Button>
+        </Card>
+
+        {err && <Chip variant="danger">{err}</Chip>}
+      </div>
+    </div>
+  );
+}
+
+export const Route = createFileRoute("/feedback/$id")({
+  component: FeedbackDetailRoute,
+});

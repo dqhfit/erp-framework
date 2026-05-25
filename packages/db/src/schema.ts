@@ -61,7 +61,22 @@ export const companies = pgTable("companies", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),             // định danh URL-an-toàn
+  // theme: white-labeling JSONB { primaryColor, logoUrl, productName, faviconUrl }.
+  theme: jsonb("theme"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/* Tracking báo cáo audit export — ai/khi nào pull data compliance. */
+export const auditReports = pgTable("audit_reports", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  fromDate: timestamp("from_date"),
+  toDate: timestamp("to_date"),
+  rowCount: integer("row_count"),
+  requestedBy: uuid("requested_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
 });
 
 /* Thành viên công ty: user × company × role. Một user nhiều công ty. */

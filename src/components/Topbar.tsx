@@ -11,6 +11,7 @@ import { useT } from "@/hooks/useT";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { PickPrimaryModal } from "@/components/PickPrimaryModal";
+import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 
 export function Topbar() {
   const t = useT();
@@ -37,6 +38,7 @@ export function Topbar() {
     ? allAgents.find((a) => a.id === primaryAgentId) ?? null
     : null;
   const [primaryPickOpen, setPrimaryPickOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur sticky top-0 z-50 whitespace-nowrap">
@@ -126,6 +128,14 @@ export function Topbar() {
 
       <Button
         variant="ghost" size="sm"
+        icon={<I.HelpCircle size={14} />}
+        title="Gửi phản hồi / đề xuất cải thiện"
+        className="hidden md:inline-flex"
+        onClick={() => setFeedbackOpen(true)}
+      />
+
+      <Button
+        variant="ghost" size="sm"
         icon={<I.Bell size={14} />}
         title={t("topbar.notifications")}
         className="hidden md:inline-flex"
@@ -158,6 +168,7 @@ export function Topbar() {
         </button>
       )}
       <PickPrimaryModal open={primaryPickOpen} onClose={() => setPrimaryPickOpen(false)} />
+      <SubmitFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <Button
         variant={agentOpen ? "primary" : "default"} size="sm"
