@@ -309,6 +309,13 @@
       "when": 1783700000000,
       "tag": "0043_member_disabled",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1783700100000,
+      "tag": "0044_resource_members",
+      "breakpoints": true
     }
   ]
 }
