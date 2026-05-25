@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Button } from "./button";
 import { I } from "../Icons";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface ModalProps {
   open: boolean;
@@ -11,25 +12,25 @@ interface ModalProps {
   footer?: ReactNode;
 }
 export function Modal({ open, onClose, title, width = 480, children, footer }: ModalProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  // Hook gom Escape + Tab/Shift+Tab trap + return focus về trigger.
+  const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
+  const titleId = useId();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[900] flex items-center justify-center p-4" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
       <div
-        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[90vh]"
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[90vh] outline-none"
         style={{ width }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="font-semibold text-lg">{title}</div>
+          <div id={titleId} className="font-semibold text-lg">{title}</div>
           <Button variant="ghost" size="sm" onClick={onClose} icon={<I.X size={14} />} />
         </div>
         <div className="p-4 overflow-y-auto flex-1">{children}</div>
