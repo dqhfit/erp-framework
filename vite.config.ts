@@ -24,10 +24,11 @@ export default defineConfig({
         "**/types/**",
         "**/migrations/**",
       ],
-      // Ratchet baseline 2026-05-26 sau Phase D (enums-router test +14):
-      //   2.92% → 3.65% statements; 1.49% → 2.49% functions
-      // Threshold ép minimum mới — sprint sau test thêm router, tăng dần.
-      thresholds: { lines: 3.9, statements: 3.5, functions: 2.4, branches: 2.3 },
+      // Ratchet baseline 2026-05-26 sau Phase C (feedback-router test +19):
+      //   2.92% → 4.36% statements; 1.49% → 2.94% functions; lines 4.68%
+      // enums-router 63%, feedback-router ~70%. Threshold ép minimum mới —
+      // sprint sau test thêm records/tools/agents để leo 10% → 40%.
+      thresholds: { lines: 4.5, statements: 4.2, functions: 2.8, branches: 2.7 },
     },
   },
   server: {
