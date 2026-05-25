@@ -138,8 +138,10 @@ export const companiesRouter = router({
         name: users.name,
         role: companyMembers.role,
         joinedAt: companyMembers.createdAt,
-        // passwordHash rỗng = invite chưa accept → user "pending".
+        // passwordHash rong = invite chua accept → user "pending invite".
         pending: sql<boolean>`(${users.passwordHash} = '')`,
+        // approved=false = dang ky qua invite link, cho admin duyet.
+        approved: companyMembers.approved,
       })
       .from(companyMembers)
       .innerJoin(users, eq(companyMembers.userId, users.id))
@@ -318,6 +320,64 @@ export const companiesRouter = router({
         detail: `Admin reset mật khẩu cho ${u?.email ?? input.userId}`,
         actorUserId: ctx.user.id,
       });
+      return { ok: true };
+    }),
+
+  /** Phe duyet thanh vien dang ky qua invite link -- set approved=true. */
+  approveMember: rbacProcedure("edit", "company")
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [m] = await ctx.db.select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy thành viên" });
+      await ctx.db.update(companyMembers)
+        .set({ approved: true })
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      const [u] = await ctx.db.select({ email: users.email })
+        .from(users).where(eq(users.id, input.userId));
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "user.invite_accepted",
+        objectType: "user",
+        target: input.userId,
+        detail: `Admin phe duyet thanh vien ${u?.email ?? input.userId}`,
+        actorUserId: ctx.user.id,
+      });
+      return { ok: true };
+    }),
+
+  /** Tu choi + xoa thanh vien dang cho phe duyet. Neu user khong con
+     o cong ty nao khac thi xoa luon account (tranh account bị bỏ hoang). */
+  rejectMember: rbacProcedure("edit", "company")
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [m] = await ctx.db.select({ approved: companyMembers.approved })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy thành viên" });
+      // Xoa membership.
+      await ctx.db.delete(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      // Neu user khong con membership nao khac → xoa account.
+      const remaining = await ctx.db.select({ id: companyMembers.id })
+        .from(companyMembers).where(eq(companyMembers.userId, input.userId));
+      if (remaining.length === 0) {
+        await ctx.db.delete(sessions).where(eq(sessions.userId, input.userId));
+        await ctx.db.delete(users).where(eq(users.id, input.userId));
+      }
       return { ok: true };
     }),
 

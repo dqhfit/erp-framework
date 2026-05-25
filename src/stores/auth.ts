@@ -20,6 +20,8 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  /** false = dang ky qua invite link, cho admin duyet. */
+  companyApproved?: boolean;
 }
 
 interface AuthState {

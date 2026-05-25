@@ -274,11 +274,12 @@ export const appRouter = router({
           role: link.role,
         }).returning();
         if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        // Gan vao cong ty.
+        // Gan vao cong ty -- approved=false, cho admin duyet.
         await ctx.db.insert(companyMembers).values({
           companyId: link.companyId,
           userId: newUser.id,
           role: link.role,
+          approved: false,
         });
         // Danh dau link da dung (1 lan).
         await ctx.db.update(inviteLinks)

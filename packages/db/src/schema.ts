@@ -107,6 +107,9 @@ export const companyMembers = pgTable("company_members", {
   userId: uuid("user_id").notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   role: userRole("role").notNull().default("viewer"),
+  /** false = dang ky qua generic invite link, cho admin duyet.
+     true  = tat ca cac truong hop khac (mac dinh). */
+  approved: boolean("approved").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   companyUserIdx: uniqueIndex("company_members_company_user_idx")

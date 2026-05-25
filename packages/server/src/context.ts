@@ -21,6 +21,8 @@ export interface SessionUser {
   role: Role;
   /** Công ty đang chọn. null = user chưa thuộc công ty nào. */
   companyId: string | null;
+  /** false = dang ky qua invite link, cho admin duyet. true = binh thuong. */
+  companyApproved: boolean;
 }
 
 export interface Context {
@@ -39,15 +41,19 @@ export async function resolveActiveCompany(
   database: typeof db,
   userId: string,
   preferredCompanyId: string | null,
-): Promise<{ companyId: string; role: Role } | null> {
+): Promise<{ companyId: string; role: Role; approved: boolean } | null> {
   const memberships = await database
-    .select({ companyId: companyMembers.companyId, role: companyMembers.role })
+    .select({
+      companyId: companyMembers.companyId,
+      role: companyMembers.role,
+      approved: companyMembers.approved,
+    })
     .from(companyMembers)
     .where(eq(companyMembers.userId, userId));
   const picked =
     memberships.find((m) => m.companyId === preferredCompanyId) ?? memberships[0];
   if (!picked) return null;
-  return { companyId: picked.companyId, role: picked.role as Role };
+  return { companyId: picked.companyId, role: picked.role as Role, approved: picked.approved };
 }
 
 export async function createContext(
@@ -77,6 +83,7 @@ export async function createContext(
         name: row.name,
         role: active?.role ?? (row.defaultRole as Role),
         companyId: active?.companyId ?? null,
+        companyApproved: active?.approved ?? true,
       };
     }
   }

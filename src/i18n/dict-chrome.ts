@@ -72,6 +72,8 @@ export const chromeVi: Dict = {
   "auth.register_failed": "Đăng ký thất bại",
   "auth.error_rate_limit": "Quá nhiều lần thử, vui lòng đợi vài phút.",
   "auth.banner_first_admin_existed": "Tài khoản quản trị đã được khởi tạo. Vui lòng đăng nhập.",
+  "auth.pending_title": "Đang chờ phê duyệt",
+  "auth.pending_desc": "Tài khoản của bạn đã được tạo thành công. Quản trị viên cần phê duyệt trước khi bạn có thể sử dụng hệ thống.",
 
   // sidebar — nav bổ sung (chưa có trong dict.ts)
   "sidebar.iot": "Thiết bị IoT",
@@ -160,6 +162,8 @@ export const chromeEn: Dict = {
   "auth.register_failed": "Registration failed",
   "auth.error_rate_limit": "Too many attempts, please wait a few minutes.",
   "auth.banner_first_admin_existed": "Admin account already exists. Please sign in.",
+  "auth.pending_title": "Pending approval",
+  "auth.pending_desc": "Your account has been created successfully. An administrator needs to approve it before you can access the system.",
 
   // sidebar — nav additions
   "sidebar.iot": "IoT Devices",

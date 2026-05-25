@@ -1,3 +1,4 @@
+import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { useAuth } from "@/stores/auth";
@@ -136,15 +137,40 @@ function LoginScreen() {
 }
 
 /** Các route public không cần đăng nhập — bỏ qua AuthGate. */
-const PUBLIC_ROUTE_PREFIXES = ["/invite", "/oauth/callback"];
+const PUBLIC_ROUTE_PREFIXES = ["/invite", "/join", "/oauth/callback"];
+
+function PendingApprovalScreen() {
+  const t = useT();
+  const logout = useAuth((s) => s.logout);
+  return (
+    <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
+      <Card className="w-[420px] space-y-4 text-center">
+        <div className="flex justify-center">
+          <span className="w-14 h-14 rounded-full bg-warning/15 flex items-center justify-center">
+            <I.Clock size={28} className="text-warning" />
+          </span>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">{t("auth.pending_title")}</h2>
+          <p className="text-sm text-muted mt-1">{t("auth.pending_desc")}</p>
+        </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-center"
+          onClick={() => void logout()}
+        >
+          {t("sidebar.logout")}
+        </Button>
+      </Card>
+    </div>
+  );
+}
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const t = useT();
   const status = useAuth((s) => s.status);
+  const user = useAuth((s) => s.user);
   const check = useAuth((s) => s.check);
-  // Route hiện tại — dùng window.location vì AuthGate render BÊN NGOÀI
-  // <RouterProvider> (tại main.tsx). useRouterState/useLocation sẽ throw
-  // vì context chưa sẵn. Chấp nhận đọc thẳng từ DOM ở cấp wrapper này.
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isPublicRoute = PUBLIC_ROUTE_PREFIXES.some((p) => pathname.startsWith(p));
 
@@ -153,8 +179,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, [status, check]);
 
   if (status === "checking") return <Splash text={t("auth.checking")} />;
-  // Route public (vd /invite?token=...) bỏ qua cổng — user chưa có session
-  // vẫn vào được để hoàn tất thiết lập password.
   if (status === "out" && !isPublicRoute) return <LoginScreen />;
+  // Đã đăng nhập nhưng đang chờ admin phê duyệt.
+  if (status === "in" && user?.companyApproved === false && !isPublicRoute) {
+    return <PendingApprovalScreen />;
+  }
   return <>{children}</>;
 }

@@ -63,7 +63,13 @@ export function rbacProcedure(action: Action, obj: ObjectType) {
     if (!ctx.user.companyId) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Bạn chưa thuộc công ty nào — hãy yêu cầu quản trị viên thêm bạn vào công ty.",
+        message: "Ban chua thuoc cong ty nao -- hay yeu cau quan tri vien them ban vao cong ty.",
+      });
+    }
+    if (!ctx.user.companyApproved) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Tai khoan cua ban dang cho quan tri vien phe duyet.",
       });
     }
     if (!roleCan(ctx.user.role, action, obj)) {

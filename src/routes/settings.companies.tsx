@@ -29,6 +29,8 @@ interface Member {
   joinedAt: string | Date;
   /** true = user được tạo nhưng chưa accept invite (password trống). */
   pending?: boolean;
+  /** false = đăng ký qua invite link, chờ admin phê duyệt. */
+  approved?: boolean;
 }
 interface GenericLink {
   id: string;
@@ -239,6 +241,11 @@ function CompaniesSettings() {
                             {t("settings.companies.pending_chip")}
                           </Chip>
                         )}
+                        {!m.pending && m.approved === false && (
+                          <Chip variant="danger" className="h-[16px]! text-[10px]!">
+                            {t("settings.companies.pending_approval_chip")}
+                          </Chip>
+                        )}
                       </div>
                       <div className="text-xs text-muted">{m.email}</div>
                     </td>
@@ -288,6 +295,38 @@ function CompaniesSettings() {
                           >
                             {t("settings.companies.resend_btn")}
                           </Button>
+                        )}
+                        {isAdmin && !m.pending && m.approved === false && (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              icon={<I.Check size={13} />}
+                              disabled={busy}
+                              title={t("settings.companies.approve_btn")}
+                              onClick={() =>
+                                void run(
+                                  () => companies.approveMember(m.userId).then(() => {}),
+                                  t("settings.companies.approve_ok"),
+                                )
+                              }
+                            >
+                              {t("settings.companies.approve_btn")}
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<I.X size={13} />}
+                              disabled={busy}
+                              title={t("settings.companies.reject_btn")}
+                              onClick={() =>
+                                void run(
+                                  () => companies.rejectMember(m.userId).then(() => {}),
+                                  t("settings.companies.reject_ok"),
+                                )
+                              }
+                            />
+                          </>
                         )}
                         {isAdmin && !m.pending && (
                           <Button

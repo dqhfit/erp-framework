@@ -66,6 +66,11 @@ export const settingsVi: Dict = {
   "settings.companies.generic_link_revoked": "✓ Đã thu hồi link.",
   "settings.companies.link_used": "Đã dùng",
   "settings.companies.link_expired": "Hết hạn",
+  "settings.companies.pending_approval_chip": "Chờ phê duyệt",
+  "settings.companies.approve_btn": "Phê duyệt",
+  "settings.companies.approve_ok": "✓ Đã phê duyệt thành viên.",
+  "settings.companies.reject_btn": "Từ chối",
+  "settings.companies.reject_ok": "✓ Đã từ chối và xoá thành viên.",
 
   // --- rbac ---
   "settings.rbac.title": "Vai trò & Quyền (RBAC)",
@@ -266,6 +271,11 @@ export const settingsEn: Dict = {
   "settings.companies.generic_link_revoked": "✓ Link revoked.",
   "settings.companies.link_used": "Used",
   "settings.companies.link_expired": "Expired",
+  "settings.companies.pending_approval_chip": "Pending approval",
+  "settings.companies.approve_btn": "Approve",
+  "settings.companies.approve_ok": "✓ Member approved.",
+  "settings.companies.reject_btn": "Reject",
+  "settings.companies.reject_ok": "✓ Member rejected and removed.",
 
   // --- rbac ---
   "settings.rbac.title": "Roles & Permissions (RBAC)",
