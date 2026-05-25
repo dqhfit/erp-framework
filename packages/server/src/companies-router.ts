@@ -9,7 +9,7 @@
 import { z } from "zod";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { companies, companyMembers, users, sessions, userInvites } from "@erp-framework/db";
+import { companies, companyMembers, users, sessions, userInvites, inviteLinks } from "@erp-framework/db";
 import { router, protectedProcedure, rbacProcedure } from "./trpc";
 import { hashPassword, newSessionToken } from "./auth";
 import { logActivity } from "./activity";
@@ -318,6 +318,58 @@ export const companiesRouter = router({
         detail: `Admin reset mật khẩu cho ${u?.email ?? input.userId}`,
         actorUserId: ctx.user.id,
       });
+      return { ok: true };
+    }),
+
+  /** Tạo generic invite link — không cần biết email trước. Bất kỳ ai có
+     link đều tự điền thông tin và đăng ký vào công ty. Dùng 1 lần. */
+  createInviteLink: rbacProcedure("edit", "company")
+    .input(z.object({ role: roleEnum.optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const role = input.role ?? "viewer";
+      const token = newSessionToken();
+      await ctx.db.insert(inviteLinks).values({
+        companyId: ctx.user.companyId,
+        role,
+        token,
+        createdBy: ctx.user.id,
+        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      });
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "user.invite_sent",
+        objectType: "company",
+        detail: `Tạo invite link chung (role=${role})`,
+        actorUserId: ctx.user.id,
+      });
+      return { ok: true, inviteLink: `/join?token=${token}` };
+    }),
+
+  /** Danh sách invite links còn hiệu lực (chưa dùng + chưa hết hạn). */
+  listInviteLinks: rbacProcedure("view", "company").query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: inviteLinks.id,
+        role: inviteLinks.role,
+        expiresAt: inviteLinks.expiresAt,
+        usedAt: inviteLinks.usedAt,
+        createdAt: inviteLinks.createdAt,
+        token: inviteLinks.token,
+      })
+      .from(inviteLinks)
+      .where(eq(inviteLinks.companyId, ctx.user.companyId));
+    return rows;
+  }),
+
+  /** Xoá (thu hồi) một invite link. */
+  deleteInviteLink: rbacProcedure("edit", "company")
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.delete(inviteLinks)
+        .where(and(
+          eq(inviteLinks.id, input.id),
+          eq(inviteLinks.companyId, ctx.user.companyId),
+        ));
       return { ok: true };
     }),
 });

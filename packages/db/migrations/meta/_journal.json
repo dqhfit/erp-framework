@@ -288,6 +288,13 @@
       "when": 1783400000000,
       "tag": "0040_pgvector_ivfflat_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783500000000,
+      "tag": "0041_invite_links",
+      "breakpoints": true
     }
   ]
 }

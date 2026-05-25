@@ -52,6 +52,14 @@ export function createCompaniesClient(baseUrl: string) {
     /** Admin đặt lại mật khẩu cho một thành viên. Xoá toàn bộ session của user đó. */
     resetMemberPassword: (userId: string, newPassword: string) =>
       trpc.companies.resetMemberPassword.mutate({ userId, newPassword }),
+    /** Tạo generic invite link (không cần email). Bất kỳ ai có link tự đăng ký vào công ty. */
+    createInviteLink: (role?: CompanyRole) =>
+      trpc.companies.createInviteLink.mutate({ role }),
+    /** Danh sách invite links của công ty (bao gồm đã dùng + đã hết hạn). */
+    listInviteLinks: () => trpc.companies.listInviteLinks.query(),
+    /** Thu hồi một invite link. */
+    deleteInviteLink: (id: string) =>
+      trpc.companies.deleteInviteLink.mutate({ id }),
   };
 }
 

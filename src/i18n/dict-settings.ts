@@ -57,6 +57,15 @@ export const settingsVi: Dict = {
   "settings.companies.role_admin": "Quản trị",
   "settings.companies.role_editor": "Biên tập",
   "settings.companies.role_viewer": "Xem",
+  "settings.companies.generic_link_title": "Link mời chung",
+  "settings.companies.generic_link_hint":
+    "Tạo link chia sẻ — người nhận tự điền tên, email, mật khẩu khi đăng ký. Mỗi link dùng được 1 lần.",
+  "settings.companies.generic_link_create_btn": "Tạo link mời",
+  "settings.companies.generic_link_created": "✓ Đã tạo link mời. Link đã copy vào clipboard.",
+  "settings.companies.generic_link_revoke": "Thu hồi link",
+  "settings.companies.generic_link_revoked": "✓ Đã thu hồi link.",
+  "settings.companies.link_used": "Đã dùng",
+  "settings.companies.link_expired": "Hết hạn",
 
   // --- rbac ---
   "settings.rbac.title": "Vai trò & Quyền (RBAC)",
@@ -248,6 +257,15 @@ export const settingsEn: Dict = {
   "settings.companies.role_admin": "Admin",
   "settings.companies.role_editor": "Editor",
   "settings.companies.role_viewer": "Viewer",
+  "settings.companies.generic_link_title": "Generic Invite Link",
+  "settings.companies.generic_link_hint":
+    "Create a shareable link — the recipient fills in their name, email, and password when signing up. Each link can only be used once.",
+  "settings.companies.generic_link_create_btn": "Create invite link",
+  "settings.companies.generic_link_created": "✓ Invite link created. Copied to clipboard.",
+  "settings.companies.generic_link_revoke": "Revoke link",
+  "settings.companies.generic_link_revoked": "✓ Link revoked.",
+  "settings.companies.link_used": "Used",
+  "settings.companies.link_expired": "Expired",
 
   // --- rbac ---
   "settings.rbac.title": "Roles & Permissions (RBAC)",

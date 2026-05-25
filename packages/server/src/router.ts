@@ -10,7 +10,7 @@ import { and, eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   users, sessions, mcpConfigs, llmProfiles, activityLog,
-  companies, companyMembers, userInvites,
+  companies, companyMembers, userInvites, inviteLinks,
 } from "@erp-framework/db";
 import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
 import { logActivity } from "./activity";
@@ -219,6 +219,95 @@ export const appRouter = router({
           companyName: co?.name ?? "",
           expiresAt: inv.expiresAt,
         };
+      }),
+
+    /** Preview generic invite link -- public. Tra ve companyName + role. */
+    inviteLinkPreview: publicProcedure
+      .use(rateLimit("auth.inviteLinkPreview", 20, 15 * 60 * 1000))
+      .input(z.object({ token: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const [link] = await ctx.db.select({
+          companyId: inviteLinks.companyId,
+          role: inviteLinks.role,
+          expiresAt: inviteLinks.expiresAt,
+          usedAt: inviteLinks.usedAt,
+        }).from(inviteLinks).where(eq(inviteLinks.token, input.token));
+        if (!link) return { valid: false as const, reason: "not_found" as const };
+        if (link.usedAt) return { valid: false as const, reason: "used" as const };
+        if (link.expiresAt < new Date()) return { valid: false as const, reason: "expired" as const };
+        const [co] = await ctx.db.select({ name: companies.name })
+          .from(companies).where(eq(companies.id, link.companyId));
+        return {
+          valid: true as const,
+          companyName: co?.name ?? "",
+          role: link.role,
+          expiresAt: link.expiresAt,
+        };
+      }),
+
+    /** Dang ky qua generic invite link: user tu nhap ten + email + mat khau.
+       Server tao user moi, gan vao cong ty, cap session, mark link da dung. */
+    acceptInviteLink: publicProcedure
+      .use(rateLimit("auth.acceptInviteLink", 5, 15 * 60 * 1000))
+      .input(z.object({
+        token: z.string().min(1),
+        name: z.string().min(1, "Vui lòng nhập họ tên"),
+        email: z.string().email("Email không hợp lệ"),
+        password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const [link] = await ctx.db.select().from(inviteLinks)
+          .where(eq(inviteLinks.token, input.token));
+        if (!link) throw new TRPCError({ code: "NOT_FOUND", message: "Link không hợp lệ" });
+        if (link.usedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã được sử dụng" });
+        if (link.expiresAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã hết hạn" });
+        // Kiem tra email chua ton tai.
+        const [existing] = await ctx.db.select({ id: users.id })
+          .from(users).where(eq(users.email, input.email));
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "Email đã được dùng bởi tài khoản khác" });
+        // Tao user moi.
+        const passwordHash = await hashPassword(input.password);
+        const [newUser] = await ctx.db.insert(users).values({
+          email: input.email,
+          name: input.name,
+          passwordHash,
+          role: link.role,
+        }).returning();
+        if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Gan vao cong ty.
+        await ctx.db.insert(companyMembers).values({
+          companyId: link.companyId,
+          userId: newUser.id,
+          role: link.role,
+        });
+        // Danh dau link da dung (1 lan).
+        await ctx.db.update(inviteLinks)
+          .set({ usedAt: new Date(), usedBy: newUser.id })
+          .where(eq(inviteLinks.id, link.id));
+        // Cap session tu dong.
+        const sessionToken = newSessionToken();
+        await ctx.db.insert(sessions).values({
+          id: sessionToken,
+          userId: newUser.id,
+          activeCompanyId: link.companyId,
+          expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+        });
+        ctx.reply.setCookie(SESSION_COOKIE, sessionToken, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          maxAge: Math.floor(SESSION_TTL_MS / 1000),
+        });
+        await logActivity(ctx.db, {
+          companyId: link.companyId,
+          kind: "user.invite_accepted",
+          objectType: "user",
+          target: newUser.id,
+          detail: `Đăng ký qua invite link (IP ${ctx.ip})`,
+          actorUserId: newUser.id,
+        });
+        return { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
       }),
 
     /** Accept invite: user đặt mật khẩu lần đầu, tạo session, set cookie.

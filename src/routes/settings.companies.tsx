@@ -30,6 +30,14 @@ interface Member {
   /** true = user được tạo nhưng chưa accept invite (password trống). */
   pending?: boolean;
 }
+interface GenericLink {
+  id: string;
+  role: string;
+  token: string;
+  expiresAt: string | Date;
+  usedAt?: string | Date | null;
+  createdAt: string | Date;
+}
 
 const ROLES: CompanyRole[] = ["admin", "editor", "viewer"];
 
@@ -51,6 +59,10 @@ function CompaniesSettings() {
   /** Link invite vừa sinh — hiện modal "Copy link" sau khi addMember. */
   const [inviteLink, setInviteLink] = useState<string>("");
   const [inviteEmail, setInviteEmail] = useState<string>("");
+  /** Generic invite links */
+  const [genericLinks, setGenericLinks] = useState<GenericLink[]>([]);
+  const [genericRole, setGenericRole] = useState<CompanyRole>("viewer");
+  const [newGenericLink, setNewGenericLink] = useState<string>("");
   /** Reset password: user đang được đặt lại mật khẩu. */
   const [resetTarget, setResetTarget] = useState<{ userId: string; email: string } | null>(null);
   const [resetPwd, setResetPwd] = useState("");
@@ -76,6 +88,11 @@ function CompaniesSettings() {
         setMembers((await companies.members()) as Member[]);
       } catch {
         setMembers([]); // viewer có thể không xem được — bỏ qua
+      }
+      try {
+        setGenericLinks((await companies.listInviteLinks()) as GenericLink[]);
+      } catch {
+        setGenericLinks([]);
       }
     } catch (e) {
       setErr((e as Error).message);
@@ -379,6 +396,124 @@ function CompaniesSettings() {
             </div>
           )}
         </Card>
+
+        {/* === Link mời chung (không cần biết email trước) === */}
+        {isAdmin && (
+          <Card className="mt-4 space-y-3">
+            <div className="font-semibold flex items-center gap-2">
+              <I.Link size={15} className="text-accent" />
+              {t("settings.companies.generic_link_title")}
+            </div>
+            <div className="text-xs text-muted">{t("settings.companies.generic_link_hint")}</div>
+
+            {/* Tạo link mới */}
+            <div className="flex items-center gap-2">
+              <Select
+                value={genericRole}
+                disabled={busy}
+                onChange={(e) => setGenericRole(e.target.value as CompanyRole)}
+                className="w-36"
+              >
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                ))}
+              </Select>
+              <Button
+                variant="primary"
+                icon={<I.Plus size={14} />}
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const r = (await companies.createInviteLink(genericRole)) as { inviteLink?: string };
+                    if (r.inviteLink) {
+                      const full = window.location.origin + r.inviteLink;
+                      setNewGenericLink(full);
+                      await navigator.clipboard?.writeText(full).catch(() => {});
+                    }
+                  }, t("settings.companies.generic_link_created"))
+                }
+              >
+                {t("settings.companies.generic_link_create_btn")}
+              </Button>
+            </div>
+
+            {/* Link mới vừa tạo — banner copy */}
+            {newGenericLink && (
+              <div className="flex gap-2 p-2 rounded-md border border-accent/30 bg-accent/5">
+                <Input
+                  value={newGenericLink}
+                  readOnly
+                  className="flex-1 font-mono text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  variant="default"
+                  size="sm"
+                  icon={<I.Copy size={13} />}
+                  onClick={() => void navigator.clipboard?.writeText(newGenericLink)}
+                >
+                  Copy
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<I.X size={12} />}
+                  onClick={() => setNewGenericLink("")}
+                />
+              </div>
+            )}
+
+            {/* Danh sách links */}
+            {genericLinks.length > 0 && (
+              <div className="space-y-1 border-t border-border pt-2">
+                {genericLinks.map((lk) => {
+                  const used = !!lk.usedAt;
+                  const expired = !used && new Date(lk.expiresAt) < new Date();
+                  const active = !used && !expired;
+                  return (
+                    <div
+                      key={lk.id}
+                      className="flex items-center gap-2 text-sm py-1.5 border-b border-border/40 last:border-0"
+                    >
+                      <span className="font-mono text-xs text-muted truncate flex-1">
+                        {window.location.origin}/join?token={lk.token.slice(0, 8)}…
+                      </span>
+                      <Chip>{ROLE_LABEL[lk.role] ?? lk.role}</Chip>
+                      {used && <Chip variant="success">{t("settings.companies.link_used")}</Chip>}
+                      {expired && <Chip variant="warning">{t("settings.companies.link_expired")}</Chip>}
+                      {active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<I.Copy size={12} />}
+                          title="Copy link"
+                          onClick={() =>
+                            void navigator.clipboard?.writeText(
+                              `${window.location.origin}/join?token=${lk.token}`,
+                            )
+                          }
+                        />
+                      )}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        icon={<I.Trash size={12} />}
+                        title={t("settings.companies.generic_link_revoke")}
+                        disabled={busy}
+                        onClick={() =>
+                          void run(
+                            () => companies.deleteInviteLink(lk.id).then(() => {}),
+                            t("settings.companies.generic_link_revoked"),
+                          )
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* === Modal hiển thị invite link vừa sinh === */}
         {inviteLink && (

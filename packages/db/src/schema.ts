@@ -56,6 +56,26 @@ export const userInvites = pgTable("user_invites", {
   companyIdx: index("user_invites_company_idx").on(t.companyId),
 }));
 
+/* Generic invite link -- admin tao link, bat ky ai co link tu dang ky vao
+   cong ty. Link dung 1 lan (used_at set sau khi nguoi dung accept). */
+export const inviteLinks = pgTable("invite_links", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references((): AnyPgColumn => companies.id, { onDelete: "cascade" }),
+  role: userRole("role").notNull().default("viewer"),
+  token: text("token").notNull(),
+  createdBy: uuid("created_by")
+    .references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  usedBy: uuid("used_by")
+    .references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  tokenIdx: uniqueIndex("invite_links_token_idx").on(t.token),
+  companyIdx: index("invite_links_company_idx").on(t.companyId),
+}));
+
 /* ─── Đa công ty (multi-tenant) ─────────────────────────── */
 export const companies = pgTable("companies", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),
