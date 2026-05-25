@@ -66,7 +66,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
     }
   }, [open]);
   useEffect(() => {
-    if (tools.length && !tool) setTool(tools[0]?.name);
+    if (tools.length && !tool) setTool(tools[0]?.name ?? "");
   }, [tools, tool]);
 
   // Khi đổi tool → reset args + pre-fill default từ schema

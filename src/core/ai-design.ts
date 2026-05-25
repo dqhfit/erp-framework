@@ -103,7 +103,8 @@ function pickProfileName(explicit?: string): string {
       "Chưa có LLM profile khả dụng — vào Settings → LLM Profiles để tạo (cần API key hoặc bridge).",
     );
   }
-  return profiles[0]?.name;
+  // profiles.length đã kiểm tra > 0 ở trên — non-null assertion an toàn.
+  return profiles[0]!.name;
 }
 
 /** ============= Main entry =============

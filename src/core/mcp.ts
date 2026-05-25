@@ -80,7 +80,7 @@ export class McpClient {
     let data: { result?: T; error?: { message: string } };
     if (text.startsWith("event:") || text.includes("\ndata: ")) {
       const lines = text.split("\n").filter((l) => l.startsWith("data: "));
-      data = JSON.parse(lines[lines.length - 1]?.slice(6));
+      data = JSON.parse(lines[lines.length - 1]?.slice(6) ?? "{}");
     } else {
       data = JSON.parse(text);
     }
