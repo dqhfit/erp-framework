@@ -105,6 +105,12 @@ export const FORMULA_FUNCTIONS: FormulaFn[] = [
   // ---- Aggregate (cho array fields) ----
   { name: "COUNT",   category: "agg", args: "(array)",             hint: "Số phần tử mảng",             example: "COUNT({items})",
     fn: (v) => Array.isArray(v) ? v.length : 0 },
+
+  // ---- Procedure (v1 stub — formula sync không gọi được procedure async) ----
+  { name: "CALL_PROC", category: "logic", args: "(name, args?)",
+    hint: "Gọi native procedure (chưa khả dụng trong formula — dùng procedure node/tRPC invoke)",
+    example: 'CALL_PROC("get_customer_balance", {id})',
+    fn: () => { throw new Error("CALL_PROC chưa khả dụng trong formula (formula sync, procedure async). Hãy dùng workflow node \"procedure\" hoặc tRPC procedures.invoke."); } },
 ];
 
 export const FORMULA_FUNCTIONS_BY_NAME: Record<string, FormulaFn> =

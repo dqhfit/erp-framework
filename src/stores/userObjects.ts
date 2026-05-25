@@ -42,6 +42,16 @@ export function mergeById<T extends { id: string }>(_mock: T[], user: T[]): T[] 
 /* ─── Mapping DB row ↔ shape tầng app ───────────────────── */
 function rowToEntity(r: Row): MockEntity {
   const meta = (r.meta ?? {}) as Record<string, unknown>;
+  // Phân tách entity.meta.bindings (Record<op, "proc:name" | ...>) thành
+  // procBindings (chỉ giữ phần proc, lưu name không prefix).
+  const rawBindings = (meta.bindings ?? null) as Record<string, string> | null;
+  const procBindings: MockEntity["procBindings"] = rawBindings
+    ? Object.fromEntries(
+        Object.entries(rawBindings)
+          .filter(([, v]) => typeof v === "string" && v.startsWith("proc:"))
+          .map(([k, v]) => [k, v.slice(5)]),
+      ) as MockEntity["procBindings"]
+    : undefined;
   return {
     id: r.id as string,
     name: (r.label as string) || (r.name as string) || "",
@@ -49,16 +59,29 @@ function rowToEntity(r: Row): MockEntity {
     mcp: (meta.mcp as string) || "",
     fields: (r.fields ?? []) as MockEntity["fields"],
     mcpBindings: meta.mcpBindings as MockEntity["mcpBindings"],
+    procBindings,
   };
 }
 function entityToInput(e: MockEntity) {
+  // Ghi bindings dạng prefixed về meta.bindings; chỉ ghi các op có giá trị.
+  const bindings = e.procBindings
+    ? Object.fromEntries(
+        Object.entries(e.procBindings)
+          .filter(([, v]) => typeof v === "string" && v.trim().length > 0)
+          .map(([k, v]) => [k, `proc:${(v as string).trim()}`]),
+      )
+    : {};
   return {
     id: e.id,
     name: machineName(e.name, e.id),
     label: e.name,
     icon: e.icon,
     fields: e.fields,
-    meta: { mcp: e.mcp, mcpBindings: e.mcpBindings ?? null },
+    meta: {
+      mcp: e.mcp,
+      mcpBindings: e.mcpBindings ?? null,
+      ...(Object.keys(bindings).length ? { bindings } : {}),
+    },
   };
 }
 

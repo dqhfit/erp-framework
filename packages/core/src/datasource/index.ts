@@ -10,7 +10,8 @@
 /** Kiểu field hỗ trợ trong định nghĩa entity. */
 export type FieldType =
   | "text" | "number" | "boolean" | "date" | "datetime"
-  | "select" | "multiselect" | "relation" | "formula" | "json";
+  | "select" | "multiselect" | "enum" | "multienum"
+  | "relation" | "formula" | "json";
 
 /** Định nghĩa một field trong entity (lưu ở entities.fields). */
 export interface EntityFieldDef {
@@ -18,7 +19,9 @@ export interface EntityFieldDef {
   label: string;
   type: FieldType | (string & {});  // built-in hoặc kiểu do plugin thêm
   required?: boolean;
-  options?: string[];           // cho select / multiselect
+  options?: string[];           // cho select / multiselect (inline)
+  /** Cho enum/multienum — id của bản ghi `enums` */
+  enumId?: string;
   relationEntityId?: string;    // cho relation
   formula?: string;             // cho formula
   /** Cờ điều khiển sinh index — xem data governance UPGRADE-PLAN 3.5 */

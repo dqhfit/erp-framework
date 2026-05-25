@@ -17,6 +17,7 @@ import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { createContext, resolveActiveCompany } from "./context";
 import { startJobs, stopJobs, enqueueKbIngest } from "./jobs";
 import { db } from "./db";
+import { runMigrations } from "@erp-framework/db/migrate";
 import { SESSION_COOKIE } from "./auth";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import { makeCallTool } from "./mcp-client";
@@ -91,6 +92,20 @@ const KB_ADD_TOOL: ToolDef = {
 };
 
 async function main(): Promise<void> {
+  // Migrate trước khi listen — idempotent (drizzle ghi nhật ký schema
+  // "drizzle" để theo dõi). Fail-fast nếu schema không apply được:
+  // app đứng lên với DB sai schema sẽ gây lỗi runtime khó debug hơn.
+  // Hoạt động cho mọi deploy (Docker, k8s, PM2, native), không phụ
+  // thuộc shell command bên ngoài.
+  console.log("[migrate] chạy migrations...");
+  try {
+    await runMigrations(db);
+    console.log("[migrate] ✓ DB schema đã đồng bộ.");
+  } catch (e) {
+    console.error("[migrate] LỖI:", (e as Error).message);
+    throw e;
+  }
+
   // maxParamLength cao — tRPC httpBatchLink gộp nhiều procedure vào URL
   // (/trpc/a,b,c…); mặc định Fastify 100 ký tự sẽ làm batch lớn bị 404.
   // trustProxy — đọc X-Forwarded-For từ nginx/Traefik phía trước (Coolify

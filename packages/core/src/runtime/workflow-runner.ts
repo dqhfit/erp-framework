@@ -66,6 +66,27 @@ export interface RunWorkflowOptions {
   maxDelayMs?: number;
   /** Registry plugin — để chạy node type tuỳ biến. */
   registry?: PluginRegistry;
+  /**
+   * Chạy code-node trong sandbox (server thường dùng isolated-vm).
+   * Core không kèm sandbox để giữ platform-agnostic; nếu không truyền,
+   * node type "code" sẽ trả lỗi.
+   */
+  runCode?: (
+    code: string,
+    ctx: { vars: Record<string, unknown>; nodeId: string },
+  ) => Promise<{
+    output?: Record<string, unknown>;
+    logs: string[];
+    durationMs: number;
+  }>;
+  /**
+   * Gọi native procedure theo tên (xem procedure-runner ở server).
+   * Tương tự runCode, core chỉ định nghĩa contract.
+   */
+  invokeProcedure?: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ output: unknown; logs: string[]; durationMs: number }>;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -167,6 +188,50 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
         case "approval": {
           step = mkStep(node, "paused", `Chờ duyệt: "${node.label}" — workflow tạm dừng`, t0);
           overallStatus = "paused";
+          break;
+        }
+        case "code": {
+          const code = typeof cfg.code === "string" ? cfg.code : "";
+          if (!code.trim()) {
+            step = mkStep(node, "skipped", "Chưa có code — bỏ qua", t0);
+            break;
+          }
+          if (!opt.runCode) {
+            step = mkStep(node, "error",
+              "Server không cấu hình sandbox cho code-node", t0);
+            overallStatus = "error";
+            break;
+          }
+          const r = await opt.runCode(code, { vars, nodeId: id });
+          if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
+            Object.assign(vars, r.output);
+          }
+          const detail = r.logs.length
+            ? r.logs.join("\n")
+            : `Code chạy ${r.durationMs}ms`;
+          step = mkStep(node, "ok", detail, t0, r.output);
+          break;
+        }
+        case "procedure": {
+          const name = typeof cfg.name === "string" ? cfg.name : "";
+          if (!name) {
+            step = mkStep(node, "skipped", "Chưa chọn procedure — bỏ qua", t0);
+            break;
+          }
+          if (!opt.invokeProcedure) {
+            step = mkStep(node, "error",
+              "Server không cấu hình procedure runner", t0);
+            overallStatus = "error";
+            break;
+          }
+          const r = await opt.invokeProcedure(name, resolveArgs(cfg));
+          if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
+            Object.assign(vars, r.output as Record<string, unknown>);
+          }
+          const detail = r.logs.length
+            ? r.logs.join("\n")
+            : `Procedure "${name}" chạy ${r.durationMs}ms`;
+          step = mkStep(node, "ok", detail, t0, r.output);
           break;
         }
         default: {

@@ -10,7 +10,8 @@ export type Action = "view" | "create" | "edit" | "delete" | "run";
 
 export type ObjectType =
   | "entity" | "page" | "workflow" | "agent"
-  | "settings" | "activity" | "rbac" | "company" | "knowledge" | "iot";
+  | "settings" | "activity" | "rbac" | "company" | "knowledge" | "iot"
+  | "procedure" | "enum";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
 
@@ -25,8 +26,10 @@ const MATRIX: Record<Role, string[]> = {
     "create:agent", "edit:agent", "run:agent",
     "create:knowledge", "edit:knowledge", "delete:knowledge",
     "create:iot", "edit:iot", "delete:iot",
+    "create:procedure", "edit:procedure", "run:procedure",
+    "create:enum", "edit:enum", "delete:enum",
   ],
-  viewer: ["view:*", "run:workflow", "run:agent"],
+  viewer: ["view:*", "run:workflow", "run:agent", "run:procedure"],
 };
 
 /** Vai trò `role` có được phép `action` trên `obj` không. */

@@ -16,6 +16,8 @@ import {
 import type { DB } from "./db";
 import { makeCallTool } from "./mcp-client";
 import { makeCallAgent } from "./llm-client";
+import { makeRunCode } from "./code-runner";
+import { makeInvokeProcedure } from "./procedure-runner";
 import { logActivity } from "./activity";
 import { assertWithinBudget } from "./budget";
 
@@ -80,15 +82,20 @@ export async function executeWorkflow(
 
   // Chạy lõi runtime — truyền registry để runner thực thi được
   // node do plugin định nghĩa (xem nhánh default trong runWorkflow).
+  const callTool = opts.callTool ?? makeCallTool(db, wf.companyId);
   const result = await runWorkflow({
     workflowId,
     workflowName: wf.name,
     nodes,
     edges,
-    callTool: opts.callTool ?? makeCallTool(db, wf.companyId),
+    callTool,
     callAgent: opts.callAgent ?? makeCallAgent(db),
     initialVars: opts.context,
     registry: pluginRegistry,
+    runCode: makeRunCode({ callTool, companyId: wf.companyId }),
+    invokeProcedure: makeInvokeProcedure({
+      db, companyId: wf.companyId, callTool, actorUserId: null,
+    }),
   });
 
   // Ghi kết quả cuối

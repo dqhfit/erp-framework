@@ -4,6 +4,9 @@ import { z } from "zod";
 import type { EntityDef, FieldDef } from "@/types/entity";
 import { Button, Input, Select, Textarea, Switch, FormField } from "@/components/ui";
 import { I } from "@/components/Icons";
+import { useEnum } from "@/hooks/useEnum";
+import { useLocale } from "@/stores/locale";
+import { pickLabel } from "@/lib/enum-label";
 
 interface AutoFormProps {
   entity: EntityDef;
@@ -113,6 +116,12 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </Select>
+      ) : field.type === "enum" ? (
+        <EnumSelect enumId={field.enumId} reg={reg} />
+      ) : field.type === "multi-enum" ? (
+        <EnumMultiSelect enumId={field.enumId}
+          value={Array.isArray(value) ? (value as string[]) : []}
+          setValue={(vs) => setValue(vs)} />
       ) : field.type === "date" || field.type === "datetime" ? (
         <Input type={field.type === "datetime" ? "datetime-local" : "date"} {...reg} />
       ) : field.type === "time" ? (
@@ -129,5 +138,54 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
         <Input placeholder={field.placeholder} {...reg} />
       )}
     </FormField>
+  );
+}
+
+/* ─── Enum renderers (đa ngôn ngữ — chọn nhãn theo locale) ─── */
+
+interface EnumSelectProps {
+  enumId?: string;
+  reg: ReturnType<ReturnType<typeof useForm>["register"]>;
+}
+function EnumSelect({ enumId, reg }: EnumSelectProps) {
+  const e = useEnum(enumId);
+  const lang = useLocale((s) => s.lang);
+  if (!enumId) return <div className="text-xs text-muted italic">Chưa cấu hình enum.</div>;
+  if (!e) return <div className="text-xs text-muted italic">Đang tải enum...</div>;
+  return (
+    <Select {...reg}>
+      <option value="">— chọn —</option>
+      {e.values.map((v) => (
+        <option key={v.value} value={v.value}>{pickLabel(v, lang)}</option>
+      ))}
+    </Select>
+  );
+}
+
+interface EnumMultiSelectProps {
+  enumId?: string;
+  value: string[];
+  setValue: (vs: string[]) => void;
+}
+function EnumMultiSelect({ enumId, value, setValue }: EnumMultiSelectProps) {
+  const e = useEnum(enumId);
+  const lang = useLocale((s) => s.lang);
+  if (!enumId) return <div className="text-xs text-muted italic">Chưa cấu hình enum.</div>;
+  if (!e) return <div className="text-xs text-muted italic">Đang tải enum...</div>;
+  const toggle = (val: string) => {
+    setValue(value.includes(val) ? value.filter((x) => x !== val) : [...value, val]);
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {e.values.map((v) => {
+        const on = value.includes(v.value);
+        return (
+          <button key={v.value} type="button" onClick={() => toggle(v.value)}
+            className={`chip ${on ? "chip-accent" : ""}`}>
+            {pickLabel(v, lang)}
+          </button>
+        );
+      })}
+    </div>
   );
 }

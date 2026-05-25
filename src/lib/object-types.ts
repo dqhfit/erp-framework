@@ -16,12 +16,17 @@ export interface EntityField {
   required?: boolean; options?: string[]; ref?: string;
   /** Cho field type "formula" */
   formula?: string;
+  /** Cho field type "enum" / "multi-enum" — id của enum object (xem /enums). */
+  enumId?: string;
 }
 export interface MockEntity {
   id: string; name: string; icon: IconName; mcp: string;
   fields: EntityField[];
   /** Mapping 5 op (list/get/create/update/delete) → MCP tool + args */
   mcpBindings?: import("@/components/designer/McpBindingsEditor").McpBindings;
+  /** Override per-op sang native procedure: { list?: "proc_name", ... }.
+   *  Khi set, server records.* dispatch sang procedure-runner thay vì native CRUD. */
+  procBindings?: Partial<Record<"list" | "get" | "create" | "update" | "delete", string>>;
 }
 
 export interface MockPage {

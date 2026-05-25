@@ -1,9 +1,16 @@
 export type FieldType =
   | "text" | "textarea" | "number" | "integer"
   | "boolean" | "date" | "datetime" | "time"
-  | "select" | "multi-select" | "lookup"
+  | "select" | "multi-select" | "enum" | "multi-enum" | "lookup"
   | "file" | "image" | "url" | "email" | "phone"
   | "json" | "formula";
+
+export interface FieldOption {
+  value: string;
+  label: string;
+  /** Nhãn tiếng Anh (i18n). Optional — fallback xuống `label` nếu thiếu. */
+  labelEn?: string;
+}
 
 export interface FieldDef {
   key: string;
@@ -13,8 +20,10 @@ export interface FieldDef {
   default?: unknown;
   placeholder?: string;
   description?: string;
-  /** Cho select / multi-select */
-  options?: Array<{ value: string; label: string }>;
+  /** Cho select / multi-select — options inline. */
+  options?: FieldOption[];
+  /** Cho enum / multi-enum — id của object enum (xem /enums). */
+  enumId?: string;
   /** Cho lookup — ref entity id */
   ref?: string;
   /** Cho formula — JS expression dùng row + fn helpers */
@@ -28,8 +37,17 @@ export interface FieldDef {
   width?: number;
 }
 
+/** Binding entity → backend op.
+ *
+ * Syntax giá trị:
+ *   "tool_name"        — MCP tool (legacy, mặc định)
+ *   "mcp:tool_name"    — explicit MCP
+ *   "proc:proc_name"   — native procedure (xem packages/server/src/procedure-runner.ts)
+ *
+ * Dùng `parseBinding()` trong `src/lib/binding.ts` để phân giải.
+ */
 export interface EntityBinding {
-  list?: string;     // MCP tool name cho list
+  list?: string;
   get?: string;
   create?: string;
   update?: string;

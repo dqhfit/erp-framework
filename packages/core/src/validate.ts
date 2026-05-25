@@ -76,6 +76,17 @@ function coerce(
       return [arr, null];
     }
 
+    // enum/multienum: chỉ ép kiểu chuỗi/mảng-chuỗi. Validate giá trị
+    // thuộc enum tập trung làm ở tầng router/UI (cần truy DB), không
+    // làm ở pure validate để giữ hàm không phụ thuộc I/O.
+    case "enum":
+      return [String(raw), null];
+
+    case "multienum": {
+      if (!Array.isArray(raw)) return [null, "Phải là danh sách"];
+      return [raw.map(String), null];
+    }
+
     case "relation":
       return [String(raw), null];
 

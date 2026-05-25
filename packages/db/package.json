@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/schema.ts" },
+  "exports": {
+    ".": "./src/schema.ts",
+    "./migrate": "./src/migrate.ts"
+  },
   "scripts": {
     "typecheck": "tsc",
     "generate": "drizzle-kit generate",

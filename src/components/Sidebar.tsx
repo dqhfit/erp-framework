@@ -355,6 +355,10 @@ export function Sidebar() {
             icon={<I.File size={14} />} collapsed={collapsed} label={t("sidebar.knowledge")} />
           <SidebarItem to="/iot" active={pathname.startsWith("/iot")}
             icon={<I.Server size={14} />} collapsed={collapsed} label="Thiết bị IoT" />
+          <SidebarItem to="/procedures" active={pathname.startsWith("/procedures")}
+            icon={<I.Terminal size={14} />} collapsed={collapsed} label="Procedures" />
+          <SidebarItem to="/enums" active={pathname.startsWith("/enums")}
+            icon={<I.Tag size={14} />} collapsed={collapsed} label="Enums" />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
           <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}

@@ -22,6 +22,10 @@ import { heartbeatsRouter } from "./heartbeats-router";
 import { entitySyncRouter } from "./entity-sync-router";
 import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
+import { proceduresRouter } from "./procedures-router";
+import { enumsRouter } from "./enums-router";
+import { makeInvokeProcedure } from "./procedure-runner";
+import { makeCallTool } from "./mcp-client";
 import { embedRouter } from "./embed-router";
 import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
@@ -168,6 +172,20 @@ function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, pa
     });
   }
   return v.data;
+}
+
+/** Đọc entity.meta.bindings[op]; trả tên procedure nếu prefix là "proc:".
+   Null nếu không có binding hoặc là MCP/legacy. Dùng để records.* dispatch
+   sang procedure-runner thay native Postgres query. */
+async function resolveProcBinding(
+  db: DB, companyId: string, entityId: string,
+  op: "list" | "get" | "create" | "update" | "delete",
+): Promise<string | null> {
+  const [row] = await db.select({ meta: entities.meta }).from(entities)
+    .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
+  const b = (row?.meta as { bindings?: Record<string, string> } | null)?.bindings?.[op];
+  if (!b || typeof b !== "string") return null;
+  return b.startsWith("proc:") ? b.slice(5).trim() : null;
 }
 
 /** Khi user tạo agent mới: tự động chèn họ vào `agent_members` với role=owner.
@@ -469,6 +487,21 @@ export const appRouter = router({
     list: rbacProcedure("view", "entity")
       .input(z.object({ entityId: z.string().uuid(), query: queryParams }))
       .query(async ({ ctx, input }) => {
+        // Procedure binding dispatch — nếu entity.meta.bindings.list = "proc:<name>",
+        // delegate sang procedure-runner. Procedure phải trả { rows, total } | rows[].
+        const proc = await resolveProcBinding(
+          ctx.db, ctx.user.companyId, input.entityId, "list");
+        if (proc) {
+          const r = await makeInvokeProcedure({
+            db: ctx.db, companyId: ctx.user.companyId,
+            callTool: makeCallTool(ctx.db, ctx.user.companyId),
+            actorUserId: ctx.user.id,
+          })(proc, { query: input.query ?? {} });
+          const out = r.output as { rows?: unknown[]; total?: number } | unknown[] | null;
+          const rows = Array.isArray(out) ? out : (out?.rows ?? []);
+          const total = Array.isArray(out) ? rows.length : (out?.total ?? rows.length);
+          return { rows, total };
+        }
         const where = buildRecordWhere(
           ctx.user.companyId, input.entityId, input.query);
         let q = ctx.db.select().from(entityRecords).where(where).$dynamic();
@@ -492,7 +525,19 @@ export const appRouter = router({
         const [row] = await ctx.db.select().from(entityRecords)
           .where(and(eq(entityRecords.id, input),
             eq(entityRecords.companyId, ctx.user.companyId)));
-        return row ?? null;
+        if (!row) return null;
+        // Procedure get-binding: cho phép procedure decorate/enrich row trả về.
+        const proc = await resolveProcBinding(
+          ctx.db, ctx.user.companyId, row.entityId, "get");
+        if (proc) {
+          const r = await makeInvokeProcedure({
+            db: ctx.db, companyId: ctx.user.companyId,
+            callTool: makeCallTool(ctx.db, ctx.user.companyId),
+            actorUserId: ctx.user.id,
+          })(proc, { id: input, row });
+          return r.output ?? row;
+        }
+        return row;
       }),
 
     create: rbacProcedure("create", "entity")
@@ -593,13 +638,27 @@ export const appRouter = router({
     publish: rbacProcedure("edit", "workflow")
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
-        const [wf] = await ctx.db.select({ graph: workflows.graph })
+        const [wf] = await ctx.db.select({ name: workflows.name, graph: workflows.graph })
           .from(workflows).where(and(eq(workflows.id, input),
             eq(workflows.companyId, ctx.user.companyId)));
         if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
         await ctx.db.update(workflows)
           .set({ publishedGraph: wf.graph, updatedAt: new Date() })
           .where(eq(workflows.id, input));
+        // Audit khi publish workflow chứa code-node — code chạy in-process,
+        // mức rủi ro cao hơn action thường, cần truy vết được người publish.
+        const graph = wf.graph as { nodes?: Array<{ data?: { kind?: string } }> } | null;
+        const codeCount = (graph?.nodes ?? []).filter((n) => n?.data?.kind === "code").length;
+        if (codeCount > 0) {
+          await logActivity(ctx.db, {
+            companyId: ctx.user.companyId,
+            kind: "publish_workflow_with_code",
+            objectType: "workflow",
+            target: wf.name,
+            detail: `Publish workflow có ${codeCount} code-node`,
+            actorUserId: ctx.user.id,
+          });
+        }
         return { ok: true };
       }),
 
@@ -984,6 +1043,12 @@ export const appRouter = router({
 
   /* ── Plugin registry — đăng ký/bật-tắt plugin theo công ty ── */
   plugins: pluginsRouter,
+
+  /* ── Procedure registry — native JS procedure (thay stored proc MSSQL) ── */
+  procedures: proceduresRouter,
+
+  /* ── Enum registry — reusable option set đa ngôn ngữ ── */
+  enums: enumsRouter,
 
   /* ── Embed — token nhúng builder ── */
   embed: embedRouter,

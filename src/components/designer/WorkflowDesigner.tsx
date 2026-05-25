@@ -4,7 +4,7 @@ import {
   type Node, type Edge, type Connection, type NodeProps, MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Button, Chip, FormField, Input, Select } from "@/components/ui";
+import { Button, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { I } from "@/components/Icons";
 import type { IconName } from "@/lib/object-types";
 import { pluginRegistry } from "@erp-framework/core";
@@ -23,7 +23,7 @@ const objectsClient = createObjectsClient("");
 /* (string & {}) — giữ gợi ý 6 kind builtin nhưng cho phép kind tuỳ ý
    do workflow-node plugin thêm vào. */
 type WorkflowNodeKind =
-  | "trigger" | "action" | "condition" | "agent" | "approval" | "delay"
+  | "trigger" | "action" | "condition" | "agent" | "approval" | "delay" | "code" | "procedure"
   | (string & {});
 
 interface NodePaletteItem {
@@ -41,6 +41,8 @@ const NODE_PALETTE: NodePaletteItem[] = [
   { kind: "agent",     label: "Agent",     desc: "Gọi LLM",           icon: "Sparkles", color: "var(--accent)" },
   { kind: "approval",  label: "Approval",  desc: "Chờ user duyệt",    icon: "User",     color: "var(--success)" },
   { kind: "delay",     label: "Delay",     desc: "Chờ N giây / đến giờ", icon: "Clock", color: "var(--muted)" },
+  { kind: "code",      label: "Code",      desc: "Chạy JS sandbox",   icon: "Terminal", color: "var(--accent-2)" },
+  { kind: "procedure", label: "Procedure", desc: "Gọi native procedure", icon: "Package", color: "var(--accent)" },
 ];
 
 /** Palette node = builtin + workflow-node plugin đã đăng ký trong registry. */
@@ -400,6 +402,61 @@ function WorkflowInner({ workflowId }: Props) {
                   <FormField label={t("field.approved_by")}>
                     <Input placeholder="role:manager / user:id" />
                   </FormField>
+                )}
+                {sel.data.kind === "procedure" && (
+                  <>
+                    <FormField label="Tên procedure">
+                      <Input
+                        placeholder="snake_case_name"
+                        value={typeof sel.data.config?.name === "string" ? sel.data.config.name : ""}
+                        onChange={(e) => setNodes((ns) => ns.map((n) =>
+                          n.id === sel.id
+                            ? { ...n, data: { ...n.data, config: { ...(n.data.config ?? {}), name: e.target.value } } }
+                            : n,
+                        ))}
+                      />
+                    </FormField>
+                    <FormField label="args (JSON)">
+                      <Input
+                        placeholder='{"id": 123}'
+                        value={typeof sel.data.config?.args === "string" ? sel.data.config.args : JSON.stringify(sel.data.config?.args ?? {})}
+                        onChange={(e) => {
+                          let parsed: unknown;
+                          try { parsed = JSON.parse(e.target.value); } catch { parsed = e.target.value; }
+                          setNodes((ns) => ns.map((n) =>
+                            n.id === sel.id
+                              ? { ...n, data: { ...n.data, config: { ...(n.data.config ?? {}), args: parsed } } }
+                              : n,
+                          ));
+                        }}
+                      />
+                    </FormField>
+                    <div className="text-[11px] text-muted">
+                      Output object → merge vào vars workflow. Quản lý ở <code>/procedures</code>.
+                    </div>
+                  </>
+                )}
+                {sel.data.kind === "code" && (
+                  <>
+                    <FormField label="JS code (sandbox)">
+                      <Textarea
+                        rows={12}
+                        className="!font-mono !text-xs leading-relaxed"
+                        placeholder={`// vars: workflow variables; mutate then return\nconst r = await callTool("ping", {});\nconsole.log("got", r);\nvars.result = r;\nreturn vars;`}
+                        value={typeof sel.data.config?.code === "string" ? sel.data.config.code : ""}
+                        onChange={(e) => setNodes((ns) => ns.map((n) =>
+                          n.id === sel.id
+                            ? { ...n, data: { ...n.data, config: { ...(n.data.config ?? {}), code: e.target.value } } }
+                            : n,
+                        ))}
+                      />
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      API: <code>vars</code>, <code>callTool(name, args)</code>,{" "}
+                      <code>fetch(url, init?)</code>, <code>console.log</code>.<br />
+                      Return object → merge vào vars. Timeout 5s, RAM 128MB.
+                    </div>
+                  </>
                 )}
                 <Button
                   variant="danger"

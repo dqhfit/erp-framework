@@ -32,6 +32,18 @@ export {
   type PluginSaveInput,
 } from "./plugins";
 export {
+  createProceduresClient,
+  type ProceduresClient,
+  type ProcedureSaveInput,
+  type ProcedureInvokeResult,
+} from "./procedures";
+export {
+  createEnumsClient,
+  type EnumsClient,
+  type EnumSaveInput,
+  type EnumValue,
+} from "./enums";
+export {
   createEmbedClient,
   type EmbedClient,
   type EmbedScope,

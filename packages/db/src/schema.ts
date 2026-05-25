@@ -538,6 +538,49 @@ export const backupRuns = pgTable("backup_runs", {
     .on(t.companyId, t.startedAt),
 }));
 
+/* Reusable enum (option set) — tái sử dụng giữa nhiều entity field, có
+   nhãn đa ngôn ngữ (vi/en). values JSONB:
+     Array<{ value: string, label: string, labelEn?: string }>.
+   Field type "enum"/"multi-enum" tham chiếu qua enum_id. */
+export const enums = pgTable("enums", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  label: text("label").notNull(),
+  labelEn: text("label_en"),
+  description: text("description"),
+  values: jsonb("values").notNull().default(sql`'[]'::jsonb`),
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyNameIdx: uniqueIndex("enums_company_name_idx")
+    .on(t.companyId, t.name),
+}));
+
+/* Native procedure registry: JS procedure đăng ký runtime, chạy server
+   qua isolated-vm với db/entity bindings. Thay dần stored proc MSSQL. */
+export const procedures = pgTable("procedures", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  label: text("label").notNull(),
+  description: text("description"),
+  paramsSchema: jsonb("params_schema").notNull().default(sql`'[]'::jsonb`),
+  returnSchema: jsonb("return_schema"),
+  code: text("code").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  companyNameIdx: uniqueIndex("procedures_company_name_idx")
+    .on(t.companyId, t.name),
+}));
+
 /* Mapping file local → file Drive. Tránh quét Drive mỗi lần sync. */
 export const uploadSyncState = pgTable("upload_sync_state", {
   id: uuid("id").default(sql`uuidv7()`).primaryKey(),

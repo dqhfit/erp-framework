@@ -195,6 +195,9 @@ importers:
       fastify:
         specifier: ^5.0.0
         version: 5.8.5
+      isolated-vm:
+        specifier: ^6.0.0
+        version: 6.1.2
       mqtt:
         specifier: ^5.10.1
         version: 5.15.1
@@ -2250,6 +2253,10 @@ packages:
     resolution: {integrity: sha512-yNeeynhhtIVRBk12tBV4eHNxwB42HzR4Q3Ea7vCOiJhImGaAIdIMrbJtacQlBizGLjUPw+akkFI5Dn9T70XoVQ==}
     engines: {node: '>=18'}
 
+  isolated-vm@6.1.2:
+    resolution: {integrity: sha512-GGfsHqtlZiiurZaxB/3kY7LLAXR3sgzDul0fom4cSyBjx6ZbjpTrFWiH3z/nUfLJGJ8PIq9LQmQFiAxu24+I7A==}
+    engines: {node: '>=22.0.0'}
+
   jiti@1.21.7:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
@@ -2353,6 +2360,10 @@ packages:
   nanoid@3.3.12:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  node-gyp-build@4.8.4:
+    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
     hasBin: true
 
   node-releases@2.0.44:
@@ -4719,6 +4730,10 @@ snapshots:
 
   isbot@5.1.40: {}
 
+  isolated-vm@6.1.2:
+    dependencies:
+      node-gyp-build: 4.8.4
+
   jiti@1.21.7: {}
 
   jiti@2.7.0: {}
@@ -4826,6 +4841,8 @@ snapshots:
       thenify-all: 1.6.0
 
   nanoid@3.3.12: {}
+
+  node-gyp-build@4.8.4: {}
 
   node-releases@2.0.44: {}
 

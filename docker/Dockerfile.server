@@ -23,8 +23,17 @@ COPY . .
 # Cờ này là chỉ thị tường minh → pnpm thoát 0. tsx chạy server dựa trên
 # esbuild — esbuild nạp binary qua optionalDependencies nên vẫn hoạt động.
 RUN pnpm install --filter "@erp-framework/server..." --ignore-scripts --config.minimum-release-age=0
-RUN pnpm rebuild esbuild || true
+# Rebuild các package cần native binary (esbuild + isolated-vm cho code-runner
+# sandbox + procedure-runner). isolated-vm dùng node-gyp-build, ưu tiên prebuilt
+# (Linux x64) — vẫn cần install script chạy. Cài compile tool phòng khi không có
+# prebuilt phù hợp (vd Node phiên bản mới); nếu prebuilt match thì skip nhanh.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+RUN pnpm rebuild esbuild isolated-vm
 
 EXPOSE 8910
-# Migrate → seed ERP mẫu (idempotent) → khởi động server.
-CMD ["sh", "-c", "pnpm --filter @erp-framework/db migrate && pnpm --filter @erp-framework/server seed && pnpm --filter @erp-framework/server start"]
+# Migrate đã thực thi PROGRAMMATIC trong server bootstrap (xem index.ts
+# runMigrations). Seed vẫn chạy qua CLI vì cần CEO/ERP mẫu lần đầu —
+# idempotent: lần sau không tạo lại.
+CMD ["sh", "-c", "pnpm --filter @erp-framework/server seed && pnpm --filter @erp-framework/server start"]

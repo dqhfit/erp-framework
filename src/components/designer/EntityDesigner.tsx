@@ -6,6 +6,7 @@ import { getFieldTypes } from "@/lib/field-types";
 import { McpImportModal, type McpImportResult } from "@/components/designer/McpImportModal";
 import { McpBindingsEditor, type McpBindings } from "@/components/designer/McpBindingsEditor";
 import { FormulaEditor } from "@/components/designer/FormulaEditor";
+import { EnumPicker } from "@/components/designer/EnumPicker";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { EntitySyncPanel } from "@/components/EntitySyncPanel";
 import { inferMcpBindings, countBoundOps } from "@/lib/mcp-binding-infer";
@@ -412,6 +413,35 @@ export function EntityDesigner({ entityId }: Props) {
                 />
               </div>
 
+              {/* Procedure bindings (advanced) — override per-op sang native
+                  procedure (xem /procedures). Khi set, server records.*
+                  dispatch sang procedure-runner thay vì native CRUD. */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-2">Procedure bindings (advanced)</h3>
+                <p className="text-xs text-muted mb-3">
+                  Override mỗi op bằng tên native procedure ở <code>/procedures</code>.
+                  Để trống = dùng path mặc định (native record hoặc MCP).
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {(["list", "get", "create", "update", "delete"] as const).map((op) => (
+                    <div key={op} className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                      <div className="text-xs uppercase font-mono text-muted">{op}</div>
+                      <Input
+                        placeholder={`procedure_name (chừa trống = bỏ qua)`}
+                        value={entity.procBindings?.[op] ?? ""}
+                        onChange={(e) => setEntity((cur) => ({
+                          ...cur,
+                          procBindings: {
+                            ...(cur.procBindings ?? {}),
+                            [op]: e.target.value,
+                          },
+                        }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Đồng bộ tự động theo lịch (server-side) — chỉ hiện
                   khi op 'list' đã được bind tool MCP. */}
               {entity.mcpBindings?.list?.tool && (
@@ -625,6 +655,15 @@ function FieldInspector({ field, onUpdate, onDelete, tab, setTab, siblingFields 
                 <Textarea className="font-mono" rows={4}
                   value={(field.options ?? []).join("\n")}
                   onChange={(e) => onUpdate({ options: e.target.value.split("\n").filter(Boolean) })} />
+              </FormField>
+            )}
+
+            {(field.type === "enum" || field.type === "multi-enum") && (
+              <FormField label="Enum" hint="Chọn enum tái sử dụng từ /enums. Nhãn vi/en lấy theo locale.">
+                <EnumPicker
+                  value={field.enumId}
+                  onChange={(id) => onUpdate({ enumId: id })}
+                />
               </FormField>
             )}
 
