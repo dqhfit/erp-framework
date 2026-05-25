@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Chip, FormField, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { FORMULA_FUNCTIONS, type FormulaCategory, type FormulaFn, evaluate } from "@/lib/formula";
 import { cn } from "@/lib/utils";
 /* ==========================================================
@@ -37,6 +38,7 @@ export function FormulaEditor({
   availableFields = [],
   sampleRow = {},
 }: FormulaEditorProps) {
+  const t = useT();
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [filter, setFilter] = useState("");
   const [activeCat, setActiveCat] = useState<FormulaCategory | "all">("all");
@@ -119,7 +121,7 @@ export function FormulaEditor({
       {/* Live preview */}
       <div className="rounded-md border border-border bg-bg-soft p-2.5">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted uppercase tracking-wider">Preview</span>
+          <span className="text-muted uppercase tracking-wider">{t("field.formula_preview")}</span>
           {preview.ok ? <Chip variant="success">✓ OK</Chip> : <Chip variant="danger">✗ Lỗi</Chip>}
         </div>
         <div className="mt-1 font-mono text-sm break-all">
@@ -134,7 +136,7 @@ export function FormulaEditor({
       {/* Field picker */}
       {availableFields.length > 0 && (
         <div>
-          <div className="text-[11px] uppercase text-muted mb-1 tracking-wider">Chèn field</div>
+          <div className="text-[11px] uppercase text-muted mb-1 tracking-wider">{t("field.insert_field")}</div>
           <div className="flex flex-wrap gap-1.5">
             {availableFields.map((f) => (
               <button

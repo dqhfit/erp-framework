@@ -5,6 +5,7 @@
    ========================================================== */
 import { I } from "@/components/Icons";
 import { Chip } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function FieldRow({
   idx,
   onReorder,
 }: FieldRowProps) {
+  const t = useT();
   const ft = getFieldTypes().find((f) => f.id === field.type) ?? getFieldTypes()[0]!;
   const IC = I[ft.icon] ?? I.Type;
   const [dragging, setDragging] = useState(false);
@@ -75,7 +77,7 @@ export function FieldRow({
         <span className="font-mono text-[11px] text-muted truncate">{field.name}</span>
       </div>
       <Chip>{ft.name}</Chip>
-      {field.required && <Chip variant="warning">Required</Chip>}
+      {field.required && <Chip variant="warning">{t("field.required")}</Chip>}
       {field.type === "lookup" && field.ref && <Chip variant="accent">→ {field.ref}</Chip>}
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
         <button
@@ -85,7 +87,7 @@ export function FieldRow({
             onDuplicate();
           }}
           className="w-6 h-6 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted"
-          title="Duplicate"
+          title={t("field.duplicate")}
         >
           <I.Copy size={12} />
         </button>
@@ -96,7 +98,7 @@ export function FieldRow({
             onDelete();
           }}
           className="w-6 h-6 rounded-sm hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger"
-          title="Delete"
+          title={t("field.delete_btn")}
         >
           <I.Trash size={12} />
         </button>

@@ -278,7 +278,7 @@ export function EntityDesigner({ entityId }: Props) {
           </div>
         </div>
         <span className="text-muted text-xs">/</span>
-        <span className="text-xs text-muted">Entity Designer</span>
+        <span className="text-xs text-muted">{t("designer.entity_designer")}</span>
         <div className="flex-1" />
         <Button
           variant="default"
@@ -310,15 +310,15 @@ export function EntityDesigner({ entityId }: Props) {
         )}
         <div className="w-px h-5 bg-border mx-1" />
         <Button variant="ghost" size="sm" icon={<I.Undo size={13} />}>
-          Undo
+          {t("designer.undo")}
         </Button>
-        <Button variant="ghost" size="sm" icon={<I.Redo size={13} />} title="Redo" />
+        <Button variant="ghost" size="sm" icon={<I.Redo size={13} />} title={t("designer.redo")} />
         <div className="w-px h-5 bg-border mx-1" />
         <Button variant="ghost" size="sm" icon={<I.Play size={13} />}>
-          Form
+          {t("designer.form_btn")}
         </Button>
         <Button variant="default" size="sm" icon={<I.Eye size={13} />}>
-          Preview
+          {t("designer.preview")}
         </Button>
         <Button
           variant="primary"
@@ -342,7 +342,7 @@ export function EntityDesigner({ entityId }: Props) {
           <div className="w-[220px] shrink-0 border-r border-border bg-panel flex flex-col">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-                Field types
+                {t("designer.field_types")}
               </div>
               <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_list")}</div>
             </div>
@@ -390,7 +390,7 @@ export function EntityDesigner({ entityId }: Props) {
             <div className="max-w-[760px] mx-auto py-6 px-6">
               <div className="flex items-baseline justify-between mb-3">
                 <div>
-                  <div className="text-lg font-semibold">Schema fields</div>
+                  <div className="text-lg font-semibold">{t("designer.schema_fields")}</div>
                   <div className="text-xs text-muted">{t("designer.field_list_hint")}</div>
                 </div>
                 <div className="text-xs text-muted">{entity.fields.length} fields</div>
@@ -467,13 +467,10 @@ export function EntityDesigner({ entityId }: Props) {
               {/* MCP bindings */}
               <div className="mt-8">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">MCP bindings</h3>
-                  <span className="text-[11px] text-muted font-mono">prefix: {entity.mcp}</span>
+                  <h3 className="text-lg font-semibold">{t("entity.mcp_bindings")}</h3>
+                  <span className="text-[11px] text-muted font-mono">{t("entity.mcp_prefix", { prefix: entity.mcp })}</span>
                 </div>
-                <p className="text-xs text-muted mb-3">
-                  Map 5 op sang tool MCP. Mỗi tool nhận args theo 3 nguồn: literal, field của
-                  entity, hoặc formula.
-                </p>
+                <p className="text-xs text-muted mb-3">{t("entity.mcp_desc")}</p>
                 <McpBindingsEditor
                   value={entity.mcpBindings ?? {}}
                   onChange={(b: McpBindings) => setEntity((e) => ({ ...e, mcpBindings: b }))}
@@ -486,17 +483,14 @@ export function EntityDesigner({ entityId }: Props) {
                   procedure (xem /procedures). Khi set, server records.*
                   dispatch sang procedure-runner thay vì native CRUD. */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-2">Procedure bindings (advanced)</h3>
-                <p className="text-xs text-muted mb-3">
-                  Override mỗi op bằng tên native procedure ở <code>/procedures</code>. Để trống =
-                  dùng path mặc định (native record hoặc MCP).
-                </p>
+                <h3 className="text-lg font-semibold mb-2">{t("designer.proc_bindings")}</h3>
+                <p className="text-xs text-muted mb-3">{t("designer.proc_bindings_desc")}</p>
                 <div className="grid grid-cols-1 gap-2">
                   {(["list", "get", "create", "update", "delete"] as const).map((op) => (
                     <div key={op} className="grid grid-cols-[80px_1fr] gap-2 items-center">
                       <div className="text-xs uppercase font-mono text-muted">{op}</div>
                       <Input
-                        placeholder={"procedure_name (chừa trống = bỏ qua)"}
+                        placeholder={t("designer.proc_placeholder")}
                         value={entity.procBindings?.[op] ?? ""}
                         onChange={(e) =>
                           setEntity((cur) => ({

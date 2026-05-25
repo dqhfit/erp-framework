@@ -334,7 +334,7 @@ function WorkflowInner({ workflowId }: Props) {
           icon={<I.Play size={13} />}
           onClick={() => setRunOpen(true)}
         >
-          Chạy thử / Vận hành
+          {t("designer.workflow_run_btn")}
         </Button>
         <Button variant="default" size="sm" icon={<I.Send size={13} />} onClick={publish}>
           Publish
@@ -344,7 +344,7 @@ function WorkflowInner({ workflowId }: Props) {
         </Button>
         {published && (
           <span className="text-xs text-accent flex items-center gap-1">
-            <I.Bolt size={11} /> Đã publish
+            <I.Bolt size={11} /> {t("designer.published")}
           </span>
         )}
         {saved && (
@@ -400,7 +400,7 @@ function WorkflowInner({ workflowId }: Props) {
           <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-                Nodes
+                {t("designer.nodes")}
               </div>
               <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
             </div>
@@ -485,7 +485,7 @@ function WorkflowInner({ workflowId }: Props) {
           <aside className="w-[280px] shrink-0 border-l border-border bg-panel overflow-y-auto">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-                Inspector
+                {t("designer.inspector")}
               </div>
             </div>
             {sel ? (
@@ -504,13 +504,13 @@ function WorkflowInner({ workflowId }: Props) {
                     }
                   />
                 </FormField>
-                <FormField label="Loại node">
+                <FormField label={t("designer.node_type")}>
                   <div className="h-9 px-3 flex items-center text-sm border border-border rounded-md bg-bg-soft">
                     <Chip variant="accent">{sel.data.kind}</Chip>
                   </div>
                 </FormField>
                 {sel.data.kind === "action" && (
-                  <FormField label="MCP Tool">
+                  <FormField label={t("designer.mcp_tool")}>
                     <Select>
                       <option>sales.order.list</option>
                       <option>sales.order.create</option>
@@ -541,7 +541,7 @@ function WorkflowInner({ workflowId }: Props) {
                 )}
                 {sel.data.kind === "procedure" && (
                   <>
-                    <FormField label="Tên procedure">
+                    <FormField label={t("designer.proc_name_field")}>
                       <Input
                         placeholder="snake_case_name"
                         value={

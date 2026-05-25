@@ -196,10 +196,10 @@ export function PageDesigner({ pageId }: Props) {
           AI Assist
         </Button>
         <Button variant="ghost" size="sm" icon={<I.Undo size={13} />}>
-          Undo
+          {t("designer.undo")}
         </Button>
         <Button variant="default" size="sm" icon={<I.Eye size={13} />}>
-          Preview
+          {t("designer.preview")}
         </Button>
         <Button variant="primary" size="sm" icon={<I.Save size={13} />} onClick={save}>
           {t("designer.save_with_shortcut")}
@@ -249,7 +249,7 @@ export function PageDesigner({ pageId }: Props) {
           <div className="w-[180px] shrink-0 border-r border-border bg-panel flex flex-col">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-                Components
+                {t("designer.components")}
               </div>
               <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
             </div>
@@ -323,15 +323,15 @@ export function PageDesigner({ pageId }: Props) {
         {!isConsumer && inspectorVisible && (
           <aside className="w-[280px] shrink-0 border-l border-border bg-panel flex flex-col">
             <div className="h-11 shrink-0 px-3 flex items-center border-b border-border text-sm font-semibold">
-              Inspector
+              {t("designer.inspector")}
             </div>
             {sel ? (
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <FormField label="Type">
+                <FormField label={t("designer.comp_type")}>
                   <Chip variant="accent">{sel.kind}</Chip>
                 </FormField>
                 <div className="grid grid-cols-2 gap-2">
-                  <FormField label="Width">
+                  <FormField label={t("field.width")}>
                     <Input
                       type="number"
                       min="1"
@@ -344,7 +344,7 @@ export function PageDesigner({ pageId }: Props) {
                       }
                     />
                   </FormField>
-                  <FormField label="Height">
+                  <FormField label={t("designer.comp_height")}>
                     <Input
                       type="number"
                       min="1"
@@ -391,7 +391,7 @@ export function PageDesigner({ pageId }: Props) {
                         <option value="doughnut">Doughnut</option>
                       </Select>
                     </FormField>
-                    <FormField label="Nhóm theo field">
+                    <FormField label={t("designer.chart_group_field")}>
                       <Input
                         value={(sel.config.groupBy as string) ?? ""}
                         placeholder="vd: status"
@@ -400,7 +400,7 @@ export function PageDesigner({ pageId }: Props) {
                         }
                       />
                     </FormField>
-                    <FormField label="Field giá trị (trống = đếm)">
+                    <FormField label={t("designer.chart_value_field")}>
                       <Input
                         value={(sel.config.valueField as string) ?? ""}
                         placeholder="vd: tong_tien"

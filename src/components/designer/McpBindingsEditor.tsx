@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
 /* ==========================================================
    McpBindingsEditor — Editor cho mapping arg của 5 op MCP.
@@ -69,6 +70,7 @@ export function McpBindingsEditor({
   availableTools = [],
   toolPrefix = "",
 }: McpBindingsEditorProps) {
+  const t = useT();
   const [openOp, setOpenOp] = useState<McpOp | null>("list");
 
   const update = (op: McpOp, patch: Partial<McpOpBinding>) => {
@@ -128,7 +130,7 @@ export function McpBindingsEditor({
                         value={binding?.tool ?? ""}
                         onChange={(e) => update(op, { tool: e.target.value })}
                       >
-                        <option value="">— chọn tool —</option>
+                        <option value="">{t("designer.mcp_choose_tool")}</option>
                         {availableTools.map((t) => (
                           <option key={t} value={t}>
                             {t}
@@ -149,7 +151,7 @@ export function McpBindingsEditor({
                 {/* Args table */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="text-[11px] uppercase text-muted tracking-wider">Tham số</div>
+                    <div className="text-[11px] uppercase text-muted tracking-wider">{t("designer.mcp_params")}</div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -162,7 +164,7 @@ export function McpBindingsEditor({
                         update(op, { args });
                       }}
                     >
-                      Thêm arg
+                      {t("designer.mcp_add_arg")}
                     </Button>
                   </div>
 
@@ -191,10 +193,11 @@ interface ArgsTableProps {
   onChange: (next: McpArg[]) => void;
 }
 function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
+  const t = useT();
   if (args.length === 0) {
     return (
       <div className="text-xs text-muted italic p-3 border border-dashed border-border rounded-sm text-center">
-        Chưa có arg
+        {t("designer.mcp_no_args")}
       </div>
     );
   }
@@ -206,9 +209,9 @@ function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
   return (
     <div className="border border-border rounded-md overflow-hidden">
       <div className="grid grid-cols-[1fr_120px_2fr_28px] text-[10px] uppercase text-muted bg-panel-2 px-2 py-1 gap-2">
-        <div>Key</div>
-        <div>Nguồn</div>
-        <div>Giá trị</div>
+        <div>{t("designer.mcp_key")}</div>
+        <div>{t("designer.mcp_source")}</div>
+        <div>{t("designer.mcp_value")}</div>
         <div />
       </div>
       {args.map((a, i) => (
@@ -237,7 +240,7 @@ function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
               value={a.value}
               onChange={(e) => upd(i, { value: e.target.value })}
             >
-              <option value="">— chọn field —</option>
+              <option value="">{t("designer.mcp_choose_field")}</option>
               {fieldKeys.map((k) => (
                 <option key={k} value={k}>
                   {k}

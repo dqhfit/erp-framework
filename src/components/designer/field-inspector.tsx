@@ -45,7 +45,7 @@ export function FieldInspector({
     return (
       <aside className="w-[320px] shrink-0 border-l border-border bg-panel flex flex-col">
         <div className="h-11 shrink-0 px-3 flex items-center border-b border-border text-sm font-semibold">
-          Inspector
+          {t("designer.inspector")}
         </div>
         <div className="flex-1 flex items-center justify-center text-center px-6 text-sm text-muted">
           {t("designer.select_field")}
@@ -69,7 +69,7 @@ export function FieldInspector({
           type="button"
           onClick={onDelete}
           className="w-7 h-7 rounded-sm hover:bg-danger/15 text-muted hover:text-danger flex items-center justify-center"
-          title="Delete field"
+          title={t("field.delete")}
         >
           <I.Trash size={13} />
         </button>
@@ -78,9 +78,9 @@ export function FieldInspector({
         value={tab}
         onChange={setTab}
         options={[
-          { value: "data", label: "Data" },
-          { value: "style", label: "Style" },
-          { value: "events", label: "Events" },
+          { value: "data", label: t("field.tab_data") },
+          { value: "style", label: t("field.tab_style") },
+          { value: "events", label: t("field.tab_events") },
         ]}
       />
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -89,7 +89,7 @@ export function FieldInspector({
             <FormField label={t("field.label")}>
               <Input value={field.label} onChange={(e) => onUpdate({ label: e.target.value })} />
             </FormField>
-            <FormField label="Label (en)" hint="i18n nhãn tiếng Anh — vắng = fallback xuống label">
+            <FormField label={t("field.label_en")} hint={t("field.label_en_hint")}>
               <Input
                 value={field.labelEn ?? ""}
                 placeholder="Optional English label"
@@ -114,11 +114,11 @@ export function FieldInspector({
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
-                <span className="text-sm">Required</span>
+                <span className="text-sm">{t("field.required")}</span>
                 <Switch checked={!!field.required} onChange={(v) => onUpdate({ required: v })} />
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
-                <span className="text-sm">Unique</span>
+                <span className="text-sm">{t("field.unique")}</span>
                 <Switch checked={false} onChange={() => {}} />
               </div>
             </div>
@@ -138,8 +138,8 @@ export function FieldInspector({
 
             {(field.type === "enum" || field.type === "multi-enum") && (
               <FormField
-                label="Enum"
-                hint="Chọn enum tái sử dụng từ /enums. Nhãn vi/en lấy theo locale."
+                label={t("field.enum")}
+                hint={t("field.enum_hint")}
               >
                 <EnumPicker value={field.enumId} onChange={(id) => onUpdate({ enumId: id })} />
               </FormField>
@@ -147,7 +147,7 @@ export function FieldInspector({
 
             {(field.type === "lookup" || field.type === "multi-lookup") && (
               <>
-                <FormField label="Reference entity">
+                <FormField label={t("field.ref_entity")}>
                   <Select
                     value={field.ref ?? ""}
                     onChange={(e) => onUpdate({ ref: e.target.value })}
@@ -161,16 +161,16 @@ export function FieldInspector({
                   </Select>
                 </FormField>
                 <FormField
-                  label="Khi record đích bị xoá"
-                  hint="restrict: chặn xoá (mặc định) · setnull: xoá ref · cascade: soft-delete chuỗi"
+                  label={t("field.on_delete")}
+                  hint={t("field.on_delete_hint")}
                 >
                   <Select
                     value={(field as { onDelete?: string }).onDelete ?? "restrict"}
                     onChange={(e) => onUpdate({ onDelete: e.target.value } as Partial<EntityField>)}
                   >
-                    <option value="restrict">Restrict (chặn)</option>
-                    <option value="setnull">Set null</option>
-                    <option value="cascade">Cascade (xoá chuỗi)</option>
+                    <option value="restrict">{t("field.restrict")}</option>
+                    <option value="setnull">{t("field.setnull")}</option>
+                    <option value="cascade">{t("field.cascade")}</option>
                   </Select>
                 </FormField>
               </>
@@ -178,7 +178,7 @@ export function FieldInspector({
 
             {field.type === "sequence" && (
               <>
-                <FormField label="Prefix" hint='vd "INV-" → INV-0001'>
+                <FormField label={t("field.seq_prefix")} hint={t("field.seq_prefix_hint")}>
                   <Input
                     value={field.sequencePrefix ?? ""}
                     placeholder="INV-"
@@ -187,7 +187,7 @@ export function FieldInspector({
                     }
                   />
                 </FormField>
-                <FormField label="Padding" hint="Số chữ số tối thiểu, vd 4 → 0001">
+                <FormField label={t("field.seq_padding")} hint={t("field.seq_padding_hint")}>
                   <Input
                     type="number"
                     min={0}
@@ -202,7 +202,7 @@ export function FieldInspector({
             )}
 
             {/* Governance controls — áp dụng cho mọi field type. */}
-            <FormField label="Governance">
+            <FormField label={t("field.governance")}>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -210,7 +210,7 @@ export function FieldInspector({
                     checked={!!field.unique}
                     onChange={(e) => onUpdate({ unique: e.target.checked } as Partial<EntityField>)}
                   />
-                  Unique (chặn trùng giá trị)
+                  {t("field.unique_constraint")}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -220,13 +220,13 @@ export function FieldInspector({
                       onUpdate({ searchable: e.target.checked } as Partial<EntityField>)
                     }
                   />
-                  Searchable (full-text search)
+                  {t("field.searchable")}
                 </label>
               </div>
             </FormField>
             <FormField
-              label="Đọc bởi (Read RBAC)"
-              hint="Bỏ chọn hết = mọi role có quyền entity đều đọc"
+              label={t("field.read_rbac")}
+              hint={t("field.read_rbac_hint")}
             >
               <div className="flex gap-3 text-sm">
                 {(["admin", "editor", "viewer"] as const).map((r) => {
@@ -249,7 +249,7 @@ export function FieldInspector({
                 })}
               </div>
             </FormField>
-            <FormField label="Ghi bởi (Write RBAC)" hint="Tương tự, bỏ chọn = mở">
+            <FormField label={t("field.write_rbac")} hint={t("field.write_rbac_hint")}>
               <div className="flex gap-3 text-sm">
                 {(["admin", "editor", "viewer"] as const).map((r) => {
                   const cur = field.writableBy ?? [];
@@ -295,7 +295,7 @@ export function FieldInspector({
 
         {tab === "style" && (
           <>
-            <FormField label="Width">
+            <FormField label={t("field.width")}>
               <div className="grid grid-cols-3 gap-1">
                 {["1/3", "1/2", "Full"].map((w) => (
                   <button
@@ -308,13 +308,13 @@ export function FieldInspector({
                 ))}
               </div>
             </FormField>
-            <FormField label="Placeholder">
+            <FormField label={t("field.placeholder")}>
               <Input />
             </FormField>
             <FormField label={t("field.help_pos")}>
               <Select defaultValue="below">
                 <option value="below">{t("field.help_below")}</option>
-                <option value="tooltip">Trong tooltip</option>
+                <option value="tooltip">{t("field.help_tooltip")}</option>
               </Select>
             </FormField>
           </>
@@ -322,14 +322,14 @@ export function FieldInspector({
 
         {tab === "events" && (
           <>
-            <FormField label="onChange">
+            <FormField label={t("field.on_change")}>
               <Textarea
                 className="font-mono"
                 rows={4}
                 defaultValue={"// vd: chạy workflow validate\nrun('validate_field', { value })"}
               />
             </FormField>
-            <FormField label="onSubmit hook">
+            <FormField label={t("field.on_submit_hook")}>
               <Select>
                 <option>— none —</option>
                 <option>w_approve_big_order</option>
