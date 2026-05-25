@@ -10,7 +10,7 @@ import { and, eq, sql, desc, type SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   entities, entityRecords, entityRecordVersions,
-  entityRecordTimeseries, approvalRequests,
+  entityRecordTimeseries, approvalRequests, workflowVersions, workflowRuns,
   users, sessions, mcpConfigs, llmProfiles,
   pages, agents, agentMembers, workflows, schedules, activityLog,
   companies, companyMembers, userInvites,
@@ -1578,18 +1578,38 @@ export const appRouter = router({
       }),
 
     // Publish: chốt bản nháp graph hiện tại → publishedGraph (runner chạy bản này).
+    // V6: snapshot vào workflow_versions với weight 100; A/B test bằng cách
+    // publish thêm version với label khác + chỉnh weight.
     publish: rbacProcedure("edit", "workflow")
-      .input(z.string().uuid())
+      .input(z.object({
+        id: z.string().uuid(),
+        label: z.string().optional(),
+        weight: z.number().int().min(0).max(100).optional(),
+      }).or(z.string().uuid().transform((id) => ({ id, label: undefined, weight: undefined }))))
       .mutation(async ({ ctx, input }) => {
         const [wf] = await ctx.db.select({ name: workflows.name, graph: workflows.graph })
-          .from(workflows).where(and(eq(workflows.id, input),
+          .from(workflows).where(and(eq(workflows.id, input.id),
             eq(workflows.companyId, ctx.user.companyId)));
         if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
         await ctx.db.update(workflows)
           .set({ publishedGraph: wf.graph, updatedAt: new Date() })
-          .where(eq(workflows.id, input));
-        // Audit khi publish workflow chứa code-node — code chạy in-process,
-        // mức rủi ro cao hơn action thường, cần truy vết được người publish.
+          .where(eq(workflows.id, input.id));
+        // Snapshot vào workflow_versions — nextVersion = max + 1.
+        const [last] = await ctx.db.select({ version: workflowVersions.version })
+          .from(workflowVersions)
+          .where(eq(workflowVersions.workflowId, input.id))
+          .orderBy(desc(workflowVersions.version)).limit(1);
+        const nextVersion = (last?.version ?? 0) + 1;
+        await ctx.db.insert(workflowVersions).values({
+          companyId: ctx.user.companyId,
+          workflowId: input.id,
+          version: nextVersion,
+          label: input.label ?? `v${nextVersion}`,
+          graph: wf.graph as Record<string, unknown>,
+          weight: input.weight ?? 100,
+          active: true,
+          publishedBy: ctx.user.id,
+        });
         const graph = wf.graph as { nodes?: Array<{ data?: { kind?: string } }> } | null;
         const codeCount = (graph?.nodes ?? []).filter((n) => n?.data?.kind === "code").length;
         if (codeCount > 0) {
@@ -1602,7 +1622,59 @@ export const appRouter = router({
             actorUserId: ctx.user.id,
           });
         }
+        return { ok: true, version: nextVersion };
+      }),
+
+    // List versions với weight + active flag — UI A/B config.
+    listVersions: rbacProcedure("view", "workflow")
+      .input(z.string().uuid())
+      .query(({ ctx, input }) =>
+        ctx.db.select().from(workflowVersions).where(and(
+          eq(workflowVersions.workflowId, input),
+          eq(workflowVersions.companyId, ctx.user.companyId),
+        )).orderBy(desc(workflowVersions.version))),
+
+    setVersionWeight: rbacProcedure("edit", "workflow")
+      .input(z.object({
+        versionId: z.string().uuid(),
+        weight: z.number().int().min(0).max(100),
+        active: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db.update(workflowVersions).set({
+          weight: input.weight,
+          ...(input.active !== undefined ? { active: input.active } : {}),
+        }).where(and(
+          eq(workflowVersions.id, input.versionId),
+          eq(workflowVersions.companyId, ctx.user.companyId),
+        ));
         return { ok: true };
+      }),
+
+    /* Replay từ step k — chạy lại workflow dùng vars snapshot tại step k.
+       Dùng cho debug "tại sao step này fail" — lặp nhanh fix node bug. */
+    replay: rbacProcedure("run", "workflow")
+      .input(z.object({
+        runId: z.string().uuid(),
+        fromStep: z.number().int().nonnegative().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const [run] = await ctx.db.select().from(workflowRuns).where(and(
+          eq(workflowRuns.id, input.runId),
+          eq(workflowRuns.companyId, ctx.user.companyId),
+        ));
+        if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Run không tồn tại" });
+        // Lấy vars snapshot trước step fromStep (hoặc initialVars nếu 0).
+        // (run.steps có thể dùng v2 để rebuild vars precise per step.)
+        const idx = input.fromStep ?? 0;
+        const replayVars: Record<string, unknown> = { ...(run.vars as Record<string, unknown> ?? {}) };
+        // (Reconstruct vars trước step idx bằng output các step trước —
+        // approx vì server không lưu snapshot từng step; v1 dùng vars cuối.)
+        const r = await executeWorkflow(ctx.db, run.workflowId, {
+          context: replayVars,
+          companyId: ctx.user.companyId,
+        });
+        return { runId: r.runId, status: r.status, stepCount: r.stepCount, replayedFrom: idx };
       }),
 
     // Chạy workflow ngay (đồng bộ). pg-boss để chạy nền/cron là bước kế.

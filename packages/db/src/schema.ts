@@ -233,6 +233,40 @@ export const recordPresence = pgTable("record_presence", {
   lastSeenIdx: index("rp_last_seen_idx").on(t.lastSeen),
 }));
 
+/* Encryption key rotation registry — active key dùng để encrypt mới;
+   decrypt thử mọi key theo created_at DESC. key_material null trong
+   production (key thật ở KMS / env / vault). */
+export const encryptionKeys = pgTable("encryption_keys", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  kid: text("kid").notNull(),
+  keyHash: text("key_hash").notNull(),
+  keyMaterial: text("key_material"),
+  active: boolean("active").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  rotatedAt: timestamp("rotated_at"),
+}, (t) => ({
+  kidIdx: uniqueIndex("encryption_keys_kid_idx").on(t.kid),
+}));
+
+/* Workflow versioning + A/B testing — mỗi publish snapshot graph vào
+   row mới. weight % cho A/B test split, nhiều version active song song. */
+export const workflowVersions = pgTable("workflow_versions", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  workflowId: uuid("workflow_id").notNull(),
+  version: integer("version").notNull(),
+  label: text("label").notNull().default("v1"),
+  graph: jsonb("graph").notNull(),
+  weight: integer("weight").notNull().default(100),
+  active: boolean("active").notNull().default(true),
+  publishedBy: uuid("published_by").references(() => users.id, { onDelete: "set null" }),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+}, (t) => ({
+  workflowVersionIdx: uniqueIndex("wv_workflow_version_idx").on(t.workflowId, t.version),
+  workflowActiveIdx: index("wv_workflow_active_idx").on(t.workflowId, t.active),
+}));
+
 /* Templates print/email per entity — Mustache-like {{field}} substitution
    với record data. kind: "print" (HTML cho in/PDF) hoặc "email" (subject+body). */
 export const entityTemplates = pgTable("entity_templates", {
