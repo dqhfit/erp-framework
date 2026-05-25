@@ -24,6 +24,37 @@ export type ObjectType =
   | "feedback";
 
 export const ALL_ROLES: Role[] = ["admin", "editor", "viewer"];
+export const ALL_ACTIONS: Action[] = ["view", "create", "edit", "delete", "run"];
+
+/** Danh sách ObjectType — dùng cho UI hiển thị + permissionsOf(). */
+export const ALL_OBJECT_TYPES: ObjectType[] = [
+  "entity",
+  "page",
+  "workflow",
+  "agent",
+  "settings",
+  "activity",
+  "rbac",
+  "company",
+  "knowledge",
+  "iot",
+  "procedure",
+  "enum",
+  "feedback",
+];
+
+/** Nhãn hiển thị (VI) cho role — UI labels. */
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Quản trị viên",
+  editor: "Biên tập viên",
+  viewer: "Người xem",
+};
+
+export const ROLE_DESC: Record<Role, string> = {
+  admin: "Toàn quyền: tạo/sửa/xóa mọi thứ, quản lý role và cấu hình hệ thống.",
+  editor: "Tạo/sửa/chạy entity, page, workflow, agent. Không xóa, không đổi cấu hình.",
+  viewer: "Chỉ xem và chạy workflow/agent. Không chỉnh sửa.",
+};
 
 /** Ma trận quyền: role → danh sách rule "action:object" ("*" = mọi). */
 const MATRIX: Record<Role, string[]> = {
@@ -70,6 +101,17 @@ export function roleCan(role: Role, action: Action, obj: ObjectType): boolean {
     const [a, o] = rule.split(":");
     return (a === "*" || a === action) && (o === "*" || o === obj);
   });
+}
+
+/** Liệt kê toàn bộ quyền (dạng "action:object") mà role có — cho UI hiển thị. */
+export function permissionsOf(role: Role): string[] {
+  const out: string[] = [];
+  for (const obj of ALL_OBJECT_TYPES) {
+    for (const action of ALL_ACTIONS) {
+      if (roleCan(role, action, obj)) out.push(`${action}:${obj}`);
+    }
+  }
+  return out;
 }
 
 /** Field-level RBAC — kiểm tra role có được đọc/ghi field theo cờ
