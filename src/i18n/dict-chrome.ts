@@ -16,6 +16,8 @@ export const chromeVi: Dict = {
   "sidebar.plugins": "Plugin",
   "sidebar.embed": "Nhúng (Embed)",
   "sidebar.logout": "Đăng xuất",
+  "topbar.user_menu_companies": "Quản lý công ty",
+  "topbar.user_menu_llm": "Cài đặt LLM",
 
   // topbar — title/nhãn còn sót
   "topbar.mcp_connected": "MCP đã kết nối",
@@ -102,6 +104,8 @@ export const chromeEn: Dict = {
   "sidebar.plugins": "Plugins",
   "sidebar.embed": "Embed",
   "sidebar.logout": "Log out",
+  "topbar.user_menu_companies": "Manage companies",
+  "topbar.user_menu_llm": "LLM settings",
 
   // topbar
   "topbar.mcp_connected": "MCP connected",

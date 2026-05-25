@@ -9,7 +9,7 @@ import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function Topbar() {
   const t = useT();
@@ -39,6 +39,27 @@ export function Topbar() {
     : null;
   const [primaryPickOpen, setPrimaryPickOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!userMenuRef.current?.contains(e.target as Node)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [userMenuOpen]);
+
+  const initials = user?.name
+    ?.split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() ?? "?";
 
   return (
     <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
@@ -182,13 +203,81 @@ export function Topbar() {
         title={t("topbar.tweaks")}
       />
 
-      <button
-        className="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-        style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}
-        title="Toàn Vũ — Admin"
-      >
-        TV
-      </button>
+      {/* User avatar + dropdown menu */}
+      <div ref={userMenuRef} className="relative ml-1 shrink-0">
+        <button
+          type="button"
+          onClick={() => setUserMenuOpen((o) => !o)}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent hover:ring-accent/40 transition-all"
+          style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}
+          title={user?.name ?? ""}
+        >
+          {initials}
+        </button>
+
+        {userMenuOpen && (
+          <div className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-border bg-panel shadow-lg z-[200] overflow-hidden">
+            {/* User info header */}
+            <div className="px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+                  }}
+                >
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{user?.name}</div>
+                  <div className="text-xs text-muted truncate">{user?.email}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div className="py-1">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-hover/40 transition-colors text-left"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  navigate({ to: "/settings/companies" });
+                }}
+              >
+                <I.Briefcase size={14} className="text-muted shrink-0" />
+                {t("topbar.user_menu_companies")}
+              </button>
+              <button
+                type="button"
+                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-hover/40 transition-colors text-left"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  navigate({ to: "/settings/llm" });
+                }}
+              >
+                <I.Sparkles size={14} className="text-muted shrink-0" />
+                {t("topbar.user_menu_llm")}
+              </button>
+            </div>
+
+            <div className="border-t border-border py-1">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-danger/10 text-danger transition-colors text-left"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  void logout();
+                }}
+              >
+                <I.LogOut size={14} className="shrink-0" />
+                {t("sidebar.logout")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
