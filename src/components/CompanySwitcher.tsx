@@ -1,3 +1,8 @@
+import { I } from "@/components/Icons";
+import { Chip } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { createCompaniesClient } from "@erp-framework/client";
+import { useNavigate } from "@tanstack/react-router";
 /* ==========================================================
    CompanySwitcher — Nút chuyển công ty trên Topbar (đa công ty).
    Liệt kê các công ty user là thành viên; chọn công ty khác →
@@ -5,11 +10,6 @@
    theo công ty mới.
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { createCompaniesClient } from "@erp-framework/client";
-import { I } from "@/components/Icons";
-import { Chip } from "@/components/ui";
-import { useT } from "@/hooks/useT";
 
 const companiesClient = createCompaniesClient("");
 
@@ -30,9 +30,12 @@ export function CompanySwitcher() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    companiesClient.list()
+    companiesClient
+      .list()
       .then((rows) => setItems(rows as CompanyItem[]))
-      .catch(() => { /* chưa đăng nhập / chưa có công ty */ });
+      .catch(() => {
+        /* chưa đăng nhập / chưa có công ty */
+      });
   }, []);
 
   useEffect(() => {
@@ -93,7 +96,10 @@ export function CompanySwitcher() {
           ))}
           <div className="border-t border-border mt-1 pt-1">
             <button
-              onClick={() => { setOpen(false); void navigate({ to: "/settings/companies" }); }}
+              onClick={() => {
+                setOpen(false);
+                void navigate({ to: "/settings/companies" });
+              }}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover/50 text-left"
             >
               <I.Settings size={14} className="text-muted" />

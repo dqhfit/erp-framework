@@ -1,18 +1,18 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
+import {
+  type FeedbackCommentRow,
+  type FeedbackDetail,
+  type FeedbackStatus,
+  createFeedbackClient,
+} from "@erp-framework/client";
 /* ==========================================================
    /feedback/$id — Chi tiết 1 feedback: vote, AI summary/tags,
    comments thread, admin đổi status.
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  Button, Card, Chip, FormField, Input, Select, Textarea,
-} from "@/components/ui";
-import { I } from "@/components/Icons";
-import { useAuth } from "@/stores/auth";
-import {
-  createFeedbackClient,
-  type FeedbackCommentRow, type FeedbackDetail, type FeedbackStatus,
-} from "@erp-framework/client";
 
 const client = createFeedbackClient("");
 
@@ -44,66 +44,99 @@ function FeedbackDetailRoute() {
   const [resolution, setResolution] = useState("");
 
   const load = () => {
-    client.get(id).then((d) => {
-      setFb(d);
-      setNewStatus(d.status);
-      setResolution(d.resolutionNote ?? "");
-    }).catch((e) => setErr((e as Error).message));
-    client.listComments(id).then(setComments).catch(() => {});
+    client
+      .get(id)
+      .then((d) => {
+        setFb(d);
+        setNewStatus(d.status);
+        setResolution(d.resolutionNote ?? "");
+      })
+      .catch((e) => setErr((e as Error).message));
+    client
+      .listComments(id)
+      .then(setComments)
+      .catch(() => {});
   };
   useEffect(load, [id]);
 
-  const vote = () => void (async () => {
-    if (!fb) return;
-    setBusy(true);
-    try {
-      if (fb.myVote) await client.unvote(id); else await client.vote(id);
-      load();
-    } finally { setBusy(false); }
-  })();
+  const vote = () =>
+    void (async () => {
+      if (!fb) return;
+      setBusy(true);
+      try {
+        if (fb.myVote) await client.unvote(id);
+        else await client.vote(id);
+        load();
+      } finally {
+        setBusy(false);
+      }
+    })();
 
   const submitComment = async () => {
     if (!commentBody.trim()) return;
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       await client.addComment({ feedbackId: id, body: commentBody });
       setCommentBody("");
       load();
-    } catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const applyStatus = async () => {
     if (!fb || newStatus === fb.status) return;
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       await client.setStatus({
-        id, status: newStatus,
+        id,
+        status: newStatus,
         resolutionNote: resolution.trim() || undefined,
       });
       load();
-    } catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!fb && !err) return <div className="p-6 text-sm text-muted">Đang tải…</div>;
-  if (err && !fb) return <div className="p-6"><Chip variant="danger">{err}</Chip></div>;
+  if (err && !fb)
+    return (
+      <div className="p-6">
+        <Chip variant="danger">{err}</Chip>
+      </div>
+    );
   if (!fb) return null;
 
   return (
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-6">
         <div className="flex items-center gap-2 mb-3">
-          <Button size="sm" variant="default" icon={<I.ChevronLeft size={14} />}
-            onClick={() => void nav({ to: "/feedback" })}>Quay lại</Button>
+          <Button
+            size="sm"
+            variant="default"
+            icon={<I.ChevronLeft size={14} />}
+            onClick={() => void nav({ to: "/feedback" })}
+          >
+            Quay lại
+          </Button>
           <Chip variant={statusVariant(fb.status)}>{fb.status}</Chip>
           <Chip>{fb.area}</Chip>
           {fb.severity === "blocker" && <Chip variant="danger">blocker</Chip>}
           <div className="flex-1" />
-          <Button size="sm"
+          <Button
+            size="sm"
             variant={fb.myVote ? "primary" : "default"}
             icon={<I.ChevronUp size={14} />}
-            disabled={busy} onClick={vote}>
+            disabled={busy}
+            onClick={vote}
+          >
             {fb.myVote ? "Đã vote" : "Vote"} ({fb.voteCount})
           </Button>
         </div>
@@ -117,14 +150,14 @@ function FeedbackDetailRoute() {
 
         {fb.aiSummary && (
           <Card className="mb-3 bg-accent/5 border-accent/20">
-            <div className="text-xs uppercase text-accent font-semibold mb-1">
-              ✨ AI tóm tắt
-            </div>
+            <div className="text-xs uppercase text-accent font-semibold mb-1">✨ AI tóm tắt</div>
             <div className="text-sm">{fb.aiSummary}</div>
             {fb.aiTags && fb.aiTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {fb.aiTags.map((t) => (
-                  <Chip key={t} className="!text-[10px]">#{t}</Chip>
+                  <Chip key={t} className="!text-[10px]">
+                    #{t}
+                  </Chip>
                 ))}
               </div>
             )}
@@ -132,17 +165,13 @@ function FeedbackDetailRoute() {
         )}
 
         <Card className="mb-3">
-          <div className="text-xs uppercase text-muted font-semibold mb-1">
-            Mô tả bất cập
-          </div>
+          <div className="text-xs uppercase text-muted font-semibold mb-1">Mô tả bất cập</div>
           <div className="whitespace-pre-wrap text-sm">{fb.body}</div>
         </Card>
 
         {fb.suggestion && (
           <Card className="mb-3">
-            <div className="text-xs uppercase text-muted font-semibold mb-1">
-              Đề xuất cải thiện
-            </div>
+            <div className="text-xs uppercase text-muted font-semibold mb-1">Đề xuất cải thiện</div>
             <div className="whitespace-pre-wrap text-sm">{fb.suggestion}</div>
           </Card>
         )}
@@ -160,17 +189,30 @@ function FeedbackDetailRoute() {
           <Card className="mb-3 border-warning/40">
             <div className="font-semibold mb-2">Admin — đổi trạng thái</div>
             <div className="grid grid-cols-3 gap-2">
-              <Select value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value as FeedbackStatus)}>
-                {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <Select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as FeedbackStatus)}
+              >
+                {STATUS_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </Select>
-              <Input className="col-span-2"
+              <Input
+                className="col-span-2"
                 placeholder="Ghi chú giải quyết (tuỳ chọn)"
                 value={resolution}
-                onChange={(e) => setResolution(e.target.value)} />
+                onChange={(e) => setResolution(e.target.value)}
+              />
             </div>
-            <Button className="mt-2" variant="primary" size="sm"
-              disabled={busy || newStatus === fb.status} onClick={applyStatus}>
+            <Button
+              className="mt-2"
+              variant="primary"
+              size="sm"
+              disabled={busy || newStatus === fb.status}
+              onClick={applyStatus}
+            >
               Cập nhật
             </Button>
           </Card>
@@ -179,25 +221,31 @@ function FeedbackDetailRoute() {
         <Card className="mb-3">
           <div className="font-semibold mb-2">Bình luận ({comments.length})</div>
           <div className="space-y-2 mb-3">
-            {comments.length === 0 && (
-              <div className="text-sm text-muted">Chưa có bình luận.</div>
-            )}
+            {comments.length === 0 && <div className="text-sm text-muted">Chưa có bình luận.</div>}
             {comments.map((c) => (
               <div key={c.id} className="border-l-2 border-border pl-3 py-1">
-                <div className="text-xs text-muted">
-                  {new Date(c.createdAt).toLocaleString()}
-                </div>
+                <div className="text-xs text-muted">{new Date(c.createdAt).toLocaleString()}</div>
                 <div className="text-sm whitespace-pre-wrap">{c.body}</div>
               </div>
             ))}
           </div>
           <FormField label="Thêm bình luận" hint="Dùng @username để ping ai đó.">
-            <Textarea rows={3} value={commentBody}
-              onChange={(e) => setCommentBody(e.target.value)} />
+            <Textarea
+              rows={3}
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+            />
           </FormField>
-          <Button className="mt-2" variant="primary" size="sm"
-            disabled={busy || !commentBody.trim()} onClick={submitComment}
-            icon={<I.Send size={14} />}>Gửi</Button>
+          <Button
+            className="mt-2"
+            variant="primary"
+            size="sm"
+            disabled={busy || !commentBody.trim()}
+            onClick={submitComment}
+            icon={<I.Send size={14} />}
+          >
+            Gửi
+          </Button>
         </Card>
 
         {err && <Chip variant="danger">{err}</Chip>}

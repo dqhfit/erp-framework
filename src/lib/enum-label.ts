@@ -25,10 +25,7 @@ export function buildLabelMap(values: LabeledValue[], lang: Lang): Record<string
 }
 
 /** Chọn nhãn FIELD theo locale — chấp nhận shape {label, labelEn}. */
-export function pickFieldLabel(
-  f: { label: string; labelEn?: string | null },
-  lang: Lang,
-): string {
+export function pickFieldLabel(f: { label: string; labelEn?: string | null }, lang: Lang): string {
   if (lang === "en") return f.labelEn || f.label;
   return f.label || f.labelEn || "";
 }

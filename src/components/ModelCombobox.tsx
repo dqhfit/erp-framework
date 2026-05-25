@@ -1,3 +1,8 @@
+import { I } from "@/components/Icons";
+import { Button, Select } from "@/components/ui";
+import { useDynamicModels } from "@/hooks/useDynamicModels";
+import { useSettings } from "@/stores/settings";
+import { inferAdapterFromModel } from "@erp-framework/core";
 /* ==========================================================
    ModelCombobox — 1 combobox xổ xuống chọn model LLM, items
    group theo adapter (<optgroup>). Gộp nguồn từ:
@@ -10,21 +15,20 @@
    và LlmProfileCard.tsx.
    ========================================================== */
 import { useMemo } from "react";
-import { Button, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { useSettings } from "@/stores/settings";
-import { useDynamicModels } from "@/hooks/useDynamicModels";
-import { inferAdapterFromModel } from "@erp-framework/core";
 
 /* 6 adapter — gọi useDynamicModels cho từng cái để optgroup nào cũng
    có discovery list. claude/claude-pro/claude-cli cùng họ Claude
    (FALLBACK_MODELS giống nhau) nhưng KHÁC credential — giữ riêng
    group để user phân biệt route nào dùng. Cache 30 phút mỗi adapter. */
 const KNOWN_ADAPTERS = [
-  "claude", "claude-pro", "claude-cli",
-  "openai", "gemini", "ollama",
+  "claude",
+  "claude-pro",
+  "claude-cli",
+  "openai",
+  "gemini",
+  "ollama",
 ] as const;
-type KnownAdapter = typeof KNOWN_ADAPTERS[number];
+type KnownAdapter = (typeof KNOWN_ADAPTERS)[number];
 
 export interface ModelComboboxProps {
   value: string;
@@ -42,8 +46,14 @@ export interface ModelComboboxProps {
 }
 
 export function ModelCombobox({
-  value, onChange, excludeModels, emptyOption,
-  lockedAdapter, className, disabled, showRefresh = true,
+  value,
+  onChange,
+  excludeModels,
+  emptyOption,
+  lockedAdapter,
+  className,
+  disabled,
+  showRefresh = true,
 }: ModelComboboxProps) {
   const llmProfiles = useSettings((s) => s.llmProfiles);
   const inferredAdapter = inferAdapterFromModel(value);
@@ -69,7 +79,8 @@ export function ModelCombobox({
     ollama: m.ollama.models,
   };
   const cur = (KNOWN_ADAPTERS as readonly string[]).includes(adapter)
-    ? m[adapter as KnownAdapter] : null;
+    ? m[adapter as KnownAdapter]
+    : null;
   const loading = cur?.loading ?? false;
   const source = cur?.source ?? null;
   const refresh = cur?.refresh ?? (() => Promise.resolve());
@@ -99,12 +110,17 @@ export function ModelCombobox({
       }
     }
     return out;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     llmProfiles,
-    m.claude.models, m["claude-pro"].models, m["claude-cli"].models,
-    m.openai.models, m.gemini.models, m.ollama.models,
-    lockedAdapter, excludeModels,
+    m.claude.models,
+    m["claude-pro"].models,
+    m["claude-cli"].models,
+    m.openai.models,
+    m.gemini.models,
+    m.ollama.models,
+    lockedAdapter,
+    excludeModels,
   ]);
 
   // Model đang dùng không có trong groups → hiển thị "custom" để giữ
@@ -116,35 +132,32 @@ export function ModelCombobox({
   }, [groups]);
 
   return (
-    <div className={"flex gap-1 " + (className ?? "")}>
+    <div className={`flex gap-1 ${className ?? ""}`}>
       <Select
         value={value}
         disabled={disabled || (loading && allModels.size === 0)}
         onChange={(e) => onChange(e.target.value)}
       >
-        {emptyOption !== undefined && (
-          <option value="">{emptyOption}</option>
-        )}
+        {emptyOption !== undefined && <option value="">{emptyOption}</option>}
         {Object.entries(groups).map(([ad, list]) => (
           <optgroup key={ad} label={ad}>
             {list.map(({ model, from }) => (
               <option key={model} value={model}>
-                {model}{from !== "discovery" ? ` — ${from}` : ""}
+                {model}
+                {from !== "discovery" ? ` — ${from}` : ""}
               </option>
             ))}
           </optgroup>
         ))}
-        {value && !allModels.has(value) && (
-          <option value={value}>{value} (custom)</option>
-        )}
+        {value && !allModels.has(value) && <option value={value}>{value} (custom)</option>}
       </Select>
       {showRefresh && (
         <Button
-          variant="ghost" size="sm" disabled={loading}
+          variant="ghost"
+          size="sm"
+          disabled={loading}
           title={`Refresh model list${source ? ` (nguồn hiện: ${source})` : ""}`}
-          icon={loading
-            ? <I.Loader size={12} className="animate-spin" />
-            : <I.Redo size={12} />}
+          icon={loading ? <I.Loader size={12} className="animate-spin" /> : <I.Redo size={12} />}
           onClick={() => refresh()}
         />
       )}

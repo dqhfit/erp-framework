@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useLocation } from "@tanstack/react-router";
-import { useUI } from "@/stores/ui";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 import { I } from "@/components/Icons";
-import { Button, Chip, Textarea, Select } from "@/components/ui";
-import { cn } from "@/lib/utils";
-import { llmRegistry } from "@/core/llm";
-import { useSettings } from "@/stores/settings";
-import { useMcpClient } from "@/hooks/useMcpClient";
+import { Button, Chip, Select, Textarea } from "@/components/ui";
 import { mcpToolsToToolDefs } from "@/core/agent-runner";
+import { llmRegistry } from "@/core/llm";
+import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
-import { useRbac } from "@/stores/rbac";
 import { roleCan } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
+import { useRbac } from "@/stores/rbac";
+import { useSettings } from "@/stores/settings";
+import { useUI } from "@/stores/ui";
+import { useUserObjects } from "@/stores/userObjects";
 import { createKnowledgeClient } from "@erp-framework/client";
+import { useLocation } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /* Client Knowledge Base — dùng cho nút "Lưu vào tri thức" trên tin nhắn. */
 const kb = createKnowledgeClient("");
@@ -38,7 +38,8 @@ const SEED: Message[] = [
   {
     id: "m1",
     role: "assistant",
-    content: "Xin chào Toàn! Mình là **Trợ lý ERP**. Hôm nay bạn muốn làm gì?\n\n• Tạo đơn hàng nhanh\n• Tìm khách hàng\n• Xem báo cáo doanh số",
+    content:
+      "Xin chào Toàn! Mình là **Trợ lý ERP**. Hôm nay bạn muốn làm gì?\n\n• Tạo đơn hàng nhanh\n• Tìm khách hàng\n• Xem báo cáo doanh số",
     suggestions: ["Tạo đơn cho KH 'Minh Phúc'", "Doanh số tuần này", "Đơn chờ duyệt > 50tr"],
   },
 ];
@@ -101,22 +102,33 @@ export function AgentPanel() {
 
     const profile = profileName ? llmProfiles[profileName] : undefined;
     if (!profile || !llmRegistry.isUsable(profile)) {
-      setMessages((m) => [...m, {
-        id: `a${Date.now()}`, role: "assistant", error: true,
-        content: profile
-          ? t("agent.profile_not_usable", { name: profile.name, adapter: profile.adapter })
-          : t("agent.no_llm_msg"),
-        suggestions: ["LLM Settings"],
-      }]);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `a${Date.now()}`,
+          role: "assistant",
+          error: true,
+          content: profile
+            ? t("agent.profile_not_usable", { name: profile.name, adapter: profile.adapter })
+            : t("agent.no_llm_msg"),
+          suggestions: ["LLM Settings"],
+        },
+      ]);
       return;
     }
 
     // Pending message
     const pendingId = `a${Date.now()}`;
-    setMessages((m) => [...m, {
-      id: pendingId, role: "assistant", content: "", pending: true,
-      toolCall: { name: profile.adapter + ":" + profile.model, args: "thinking..." },
-    }]);
+    setMessages((m) => [
+      ...m,
+      {
+        id: pendingId,
+        role: "assistant",
+        content: "",
+        pending: true,
+        toolCall: { name: `${profile.adapter}:${profile.model}`, args: "thinking..." },
+      },
+    ]);
 
     try {
       const history = messages
@@ -132,9 +144,11 @@ export function AgentPanel() {
         credentials: "include",
         body: JSON.stringify({
           profileName: profile.name,
-          system: SYSTEM_PROMPT + (toolDefs.length
-            ? `\n\nBạn có ${toolDefs.length} MCP tool — gọi khi cần truy vấn dữ liệu thật.`
-            : ""),
+          system:
+            SYSTEM_PROMPT +
+            (toolDefs.length
+              ? `\n\nBạn có ${toolDefs.length} MCP tool — gọi khi cần truy vấn dữ liệu thật.`
+              : ""),
           messages: [...history, { role: "user", content: text }],
           tools: toolDefs,
           // Đang ở /agents/$id → bind với agent đó: server dùng model
@@ -158,16 +172,25 @@ export function AgentPanel() {
           const line = part.trim();
           if (!line.startsWith("data:")) continue;
           let ev: { type?: string; [k: string]: unknown };
-          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          try {
+            ev = JSON.parse(line.slice(5).trim());
+          } catch {
+            continue;
+          }
           if (ev.type === "text" || ev.type === "done") {
             finalText = (ev.text as string) || finalText;
           } else if (ev.type === "tool_call") {
             const args = JSON.stringify(ev.args ?? {}).slice(0, 80);
-            setMessages((m) => [...m, {
-              id: `t${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-              role: "assistant", content: "",
-              toolCall: { name: String(ev.name), args }, pending: true,
-            }]);
+            setMessages((m) => [
+              ...m,
+              {
+                id: `t${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+                role: "assistant",
+                content: "",
+                toolCall: { name: String(ev.name), args },
+                pending: true,
+              },
+            ]);
           } else if (ev.type === "tool_result") {
             setMessages((m) => {
               const ri = [...m].reverse().findIndex((x) => x.pending && !!x.toolCall);
@@ -175,7 +198,9 @@ export function AgentPanel() {
               const idx = m.length - 1 - ri;
               const copy = [...m];
               copy[idx] = {
-                ...copy[idx]!, pending: false, toolCall: undefined,
+                ...copy[idx]!,
+                pending: false,
+                toolCall: undefined,
                 error: !!ev.error,
                 content: ev.error
                   ? `✗ ${String(ev.name)} → ${String(ev.error)}`
@@ -189,26 +214,41 @@ export function AgentPanel() {
         }
       }
 
-      setMessages((m) => m.map((msg) =>
-        msg.id === pendingId
-          ? { ...msg, content: finalText || "(không có nội dung)", pending: false, toolCall: undefined }
-          : msg
-      ));
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === pendingId
+            ? {
+                ...msg,
+                content: finalText || "(không có nội dung)",
+                pending: false,
+                toolCall: undefined,
+              }
+            : msg,
+        ),
+      );
     } catch (err) {
-      setMessages((m) => m.map((msg) =>
-        msg.id === pendingId
-          ? { ...msg, content: `Lỗi: ${(err as Error).message}`, pending: false, error: true, toolCall: undefined }
-          : msg
-      ));
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === pendingId
+            ? {
+                ...msg,
+                content: `Lỗi: ${(err as Error).message}`,
+                pending: false,
+                error: true,
+                toolCall: undefined,
+              }
+            : msg,
+        ),
+      );
     }
   };
 
   function summarizeResult(r: unknown): string {
     if (r == null) return "(empty)";
-    if (typeof r === "string") return r.length > 100 ? r.slice(0, 100) + "..." : r;
+    if (typeof r === "string") return r.length > 100 ? `${r.slice(0, 100)}...` : r;
     if (Array.isArray(r)) return `${r.length} item`;
     const s = JSON.stringify(r);
-    return s.length > 100 ? s.slice(0, 100) + "..." : s;
+    return s.length > 100 ? `${s.slice(0, 100)}...` : s;
   }
 
   if (!open) return null;
@@ -217,8 +257,12 @@ export function AgentPanel() {
     <aside className="fixed right-0 top-12 bottom-0 w-[400px] bg-panel border-l border-border flex flex-col z-40 shadow-2xl">
       {/* Header */}
       <div className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-border">
-        <span className="w-7 h-7 rounded-md flex items-center justify-center text-white"
-              style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+        <span
+          className="w-7 h-7 rounded-md flex items-center justify-center text-white"
+          style={{
+            background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+          }}
+        >
           <I.Sparkles size={14} />
         </span>
         <div className="flex-1 min-w-0">
@@ -233,12 +277,18 @@ export function AgentPanel() {
       {/* Profile selector — group theo adapter (combobox xổ xuống). */}
       {profileNames.length > 0 && (
         <div className="px-3 py-2 border-b border-border shrink-0 bg-panel-2/30">
-          <Select value={profileName} onChange={(e) => setProfileName(e.target.value)} className="text-xs">
-            {Object.entries(profileNames.reduce<Record<string, string[]>>((acc, n) => {
-              const ad = llmProfiles[n]?.adapter ?? "khác";
-              (acc[ad] = acc[ad] ?? []).push(n);
-              return acc;
-            }, {})).map(([ad, names]) => (
+          <Select
+            value={profileName}
+            onChange={(e) => setProfileName(e.target.value)}
+            className="text-xs"
+          >
+            {Object.entries(
+              profileNames.reduce<Record<string, string[]>>((acc, n) => {
+                const ad = llmProfiles[n]?.adapter ?? "khác";
+                (acc[ad] = acc[ad] ?? []).push(n);
+                return acc;
+              }, {}),
+            ).map(([ad, names]) => (
               <optgroup key={ad} label={ad}>
                 {names.map((n) => {
                   const p = llmProfiles[n];
@@ -269,7 +319,10 @@ export function AgentPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(input); }
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              send(input);
+            }
           }}
           placeholder={t("agent.input_placeholder")}
           className="text-sm"
@@ -278,7 +331,13 @@ export function AgentPanel() {
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" icon={<I.Mic size={13} />} title="Voice" />
           </div>
-          <Button variant="primary" size="sm" icon={<I.Send size={13} />} onClick={() => send(input)} disabled={!input.trim()}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<I.Send size={13} />}
+            onClick={() => send(input)}
+            disabled={!input.trim()}
+          >
             {t("agent.send")}
           </Button>
         </div>
@@ -287,7 +346,11 @@ export function AgentPanel() {
   );
 }
 
-function MessageBubble({ msg, onSuggest, canSaveKb }: {
+function MessageBubble({
+  msg,
+  onSuggest,
+  canSaveKb,
+}: {
   msg: Message;
   onSuggest: (text: string) => void;
   canSaveKb: boolean;
@@ -297,8 +360,8 @@ function MessageBubble({ msg, onSuggest, canSaveKb }: {
   const [kbState, setKbState] = useState<"" | "saving" | "saved" | "err">("");
 
   // Chỉ cho lưu câu trả lời thật của trợ lý (có nội dung, không lỗi/pending/tool).
-  const canSave = canSaveKb && !isUser && !msg.pending && !msg.error
-    && !msg.toolCall && !!msg.content.trim();
+  const canSave =
+    canSaveKb && !isUser && !msg.pending && !msg.error && !msg.toolCall && !!msg.content.trim();
 
   const saveKb = async () => {
     setKbState("saving");
@@ -314,23 +377,32 @@ function MessageBubble({ msg, onSuggest, canSaveKb }: {
 
   return (
     <div className={cn("flex gap-2", isUser && "flex-row-reverse")}>
-      <span className={cn(
-        "w-7 h-7 shrink-0 rounded-md flex items-center justify-center",
-        isUser ? "bg-accent text-white" : "bg-panel-2 border border-border",
-      )}>
+      <span
+        className={cn(
+          "w-7 h-7 shrink-0 rounded-md flex items-center justify-center",
+          isUser ? "bg-accent text-white" : "bg-panel-2 border border-border",
+        )}
+      >
         {isUser ? <I.User size={13} /> : <I.Sparkles size={13} className="text-accent" />}
       </span>
       <div className="flex-1 min-w-0 max-w-[85%]">
-        <div className={cn(
-          "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
-          msg.error ? "bg-danger/10 border border-danger/30 text-danger" :
-          isUser ? "bg-accent/20 text-text" : "bg-panel-2 border border-border",
-        )}>
+        <div
+          className={cn(
+            "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
+            msg.error
+              ? "bg-danger/10 border border-danger/30 text-danger"
+              : isUser
+                ? "bg-accent/20 text-text"
+                : "bg-panel-2 border border-border",
+          )}
+        >
           {msg.pending && !msg.content ? (
             <span className="inline-flex items-center gap-1.5 text-muted">
               <I.Loader size={13} className="animate-spin" /> {t("agent.thinking")}
             </span>
-          ) : msg.content}
+          ) : (
+            msg.content
+          )}
         </div>
         {msg.toolCall && (
           <div className="mt-1.5 flex items-center gap-2 text-xs">
@@ -347,10 +419,13 @@ function MessageBubble({ msg, onSuggest, canSaveKb }: {
               className="text-[11px] px-2 py-0.5 rounded border border-border bg-bg-soft hover:bg-hover/40 inline-flex items-center gap-1 disabled:opacity-60"
             >
               <I.File size={10} />
-              {kbState === "saved" ? "✓ Đã lưu vào tri thức"
-                : kbState === "saving" ? "Đang lưu…"
-                : kbState === "err" ? "Lỗi — thử lại"
-                : "Lưu vào tri thức"}
+              {kbState === "saved"
+                ? "✓ Đã lưu vào tri thức"
+                : kbState === "saving"
+                  ? "Đang lưu…"
+                  : kbState === "err"
+                    ? "Lỗi — thử lại"
+                    : "Lưu vào tri thức"}
             </button>
           </div>
         )}

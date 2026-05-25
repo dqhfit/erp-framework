@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { McpClient, type McpTool } from "@/core/mcp";
 import { useSettings } from "@/stores/settings";
+import { useEffect, useState } from "react";
 
 let clientInstance: McpClient | null = null;
 let toolsCache: McpTool[] = [];
@@ -15,7 +15,8 @@ export function useMcpClient() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setConnecting(true); setError("");
+      setConnecting(true);
+      setError("");
       try {
         clientInstance = new McpClient(mcpCfg);
         const t = await clientInstance.connect();
@@ -29,14 +30,19 @@ export function useMcpClient() {
         if (!cancelled) setConnecting(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [mcpCfg]);
 
   return { client: clientInstance, tools, connecting, error };
 }
 
 /** Helper: gọi 1 tool 1 lần (không cần hook) */
-export async function callMcpTool<T = unknown>(name: string, args: Record<string, unknown> = {}): Promise<T> {
+export async function callMcpTool<T = unknown>(
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<T> {
   if (!clientInstance) throw new Error("MCP client chưa connect");
   return clientInstance.callTool<T>(name, args);
 }

@@ -1,17 +1,20 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input } from "@/components/ui";
+import { createApprovalsClient } from "@erp-framework/client";
 /* ==========================================================
    approvals — Hộp phê duyệt (governance). Tạo yêu cầu phê duyệt,
    duyệt/từ chối; đủ số tầng (requiredApprovals) → approved.
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Card, Chip, Input } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createApprovalsClient } from "@erp-framework/client";
 
 const approvals = createApprovalsClient("");
 
 interface Decision {
-  userId: string; decision: string; comment: string; at: string;
+  userId: string;
+  decision: string;
+  comment: string;
+  at: string;
 }
 interface ApprovalReq {
   id: string;
@@ -25,7 +28,9 @@ interface ApprovalReq {
 }
 
 const STATUS_CHIP: Record<string, "default" | "success" | "warning" | "danger"> = {
-  pending: "warning", approved: "success", rejected: "danger",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
 };
 
 function ApprovalsRoute() {
@@ -37,28 +42,42 @@ function ApprovalsRoute() {
   const [err, setErr] = useState("");
 
   const load = () => {
-    approvals.list()
+    approvals
+      .list()
       .then((r) => setList(r as ApprovalReq[]))
-      .catch(() => { /* chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa đăng nhập */
+      });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const run = async (fn: () => Promise<void>) => {
-    setBusy(true); setErr("");
-    try { await fn(); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    try {
+      await fn();
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const create = () => void run(async () => {
-    await approvals.create({
-      title: title.trim(),
-      detail: detail.trim() || undefined,
-      requiredApprovals: required,
+  const create = () =>
+    void run(async () => {
+      await approvals.create({
+        title: title.trim(),
+        detail: detail.trim() || undefined,
+        requiredApprovals: required,
+      });
+      setTitle("");
+      setDetail("");
+      setRequired(1);
     });
-    setTitle(""); setDetail(""); setRequired(1);
-  });
 
   const pending = list.filter((r) => r.status === "pending");
   const done = list.filter((r) => r.status !== "pending");
@@ -77,14 +96,22 @@ function ApprovalsRoute() {
         </div>
         {r.status === "pending" && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="primary" icon={<I.Check size={12} />}
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<I.Check size={12} />}
               disabled={busy}
-              onClick={() => void run(() => approvals.decide(r.id, "approve").then(() => {}))}>
+              onClick={() => void run(() => approvals.decide(r.id, "approve").then(() => {}))}
+            >
               Duyệt
             </Button>
-            <Button size="sm" variant="danger" icon={<I.Minus size={12} />}
+            <Button
+              size="sm"
+              variant="danger"
+              icon={<I.Minus size={12} />}
               disabled={busy}
-              onClick={() => void run(() => approvals.decide(r.id, "reject").then(() => {}))}>
+              onClick={() => void run(() => approvals.decide(r.id, "reject").then(() => {}))}
+            >
               Từ chối
             </Button>
           </div>
@@ -98,25 +125,44 @@ function ApprovalsRoute() {
       <div className="max-w-[820px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">Phê duyệt (Governance)</h1>
         <div className="text-sm text-muted mb-6">
-          Yêu cầu phê duyệt nhiều tầng — cần đủ số người duyệt mới chuyển
-          sang "approved"; một người từ chối là "rejected".
+          Yêu cầu phê duyệt nhiều tầng — cần đủ số người duyệt mới chuyển sang "approved"; một người
+          từ chối là "rejected".
         </div>
 
         <Card className="mb-4 space-y-2">
           <div className="font-semibold">Tạo yêu cầu phê duyệt</div>
-          <Input placeholder="Tiêu đề" value={title} disabled={busy}
-            onChange={(e) => setTitle(e.target.value)} />
-          <textarea className="input w-full text-sm" rows={2}
-            placeholder="Chi tiết (tuỳ chọn)" value={detail} disabled={busy}
-            onChange={(e) => setDetail(e.target.value)} />
+          <Input
+            placeholder="Tiêu đề"
+            value={title}
+            disabled={busy}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <textarea
+            className="input w-full text-sm"
+            rows={2}
+            placeholder="Chi tiết (tuỳ chọn)"
+            value={detail}
+            disabled={busy}
+            onChange={(e) => setDetail(e.target.value)}
+          />
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted">Số tầng duyệt cần đạt:</span>
-            <Input type="number" min={1} max={20} value={required} disabled={busy}
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={required}
+              disabled={busy}
               onChange={(e) => setRequired(Math.max(1, Number(e.target.value) || 1))}
-              className="w-20" />
+              className="w-20"
+            />
             <div className="flex-1" />
-            <Button variant="primary" icon={<I.Plus size={14} />}
-              disabled={busy || !title.trim()} onClick={create}>
+            <Button
+              variant="primary"
+              icon={<I.Plus size={14} />}
+              disabled={busy || !title.trim()}
+              onClick={create}
+            >
               Tạo yêu cầu
             </Button>
           </div>
@@ -137,7 +183,11 @@ function ApprovalsRoute() {
           </Card>
         )}
 
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
       </div>
     </div>
   );

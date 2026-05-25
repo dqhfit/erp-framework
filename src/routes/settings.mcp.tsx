@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Button, Input, Select, FormField, Card, Chip } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useSettings } from "@/stores/settings";
+import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
 import { McpClient, type McpConfig } from "@/core/mcp";
-import { useState, useMemo } from "react";
-import { createConfigClient } from "@erp-framework/client";
 import { useT } from "@/hooks/useT";
+import { useSettings } from "@/stores/settings";
+import { createConfigClient } from "@erp-framework/client";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 
 function McpSettings() {
   const t = useT();
@@ -21,10 +21,15 @@ function McpSettings() {
   const [syncMsg, setSyncMsg] = useState<string>("");
 
   const handleTest = async () => {
-    setTesting(true); setTestResult("");
+    setTesting(true);
+    setTestResult("");
     try {
       let headers: Record<string, string> = {};
-      try { headers = JSON.parse(headersJson); } catch { /* ignore */ }
+      try {
+        headers = JSON.parse(headersJson);
+      } catch {
+        /* ignore */
+      }
       const client = new McpClient({ ...mcp, headers });
       const tools = await client.connect();
       setTestResult(`✓ Kết nối thành công — ${tools.length} tools`);
@@ -39,13 +44,19 @@ function McpSettings() {
     try {
       const headers = JSON.parse(headersJson);
       setMcp({ ...mcp, headers });
-    } catch { /* invalid JSON, ignore */ }
+    } catch {
+      /* invalid JSON, ignore */
+    }
   };
 
   // Snapshot cấu hình hiện tại (đồng bộ headers từ textarea).
   const buildCurrent = (): McpConfig => {
     let headers: Record<string, string> = {};
-    try { headers = JSON.parse(headersJson); } catch { /* ignore */ }
+    try {
+      headers = JSON.parse(headersJson);
+    } catch {
+      /* ignore */
+    }
     return { ...mcp, headers };
   };
 
@@ -55,7 +66,8 @@ function McpSettings() {
   };
 
   const saveToServer = async () => {
-    setSyncing(true); setSyncMsg("");
+    setSyncing(true);
+    setSyncMsg("");
     try {
       await config.saveMcp(buildCurrent());
       setSyncMsg("✓ Đã lưu lên server");
@@ -67,7 +79,8 @@ function McpSettings() {
   };
 
   const loadFromServer = async () => {
-    setSyncing(true); setSyncMsg("");
+    setSyncing(true);
+    setSyncMsg("");
     try {
       const cfg = await config.getMcp();
       if (cfg) {
@@ -92,7 +105,10 @@ function McpSettings() {
         {/* === MCP config === */}
         <Card className="space-y-4 mb-4">
           <FormField label={t("settings.mcp.mode")}>
-            <Select value={mcp.mode} onChange={(e) => setMcp({ ...mcp, mode: e.target.value as "demo" | "http" })}>
+            <Select
+              value={mcp.mode}
+              onChange={(e) => setMcp({ ...mcp, mode: e.target.value as "demo" | "http" })}
+            >
               <option value="demo">{t("settings.mcp.mode_demo")}</option>
               <option value="http">{t("settings.mcp.mode_http")}</option>
             </Select>
@@ -100,12 +116,16 @@ function McpSettings() {
           {mcp.mode === "http" && (
             <>
               <FormField label={t("settings.mcp.url")} hint={t("settings.mcp.url_hint")}>
-                <Input value={mcp.url ?? ""} placeholder="https://your-mcp-server/mcp"
-                  onChange={(e) => setMcp({ ...mcp, url: e.target.value })} />
+                <Input
+                  value={mcp.url ?? ""}
+                  placeholder="https://your-mcp-server/mcp"
+                  onChange={(e) => setMcp({ ...mcp, url: e.target.value })}
+                />
               </FormField>
               <FormField label="Headers JSON" hint='Vd: {"Authorization": "Bearer ..."}'>
                 <textarea
-                  className="input font-mono" rows={4}
+                  className="input font-mono"
+                  rows={4}
                   value={headersJson}
                   onChange={(e) => setHeadersJson(e.target.value)}
                   onBlur={persistHeaders}
@@ -114,7 +134,12 @@ function McpSettings() {
             </>
           )}
           <div className="flex gap-2 items-center pt-2 border-t border-border">
-            <Button variant="primary" onClick={handleTest} icon={<I.Power size={14} />} disabled={testing}>
+            <Button
+              variant="primary"
+              onClick={handleTest}
+              icon={<I.Power size={14} />}
+              disabled={testing}
+            >
               {testing ? t("settings.mcp.test_busy") : t("settings.mcp.test_btn")}
             </Button>
             {testResult && (
@@ -127,17 +152,25 @@ function McpSettings() {
         <Card>
           <div className="font-semibold mb-1">Lưu MCP config lên server</div>
           <div className="text-xs text-muted mb-3">
-            Mode, URL, headers lưu vào PostgreSQL (bảng <span className="font-mono">mcp_configs</span>)
-            qua backend — dùng chung giữa nhiều máy. Cần đăng nhập (vào trang
-            "Dữ liệu Server" để đăng nhập); chỉ admin mới lưu được.
+            Mode, URL, headers lưu vào PostgreSQL (bảng{" "}
+            <span className="font-mono">mcp_configs</span>) qua backend — dùng chung giữa nhiều máy.
+            Cần đăng nhập (vào trang "Dữ liệu Server" để đăng nhập); chỉ admin mới lưu được.
           </div>
           <div className="flex gap-2 items-center">
-            <Button variant="primary" icon={<I.Save size={14} />} disabled={syncing}
-              onClick={saveToServer}>
+            <Button
+              variant="primary"
+              icon={<I.Save size={14} />}
+              disabled={syncing}
+              onClick={saveToServer}
+            >
               Lưu lên server
             </Button>
-            <Button variant="default" icon={<I.Eye size={14} />} disabled={syncing}
-              onClick={loadFromServer}>
+            <Button
+              variant="default"
+              icon={<I.Eye size={14} />}
+              disabled={syncing}
+              onClick={loadFromServer}
+            >
               Tải từ server
             </Button>
             {syncMsg && (

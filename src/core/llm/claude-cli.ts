@@ -1,5 +1,5 @@
-import { LLMAdapterBase } from "./adapter";
 import type { LLMRequest, LLMResponse } from "@/types/llm";
+import { LLMAdapterBase } from "./adapter";
 
 /**
  * ClaudeCliAdapter — gọi Claude qua local Node bridge (scripts/claude-bridge.mjs)
@@ -9,8 +9,12 @@ import type { LLMRequest, LLMResponse } from "@/types/llm";
 export class ClaudeCliAdapter extends LLMAdapterBase {
   constructor() {
     super("claude-cli", {
-      tools: false, vision: false, json_mode: false, streaming: false,
-      max_input_tokens: 200_000, max_output_tokens: 8_192,
+      tools: false,
+      vision: false,
+      json_mode: false,
+      streaming: false,
+      max_input_tokens: 200_000,
+      max_output_tokens: 8_192,
     });
   }
 
@@ -21,7 +25,7 @@ export class ClaudeCliAdapter extends LLMAdapterBase {
 
   async send(req: LLMRequest): Promise<LLMResponse> {
     const base = req.endpoint || this.defaultBridgeUrl();
-    const url = base.replace(/\/$/, "") + "/v1/messages";
+    const url = `${base.replace(/\/$/, "")}/v1/messages`;
     const body = {
       model: req.model || "claude-sonnet-4-6",
       max_tokens: req.max_tokens ?? 4_096,
@@ -37,15 +41,14 @@ export class ClaudeCliAdapter extends LLMAdapterBase {
       });
     } catch (e) {
       throw new Error(
-        `Không kết nối được Claude CLI bridge tại ${base}. ` +
-        `Chạy 'node scripts/claude-bridge.mjs' trước.`,
+        `Không kết nối được Claude CLI bridge tại ${base}. Chạy 'node scripts/claude-bridge.mjs' trước.`,
       );
     }
     if (!res.ok) {
       const t = await res.text();
       throw new Error(`Bridge ${res.status}: ${t}`);
     }
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       content: Array<{ type: string; text?: string }>;
       usage?: { input_tokens: number; output_tokens: number };
     };
@@ -62,8 +65,12 @@ export class ClaudeCliAdapter extends LLMAdapterBase {
   static async healthCheck(url?: string): Promise<boolean> {
     const base = url || localStorage.getItem("claude-cli-bridge-url") || "http://localhost:8909";
     try {
-      const res = await fetch(base.replace(/\/$/, "") + "/health", { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${base.replace(/\/$/, "")}/health`, {
+        signal: AbortSignal.timeout(2000),
+      });
       return res.ok;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 }

@@ -1,21 +1,31 @@
-import { useUI, type AccentColor, type Theme, type Density } from "@/stores/ui";
 import { I } from "@/components/Icons";
 import { Button, Switch } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { type AccentColor, type Density, type Theme, useUI } from "@/stores/ui";
 
 const ACCENTS: Array<{ id: AccentColor; hex: string; label: string }> = [
   { id: "violet", hex: "#7c5cff", label: "Violet" },
-  { id: "cyan",   hex: "#00d4ff", label: "Cyan" },
-  { id: "green",  hex: "#22c55e", label: "Green" },
-  { id: "amber",  hex: "#ff9933", label: "Amber" },
+  { id: "cyan", hex: "#00d4ff", label: "Cyan" },
+  { id: "green", hex: "#22c55e", label: "Green" },
+  { id: "amber", hex: "#ff9933", label: "Amber" },
 ];
 
 export function TweaksPanel() {
   const {
-    tweaksOpen, setTweaksOpen,
-    theme, setTheme, accent, setAccent, density, setDensity,
-    sidebarCollapsed, setSidebarCollapsed, inspectorVisible, setInspectorVisible,
-    setAgentOpen, setCmdOpen,
+    tweaksOpen,
+    setTweaksOpen,
+    theme,
+    setTheme,
+    accent,
+    setAccent,
+    density,
+    setDensity,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    inspectorVisible,
+    setInspectorVisible,
+    setAgentOpen,
+    setCmdOpen,
   } = useUI();
 
   if (!tweaksOpen) return null;
@@ -30,7 +40,10 @@ export function TweaksPanel() {
             <I.Wand size={14} className="text-accent" />
             Tweaks
           </div>
-          <button onClick={() => setTweaksOpen(false)} className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted">
+          <button
+            onClick={() => setTweaksOpen(false)}
+            className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+          >
             <I.X size={13} />
           </button>
         </div>
@@ -39,7 +52,7 @@ export function TweaksPanel() {
             <Radio
               value={theme}
               options={[
-                { id: "dark",  label: "Dark",  icon: <I.Moon size={13} /> },
+                { id: "dark", label: "Dark", icon: <I.Moon size={13} /> },
                 { id: "light", label: "Light", icon: <I.Sun size={13} /> },
               ]}
               onChange={(v) => setTheme(v as Theme)}
@@ -70,7 +83,7 @@ export function TweaksPanel() {
               value={density}
               options={[
                 { id: "comfortable", label: "Comfort" },
-                { id: "compact",     label: "Compact" },
+                { id: "compact", label: "Compact" },
               ]}
               onChange={(v) => setDensity(v as Density)}
             />
@@ -91,12 +104,30 @@ export function TweaksPanel() {
 
           <Section label="Demo">
             <div className="space-y-1.5">
-              <Button variant="default" size="sm" className="w-full justify-center"
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full justify-center"
                 icon={<I.Sparkles size={13} />}
-                onClick={() => { setAgentOpen(true); setTweaksOpen(false); }}>Open Agent</Button>
-              <Button variant="default" size="sm" className="w-full justify-center"
+                onClick={() => {
+                  setAgentOpen(true);
+                  setTweaksOpen(false);
+                }}
+              >
+                Open Agent
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full justify-center"
                 icon={<I.Command size={13} />}
-                onClick={() => { setCmdOpen(true); setTweaksOpen(false); }}>Command Palette</Button>
+                onClick={() => {
+                  setCmdOpen(true);
+                  setTweaksOpen(false);
+                }}
+              >
+                Command Palette
+              </Button>
             </div>
           </Section>
         </div>
@@ -108,7 +139,9 @@ export function TweaksPanel() {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1.5">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1.5">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -128,10 +161,13 @@ function Radio({ value, options, onChange }: RadioProps) {
           onClick={() => onChange(opt.id)}
           className={cn(
             "flex-1 px-2 py-1 rounded text-xs flex items-center justify-center gap-1.5 transition-colors",
-            value === opt.id ? "bg-panel-2 text-text shadow-[0_1px_0_hsl(var(--border))]" : "text-muted hover:text-text",
+            value === opt.id
+              ? "bg-panel-2 text-text shadow-[0_1px_0_hsl(var(--border))]"
+              : "text-muted hover:text-text",
           )}
         >
-          {opt.icon}{opt.label}
+          {opt.icon}
+          {opt.label}
         </button>
       ))}
     </div>

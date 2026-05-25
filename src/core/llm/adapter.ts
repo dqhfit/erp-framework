@@ -26,9 +26,13 @@ export abstract class LLMAdapterBase implements LLMAdapter {
       let args: Record<string, unknown> = {};
       if (typeof tc.input === "object" && tc.input) args = tc.input as Record<string, unknown>;
       else if (typeof tc.arguments === "string") {
-        try { args = JSON.parse(tc.arguments); } catch {}
+        try {
+          args = JSON.parse(tc.arguments);
+        } catch {}
       } else if (typeof fn?.arguments === "string") {
-        try { args = JSON.parse(fn.arguments); } catch {}
+        try {
+          args = JSON.parse(fn.arguments);
+        } catch {}
       }
       return { id: (tc.id as string) ?? undefined, name, args };
     });

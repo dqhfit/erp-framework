@@ -1,3 +1,13 @@
+import { I } from "@/components/Icons";
+import { DataGrid } from "@/components/renderer/DataGrid";
+import { Button, Chip, Drawer, FormField, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { pickFieldLabel } from "@/lib/enum-label";
+import { formatVND } from "@/lib/format";
+import type { MockEntity } from "@/lib/object-types";
+import { useLocale } from "@/stores/locale";
+import { useUserObjects } from "@/stores/userObjects";
+import { type SavedView, createApiDataSource, createSavedViewsClient } from "@erp-framework/client";
 /* ==========================================================
    EntityData — màn hình DỮ LIỆU của một entity (chế độ người
    dùng). Xem danh sách record thật trong DataGrid, thêm record
@@ -10,17 +20,7 @@
    - History drawer per record (version list + diff + revert).
    - Search bar FTS — server-side q param qua records.list.
    ========================================================== */
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { I } from "@/components/Icons";
-import { Button, Input, Select, FormField, Drawer, Chip } from "@/components/ui";
-import { DataGrid } from "@/components/renderer/DataGrid";
-import { useUserObjects } from "@/stores/userObjects";
-import { createApiDataSource, createSavedViewsClient, type SavedView } from "@erp-framework/client";
-import { formatVND } from "@/lib/format";
-import type { MockEntity } from "@/lib/object-types";
-import { dialog } from "@/lib/dialog";
-import { pickFieldLabel } from "@/lib/enum-label";
-import { useLocale } from "@/stores/locale";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const api = createApiDataSource("");
 const savedViewsApi = createSavedViewsClient("");
@@ -53,7 +53,8 @@ export function EntityData({ entityId }: { entityId: string }) {
 
   // Load saved views per entity; auto-apply view default lần đầu mount.
   useEffect(() => {
-    savedViewsApi.list(entityId)
+    savedViewsApi
+      .list(entityId)
       .then((vs) => {
         const list = vs as unknown as SavedView[];
         setViews(list);
@@ -65,7 +66,9 @@ export function EntityData({ entityId }: { entityId: string }) {
           if (qv?.tab) setTab(qv.tab);
         }
       })
-      .catch(() => { /* chưa migrate hoặc chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa migrate hoặc chưa đăng nhập */
+      });
   }, [entityId]);
 
   const applyView = (v: SavedView) => {
@@ -76,44 +79,61 @@ export function EntityData({ entityId }: { entityId: string }) {
   };
 
   const saveCurrentView = async () => {
-    const name = (await dialog.prompt("Tên view mới?", "View 1", {
-      title: "Lưu view", confirmText: "Lưu",
-    }))?.trim();
+    const name = (
+      await dialog.prompt("Tên view mới?", "View 1", {
+        title: "Lưu view",
+        confirmText: "Lưu",
+      })
+    )?.trim();
     if (!name) return;
     try {
-      const v = await savedViewsApi.save({
-        entityId, name, query: { q, tab },
-      }) as SavedView | null;
+      const v = (await savedViewsApi.save({
+        entityId,
+        name,
+        query: { q, tab },
+      })) as SavedView | null;
       const fresh = (await savedViewsApi.list(entityId)) as unknown as SavedView[];
       setViews(fresh);
       if (v) setCurrentViewId(v.id);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const reload = useCallback(() => {
-    setLoading(true); setErr("");
-    api.getRecords(entityId, {
-      limit: 200,
-      includeDeleted: tab === "deleted",
-      q: q.trim() || undefined,
-    })
+    setLoading(true);
+    setErr("");
+    api
+      .getRecords(entityId, {
+        limit: 200,
+        includeDeleted: tab === "deleted",
+        q: q.trim() || undefined,
+      })
       .then((res) => {
-        const filtered = tab === "deleted"
-          ? res.rows.filter((r) => (r as { deletedAt?: unknown }).deletedAt != null)
-          : res.rows;
-        setRows(filtered.map((r) => ({
-          ...r.data,
-          __id: r.id,
-          __version: (r as { version?: number }).version,
-          __deletedAt: (r as { deletedAt?: string | null }).deletedAt ?? null,
-        })));
+        const filtered =
+          tab === "deleted"
+            ? res.rows.filter((r) => (r as { deletedAt?: unknown }).deletedAt != null)
+            : res.rows;
+        setRows(
+          filtered.map((r) => ({
+            ...r.data,
+            __id: r.id,
+            __version: (r as { version?: number }).version,
+            __deletedAt: (r as { deletedAt?: string | null }).deletedAt ?? null,
+          })),
+        );
         setSelected(new Set());
         setLoading(false);
       })
-      .catch((e) => { setErr((e as Error).message); setLoading(false); });
+      .catch((e) => {
+        setErr((e as Error).message);
+        setLoading(false);
+      });
   }, [entityId, tab, q]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const fields = ent?.fields ?? [];
   const lang = useLocale((s) => s.lang);
@@ -125,7 +145,8 @@ export function EntityData({ entityId }: { entityId: string }) {
   };
 
   const submit = async () => {
-    setSaving(true); setSaveErr("");
+    setSaving(true);
+    setSaveErr("");
     try {
       const data: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
@@ -141,22 +162,34 @@ export function EntityData({ entityId }: { entityId: string }) {
 
   const del = async (id: string) => {
     const ok = await dialog.confirm("Xoá bản ghi này?", {
-      title: "Xoá bản ghi", confirmText: "Xoá", danger: true,
+      title: "Xoá bản ghi",
+      confirmText: "Xoá",
+      danger: true,
     });
     if (!ok) return;
-    try { await api.deleteRecord(id); reload(); }
-    catch (e) { setErr((e as Error).message); }
+    try {
+      await api.deleteRecord(id);
+      reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const restore = async (id: string) => {
-    try { await api.restoreRecord(id); reload(); }
-    catch (e) { setErr((e as Error).message); }
+    try {
+      await api.restoreRecord(id);
+      reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const bulkDelete = async () => {
     if (selected.size === 0) return;
     const ok = await dialog.confirm(`Xoá ${selected.size} bản ghi?`, {
-      title: "Xoá hàng loạt", confirmText: "Xoá", danger: true,
+      title: "Xoá hàng loạt",
+      confirmText: "Xoá",
+      danger: true,
     });
     if (!ok) return;
     try {
@@ -165,7 +198,9 @@ export function EntityData({ entityId }: { entityId: string }) {
         setErr(`Đã xoá ${r.deleted}; ${r.errors.length} lỗi: ${r.errors[0]?.message}`);
       }
       reload();
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const exportCsv = async () => {
@@ -178,67 +213,85 @@ export function EntityData({ entityId }: { entityId: string }) {
       a.download = `${ent?.name ?? "records"}-${Date.now()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const toggleRow = (id: string) =>
     setSelected((s) => {
       const next = new Set(s);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   const toggleAll = () =>
-    setSelected((s) => s.size === rows.length
-      ? new Set()
-      : new Set(rows.map((r) => r.__id)));
+    setSelected((s) => (s.size === rows.length ? new Set() : new Set(rows.map((r) => r.__id))));
 
-  const columns = useMemo(() => [
-    {
-      id: "__select",
-      header: () => (
-        <input type="checkbox"
-          checked={rows.length > 0 && selected.size === rows.length}
-          onChange={toggleAll}
-        />
-      ),
-      cell: (c: { row: { original: Row } }) => (
-        <input type="checkbox"
-          checked={selected.has(c.row.original.__id)}
-          onChange={() => toggleRow(c.row.original.__id)}
-        />
-      ),
-    },
-    ...fields.slice(0, 7).map((f) => ({
-      accessorKey: f.name,
-      header: pickFieldLabel(f, lang),
-      cell: (c: { getValue: () => unknown }) => {
-        const v = c.getValue();
-        if (f.type === "currency") return formatVND(Number(v ?? 0));
-        if (Array.isArray(v)) return v.join(", ");
-        return v == null ? "" : String(v);
+  const columns = useMemo(
+    () => [
+      {
+        id: "__select",
+        header: () => (
+          <input
+            type="checkbox"
+            checked={rows.length > 0 && selected.size === rows.length}
+            onChange={toggleAll}
+          />
+        ),
+        cell: (c: { row: { original: Row } }) => (
+          <input
+            type="checkbox"
+            checked={selected.has(c.row.original.__id)}
+            onChange={() => toggleRow(c.row.original.__id)}
+          />
+        ),
       },
-    })),
-    {
-      id: "__actions",
-      header: "",
-      cell: (c: { row: { original: Row } }) => (
-        <div className="flex items-center gap-2 text-xs">
-          {tab === "active" ? (
-            <>
-              <button onClick={() => setHistoryOpen(c.row.original.__id)}
-                className="text-accent hover:underline">Lịch sử</button>
-              <button onClick={() => del(c.row.original.__id)}
-                className="text-danger hover:underline">Xoá</button>
-            </>
-          ) : (
-            <button onClick={() => restore(c.row.original.__id)}
-              className="text-success hover:underline">Khôi phục</button>
-          )}
-        </div>
-      ),
-    },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [fields, selected, rows.length, tab, lang]);
+      ...fields.slice(0, 7).map((f) => ({
+        accessorKey: f.name,
+        header: pickFieldLabel(f, lang),
+        cell: (c: { getValue: () => unknown }) => {
+          const v = c.getValue();
+          if (f.type === "currency") return formatVND(Number(v ?? 0));
+          if (Array.isArray(v)) return v.join(", ");
+          return v == null ? "" : String(v);
+        },
+      })),
+      {
+        id: "__actions",
+        header: "",
+        cell: (c: { row: { original: Row } }) => (
+          <div className="flex items-center gap-2 text-xs">
+            {tab === "active" ? (
+              <>
+                <button
+                  onClick={() => setHistoryOpen(c.row.original.__id)}
+                  className="text-accent hover:underline"
+                >
+                  Lịch sử
+                </button>
+                <button
+                  onClick={() => del(c.row.original.__id)}
+                  className="text-danger hover:underline"
+                >
+                  Xoá
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => restore(c.row.original.__id)}
+                className="text-success hover:underline"
+              >
+                Khôi phục
+              </button>
+            )}
+          </div>
+        ),
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ],
+    [fields, selected, rows.length, tab, lang],
+  );
 
   if (!ent) {
     return (
@@ -258,42 +311,65 @@ export function EntityData({ entityId }: { entityId: string }) {
               Dữ liệu — {loading ? "đang tải…" : `${rows.length} bản ghi`}
             </div>
           </div>
-          <Button variant="primary" icon={<I.Plus size={14} />}
-            disabled={fields.length === 0 || tab === "deleted"} onClick={openAdd}>
+          <Button
+            variant="primary"
+            icon={<I.Plus size={14} />}
+            disabled={fields.length === 0 || tab === "deleted"}
+            onClick={openAdd}
+          >
             Thêm bản ghi
           </Button>
         </div>
 
         {/* Tabs Active / Đã xoá */}
         <div className="flex items-center gap-2 mb-3">
-          <button onClick={() => setTab("active")}
-            className={`chip ${tab === "active" ? "chip-accent" : ""}`}>
+          <button
+            onClick={() => setTab("active")}
+            className={`chip ${tab === "active" ? "chip-accent" : ""}`}
+          >
             Đang dùng
           </button>
-          <button onClick={() => setTab("deleted")}
-            className={`chip ${tab === "deleted" ? "chip-accent" : ""}`}>
+          <button
+            onClick={() => setTab("deleted")}
+            className={`chip ${tab === "deleted" ? "chip-accent" : ""}`}
+          >
             <I.Trash size={11} className="inline mr-1" /> Đã xoá
           </button>
           <div className="flex-1" />
           <div className="relative w-[280px]">
             <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
-            <Input className="pl-7" placeholder="Tìm kiếm full-text..."
-              value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input
+              className="pl-7"
+              placeholder="Tìm kiếm full-text..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
           {/* Saved views dropdown */}
-          <Select value={currentViewId} onChange={(e) => {
-            const id = e.target.value;
-            if (!id) { setCurrentViewId(""); return; }
-            const v = views.find((vv) => vv.id === id);
-            if (v) applyView(v);
-          }} className="w-[160px]">
+          <Select
+            value={currentViewId}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (!id) {
+                setCurrentViewId("");
+                return;
+              }
+              const v = views.find((vv) => vv.id === id);
+              if (v) applyView(v);
+            }}
+            className="w-[160px]"
+          >
             <option value="">— View —</option>
             {views.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}{v.isDefault ? " ★" : ""}</option>
+              <option key={v.id} value={v.id}>
+                {v.name}
+                {v.isDefault ? " ★" : ""}
+              </option>
             ))}
           </Select>
-          <Button size="sm" variant="default" icon={<I.Save size={11} />}
-            onClick={saveCurrentView}>Lưu view</Button>
+          <Button size="sm" variant="default" icon={<I.Save size={11} />} onClick={saveCurrentView}>
+            Lưu view
+          </Button>
         </div>
 
         {/* Bulk actions toolbar — chỉ hiện khi có row được chọn */}
@@ -302,13 +378,21 @@ export function EntityData({ entityId }: { entityId: string }) {
             <Chip variant="accent">{selected.size} đã chọn</Chip>
             <div className="flex-1" />
             {tab === "active" && (
-              <Button size="sm" variant="danger" icon={<I.Trash size={11} />}
-                onClick={bulkDelete}>Xoá {selected.size}</Button>
+              <Button size="sm" variant="danger" icon={<I.Trash size={11} />} onClick={bulkDelete}>
+                Xoá {selected.size}
+              </Button>
             )}
-            <Button size="sm" variant="default" icon={<I.Save size={11} />}
-              onClick={exportCsv}>Xuất CSV</Button>
-            <Button size="sm" variant="ghost" icon={<I.X size={11} />}
-              onClick={() => setSelected(new Set())}>Bỏ chọn</Button>
+            <Button size="sm" variant="default" icon={<I.Save size={11} />} onClick={exportCsv}>
+              Xuất CSV
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<I.X size={11} />}
+              onClick={() => setSelected(new Set())}
+            >
+              Bỏ chọn
+            </Button>
           </div>
         )}
 
@@ -322,36 +406,52 @@ export function EntityData({ entityId }: { entityId: string }) {
 
         <div className="card p-0 overflow-hidden mt-3">
           <div className="h-[560px]">
-            <DataGrid data={rows} columns={columns}
+            <DataGrid
+              data={rows}
+              columns={columns}
               toolbar={false}
-              emptyText={tab === "deleted"
-                ? "Không có bản ghi đã xoá."
-                : q.trim()
-                  ? `Không tìm thấy "${q}" — kiểm tra field đã bật Searchable trong EntityDesigner chưa.`
-                  : "Chưa có bản ghi nào — bấm Thêm bản ghi."} />
+              emptyText={
+                tab === "deleted"
+                  ? "Không có bản ghi đã xoá."
+                  : q.trim()
+                    ? `Không tìm thấy "${q}" — kiểm tra field đã bật Searchable trong EntityDesigner chưa.`
+                    : "Chưa có bản ghi nào — bấm Thêm bản ghi."
+              }
+            />
           </div>
         </div>
       </div>
 
       {/* Add drawer */}
-      <Drawer open={adding} onClose={() => setAdding(false)}
-        title={`Thêm ${ent.name}`}>
+      <Drawer open={adding} onClose={() => setAdding(false)} title={`Thêm ${ent.name}`}>
         <div className="p-4 space-y-3">
           {fields.map((f) => (
             <FormField key={f.id} label={pickFieldLabel(f, lang) + (f.required ? " *" : "")}>
               {f.type === "select" && f.options?.length ? (
-                <Select value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}>
+                <Select
+                  value={form[f.name] ?? ""}
+                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
+                >
                   <option value="">— chọn —</option>
-                  {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  {f.options.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
                 </Select>
               ) : f.type === "sequence" ? (
                 <Input value={form[f.name] ?? ""} readOnly placeholder="(server tự sinh)" />
               ) : (
                 <Input
-                  type={f.type === "number" || f.type === "currency" ? "number"
-                    : f.type === "date" ? "date"
-                    : f.type === "email" ? "email" : "text"}
+                  type={
+                    f.type === "number" || f.type === "currency"
+                      ? "number"
+                      : f.type === "date"
+                        ? "date"
+                        : f.type === "email"
+                          ? "email"
+                          : "text"
+                  }
                   value={form[f.name] ?? ""}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
                 />
@@ -360,9 +460,15 @@ export function EntityData({ entityId }: { entityId: string }) {
           ))}
           {saveErr && <Chip variant="danger">{saveErr}</Chip>}
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="ghost" onClick={() => setAdding(false)}>Hủy</Button>
-            <Button variant="primary" disabled={saving}
-              icon={<I.Save size={13} />} onClick={submit}>
+            <Button variant="ghost" onClick={() => setAdding(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              disabled={saving}
+              icon={<I.Save size={13} />}
+              onClick={submit}
+            >
               {saving ? "Đang lưu…" : "Lưu"}
             </Button>
           </div>
@@ -374,7 +480,10 @@ export function EntityData({ entityId }: { entityId: string }) {
         <HistoryDrawer
           recordId={historyOpen}
           onClose={() => setHistoryOpen(null)}
-          onReverted={() => { setHistoryOpen(null); reload(); }}
+          onReverted={() => {
+            setHistoryOpen(null);
+            reload();
+          }}
         />
       )}
     </div>
@@ -389,19 +498,31 @@ interface HistoryDrawerProps {
   onReverted: () => void;
 }
 function HistoryDrawer({ recordId, onClose, onReverted }: HistoryDrawerProps) {
-  const [items, setItems] = useState<Array<{
-    id: string; version: number;
-    diff: Record<string, { old: unknown; new: unknown }>;
-    actorUserId: string | null; createdAt: string;
-  }>>([]);
+  const [items, setItems] = useState<
+    Array<{
+      id: string;
+      version: number;
+      diff: Record<string, { old: unknown; new: unknown }>;
+      actorUserId: string | null;
+      createdAt: string;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    setLoading(true); setErr("");
-    api.getRecordHistory(recordId)
-      .then((rs) => { setItems(rs); setLoading(false); })
-      .catch((e) => { setErr((e as Error).message); setLoading(false); });
+    setLoading(true);
+    setErr("");
+    api
+      .getRecordHistory(recordId)
+      .then((rs) => {
+        setItems(rs);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setErr((e as Error).message);
+        setLoading(false);
+      });
   }, [recordId]);
 
   const revert = async (targetVersion: number) => {
@@ -413,7 +534,9 @@ function HistoryDrawer({ recordId, onClose, onReverted }: HistoryDrawerProps) {
     try {
       await api.revertRecord(recordId, targetVersion);
       onReverted();
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   return (
@@ -432,8 +555,14 @@ function HistoryDrawer({ recordId, onClose, onReverted }: HistoryDrawerProps) {
                 {new Date(v.createdAt).toLocaleString("vi-VN")}
               </span>
               <div className="flex-1" />
-              <Button size="sm" variant="ghost" icon={<I.Undo size={11} />}
-                onClick={() => revert(v.version)}>Revert về đây</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<I.Undo size={11} />}
+                onClick={() => revert(v.version)}
+              >
+                Revert về đây
+              </Button>
             </div>
             <div className="space-y-1">
               {Object.entries(v.diff).length === 0 && (
@@ -458,5 +587,9 @@ function HistoryDrawer({ recordId, onClose, onReverted }: HistoryDrawerProps) {
 function stringify(v: unknown): string {
   if (v == null) return "∅";
   if (typeof v === "string") return v;
-  try { return JSON.stringify(v); } catch { return String(v); }
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
 }

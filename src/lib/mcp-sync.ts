@@ -5,8 +5,8 @@
    chưa có thì thêm mới. Chạy phía client (thủ công).
    ========================================================== */
 import type { McpBindings } from "@/components/designer/McpBindingsEditor";
-import { normalizeRows } from "@/lib/schema-infer";
 import { callMcpTool } from "@/hooks/useMcpClient";
+import { normalizeRows } from "@/lib/schema-infer";
 import { createApiDataSource } from "@erp-framework/client";
 
 export interface SyncResult {
@@ -18,11 +18,11 @@ export interface SyncResult {
 /** Suy luận field khóa của entity để khớp bản ghi khi đồng bộ. */
 export function inferPkField(fieldNames: string[]): string {
   return (
-    fieldNames.find((n) => n === "id")
-    ?? fieldNames.find((n) => n === "code")
-    ?? fieldNames.find((n) => /(^|_)id$/i.test(n))
-    ?? fieldNames[0]
-    ?? "id"
+    fieldNames.find((n) => n === "id") ??
+    fieldNames.find((n) => n === "code") ??
+    fieldNames.find((n) => /(^|_)id$/i.test(n)) ??
+    fieldNames[0] ??
+    "id"
   );
 }
 
@@ -57,9 +57,7 @@ export async function syncEntityFromMcp(
   let updated = 0;
   for (const row of rows) {
     const k = row[pkField];
-    const existingId = k !== undefined && k !== null
-      ? byKey.get(String(k))
-      : undefined;
+    const existingId = k !== undefined && k !== null ? byKey.get(String(k)) : undefined;
     if (existingId) {
       await ds.updateRecord(existingId, row);
       updated++;

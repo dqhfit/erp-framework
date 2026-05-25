@@ -1,3 +1,10 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Select } from "@/components/ui";
+import { designWithAi, listLlmProfileNames } from "@/core/ai-design";
+import { useT } from "@/hooks/useT";
+import type { DesignByType, DesignContext, DesignObjectType } from "@/lib/ai-design-prompts";
+import { cn } from "@/lib/utils";
+import { useSettings } from "@/stores/settings";
 /* ==========================================================
    AiAssistDrawer — Drawer phải 400px gọi LLM đề xuất config
    cho 4 loại designer (entity/page/workflow/agent).
@@ -7,17 +14,6 @@
    - Hiển thị token usage
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
-import { Button, Card, Chip, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { cn } from "@/lib/utils";
-import { designWithAi, listLlmProfileNames } from "@/core/ai-design";
-import { useSettings } from "@/stores/settings";
-import { useT } from "@/hooks/useT";
-import type {
-  DesignContext,
-  DesignObjectType,
-  DesignByType,
-} from "@/lib/ai-design-prompts";
 
 interface Props<T extends DesignObjectType> {
   open: boolean;
@@ -47,7 +43,12 @@ const TYPE_LABEL: Record<DesignObjectType, string> = {
 };
 
 export function AiAssistDrawer<T extends DesignObjectType>({
-  open, onClose, objectType, current, context, onApply,
+  open,
+  onClose,
+  objectType,
+  current,
+  context,
+  onApply,
 }: Props<T>) {
   const t = useT();
   const [profile, setProfile] = useState<string>("");
@@ -79,7 +80,9 @@ export function AiAssistDrawer<T extends DesignObjectType>({
     if (!text || busy) return;
     setPrompt("");
     const userMsg: ChatMessage<DesignByType<T>> = {
-      id: "u_" + Date.now(), role: "user", text,
+      id: `u_${Date.now()}`,
+      role: "user",
+      text,
     };
     setMessages((m) => [...m, userMsg]);
     setBusy(true);
@@ -95,26 +98,35 @@ export function AiAssistDrawer<T extends DesignObjectType>({
         context ?? {},
         { profileName: profile || undefined },
       );
-      setMessages((m) => [...m, {
-        id: "a_" + Date.now(),
-        role: "ai",
-        text: summarize(objectType, res.data),
-        data: res.data,
-        usage: res.usage,
-      }]);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `a_${Date.now()}`,
+          role: "ai",
+          text: summarize(objectType, res.data),
+          data: res.data,
+          usage: res.usage,
+        },
+      ]);
     } catch (e) {
-      setMessages((m) => [...m, {
-        id: "e_" + Date.now(),
-        role: "error",
-        text: (e as Error).message,
-      }]);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `e_${Date.now()}`,
+          role: "error",
+          text: (e as Error).message,
+        },
+      ]);
     } finally {
       setBusy(false);
     }
   };
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); send(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      send();
+    }
   };
 
   return (
@@ -137,19 +149,40 @@ export function AiAssistDrawer<T extends DesignObjectType>({
       >
         {/* Header */}
         <div className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-border">
-          <span className="w-7 h-7 rounded-md flex items-center justify-center text-white"
-                style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+          <span
+            className="w-7 h-7 rounded-md flex items-center justify-center text-white"
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+            }}
+          >
             <I.Sparkles size={14} />
           </span>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm">{t("ai.title")}</div>
             <div className="text-[11px] text-muted truncate">
               {TYPE_LABEL[objectType]} · {current ? t("ai.refine") : t("ai.new")}
-              {activeModel && <> · <span className="font-mono">{activeModel}</span></>}
+              {activeModel && (
+                <>
+                  {" "}
+                  · <span className="font-mono">{activeModel}</span>
+                </>
+              )}
             </div>
           </div>
-          <Button variant="ghost" size="sm" icon={<I.Trash size={12} />} onClick={() => setMessages([])} title={t("ai.clear_history")} />
-          <Button variant="ghost" size="sm" icon={<I.ChevronRight size={14} />} onClick={onClose} title={t("common.close")} />
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<I.Trash size={12} />}
+            onClick={() => setMessages([])}
+            title={t("ai.clear_history")}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<I.ChevronRight size={14} />}
+            onClick={onClose}
+            title={t("common.close")}
+          />
         </div>
 
         {/* Profile picker */}
@@ -157,26 +190,40 @@ export function AiAssistDrawer<T extends DesignObjectType>({
           <span className="text-[11px] text-muted shrink-0">{t("ai.profile")}</span>
           {profiles.length ? (
             <>
-              <Select className="h-7 text-xs flex-1 min-w-0" value={profile} onChange={(e) => setProfile(e.target.value)}>
-                {Object.entries(profiles.reduce<Record<string, string[]>>((acc, p) => {
-                  const ad = llmProfiles[p]?.adapter ?? "khác";
-                  (acc[ad] = acc[ad] ?? []).push(p);
-                  return acc;
-                }, {})).map(([ad, names]) => (
+              <Select
+                className="h-7 text-xs flex-1 min-w-0"
+                value={profile}
+                onChange={(e) => setProfile(e.target.value)}
+              >
+                {Object.entries(
+                  profiles.reduce<Record<string, string[]>>((acc, p) => {
+                    const ad = llmProfiles[p]?.adapter ?? "khác";
+                    (acc[ad] = acc[ad] ?? []).push(p);
+                    return acc;
+                  }, {}),
+                ).map(([ad, names]) => (
                   <optgroup key={ad} label={ad}>
                     {names.map((p) => {
                       const m = llmProfiles[p]?.model;
-                      return <option key={p} value={p}>{m ? `${p} — ${m}` : p}</option>;
+                      return (
+                        <option key={p} value={p}>
+                          {m ? `${p} — ${m}` : p}
+                        </option>
+                      );
                     })}
                   </optgroup>
                 ))}
               </Select>
               {activeModel && (
-                <Chip className="text-[10px] font-mono shrink-0" title="Model đang dùng">{activeModel}</Chip>
+                <Chip className="text-[10px] font-mono shrink-0" title="Model đang dùng">
+                  {activeModel}
+                </Chip>
               )}
             </>
           ) : (
-            <Chip variant="warning" className="text-[11px]">{t("ai.no_llm_profile")}</Chip>
+            <Chip variant="warning" className="text-[11px]">
+              {t("ai.no_llm_profile")}
+            </Chip>
           )}
         </div>
 
@@ -209,14 +256,17 @@ export function AiAssistDrawer<T extends DesignObjectType>({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={t("ai.placeholder_" + objectType)}
+            placeholder={t(`ai.placeholder_${objectType}`)}
             disabled={busy}
           />
           <div className="flex items-center justify-between mt-2">
             <span className="text-[11px] text-muted">{t("ai.send_hint")}</span>
             <Button
-              variant="primary" size="sm"
-              icon={busy ? <I.Loader size={12} className="animate-spin" /> : <I.Sparkles size={12} />}
+              variant="primary"
+              size="sm"
+              icon={
+                busy ? <I.Loader size={12} className="animate-spin" /> : <I.Sparkles size={12} />
+              }
               onClick={send}
               disabled={busy || !prompt.trim() || !profiles.length}
             >
@@ -261,14 +311,16 @@ function MessageBubble<T>({ msg, onApply }: { msg: ChatMessage<T>; onApply: () =
         )}
       </div>
       <pre className="text-[11px] font-mono leading-relaxed bg-bg-soft/50 rounded p-2 max-h-60 overflow-auto whitespace-pre-wrap">
-{msg.text}
+        {msg.text}
       </pre>
       <div className="mt-2 flex gap-2">
         <Button variant="primary" size="sm" icon={<I.Check size={11} />} onClick={onApply}>
           {t("ai.btn_apply")}
         </Button>
         <Button
-          variant="ghost" size="sm" icon={<I.Copy size={11} />}
+          variant="ghost"
+          size="sm"
+          icon={<I.Copy size={11} />}
           onClick={() => navigator.clipboard?.writeText(JSON.stringify(msg.data, null, 2))}
         >
           {t("ai.btn_copy_json")}
@@ -282,7 +334,9 @@ function MessageBubble<T>({ msg, onApply }: { msg: ChatMessage<T>; onApply: () =
 function summarize(type: DesignObjectType, data: unknown): string {
   const d = data as Record<string, unknown>;
   if (type === "entity") {
-    const fields = (d.fields as Array<{ name?: string; label?: string; type?: string; required?: boolean }>) ?? [];
+    const fields =
+      (d.fields as Array<{ name?: string; label?: string; type?: string; required?: boolean }>) ??
+      [];
     return [
       `📦 ${d.name}${d.mcp ? `  (MCP: ${d.mcp})` : ""}`,
       `${fields.length} field:`,
@@ -290,7 +344,8 @@ function summarize(type: DesignObjectType, data: unknown): string {
     ].join("\n");
   }
   if (type === "page") {
-    const comps = (d.components as Array<{ type?: string; title?: string; w?: number; h?: number }>) ?? [];
+    const comps =
+      (d.components as Array<{ type?: string; title?: string; w?: number; h?: number }>) ?? [];
     return [
       `📄 ${d.name}`,
       `${comps.length} component:`,

@@ -1,16 +1,16 @@
+import { I } from "@/components/Icons";
+import { Button, Chip, Input, Modal, Select } from "@/components/ui";
+import { CRON_PRESETS, describeCron, nextCronRun, parseCron } from "@/lib/cron";
+import { dialog } from "@/lib/dialog";
+import { createObjectsClient } from "@erp-framework/client";
+import type { RunStep } from "@erp-framework/core";
 /* ==========================================================
    WorkflowRunPanel — Modal cho 1 workflow:
    1. Chạy THẬT phía server + xem chi tiết từng bước (debug):
       bấm vào step để xem payload output. Có lịch sử các lần chạy.
    2. Quản lý LỊCH cron — lưu bảng schedules, pg-boss chạy nền.
    ========================================================== */
-import { useState, useEffect, useCallback } from "react";
-import { Modal, Button, Chip, Input, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import type { RunStep } from "@erp-framework/core";
-import { createObjectsClient } from "@erp-framework/client";
-import { describeCron, parseCron, nextCronRun, CRON_PRESETS } from "@/lib/cron";
-import { dialog } from "@/lib/dialog";
+import { useCallback, useEffect, useState } from "react";
 
 const objects = createObjectsClient("");
 
@@ -44,7 +44,10 @@ const STEP_COLOR: Record<RunStep["status"], string> = {
   paused: "text-warning",
 };
 const STEP_ICON: Record<RunStep["status"], string> = {
-  ok: "✓", error: "✗", skipped: "○", paused: "⏸",
+  ok: "✓",
+  error: "✗",
+  skipped: "○",
+  paused: "⏸",
 };
 
 /* Một bước — bấm để mở/đóng payload output (debug). */
@@ -53,10 +56,12 @@ function StepRow({ step }: { step: RunStep }) {
   const hasOutput = step.output !== undefined && step.output !== null;
   return (
     <div className="px-3 py-2 text-sm">
-      <button type="button"
+      <button
+        type="button"
         onClick={() => hasOutput && setOpen(!open)}
-        className={"w-full flex items-start gap-2 text-left " + (hasOutput ? "cursor-pointer" : "cursor-default")}>
-        <span className={"font-mono text-xs shrink-0 " + STEP_COLOR[step.status]}>
+        className={`w-full flex items-start gap-2 text-left ${hasOutput ? "cursor-pointer" : "cursor-default"}`}
+      >
+        <span className={`font-mono text-xs shrink-0 ${STEP_COLOR[step.status]}`}>
           {STEP_ICON[step.status]}
         </span>
         <div className="min-w-0 flex-1">
@@ -66,13 +71,13 @@ function StepRow({ step }: { step: RunStep }) {
           <div className="text-xs text-muted">{step.detail}</div>
         </div>
         <span className="text-[10px] text-muted font-mono shrink-0">{step.durationMs}ms</span>
-        {hasOutput && (
-          <span className="text-[10px] text-muted shrink-0">{open ? "▾" : "▸"}</span>
-        )}
+        {hasOutput && <span className="text-[10px] text-muted shrink-0">{open ? "▾" : "▸"}</span>}
       </button>
       {open && hasOutput && (
-        <pre className="mt-1.5 ml-5 p-2 rounded bg-bg-soft border border-border text-[11px]
-          overflow-auto max-h-48 whitespace-pre-wrap">
+        <pre
+          className="mt-1.5 ml-5 p-2 rounded bg-bg-soft border border-border text-[11px]
+          overflow-auto max-h-48 whitespace-pre-wrap"
+        >
           {JSON.stringify(step.output, null, 2)}
         </pre>
       )}
@@ -94,18 +99,25 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
   const mySchedules = schedules.filter((s) => s.workflowId === workflowId);
 
   const loadHistory = useCallback(() => {
-    objects.workflows.runs(workflowId)
+    objects.workflows
+      .runs(workflowId)
       .then((rs) => setHistory(rs as RunRow[]))
-      .catch(() => { /* bỏ qua */ });
+      .catch(() => {
+        /* bỏ qua */
+      });
   }, [workflowId]);
   const loadSchedules = useCallback(() => {
-    objects.schedules.list()
+    objects.schedules
+      .list()
       .then((rows) => setSchedules(rows as ServerSchedule[]))
       .catch((e) => setSchErr((e as Error).message));
   }, []);
 
   useEffect(() => {
-    if (open) { loadHistory(); loadSchedules(); }
+    if (open) {
+      loadHistory();
+      loadSchedules();
+    }
   }, [open, loadHistory, loadSchedules]);
 
   const doRun = async () => {
@@ -119,12 +131,14 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       if (run) setSteps((run.steps ?? []) as RunStep[]);
       setHistory(runs as RunRow[]);
       setResult(
-        r.status === "completed" ? "✓ Workflow chạy xong."
-        : r.status === "paused" ? "⏸ Workflow tạm dừng (chờ duyệt)."
-        : "✗ Workflow lỗi.",
+        r.status === "completed"
+          ? "✓ Workflow chạy xong."
+          : r.status === "paused"
+            ? "⏸ Workflow tạm dừng (chờ duyệt)."
+            : "✗ Workflow lỗi.",
       );
     } catch (e) {
-      setResult("✗ Lỗi: " + (e as Error).message);
+      setResult(`✗ Lỗi: ${(e as Error).message}`);
     } finally {
       setRunning(false);
     }
@@ -138,44 +152,62 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
 
   const handleAddSchedule = async () => {
     if (!parseCron(cronExpr)) {
-      void dialog.alert("Biểu thức cron không hợp lệ. Định dạng: phút giờ ngày tháng thứ.",
-        { title: "Cron sai" });
+      void dialog.alert("Biểu thức cron không hợp lệ. Định dạng: phút giờ ngày tháng thứ.", {
+        title: "Cron sai",
+      });
       return;
     }
     setSchErr("");
     try {
       await objects.schedules.save({ workflowId, cronExpr, enabled: true });
       loadSchedules();
-    } catch (e) { setSchErr((e as Error).message); }
+    } catch (e) {
+      setSchErr((e as Error).message);
+    }
   };
   const handleToggle = async (s: ServerSchedule) => {
     try {
       await objects.schedules.save({
-        id: s.id, workflowId: s.workflowId, cronExpr: s.cronExpr, enabled: !s.enabled,
+        id: s.id,
+        workflowId: s.workflowId,
+        cronExpr: s.cronExpr,
+        enabled: !s.enabled,
       });
       loadSchedules();
-    } catch (e) { setSchErr((e as Error).message); }
+    } catch (e) {
+      setSchErr((e as Error).message);
+    }
   };
   const handleDeleteSchedule = async (id: string) => {
     const ok = await dialog.confirm("Xoá lịch chạy này?", {
-      title: "Xoá lịch", confirmText: "Xoá", danger: true,
+      title: "Xoá lịch",
+      confirmText: "Xoá",
+      danger: true,
     });
     if (!ok) return;
-    try { await objects.schedules.delete(id); loadSchedules(); }
-    catch (e) { setSchErr((e as Error).message); }
+    try {
+      await objects.schedules.delete(id);
+      loadSchedules();
+    } catch (e) {
+      setSchErr((e as Error).message);
+    }
   };
 
   return (
     <Modal open={open} onClose={onClose} title={`Vận hành — ${workflowName}`} width={640}>
       <div className="flex gap-1 mb-4 border-b border-border">
-        <button type="button" onClick={() => setTab("run")}
-          className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
-            (tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted")}>
+        <button
+          type="button"
+          onClick={() => setTab("run")}
+          className={`px-3 py-1.5 text-sm border-b-2 -mb-px ${tab === "run" ? "border-accent text-text font-medium" : "border-transparent text-muted"}`}
+        >
           Chạy & debug
         </button>
-        <button type="button" onClick={() => setTab("schedule")}
-          className={"px-3 py-1.5 text-sm border-b-2 -mb-px " +
-            (tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted")}>
+        <button
+          type="button"
+          onClick={() => setTab("schedule")}
+          className={`px-3 py-1.5 text-sm border-b-2 -mb-px ${tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted"}`}
+        >
           Lịch chạy {mySchedules.length > 0 && <Chip>{mySchedules.length}</Chip>}
         </button>
       </div>
@@ -183,8 +215,8 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       {tab === "run" && (
         <div>
           <div className="text-xs text-muted mb-3">
-            Chạy thật trên server (gọi MCP/LLM thật). Bấm vào một bước để xem
-            payload output — tiện debug.
+            Chạy thật trên server (gọi MCP/LLM thật). Bấm vào một bước để xem payload output — tiện
+            debug.
           </div>
           <Button variant="primary" icon={<I.Play size={13} />} onClick={doRun} disabled={running}>
             {running ? "Đang chạy…" : "Chạy workflow"}
@@ -192,14 +224,23 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
 
           {steps.length > 0 && (
             <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[300px] overflow-auto">
-              {steps.map((s, i) => <StepRow key={i} step={s} />)}
+              {steps.map((s, i) => (
+                <StepRow key={i} step={s} />
+              ))}
             </div>
           )}
           {result && (
-            <div className={"mt-3 text-sm font-medium " +
-              (result.startsWith("✓") ? "text-success"
-                : result.startsWith("⏸") ? "text-warning"
-                : result.startsWith("Xem") ? "text-muted" : "text-danger")}>
+            <div
+              className={`mt-3 text-sm font-medium ${
+                result.startsWith("✓")
+                  ? "text-success"
+                  : result.startsWith("⏸")
+                    ? "text-warning"
+                    : result.startsWith("Xem")
+                      ? "text-muted"
+                      : "text-danger"
+              }`}
+            >
               {result}
             </div>
           )}
@@ -210,10 +251,23 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
               <div className="text-xs font-medium text-muted mb-1">Lịch sử chạy</div>
               <div className="border border-border rounded-md divide-y divide-border max-h-[180px] overflow-auto">
                 {history.map((r) => (
-                  <button key={r.id} type="button" onClick={() => openRun(r)}
-                    className="w-full px-3 py-1.5 flex items-center gap-2 text-xs text-left hover:bg-hover/30">
-                    <Chip variant={r.status === "completed" ? "success"
-                      : r.status === "error" ? "danger" : "warning"}>{r.status}</Chip>
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => openRun(r)}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-xs text-left hover:bg-hover/30"
+                  >
+                    <Chip
+                      variant={
+                        r.status === "completed"
+                          ? "success"
+                          : r.status === "error"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
+                      {r.status}
+                    </Chip>
                     <span className="text-muted">
                       {Array.isArray(r.steps) ? `${r.steps.length} bước` : "—"}
                     </span>
@@ -231,20 +285,28 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       {tab === "schedule" && (
         <div>
           <div className="text-xs text-muted mb-3">
-            Lịch tự động chạy workflow theo cron. Lưu trên server — pg-boss
-            chạy nền mỗi phút, không cần mở app.
+            Lịch tự động chạy workflow theo cron. Lưu trên server — pg-boss chạy nền mỗi phút, không
+            cần mở app.
           </div>
           <div className="flex items-end gap-2 mb-3">
             <div className="flex-1">
               <label className="text-xs text-muted block mb-1">Biểu thức cron</label>
-              <Input value={cronExpr} onChange={(e) => setCronExpr(e.target.value)}
-                placeholder="0 9 * * *" />
+              <Input
+                value={cronExpr}
+                onChange={(e) => setCronExpr(e.target.value)}
+                placeholder="0 9 * * *"
+              />
             </div>
-            <Select value="" onChange={(e) => e.target.value && setCronExpr(e.target.value)}
-              className="w-44">
+            <Select
+              value=""
+              onChange={(e) => e.target.value && setCronExpr(e.target.value)}
+              className="w-44"
+            >
               <option value="">Mẫu sẵn…</option>
               {CRON_PRESETS.map((p) => (
-                <option key={p.expr} value={p.expr}>{p.label}</option>
+                <option key={p.expr} value={p.expr}>
+                  {p.label}
+                </option>
               ))}
             </Select>
             <Button variant="primary" icon={<I.Plus size={13} />} onClick={handleAddSchedule}>
@@ -267,9 +329,7 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
                     <div className="min-w-0 flex-1">
                       <div className="font-mono font-medium flex items-center gap-2">
                         {s.cronExpr}
-                        {s.enabled
-                          ? <Chip variant="success">Đang bật</Chip>
-                          : <Chip>Tắt</Chip>}
+                        {s.enabled ? <Chip variant="success">Đang bật</Chip> : <Chip>Tắt</Chip>}
                       </div>
                       <div className="text-xs text-muted">
                         {describeCron(s.cronExpr)}
@@ -278,10 +338,18 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
                         {next ? ` · kế: ${next.toLocaleString("vi-VN")}` : ""}
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleToggle(s)}
-                      icon={<I.Power size={12} />} />
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteSchedule(s.id)}
-                      icon={<I.Trash size={12} />} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleToggle(s)}
+                      icon={<I.Power size={12} />}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteSchedule(s.id)}
+                      icon={<I.Trash size={12} />}
+                    />
                   </div>
                 );
               })}

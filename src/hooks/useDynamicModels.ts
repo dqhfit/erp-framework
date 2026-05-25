@@ -1,3 +1,4 @@
+import { FALLBACK_MODELS, type ListModelsResult, listModels } from "@/core/llm/list-models";
 /* ==========================================================
    useDynamicModels — Hook load model list theo adapter + creds.
    - Tự fetch khi mount + khi adapter/apiKey/endpoint đổi
@@ -5,7 +6,6 @@
    - source: "cache" | "api" | "fallback"
    ========================================================== */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listModels, FALLBACK_MODELS, type ListModelsResult } from "@/core/llm/list-models";
 
 export interface UseDynamicModelsResult {
   models: string[];
@@ -26,18 +26,21 @@ export function useDynamicModels(
   const [error, setError] = useState<string | undefined>();
   const reqId = useRef(0);
 
-  const doFetch = useCallback(async (force: boolean) => {
-    const myId = ++reqId.current;
-    setLoading(true);
-    setError(undefined);
-    const res = await listModels(adapter, { ...opts, force });
-    // Tránh race: chỉ cập nhật khi vẫn là request mới nhất
-    if (myId !== reqId.current) return;
-    setModels(res.models);
-    setSource(res.source);
-    setError(res.error);
-    setLoading(false);
-  }, [adapter, opts.apiKey, opts.endpoint]); // eslint-disable-line react-hooks/exhaustive-deps
+  const doFetch = useCallback(
+    async (force: boolean) => {
+      const myId = ++reqId.current;
+      setLoading(true);
+      setError(undefined);
+      const res = await listModels(adapter, { ...opts, force });
+      // Tránh race: chỉ cập nhật khi vẫn là request mới nhất
+      if (myId !== reqId.current) return;
+      setModels(res.models);
+      setSource(res.source);
+      setError(res.error);
+      setLoading(false);
+    },
+    [adapter, opts.apiKey, opts.endpoint],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-fetch khi adapter/key/endpoint đổi
   useEffect(() => {

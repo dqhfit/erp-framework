@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { useUI } from "@/stores/ui";
+import { useEffect } from "react";
 
 export function useGlobalShortcuts() {
   const setCmdOpen = useUI((s) => s.setCmdOpen);
@@ -10,8 +10,14 @@ export function useGlobalShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "k") { e.preventDefault(); setCmdOpen(true); }
-      if (mod && e.key === "/") { e.preventDefault(); setAgentOpen(!agentOpen); }
+      if (mod && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen(true);
+      }
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        setAgentOpen(!agentOpen);
+      }
       if (e.key === "/" && !cmdOpen && !agentOpen) {
         const tag = (document.activeElement as HTMLElement | null)?.tagName;
         if (tag !== "INPUT" && tag !== "TEXTAREA") {

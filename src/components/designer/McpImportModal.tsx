@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { useMcpClient, callMcpTool } from "@/hooks/useMcpClient";
-import { normalizeRows, inferSchema, toFieldDefs, type InferredField } from "@/lib/schema-infer";
-import { Modal, Button, Select, FormField, Chip, Tabs } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { SchemaArgsForm } from "@/components/designer/SchemaArgsForm";
+import { Button, Chip, FormField, Modal, Select, Tabs } from "@/components/ui";
+import { callMcpTool, useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
+import { type InferredField, inferSchema, normalizeRows, toFieldDefs } from "@/lib/schema-infer";
 import type { FieldDef } from "@/types/entity";
+import { useEffect, useState } from "react";
 
 /** Định dạng một ô dữ liệu để hiển thị trong bảng. */
 function formatCell(v: unknown): string {
@@ -56,12 +56,17 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
   // Reset khi đóng / chọn tool khác
   useEffect(() => {
     if (!open) {
-      setStep("select"); setInferred([]); setErrMsg(""); setSampleData(null);
-      setSampleRows([]); setPreviewTab("schema"); setDataMode("schema");
+      setStep("select");
+      setInferred([]);
+      setErrMsg("");
+      setSampleData(null);
+      setSampleRows([]);
+      setPreviewTab("schema");
+      setDataMode("schema");
     }
   }, [open]);
   useEffect(() => {
-    if (tools.length && !tool) setTool(tools[0]!.name);
+    if (tools.length && !tool) setTool(tools[0]?.name);
   }, [tools, tool]);
 
   // Khi đổi tool → reset args + pre-fill default từ schema
@@ -75,12 +80,13 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
       if (d !== undefined) defaults[k] = d;
     }
     setArgsObj(defaults);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool]);
 
   const fetchSample = async () => {
     if (!tool) return;
-    setLoading(true); setErrMsg("");
+    setLoading(true);
+    setErrMsg("");
     try {
       const data = await callMcpTool(tool, argsObj);
       const rows = normalizeRows(data);
@@ -131,12 +137,14 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
               <span className="text-muted">{t("mcpimport.apply_label")}</span>
               <button
                 onClick={() => setMode("replace")}
-                className={`chip ${mode === "replace" ? "chip-accent" : ""}`}>
+                className={`chip ${mode === "replace" ? "chip-accent" : ""}`}
+              >
                 {t("mcpimport.mode_replace")}
               </button>
               <button
                 onClick={() => setMode("append")}
-                className={`chip ${mode === "append" ? "chip-accent" : ""}`}>
+                className={`chip ${mode === "append" ? "chip-accent" : ""}`}
+              >
                 {t("mcpimport.mode_append")}
               </button>
             </div>
@@ -150,7 +158,9 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             </Button>
           </>
         ) : (
-          <Button variant="ghost" onClick={onClose}>{t("common.close")}</Button>
+          <Button variant="ghost" onClick={onClose}>
+            {t("common.close")}
+          </Button>
         )
       }
     >
@@ -163,14 +173,22 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
           )}
           <FormField
             label={t("mcpimport.tool_label")}
-            hint={connecting
-              ? t("mcpimport.connecting")
-              : t("mcpimport.tools_count", { count: tools.length })}
+            hint={
+              connecting
+                ? t("mcpimport.connecting")
+                : t("mcpimport.tools_count", { count: tools.length })
+            }
           >
-            <Select value={tool} onChange={(e) => setTool(e.target.value)} disabled={connecting || !tools.length}>
+            <Select
+              value={tool}
+              onChange={(e) => setTool(e.target.value)}
+              disabled={connecting || !tools.length}
+            >
               {tools.length === 0 && <option value="">{t("mcpimport.no_tool")}</option>}
               {tools.map((tl) => (
-                <option key={tl.name} value={tl.name}>{tl.name}</option>
+                <option key={tl.name} value={tl.name}>
+                  {tl.name}
+                </option>
               ))}
             </Select>
           </FormField>
@@ -211,12 +229,14 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             <span className="text-muted">{t("mcpimport.data_apply")}</span>
             <button
               onClick={() => setDataMode("schema")}
-              className={`chip ${dataMode === "schema" ? "chip-accent" : ""}`}>
+              className={`chip ${dataMode === "schema" ? "chip-accent" : ""}`}
+            >
               {t("mcpimport.data_schema_only")}
             </button>
             <button
               onClick={() => setDataMode("snapshot")}
-              className={`chip ${dataMode === "snapshot" ? "chip-accent" : ""}`}>
+              className={`chip ${dataMode === "snapshot" ? "chip-accent" : ""}`}
+            >
               {t("mcpimport.data_snapshot", { count: sampleRows.length })}
             </button>
           </div>
@@ -232,77 +252,80 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
           />
 
           {previewTab === "schema" && (
-          <div className="border border-border rounded overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-panel-2 text-muted uppercase tracking-wide">
-                <tr>
-                  <th className="text-left px-2 py-1.5">✓</th>
-                  <th className="text-left px-2 py-1.5">Key</th>
-                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_label")}</th>
-                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_type")}</th>
-                  <th className="text-left px-2 py-1.5">{t("mcpimport.col_sample")}</th>
-                  <th className="text-right px-2 py-1.5" title={t("mcpimport.null_ratio")}>
-                    {t("mcpimport.col_null")}
-                  </th>
-                  <th className="text-right px-2 py-1.5" title={t("mcpimport.unique_count")}>
-                    {t("mcpimport.col_unique")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {inferred.map((f, i) => (
-                  <tr key={f.key} className="border-t border-border hover:bg-hover/30">
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="checkbox"
-                        checked={!f._skip}
-                        onChange={(e) => {
-                          const next = [...inferred];
-                          next[i] = { ...f, _skip: !e.target.checked };
-                          setInferred(next);
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 font-mono text-muted">{f.key}</td>
-                    <td className="px-2 py-1.5">
-                      <input
-                        className="input !h-6 !text-xs !px-1.5"
-                        value={f.label}
-                        onChange={(e) => {
-                          const next = [...inferred];
-                          next[i] = { ...f, label: e.target.value };
-                          setInferred(next);
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <Chip variant="accent">{f.type}</Chip>
-                    </td>
-                    <td className="px-2 py-1.5 text-muted truncate max-w-[200px]">
-                      {f.sample == null ? "—" : typeof f.sample === "object" ? JSON.stringify(f.sample).slice(0, 50) : String(f.sample).slice(0, 50)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right text-muted">{f.nullCount}/{f.totalCount}</td>
-                    <td className="px-2 py-1.5 text-right text-muted">{f.uniqueCount}</td>
+            <div className="border border-border rounded overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-panel-2 text-muted uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-2 py-1.5">✓</th>
+                    <th className="text-left px-2 py-1.5">Key</th>
+                    <th className="text-left px-2 py-1.5">{t("mcpimport.col_label")}</th>
+                    <th className="text-left px-2 py-1.5">{t("mcpimport.col_type")}</th>
+                    <th className="text-left px-2 py-1.5">{t("mcpimport.col_sample")}</th>
+                    <th className="text-right px-2 py-1.5" title={t("mcpimport.null_ratio")}>
+                      {t("mcpimport.col_null")}
+                    </th>
+                    <th className="text-right px-2 py-1.5" title={t("mcpimport.unique_count")}>
+                      {t("mcpimport.col_unique")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {inferred.map((f, i) => (
+                    <tr key={f.key} className="border-t border-border hover:bg-hover/30">
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="checkbox"
+                          checked={!f._skip}
+                          onChange={(e) => {
+                            const next = [...inferred];
+                            next[i] = { ...f, _skip: !e.target.checked };
+                            setInferred(next);
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 font-mono text-muted">{f.key}</td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          className="input !h-6 !text-xs !px-1.5"
+                          value={f.label}
+                          onChange={(e) => {
+                            const next = [...inferred];
+                            next[i] = { ...f, label: e.target.value };
+                            setInferred(next);
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Chip variant="accent">{f.type}</Chip>
+                      </td>
+                      <td className="px-2 py-1.5 text-muted truncate max-w-[200px]">
+                        {f.sample == null
+                          ? "—"
+                          : typeof f.sample === "object"
+                            ? JSON.stringify(f.sample).slice(0, 50)
+                            : String(f.sample).slice(0, 50)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-muted">
+                        {f.nullCount}/{f.totalCount}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-muted">{f.uniqueCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
-          {previewTab === "data" && (
-            inferred.length === 0 || sampleRows.length === 0 ? (
-              <div className="text-xs text-muted p-3">
-                {t("mcpimport.no_data")}
-              </div>
+          {previewTab === "data" &&
+            (inferred.length === 0 || sampleRows.length === 0 ? (
+              <div className="text-xs text-muted p-3">{t("mcpimport.no_data")}</div>
             ) : (
               <div className="border border-border rounded overflow-auto max-h-[340px]">
                 <table className="w-full text-xs">
                   <thead className="bg-panel-2 text-muted uppercase tracking-wide">
                     <tr>
                       {inferred.map((f) => (
-                        <th key={f.key}
-                          className="text-left px-2 py-1.5 whitespace-nowrap">
+                        <th key={f.key} className="text-left px-2 py-1.5 whitespace-nowrap">
                           {f.label || f.key}
                         </th>
                       ))}
@@ -317,10 +340,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
                           return (
                             <td
                               key={f.key}
-                              className={
-                                "px-2 py-1.5 max-w-[220px] truncate " +
-                                (num ? "text-right tabular-nums" : "")
-                              }
+                              className={`px-2 py-1.5 max-w-[220px] truncate ${num ? "text-right tabular-nums" : ""}`}
                               title={formatCell(v)}
                             >
                               {formatCell(v)}
@@ -337,8 +357,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
                   </div>
                 )}
               </div>
-            )
-          )}
+            ))}
 
           {previewTab === "raw" && (
             <pre className="bg-bg-soft border border-border rounded p-2 max-h-[340px] overflow-auto font-mono text-xs">

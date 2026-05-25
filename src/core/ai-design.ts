@@ -5,12 +5,12 @@
 
 import { llmRegistry } from "@/core/llm/registry";
 import {
-  SYSTEM_PROMPTS,
-  buildUserMessage,
+  type DesignByType,
+  type DesignContext,
   type DesignObjectType,
   type DesignRequest,
-  type DesignContext,
-  type DesignByType,
+  SYSTEM_PROMPTS,
+  buildUserMessage,
 } from "@/lib/ai-design-prompts";
 
 export interface AiDesignCallOptions {
@@ -39,7 +39,7 @@ export interface AiDesignResult<T> {
 export function extractJson(text: string): string {
   // Ưu tiên ```json ... ``` hoặc ``` ... ```
   const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (fenced && fenced[1]) return fenced[1].trim();
+  if (fenced?.[1]) return fenced[1].trim();
 
   // Fallback: tìm { ... } cấp ngoài cùng — balance
   const start = text.indexOf("{");
@@ -99,9 +99,11 @@ function pickProfileName(explicit?: string): string {
   if (explicit) return explicit;
   const profiles = llmRegistry.listUsableProfiles();
   if (!profiles.length) {
-    throw new Error("Chưa có LLM profile khả dụng — vào Settings → LLM Profiles để tạo (cần API key hoặc bridge).");
+    throw new Error(
+      "Chưa có LLM profile khả dụng — vào Settings → LLM Profiles để tạo (cần API key hoặc bridge).",
+    );
   }
-  return profiles[0]!.name;
+  return profiles[0]?.name;
 }
 
 /** ============= Main entry =============

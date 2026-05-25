@@ -1,11 +1,14 @@
-import { LLMAdapterBase } from "./adapter";
 import type { LLMRequest, LLMResponse } from "@/types/llm";
+import { LLMAdapterBase } from "./adapter";
 
 export class OllamaAdapter extends LLMAdapterBase {
   constructor() {
     super("ollama", {
-      tools: true, json_mode: true, streaming: true,
-      max_input_tokens: 8_000, max_output_tokens: 4_096,
+      tools: true,
+      json_mode: true,
+      streaming: true,
+      max_input_tokens: 8_000,
+      max_output_tokens: 4_096,
     });
   }
   async send(req: LLMRequest): Promise<LLMResponse> {
@@ -25,9 +28,10 @@ export class OllamaAdapter extends LLMAdapterBase {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Ollama ${res.status}: ${await res.text()}`);
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       message: { content: string };
-      prompt_eval_count?: number; eval_count?: number;
+      prompt_eval_count?: number;
+      eval_count?: number;
     };
     return {
       text: data.message.content,

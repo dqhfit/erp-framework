@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Card, Chip, Select } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { createOrgClient } from "@erp-framework/client";
 /* ==========================================================
    org-chart — Sơ đồ phân cấp agent. Mỗi agent có thể chọn agent
    cấp trên (managerId); trang dựng cây từ quan hệ đó.
@@ -8,11 +12,7 @@
      kẻ, từ trên xuống (chỉ xem).
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
-import { Card, Chip, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { cn } from "@/lib/utils";
-import { createOrgClient } from "@erp-framework/client";
+import { type ReactNode, useEffect, useState } from "react";
 
 const org = createOrgClient("");
 
@@ -32,18 +32,29 @@ function OrgChartRoute() {
   const [view, setView] = useState<ViewMode>("chart");
 
   const load = () => {
-    org.listAgents()
+    org
+      .listAgents()
       .then((r) => setAgents(r as OrgAgent[]))
-      .catch(() => { /* chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa đăng nhập */
+      });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const setManager = async (a: OrgAgent, managerId: string | null) => {
-    setBusy(true); setErr("");
-    try { await org.setManager(a, managerId); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    try {
+      await org.setManager(a, managerId);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const byId = new Map(agents.map((a) => [a.id, a]));
@@ -52,9 +63,7 @@ function OrgChartRoute() {
   const childrenOf = (id: string) => agents.filter((x) => x.managerId === id);
 
   /* ── Chế độ Danh sách — cây thụt lề có Select ── */
-  const renderListNode = (
-    a: OrgAgent, depth: number, seen: Set<string>,
-  ): ReactNode => {
+  const renderListNode = (a: OrgAgent, depth: number, seen: Set<string>): ReactNode => {
     if (seen.has(a.id)) return null;
     seen.add(a.id);
     const kids = childrenOf(a.id);
@@ -77,9 +86,13 @@ function OrgChartRoute() {
             className="!h-7 !text-xs max-w-[200px]"
           >
             <option value="">— (cấp cao nhất)</option>
-            {agents.filter((o) => o.id !== a.id).map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
+            {agents
+              .filter((o) => o.id !== a.id)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
           </Select>
         </div>
         {kids.map((k) => renderListNode(k, depth + 1, seen))}
@@ -132,8 +145,14 @@ function OrgChartRoute() {
     );
   };
 
-  const ToggleBtn = ({ mode, icon, label }: {
-    mode: ViewMode; icon: ReactNode; label: string;
+  const ToggleBtn = ({
+    mode,
+    icon,
+    label,
+  }: {
+    mode: ViewMode;
+    icon: ReactNode;
+    label: string;
   }) => (
     <button
       type="button"
@@ -145,7 +164,8 @@ function OrgChartRoute() {
           : "border-border text-muted hover:text-text",
       )}
     >
-      {icon}{label}
+      {icon}
+      {label}
     </button>
   );
 
@@ -160,8 +180,8 @@ function OrgChartRoute() {
           </div>
         </div>
         <div className="text-sm text-muted mb-6">
-          Gán agent cấp trên để dựng cây tổ chức — agent quản lý có thể điều
-          phối agent cấp dưới. Đổi cấp trên ở chế độ <b>Danh sách</b>; chế độ
+          Gán agent cấp trên để dựng cây tổ chức — agent quản lý có thể điều phối agent cấp dưới.
+          Đổi cấp trên ở chế độ <b>Danh sách</b>; chế độ
           <b> Sơ đồ</b> hiển thị trực quan như sơ đồ tổ chức.
         </div>
 
@@ -170,9 +190,7 @@ function OrgChartRoute() {
             <div className="text-sm text-muted">Chưa có agent nào.</div>
           </Card>
         ) : view === "list" ? (
-          <Card>
-            {roots.map((r) => renderListNode(r, 0, new Set<string>()))}
-          </Card>
+          <Card>{roots.map((r) => renderListNode(r, 0, new Set<string>()))}</Card>
         ) : (
           <Card className="overflow-x-auto">
             <div className="flex items-start justify-center gap-10 min-w-min py-4">
@@ -184,7 +202,11 @@ function OrgChartRoute() {
           </Card>
         )}
 
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
       </div>
     </div>
   );

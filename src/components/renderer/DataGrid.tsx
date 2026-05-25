@@ -1,12 +1,17 @@
-import { useState } from "react";
-import {
-  flexRender, getCoreRowModel, getFilteredRowModel,
-  getSortedRowModel, useReactTable,
-  type ColumnDef, type SortingState, type ColumnFiltersState,
-} from "@tanstack/react-table";
 import { I } from "@/components/Icons";
-import { Input, Chip } from "@/components/ui";
+import { Chip, Input } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useState } from "react";
 
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -18,7 +23,8 @@ export interface DataGridProps<T> {
 }
 
 export function DataGrid<T>({
-  columns, data,
+  columns,
+  data,
   emptyText = "Không có dữ liệu.",
   className,
   toolbar = true,
@@ -69,7 +75,11 @@ export function DataGrid<T>({
                   return (
                     <th
                       key={header.id}
-                      onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
                       className={cn(
                         "text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
                         header.column.getCanSort() && "cursor-pointer hover:text-text select-none",
@@ -95,7 +105,10 @@ export function DataGrid<T>({
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-b border-border hover:bg-hover/30 transition-colors">
+                <tr
+                  key={row.id}
+                  className="border-b border-border hover:bg-hover/30 transition-colors"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -1,15 +1,15 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { formatUsd } from "@/lib/pricing";
+import { createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    activity — Dashboard Nhật ký & Chi phí. Đọc bảng activity_log
    trên server qua objects.activity. Server ghi log khi chạy
    workflow (run-workflow.ts); nguồn log mở rộng dần.
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
-import { Card, Chip, Button, Select, Input } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createObjectsClient } from "@erp-framework/client";
-import { formatUsd } from "@/lib/pricing";
-import { dialog } from "@/lib/dialog";
+import { useCallback, useEffect, useState } from "react";
 
 const objects = createObjectsClient("");
 
@@ -27,14 +27,24 @@ interface ActivityRow {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  create: "Tạo", update: "Cập nhật", delete: "Xoá",
-  run_workflow: "Chạy workflow", run_agent: "Chạy agent", mcp_call: "Gọi MCP",
-  login: "Đăng nhập", error: "Lỗi",
+  create: "Tạo",
+  update: "Cập nhật",
+  delete: "Xoá",
+  run_workflow: "Chạy workflow",
+  run_agent: "Chạy agent",
+  mcp_call: "Gọi MCP",
+  login: "Đăng nhập",
+  error: "Lỗi",
 };
 const KIND_VARIANT: Record<string, "default" | "accent" | "success" | "warning" | "danger"> = {
-  create: "success", update: "accent", delete: "warning",
-  run_workflow: "accent", run_agent: "accent", mcp_call: "default",
-  login: "default", error: "danger",
+  create: "success",
+  update: "accent",
+  delete: "warning",
+  run_workflow: "accent",
+  run_agent: "accent",
+  mcp_call: "default",
+  login: "default",
+  error: "danger",
 };
 const kindLabel = (k: string) => KIND_LABEL[k] ?? k;
 const kindVariant = (k: string) => KIND_VARIANT[k] ?? "default";
@@ -44,7 +54,12 @@ function fmtTime(ts: string | Date): string {
   const sameDay = d.toDateString() === new Date().toDateString();
   return sameDay
     ? d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    : d.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -61,19 +76,34 @@ function ActivityDashboard() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
-  const [budget, setBudget] = useState<{ monthlyUsd: number; usedUsd: number }>({ monthlyUsd: 0, usedUsd: 0 });
+  const [budget, setBudget] = useState<{ monthlyUsd: number; usedUsd: number }>({
+    monthlyUsd: 0,
+    usedUsd: 0,
+  });
   const [budgetInput, setBudgetInput] = useState("");
 
   const reload = useCallback(() => {
     setLoading(true);
-    objects.activity.list()
-      .then((r) => { setRows(r as ActivityRow[]); setLoading(false); })
+    objects.activity
+      .list()
+      .then((r) => {
+        setRows(r as ActivityRow[]);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
-    objects.budget.get()
-      .then((b) => { setBudget(b); setBudgetInput(String(b.monthlyUsd)); })
-      .catch(() => { /* chưa đăng nhập / lỗi mạng */ });
+    objects.budget
+      .get()
+      .then((b) => {
+        setBudget(b);
+        setBudgetInput(String(b.monthlyUsd));
+      })
+      .catch(() => {
+        /* chưa đăng nhập / lỗi mạng */
+      });
   }, []);
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const saveBudget = async () => {
     const v = Number(budgetInput);
@@ -92,7 +122,9 @@ function ActivityDashboard() {
 
   const handleClear = async () => {
     const ok = await dialog.confirm("Xoá toàn bộ nhật ký hoạt động?", {
-      title: "Xoá nhật ký", confirmText: "Xoá", danger: true,
+      title: "Xoá nhật ký",
+      confirmText: "Xoá",
+      danger: true,
     });
     if (!ok) return;
     await objects.activity.clear().catch(() => {});
@@ -115,7 +147,11 @@ function ActivityDashboard() {
         </div>
 
         <div className="flex gap-3 mb-5">
-          <Stat label="Tổng chi phí" value={formatUsd(totalCost)} sub={`${withTokens} lần có token`} />
+          <Stat
+            label="Tổng chi phí"
+            value={formatUsd(totalCost)}
+            sub={`${withTokens} lần có token`}
+          />
           <Stat label="Token vào" value={tokIn.toLocaleString("vi-VN")} />
           <Stat label="Token ra" value={tokOut.toLocaleString("vi-VN")} />
           <Stat label="Số sự kiện" value={rows.length.toLocaleString("vi-VN")} />
@@ -128,9 +164,18 @@ function ActivityDashboard() {
               <div className="text-xs text-muted uppercase tracking-wide">Ngân sách tháng</div>
               <div className="text-sm mt-1">
                 Đã dùng <b>{formatUsd(budget.usedUsd)}</b>
-                {budget.monthlyUsd > 0
-                  ? <> {" / "} hạn mức <b>{formatUsd(budget.monthlyUsd)}</b></>
-                  : <> {" · "}<span className="text-muted">chưa đặt hạn mức</span></>}
+                {budget.monthlyUsd > 0 ? (
+                  <>
+                    {" "}
+                    {" / "} hạn mức <b>{formatUsd(budget.monthlyUsd)}</b>
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    {" · "}
+                    <span className="text-muted">chưa đặt hạn mức</span>
+                  </>
+                )}
               </div>
               {overBudget && (
                 <div className="mt-1">
@@ -143,10 +188,17 @@ function ActivityDashboard() {
                 <label className="text-xs text-muted block mb-1">
                   Hạn mức USD/tháng (0 = không giới hạn)
                 </label>
-                <Input type="number" min="0" className="w-40" value={budgetInput}
-                  onChange={(e) => setBudgetInput(e.target.value)} />
+                <Input
+                  type="number"
+                  min="0"
+                  className="w-40"
+                  value={budgetInput}
+                  onChange={(e) => setBudgetInput(e.target.value)}
+                />
               </div>
-              <Button variant="primary" onClick={saveBudget}>Lưu hạn mức</Button>
+              <Button variant="primary" onClick={saveBudget}>
+                Lưu hạn mức
+              </Button>
             </div>
           </div>
         </Card>
@@ -155,7 +207,11 @@ function ActivityDashboard() {
           <span className="text-sm text-muted">Lọc theo loại:</span>
           <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-48">
             <option value="all">Tất cả</option>
-            {kinds.map((k) => <option key={k} value={k}>{kindLabel(k)}</option>)}
+            {kinds.map((k) => (
+              <option key={k} value={k}>
+                {kindLabel(k)}
+              </option>
+            ))}
           </Select>
         </div>
 
@@ -190,14 +246,16 @@ function ActivityDashboard() {
                       <div>{e.detail}</div>
                       {e.target && (
                         <div className="text-xs text-muted">
-                          {e.objectType ? `${e.objectType}: ` : ""}{e.target}
+                          {e.objectType ? `${e.objectType}: ` : ""}
+                          {e.target}
                           {e.model ? ` · ${e.model}` : ""}
                         </div>
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-xs text-muted whitespace-nowrap">
                       {e.tokensInput || e.tokensOutput
-                        ? `${e.tokensInput ?? 0}/${e.tokensOutput ?? 0}` : "—"}
+                        ? `${e.tokensInput ?? 0}/${e.tokensOutput ?? 0}`
+                        : "—"}
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-xs whitespace-nowrap">
                       {e.cost != null ? formatUsd(e.cost) : "—"}

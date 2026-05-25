@@ -1,8 +1,21 @@
-import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
-} from "recharts";
 import { cn } from "@/lib/utils";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export type ChartKind = "bar" | "line" | "area" | "pie" | "doughnut";
 
@@ -18,7 +31,18 @@ export interface ChartProps {
   title?: string;
 }
 
-const PALETTE = ["#7c5cff", "#00d4ff", "#22c55e", "#ff9933", "#ff5577", "#a78bfa", "#34d399", "#fb7185", "#60a5fa", "#facc15"];
+const PALETTE = [
+  "#7c5cff",
+  "#00d4ff",
+  "#22c55e",
+  "#ff9933",
+  "#ff5577",
+  "#a78bfa",
+  "#34d399",
+  "#fb7185",
+  "#60a5fa",
+  "#facc15",
+];
 
 function detect(data: Array<Record<string, unknown>>, labelKey?: string, valueKeys?: string[]) {
   if (!data.length) return { lk: "", vks: [] };
@@ -30,12 +54,23 @@ function detect(data: Array<Record<string, unknown>>, labelKey?: string, valueKe
   return { lk, vks };
 }
 
-export function Chart({ kind, data, labelKey, valueKeys, className, height = 300, title }: ChartProps) {
+export function Chart({
+  kind,
+  data,
+  labelKey,
+  valueKeys,
+  className,
+  height = 300,
+  title,
+}: ChartProps) {
   const { lk, vks } = detect(data, labelKey, valueKeys);
 
   if (!data.length) {
     return (
-      <div className={cn("flex items-center justify-center text-muted text-sm py-8", className)} style={{ height }}>
+      <div
+        className={cn("flex items-center justify-center text-muted text-sm py-8", className)}
+        style={{ height }}
+      >
         Không có dữ liệu cho biểu đồ.
       </div>
     );
@@ -50,19 +85,40 @@ export function Chart({ kind, data, labelKey, valueKeys, className, height = 300
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
             <XAxis dataKey={lk} tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
             <YAxis tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: "hsl(var(--panel))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--panel))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+              }}
+            />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            {vks.map((k, i) => (<Bar key={k} dataKey={k} fill={PALETTE[i % PALETTE.length]} />))}
+            {vks.map((k, i) => (
+              <Bar key={k} dataKey={k} fill={PALETTE[i % PALETTE.length]} />
+            ))}
           </BarChart>
         ) : kind === "line" ? (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
             <XAxis dataKey={lk} tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
             <YAxis tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: "hsl(var(--panel))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--panel))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+              }}
+            />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             {vks.map((k, i) => (
-              <Line key={k} type="monotone" dataKey={k} stroke={PALETTE[i % PALETTE.length]} strokeWidth={2} dot={{ r: 3 }} />
+              <Line
+                key={k}
+                type="monotone"
+                dataKey={k}
+                stroke={PALETTE[i % PALETTE.length]}
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
             ))}
           </LineChart>
         ) : kind === "area" ? (
@@ -70,25 +126,47 @@ export function Chart({ kind, data, labelKey, valueKeys, className, height = 300
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
             <XAxis dataKey={lk} tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
             <YAxis tick={{ fill: "hsl(var(--muted))", fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: "hsl(var(--panel))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--panel))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+              }}
+            />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             {vks.map((k, i) => (
-              <Area key={k} type="monotone" dataKey={k} stroke={PALETTE[i % PALETTE.length]}
-                fill={PALETTE[i % PALETTE.length]} fillOpacity={0.3} />
+              <Area
+                key={k}
+                type="monotone"
+                dataKey={k}
+                stroke={PALETTE[i % PALETTE.length]}
+                fill={PALETTE[i % PALETTE.length]}
+                fillOpacity={0.3}
+              />
             ))}
           </AreaChart>
         ) : (
           <PieChart>
             <Pie
-              data={data} dataKey={vks[0] ?? "value"} nameKey={lk}
+              data={data}
+              dataKey={vks[0] ?? "value"}
+              nameKey={lk}
               outerRadius={kind === "doughnut" ? 100 : 110}
               innerRadius={kind === "doughnut" ? 60 : 0}
               labelLine={false}
               label={(e) => `${e.name}: ${e.value}`}
             >
-              {data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+              {data.map((_, i) => (
+                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+              ))}
             </Pie>
-            <Tooltip contentStyle={{ background: "hsl(var(--panel))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--panel))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+              }}
+            />
             <Legend wrapperStyle={{ fontSize: 12 }} />
           </PieChart>
         )}

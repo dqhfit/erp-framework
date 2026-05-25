@@ -1,10 +1,10 @@
+import { I } from "@/components/Icons";
+import { ModelCombobox } from "@/components/ModelCombobox";
 /* ==========================================================
    LlmProfileCard — Card 1 LLM profile dùng useDynamicModels
    để load model list động từ API.
    ========================================================== */
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { ModelCombobox } from "@/components/ModelCombobox";
 import { dialog } from "@/lib/dialog";
 import type { LLMProfile } from "@/types/llm";
 
@@ -28,9 +28,11 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
           <h3 className="font-semibold">{p.name}</h3>
           <Chip variant="accent">{p.adapter}</Chip>
           {p.adapter === "claude-pro" ? (
-            loggedInClaudePro
-              ? <Chip variant="success">✓ OAuth token</Chip>
-              : <Chip variant="warning">⚠ Chưa đăng nhập</Chip>
+            loggedInClaudePro ? (
+              <Chip variant="success">✓ OAuth token</Chip>
+            ) : (
+              <Chip variant="warning">⚠ Chưa đăng nhập</Chip>
+            )
           ) : p.adapter === "claude-cli" ? (
             <Chip variant="accent">via bridge</Chip>
           ) : p.adapter === "ollama" ? (
@@ -42,9 +44,17 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
           )}
         </div>
         <Button
-          variant="danger" size="sm"
+          variant="danger"
+          size="sm"
           onClick={async () => {
-            if (await dialog.confirm(`Xóa profile "${p.name}"?`, { title: "Xóa LLM profile", confirmText: "Xóa", danger: true })) onDelete();
+            if (
+              await dialog.confirm(`Xóa profile "${p.name}"?`, {
+                title: "Xóa LLM profile",
+                confirmText: "Xóa",
+                danger: true,
+              })
+            )
+              onDelete();
           }}
           icon={<I.Trash size={12} />}
         >
@@ -58,7 +68,11 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
             value={p.adapter}
             onChange={(e) => onChange({ ...p, adapter: e.target.value, model: "" })}
           >
-            {ADAPTERS.map((a) => <option key={a} value={a}>{a}</option>)}
+            {ADAPTERS.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
           </Select>
         </FormField>
 
@@ -72,48 +86,70 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
 
         {!NO_KEY_ADAPTERS.has(p.adapter) && (
           <FormField label="API Key" hint="Lưu trong localStorage, không gửi đi đâu khác">
-            <Input type="password" value={p.apiKey ?? ""}
+            <Input
+              type="password"
+              value={p.apiKey ?? ""}
               onChange={(e) => onChange({ ...p, apiKey: e.target.value })}
-              placeholder="sk-..." />
+              placeholder="sk-..."
+            />
           </FormField>
         )}
         {p.adapter !== "claude-pro" && (
-          <FormField label={
-            p.adapter === "claude-cli" ? "Bridge URL"
-            : p.adapter === "ollama" ? "Ollama URL"
-            : "Endpoint"
-          } hint={
-            p.adapter === "claude-cli" ? "Mặc định http://localhost:8909"
-            : p.adapter === "ollama" ? "Mặc định http://localhost:11434"
-            : "Để trống dùng mặc định"
-          }>
-            <Input value={p.endpoint ?? ""}
+          <FormField
+            label={
+              p.adapter === "claude-cli"
+                ? "Bridge URL"
+                : p.adapter === "ollama"
+                  ? "Ollama URL"
+                  : "Endpoint"
+            }
+            hint={
+              p.adapter === "claude-cli"
+                ? "Mặc định http://localhost:8909"
+                : p.adapter === "ollama"
+                  ? "Mặc định http://localhost:11434"
+                  : "Để trống dùng mặc định"
+            }
+          >
+            <Input
+              value={p.endpoint ?? ""}
               onChange={(e) => onChange({ ...p, endpoint: e.target.value })}
               placeholder={
-                p.adapter === "claude-cli" ? "http://localhost:8909"
-                : p.adapter === "ollama" ? "http://localhost:11434"
-                : "Auto"
-              } />
+                p.adapter === "claude-cli"
+                  ? "http://localhost:8909"
+                  : p.adapter === "ollama"
+                    ? "http://localhost:11434"
+                    : "Auto"
+              }
+            />
           </FormField>
         )}
         {p.adapter === "claude-pro" && (
           <FormField label="Auth" hint="Token tự refresh khi hết hạn">
             <div className="h-9 px-3 flex items-center text-sm border border-border rounded-md bg-bg-soft">
-              {loggedInClaudePro ? "✓ OAuth bearer token (auto-refresh)" : "⚠ Hãy đăng nhập ở thẻ trên"}
+              {loggedInClaudePro
+                ? "✓ OAuth bearer token (auto-refresh)"
+                : "⚠ Hãy đăng nhập ở thẻ trên"}
             </div>
           </FormField>
         )}
         <FormField label={`Temperature (${p.temperature ?? 0.7})`}>
           <input
-            type="range" min="0" max="1" step="0.1"
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
             value={p.temperature ?? 0.7}
-            onChange={(e) => onChange({ ...p, temperature: parseFloat(e.target.value) })}
+            onChange={(e) => onChange({ ...p, temperature: Number.parseFloat(e.target.value) })}
             className="w-full accent-[hsl(var(--accent))]"
           />
         </FormField>
         <FormField label="Max tokens">
-          <Input type="number" value={p.max_tokens ?? 4096}
-            onChange={(e) => onChange({ ...p, max_tokens: parseInt(e.target.value, 10) })} />
+          <Input
+            type="number"
+            value={p.max_tokens ?? 4096}
+            onChange={(e) => onChange({ ...p, max_tokens: Number.parseInt(e.target.value, 10) })}
+          />
         </FormField>
       </div>
     </Card>

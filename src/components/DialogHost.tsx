@@ -1,11 +1,11 @@
+import { Button, Modal } from "@/components/ui";
+import { useDialog } from "@/stores/dialog";
 /* ==========================================================
    DialogHost — Render Modal cho alert/confirm/prompt do
    dialog.alert/confirm/prompt() dispatch qua useDialog store.
    Mount 1 lần ở __root.tsx.
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
-import { Modal, Button } from "@/components/ui";
-import { useDialog } from "@/stores/dialog";
 
 export function DialogHost() {
   const current = useDialog((s) => s.current);
@@ -20,7 +20,10 @@ export function DialogHost() {
       // Focus + select trên next tick
       requestAnimationFrame(() => {
         const el = inputRef.current;
-        if (el) { el.focus(); el.select(); }
+        if (el) {
+          el.focus();
+          el.select();
+        }
       });
     } else {
       setValue("");
@@ -41,7 +44,10 @@ export function DialogHost() {
 
   // Enter để confirm trong prompt
   const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); handleOk(); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleOk();
+    }
   };
 
   return (
@@ -53,12 +59,11 @@ export function DialogHost() {
       footer={
         <>
           {current.kind !== "alert" && (
-            <Button variant="ghost" onClick={handleCancel}>{current.cancelText}</Button>
+            <Button variant="ghost" onClick={handleCancel}>
+              {current.cancelText}
+            </Button>
           )}
-          <Button
-            variant={current.danger ? "danger" : "primary"}
-            onClick={handleOk}
-          >
+          <Button variant={current.danger ? "danger" : "primary"} onClick={handleOk}>
             {current.confirmText}
           </Button>
         </>
@@ -77,7 +82,6 @@ export function DialogHost() {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={current.placeholder}
-          autoFocus
         />
       )}
     </Modal>

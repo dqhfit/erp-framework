@@ -36,7 +36,12 @@ export interface AgentRunOptions {
 export interface AgentRunResult {
   text: string;
   iterations: number;
-  toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown; error?: string }>;
+  toolCalls: Array<{
+    name: string;
+    args: Record<string, unknown>;
+    result: unknown;
+    error?: string;
+  }>;
   totalUsage: { input_tokens: number; output_tokens: number };
 }
 
@@ -81,15 +86,18 @@ export async function runAgent(opt: AgentRunOptions): Promise<AgentRunResult> {
     // Execute tools, build tool_result blocks
     const resultBlocks: ContentBlock[] = [];
     for (const tc of res.tool_calls) {
-      const tcId = (assistantBlocks.find((b) => b.type === "tool_use" && b.name === tc.name) as
-        Extract<ContentBlock, { type: "tool_use" }> | undefined)?.id
-        ?? `tc_${Date.now()}`;
+      const tcId =
+        (
+          assistantBlocks.find((b) => b.type === "tool_use" && b.name === tc.name) as
+            | Extract<ContentBlock, { type: "tool_use" }>
+            | undefined
+        )?.id ?? `tc_${Date.now()}`;
       opt.onEvent?.({ type: "tool_call", id: tcId, name: tc.name, args: tc.args });
       try {
         const out = await opt.callTool(tc.name, tc.args);
         const content = typeof out === "string" ? out : JSON.stringify(out);
         // Anthropic limit tool_result content; cắt cho an toàn
-        const trimmed = content.length > 8000 ? content.slice(0, 8000) + "\n…[truncated]" : content;
+        const trimmed = content.length > 8000 ? `${content.slice(0, 8000)}\n…[truncated]` : content;
         toolCalls.push({ name: tc.name, args: tc.args, result: out });
         opt.onEvent?.({ type: "tool_result", id: tcId, name: tc.name, result: out });
         resultBlocks.push({ type: "tool_result", tool_use_id: tcId, content: trimmed });
@@ -97,20 +105,31 @@ export async function runAgent(opt: AgentRunOptions): Promise<AgentRunResult> {
         const msg = (e as Error).message;
         toolCalls.push({ name: tc.name, args: tc.args, result: null, error: msg });
         opt.onEvent?.({ type: "tool_result", id: tcId, name: tc.name, result: null, error: msg });
-        resultBlocks.push({ type: "tool_result", tool_use_id: tcId, content: "ERROR: " + msg, is_error: true });
+        resultBlocks.push({
+          type: "tool_result",
+          tool_use_id: tcId,
+          content: `ERROR: ${msg}`,
+          is_error: true,
+        });
       }
     }
     messages.push({ role: "user", content: resultBlocks });
   }
   return {
-    text: "(Đã đạt giới hạn " + maxIter + " vòng — agent có thể đang loop)",
-    iterations: maxIter, toolCalls, totalUsage: total,
+    text: `(Đã đạt giới hạn ${maxIter} vòng — agent có thể đang loop)`,
+    iterations: maxIter,
+    toolCalls,
+    totalUsage: total,
   };
 }
 
 /** Convert MCP tool definitions → ToolDef cho LLM adapter */
 export function mcpToolsToToolDefs(
-  mcpTools: Array<{ name: string; description?: string; inputSchema?: { type: string; properties?: Record<string, unknown>; required?: string[] } }>,
+  mcpTools: Array<{
+    name: string;
+    description?: string;
+    inputSchema?: { type: string; properties?: Record<string, unknown>; required?: string[] };
+  }>,
 ): ToolDef[] {
   return mcpTools.map((t) => ({
     name: t.name,

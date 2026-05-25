@@ -1,3 +1,8 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
+import { createAuthClient } from "@erp-framework/client";
 /* ==========================================================
    /invite?token=... — Trang công khai (ngoài AuthGate).
    ────────────────────────────────────────────────────────────
@@ -10,11 +15,6 @@
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createAuthClient } from "@erp-framework/client";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 
 const auth = createAuthClient("");
 
@@ -29,9 +29,10 @@ interface PreviewState {
 
 function InviteRoute() {
   const navigate = useNavigate();
-  const token = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("token") ?? ""
-    : "";
+  const token =
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("token") ?? "")
+      : "";
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -43,7 +44,8 @@ function InviteRoute() {
       setPreview({ valid: false, reason: "not_found" });
       return;
     }
-    auth.invitePreview(token)
+    auth
+      .invitePreview(token)
       .then((r) => setPreview(r as PreviewState))
       .catch((e) => setErr((e as Error).message));
   }, [token]);
@@ -77,8 +79,12 @@ function InviteRoute() {
     <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
       <Card className="w-[420px] space-y-4">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-md flex items-center justify-center text-white"
-            style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+          <span
+            className="w-10 h-10 rounded-md flex items-center justify-center text-white"
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+            }}
+          >
             <I.User size={18} />
           </span>
           <div className="flex-1 min-w-0">
@@ -104,8 +110,11 @@ function InviteRoute() {
               {preview.reason === "expired" && "Link đã hết hạn. Hãy yêu cầu admin gửi lại."}
               {preview.reason === "accepted" && "Link này đã được sử dụng. Vui lòng đăng nhập."}
             </Chip>
-            <Button variant="default" className="w-full justify-center"
-              onClick={() => navigate({ to: "/" })}>
+            <Button
+              variant="default"
+              className="w-full justify-center"
+              onClick={() => navigate({ to: "/" })}
+            >
               Về trang đăng nhập
             </Button>
           </div>
@@ -114,28 +123,39 @@ function InviteRoute() {
         {preview?.valid && (
           <>
             <div className="text-xs text-muted">
-              Đặt mật khẩu lần đầu để hoàn tất tài khoản. Mật khẩu sẽ dùng
-              cho các lần đăng nhập sau.
+              Đặt mật khẩu lần đầu để hoàn tất tài khoản. Mật khẩu sẽ dùng cho các lần đăng nhập
+              sau.
             </div>
 
             <FormField label="Mật khẩu mới" hint="Tối thiểu 8 ký tự">
-              <Input type="password" value={password}
+              <Input
+                type="password"
+                value={password}
                 placeholder="••••••••"
-                onChange={(e) => setPassword(e.target.value)} />
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </FormField>
 
             <FormField label="Nhập lại mật khẩu">
-              <Input type="password" value={confirm}
+              <Input
+                type="password"
+                value={confirm}
                 placeholder="••••••••"
                 onChange={(e) => setConfirm(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !busy) void submit(); }} />
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !busy) void submit();
+                }}
+              />
             </FormField>
 
             {err && <Chip variant="danger">{err}</Chip>}
 
-            <Button variant="primary" className="w-full justify-center"
+            <Button
+              variant="primary"
+              className="w-full justify-center"
               disabled={busy || !password || !confirm}
-              onClick={() => void submit()}>
+              onClick={() => void submit()}
+            >
               {busy ? "Đang xử lý…" : "Hoàn tất + vào app"}
             </Button>
           </>

@@ -1,7 +1,7 @@
+import { uid } from "@/lib/utils";
+import type { EntityDef } from "@/types/entity";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { EntityDef } from "@/types/entity";
-import { uid } from "@/lib/utils";
 
 interface EntitiesState {
   entities: EntityDef[];
@@ -29,11 +29,12 @@ export const useEntities = create<EntitiesState>()(
         set((s) => ({ entities: [...s.entities, entity] }));
         return entity;
       },
-      update: (id, patch) => set((s) => ({
-        entities: s.entities.map((e) =>
-          e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e,
-        ),
-      })),
+      update: (id, patch) =>
+        set((s) => ({
+          entities: s.entities.map((e) =>
+            e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e,
+          ),
+        })),
       remove: (id) => set((s) => ({ entities: s.entities.filter((e) => e.id !== id) })),
       get: (id) => getStore().entities.find((e) => e.id === id),
     }),

@@ -1,3 +1,9 @@
+import { I } from "@/components/Icons";
+import { Button, Chip } from "@/components/ui";
+import { Modal } from "@/components/ui/modal";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 /* ==========================================================
    PickPrimaryModal — Chọn "Agent chính" của user hiện tại.
    ────────────────────────────────────────────────────────────
@@ -10,12 +16,6 @@
    - "Bỏ chọn" hiển thị khi user đang có primary — xoá liên kết.
    ========================================================== */
 import { useState } from "react";
-import { Modal } from "@/components/ui/modal";
-import { Button, Chip } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { useUserObjects } from "@/stores/userObjects";
-import { useAuth } from "@/stores/auth";
-import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -52,8 +52,8 @@ export function PickPrimaryModal({ open, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} title="Chọn Agent chính của bạn" width={520}>
       <div className="text-sm text-muted mb-3">
-        Agent chính sẽ tự động được mở khi bạn vào ô chat (Cmd-K hoặc Topbar).
-        Bạn có thể đổi bất cứ lúc nào.
+        Agent chính sẽ tự động được mở khi bạn vào ô chat (Cmd-K hoặc Topbar). Bạn có thể đổi bất cứ
+        lúc nào.
       </div>
       <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
         {ordered.length === 0 && (
@@ -73,9 +73,7 @@ export function PickPrimaryModal({ open, onClose }: Props) {
               onClick={() => pick(a.id)}
               className={cn(
                 "w-full flex items-center gap-2 px-3 py-2 rounded-md border text-left transition-colors",
-                isPrimary
-                  ? "border-accent bg-accent/10"
-                  : "border-border hover:bg-hover/40",
+                isPrimary ? "border-accent bg-accent/10" : "border-border hover:bg-hover/40",
                 busy === a.id && "opacity-60",
               )}
             >
@@ -85,17 +83,25 @@ export function PickPrimaryModal({ open, onClose }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate flex items-center gap-1.5">
                   {a.name}
-                  {isCeo && <Chip className="!h-[16px] !text-[9px]" variant="accent">CEO</Chip>}
-                  {isPrimary && <Chip className="!h-[16px] !text-[9px]" variant="success">đang chọn</Chip>}
-                  {role && !isPrimary && (
-                    <Chip className="!h-[16px] !text-[9px]">{role}</Chip>
+                  {isCeo && (
+                    <Chip className="!h-[16px] !text-[9px]" variant="accent">
+                      CEO
+                    </Chip>
                   )}
+                  {isPrimary && (
+                    <Chip className="!h-[16px] !text-[9px]" variant="success">
+                      đang chọn
+                    </Chip>
+                  )}
+                  {role && !isPrimary && <Chip className="!h-[16px] !text-[9px]">{role}</Chip>}
                 </div>
                 <div className="text-xs text-muted truncate font-mono">{a.model}</div>
               </div>
-              {isPrimary
-                ? <I.Check size={14} className="text-accent shrink-0" />
-                : <I.ChevronRight size={14} className="text-muted shrink-0" />}
+              {isPrimary ? (
+                <I.Check size={14} className="text-accent shrink-0" />
+              ) : (
+                <I.ChevronRight size={14} className="text-muted shrink-0" />
+              )}
             </button>
           );
         })}
@@ -103,17 +109,26 @@ export function PickPrimaryModal({ open, onClose }: Props) {
       <div className="mt-3 flex items-center justify-between gap-2">
         {primaryAgentId ? (
           <Button
-            variant="ghost" size="sm"
+            variant="ghost"
+            size="sm"
             disabled={busy !== null}
             onClick={() => pick(null)}
-            icon={busy === "__clear__"
-              ? <I.Loader size={11} className="animate-spin" />
-              : <I.X size={11} />}
+            icon={
+              busy === "__clear__" ? (
+                <I.Loader size={11} className="animate-spin" />
+              ) : (
+                <I.X size={11} />
+              )
+            }
           >
             Bỏ chọn agent chính
           </Button>
-        ) : <span />}
-        <Button variant="default" size="sm" onClick={onClose}>Đóng</Button>
+        ) : (
+          <span />
+        )}
+        <Button variant="default" size="sm" onClick={onClose}>
+          Đóng
+        </Button>
       </div>
     </Modal>
   );

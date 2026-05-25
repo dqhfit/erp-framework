@@ -9,7 +9,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({
-  variant = "default", size = "md", icon, className, children, ...props
+  variant = "default",
+  size = "md",
+  icon,
+  className,
+  children,
+  ...props
 }: ButtonProps) {
   const isIconOnly = !children && !!icon;
   return (

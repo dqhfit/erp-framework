@@ -30,7 +30,9 @@ interface OAuthTokens {
 function randomString(len = 64): string {
   const bytes = new Uint8Array(len);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join("");
+  return Array.from(bytes)
+    .map((b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62])
+    .join("");
 }
 async function sha256base64url(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);
@@ -47,15 +49,17 @@ function getClientId(): string {
   return localStorage.getItem("claude-oauth-client-id") || DEFAULT_CLIENT_ID;
 }
 function getRedirectUri(): string {
-  return window.location.origin + "/oauth/callback";
+  return `${window.location.origin}/oauth/callback`;
 }
 
 // ---- Storage ----
 export function getTokens(): OAuthTokens | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as OAuthTokens : null;
-  } catch { return null; }
+    return raw ? (JSON.parse(raw) as OAuthTokens) : null;
+  } catch {
+    return null;
+  }
 }
 function setTokens(t: OAuthTokens | null) {
   if (t) localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
@@ -64,7 +68,7 @@ function setTokens(t: OAuthTokens | null) {
 
 export function isLoggedIn(): boolean {
   const t = getTokens();
-  return !!(t && t.access_token);
+  return !!t?.access_token;
 }
 export function logout() {
   setTokens(null);
@@ -111,7 +115,12 @@ export async function handleCallback(code: string, returnedState: string): Promi
     const t = await res.text();
     throw new Error(`Token exchange failed (${res.status}): ${t}`);
   }
-  const data = await res.json() as { access_token: string; refresh_token: string; expires_in: number; token_type?: string };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    token_type?: string;
+  };
   setTokens({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
@@ -138,7 +147,11 @@ async function refresh(): Promise<OAuthTokens> {
     setTokens(null);
     throw new Error(`Refresh failed (${res.status}): ${await res.text()}`);
   }
-  const data = await res.json() as { access_token: string; refresh_token?: string; expires_in: number };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in: number;
+  };
   const next: OAuthTokens = {
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? cur.refresh_token,

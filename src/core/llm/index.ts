@@ -1,10 +1,10 @@
-import { llmRegistry } from "./registry";
 import { ClaudeAdapter } from "./claude";
-import { ClaudeOAuthAdapter } from "./claude-oauth";
 import { ClaudeCliAdapter } from "./claude-cli";
-import { OpenAIAdapter } from "./openai";
+import { ClaudeOAuthAdapter } from "./claude-oauth";
 import { GeminiAdapter } from "./gemini";
 import { OllamaAdapter } from "./ollama";
+import { OpenAIAdapter } from "./openai";
+import { llmRegistry } from "./registry";
 
 llmRegistry.register(new ClaudeAdapter());
 llmRegistry.register(new ClaudeOAuthAdapter());

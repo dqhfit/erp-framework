@@ -5,16 +5,16 @@
    RECORD THẬT của entity bound (qua ApiDataSource); widget form
    ghi record thật vào backend. KHÔNG còn dữ liệu giả.
    ========================================================== */
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { I } from "@/components/Icons";
-import { DataGrid } from "@/components/renderer/DataGrid";
 import { Chart } from "@/components/renderer/Chart";
-import { useUserObjects } from "@/stores/userObjects";
-import { createApiDataSource } from "@erp-framework/client";
+import { DataGrid } from "@/components/renderer/DataGrid";
 import { formatVND } from "@/lib/format";
 import type { MockEntity } from "@/lib/object-types";
+import { useUserObjects } from "@/stores/userObjects";
+import { createApiDataSource } from "@erp-framework/client";
 
 const api = createApiDataSource("");
 
@@ -23,7 +23,10 @@ type ChartKind = "bar" | "line" | "area" | "pie" | "doughnut";
 interface PageComponent {
   id: string;
   kind: string;
-  x: number; y: number; w: number; h: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   config: Record<string, unknown>;
 }
 
@@ -33,13 +36,31 @@ function useRecords(entityId?: string) {
   const [loading, setLoading] = useState<boolean>(!!entityId);
   const [err, setErr] = useState("");
   useEffect(() => {
-    if (!entityId) { setRows([]); setLoading(false); return; }
+    if (!entityId) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     let alive = true;
-    setLoading(true); setErr("");
-    api.getRecords(entityId, { limit: 500 })
-      .then((res) => { if (alive) { setRows(res.rows.map((r) => r.data)); setLoading(false); } })
-      .catch((e) => { if (alive) { setErr((e as Error).message); setLoading(false); } });
-    return () => { alive = false; };
+    setLoading(true);
+    setErr("");
+    api
+      .getRecords(entityId, { limit: 500 })
+      .then((res) => {
+        if (alive) {
+          setRows(res.rows.map((r) => r.data));
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (alive) {
+          setErr((e as Error).message);
+          setLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
   }, [entityId]);
   return { rows, loading, err };
 }
@@ -75,10 +96,16 @@ function ListWidget({ entityId }: { entityId?: string }) {
         <span className="ml-auto">{loading ? "đang tải…" : `${rows.length} bản ghi`}</span>
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
-        {err
-          ? <div className="p-3 text-xs text-danger">Lỗi tải dữ liệu: {err}</div>
-          : <DataGrid toolbar={false} data={rows} columns={columns}
-              emptyText="Chưa có bản ghi nào." />}
+        {err ? (
+          <div className="p-3 text-xs text-danger">Lỗi tải dữ liệu: {err}</div>
+        ) : (
+          <DataGrid
+            toolbar={false}
+            data={rows}
+            columns={columns}
+            emptyText="Chưa có bản ghi nào."
+          />
+        )}
       </div>
     </div>
   );
@@ -108,7 +135,7 @@ function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const agg = new Map<string, number>();
   for (const r of rows) {
     const key = String(r[groupBy] ?? "(trống)");
-    const inc = valueField ? (Number(r[valueField]) || 0) : 1;
+    const inc = valueField ? Number(r[valueField]) || 0 : 1;
     agg.set(key, (agg.get(key) ?? 0) + inc);
   }
   const data = [...agg.entries()].map(([k, v]) => ({ k, v }));
@@ -119,9 +146,11 @@ function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <div className="text-xs font-medium mb-1 truncate">{String(cfg.title)}</div>
       ) : null}
       <div className="flex-1 min-h-0">
-        {data.length === 0
-          ? <div className="text-xs text-muted p-2">Chưa có dữ liệu để vẽ.</div>
-          : <Chart kind={kind} data={data} labelKey="k" valueKeys={["v"]} />}
+        {data.length === 0 ? (
+          <div className="text-xs text-muted p-2">Chưa có dữ liệu để vẽ.</div>
+        ) : (
+          <Chart kind={kind} data={data} labelKey="k" valueKeys={["v"]} />
+        )}
       </div>
     </div>
   );
@@ -142,7 +171,9 @@ function FormWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const fields = ent.fields ?? [];
 
   const submit = async () => {
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       // Bỏ field rỗng — server validate-on-write tự ép kiểu phần còn lại.
       const data: Record<string, unknown> = {};
@@ -159,17 +190,14 @@ function FormWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
   return (
     <div className="p-3 h-full overflow-auto">
-      {cfg.title ? (
-        <div className="text-sm font-medium mb-2">{String(cfg.title)}</div>
-      ) : null}
+      {cfg.title ? <div className="text-sm font-medium mb-2">{String(cfg.title)}</div> : null}
       <div className="space-y-2">
-        {fields.length === 0 && (
-          <div className="text-xs text-muted">Entity chưa có field nào.</div>
-        )}
+        {fields.length === 0 && <div className="text-xs text-muted">Entity chưa có field nào.</div>}
         {fields.map((f) => (
           <div key={f.id}>
             <label className="text-xs text-muted">
-              {f.label}{f.required ? " *" : ""}
+              {f.label}
+              {f.required ? " *" : ""}
             </label>
             {f.type === "select" && f.options?.length ? (
               <select
@@ -178,14 +206,24 @@ function FormWidget({ cfg }: { cfg: Record<string, unknown> }) {
                 onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
               >
                 <option value="">— chọn —</option>
-                {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                {f.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             ) : (
               <input
                 className="input w-full"
-                type={f.type === "number" || f.type === "currency" ? "number"
-                  : f.type === "date" ? "date"
-                  : f.type === "email" ? "email" : "text"}
+                type={
+                  f.type === "number" || f.type === "currency"
+                    ? "number"
+                    : f.type === "date"
+                      ? "date"
+                      : f.type === "email"
+                        ? "email"
+                        : "text"
+                }
                 value={form[f.name] ?? ""}
                 onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
               />
@@ -225,7 +263,7 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
   for (const r of rows) {
     const key = String(r[groupBy] ?? "(trống)");
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(r);
+    groups.get(key)?.push(r);
   }
 
   return (
@@ -234,9 +272,7 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <I.Kanban size={11} /> {ent.name} · nhóm theo "{groupBy}"
       </div>
       <div className="flex-1 min-h-0 overflow-auto flex gap-2 p-2">
-        {groups.size === 0 && (
-          <div className="text-xs text-muted p-2">Chưa có bản ghi nào.</div>
-        )}
+        {groups.size === 0 && <div className="text-xs text-muted p-2">Chưa có bản ghi nào.</div>}
         {[...groups.entries()].map(([col, items]) => (
           <div key={col} className="w-[180px] shrink-0 bg-bg-soft rounded-md border border-border">
             <div className="text-xs font-medium px-2 py-1 border-b border-border flex justify-between">
@@ -265,7 +301,8 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const ent = useEntity(entityId);
   const { rows, loading, err } = useRecords(entityId);
 
-  if (!entityId || !ent) return <div className="p-3 text-xs text-muted">Calendar chưa bind entity.</div>;
+  if (!entityId || !ent)
+    return <div className="p-3 text-xs text-muted">Calendar chưa bind entity.</div>;
   if (loading) return <div className="p-3 text-xs text-muted">đang tải…</div>;
   if (err) return <div className="p-3 text-xs text-danger">Lỗi: {err}</div>;
 
@@ -274,10 +311,10 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
     const raw = r[dateField];
     if (!raw) continue;
     const d = new Date(String(raw));
-    if (isNaN(d.getTime())) continue;
+    if (Number.isNaN(d.getTime())) continue;
     const key = d.toISOString().slice(0, 10);
     if (!byDate.has(key)) byDate.set(key, []);
-    byDate.get(key)!.push(r);
+    byDate.get(key)?.push(r);
   }
   const sorted = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(0, 30);
 
@@ -287,20 +324,28 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <I.Calendar size={11} /> {ent.name} · theo "{dateField}"
       </div>
       <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1.5">
-        {sorted.length === 0 && (
-          <div className="text-xs text-muted">Chưa có bản ghi có ngày.</div>
-        )}
+        {sorted.length === 0 && <div className="text-xs text-muted">Chưa có bản ghi có ngày.</div>}
         {sorted.map(([date, items]) => (
           <div key={date} className="border border-border rounded-md">
             <div className="text-xs font-medium px-2 py-1 bg-bg-soft border-b border-border flex justify-between">
-              <span>{new Date(date).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}</span>
+              <span>
+                {new Date(date).toLocaleDateString("vi-VN", {
+                  weekday: "short",
+                  day: "2-digit",
+                  month: "2-digit",
+                })}
+              </span>
               <span className="text-muted">{items.length}</span>
             </div>
             <div className="p-1.5 space-y-1">
               {items.slice(0, 5).map((it, i) => (
-                <div key={i} className="text-xs truncate">{String(it[titleField] ?? "(không tên)")}</div>
+                <div key={i} className="text-xs truncate">
+                  {String(it[titleField] ?? "(không tên)")}
+                </div>
               ))}
-              {items.length > 5 && <div className="text-[10px] text-muted">+{items.length - 5} nữa</div>}
+              {items.length > 5 && (
+                <div className="text-[10px] text-muted">+{items.length - 5} nữa</div>
+              )}
             </div>
           </div>
         ))}
@@ -326,7 +371,13 @@ function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const points = rows.flatMap((r) => {
     const g = r[geoField];
     if (g && typeof g === "object" && "lat" in g && "lng" in g) {
-      return [{ lat: (g as { lat: number }).lat, lng: (g as { lng: number }).lng, title: String(r[titleField] ?? "") }];
+      return [
+        {
+          lat: (g as { lat: number }).lat,
+          lng: (g as { lng: number }).lng,
+          title: String(r[titleField] ?? ""),
+        },
+      ];
     }
     return [];
   });
@@ -339,7 +390,7 @@ function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
       <div className="flex-1 min-h-0">
         {points.length === 0 ? (
           <div className="p-3 text-xs text-muted">
-            Chưa có record có geo. Field "{geoField}" cần shape {`{lat, lng}`}.
+            Chưa có record có geo. Field "{geoField}" cần shape {"{lat, lng}"}.
           </div>
         ) : (
           <LeafletMap points={points} />
@@ -353,12 +404,13 @@ function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
  *  bundle initial. Tile mặc định OpenStreetMap (public, attribution required). */
 function LeafletMap({ points }: { points: Array<{ lat: number; lng: number; title: string }> }) {
   // Default center = trung tâm trung bình các điểm; fallback HCMC.
-  const center: [number, number] = points.length > 0
-    ? [
-        points.reduce((s, p) => s + p.lat, 0) / points.length,
-        points.reduce((s, p) => s + p.lng, 0) / points.length,
-      ]
-    : [10.776, 106.700];
+  const center: [number, number] =
+    points.length > 0
+      ? [
+          points.reduce((s, p) => s + p.lat, 0) / points.length,
+          points.reduce((s, p) => s + p.lng, 0) / points.length,
+        ]
+      : [10.776, 106.7];
   // react-leaflet 5 expects "MapContainer" wrapping.
   return (
     <MapContainer
@@ -390,7 +442,8 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const ent = useEntity(entityId);
   const { rows, loading, err } = useRecords(entityId);
 
-  if (!entityId || !ent) return <div className="p-3 text-xs text-muted">Pivot chưa bind entity.</div>;
+  if (!entityId || !ent)
+    return <div className="p-3 text-xs text-muted">Pivot chưa bind entity.</div>;
   if (loading) return <div className="p-3 text-xs text-muted">đang tải…</div>;
   if (err) return <div className="p-3 text-xs text-danger">Lỗi: {err}</div>;
 
@@ -400,12 +453,13 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
   for (const r of rows) {
     const rk = String(r[rowField] ?? "(trống)");
     const ck = String(r[colField] ?? "(trống)");
-    rowKeys.add(rk); colKeys.add(ck);
+    rowKeys.add(rk);
+    colKeys.add(ck);
     if (!matrix.has(rk)) matrix.set(rk, new Map());
     const m = matrix.get(rk)!;
     if (!m.has(ck)) m.set(ck, []);
     const v = valueField ? Number(r[valueField] ?? 0) : 1;
-    m.get(ck)!.push(v);
+    m.get(ck)?.push(v);
   }
   const reduce = (vs: number[]): number => {
     if (vs.length === 0) return 0;
@@ -428,8 +482,17 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr>
-              <th className="border border-border px-2 py-1 bg-bg-soft sticky top-0">{rowField}\\{colField}</th>
-              {colList.map((c) => <th key={c} className="border border-border px-2 py-1 bg-bg-soft text-right sticky top-0">{c}</th>)}
+              <th className="border border-border px-2 py-1 bg-bg-soft sticky top-0">
+                {rowField}\\{colField}
+              </th>
+              {colList.map((c) => (
+                <th
+                  key={c}
+                  className="border border-border px-2 py-1 bg-bg-soft text-right sticky top-0"
+                >
+                  {c}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -439,7 +502,11 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
                 {colList.map((c) => {
                   const vs = matrix.get(r)?.get(c) ?? [];
                   const v = reduce(vs);
-                  return <td key={c} className="border border-border px-2 py-1 text-right font-mono">{vs.length === 0 ? "·" : v.toLocaleString("vi-VN")}</td>;
+                  return (
+                    <td key={c} className="border border-border px-2 py-1 text-right font-mono">
+                      {vs.length === 0 ? "·" : v.toLocaleString("vi-VN")}
+                    </td>
+                  );
                 })}
               </tr>
             ))}
@@ -475,8 +542,10 @@ function Widget({ comp }: { comp: PageComponent }) {
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "html") {
     return (
-      <div className="p-3 text-sm"
-        dangerouslySetInnerHTML={{ __html: (cfg.html as string) ?? "" }} />
+      <div
+        className="p-3 text-sm"
+        dangerouslySetInnerHTML={{ __html: (cfg.html as string) ?? "" }}
+      />
     );
   }
   return (
@@ -489,9 +558,7 @@ function Widget({ comp }: { comp: PageComponent }) {
 export function ConsumerPage({ pageId }: { pageId: string }) {
   const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
-  const components: PageComponent[] = Array.isArray(content)
-    ? (content as PageComponent[])
-    : [];
+  const components: PageComponent[] = Array.isArray(content) ? (content as PageComponent[]) : [];
 
   return (
     <div className="overflow-y-auto h-full">

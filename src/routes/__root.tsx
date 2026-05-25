@@ -1,18 +1,18 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { createEmbedClient } from "@erp-framework/client";
-import { Topbar } from "@/components/Topbar";
-import { Sidebar } from "@/components/Sidebar";
 import { AgentPanel } from "@/components/AgentPanel";
-import { CommandPalette } from "@/components/CommandPalette";
-import { TweaksPanel } from "@/components/TweaksPanel";
-import { GlobalAiCreateDrawer } from "@/components/GlobalAiCreateDrawer";
-import { DialogHost } from "@/components/DialogHost";
 import { AuthGate } from "@/components/AuthGate";
+import { CommandPalette } from "@/components/CommandPalette";
+import { DialogHost } from "@/components/DialogHost";
+import { GlobalAiCreateDrawer } from "@/components/GlobalAiCreateDrawer";
+import { Sidebar } from "@/components/Sidebar";
+import { Topbar } from "@/components/Topbar";
+import { TweaksPanel } from "@/components/TweaksPanel";
 import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
+import { createEmbedClient } from "@erp-framework/client";
+import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { type ReactNode, useEffect, useState } from "react";
 
 /* Phần thân app — chỉ mount khi đã đăng nhập (sau AuthGate).
    Scheduler chạy phía server (pg-boss) — không còn scheduler client. */
@@ -37,8 +37,12 @@ function EmbedGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<"checking" | "ok" | "bad">("checking");
   useEffect(() => {
     const token = embedToken();
-    if (!token) { setState("bad"); return; }
-    embedClient.verify(token)
+    if (!token) {
+      setState("bad");
+      return;
+    }
+    embedClient
+      .verify(token)
       .then((r) => setState(r.valid ? "ok" : "bad"))
       .catch(() => setState("bad"));
   }, []);
@@ -56,8 +60,8 @@ function EmbedGate({ children }: { children: ReactNode }) {
         <div className="card p-6 max-w-md text-center space-y-2">
           <div className="font-semibold text-danger">Không thể nhúng</div>
           <div className="text-sm text-muted">
-            Token nhúng thiếu, không hợp lệ hoặc đã bị thu hồi. Liên hệ quản
-            trị viên để lấy liên kết nhúng mới.
+            Token nhúng thiếu, không hợp lệ hoặc đã bị thu hồi. Liên hệ quản trị viên để lấy liên
+            kết nhúng mới.
           </div>
         </div>
       </div>

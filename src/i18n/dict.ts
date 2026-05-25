@@ -8,13 +8,13 @@
      trả về key thô để dễ debug.
    ========================================================== */
 
-import { chromeVi, chromeEn } from "./dict-chrome";
-import { homeVi, homeEn } from "./dict-home";
+import { chromeEn, chromeVi } from "./dict-chrome";
+import { homeEn, homeVi } from "./dict-home";
 
 export type Lang = "vi" | "en";
 export const LANGS: Array<{ code: Lang; label: string; flag: string }> = [
   { code: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
-  { code: "en", label: "English",    flag: "🇺🇸" },
+  { code: "en", label: "English", flag: "🇺🇸" },
 ];
 
 type Dict = Record<string, string>;
@@ -72,7 +72,7 @@ const VI: Dict = {
   "sidebar.group_settings": "Cấu hình & Hệ thống",
   "sidebar.add_blank": "Tạo {kind} mới (rỗng)",
   "sidebar.add_ai": "Mô tả cho AI để tạo {kind}",
-  "sidebar.confirm_delete": "Xoá {kind} \"{id}\"? Không thể hoàn tác.",
+  "sidebar.confirm_delete": 'Xoá {kind} "{id}"? Không thể hoàn tác.',
   "sidebar.confirm_delete_title": "Xoá {kind}",
   "sidebar.rename_prompt": "Tên {kind} mới:",
   "sidebar.rename_title": "Đổi tên {kind}",
@@ -86,7 +86,8 @@ const VI: Dict = {
 
   // settings
   "settings.llm.title": "Cấu hình LLM",
-  "settings.llm.subtitle": "Cấu hình adapter + model cho từng agent. Mỗi agent có thể dùng LLM khác nhau.",
+  "settings.llm.subtitle":
+    "Cấu hình adapter + model cho từng agent. Mỗi agent có thể dùng LLM khác nhau.",
   "settings.llm.new_profile": "Tên profile mới",
   "settings.llm.api_key": "API Key",
   "settings.llm.api_key_hint": "Lưu trong localStorage, không gửi đi đâu khác",
@@ -98,7 +99,8 @@ const VI: Dict = {
   "settings.llm.endpoint_hint_ollama": "Mặc định http://localhost:11434",
   "settings.llm.temperature": "Temperature ({value})",
   "settings.llm.max_tokens": "Max tokens",
-  "settings.llm.no_profiles": "Chưa có profile. Đăng nhập Claude Pro/Max ở trên, hoặc thêm profile mới bằng API key.",
+  "settings.llm.no_profiles":
+    "Chưa có profile. Đăng nhập Claude Pro/Max ở trên, hoặc thêm profile mới bằng API key.",
   "settings.llm.no_key": "⚠ Chưa có key",
   "settings.llm.has_key": "✓ Đã có API key",
   "settings.llm.via_bridge": "Qua bridge",
@@ -106,21 +108,24 @@ const VI: Dict = {
   "settings.llm.oauth_token": "✓ OAuth token",
   "settings.llm.not_logged": "⚠ Chưa đăng nhập",
   "settings.llm.delete_profile_title": "Xoá LLM profile",
-  "settings.llm.delete_profile_confirm": "Xoá profile \"{name}\"?",
+  "settings.llm.delete_profile_confirm": 'Xoá profile "{name}"?',
   "settings.llm.claude_pro": "Claude Pro / Max",
-  "settings.llm.claude_pro_desc": "Dùng quota của gói subscription Claude Pro hoặc Max thay vì trả tiền API tokens.",
+  "settings.llm.claude_pro_desc":
+    "Dùng quota của gói subscription Claude Pro hoặc Max thay vì trả tiền API tokens.",
   "settings.llm.claude_pro_login_btn": "Đăng nhập với Claude Pro/Max",
-  "settings.llm.claude_pro_login_confirm": "Sẽ chuyển bạn sang Claude.ai để đăng nhập tài khoản Pro/Max.\n\nLưu ý: token được lưu vào localStorage trong trình duyệt.\n\nTiếp tục?",
+  "settings.llm.claude_pro_login_confirm":
+    "Sẽ chuyển bạn sang Claude.ai để đăng nhập tài khoản Pro/Max.\n\nLưu ý: token được lưu vào localStorage trong trình duyệt.\n\nTiếp tục?",
   "settings.llm.claude_pro_login_title": "Đăng nhập Claude Pro/Max",
   "settings.llm.claude_pro_login_fail": "Đăng nhập thất bại",
   "settings.llm.claude_pro_logout_confirm": "Đăng xuất Claude Pro/Max?",
   "settings.llm.claude_pro_logout_title": "Đăng xuất",
-  "settings.llm.claude_pro_create_profile": "Tạo profile \"Claude Pro\"",
-  "settings.llm.claude_pro_created": "Đã tạo profile \"Claude Pro\" dùng OAuth token.",
+  "settings.llm.claude_pro_create_profile": 'Tạo profile "Claude Pro"',
+  "settings.llm.claude_pro_created": 'Đã tạo profile "Claude Pro" dùng OAuth token.',
   "settings.llm.claude_cli": "Claude Code CLI Bridge",
-  "settings.llm.claude_cli_desc": "Dùng CLI claude làm backend. Tận dụng auth Pro/Max trong CLI mà không phải cấu hình lại.",
+  "settings.llm.claude_cli_desc":
+    "Dùng CLI claude làm backend. Tận dụng auth Pro/Max trong CLI mà không phải cấu hình lại.",
   "settings.llm.claude_cli_create_profile": "Tạo profile",
-  "settings.llm.claude_cli_created": "Đã tạo profile \"Claude CLI\".",
+  "settings.llm.claude_cli_created": 'Đã tạo profile "Claude CLI".',
   "settings.llm.bridge_online": "✓ Bridge online",
   "settings.llm.bridge_offline": "✗ Bridge offline",
   "settings.llm.bridge_unknown": "Chưa kiểm tra",
@@ -146,7 +151,8 @@ const VI: Dict = {
   "bridge.bridge_online": "✓ Bridge online",
   "bridge.bridge_offline": "✗ Bridge offline",
   "bridge.config_path": "Đường dẫn: {path}",
-  "bridge.config_dir": "Bridge cần chạy ({cmd}); config lưu file JSON cùng máy chạy bridge — dùng chung giữa nhiều trình duyệt.",
+  "bridge.config_dir":
+    "Bridge cần chạy ({cmd}); config lưu file JSON cùng máy chạy bridge — dùng chung giữa nhiều trình duyệt.",
   "bridge.saving": "Đang lưu...",
   "bridge.loading": "Đang tải...",
   "bridge.saved_at": "✓ Đã lưu lên server lúc {time}",
@@ -164,8 +170,10 @@ const VI: Dict = {
   "agent.input_placeholder": "Nhập câu hỏi… (⌘+Enter để gửi)",
   "agent.send": "Gửi",
   "agent.no_llm_msg": "⚠ Chưa có LLM profile. Mở Cài đặt LLM để thêm.",
-  "agent.profile_not_usable": "⚠ Profile \"{name}\" chưa khả dụng — adapter {adapter} cần API key hoặc bridge/OAuth chưa sẵn sàng.",
-  "agent.seed_greeting": "Xin chào {name}! Mình là **Trợ lý ERP**. Hôm nay bạn muốn làm gì?\n\n• Tạo đơn hàng nhanh\n• Tìm khách hàng\n• Xem báo cáo doanh số",
+  "agent.profile_not_usable":
+    '⚠ Profile "{name}" chưa khả dụng — adapter {adapter} cần API key hoặc bridge/OAuth chưa sẵn sàng.',
+  "agent.seed_greeting":
+    "Xin chào {name}! Mình là **Trợ lý ERP**. Hôm nay bạn muốn làm gì?\n\n• Tạo đơn hàng nhanh\n• Tìm khách hàng\n• Xem báo cáo doanh số",
 
   // AI Design Drawer
   "ai.title": "AI Design Assistant",
@@ -173,11 +181,16 @@ const VI: Dict = {
   "ai.refine": "Tinh chỉnh",
   "ai.profile": "Profile:",
   "ai.no_llm_profile": "Chưa có LLM profile",
-  "ai.placeholder_entity": "Vd: Tạo entity Nhân viên với họ tên, email, phòng ban, lương, ngày vào làm.",
-  "ai.placeholder_page": "Vd: Trang tổng quan bán hàng: KPI doanh thu, biểu đồ theo ngày, danh sách 10 đơn mới nhất.",
-  "ai.placeholder_workflow": "Vd: Khi đơn > 50tr thì gửi duyệt giám đốc, duyệt xong thì cập nhật trạng thái + gửi email.",
-  "ai.placeholder_agent": "Vd: Trợ lý kế toán biết xem hoá đơn, đối chiếu công nợ, trả lời tiếng Việt ngắn gọn.",
-  "ai.empty_hint": "Mô tả {kind} bạn muốn — AI sẽ đề xuất config.\n\nCó thể nói tiếng Việt tự nhiên.",
+  "ai.placeholder_entity":
+    "Vd: Tạo entity Nhân viên với họ tên, email, phòng ban, lương, ngày vào làm.",
+  "ai.placeholder_page":
+    "Vd: Trang tổng quan bán hàng: KPI doanh thu, biểu đồ theo ngày, danh sách 10 đơn mới nhất.",
+  "ai.placeholder_workflow":
+    "Vd: Khi đơn > 50tr thì gửi duyệt giám đốc, duyệt xong thì cập nhật trạng thái + gửi email.",
+  "ai.placeholder_agent":
+    "Vd: Trợ lý kế toán biết xem hoá đơn, đối chiếu công nợ, trả lời tiếng Việt ngắn gọn.",
+  "ai.empty_hint":
+    "Mô tả {kind} bạn muốn — AI sẽ đề xuất config.\n\nCó thể nói tiếng Việt tự nhiên.",
   "ai.thinking": "AI đang nghĩ...",
   "ai.btn_propose": "Đề xuất",
   "ai.btn_refine": "Tinh chỉnh",
@@ -204,12 +217,13 @@ const VI: Dict = {
   "designer.agent_designer": "Thiết kế Agent",
 
   // entity designer
-  "entity.save_toast": "✓ Đã lưu \"{name}\" ({count} field)",
+  "entity.save_toast": '✓ Đã lưu "{name}" ({count} field)',
   "entity.import_toast": "✓ Đã import {fieldsCount} field + bind {opsBound}/5 op MCP",
   "entity.ai_apply_toast": "✨ Đã áp dụng đề xuất AI: {count} field",
   "entity.mcp_bindings": "MCP bindings",
   "entity.mcp_prefix": "prefix: {prefix}",
-  "entity.mcp_desc": "Map 5 op sang tool MCP. Mỗi tool nhận args theo 3 nguồn: literal, field của entity, hoặc formula.",
+  "entity.mcp_desc":
+    "Map 5 op sang tool MCP. Mỗi tool nhận args theo 3 nguồn: literal, field của entity, hoặc formula.",
   "entity.schema_empty": "Schema chưa có field nào.",
   "entity.create": "Tạo {name}",
   "entity.preview_subtitle": "Form tự sinh từ schema. Chế độ này = Consumer Mode.",
@@ -219,7 +233,8 @@ const VI: Dict = {
   "designer.drag_to_canvas": "Kéo vào canvas →",
   "designer.field_list_hint": "Sắp xếp, đặt label, validation, lookup ref…",
   "designer.no_field_title": "Chưa có field nào",
-  "designer.no_field_hint": "Kéo field từ palette bên trái, hoặc double-click loại field để thêm nhanh.",
+  "designer.no_field_hint":
+    "Kéo field từ palette bên trái, hoặc double-click loại field để thêm nhanh.",
   "designer.select_field": "Chọn một field để chỉnh sửa thuộc tính.",
   "designer.drop_here": "↓ Thả vào đây để thêm cuối danh sách",
   "designer.drop_between": "Kéo field vào đây hoặc giữa các hàng",
@@ -285,7 +300,8 @@ const VI: Dict = {
   "mcpimport.data_apply": "Khi áp dụng:",
   "mcpimport.data_schema_only": "Chỉ schema",
   "mcpimport.data_snapshot": "Kèm {count} dòng dữ liệu",
-  "entity.import_snapshot_toast": "✓ Đã import {fieldsCount} field — bấm Lưu để nhập {rows} dòng dữ liệu",
+  "entity.import_snapshot_toast":
+    "✓ Đã import {fieldsCount} field — bấm Lưu để nhập {rows} dòng dữ liệu",
   "entity.records_imported": "✓ Đã lưu schema + nhập {count} bản ghi từ MCP",
   "entity.sync_btn": "Đồng bộ từ MCP",
   "entity.syncing": "Đang đồng bộ…",
@@ -345,7 +361,7 @@ const EN: Dict = {
   "sidebar.group_settings": "Settings & System",
   "sidebar.add_blank": "New {kind} (blank)",
   "sidebar.add_ai": "Describe to AI to create {kind}",
-  "sidebar.confirm_delete": "Delete {kind} \"{id}\"? Cannot undo.",
+  "sidebar.confirm_delete": 'Delete {kind} "{id}"? Cannot undo.',
   "sidebar.confirm_delete_title": "Delete {kind}",
   "sidebar.rename_prompt": "New name for {kind}:",
   "sidebar.rename_title": "Rename {kind}",
@@ -359,7 +375,8 @@ const EN: Dict = {
 
   // settings
   "settings.llm.title": "LLM Profiles",
-  "settings.llm.subtitle": "Configure adapter + model per agent. Each agent can use a different LLM.",
+  "settings.llm.subtitle":
+    "Configure adapter + model per agent. Each agent can use a different LLM.",
   "settings.llm.new_profile": "New profile name",
   "settings.llm.api_key": "API Key",
   "settings.llm.api_key_hint": "Stored in localStorage, never sent anywhere else",
@@ -371,7 +388,8 @@ const EN: Dict = {
   "settings.llm.endpoint_hint_ollama": "Default http://localhost:11434",
   "settings.llm.temperature": "Temperature ({value})",
   "settings.llm.max_tokens": "Max tokens",
-  "settings.llm.no_profiles": "No profile yet. Log in with Claude Pro/Max above, or add a new profile with an API key.",
+  "settings.llm.no_profiles":
+    "No profile yet. Log in with Claude Pro/Max above, or add a new profile with an API key.",
   "settings.llm.no_key": "⚠ No API key",
   "settings.llm.has_key": "✓ API key set",
   "settings.llm.via_bridge": "Via bridge",
@@ -379,21 +397,24 @@ const EN: Dict = {
   "settings.llm.oauth_token": "✓ OAuth token",
   "settings.llm.not_logged": "⚠ Not logged in",
   "settings.llm.delete_profile_title": "Delete LLM profile",
-  "settings.llm.delete_profile_confirm": "Delete profile \"{name}\"?",
+  "settings.llm.delete_profile_confirm": 'Delete profile "{name}"?',
   "settings.llm.claude_pro": "Claude Pro / Max",
-  "settings.llm.claude_pro_desc": "Use your Claude Pro or Max subscription quota instead of paying for API tokens.",
+  "settings.llm.claude_pro_desc":
+    "Use your Claude Pro or Max subscription quota instead of paying for API tokens.",
   "settings.llm.claude_pro_login_btn": "Sign in with Claude Pro/Max",
-  "settings.llm.claude_pro_login_confirm": "You will be redirected to Claude.ai to sign in with your Pro/Max account.\n\nNote: token is stored in localStorage.\n\nContinue?",
+  "settings.llm.claude_pro_login_confirm":
+    "You will be redirected to Claude.ai to sign in with your Pro/Max account.\n\nNote: token is stored in localStorage.\n\nContinue?",
   "settings.llm.claude_pro_login_title": "Sign in to Claude Pro/Max",
   "settings.llm.claude_pro_login_fail": "Sign in failed",
   "settings.llm.claude_pro_logout_confirm": "Sign out of Claude Pro/Max?",
   "settings.llm.claude_pro_logout_title": "Sign out",
-  "settings.llm.claude_pro_create_profile": "Create \"Claude Pro\" profile",
-  "settings.llm.claude_pro_created": "Created profile \"Claude Pro\" using OAuth token.",
+  "settings.llm.claude_pro_create_profile": 'Create "Claude Pro" profile',
+  "settings.llm.claude_pro_created": 'Created profile "Claude Pro" using OAuth token.',
   "settings.llm.claude_cli": "Claude Code CLI Bridge",
-  "settings.llm.claude_cli_desc": "Use the `claude` CLI as backend. Reuses CLI's Pro/Max auth without re-configuration.",
+  "settings.llm.claude_cli_desc":
+    "Use the `claude` CLI as backend. Reuses CLI's Pro/Max auth without re-configuration.",
   "settings.llm.claude_cli_create_profile": "Create profile",
-  "settings.llm.claude_cli_created": "Created profile \"Claude CLI\".",
+  "settings.llm.claude_cli_created": 'Created profile "Claude CLI".',
   "settings.llm.bridge_online": "✓ Bridge online",
   "settings.llm.bridge_offline": "✗ Bridge offline",
   "settings.llm.bridge_unknown": "Not checked",
@@ -419,7 +440,8 @@ const EN: Dict = {
   "bridge.bridge_online": "✓ Bridge online",
   "bridge.bridge_offline": "✗ Bridge offline",
   "bridge.config_path": "Path: {path}",
-  "bridge.config_dir": "Bridge must run ({cmd}); config is saved as JSON files alongside the bridge — shared between browsers.",
+  "bridge.config_dir":
+    "Bridge must run ({cmd}); config is saved as JSON files alongside the bridge — shared between browsers.",
   "bridge.saving": "Saving...",
   "bridge.loading": "Loading...",
   "bridge.saved_at": "✓ Saved to server at {time}",
@@ -437,8 +459,10 @@ const EN: Dict = {
   "agent.input_placeholder": "Type your question… (⌘+Enter to send)",
   "agent.send": "Send",
   "agent.no_llm_msg": "⚠ No LLM profile. Open LLM Settings to add one.",
-  "agent.profile_not_usable": "⚠ Profile \"{name}\" not ready — adapter {adapter} needs an API key or bridge/OAuth.",
-  "agent.seed_greeting": "Hi {name}! I'm the **ERP Assistant**. What would you like to do today?\n\n• Quick order\n• Find a customer\n• View sales report",
+  "agent.profile_not_usable":
+    '⚠ Profile "{name}" not ready — adapter {adapter} needs an API key or bridge/OAuth.',
+  "agent.seed_greeting":
+    "Hi {name}! I'm the **ERP Assistant**. What would you like to do today?\n\n• Quick order\n• Find a customer\n• View sales report",
 
   // AI Design Drawer
   "ai.title": "AI Design Assistant",
@@ -446,11 +470,16 @@ const EN: Dict = {
   "ai.refine": "Refine",
   "ai.profile": "Profile:",
   "ai.no_llm_profile": "No LLM profile",
-  "ai.placeholder_entity": "E.g. Create an Employee entity with full name, email, department, salary, hire date.",
-  "ai.placeholder_page": "E.g. Sales overview page: revenue KPI, daily chart, 10 latest orders list.",
-  "ai.placeholder_workflow": "E.g. When order > 50M then send for director approval, on approval update status + send email.",
-  "ai.placeholder_agent": "E.g. Accounting assistant that can read invoices, reconcile debts, replies concisely in English.",
-  "ai.empty_hint": "Describe the {kind} you want — AI will propose a config.\n\nNatural language is fine.",
+  "ai.placeholder_entity":
+    "E.g. Create an Employee entity with full name, email, department, salary, hire date.",
+  "ai.placeholder_page":
+    "E.g. Sales overview page: revenue KPI, daily chart, 10 latest orders list.",
+  "ai.placeholder_workflow":
+    "E.g. When order > 50M then send for director approval, on approval update status + send email.",
+  "ai.placeholder_agent":
+    "E.g. Accounting assistant that can read invoices, reconcile debts, replies concisely in English.",
+  "ai.empty_hint":
+    "Describe the {kind} you want — AI will propose a config.\n\nNatural language is fine.",
   "ai.thinking": "AI is thinking...",
   "ai.btn_propose": "Propose",
   "ai.btn_refine": "Refine",
@@ -477,12 +506,13 @@ const EN: Dict = {
   "designer.agent_designer": "Agent Designer",
 
   // entity designer
-  "entity.save_toast": "✓ Saved \"{name}\" ({count} fields)",
+  "entity.save_toast": '✓ Saved "{name}" ({count} fields)',
   "entity.import_toast": "✓ Imported {fieldsCount} fields + bound {opsBound}/5 MCP ops",
   "entity.ai_apply_toast": "✨ Applied AI suggestion: {count} fields",
   "entity.mcp_bindings": "MCP bindings",
   "entity.mcp_prefix": "prefix: {prefix}",
-  "entity.mcp_desc": "Map 5 ops to MCP tools. Each tool receives args from 3 sources: literal, entity field, or formula.",
+  "entity.mcp_desc":
+    "Map 5 ops to MCP tools. Each tool receives args from 3 sources: literal, entity field, or formula.",
   "entity.schema_empty": "Schema has no fields yet.",
   "entity.create": "Create {name}",
   "entity.preview_subtitle": "Auto-generated form from schema. This is Consumer Mode.",
@@ -492,7 +522,8 @@ const EN: Dict = {
   "designer.drag_to_canvas": "Drag onto canvas →",
   "designer.field_list_hint": "Reorder, set label, validation, lookup ref…",
   "designer.no_field_title": "No fields yet",
-  "designer.no_field_hint": "Drag a field from the left palette, or double-click a field type to add.",
+  "designer.no_field_hint":
+    "Drag a field from the left palette, or double-click a field type to add.",
   "designer.select_field": "Select a field to edit its properties.",
   "designer.drop_here": "↓ Drop here to append to the list",
   "designer.drop_between": "Drag a field here or between rows",
@@ -558,7 +589,8 @@ const EN: Dict = {
   "mcpimport.data_apply": "On apply:",
   "mcpimport.data_schema_only": "Schema only",
   "mcpimport.data_snapshot": "With {count} data rows",
-  "entity.import_snapshot_toast": "✓ Imported {fieldsCount} fields — click Save to insert {rows} data rows",
+  "entity.import_snapshot_toast":
+    "✓ Imported {fieldsCount} fields — click Save to insert {rows} data rows",
   "entity.records_imported": "✓ Saved schema + imported {count} records from MCP",
   "entity.sync_btn": "Sync from MCP",
   "entity.syncing": "Syncing…",

@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -11,8 +11,7 @@ export function uid(prefix = "id"): string {
 
 export function getPath(obj: unknown, path: string): unknown {
   if (!path) return obj;
-  return path.split(".").reduce<unknown>(
-    (acc, k) => (acc == null ? acc : (acc as Record<string, unknown>)[k]),
-    obj,
-  );
+  return path
+    .split(".")
+    .reduce<unknown>((acc, k) => (acc == null ? acc : (acc as Record<string, unknown>)[k]), obj);
 }

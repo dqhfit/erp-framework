@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { type EmbedScope, createEmbedClient } from "@erp-framework/client";
 /* ==========================================================
    settings.embed — Token nhúng builder vào sản phẩm khác.
    Tạo token + lấy đoạn mã iframe. Trang mở kèm ?embed=1 sẽ ẩn
@@ -5,10 +9,6 @@
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createEmbedClient, type EmbedScope } from "@erp-framework/client";
-import { dialog } from "@/lib/dialog";
 
 const embed = createEmbedClient("");
 
@@ -32,35 +32,49 @@ function EmbedSettings() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const load = () => {
-    embed.list()
+    embed
+      .list()
       .then((r) => setList(r as EmbedToken[]))
-      .catch(() => { /* chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa đăng nhập */
+      });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true); setErr(""); setMsg("");
-    try { await fn(); if (ok) setMsg(ok); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await fn();
+      if (ok) setMsg(ok);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const create = () => void run(async () => {
-    await embed.create(label.trim() || undefined, scope);
-    setLabel("");
-  }, "✓ Đã tạo token nhúng.");
+  const create = () =>
+    void run(async () => {
+      await embed.create(label.trim() || undefined, scope);
+      setLabel("");
+    }, "✓ Đã tạo token nhúng.");
 
   const doRevoke = async (t: EmbedToken) => {
     const ok = await dialog.confirm("Thu hồi token này?", {
-      title: "Thu hồi token", confirmText: "Thu hồi",
+      title: "Thu hồi token",
+      confirmText: "Thu hồi",
     });
     if (ok) void run(() => embed.revoke(t.id), "✓ Đã thu hồi.");
   };
 
   const snippet = (t: EmbedToken) =>
-    `<iframe src="${origin}/pages/PAGE_ID?embed=1&embed_token=${t.token}"\n`
-    + `  width="100%" height="640" frameborder="0"></iframe>`;
+    `<iframe src="${origin}/pages/PAGE_ID?embed=1&embed_token=${t.token}"\n  width="100%" height="640" frameborder="0"></iframe>`;
 
   const copy = (text: string) => {
     void navigator.clipboard?.writeText(text);
@@ -72,23 +86,33 @@ function EmbedSettings() {
       <div className="max-w-[760px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">Nhúng builder (Embed)</h1>
         <div className="text-sm text-muted mb-6">
-          Tạo token để nhúng trang designer vào sản phẩm khác qua iframe.
-          Thêm <code className="bg-bg-soft px-1 rounded">?embed=1</code> vào URL
-          để ẩn thanh điều hướng — chỉ hiện nội dung.
+          Tạo token để nhúng trang designer vào sản phẩm khác qua iframe. Thêm{" "}
+          <code className="bg-bg-soft px-1 rounded">?embed=1</code> vào URL để ẩn thanh điều hướng —
+          chỉ hiện nội dung.
         </div>
 
         <Card className="mb-4 space-y-2">
           <div className="font-semibold">Tạo token nhúng</div>
           <div className="flex items-center gap-2">
-            <Input placeholder="Nhãn (vd: Cổng khách hàng)" value={label}
-              disabled={busy} onChange={(e) => setLabel(e.target.value)}
-              className="flex-1" />
-            <Select value={scope} disabled={busy}
-              onChange={(e) => setScope(e.target.value as EmbedScope)}>
-              {SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+            <Input
+              placeholder="Nhãn (vd: Cổng khách hàng)"
+              value={label}
+              disabled={busy}
+              onChange={(e) => setLabel(e.target.value)}
+              className="flex-1"
+            />
+            <Select
+              value={scope}
+              disabled={busy}
+              onChange={(e) => setScope(e.target.value as EmbedScope)}
+            >
+              {SCOPES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </Select>
-            <Button variant="primary" icon={<I.Plus size={14} />}
-              disabled={busy} onClick={create}>
+            <Button variant="primary" icon={<I.Plus size={14} />} disabled={busy} onClick={create}>
               Tạo token
             </Button>
           </div>
@@ -96,9 +120,7 @@ function EmbedSettings() {
 
         <Card className="space-y-3">
           <div className="font-semibold">Token nhúng ({list.length})</div>
-          {list.length === 0 && (
-            <div className="text-sm text-muted">Chưa có token nào.</div>
-          )}
+          {list.length === 0 && <div className="text-sm text-muted">Chưa có token nào.</div>}
           {list.map((t) => (
             <div key={t.id} className="rounded-md border border-border p-3 space-y-2">
               <div className="flex items-center gap-2">
@@ -106,27 +128,42 @@ function EmbedSettings() {
                 <span className="font-medium">{t.label || "(không nhãn)"}</span>
                 <Chip className="!text-[10px]">{t.scope}</Chip>
                 <div className="flex-1" />
-                <Button size="sm" variant="danger" icon={<I.Trash size={12} />}
-                  disabled={busy} onClick={() => void doRevoke(t)}>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  icon={<I.Trash size={12} />}
+                  disabled={busy}
+                  onClick={() => void doRevoke(t)}
+                >
                   Thu hồi
                 </Button>
               </div>
-              <code className="block text-xs bg-bg-soft rounded p-2 break-all">
-                {t.token}
-              </code>
+              <code className="block text-xs bg-bg-soft rounded p-2 break-all">{t.token}</code>
               <pre className="text-[11px] bg-bg-soft rounded p-2 overflow-x-auto whitespace-pre-wrap">
                 {snippet(t)}
               </pre>
-              <Button size="sm" variant="default" icon={<I.Copy size={12} />}
-                onClick={() => copy(snippet(t))}>
+              <Button
+                size="sm"
+                variant="default"
+                icon={<I.Copy size={12} />}
+                onClick={() => copy(snippet(t))}
+              >
                 Chép đoạn mã
               </Button>
             </div>
           ))}
         </Card>
 
-        {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {msg && (
+          <div className="mt-4">
+            <Chip variant="success">{msg}</Chip>
+          </div>
+        )}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
       </div>
     </div>
   );

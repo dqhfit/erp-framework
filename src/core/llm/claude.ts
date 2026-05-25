@@ -1,11 +1,14 @@
-import { LLMAdapterBase } from "./adapter";
 import type { LLMRequest, LLMResponse } from "@/types/llm";
+import { LLMAdapterBase } from "./adapter";
 
 export class ClaudeAdapter extends LLMAdapterBase {
   constructor() {
     super("claude", {
-      tools: true, vision: true, streaming: true,
-      max_input_tokens: 200_000, max_output_tokens: 8_192,
+      tools: true,
+      vision: true,
+      streaming: true,
+      max_input_tokens: 200_000,
+      max_output_tokens: 8_192,
     });
   }
 
@@ -17,7 +20,9 @@ export class ClaudeAdapter extends LLMAdapterBase {
       system: req.system,
       messages: req.messages,
       tools: req.tools?.map((t) => ({
-        name: t.name, description: t.description, input_schema: t.schema,
+        name: t.name,
+        description: t.description,
+        input_schema: t.schema,
       })),
     };
     const res = await fetch(req.endpoint ?? "https://api.anthropic.com/v1/messages", {
@@ -31,15 +36,23 @@ export class ClaudeAdapter extends LLMAdapterBase {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Claude API ${res.status}: ${await res.text()}`);
-    const data = await res.json() as {
-      content: Array<{ type: string; text?: string; name?: string; id?: string; input?: Record<string, unknown> }>;
+    const data = (await res.json()) as {
+      content: Array<{
+        type: string;
+        text?: string;
+        name?: string;
+        id?: string;
+        input?: Record<string, unknown>;
+      }>;
       usage: { input_tokens: number; output_tokens: number };
     };
     const textBlock = data.content.find((b) => b.type === "text");
     const toolBlocks = data.content.filter((b) => b.type === "tool_use");
     return {
       text: textBlock?.text ?? "",
-      tool_calls: this.normalizeToolCalls(toolBlocks.map((b) => ({ id: b.id, name: b.name, input: b.input }))),
+      tool_calls: this.normalizeToolCalls(
+        toolBlocks.map((b) => ({ id: b.id, name: b.name, input: b.input })),
+      ),
       usage: data.usage,
       raw: data,
     };

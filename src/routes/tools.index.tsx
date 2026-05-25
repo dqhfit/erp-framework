@@ -1,14 +1,12 @@
+import { I } from "@/components/Icons";
+import { Card, Chip, EmptyState, Input, Select } from "@/components/ui";
+import { type ToolListItem, createToolsClient } from "@erp-framework/client";
 /* ==========================================================
    /tools — Gallery launcher cho các tool đã đăng ký.
    Card grid, filter category + kind, search. Click → /tools/$slug.
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Card, Chip, Input, Select, EmptyState } from "@/components/ui";
-import { I } from "@/components/Icons";
-import {
-  createToolsClient, type ToolListItem,
-} from "@erp-framework/client";
 
 const tools = createToolsClient("");
 
@@ -21,7 +19,8 @@ function ToolsGallery() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    tools.list()
+    tools
+      .list()
       .then((r) => setList(r))
       .catch((e) => setErr((e as Error).message))
       .finally(() => setLoading(false));
@@ -33,9 +32,13 @@ function ToolsGallery() {
       if (kind && t.kind !== kind) return false;
       if (q) {
         const hay = [
-          t.displayName, t.name, t.manifest.description ?? "",
+          t.displayName,
+          t.name,
+          t.manifest.description ?? "",
           ...(t.manifest.tags ?? []),
-        ].join(" ").toLowerCase();
+        ]
+          .join(" ")
+          .toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -47,8 +50,12 @@ function ToolsGallery() {
       <div className="max-w-[1200px] mx-auto p-6">
         <div className="flex items-center gap-2 mb-4">
           <h1 className="text-xl font-semibold flex-1">Tools</h1>
-          <Input className="w-64" placeholder="Tìm tool…" value={search}
-            onChange={(e) => setSearch(e.target.value)} />
+          <Input
+            className="w-64"
+            placeholder="Tìm tool…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <Select value={kind} onChange={(e) => setKind(e.target.value)}>
             <option value="">Tất cả kind</option>
             <option value="web-app">web-app</option>
@@ -71,8 +78,11 @@ function ToolsGallery() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {filtered.map((t) => (
-            <Card key={t.id} className="cursor-pointer hover:border-accent transition"
-              onClick={() => void nav({ to: "/tools/$slug", params: { slug: t.id } })}>
+            <Card
+              key={t.id}
+              className="cursor-pointer hover:border-accent transition"
+              onClick={() => void nav({ to: "/tools/$slug", params: { slug: t.id } })}
+            >
               <div className="flex items-start gap-3">
                 <I.Wand size={20} className="text-accent shrink-0 mt-1" />
                 <div className="flex-1 min-w-0">
@@ -86,16 +96,24 @@ function ToolsGallery() {
                     <Chip className="!text-[10px]">{t.kind}</Chip>
                     <Chip className="!text-[10px]">{t.runtime}</Chip>
                     {t.enabledForCompany && (
-                      <Chip variant="success" className="!text-[10px]">đã bật</Chip>
+                      <Chip variant="success" className="!text-[10px]">
+                        đã bật
+                      </Chip>
                     )}
                     {t.status === "running" && (
-                      <Chip variant="success" className="!text-[10px]">running</Chip>
+                      <Chip variant="success" className="!text-[10px]">
+                        running
+                      </Chip>
                     )}
                     {t.status === "error" && (
-                      <Chip variant="danger" className="!text-[10px]">lỗi</Chip>
+                      <Chip variant="danger" className="!text-[10px]">
+                        lỗi
+                      </Chip>
                     )}
                     {(t.manifest.tags ?? []).slice(0, 3).map((tag) => (
-                      <Chip key={tag} className="!text-[10px]">#{tag}</Chip>
+                      <Chip key={tag} className="!text-[10px]">
+                        #{tag}
+                      </Chip>
                     ))}
                   </div>
                 </div>

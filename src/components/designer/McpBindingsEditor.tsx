@@ -1,3 +1,6 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { cn } from "@/lib/utils";
 /* ==========================================================
    McpBindingsEditor — Editor cho mapping arg của 5 op MCP.
    - Mỗi op (list/get/create/update/delete) có:
@@ -6,9 +9,6 @@
    - UI: collapsible card cho từng op, table args, picker.
    ========================================================== */
 import { useMemo, useState } from "react";
-import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { cn } from "@/lib/utils";
 
 export type McpOp = "list" | "get" | "create" | "update" | "delete";
 export type ArgKind = "literal" | "field" | "formula";
@@ -40,30 +40,34 @@ interface McpBindingsEditorProps {
 
 const OPS: McpOp[] = ["list", "get", "create", "update", "delete"];
 const OP_HINT: Record<McpOp, string> = {
-  list:   "Liệt kê / search bản ghi. Args thường: filter, limit, offset, sort.",
-  get:    "Lấy 1 bản ghi theo PK. Args thường: id.",
+  list: "Liệt kê / search bản ghi. Args thường: filter, limit, offset, sort.",
+  get: "Lấy 1 bản ghi theo PK. Args thường: id.",
   create: "Tạo mới. Args = data fields cần ghi.",
   update: "Cập nhật. Args thường: id + các field cần đổi.",
   delete: "Xoá. Args thường: id.",
 };
 const OP_COLOR: Record<McpOp, string> = {
-  list:   "text-accent",
-  get:    "text-accent-2",
+  list: "text-accent",
+  get: "text-accent-2",
   create: "text-success",
   update: "text-warning",
   delete: "text-danger",
 };
 
 const DEFAULT_ARGS: Record<McpOp, McpArg[]> = {
-  list:   [{ key: "limit", kind: "literal", value: "50" }],
-  get:    [{ key: "id",    kind: "field",   value: "id" }],
+  list: [{ key: "limit", kind: "literal", value: "50" }],
+  get: [{ key: "id", kind: "field", value: "id" }],
   create: [],
-  update: [{ key: "id",    kind: "field",   value: "id" }],
-  delete: [{ key: "id",    kind: "field",   value: "id" }],
+  update: [{ key: "id", kind: "field", value: "id" }],
+  delete: [{ key: "id", kind: "field", value: "id" }],
 };
 
 export function McpBindingsEditor({
-  value, onChange, fieldKeys, availableTools = [], toolPrefix = "",
+  value,
+  onChange,
+  fieldKeys,
+  availableTools = [],
+  toolPrefix = "",
 }: McpBindingsEditorProps) {
   const [openOp, setOpenOp] = useState<McpOp | null>("list");
 
@@ -98,15 +102,18 @@ export function McpBindingsEditor({
               }}
               className="w-full px-3 h-11 flex items-center gap-3 hover:bg-hover/30 transition-colors"
             >
-              <div className={cn("w-16 font-mono text-xs uppercase font-semibold", OP_COLOR[op])}>{op}</div>
+              <div className={cn("w-16 font-mono text-xs uppercase font-semibold", OP_COLOR[op])}>
+                {op}
+              </div>
               <I.ArrowRight size={11} className="text-muted shrink-0" />
               <div className="flex-1 text-sm font-mono text-left truncate">
                 {binding?.tool || <span className="text-muted italic">— chưa map —</span>}
               </div>
-              {binding?.tool && (
-                <Chip variant="success">{argCount} args</Chip>
-              )}
-              <I.ChevronDown size={12} className={cn("text-muted transition-transform", isOpen && "rotate-180")} />
+              {binding?.tool && <Chip variant="success">{argCount} args</Chip>}
+              <I.ChevronDown
+                size={12}
+                className={cn("text-muted transition-transform", isOpen && "rotate-180")}
+              />
             </button>
 
             {isOpen && (
@@ -122,7 +129,11 @@ export function McpBindingsEditor({
                         onChange={(e) => update(op, { tool: e.target.value })}
                       >
                         <option value="">— chọn tool —</option>
-                        {availableTools.map((t) => <option key={t} value={t}>{t}</option>)}
+                        {availableTools.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
                       </Select>
                     ) : (
                       <Input
@@ -140,10 +151,14 @@ export function McpBindingsEditor({
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-[11px] uppercase text-muted tracking-wider">Tham số</div>
                     <Button
-                      variant="ghost" size="sm"
+                      variant="ghost"
+                      size="sm"
                       icon={<I.Plus size={11} />}
                       onClick={() => {
-                        const args = [...(binding?.args ?? []), { key: "", kind: "literal" as ArgKind, value: "" }];
+                        const args = [
+                          ...(binding?.args ?? []),
+                          { key: "", kind: "literal" as ArgKind, value: "" },
+                        ];
                         update(op, { args });
                       }}
                     >
@@ -177,10 +192,14 @@ interface ArgsTableProps {
 }
 function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
   if (args.length === 0) {
-    return <div className="text-xs text-muted italic p-3 border border-dashed border-border rounded text-center">Chưa có arg</div>;
+    return (
+      <div className="text-xs text-muted italic p-3 border border-dashed border-border rounded text-center">
+        Chưa có arg
+      </div>
+    );
   }
   const upd = (idx: number, patch: Partial<McpArg>) => {
-    onChange(args.map((a, i) => i === idx ? { ...a, ...patch } : a));
+    onChange(args.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   };
   const del = (idx: number) => onChange(args.filter((_, i) => i !== idx));
 
@@ -190,10 +209,13 @@ function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
         <div>Key</div>
         <div>Nguồn</div>
         <div>Giá trị</div>
-        <div></div>
+        <div />
       </div>
       {args.map((a, i) => (
-        <div key={i} className="grid grid-cols-[1fr_120px_2fr_28px] gap-2 px-2 py-1.5 border-t border-border items-center">
+        <div
+          key={i}
+          className="grid grid-cols-[1fr_120px_2fr_28px] gap-2 px-2 py-1.5 border-t border-border items-center"
+        >
           <Input
             className="h-8 text-xs font-mono"
             value={a.key}
@@ -216,7 +238,11 @@ function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
               onChange={(e) => upd(i, { value: e.target.value })}
             >
               <option value="">— chọn field —</option>
-              {fieldKeys.map((k) => <option key={k} value={k}>{k}</option>)}
+              {fieldKeys.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
             </Select>
           ) : (
             <Input
@@ -258,9 +284,11 @@ function PreviewBox({ binding }: { binding: McpOpBinding }) {
 
   return (
     <div className="rounded-md border border-border bg-bg p-2 text-xs">
-      <div className="text-[10px] uppercase text-muted mb-1 tracking-wider">Preview JSON-RPC call</div>
+      <div className="text-[10px] uppercase text-muted mb-1 tracking-wider">
+        Preview JSON-RPC call
+      </div>
       <pre className="font-mono text-[11px] leading-relaxed text-text whitespace-pre-wrap break-all m-0">
-{JSON.stringify(preview, null, 2)}
+        {JSON.stringify(preview, null, 2)}
       </pre>
     </div>
   );

@@ -119,9 +119,9 @@ Quy tắc:
 
 export const SYSTEM_PROMPTS: Record<DesignObjectType, string> = {
   entity: `${SYSTEM_BASE}\n\n=== Output schema cho ENTITY ===\n${ENTITY_SCHEMA_HINT}`,
-  page:   `${SYSTEM_BASE}\n\n=== Output schema cho PAGE ===\n${PAGE_SCHEMA_HINT}`,
+  page: `${SYSTEM_BASE}\n\n=== Output schema cho PAGE ===\n${PAGE_SCHEMA_HINT}`,
   workflow: `${SYSTEM_BASE}\n\n=== Output schema cho WORKFLOW ===\n${WORKFLOW_SCHEMA_HINT}`,
-  agent:  `${SYSTEM_BASE}\n\n=== Output schema cho AGENT ===\n${AGENT_SCHEMA_HINT}`,
+  agent: `${SYSTEM_BASE}\n\n=== Output schema cho AGENT ===\n${AGENT_SCHEMA_HINT}`,
 };
 
 // ============= User message builder =============
@@ -147,19 +147,24 @@ export function buildUserMessage(
     parts.push("\n## Các entity khác (dùng cho lookup ref):");
     parts.push(
       context.otherEntities
-        .map((e) => `- id="${e.id}", name="${e.name}"${e.fieldKeys ? `, fields=[${e.fieldKeys.slice(0, 8).join(",")}]` : ""}`)
+        .map(
+          (e) =>
+            `- id="${e.id}", name="${e.name}"${e.fieldKeys ? `, fields=[${e.fieldKeys.slice(0, 8).join(",")}]` : ""}`,
+        )
         .join("\n"),
     );
   }
   if (context.sampleRows?.length) {
     parts.push("\n## Sample data (5 row đầu):");
-    parts.push("```json\n" + JSON.stringify(context.sampleRows.slice(0, 5), null, 2).slice(0, 2000) + "\n```");
+    parts.push(
+      `\`\`\`json\n${JSON.stringify(context.sampleRows.slice(0, 5), null, 2).slice(0, 2000)}\n\`\`\``,
+    );
   }
 
   // 2. Refine mode — kèm config hiện tại
   if (request.current) {
     parts.push("\n## Config hiện tại — hãy chỉnh sửa theo yêu cầu bên dưới:");
-    parts.push("```json\n" + JSON.stringify(request.current, null, 2) + "\n```");
+    parts.push(`\`\`\`json\n${JSON.stringify(request.current, null, 2)}\n\`\`\``);
   }
 
   // 3. Yêu cầu
@@ -195,7 +200,10 @@ export interface PageDesign {
   components: Array<{
     type: string;
     title: string;
-    x: number; y: number; w: number; h: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
     entityId?: string;
     chartKind?: string;
     metric?: string;
@@ -210,7 +218,8 @@ export interface WorkflowDesign {
     id: string;
     type: string;
     label: string;
-    x: number; y: number;
+    x: number;
+    y: number;
     config?: Record<string, unknown>;
   }>;
   edges: Array<{ source: string; target: string; label?: string }>;
@@ -224,9 +233,12 @@ export interface AgentDesign {
   tools?: string[];
 }
 
-export type DesignByType<T extends DesignObjectType> =
-  T extends "entity" ? EntityDesign :
-  T extends "page" ? PageDesign :
-  T extends "workflow" ? WorkflowDesign :
-  T extends "agent" ? AgentDesign :
-  never;
+export type DesignByType<T extends DesignObjectType> = T extends "entity"
+  ? EntityDesign
+  : T extends "page"
+    ? PageDesign
+    : T extends "workflow"
+      ? WorkflowDesign
+      : T extends "agent"
+        ? AgentDesign
+        : never;

@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEntities } from "@/stores/entities";
 import { Button, Card } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { useEntities } from "@/stores/entities";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/entities/")({
   component: function EntitiesIndex() {
@@ -19,7 +19,9 @@ export const Route = createFileRoute("/entities/")({
       <div className="p-6 max-w-4xl">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Entities</h1>
-          <Button variant="primary" onClick={handleCreate}>+ Entity mới</Button>
+          <Button variant="primary" onClick={handleCreate}>
+            + Entity mới
+          </Button>
         </div>
         {entities.length === 0 ? (
           <Card className="text-center text-muted py-12">
@@ -31,17 +33,32 @@ export const Route = createFileRoute("/entities/")({
               <Card key={e.id} className="hover:border-accent transition">
                 <div className="flex justify-between items-start">
                   <div>
-                    <Link to="/entities/$id" params={{ id: e.id }} className="font-bold hover:text-accent2">
+                    <Link
+                      to="/entities/$id"
+                      params={{ id: e.id }}
+                      className="font-bold hover:text-accent2"
+                    >
                       {e.label}
                     </Link>
                     <div className="text-xs text-muted font-mono mt-1">{e.name}</div>
                     <div className="text-xs text-muted mt-1">{e.fields.length} fields</div>
                   </div>
-                  <Button variant="danger" size="sm" onClick={async () => {
-                    if (await dialog.confirm(`Xóa entity "${e.label || e.name}"?`, {
-                      title: "Xóa entity", confirmText: "Xóa", danger: true,
-                    })) remove(e.id);
-                  }}>×</Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={async () => {
+                      if (
+                        await dialog.confirm(`Xóa entity "${e.label || e.name}"?`, {
+                          title: "Xóa entity",
+                          confirmText: "Xóa",
+                          danger: true,
+                        })
+                      )
+                        remove(e.id);
+                    }}
+                  >
+                    ×
+                  </Button>
                 </div>
               </Card>
             ))}

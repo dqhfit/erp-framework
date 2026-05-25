@@ -1,3 +1,5 @@
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input, Select, Switch } from "@/components/ui";
 /* ==========================================================
    SchemaArgsForm — Render form tự động từ JSON Schema
    của MCP tool.inputSchema. Hỗ trợ:
@@ -10,8 +12,6 @@
    Ngoài ra có "Raw JSON" details để edit thẳng object.
    ========================================================== */
 import { useMemo, useState } from "react";
-import { Button, FormField, Input, Select, Switch, Chip } from "@/components/ui";
-import { I } from "@/components/Icons";
 
 // JSON Schema shape lỏng — chỉ định nghĩa các field thường gặp
 interface PropSchema {
@@ -81,7 +81,9 @@ export function SchemaArgsForm({ schema, value, onChange }: SchemaArgsFormProps)
           className="input font-mono text-xs"
           rows={3}
           value={rawText}
-          onChange={(e) => { setRawText(e.target.value); }}
+          onChange={(e) => {
+            setRawText(e.target.value);
+          }}
           onBlur={applyRaw}
           placeholder='{ "limit": 10 }'
         />
@@ -170,7 +172,9 @@ function PropField({ name, schema, required, value, onChange }: PropFieldProps) 
         >
           {!required && <option value="">— bỏ trống —</option>}
           {schema.enum.map((opt, i) => (
-            <option key={i} value={String(opt)}>{String(opt)}</option>
+            <option key={i} value={String(opt)}>
+              {String(opt)}
+            </option>
           ))}
         </Select>
       </FormField>
@@ -217,16 +221,16 @@ function PropField({ name, schema, required, value, onChange }: PropFieldProps) 
     const itemType = schema.items?.type ?? "string";
     const text = Array.isArray(value) ? value.join("\n") : "";
     return (
-      <FormField
-        label={label}
-        hint={hint ?? `Mỗi dòng một phần tử (${itemType})`}
-      >
+      <FormField label={label} hint={hint ?? `Mỗi dòng một phần tử (${itemType})`}>
         <textarea
           className="input font-mono text-xs"
           rows={2}
           value={text}
           onChange={(e) => {
-            const lines = e.target.value.split("\n").map((s) => s.trim()).filter((s) => s !== "");
+            const lines = e.target.value
+              .split("\n")
+              .map((s) => s.trim())
+              .filter((s) => s !== "");
             if (lines.length === 0) return onChange(undefined);
             if (itemType === "number" || itemType === "integer") {
               onChange(lines.map((s) => Number(s)));
@@ -253,7 +257,11 @@ function PropField({ name, schema, required, value, onChange }: PropFieldProps) 
           onChange={(e) => {
             const s = e.target.value;
             if (!s.trim()) return onChange(undefined);
-            try { onChange(JSON.parse(s)); } catch { /* keep current value, wait for valid JSON */ }
+            try {
+              onChange(JSON.parse(s));
+            } catch {
+              /* keep current value, wait for valid JSON */
+            }
           }}
           placeholder='{ "key": "value" }'
         />
@@ -267,14 +275,22 @@ function PropField({ name, schema, required, value, onChange }: PropFieldProps) 
     if (fmt === "date") {
       return (
         <FormField label={label} hint={hint}>
-          <Input type="date" value={value == null ? "" : String(value)} onChange={(e) => onChange(e.target.value || undefined)} />
+          <Input
+            type="date"
+            value={value == null ? "" : String(value)}
+            onChange={(e) => onChange(e.target.value || undefined)}
+          />
         </FormField>
       );
     }
     if (fmt === "date-time" || fmt === "datetime") {
       return (
         <FormField label={label} hint={hint}>
-          <Input type="datetime-local" value={value == null ? "" : String(value)} onChange={(e) => onChange(e.target.value || undefined)} />
+          <Input
+            type="datetime-local"
+            value={value == null ? "" : String(value)}
+            onChange={(e) => onChange(e.target.value || undefined)}
+          />
         </FormField>
       );
     }

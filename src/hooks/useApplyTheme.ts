@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { useUI } from "@/stores/ui";
+import { useEffect } from "react";
 
 export function useApplyTheme() {
   const { theme, accent, density } = useUI();

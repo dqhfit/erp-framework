@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { McpConfig } from "@/core/mcp";
 import type { LLMProfile } from "@/types/llm";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface SettingsState {
   mcp: McpConfig;
@@ -18,10 +18,11 @@ export const useSettings = create<SettingsState>()(
       llmProfiles: {},
       setMcp: (cfg) => set({ mcp: cfg }),
       setLlmProfile: (p) => set((s) => ({ llmProfiles: { ...s.llmProfiles, [p.name]: p } })),
-      deleteLlmProfile: (name) => set((s) => {
-        const { [name]: _, ...rest } = s.llmProfiles;
-        return { llmProfiles: rest };
-      }),
+      deleteLlmProfile: (name) =>
+        set((s) => {
+          const { [name]: _, ...rest } = s.llmProfiles;
+          return { llmProfiles: rest };
+        }),
     }),
     { name: "erp-settings" },
   ),

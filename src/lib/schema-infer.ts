@@ -1,12 +1,15 @@
-import type { FieldType, FieldDef } from "@/types/entity";
+import type { FieldDef, FieldType } from "@/types/entity";
 
 /** Normalize bất kỳ shape data → array of objects (rows) */
 export function normalizeRows(data: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(data)) {
     if (data.length && Array.isArray(data[0])) {
-      return data.map((row) => (row as unknown[]).reduce<Record<string, unknown>>(
-        (o, v, i) => ({ ...o, [`col_${i + 1}`]: v }), {},
-      ));
+      return data.map((row) =>
+        (row as unknown[]).reduce<Record<string, unknown>>(
+          (o, v, i) => ({ ...o, [`col_${i + 1}`]: v }),
+          {},
+        ),
+      );
     }
     if (data.length && typeof data[0] !== "object") {
       return data.map((v) => ({ value: v }));
@@ -66,9 +69,13 @@ function voteType(vals: unknown[]): FieldType {
   }
   if (counts.size === 0) return "text";
   // Pick most common
-  let best: FieldType = "text", bestN = 0;
+  let best: FieldType = "text";
+  let bestN = 0;
   for (const [t, n] of counts) {
-    if (n > bestN) { best = t; bestN = n; }
+    if (n > bestN) {
+      best = t;
+      bestN = n;
+    }
   }
   // Promote integer → number nếu có lẫn float
   if (best === "integer" && counts.has("number")) return "number";
@@ -104,7 +111,9 @@ export function inferSchema(rows: Array<Record<string, unknown>>): InferredField
   for (const key of allKeys) {
     const vals = rows.map((r) => r[key]);
     const nonNull = vals.filter((v) => v != null);
-    const unique = new Set(nonNull.map((v) => typeof v === "object" ? JSON.stringify(v) : String(v)));
+    const unique = new Set(
+      nonNull.map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v))),
+    );
     out.push({
       key,
       label: toLabel(key),

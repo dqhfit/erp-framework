@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { type CompanyRole, createCompaniesClient } from "@erp-framework/client";
 /* ==========================================================
    settings.companies — Quản lý đa công ty:
    - Công ty đang làm việc + đổi tên (admin)
@@ -6,18 +10,21 @@
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createCompaniesClient, type CompanyRole } from "@erp-framework/client";
-import { dialog } from "@/lib/dialog";
 
 const companies = createCompaniesClient("");
 
 interface CompanyItem {
-  id: string; name: string; slug: string; role: string; isActive: boolean;
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+  isActive: boolean;
 }
 interface Member {
-  userId: string; email: string; name: string; role: string;
+  userId: string;
+  email: string;
+  name: string;
+  role: string;
   joinedAt: string | Date;
   /** true = user được tạo nhưng chưa accept invite (password trống). */
   pending?: boolean;
@@ -25,7 +32,9 @@ interface Member {
 
 const ROLES: CompanyRole[] = ["admin", "editor", "viewer"];
 const ROLE_LABEL: Record<string, string> = {
-  admin: "Quản trị", editor: "Biên tập", viewer: "Xem",
+  admin: "Quản trị",
+  editor: "Biên tập",
+  viewer: "Xem",
 };
 
 function CompaniesSettings() {
@@ -55,27 +64,28 @@ function CompaniesSettings() {
   const reload = async () => {
     setErr("");
     try {
-      const [cur, rows] = await Promise.all([
-        companies.current(),
-        companies.list(),
-      ]);
+      const [cur, rows] = await Promise.all([companies.current(), companies.list()]);
       setList(rows as CompanyItem[]);
       setMyRole(cur?.role ?? "viewer");
       setCurrentName(cur?.name ?? "");
       try {
         setMembers((await companies.members()) as Member[]);
       } catch {
-        setMembers([]);  // viewer có thể không xem được — bỏ qua
+        setMembers([]); // viewer có thể không xem được — bỏ qua
       }
     } catch (e) {
       setErr((e as Error).message);
     }
   };
 
-  useEffect(() => { void reload(); }, []);
+  useEffect(() => {
+    void reload();
+  }, []);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       await fn();
       setMsg(ok);
@@ -103,8 +113,8 @@ function CompaniesSettings() {
       <div className="max-w-[820px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">Quản lý công ty</h1>
         <div className="text-sm text-muted mb-6">
-          Mỗi công ty có dữ liệu riêng (entity, trang, workflow, agent, nhật ký…).
-          Người dùng có thể thuộc nhiều công ty và chuyển qua lại.
+          Mỗi công ty có dữ liệu riêng (entity, trang, workflow, agent, nhật ký…). Người dùng có thể
+          thuộc nhiều công ty và chuyển qua lại.
         </div>
 
         {/* === Công ty hiện tại === */}
@@ -119,12 +129,15 @@ function CompaniesSettings() {
             />
             {isAdmin && (
               <Button
-                variant="primary" icon={<I.Save size={14} />}
+                variant="primary"
+                icon={<I.Save size={14} />}
                 disabled={busy || !currentName.trim()}
-                onClick={() => void run(
-                  () => companies.rename(currentName.trim()).then(() => {}),
-                  "✓ Đã đổi tên công ty.",
-                )}
+                onClick={() =>
+                  void run(
+                    () => companies.rename(currentName.trim()).then(() => {}),
+                    "✓ Đã đổi tên công ty.",
+                  )
+                }
               >
                 Đổi tên
               </Button>
@@ -140,24 +153,23 @@ function CompaniesSettings() {
           <div className="font-semibold">Công ty của bạn</div>
           <div className="space-y-1.5">
             {list.map((c) => (
-              <div key={c.id}
-                className="flex items-center gap-2 p-2 rounded-md border border-border">
+              <div
+                key={c.id}
+                className="flex items-center gap-2 p-2 rounded-md border border-border"
+              >
                 <I.Briefcase size={15} className="text-muted shrink-0" />
                 <span className="flex-1 truncate">{c.name}</span>
                 <Chip>{ROLE_LABEL[c.role] ?? c.role}</Chip>
                 {c.isActive ? (
                   <Chip variant="success">Đang dùng</Chip>
                 ) : (
-                  <Button size="sm" disabled={busy}
-                    onClick={() => void doSwitch(c.id)}>
+                  <Button size="sm" disabled={busy} onClick={() => void doSwitch(c.id)}>
                     Chuyển đến
                   </Button>
                 )}
               </div>
             ))}
-            {list.length === 0 && (
-              <div className="text-sm text-muted">Chưa thuộc công ty nào.</div>
-            )}
+            {list.length === 0 && <div className="text-sm text-muted">Chưa thuộc công ty nào.</div>}
           </div>
           <div className="border-t border-border pt-3 flex items-center gap-2">
             <Input
@@ -168,19 +180,20 @@ function CompaniesSettings() {
               className="flex-1"
             />
             <Button
-              variant="primary" icon={<I.Plus size={14} />}
+              variant="primary"
+              icon={<I.Plus size={14} />}
               disabled={busy || !newName.trim()}
-              onClick={() => void run(async () => {
-                await companies.create(newName.trim());
-                setNewName("");
-              }, "✓ Đã tạo công ty mới.")}
+              onClick={() =>
+                void run(async () => {
+                  await companies.create(newName.trim());
+                  setNewName("");
+                }, "✓ Đã tạo công ty mới.")
+              }
             >
               Tạo công ty
             </Button>
           </div>
-          <div className="text-xs text-muted">
-            Bạn sẽ là quản trị viên của công ty vừa tạo.
-          </div>
+          <div className="text-xs text-muted">Bạn sẽ là quản trị viên của công ty vừa tạo.</div>
         </Card>
 
         {/* === Thành viên === */}
@@ -214,14 +227,20 @@ function CompaniesSettings() {
                         <Select
                           value={m.role}
                           disabled={busy}
-                          onChange={(e) => void run(
-                            () => companies.setMemberRole(
-                              m.userId, e.target.value as CompanyRole).then(() => {}),
-                            "✓ Đã đổi vai trò.",
-                          )}
+                          onChange={(e) =>
+                            void run(
+                              () =>
+                                companies
+                                  .setMemberRole(m.userId, e.target.value as CompanyRole)
+                                  .then(() => {}),
+                              "✓ Đã đổi vai trò.",
+                            )
+                          }
                         >
                           {ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                            <option key={r} value={r}>
+                              {ROLE_LABEL[r]}
+                            </option>
                           ))}
                         </Select>
                       ) : (
@@ -232,43 +251,55 @@ function CompaniesSettings() {
                       <div className="flex items-center justify-end gap-1">
                         {isAdmin && m.pending && (
                           <Button
-                            variant="default" size="sm" icon={<I.Send size={13} />}
+                            variant="default"
+                            size="sm"
+                            icon={<I.Send size={13} />}
                             disabled={busy}
                             title="Sinh lại link đăng ký + copy"
-                            onClick={() => void run(async () => {
-                              const r = await companies.resendInvite(m.userId);
-                              const full = window.location.origin + r.inviteLink;
-                              setInviteLink(full);
-                              setInviteEmail(m.email);
-                              await navigator.clipboard?.writeText(full).catch(() => {});
-                            }, "✓ Đã sinh link mới — đã copy vào clipboard.")}
+                            onClick={() =>
+                              void run(async () => {
+                                const r = await companies.resendInvite(m.userId);
+                                const full = window.location.origin + r.inviteLink;
+                                setInviteLink(full);
+                                setInviteEmail(m.email);
+                                await navigator.clipboard?.writeText(full).catch(() => {});
+                              }, "✓ Đã sinh link mới — đã copy vào clipboard.")
+                            }
                           >
                             Gửi lại
                           </Button>
                         )}
                         {isAdmin && !m.pending && (
                           <Button
-                            variant="default" size="sm" icon={<I.Lock size={13} />}
+                            variant="default"
+                            size="sm"
+                            icon={<I.Lock size={13} />}
                             disabled={busy}
                             title="Đặt lại mật khẩu cho user này"
-                            onClick={() => { setResetTarget({ userId: m.userId, email: m.email }); setResetPwd(""); }}
+                            onClick={() => {
+                              setResetTarget({ userId: m.userId, email: m.email });
+                              setResetPwd("");
+                            }}
                           >
                             Reset pass
                           </Button>
                         )}
                         {isAdmin && (
                           <Button
-                            variant="danger" size="sm" icon={<I.Trash size={13} />}
+                            variant="danger"
+                            size="sm"
+                            icon={<I.Trash size={13} />}
                             disabled={busy}
                             onClick={async () => {
-                              const ok = await dialog.confirm(
-                                `Gỡ ${m.email} khỏi công ty?`,
-                                { title: "Gỡ thành viên", confirmText: "Gỡ" },
-                              );
-                              if (ok) void run(
-                                () => companies.removeMember(m.userId).then(() => {}),
-                                "✓ Đã gỡ thành viên.",
-                              );
+                              const ok = await dialog.confirm(`Gỡ ${m.email} khỏi công ty?`, {
+                                title: "Gỡ thành viên",
+                                confirmText: "Gỡ",
+                              });
+                              if (ok)
+                                void run(
+                                  () => companies.removeMember(m.userId).then(() => {}),
+                                  "✓ Đã gỡ thành viên.",
+                                );
                             }}
                           />
                         )}
@@ -277,9 +308,11 @@ function CompaniesSettings() {
                   </tr>
                 ))}
                 {members.length === 0 && (
-                  <tr><td colSpan={3} className="py-3 text-muted text-sm">
-                    Chưa có thành viên nào hiển thị.
-                  </td></tr>
+                  <tr>
+                    <td colSpan={3} className="py-3 text-muted text-sm">
+                      Chưa có thành viên nào hiển thị.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -289,41 +322,58 @@ function CompaniesSettings() {
             <div className="border-t border-border pt-3 space-y-2">
               <div className="text-sm font-medium">Mời thành viên qua link đăng ký</div>
               <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Email" value={mEmail} disabled={busy}
-                  onChange={(e) => setMEmail(e.target.value)} />
-                <Input placeholder="Tên hiển thị (tuỳ chọn)" value={mName}
-                  disabled={busy} onChange={(e) => setMName(e.target.value)} />
-                <Select value={mRole} disabled={busy}
-                  onChange={(e) => setMRole(e.target.value as CompanyRole)}>
+                <Input
+                  placeholder="Email"
+                  value={mEmail}
+                  disabled={busy}
+                  onChange={(e) => setMEmail(e.target.value)}
+                />
+                <Input
+                  placeholder="Tên hiển thị (tuỳ chọn)"
+                  value={mName}
+                  disabled={busy}
+                  onChange={(e) => setMName(e.target.value)}
+                />
+                <Select
+                  value={mRole}
+                  disabled={busy}
+                  onChange={(e) => setMRole(e.target.value as CompanyRole)}
+                >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
                   ))}
                 </Select>
               </div>
               <Button
-                variant="primary" icon={<I.Send size={14} />}
+                variant="primary"
+                icon={<I.Send size={14} />}
                 disabled={busy || !mEmail.trim()}
-                onClick={() => void run(async () => {
-                  const r = await companies.addMember({
-                    email: mEmail.trim(),
-                    name: mName.trim() || undefined,
-                    role: mRole,
-                  }) as { inviteLink?: string; pending?: boolean };
-                  if (r.inviteLink) {
-                    const full = window.location.origin + r.inviteLink;
-                    setInviteLink(full);
-                    setInviteEmail(mEmail.trim());
-                    await navigator.clipboard?.writeText(full).catch(() => {});
-                  }
-                  setMEmail(""); setMName("");
-                }, "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.")}
+                onClick={() =>
+                  void run(async () => {
+                    const r = (await companies.addMember({
+                      email: mEmail.trim(),
+                      name: mName.trim() || undefined,
+                      role: mRole,
+                    })) as { inviteLink?: string; pending?: boolean };
+                    if (r.inviteLink) {
+                      const full = window.location.origin + r.inviteLink;
+                      setInviteLink(full);
+                      setInviteEmail(mEmail.trim());
+                      await navigator.clipboard?.writeText(full).catch(() => {});
+                    }
+                    setMEmail("");
+                    setMName("");
+                  }, "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.")
+                }
               >
                 Tạo tài khoản + sinh link đăng ký
               </Button>
               <div className="text-xs text-muted">
-                Server tạo tài khoản với mật khẩu trống, sinh link đăng ký 1 lần
-                có hiệu lực <strong>7 ngày</strong>. Bạn copy link gửi cho user — họ tự đặt
-                mật khẩu khi vào link. Email đã có user → chỉ gán quyền, không sinh link.
+                Server tạo tài khoản với mật khẩu trống, sinh link đăng ký 1 lần có hiệu lực{" "}
+                <strong>7 ngày</strong>. Bạn copy link gửi cho user — họ tự đặt mật khẩu khi vào
+                link. Email đã có user → chỉ gán quyền, không sinh link.
               </div>
             </div>
           )}
@@ -338,20 +388,33 @@ function CompaniesSettings() {
                 Link đăng ký cho <span className="font-mono">{inviteEmail}</span>
               </div>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" icon={<I.X size={12} />}
-                onClick={() => setInviteLink("")} title="Đóng" />
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<I.X size={12} />}
+                onClick={() => setInviteLink("")}
+                title="Đóng"
+              />
             </div>
             <div className="flex gap-2">
-              <Input value={inviteLink} readOnly className="flex-1 font-mono text-xs"
-                onFocus={(e) => e.currentTarget.select()} />
-              <Button variant="default" size="sm" icon={<I.Copy size={13} />}
-                onClick={() => void navigator.clipboard?.writeText(inviteLink)}>
+              <Input
+                value={inviteLink}
+                readOnly
+                className="flex-1 font-mono text-xs"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <Button
+                variant="default"
+                size="sm"
+                icon={<I.Copy size={13} />}
+                onClick={() => void navigator.clipboard?.writeText(inviteLink)}
+              >
                 Copy
               </Button>
             </div>
             <div className="text-xs text-muted">
-              Hết hạn sau 7 ngày. User mở link → đặt mật khẩu → vào app. Có thể
-              sinh lại link bằng nút "Gửi lại" cạnh chip "chờ accept".
+              Hết hạn sau 7 ngày. User mở link → đặt mật khẩu → vào app. Có thể sinh lại link bằng
+              nút "Gửi lại" cạnh chip "chờ accept".
             </div>
           </Card>
         )}
@@ -365,8 +428,13 @@ function CompaniesSettings() {
                 Đặt lại mật khẩu cho <span className="font-mono">{resetTarget.email}</span>
               </div>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" icon={<I.X size={12} />}
-                onClick={() => setResetTarget(null)} title="Đóng" />
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<I.X size={12} />}
+                onClick={() => setResetTarget(null)}
+                title="Đóng"
+              />
             </div>
             <div className="flex gap-2">
               <Input
@@ -380,11 +448,13 @@ function CompaniesSettings() {
               <Button
                 variant="danger"
                 disabled={busy || resetPwd.length < 8}
-                onClick={() => void run(async () => {
-                  await companies.resetMemberPassword(resetTarget.userId, resetPwd);
-                  setResetTarget(null);
-                  setResetPwd("");
-                }, `✓ Đã đặt lại mật khẩu cho ${resetTarget.email}. Mọi phiên của user đó đã bị đăng xuất.`)}
+                onClick={() =>
+                  void run(async () => {
+                    await companies.resetMemberPassword(resetTarget.userId, resetPwd);
+                    setResetTarget(null);
+                    setResetPwd("");
+                  }, `✓ Đã đặt lại mật khẩu cho ${resetTarget.email}. Mọi phiên của user đó đã bị đăng xuất.`)
+                }
               >
                 Xác nhận đặt lại
               </Button>
@@ -395,8 +465,16 @@ function CompaniesSettings() {
           </Card>
         )}
 
-        {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {msg && (
+          <div className="mt-4">
+            <Chip variant="success">{msg}</Chip>
+          </div>
+        )}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
       </div>
     </div>
   );

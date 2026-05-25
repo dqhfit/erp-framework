@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Button, Input, FormField, Card, Chip } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useSettings } from "@/stores/settings";
-import { useState, useEffect, useMemo } from "react";
-import { startLogin, logout, isLoggedIn, getTokens } from "@/core/llm/oauth";
-import { ClaudeCliAdapter } from "@/core/llm/claude-cli";
-import { createConfigClient } from "@erp-framework/client";
 import { LlmProfileCard } from "@/components/settings/LlmProfileCard";
-import { dialog } from "@/lib/dialog";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { ClaudeCliAdapter } from "@/core/llm/claude-cli";
+import { getTokens, isLoggedIn, logout, startLogin } from "@/core/llm/oauth";
 import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
+import { useSettings } from "@/stores/settings";
+import { createConfigClient } from "@erp-framework/client";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 
 function LlmSettings() {
   const t = useT();
@@ -18,7 +18,9 @@ function LlmSettings() {
   const [newName, setNewName] = useState("");
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [bridgeOk, setBridgeOk] = useState<boolean | null>(null);
-  const [bridgeUrl, setBridgeUrl] = useState(localStorage.getItem("claude-cli-bridge-url") || "http://localhost:8909");
+  const [bridgeUrl, setBridgeUrl] = useState(
+    localStorage.getItem("claude-cli-bridge-url") || "http://localhost:8909",
+  );
   const checkBridge = () => ClaudeCliAdapter.healthCheck(bridgeUrl).then(setBridgeOk);
 
   // Đồng bộ LLM profile với backend (router llm.* → PostgreSQL).
@@ -27,7 +29,8 @@ function LlmSettings() {
   const [syncMsg, setSyncMsg] = useState<string>("");
 
   const saveProfilesToServer = async () => {
-    setSyncing(true); setSyncMsg("");
+    setSyncing(true);
+    setSyncMsg("");
     try {
       const all = Object.values(useSettings.getState().llmProfiles);
       for (const pr of all) {
@@ -50,7 +53,8 @@ function LlmSettings() {
   };
 
   const loadProfilesFromServer = async () => {
-    setSyncing(true); setSyncMsg("");
+    setSyncing(true);
+    setSyncMsg("");
     try {
       const rows = await config.listLlm();
       const cur = useSettings.getState();
@@ -74,7 +78,6 @@ function LlmSettings() {
     }
   };
 
-
   // Recheck login status (e.g. after callback)
   useEffect(() => {
     const check = () => setLoggedIn(isLoggedIn());
@@ -97,17 +100,19 @@ function LlmSettings() {
   const handleLogin = async () => {
     const ok = await dialog.confirm(
       "Sẽ chuyển bạn sang Claude.ai để đăng nhập tài khoản Pro/Max.\n\n" +
-      "Lưu ý: token được lưu vào localStorage trong trình duyệt.\n" +
-      "Tiếp tục?",
+        "Lưu ý: token được lưu vào localStorage trong trình duyệt.\n" +
+        "Tiếp tục?",
       { title: "Đăng nhập Claude Pro/Max", confirmText: "Tiếp tục" },
     );
     if (!ok) return;
-    startLogin().catch((e) => dialog.alert("Lỗi: " + e.message, { title: "Đăng nhập thất bại" }));
+    startLogin().catch((e) => dialog.alert(`Lỗi: ${e.message}`, { title: "Đăng nhập thất bại" }));
   };
 
   const handleLogout = async () => {
     const ok = await dialog.confirm("Đăng xuất Claude Pro/Max?", {
-      title: "Đăng xuất", confirmText: "Đăng xuất", danger: true,
+      title: "Đăng xuất",
+      confirmText: "Đăng xuất",
+      danger: true,
     });
     if (!ok) return;
     logout();
@@ -126,37 +131,58 @@ function LlmSettings() {
         {/* === Claude Pro/Max OAuth === */}
         <Card className="mb-4 border-accent/40">
           <div className="flex items-start gap-3">
-            <span className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
-                  style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+            <span
+              className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+              }}
+            >
               <I.Sparkles size={18} />
             </span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold flex items-center gap-2">
                 Claude Pro / Max
-                {loggedIn ? <Chip variant="success">✓ Đã đăng nhập</Chip> : <Chip>Chưa đăng nhập</Chip>}
+                {loggedIn ? (
+                  <Chip variant="success">✓ Đã đăng nhập</Chip>
+                ) : (
+                  <Chip>Chưa đăng nhập</Chip>
+                )}
               </div>
               <div className="text-sm text-muted mt-1">
                 Dùng quota của gói subscription Claude Pro hoặc Max thay vì trả tiền API tokens.
                 {loggedIn && expiresAt && (
-                  <> Token hết hạn lúc <span className="font-mono">{expiresAt.toLocaleString("vi-VN")}</span> (tự refresh).</>
+                  <>
+                    {" "}
+                    Token hết hạn lúc{" "}
+                    <span className="font-mono">{expiresAt.toLocaleString("vi-VN")}</span> (tự
+                    refresh).
+                  </>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-2">
                 {loggedIn ? (
                   <>
-                    <Button variant="primary" icon={<I.Sparkles size={13} />} onClick={() => {
-                      setProfile({
-                        name: "Claude Pro",
-                        adapter: "claude-pro",
-                        model: "claude-sonnet-4-6",
-                        temperature: 0.7,
-                        max_tokens: 4096,
-                      });
-                      dialog.alert("Đã tạo profile 'Claude Pro' dùng OAuth token.", { title: "Thành công" });
-                    }}>
+                    <Button
+                      variant="primary"
+                      icon={<I.Sparkles size={13} />}
+                      onClick={() => {
+                        setProfile({
+                          name: "Claude Pro",
+                          adapter: "claude-pro",
+                          model: "claude-sonnet-4-6",
+                          temperature: 0.7,
+                          max_tokens: 4096,
+                        });
+                        dialog.alert("Đã tạo profile 'Claude Pro' dùng OAuth token.", {
+                          title: "Thành công",
+                        });
+                      }}
+                    >
                       Tạo profile "Claude Pro"
                     </Button>
-                    <Button variant="danger" icon={<I.Power size={13} />} onClick={handleLogout}>Đăng xuất</Button>
+                    <Button variant="danger" icon={<I.Power size={13} />} onClick={handleLogout}>
+                      Đăng xuất
+                    </Button>
                   </>
                 ) : (
                   <Button variant="primary" icon={<I.Sparkles size={13} />} onClick={handleLogin}>
@@ -179,45 +205,71 @@ function LlmSettings() {
         {/* === Claude Code CLI Bridge === */}
         <Card className="mb-4 border-accent-2/40">
           <div className="flex items-start gap-3">
-            <span className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
-                  style={{ background: "linear-gradient(135deg, hsl(var(--accent-2)), hsl(var(--accent)))" }}>
+            <span
+              className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--accent-2)), hsl(var(--accent)))",
+              }}
+            >
               <I.Server size={18} />
             </span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold flex items-center gap-2">
                 Claude Code CLI Bridge
-                {bridgeOk === true ? <Chip variant="success">✓ Bridge online</Chip>
-                 : bridgeOk === false ? <Chip variant="danger">✗ Bridge offline</Chip>
-                 : <Chip>Chưa kiểm tra</Chip>}
+                {bridgeOk === true ? (
+                  <Chip variant="success">✓ Bridge online</Chip>
+                ) : bridgeOk === false ? (
+                  <Chip variant="danger">✗ Bridge offline</Chip>
+                ) : (
+                  <Chip>Chưa kiểm tra</Chip>
+                )}
               </div>
               <div className="text-sm text-muted mt-1">
-                Dùng <code className="font-mono text-accent-2">claude</code> CLI làm backend.
-                Tận dụng auth Pro/Max trong CLI mà không phải cấu hình lại.
+                Dùng <code className="font-mono text-accent-2">claude</code> CLI làm backend. Tận
+                dụng auth Pro/Max trong CLI mà không phải cấu hình lại.
               </div>
               <div className="mt-3 text-xs bg-bg-soft p-3 rounded-md border border-border space-y-1">
                 <div className="text-muted">Cài đặt:</div>
-                <div className="font-mono">1. <code className="text-accent">npm install -g @anthropic-ai/claude-code</code></div>
-                <div className="font-mono">2. <code className="text-accent">claude</code> → login Pro/Max</div>
-                <div className="font-mono">3. <code className="text-accent">pnpm bridge</code> → khởi động bridge</div>
+                <div className="font-mono">
+                  1. <code className="text-accent">npm install -g @anthropic-ai/claude-code</code>
+                </div>
+                <div className="font-mono">
+                  2. <code className="text-accent">claude</code> → login Pro/Max
+                </div>
+                <div className="font-mono">
+                  3. <code className="text-accent">pnpm bridge</code> → khởi động bridge
+                </div>
               </div>
               <div className="mt-3 flex items-end gap-2">
                 <FormField label="Bridge URL" hint="Mặc định localhost:8909">
-                  <Input value={bridgeUrl}
-                    onChange={(e) => { setBridgeUrl(e.target.value); localStorage.setItem("claude-cli-bridge-url", e.target.value); }}
-                    placeholder="http://localhost:8909" />
+                  <Input
+                    value={bridgeUrl}
+                    onChange={(e) => {
+                      setBridgeUrl(e.target.value);
+                      localStorage.setItem("claude-cli-bridge-url", e.target.value);
+                    }}
+                    placeholder="http://localhost:8909"
+                  />
                 </FormField>
-                <Button variant="primary" icon={<I.Power size={13} />} onClick={checkBridge}>Test</Button>
-                <Button variant="default" onClick={() => {
-                  setProfile({
-                    name: "Claude CLI",
-                    adapter: "claude-cli",
-                    model: "claude-sonnet-4-6",
-                    endpoint: bridgeUrl,
-                    temperature: 0.7,
-                    max_tokens: 4096,
-                  });
-                  dialog.alert("Đã tạo profile 'Claude CLI'.", { title: "Thành công" });
-                }}>+ Tạo profile</Button>
+                <Button variant="primary" icon={<I.Power size={13} />} onClick={checkBridge}>
+                  Test
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setProfile({
+                      name: "Claude CLI",
+                      adapter: "claude-cli",
+                      model: "claude-sonnet-4-6",
+                      endpoint: bridgeUrl,
+                      temperature: 0.7,
+                      max_tokens: 4096,
+                    });
+                    dialog.alert("Đã tạo profile 'Claude CLI'.", { title: "Thành công" });
+                  }}
+                >
+                  + Tạo profile
+                </Button>
               </div>
             </div>
           </div>
@@ -227,16 +279,24 @@ function LlmSettings() {
         <Card className="mb-4">
           <div className="font-semibold mb-1">Lưu LLM profile lên server</div>
           <div className="text-xs text-muted mb-3">
-            Toàn bộ profile lưu vào PostgreSQL (bảng <span className="font-mono">llm_profiles</span>)
-            qua backend. Cần đăng nhập (vào trang "Dữ liệu Server"); chỉ admin mới lưu được.
+            Toàn bộ profile lưu vào PostgreSQL (bảng <span className="font-mono">llm_profiles</span>
+            ) qua backend. Cần đăng nhập (vào trang "Dữ liệu Server"); chỉ admin mới lưu được.
           </div>
           <div className="flex gap-2 items-center">
-            <Button variant="primary" icon={<I.Save size={14} />} disabled={syncing}
-              onClick={saveProfilesToServer}>
+            <Button
+              variant="primary"
+              icon={<I.Save size={14} />}
+              disabled={syncing}
+              onClick={saveProfilesToServer}
+            >
               Lưu lên server
             </Button>
-            <Button variant="default" icon={<I.Eye size={14} />} disabled={syncing}
-              onClick={loadProfilesFromServer}>
+            <Button
+              variant="default"
+              icon={<I.Eye size={14} />}
+              disabled={syncing}
+              onClick={loadProfilesFromServer}
+            >
               Tải từ server
             </Button>
             {syncMsg && (
@@ -248,7 +308,10 @@ function LlmSettings() {
         {/* === New profile form (manual API key) === */}
         <Card className="mb-4">
           <div className="flex gap-2 items-end">
-            <FormField label="Tên profile mới" hint="VD: default / cheap / vision / local — dùng API key">
+            <FormField
+              label="Tên profile mới"
+              hint="VD: default / cheap / vision / local — dùng API key"
+            >
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -256,7 +319,9 @@ function LlmSettings() {
                 placeholder="default"
               />
             </FormField>
-            <Button variant="primary" onClick={handleAdd} icon={<I.Plus size={14} />}>Thêm</Button>
+            <Button variant="primary" onClick={handleAdd} icon={<I.Plus size={14} />}>
+              Thêm
+            </Button>
           </div>
         </Card>
 
@@ -274,7 +339,8 @@ function LlmSettings() {
           {Object.keys(profiles).length === 0 && (
             <Card>
               <div className="text-center text-muted py-8 text-sm">
-                Chưa có profile. Đăng nhập Claude Pro/Max ở trên, hoặc thêm profile mới bằng API key.
+                Chưa có profile. Đăng nhập Claude Pro/Max ở trên, hoặc thêm profile mới bằng API
+                key.
               </div>
             </Card>
           )}

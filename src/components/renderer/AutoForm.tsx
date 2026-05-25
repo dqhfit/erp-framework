@@ -1,12 +1,12 @@
-import { useForm, type FieldErrors } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import type { EntityDef, FieldDef } from "@/types/entity";
-import { Button, Input, Select, Textarea, Switch, FormField } from "@/components/ui";
 import { I } from "@/components/Icons";
+import { Button, FormField, Input, Select, Switch, Textarea } from "@/components/ui";
 import { useEnum } from "@/hooks/useEnum";
-import { useLocale } from "@/stores/locale";
 import { pickLabel } from "@/lib/enum-label";
+import { useLocale } from "@/stores/locale";
+import type { EntityDef, FieldDef } from "@/types/entity";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type FieldErrors, useForm } from "react-hook-form";
+import { z } from "zod";
 
 interface AutoFormProps {
   entity: EntityDef;
@@ -21,7 +21,8 @@ function buildZodSchema(entity: EntityDef) {
   for (const f of entity.fields) {
     let s: z.ZodTypeAny;
     switch (f.type) {
-      case "number": case "integer":
+      case "number":
+      case "integer":
         s = z.coerce.number();
         if (f.min !== undefined) s = (s as z.ZodNumber).min(f.min);
         if (f.max !== undefined) s = (s as z.ZodNumber).max(f.max);
@@ -35,7 +36,9 @@ function buildZodSchema(entity: EntityDef) {
       case "url":
         s = z.string().url("URL không hợp lệ");
         break;
-      case "date": case "datetime": case "time":
+      case "date":
+      case "datetime":
+      case "time":
         s = z.string();
         break;
       default:
@@ -52,11 +55,16 @@ export function AutoForm({ entity, defaultValues, onSubmit, submitLabel }: AutoF
   const schema = buildZodSchema(entity);
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues ?? Object.fromEntries(entity.fields.map((f) => [f.key, f.default ?? ""])),
+    defaultValues:
+      defaultValues ?? Object.fromEntries(entity.fields.map((f) => [f.key, f.default ?? ""])),
   });
 
   const submit = form.handleSubmit(async (values) => {
-    try { await onSubmit(values); } catch (e) { console.error(e); }
+    try {
+      await onSubmit(values);
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   const errors: FieldErrors = form.formState.errors;
@@ -78,11 +86,20 @@ export function AutoForm({ entity, defaultValues, onSubmit, submitLabel }: AutoF
       ))}
       {entity.fields.length > 0 && (
         <div className="pt-3 flex items-center justify-end gap-2 border-t border-border">
-          <Button type="button" variant="ghost" onClick={() => form.reset()}>Hủy</Button>
+          <Button type="button" variant="ghost" onClick={() => form.reset()}>
+            Hủy
+          </Button>
           <Button
-            type="submit" variant="primary"
+            type="submit"
+            variant="primary"
             disabled={form.formState.isSubmitting}
-            icon={form.formState.isSubmitting ? <I.Loader size={13} className="animate-spin" /> : <I.Save size={13} />}
+            icon={
+              form.formState.isSubmitting ? (
+                <I.Loader size={13} className="animate-spin" />
+              ) : (
+                <I.Save size={13} />
+              )
+            }
           >
             {submitLabel ?? `Lưu ${entity.label}`}
           </Button>
@@ -113,20 +130,21 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
         <Select {...reg}>
           <option value="">— chọn —</option>
           {(field.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </Select>
       ) : field.type === "enum" ? (
         <EnumSelect enumId={field.enumId} reg={reg} />
       ) : field.type === "multi-enum" ? (
-        <EnumMultiSelect enumId={field.enumId}
+        <EnumMultiSelect
+          enumId={field.enumId}
           value={Array.isArray(value) ? (value as string[]) : []}
-          setValue={(vs) => setValue(vs)} />
-      ) : field.type === "lookup" ? (
-        <Input
-          placeholder={field.placeholder ?? "ID record đích"}
-          {...reg}
+          setValue={(vs) => setValue(vs)}
         />
+      ) : field.type === "lookup" ? (
+        <Input placeholder={field.placeholder ?? "ID record đích"} {...reg} />
       ) : field.type === "multi-lookup" ? (
         <MultiLookupInput
           value={Array.isArray(value) ? (value as string[]) : []}
@@ -138,7 +156,12 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
       ) : field.type === "time" ? (
         <Input type="time" {...reg} />
       ) : field.type === "number" || field.type === "integer" ? (
-        <Input type="number" step={field.type === "integer" ? "1" : "any"} placeholder={field.placeholder} {...reg} />
+        <Input
+          type="number"
+          step={field.type === "integer" ? "1" : "any"}
+          placeholder={field.placeholder}
+          {...reg}
+        />
       ) : field.type === "email" ? (
         <Input type="email" placeholder={field.placeholder ?? "name@example.com"} {...reg} />
       ) : field.type === "url" ? (
@@ -167,7 +190,9 @@ function EnumSelect({ enumId, reg }: EnumSelectProps) {
     <Select {...reg}>
       <option value="">— chọn —</option>
       {e.values.map((v) => (
-        <option key={v.value} value={v.value}>{pickLabel(v, lang)}</option>
+        <option key={v.value} value={v.value}>
+          {pickLabel(v, lang)}
+        </option>
       ))}
     </Select>
   );
@@ -192,7 +217,10 @@ function MultiLookupInput({ value, setValue, placeholder }: MultiLookupInputProp
       placeholder={placeholder}
       value={text}
       onChange={(e) => {
-        const next = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+        const next = e.target.value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
         setValue(next);
       }}
     />
@@ -212,8 +240,12 @@ function EnumMultiSelect({ enumId, value, setValue }: EnumMultiSelectProps) {
       {e.values.map((v) => {
         const on = value.includes(v.value);
         return (
-          <button key={v.value} type="button" onClick={() => toggle(v.value)}
-            className={`chip ${on ? "chip-accent" : ""}`}>
+          <button
+            key={v.value}
+            type="button"
+            onClick={() => toggle(v.value)}
+            className={`chip ${on ? "chip-accent" : ""}`}
+          >
             {pickLabel(v, lang)}
           </button>
         );

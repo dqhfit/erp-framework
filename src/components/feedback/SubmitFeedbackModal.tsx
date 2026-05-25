@@ -1,3 +1,12 @@
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input, Modal, Select, Textarea } from "@/components/ui";
+import {
+  type FeedbackArea,
+  type FeedbackSeverity,
+  type SimilarHit,
+  createFeedbackClient,
+} from "@erp-framework/client";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 /* ==========================================================
    SubmitFeedbackModal — form gửi feedback.
    - title, body, suggestion, area, severity
@@ -6,15 +15,6 @@
    - Submit thành công → nav tới /feedback/$id
    ========================================================== */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  Button, Chip, FormField, Input, Modal, Select, Textarea,
-} from "@/components/ui";
-import { I } from "@/components/Icons";
-import {
-  createFeedbackClient,
-  type FeedbackArea, type FeedbackSeverity, type SimilarHit,
-} from "@erp-framework/client";
 
 const client = createFeedbackClient("");
 
@@ -33,7 +33,10 @@ const SEVERITY_OPTS: Array<{ value: FeedbackSeverity; label: string }> = [
   { value: "blocker", label: "Chặn nghiêm trọng" },
 ];
 
-interface Props { open: boolean; onClose: () => void }
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
 
 export function SubmitFeedbackModal({ open, onClose }: Props) {
   const loc = useLocation();
@@ -54,18 +57,26 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
   // Reset khi mở lại.
   useEffect(() => {
     if (!open) return;
-    setTitle(""); setBody(""); setSuggestion("");
-    setArea("ui"); setSeverity("normal");
-    setErr(""); setSimilar([]);
+    setTitle("");
+    setBody("");
+    setSuggestion("");
+    setArea("ui");
+    setSeverity("normal");
+    setErr("");
+    setSimilar([]);
   }, [open]);
 
   // Debounced findSimilar — chỉ chạy khi title đủ dài.
   useEffect(() => {
     if (!open) return;
     const t = title.trim();
-    if (t.length < 8) { setSimilar([]); return; }
+    if (t.length < 8) {
+      setSimilar([]);
+      return;
+    }
     const handle = setTimeout(() => {
-      client.findSimilar({ title: t, body: body.slice(0, 500) })
+      client
+        .findSimilar({ title: t, body: body.slice(0, 500) })
         .then(setSimilar)
         .catch(() => setSimilar([]));
     }, 500);
@@ -73,13 +84,16 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
   }, [open, title, body]);
 
   const submit = async () => {
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       const r = await client.create({
         title: title.trim(),
         body: body.trim(),
         suggestion: suggestion.trim() || undefined,
-        area, severity, url,
+        area,
+        severity,
+        url,
       });
       onClose();
       await nav({ to: "/feedback/$id", params: { id: r.id } });
@@ -91,32 +105,58 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} width={640}
+    <Modal
+      open={open}
+      onClose={onClose}
+      width={640}
       title="Gửi phản hồi / đề xuất cải thiện"
       footer={
         <>
-          <Button variant="default" onClick={onClose} disabled={busy}>Huỷ</Button>
-          <Button variant="primary" onClick={submit}
+          <Button variant="default" onClick={onClose} disabled={busy}>
+            Huỷ
+          </Button>
+          <Button
+            variant="primary"
+            onClick={submit}
             disabled={busy || title.trim().length < 3 || body.trim().length < 10}
-            icon={<I.Send size={14} />}>Gửi</Button>
+            icon={<I.Send size={14} />}
+          >
+            Gửi
+          </Button>
         </>
-      }>
+      }
+    >
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <FormField label="Khu vực">
             <Select value={area} onChange={(e) => setArea(e.target.value as FeedbackArea)}>
-              {AREA_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {AREA_OPTS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </FormField>
           <FormField label="Mức độ">
-            <Select value={severity} onChange={(e) => setSeverity(e.target.value as FeedbackSeverity)}>
-              {SEVERITY_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <Select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value as FeedbackSeverity)}
+            >
+              {SEVERITY_OPTS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </FormField>
         </div>
         <FormField label="Tiêu đề">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)}
-            placeholder="Mô tả ngắn gọn bất cập gặp phải" maxLength={200} />
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Mô tả ngắn gọn bất cập gặp phải"
+            maxLength={200}
+          />
         </FormField>
 
         {similar.length > 0 && (
@@ -127,9 +167,12 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
             <ul className="space-y-0.5">
               {similar.map((s) => (
                 <li key={s.id}>
-                  <Link to="/feedback/$id" params={{ id: s.id }}
+                  <Link
+                    to="/feedback/$id"
+                    params={{ id: s.id }}
                     className="text-accent hover:underline"
-                    onClick={onClose}>
+                    onClick={onClose}
+                  >
                     {s.title}
                   </Link>{" "}
                   <Chip className="!text-[10px]">{s.status}</Chip>
@@ -142,13 +185,24 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
           </div>
         )}
 
-        <FormField label="Mô tả bất cập" hint="Bạn gặp vấn đề gì, lặp lại thế nào, ảnh hưởng ra sao.">
-          <Textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)}
-            placeholder="VD: Khi nhập email vào form đăng nhập, lần sau quay lại không nhớ giúp." />
+        <FormField
+          label="Mô tả bất cập"
+          hint="Bạn gặp vấn đề gì, lặp lại thế nào, ảnh hưởng ra sao."
+        >
+          <Textarea
+            rows={5}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="VD: Khi nhập email vào form đăng nhập, lần sau quay lại không nhớ giúp."
+          />
         </FormField>
         <FormField label="Đề xuất cải thiện (tuỳ chọn)">
-          <Textarea rows={3} value={suggestion} onChange={(e) => setSuggestion(e.target.value)}
-            placeholder="VD: Thêm tuỳ chọn 'Ghi nhớ tôi' giống các app khác." />
+          <Textarea
+            rows={3}
+            value={suggestion}
+            onChange={(e) => setSuggestion(e.target.value)}
+            placeholder="VD: Thêm tuỳ chọn 'Ghi nhớ tôi' giống các app khác."
+          />
         </FormField>
 
         <div className="text-[11px] text-muted">

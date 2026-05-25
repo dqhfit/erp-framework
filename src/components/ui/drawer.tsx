@@ -1,7 +1,7 @@
-import { useId, type ReactNode } from "react";
-import { Button } from "./button";
-import { I } from "../Icons";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { type ReactNode, useId } from "react";
+import { I } from "../Icons";
+import { Button } from "./button";
 
 interface DrawerProps {
   open: boolean;
@@ -30,7 +30,9 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-3 border-b border-border h-12 shrink-0">
-          <div id={titleId} className="font-semibold">{title}</div>
+          <div id={titleId} className="font-semibold">
+            {title}
+          </div>
           <Button variant="ghost" size="sm" onClick={onClose} icon={<I.X size={14} />} />
         </div>
         <div className="flex-1 overflow-y-auto">{children}</div>

@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { PageDesigner } from "@/components/designer/PageDesigner";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useUI } from "@/stores/ui";
+import { createFileRoute } from "@tanstack/react-router";
 
 function PageRoute() {
   const { id } = Route.useParams();

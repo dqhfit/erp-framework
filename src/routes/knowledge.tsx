@@ -1,3 +1,12 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Drawer, FormField, Input, Select, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { useUserObjects } from "@/stores/userObjects";
+import {
+  type KnowledgeHit,
+  type KnowledgeSource,
+  createKnowledgeClient,
+} from "@erp-framework/client";
 /* ==========================================================
    knowledge — Trang Knowledge Base (RAG). Quản lý nguồn tri thức
    (văn bản dán tay / dữ liệu entity / file tải lên) và ô tìm kiếm
@@ -5,27 +14,20 @@
    cứu được qua tool "knowledge_search".
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  useCallback, useEffect, useMemo, useRef, useState,
-  type ChangeEvent,
-} from "react";
-import { Button, Card, Chip, Input, Select, Textarea, FormField, Drawer } from "@/components/ui";
-import { I } from "@/components/Icons";
-import {
-  createKnowledgeClient,
-  type KnowledgeSource, type KnowledgeHit,
-} from "@erp-framework/client";
-import { useUserObjects } from "@/stores/userObjects";
-import { dialog } from "@/lib/dialog";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const kb = createKnowledgeClient("");
 
 const KIND_LABEL: Record<string, string> = {
-  file: "Tệp", entity: "Dữ liệu ERP", text: "Văn bản",
+  file: "Tệp",
+  entity: "Dữ liệu ERP",
+  text: "Văn bản",
 };
 const STATUS_LABEL: Record<string, string> = {
-  pending: "Chờ xử lý", processing: "Đang xử lý",
-  ready: "Sẵn sàng", error: "Lỗi",
+  pending: "Chờ xử lý",
+  processing: "Đang xử lý",
+  ready: "Sẵn sàng",
+  error: "Lỗi",
 };
 
 /* Cron preset cho "tự động nạp lại" nguồn entity. */
@@ -68,10 +70,14 @@ function KnowledgePage() {
   const load = useCallback(() => {
     kb.list()
       .then((rows) => setSources(rows as KnowledgeSource[]))
-      .catch(() => { /* chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa đăng nhập */
+      });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Tự làm mới khi còn nguồn đang xử lý.
   const hasPending = useMemo(
@@ -85,18 +91,28 @@ function KnowledgePage() {
   }, [hasPending, load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true); setErr(""); setMsg("");
-    try { await fn(); if (ok) setMsg(ok); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await fn();
+      if (ok) setMsg(ok);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doSearch = async () => {
     const q = query.trim();
     if (!q) return;
-    setSearching(true); setErr(""); setHits(null);
+    setSearching(true);
+    setErr("");
+    setHits(null);
     try {
-      setHits(await kb.search(q, 8) as KnowledgeHit[]);
+      setHits((await kb.search(q, 8)) as KnowledgeHit[]);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -104,25 +120,30 @@ function KnowledgePage() {
     }
   };
 
-  const addText = () => void run(async () => {
-    if (!textTitle.trim() || !textBody.trim()) {
-      throw new Error("Cần nhập cả tiêu đề lẫn nội dung.");
-    }
-    await kb.addText(textTitle.trim(), textBody.trim());
-    setTextTitle(""); setTextBody("");
-  }, "Đã thêm nguồn văn bản — đang nạp nền.");
+  const addText = () =>
+    void run(async () => {
+      if (!textTitle.trim() || !textBody.trim()) {
+        throw new Error("Cần nhập cả tiêu đề lẫn nội dung.");
+      }
+      await kb.addText(textTitle.trim(), textBody.trim());
+      setTextTitle("");
+      setTextBody("");
+    }, "Đã thêm nguồn văn bản — đang nạp nền.");
 
-  const addEntity = () => void run(async () => {
-    if (!entityId) throw new Error("Hãy chọn một entity.");
-    await kb.addEntity(entityId);
-    setEntityId("");
-  }, "Đã thêm nguồn entity — đang nạp nền.");
+  const addEntity = () =>
+    void run(async () => {
+      if (!entityId) throw new Error("Hãy chọn một entity.");
+      await kb.addEntity(entityId);
+      setEntityId("");
+    }, "Đã thêm nguồn entity — đang nạp nền.");
 
   const onPickFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      void run(() => kb.upload(file).then(() => undefined),
-        `Đã tải lên "${file.name}" — đang nạp nền.`);
+      void run(
+        () => kb.upload(file).then(() => undefined),
+        `Đã tải lên "${file.name}" — đang nạp nền.`,
+      );
     }
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -132,7 +153,9 @@ function KnowledgePage() {
 
   const doDelete = async (s: KnowledgeSource) => {
     const ok = await dialog.confirm(`Xoá nguồn "${s.title}"? Không thể hoàn tác.`, {
-      title: "Xoá nguồn tri thức", confirmText: "Xoá", danger: true,
+      title: "Xoá nguồn tri thức",
+      confirmText: "Xoá",
+      danger: true,
     });
     if (ok) void run(() => kb.remove(s.id).then(() => undefined), "Đã xoá nguồn.");
   };
@@ -165,11 +188,12 @@ function KnowledgePage() {
       <div className="max-w-[900px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">Knowledge Base</h1>
         <div className="text-sm text-muted mb-6">
-          Nạp tài liệu, dữ liệu ERP và ghi chú thành tri thức có thể tra cứu —
-          cho cả người dùng lẫn AI agent. Cần cấu hình{" "}
+          Nạp tài liệu, dữ liệu ERP và ghi chú thành tri thức có thể tra cứu — cho cả người dùng lẫn
+          AI agent. Cần cấu hình{" "}
           <a href="/settings/embedding" className="text-accent hover:underline">
             profile embedding
-          </a>{" "}trước.
+          </a>{" "}
+          trước.
         </div>
 
         {/* === Tìm kiếm === */}
@@ -183,8 +207,12 @@ function KnowledgePage() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doSearch()}
             />
-            <Button variant="primary" icon={<I.Search size={14} />}
-              disabled={searching || !query.trim()} onClick={doSearch}>
+            <Button
+              variant="primary"
+              icon={<I.Search size={14} />}
+              disabled={searching || !query.trim()}
+              onClick={doSearch}
+            >
               Tìm
             </Button>
           </div>
@@ -215,14 +243,21 @@ function KnowledgePage() {
           {/* Văn bản dán tay */}
           <div className="space-y-2">
             <FormField label="Văn bản dán tay">
-              <Input placeholder="Tiêu đề" value={textTitle} disabled={busy}
-                onChange={(e) => setTextTitle(e.target.value)} />
+              <Input
+                placeholder="Tiêu đề"
+                value={textTitle}
+                disabled={busy}
+                onChange={(e) => setTextTitle(e.target.value)}
+              />
             </FormField>
-            <Textarea rows={4} placeholder="Dán nội dung văn bản vào đây…"
-              value={textBody} disabled={busy}
-              onChange={(e) => setTextBody(e.target.value)} />
-            <Button variant="primary" icon={<I.Plus size={14} />}
-              disabled={busy} onClick={addText}>
+            <Textarea
+              rows={4}
+              placeholder="Dán nội dung văn bản vào đây…"
+              value={textBody}
+              disabled={busy}
+              onChange={(e) => setTextBody(e.target.value)}
+            />
+            <Button variant="primary" icon={<I.Plus size={14} />} disabled={busy} onClick={addText}>
               Thêm văn bản
             </Button>
           </div>
@@ -233,17 +268,26 @@ function KnowledgePage() {
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <FormField label="Dữ liệu một entity">
-                <Select value={entityId} disabled={busy}
-                  onChange={(e) => setEntityId(e.target.value)}>
+                <Select
+                  value={entityId}
+                  disabled={busy}
+                  onChange={(e) => setEntityId(e.target.value)}
+                >
                   <option value="">— Chọn entity —</option>
                   {entities.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
                   ))}
                 </Select>
               </FormField>
             </div>
-            <Button variant="primary" icon={<I.Database size={14} />}
-              disabled={busy || !entityId} onClick={addEntity}>
+            <Button
+              variant="primary"
+              icon={<I.Database size={14} />}
+              disabled={busy || !entityId}
+              onClick={addEntity}
+            >
               Thêm entity
             </Button>
           </div>
@@ -254,11 +298,15 @@ function KnowledgePage() {
           <div>
             <div className="text-sm font-medium mb-1">Tải file lên</div>
             <div className="text-xs text-muted mb-2">
-              PDF, DOCX, XLSX, PPTX, TXT, MD… (tối đa 25MB) — trích văn bản qua
-              Apache Tika.
+              PDF, DOCX, XLSX, PPTX, TXT, MD… (tối đa 25MB) — trích văn bản qua Apache Tika.
             </div>
-            <input ref={fileRef} type="file" disabled={busy} onChange={onPickFile}
-              className="text-sm" />
+            <input
+              ref={fileRef}
+              type="file"
+              disabled={busy}
+              onChange={onPickFile}
+              className="text-sm"
+            />
           </div>
         </Card>
 
@@ -267,8 +315,9 @@ function KnowledgePage() {
           <div className="flex items-center gap-2">
             <div className="font-semibold">Nguồn tri thức ({sources.length})</div>
             <div className="flex-1" />
-            <Button size="sm" variant="default" icon={<I.Undo size={12} />}
-              onClick={load}>Làm mới</Button>
+            <Button size="sm" variant="default" icon={<I.Undo size={12} />} onClick={load}>
+              Làm mới
+            </Button>
           </div>
           {sources.length === 0 && (
             <div className="text-sm text-muted py-4 text-center">
@@ -289,12 +338,31 @@ function KnowledgePage() {
                 {s.status === "ready" && (
                   <span className="text-xs text-muted">{s.chunkCount} đoạn</span>
                 )}
-                <Button size="sm" variant="default" icon={<I.Edit size={12} />}
-                  disabled={busy} onClick={() => openEdit(s)}>Sửa</Button>
-                <Button size="sm" variant="default" icon={<I.Redo size={12} />}
-                  disabled={busy} onClick={() => doReindex(s)}>Nạp lại</Button>
-                <Button size="sm" variant="danger" icon={<I.Trash size={12} />}
-                  disabled={busy} onClick={() => void doDelete(s)} />
+                <Button
+                  size="sm"
+                  variant="default"
+                  icon={<I.Edit size={12} />}
+                  disabled={busy}
+                  onClick={() => openEdit(s)}
+                >
+                  Sửa
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  icon={<I.Redo size={12} />}
+                  disabled={busy}
+                  onClick={() => doReindex(s)}
+                >
+                  Nạp lại
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  icon={<I.Trash size={12} />}
+                  disabled={busy}
+                  onClick={() => void doDelete(s)}
+                />
               </div>
               {s.status === "error" && s.error && (
                 <div className="text-xs text-danger mt-1.5">{s.error}</div>
@@ -303,23 +371,37 @@ function KnowledgePage() {
           ))}
         </Card>
 
-        {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {msg && (
+          <div className="mt-4">
+            <Chip variant="success">{msg}</Chip>
+          </div>
+        )}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
 
         {/* === Drawer sửa nguồn === */}
-        <Drawer open={!!editing} onClose={() => setEditing(null)}
-          title="Sửa nguồn tri thức">
+        <Drawer open={!!editing} onClose={() => setEditing(null)} title="Sửa nguồn tri thức">
           {editing && (
             <div className="p-4 space-y-3">
               <FormField label="Tiêu đề">
-                <Input value={edTitle} disabled={busy}
-                  onChange={(e) => setEdTitle(e.target.value)} />
+                <Input
+                  value={edTitle}
+                  disabled={busy}
+                  onChange={(e) => setEdTitle(e.target.value)}
+                />
               </FormField>
 
               {editing.kind === "text" && (
                 <FormField label="Nội dung">
-                  <Textarea rows={10} value={edText} disabled={busy}
-                    onChange={(e) => setEdText(e.target.value)} />
+                  <Textarea
+                    rows={10}
+                    value={edText}
+                    disabled={busy}
+                    onChange={(e) => setEdText(e.target.value)}
+                  />
                 </FormField>
               )}
 
@@ -332,16 +414,18 @@ function KnowledgePage() {
                     <div className="flex flex-wrap gap-1.5">
                       {CRON_PRESETS.map((p) => (
                         <button
-                          key={p.expr} type="button"
+                          key={p.expr}
+                          type="button"
                           onClick={() => setEdCron(p.expr)}
-                          className={"chip cursor-pointer " + (edCron === p.expr ? "chip-accent" : "")}
+                          className={`chip cursor-pointer ${edCron === p.expr ? "chip-accent" : ""}`}
                         >
                           {p.label}
                         </button>
                       ))}
                       <button
-                        type="button" onClick={() => setEdCron("")}
-                        className={"chip cursor-pointer " + (!edCron ? "chip-accent" : "")}
+                        type="button"
+                        onClick={() => setEdCron("")}
+                        className={`chip cursor-pointer ${!edCron ? "chip-accent" : ""}`}
                       >
                         Tắt
                       </button>
@@ -349,7 +433,8 @@ function KnowledgePage() {
                     <Input
                       className="font-mono text-xs"
                       placeholder="Biểu thức cron (để trống = tắt)"
-                      value={edCron} disabled={busy}
+                      value={edCron}
+                      disabled={busy}
                       onChange={(e) => setEdCron(e.target.value)}
                     />
                   </div>
@@ -358,15 +443,20 @@ function KnowledgePage() {
 
               {editing.kind === "file" && (
                 <div className="text-xs text-muted">
-                  Nguồn tệp chỉ sửa được tiêu đề. Muốn đổi nội dung, hãy xoá rồi
-                  tải tệp mới.
+                  Nguồn tệp chỉ sửa được tiêu đề. Muốn đổi nội dung, hãy xoá rồi tải tệp mới.
                 </div>
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
-                <Button variant="ghost" onClick={() => setEditing(null)}>Hủy</Button>
-                <Button variant="primary" icon={<I.Save size={13} />}
-                  disabled={busy} onClick={saveEdit}>
+                <Button variant="ghost" onClick={() => setEditing(null)}>
+                  Hủy
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={<I.Save size={13} />}
+                  disabled={busy}
+                  onClick={saveEdit}
+                >
                   Lưu
                 </Button>
               </div>

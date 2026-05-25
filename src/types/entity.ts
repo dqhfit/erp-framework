@@ -1,10 +1,28 @@
 export type FieldType =
-  | "text" | "textarea" | "number" | "integer"
-  | "boolean" | "date" | "datetime" | "time"
-  | "select" | "multi-select" | "enum" | "multi-enum"
-  | "lookup" | "multi-lookup"
-  | "file" | "image" | "url" | "email" | "phone"
-  | "sequence" | "rollup" | "timeseries" | "json" | "formula";
+  | "text"
+  | "textarea"
+  | "number"
+  | "integer"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "time"
+  | "select"
+  | "multi-select"
+  | "enum"
+  | "multi-enum"
+  | "lookup"
+  | "multi-lookup"
+  | "file"
+  | "image"
+  | "url"
+  | "email"
+  | "phone"
+  | "sequence"
+  | "rollup"
+  | "timeseries"
+  | "json"
+  | "formula";
 
 /** Hành vi khi record đích của lookup bị xoá. */
 export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
@@ -18,8 +36,22 @@ export interface FieldOption {
 
 /** Rule điều kiện dạng DSL nhẹ, sync, pure — match shape của core FieldRule.
  *  AND/OR cấp 1 + so sánh primitive. */
-export type FieldRuleOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "notin" | "empty" | "nonempty";
-export interface FieldRuleCondition { field: string; op: FieldRuleOp; value?: unknown; }
+export type FieldRuleOp =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "in"
+  | "notin"
+  | "empty"
+  | "nonempty";
+export interface FieldRuleCondition {
+  field: string;
+  op: FieldRuleOp;
+  value?: unknown;
+}
 export interface FieldRule {
   combinator?: "all" | "any";
   conditions: FieldRuleCondition[];
@@ -89,11 +121,11 @@ export interface EntityBinding {
 
 export interface EntityDef {
   id: string;
-  name: string;          // technical name e.g. "customer"
-  label: string;         // display "Khách hàng"
+  name: string; // technical name e.g. "customer"
+  label: string; // display "Khách hàng"
   description?: string;
   icon?: string;
-  primaryKey: string;    // field key dùng làm PK
+  primaryKey: string; // field key dùng làm PK
   fields: FieldDef[];
   bindings?: EntityBinding;
   createdAt?: number;

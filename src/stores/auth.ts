@@ -1,3 +1,5 @@
+import { t } from "@/hooks/useT";
+import { type AgentMemberRole, createAuthClient, createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    auth — Phiên đăng nhập. Backend (RBAC) yêu cầu đăng nhập nên
    toàn app nằm sau cổng AuthGate. Đăng nhập xong → nạp dữ liệu
@@ -8,9 +10,7 @@
    "agent của tôi" và RBAC client-side hiển thị nút Quản lý.
    ========================================================== */
 import { create } from "zustand";
-import { createAuthClient, createObjectsClient, type AgentMemberRole } from "@erp-framework/client";
 import { useUserObjects } from "./userObjects";
-import { t } from "@/hooks/useT";
 
 const auth = createAuthClient("");
 const api = createObjectsClient("");
@@ -46,11 +46,7 @@ interface AuthState {
 }
 
 /** Đặt user + nạp dữ liệu low-code + nạp membership. */
-function enter(
-  set: (p: Partial<AuthState>) => void,
-  get: () => AuthState,
-  user: AuthUser,
-): void {
+function enter(set: (p: Partial<AuthState>) => void, get: () => AuthState, user: AuthUser): void {
   set({ status: "in", user, error: "", errorCode: null });
   void useUserObjects.getState().hydrate();
   // Không block UI — fire-and-forget membership.
@@ -107,7 +103,11 @@ export const useAuth = create<AuthState>()((set, get) => ({
   },
 
   logout: async () => {
-    try { await auth.logout(); } catch { /* ignore */ }
+    try {
+      await auth.logout();
+    } catch {
+      /* ignore */
+    }
     set({ status: "out", user: null, primaryAgentId: null, myAgentRoles: {} });
   },
 

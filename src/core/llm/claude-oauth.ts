@@ -1,6 +1,6 @@
+import type { LLMRequest, LLMResponse } from "@/types/llm";
 import { LLMAdapterBase } from "./adapter";
 import { getAccessToken } from "./oauth";
-import type { LLMRequest, LLMResponse } from "@/types/llm";
 
 /**
  * ClaudeOAuthAdapter — dùng OAuth bearer token thay vì API key.
@@ -9,8 +9,11 @@ import type { LLMRequest, LLMResponse } from "@/types/llm";
 export class ClaudeOAuthAdapter extends LLMAdapterBase {
   constructor() {
     super("claude-pro", {
-      tools: true, vision: true, streaming: true,
-      max_input_tokens: 200_000, max_output_tokens: 8_192,
+      tools: true,
+      vision: true,
+      streaming: true,
+      max_input_tokens: 200_000,
+      max_output_tokens: 8_192,
     });
   }
 
@@ -23,14 +26,16 @@ export class ClaudeOAuthAdapter extends LLMAdapterBase {
       system: req.system,
       messages: req.messages,
       tools: req.tools?.map((t) => ({
-        name: t.name, description: t.description, input_schema: t.schema,
+        name: t.name,
+        description: t.description,
+        input_schema: t.schema,
       })),
     };
     const res = await fetch(req.endpoint ?? "https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "oauth-2025-04-20",
         "anthropic-dangerous-direct-browser-access": "true",
@@ -44,15 +49,23 @@ export class ClaudeOAuthAdapter extends LLMAdapterBase {
       }
       throw new Error(`Claude API ${res.status}: ${errText}`);
     }
-    const data = await res.json() as {
-      content: Array<{ type: string; text?: string; name?: string; id?: string; input?: Record<string, unknown> }>;
+    const data = (await res.json()) as {
+      content: Array<{
+        type: string;
+        text?: string;
+        name?: string;
+        id?: string;
+        input?: Record<string, unknown>;
+      }>;
       usage: { input_tokens: number; output_tokens: number };
     };
     const textBlock = data.content.find((b) => b.type === "text");
     const toolBlocks = data.content.filter((b) => b.type === "tool_use");
     return {
       text: textBlock?.text ?? "",
-      tool_calls: this.normalizeToolCalls(toolBlocks.map((b) => ({ id: b.id, name: b.name, input: b.input }))),
+      tool_calls: this.normalizeToolCalls(
+        toolBlocks.map((b) => ({ id: b.id, name: b.name, input: b.input })),
+      ),
       usage: data.usage,
       raw: data,
     };

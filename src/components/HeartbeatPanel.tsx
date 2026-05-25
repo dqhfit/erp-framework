@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { createHeartbeatsClient } from "@erp-framework/client";
 /* ==========================================================
    HeartbeatPanel — Cấu hình "heartbeat" cho một agent: agent tự
    thức dậy theo lịch cron và chạy một nhịp với chỉ dẫn lưu sẵn.
@@ -5,10 +9,6 @@
    (bật/tắt, chạy thử, xoá) + tóm tắt kết quả lần gần nhất.
    ========================================================== */
 import { useEffect, useState } from "react";
-import { createHeartbeatsClient } from "@erp-framework/client";
-import { Button, Card, Chip, Switch } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { dialog } from "@/lib/dialog";
 
 const hbClient = createHeartbeatsClient("");
 
@@ -45,34 +45,63 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
   const [err, setErr] = useState("");
 
   const load = () => {
-    hbClient.list(agentId)
+    hbClient
+      .list(agentId)
       .then((rows) => setList(rows as Heartbeat[]))
-      .catch(() => { /* chưa đăng nhập / agent chưa lưu */ });
+      .catch(() => {
+        /* chưa đăng nhập / agent chưa lưu */
+      });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [agentId]);
+  useEffect(() => {
+    load();
+  }, [agentId]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true); setErr(""); setMsg("");
-    try { await fn(); if (ok) setMsg(ok); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await fn();
+      if (ok) setMsg(ok);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const add = () => void run(async () => {
-    await hbClient.save({
-      agentId, cronExpr: cron.trim(), prompt: prompt.trim(), enabled: true,
-    });
-    setPrompt("");
-  }, "✓ Đã tạo heartbeat.");
+  const add = () =>
+    void run(async () => {
+      await hbClient.save({
+        agentId,
+        cronExpr: cron.trim(),
+        prompt: prompt.trim(),
+        enabled: true,
+      });
+      setPrompt("");
+    }, "✓ Đã tạo heartbeat.");
 
-  const toggle = (h: Heartbeat) => void run(() => hbClient.save({
-    id: h.id, agentId, cronExpr: h.cronExpr, prompt: h.prompt,
-    enabled: !h.enabled,
-  }).then(() => {}), "✓ Đã cập nhật.");
+  const toggle = (h: Heartbeat) =>
+    void run(
+      () =>
+        hbClient
+          .save({
+            id: h.id,
+            agentId,
+            cronExpr: h.cronExpr,
+            prompt: h.prompt,
+            enabled: !h.enabled,
+          })
+          .then(() => {}),
+      "✓ Đã cập nhật.",
+    );
 
   const doRunNow = async (h: Heartbeat) => {
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       const r = await hbClient.runNow(h.id);
       setMsg(`Chạy thử — ${r.status}: ${r.summary.slice(0, 280)}`);
@@ -86,7 +115,8 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
 
   const doDelete = async (h: Heartbeat) => {
     const ok = await dialog.confirm("Xoá heartbeat này?", {
-      title: "Xoá heartbeat", confirmText: "Xoá",
+      title: "Xoá heartbeat",
+      confirmText: "Xoá",
     });
     if (ok) void run(() => hbClient.delete(h.id), "✓ Đã xoá.");
   };
@@ -98,8 +128,8 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
         <div className="font-semibold">Heartbeat — agent tự chạy theo lịch</div>
       </div>
       <div className="text-xs text-muted">
-        Agent sẽ tự "thức dậy" đúng lịch cron và thực hiện chỉ dẫn bên dưới
-        (chạy nền 24/7, không cần ai bấm). Kết quả ghi vào Nhật ký.
+        Agent sẽ tự "thức dậy" đúng lịch cron và thực hiện chỉ dẫn bên dưới (chạy nền 24/7, không
+        cần ai bấm). Kết quả ghi vào Nhật ký.
       </div>
 
       {/* Danh sách heartbeat hiện có */}
@@ -133,20 +163,28 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="default" icon={<I.Play size={12} />}
-                disabled={busy} onClick={() => void doRunNow(h)}>
+              <Button
+                size="sm"
+                variant="default"
+                icon={<I.Play size={12} />}
+                disabled={busy}
+                onClick={() => void doRunNow(h)}
+              >
                 Chạy thử
               </Button>
-              <Button size="sm" variant="danger" icon={<I.Trash size={12} />}
-                disabled={busy} onClick={() => void doDelete(h)}>
+              <Button
+                size="sm"
+                variant="danger"
+                icon={<I.Trash size={12} />}
+                disabled={busy}
+                onClick={() => void doDelete(h)}
+              >
                 Xoá
               </Button>
             </div>
           </div>
         ))}
-        {list.length === 0 && (
-          <div className="text-sm text-muted">Chưa có heartbeat nào.</div>
-        )}
+        {list.length === 0 && <div className="text-sm text-muted">Chưa có heartbeat nào.</div>}
       </div>
 
       {/* Form thêm heartbeat */}
@@ -158,7 +196,7 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
               key={p.expr}
               type="button"
               onClick={() => setCron(p.expr)}
-              className={"chip cursor-pointer " + (cron === p.expr ? "chip-accent" : "")}
+              className={`chip cursor-pointer ${cron === p.expr ? "chip-accent" : ""}`}
             >
               {p.label}
             </button>
@@ -180,7 +218,8 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
           onChange={(e) => setPrompt(e.target.value)}
         />
         <Button
-          variant="primary" icon={<I.Plus size={14} />}
+          variant="primary"
+          icon={<I.Plus size={14} />}
           disabled={busy || !cron.trim() || !prompt.trim()}
           onClick={add}
         >

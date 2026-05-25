@@ -46,14 +46,18 @@ export class McpClient {
       if (!tool) throw new Error(`Tool ${name} not found`);
       return demoHandler(name, args) as T;
     }
-    const res = await this.rpc<{ content: Array<{ type: string; text?: string }> }>(
-      "tools/call",
-      { name, arguments: args },
-    );
+    const res = await this.rpc<{ content: Array<{ type: string; text?: string }> }>("tools/call", {
+      name,
+      arguments: args,
+    });
     // MCP trả content[]; nếu text → parse JSON, else return raw
     const first = res.content?.[0];
     if (first?.type === "text" && first.text) {
-      try { return JSON.parse(first.text) as T; } catch { return first.text as unknown as T; }
+      try {
+        return JSON.parse(first.text) as T;
+      } catch {
+        return first.text as unknown as T;
+      }
     }
     return res as unknown as T;
   }
@@ -76,7 +80,7 @@ export class McpClient {
     let data: { result?: T; error?: { message: string } };
     if (text.startsWith("event:") || text.includes("\ndata: ")) {
       const lines = text.split("\n").filter((l) => l.startsWith("data: "));
-      data = JSON.parse(lines[lines.length - 1]!.slice(6));
+      data = JSON.parse(lines[lines.length - 1]?.slice(6));
     } else {
       data = JSON.parse(text);
     }
@@ -93,8 +97,13 @@ const DEMO_TOOLS: McpTool[] = [
 ];
 function demoHandler(name: string, _args: Record<string, unknown>): unknown {
   if (name === "get_revenue_today") return { total: 12_345_678, currency: "VND" };
-  if (name === "list_customers") return { items: Array.from({ length: 10 }, (_, i) => ({
-    id: i + 1, name: `KH ${i + 1}`, phone: `09${String(i).padStart(8, "0")}`,
-  })) };
+  if (name === "list_customers")
+    return {
+      items: Array.from({ length: 10 }, (_, i) => ({
+        id: i + 1,
+        name: `KH ${i + 1}`,
+        phone: `09${String(i).padStart(8, "0")}`,
+      })),
+    };
   return { ok: true };
 }

@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input } from "@/components/ui";
+import { FORMULA_FUNCTIONS, type FormulaCategory, type FormulaFn, evaluate } from "@/lib/formula";
+import { cn } from "@/lib/utils";
 /* ==========================================================
    FormulaEditor — Inspector cho field type="formula":
    - Multi-line textarea với syntax hint
@@ -6,15 +10,6 @@
    - Live preview với sample row
    ========================================================== */
 import { useMemo, useRef, useState } from "react";
-import { Button, Chip, FormField, Input } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { cn } from "@/lib/utils";
-import {
-  FORMULA_FUNCTIONS,
-  evaluate,
-  type FormulaCategory,
-  type FormulaFn,
-} from "@/lib/formula";
 
 interface FormulaEditorProps {
   /** Expression hiện tại */
@@ -54,7 +49,11 @@ export function FormulaEditor({
       return f.name.toLowerCase().includes(q) || f.hint.toLowerCase().includes(q);
     });
     const out: Record<FormulaCategory, FormulaFn[]> = {
-      math: [], logic: [], text: [], date: [], agg: [],
+      math: [],
+      logic: [],
+      text: [],
+      date: [],
+      agg: [],
     };
     for (const f of filtered) out[f.category].push(f);
     return out;
@@ -63,7 +62,10 @@ export function FormulaEditor({
   // Insert text vào vị trí cursor
   const insertAtCursor = (snippet: string, selectInside?: [number, number]) => {
     const ta = taRef.current;
-    if (!ta) { onChange(value + snippet); return; }
+    if (!ta) {
+      onChange(value + snippet);
+      return;
+    }
     const start = ta.selectionStart ?? value.length;
     const end = ta.selectionEnd ?? value.length;
     const next = value.slice(0, start) + snippet + value.slice(end);
@@ -118,11 +120,7 @@ export function FormulaEditor({
       <div className="rounded-md border border-border bg-bg-soft p-2.5">
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted uppercase tracking-wider">Preview</span>
-          {preview.ok ? (
-            <Chip variant="success">✓ OK</Chip>
-          ) : (
-            <Chip variant="danger">✗ Lỗi</Chip>
-          )}
+          {preview.ok ? <Chip variant="success">✓ OK</Chip> : <Chip variant="danger">✗ Lỗi</Chip>}
         </div>
         <div className="mt-1 font-mono text-sm break-all">
           {preview.ok ? (
@@ -166,7 +164,9 @@ export function FormulaEditor({
         </div>
 
         <div className="flex flex-wrap gap-1 mb-2">
-          <CatPill active={activeCat === "all"} onClick={() => setActiveCat("all")}>Tất cả</CatPill>
+          <CatPill active={activeCat === "all"} onClick={() => setActiveCat("all")}>
+            Tất cả
+          </CatPill>
           {CATEGORY_ORDER.map((c) => (
             <CatPill key={c} active={activeCat === c} onClick={() => setActiveCat(c)}>
               {CATEGORY_LABEL[c]}
@@ -204,7 +204,8 @@ export function FormulaEditor({
       </div>
 
       <Button
-        variant="ghost" size="sm"
+        variant="ghost"
+        size="sm"
         onClick={() => onChange("")}
         icon={<I.Trash size={12} />}
         disabled={!value}
@@ -215,14 +216,20 @@ export function FormulaEditor({
   );
 }
 
-function CatPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function CatPill({
+  active,
+  onClick,
+  children,
+}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
         "px-2 h-6 rounded text-[11px] border",
-        active ? "bg-accent text-white border-accent" : "bg-panel-2 border-border text-muted hover:bg-hover/40",
+        active
+          ? "bg-accent text-white border-accent"
+          : "bg-panel-2 border-border text-muted hover:bg-hover/40",
       )}
     >
       {children}

@@ -1,3 +1,14 @@
+import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { useMcpClient } from "@/hooks/useMcpClient";
+import type {
+  AgentDesign,
+  EntityDesign,
+  PageDesign,
+  WorkflowDesign,
+} from "@/lib/ai-design-prompts";
+import type { MockEntity } from "@/lib/object-types";
+import { useUI } from "@/stores/ui";
+import { useUserObjects } from "@/stores/userObjects";
 /* ==========================================================
    GlobalAiCreateDrawer — Drawer toàn cục mở từ Sidebar +.
    Sau khi AI propose config:
@@ -7,24 +18,13 @@
    Mount 1 lần ở __root.tsx; điều khiển qua useUI.aiCreateTarget
    ========================================================== */
 import { useNavigate } from "@tanstack/react-router";
-import { useUI } from "@/stores/ui";
-import { useUserObjects } from "@/stores/userObjects";
-import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
-import { useMcpClient } from "@/hooks/useMcpClient";
-import type {
-  EntityDesign, PageDesign, WorkflowDesign, AgentDesign,
-} from "@/lib/ai-design-prompts";
-import type { MockEntity } from "@/lib/object-types";
 
 export function GlobalAiCreateDrawer() {
   const target = useUI((s) => s.aiCreateTarget);
   const setTarget = useUI((s) => s.setAiCreateTarget);
   const navigate = useNavigate();
   const { tools: mcpTools } = useMcpClient();
-  const {
-    addEntity, addPage, addWorkflow, addAgent,
-    entities: userEntities,
-  } = useUserObjects();
+  const { addEntity, addPage, addWorkflow, addAgent, entities: userEntities } = useUserObjects();
 
   if (!target) return null;
 
@@ -39,9 +39,14 @@ export function GlobalAiCreateDrawer() {
       icon: (d.icon as MockEntity["icon"]) ?? "Database",
       mcp: d.mcp ?? "",
       fields: (d.fields ?? []).map((f, i) => ({
-        id: "ai_" + Date.now() + "_" + i,
-        name: f.name, label: f.label, type: f.type,
-        required: f.required, options: f.options, ref: f.ref, formula: f.formula,
+        id: `ai_${Date.now()}_${i}`,
+        name: f.name,
+        label: f.label,
+        type: f.type,
+        required: f.required,
+        options: f.options,
+        ref: f.ref,
+        formula: f.formula,
       })),
     });
     close();
@@ -61,7 +66,12 @@ export function GlobalAiCreateDrawer() {
   };
   const applyAgent = (d: AgentDesign) => {
     const id = crypto.randomUUID();
-    addAgent({ id, name: d.name, model: d.model || "claude-sonnet-4-6", tools: d.tools?.length ?? 0 });
+    addAgent({
+      id,
+      name: d.name,
+      model: d.model || "claude-sonnet-4-6",
+      tools: d.tools?.length ?? 0,
+    });
     close();
     navigate({ to: "/agents/$id", params: { id } });
   };
@@ -69,18 +79,41 @@ export function GlobalAiCreateDrawer() {
   const ctx = {
     mcpTools: mcpTools.map((t) => ({ name: t.name, description: t.description })),
     otherEntities: userEntities.map((e) => ({
-      id: e.id, name: e.name, mcp: e.mcp, fieldKeys: e.fields.map((f) => f.name),
+      id: e.id,
+      name: e.name,
+      mcp: e.mcp,
+      fieldKeys: e.fields.map((f) => f.name),
     })),
   };
 
   if (target === "entity") {
-    return <AiAssistDrawer open onClose={close} objectType="entity" context={ctx} onApply={applyEntity} />;
+    return (
+      <AiAssistDrawer
+        open
+        onClose={close}
+        objectType="entity"
+        context={ctx}
+        onApply={applyEntity}
+      />
+    );
   }
   if (target === "page") {
-    return <AiAssistDrawer open onClose={close} objectType="page" context={ctx} onApply={applyPage} />;
+    return (
+      <AiAssistDrawer open onClose={close} objectType="page" context={ctx} onApply={applyPage} />
+    );
   }
   if (target === "workflow") {
-    return <AiAssistDrawer open onClose={close} objectType="workflow" context={ctx} onApply={applyWorkflow} />;
+    return (
+      <AiAssistDrawer
+        open
+        onClose={close}
+        objectType="workflow"
+        context={ctx}
+        onApply={applyWorkflow}
+      />
+    );
   }
-  return <AiAssistDrawer open onClose={close} objectType="agent" context={ctx} onApply={applyAgent} />;
+  return (
+    <AiAssistDrawer open onClose={close} objectType="agent" context={ctx} onApply={applyAgent} />
+  );
 }

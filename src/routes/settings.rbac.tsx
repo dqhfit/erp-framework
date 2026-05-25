@@ -1,11 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Card, Switch, Chip } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useRbac } from "@/stores/rbac";
+import { Card, Chip, Switch } from "@/components/ui";
 import {
-  ALL_ROLES, ALL_ACTIONS, ROLE_LABEL, ROLE_DESC, roleCan,
+  ALL_ACTIONS,
+  ALL_ROLES,
   type ObjectType,
+  ROLE_DESC,
+  ROLE_LABEL,
+  roleCan,
 } from "@/lib/permissions";
+import { useRbac } from "@/stores/rbac";
+import { createFileRoute } from "@tanstack/react-router";
 
 const OBJECTS: { key: ObjectType; label: string }[] = [
   { key: "entity", label: "Đối tượng" },
@@ -20,7 +24,11 @@ const OBJECTS: { key: ObjectType; label: string }[] = [
 ];
 
 const ACTION_LABEL: Record<string, string> = {
-  view: "Xem", create: "Tạo", edit: "Sửa", delete: "Xoá", run: "Chạy",
+  view: "Xem",
+  create: "Tạo",
+  edit: "Sửa",
+  delete: "Xoá",
+  run: "Chạy",
 };
 
 function RbacSettings() {
@@ -40,18 +48,25 @@ function RbacSettings() {
         {/* === Enforcement toggle === */}
         <Card className="mb-4">
           <div className="flex items-start gap-3">
-            <span className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
-                  style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}>
+            <span
+              className="w-10 h-10 rounded-md flex items-center justify-center text-white shrink-0"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+              }}
+            >
               <I.Power size={18} />
             </span>
             <div className="flex-1">
               <div className="font-semibold">Bật kiểm soát quyền</div>
               <div className="text-sm text-muted mt-0.5 mb-2">
-                Khi tắt, mọi thao tác được phép (tiện cho dev một người). Khi bật,
-                UI tuân theo vai trò bên dưới.
+                Khi tắt, mọi thao tác được phép (tiện cho dev một người). Khi bật, UI tuân theo vai
+                trò bên dưới.
               </div>
-              <Switch checked={enforce} onChange={setEnforce}
-                label={enforce ? "Đang kiểm soát" : "Đang tắt (toàn quyền)"} />
+              <Switch
+                checked={enforce}
+                onChange={setEnforce}
+                label={enforce ? "Đang kiểm soát" : "Đang tắt (toàn quyền)"}
+              />
             </div>
           </div>
         </Card>
@@ -65,12 +80,9 @@ function RbacSettings() {
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
-                className={
-                  "text-left p-3 rounded-md border transition-colors " +
-                  (role === r
-                    ? "border-accent bg-accent/10"
-                    : "border-border hover:bg-hover/50")
-                }
+                className={`text-left p-3 rounded-md border transition-colors ${
+                  role === r ? "border-accent bg-accent/10" : "border-border hover:bg-hover/50"
+                }`}
               >
                 <div className="font-semibold flex items-center gap-2">
                   {ROLE_LABEL[r]}
@@ -121,8 +133,8 @@ function RbacSettings() {
             </table>
           </div>
           <div className="text-xs text-muted mt-3">
-            Lưu ý: đây là RBAC phía client (chặn UI). Khi triển khai production
-            đa người dùng, vai trò cần được xác thực lại ở backend/bridge.
+            Lưu ý: đây là RBAC phía client (chặn UI). Khi triển khai production đa người dùng, vai
+            trò cần được xác thực lại ở backend/bridge.
           </div>
         </Card>
       </div>

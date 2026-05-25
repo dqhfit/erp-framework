@@ -13,20 +13,32 @@ export function InlineEdit({ value, onChange, className = "", placeholder = "" }
   if (editing) {
     return (
       <input
-        autoFocus
         className={`inline-edit-input ${className}`}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => { onChange(draft); setEditing(false); }}
+        onBlur={() => {
+          onChange(draft);
+          setEditing(false);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { onChange(draft); setEditing(false); }
-          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          if (e.key === "Enter") {
+            onChange(draft);
+            setEditing(false);
+          }
+          if (e.key === "Escape") {
+            setDraft(value);
+            setEditing(false);
+          }
         }}
       />
     );
   }
   return (
-    <span className={`inline-edit ${className}`} onClick={() => setEditing(true)} title="Click to edit">
+    <span
+      className={`inline-edit ${className}`}
+      onClick={() => setEditing(true)}
+      title="Click to edit"
+    >
       {value || <span className="text-muted">{placeholder}</span>}
     </span>
   );

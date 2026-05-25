@@ -12,8 +12,14 @@ import type { I as IconSet } from "@/components/Icons";
 export type IconName = keyof typeof IconSet;
 
 export interface EntityField {
-  id: string; name: string; label: string; labelEn?: string; type: string;
-  required?: boolean; options?: string[]; ref?: string;
+  id: string;
+  name: string;
+  label: string;
+  labelEn?: string;
+  type: string;
+  required?: boolean;
+  options?: string[];
+  ref?: string;
   /** Cho field type "formula" */
   formula?: string;
   /** Cho field type "enum" / "multi-enum" — id của enum object (xem /enums). */
@@ -32,7 +38,10 @@ export interface EntityField {
   sequencePadding?: number;
 }
 export interface MockEntity {
-  id: string; name: string; icon: IconName; mcp: string;
+  id: string;
+  name: string;
+  icon: IconName;
+  mcp: string;
   fields: EntityField[];
   /** Mapping 5 op (list/get/create/update/delete) → MCP tool + args */
   mcpBindings?: import("@/components/designer/McpBindingsEditor").McpBindings;
@@ -42,13 +51,24 @@ export interface MockEntity {
 }
 
 export interface MockPage {
-  id: string; name: string; icon: IconName; updated: string; author: string;
+  id: string;
+  name: string;
+  icon: IconName;
+  updated: string;
+  author: string;
 }
 
 export interface MockWorkflow {
-  id: string; name: string; icon: IconName; status: "active" | "paused"; runs: number;
+  id: string;
+  name: string;
+  icon: IconName;
+  status: "active" | "paused";
+  runs: number;
 }
 
 export interface MockAgent {
-  id: string; name: string; model: string; tools: number;
+  id: string;
+  name: string;
+  model: string;
+  tools: number;
 }

@@ -1,18 +1,16 @@
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 /* ==========================================================
    AuthGate — cổng đăng nhập toàn app. Chưa đăng nhập → màn hình
    login/đăng ký; đã đăng nhập → render children. Backend RBAC
    yêu cầu phiên nên mọi trang đều nằm sau cổng này.
    ========================================================== */
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Input, FormField, Card, Chip } from "@/components/ui";
-import { useAuth } from "@/stores/auth";
-import { useT } from "@/hooks/useT";
+import { type ReactNode, useEffect, useState } from "react";
 
 function Splash({ text }: { text: string }) {
   return (
-    <div className="h-screen flex items-center justify-center bg-bg text-muted text-sm">
-      {text}
-    </div>
+    <div className="h-screen flex items-center justify-center bg-bg text-muted text-sm">{text}</div>
   );
 }
 
@@ -51,9 +49,8 @@ function LoginScreen() {
 
   // Friendly text cho TOO_MANY_REQUESTS — server đã kèm số giây cụ thể
   // trong message; chỉ thay khi rỗng.
-  const displayError = errorCode === "TOO_MANY_REQUESTS" && !error
-    ? t("auth.error_rate_limit")
-    : error;
+  const displayError =
+    errorCode === "TOO_MANY_REQUESTS" && !error ? t("auth.error_rate_limit") : error;
 
   return (
     <div className="h-screen flex items-center justify-center bg-bg text-text">
@@ -74,39 +71,63 @@ function LoginScreen() {
         )}
 
         <FormField label={t("auth.email")}>
-          <Input type="email" value={email} placeholder={t("auth.email_ph")}
-            onChange={(e) => setEmail(e.target.value)} />
+          <Input
+            type="email"
+            value={email}
+            placeholder={t("auth.email_ph")}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </FormField>
 
         {mode === "register" && (
           <FormField label={t("auth.name")}>
-            <Input value={name} placeholder={t("auth.name_ph")}
-              onChange={(e) => setName(e.target.value)} />
+            <Input
+              value={name}
+              placeholder={t("auth.name_ph")}
+              onChange={(e) => setName(e.target.value)}
+            />
           </FormField>
         )}
 
-        <FormField label={t("auth.password")} hint={mode === "register" ? t("auth.password_hint") : undefined}>
-          <Input type="password" value={password} placeholder="••••••••"
+        <FormField
+          label={t("auth.password")}
+          hint={mode === "register" ? t("auth.password_hint") : undefined}
+        >
+          <Input
+            type="password"
+            value={password}
+            placeholder="••••••••"
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !busy) void submit(); }} />
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !busy) void submit();
+            }}
+          />
         </FormField>
 
         {displayError && <Chip variant="danger">{displayError}</Chip>}
 
-        <Button variant="primary" className="w-full justify-center"
-          disabled={busy} onClick={() => void submit()}>
+        <Button
+          variant="primary"
+          className="w-full justify-center"
+          disabled={busy}
+          onClick={() => void submit()}
+        >
           {busy
             ? t("auth.processing")
-            : mode === "login" ? t("auth.submit_login") : t("auth.submit_register")}
+            : mode === "login"
+              ? t("auth.submit_login")
+              : t("auth.submit_register")}
         </Button>
 
-        <button type="button"
+        <button
+          type="button"
           className="text-xs text-muted hover:text-text w-full text-center"
           onClick={() => {
             setMode(mode === "login" ? "register" : "login");
             setFirstAdminBanner(false);
             clearError();
-          }}>
+          }}
+        >
           {mode === "login" ? t("auth.to_register") : t("auth.to_login")}
         </button>
       </Card>

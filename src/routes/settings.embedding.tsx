@@ -1,3 +1,6 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { createKnowledgeClient } from "@erp-framework/client";
 /* ==========================================================
    settings.embedding — Cấu hình profile embedding cho Knowledge
    Base. Hỗ trợ Ollama (local) và OpenAI-compatible (cloud). Mỗi
@@ -6,9 +9,6 @@
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Card, Chip, Input, Select, FormField } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createKnowledgeClient } from "@erp-framework/client";
 
 const kb = createKnowledgeClient("");
 
@@ -30,11 +30,15 @@ function EmbeddingSettings() {
         setEndpoint(p.endpoint ?? "");
         setApiKey(p.apiKeyEnc ?? "");
       })
-      .catch(() => { /* chưa đăng nhập */ });
+      .catch(() => {
+        /* chưa đăng nhập */
+      });
   }, []);
 
   const save = async () => {
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       await kb.saveEmbeddingProfile({
         adapter,
@@ -56,9 +60,9 @@ function EmbeddingSettings() {
         <h1 className="text-xl font-semibold mb-1">Cấu hình Embedding</h1>
         <div className="text-sm text-muted mb-6">
           Profile sinh embedding cho Knowledge Base. Vector cố định{" "}
-          <span className="font-mono">768</span> chiều — chọn model trả đúng số
-          chiều này (Ollama <span className="font-mono">nomic-embed-text</span>,
-          OpenAI <span className="font-mono">text-embedding-3-small</span>).
+          <span className="font-mono">768</span> chiều — chọn model trả đúng số chiều này (Ollama{" "}
+          <span className="font-mono">nomic-embed-text</span>, OpenAI{" "}
+          <span className="font-mono">text-embedding-3-small</span>).
         </div>
 
         <Card className="space-y-3">
@@ -88,17 +92,19 @@ function EmbeddingSettings() {
 
           <FormField
             label="Endpoint"
-            hint={adapter === "ollama"
-              ? "Để trống dùng http://localhost:11434"
-              : "Để trống dùng https://api.openai.com. Gemini: nhập URL OpenAI-compat."}
+            hint={
+              adapter === "ollama"
+                ? "Để trống dùng http://localhost:11434"
+                : "Để trống dùng https://api.openai.com. Gemini: nhập URL OpenAI-compat."
+            }
           >
             <Input
               value={endpoint}
               disabled={busy}
               onChange={(e) => setEndpoint(e.target.value)}
-              placeholder={adapter === "ollama"
-                ? "http://localhost:11434"
-                : "https://api.openai.com"}
+              placeholder={
+                adapter === "ollama" ? "http://localhost:11434" : "https://api.openai.com"
+              }
             />
           </FormField>
 
@@ -115,8 +121,12 @@ function EmbeddingSettings() {
           )}
 
           <div className="flex items-center gap-2 pt-1">
-            <Button variant="primary" icon={<I.Save size={14} />}
-              disabled={busy || !model.trim()} onClick={save}>
+            <Button
+              variant="primary"
+              icon={<I.Save size={14} />}
+              disabled={busy || !model.trim()}
+              onClick={save}
+            >
               Lưu cấu hình
             </Button>
             {msg && <Chip variant="success">{msg}</Chip>}

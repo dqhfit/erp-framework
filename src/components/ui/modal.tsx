@@ -1,7 +1,7 @@
-import { useId, type ReactNode } from "react";
-import { Button } from "./button";
-import { I } from "../Icons";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { type ReactNode, useId } from "react";
+import { I } from "../Icons";
+import { Button } from "./button";
 
 interface ModalProps {
   open: boolean;
@@ -17,7 +17,10 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
   const titleId = useId();
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[900] flex items-center justify-center p-4" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-[900] flex items-center justify-center p-4"
+      onMouseDown={onClose}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
       <div
         ref={containerRef}
@@ -25,16 +28,22 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[90vh] outline-none"
-        style={{ width }}
+        className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[90vh] w-full outline-none"
+        style={{ maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div id={titleId} className="font-semibold text-lg">{title}</div>
+          <div id={titleId} className="font-semibold text-lg">
+            {title}
+          </div>
           <Button variant="ghost" size="sm" onClick={onClose} icon={<I.X size={14} />} />
         </div>
-        <div className="p-4 overflow-y-auto flex-1">{children}</div>
-        {footer && <div className="p-3 border-t border-border flex items-center justify-end gap-2">{footer}</div>}
+        <div className="p-4 overflow-y-auto flex-1 min-h-0">{children}</div>
+        {footer && (
+          <div className="p-3 border-t border-border flex items-center justify-end gap-2">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

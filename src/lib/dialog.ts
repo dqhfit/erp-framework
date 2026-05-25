@@ -1,9 +1,9 @@
+import { t } from "@/hooks/useT";
 /* ==========================================================
    dialog — Async helpers thay native alert/confirm/prompt.
    Defaults được dịch theo locale hiện tại (qua t()).
    ========================================================== */
 import { useDialog } from "@/stores/dialog";
-import { t } from "@/hooks/useT";
 
 interface CommonOpts {
   title?: string;
@@ -42,7 +42,11 @@ function confirmDialog(message: string, opts: CommonOpts = {}): Promise<boolean>
 interface PromptOpts extends CommonOpts {
   placeholder?: string;
 }
-function promptDialog(message: string, defaultValue = "", opts: PromptOpts = {}): Promise<string | null> {
+function promptDialog(
+  message: string,
+  defaultValue = "",
+  opts: PromptOpts = {},
+): Promise<string | null> {
   return new Promise((resolve) => {
     useDialog.getState().open({
       kind: "prompt",

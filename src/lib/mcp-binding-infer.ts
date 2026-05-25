@@ -12,10 +12,35 @@
 import type { McpArg, McpBindings, McpOp } from "@/components/designer/McpBindingsEditor";
 
 const PATTERNS: Record<Exclude<McpOp, "list">, RegExp[]> = {
-  get:    [/\.get$/i, /^get[._-]/i, /^find[._-]/i, /^fetch[._-]/i, /^show[._-]/i, /\.find$/i, /\.show$/i, /\.read$/i, /\.detail$/i],
-  create: [/\.create$/i, /^create[._-]/i, /^new[._-]/i, /^add[._-]/i, /\.insert$/i, /\.add$/i, /\.new$/i],
+  get: [
+    /\.get$/i,
+    /^get[._-]/i,
+    /^find[._-]/i,
+    /^fetch[._-]/i,
+    /^show[._-]/i,
+    /\.find$/i,
+    /\.show$/i,
+    /\.read$/i,
+    /\.detail$/i,
+  ],
+  create: [
+    /\.create$/i,
+    /^create[._-]/i,
+    /^new[._-]/i,
+    /^add[._-]/i,
+    /\.insert$/i,
+    /\.add$/i,
+    /\.new$/i,
+  ],
   update: [/\.update$/i, /^update[._-]/i, /^edit[._-]/i, /^modify[._-]/i, /\.edit$/i, /\.patch$/i],
-  delete: [/\.delete$/i, /^delete[._-]/i, /^remove[._-]/i, /^destroy[._-]/i, /\.remove$/i, /\.destroy$/i],
+  delete: [
+    /\.delete$/i,
+    /^delete[._-]/i,
+    /^remove[._-]/i,
+    /^destroy[._-]/i,
+    /\.remove$/i,
+    /\.destroy$/i,
+  ],
 };
 
 /**
@@ -44,8 +69,8 @@ export function getToolNamespace(toolName: string): string {
 function normalizeNs(ns: string): string {
   return ns
     .toLowerCase()
-    .replace(/ies$/, "y")  // categories → category
-    .replace(/s$/, "");    // customers → customer
+    .replace(/ies$/, "y") // categories → category
+    .replace(/s$/, ""); // customers → customer
 }
 
 /**
@@ -123,5 +148,5 @@ export function inferMcpBindings(
  * Đếm số op được bind tự động (cho thông báo UI).
  */
 export function countBoundOps(bindings: McpBindings): number {
-  return Object.values(bindings).filter((b) => b && b.tool).length;
+  return Object.values(bindings).filter((b) => b?.tool).length;
 }

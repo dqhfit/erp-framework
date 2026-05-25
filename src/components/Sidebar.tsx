@@ -1,15 +1,15 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { I } from "@/components/Icons";
-import type { IconName } from "@/lib/object-types";
-import { useUserObjects } from "@/stores/userObjects";
-import { useUI } from "@/stores/ui";
-import { useRbac } from "@/stores/rbac";
-import { useAuth } from "@/stores/auth";
-import { roleCan, type ObjectType } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
-import { dialog } from "@/lib/dialog";
 import { useT } from "@/hooks/useT";
-import { useState, type ReactNode } from "react";
+import { dialog } from "@/lib/dialog";
+import type { IconName } from "@/lib/object-types";
+import { type ObjectType, roleCan } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
+import { useRbac } from "@/stores/rbac";
+import { useUI } from "@/stores/ui";
+import { useUserObjects } from "@/stores/userObjects";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { type ReactNode, useState } from "react";
 
 interface SidebarItemProps {
   to: string;
@@ -23,7 +23,17 @@ interface SidebarItemProps {
   onDelete?: () => void;
   onRename?: () => void;
 }
-function SidebarItem({ to, active, icon, collapsed, label, badge, title, onDelete, onRename }: SidebarItemProps) {
+function SidebarItem({
+  to,
+  active,
+  icon,
+  collapsed,
+  label,
+  badge,
+  title,
+  onDelete,
+  onRename,
+}: SidebarItemProps) {
   const t = useT();
   const hasActions = !collapsed && (onDelete || onRename);
   return (
@@ -38,7 +48,9 @@ function SidebarItem({ to, active, icon, collapsed, label, badge, title, onDelet
           <>
             <span className="truncate flex-1">{label}</span>
             {badge && (
-              <span className="chip" style={{ height: 16, fontSize: 10, padding: "0 5px" }}>{badge}</span>
+              <span className="chip" style={{ height: 16, fontSize: 10, padding: "0 5px" }}>
+                {badge}
+              </span>
             )}
           </>
         )}
@@ -48,7 +60,11 @@ function SidebarItem({ to, active, icon, collapsed, label, badge, title, onDelet
           {onRename && (
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRename(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRename();
+              }}
               className="w-5 h-5 rounded hover:bg-hover/80 flex items-center justify-center text-muted hover:text-text"
               title={t("common.rename")}
             >
@@ -58,7 +74,11 @@ function SidebarItem({ to, active, icon, collapsed, label, badge, title, onDelet
           {onDelete && (
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }}
               className="w-5 h-5 rounded hover:bg-danger/20 flex items-center justify-center text-muted hover:text-danger"
               title={t("common.delete")}
             >
@@ -90,13 +110,24 @@ interface SectionProps {
   onDelete?: (id: string) => void;
   onRename?: (id: string, currentName: string) => void;
 }
-function SidebarSection({ title, collapsed, items, pathname, onAdd, onAiAdd, onDelete, onRename }: SectionProps) {
+function SidebarSection({
+  title,
+  collapsed,
+  items,
+  pathname,
+  onAdd,
+  onAiAdd,
+  onDelete,
+  onRename,
+}: SectionProps) {
   const t = useT();
   return (
     <div className="mb-1.5">
       {!collapsed && (
         <div className="flex items-center justify-between px-3 mt-3 mb-1">
-          <div className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted">{title}</div>
+          <div className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted">
+            {title}
+          </div>
           <div className="flex items-center gap-0.5">
             {onAiAdd && (
               <button
@@ -142,7 +173,12 @@ function SidebarSection({ title, collapsed, items, pathname, onAdd, onAiAdd, onD
 
 /* Nhóm điều hướng GỌN LẠI — tiêu đề bấm để mở/đóng. Khi sidebar
    ở chế độ thu nhỏ (icon-only) thì bỏ tiêu đề, hiện thẳng item. */
-function NavGroup({ title, collapsed, defaultOpen = true, children }: {
+function NavGroup({
+  title,
+  collapsed,
+  defaultOpen = true,
+  children,
+}: {
   title: string;
   collapsed: boolean;
   defaultOpen?: boolean;
@@ -195,30 +231,43 @@ export function Sidebar() {
     if (myAgentRoles[id]) return 1;
     return 2;
   };
-  const sortedAgents = [...userAgents].sort(
-    (a, b) => agentWeight(a.id) - agentWeight(b.id));
+  const sortedAgents = [...userAgents].sort((a, b) => agentWeight(a.id) - agentWeight(b.id));
   const {
-    addEntity, deleteEntity, renameEntity,
-    addPage, deletePage, renamePage,
-    addWorkflow, deleteWorkflow, renameWorkflow,
-    addAgent, deleteAgent, renameAgent,
+    addEntity,
+    deleteEntity,
+    renameEntity,
+    addPage,
+    deletePage,
+    renamePage,
+    addWorkflow,
+    deleteWorkflow,
+    renameWorkflow,
+    addAgent,
+    deleteAgent,
+    renameAgent,
   } = useUserObjects.getState();
 
   /** Generic delete + navigate home nếu đang ở route đó */
-  const onDeleteFn = (kind: string, fn: (id: string) => void, basePath: string) =>
-    async (id: string) => {
-      const ok = await dialog.confirm(
-        t("sidebar.confirm_delete", { kind, id }),
-        { title: t("sidebar.confirm_delete_title", { kind }), confirmText: t("common.delete"), danger: true },
-      );
+  const onDeleteFn =
+    (kind: string, fn: (id: string) => void, basePath: string) => async (id: string) => {
+      const ok = await dialog.confirm(t("sidebar.confirm_delete", { kind, id }), {
+        title: t("sidebar.confirm_delete_title", { kind }),
+        confirmText: t("common.delete"),
+        danger: true,
+      });
       if (!ok) return;
       fn(id);
       if (pathname === `${basePath}/${id}`) navigate({ to: "/" });
     };
   /** Generic rename via dialog.prompt */
-  const onRenameFn = (kind: string, fn: (id: string, name: string) => void) =>
+  const onRenameFn =
+    (kind: string, fn: (id: string, name: string) => void) =>
     async (id: string, currentName: string) => {
-      const next = (await dialog.prompt(t("sidebar.rename_prompt", { kind }), currentName, { title: t("sidebar.rename_title", { kind }) }))?.trim();
+      const next = (
+        await dialog.prompt(t("sidebar.rename_prompt", { kind }), currentName, {
+          title: t("sidebar.rename_title", { kind }),
+        })
+      )?.trim();
       if (!next || next === currentName) return;
       fn(id, next);
     };
@@ -234,7 +283,11 @@ export function Sidebar() {
 
   /** Prompt name + tạo + navigate. id là uuid client cấp (khớp backend). */
   const promptName = async (label: string): Promise<{ id: string; name: string } | null> => {
-    const name = (await dialog.prompt(t("sidebar.new_prompt", { kind: label }), "", { title: t("sidebar.new_title", { kind: label }) }))?.trim();
+    const name = (
+      await dialog.prompt(t("sidebar.new_prompt", { kind: label }), "", {
+        title: t("sidebar.new_title", { kind: label }),
+      })
+    )?.trim();
     if (!name) return null;
     return { id: crypto.randomUUID(), name };
   };
@@ -287,7 +340,9 @@ export function Sidebar() {
           onDelete={can("delete", "entity") ? handleDeleteEntity : undefined}
           onRename={can("edit", "entity") ? handleRenameEntity : undefined}
           items={userEntities.map((e) => ({
-            id: e.id, name: e.name, iconName: e.icon,
+            id: e.id,
+            name: e.name,
+            iconName: e.icon,
             to: `/entities/${e.id}`,
             userOwned: true,
           }))}
@@ -301,7 +356,9 @@ export function Sidebar() {
           onDelete={can("delete", "page") ? handleDeletePage : undefined}
           onRename={can("edit", "page") ? handleRenamePage : undefined}
           items={userPages.map((p) => ({
-            id: p.id, name: p.name, iconName: p.icon,
+            id: p.id,
+            name: p.name,
+            iconName: p.icon,
             to: `/pages/${p.id}`,
             userOwned: true,
           }))}
@@ -315,7 +372,9 @@ export function Sidebar() {
           onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
           onRename={can("edit", "workflow") ? handleRenameWorkflow : undefined}
           items={userWorkflows.map((w) => ({
-            id: w.id, name: w.name, iconName: w.icon,
+            id: w.id,
+            name: w.name,
+            iconName: w.icon,
             to: `/workflows/${w.id}`,
             badge: w.status === "paused" ? "⏸" : undefined,
             userOwned: true,
@@ -330,11 +389,12 @@ export function Sidebar() {
           onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
           onRename={can("edit", "agent") ? handleRenameAgent : undefined}
           items={sortedAgents.map((a) => ({
-            id: a.id, name: a.name, iconName: "Bot" as const,
+            id: a.id,
+            name: a.name,
+            iconName: "Bot" as const,
             to: `/agents/${a.id}`,
             // 2★ primary, ★ my-agent, không-marker = thường.
-            badge: a.id === primaryAgentId ? "★★"
-              : myAgentRoles[a.id] ? "★" : undefined,
+            badge: a.id === primaryAgentId ? "★★" : myAgentRoles[a.id] ? "★" : undefined,
             userOwned: true,
           }))}
         />
@@ -345,48 +405,148 @@ export function Sidebar() {
           {/* /server-data ẩn khỏi Sidebar — Sidebar đã auto-hydrate từ
               __root.tsx; trang chỉ dành cho admin debug raw record/MCP,
               truy cập trực tiếp qua URL khi cần. */}
-          <SidebarItem to="/activity" active={pathname === "/activity"}
-            icon={<I.Activity size={14} />} collapsed={collapsed} label={t("sidebar.activity")} />
-          <SidebarItem to="/approvals" active={pathname === "/approvals"}
-            icon={<I.CheckSq size={14} />} collapsed={collapsed} label={t("sidebar.approvals")} />
-          <SidebarItem to="/org-chart" active={pathname === "/org-chart"}
-            icon={<I.GitBranch size={14} />} collapsed={collapsed} label={t("sidebar.org_chart")} />
-          <SidebarItem to="/knowledge" active={pathname === "/knowledge"}
-            icon={<I.File size={14} />} collapsed={collapsed} label={t("sidebar.knowledge")} />
-          <SidebarItem to="/iot" active={pathname.startsWith("/iot")}
-            icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.iot")} />
-          <SidebarItem to="/procedures" active={pathname.startsWith("/procedures")}
-            icon={<I.Terminal size={14} />} collapsed={collapsed} label={t("sidebar.procedures")} />
-          <SidebarItem to="/enums" active={pathname.startsWith("/enums")}
-            icon={<I.Tag size={14} />} collapsed={collapsed} label={t("sidebar.enums")} />
-          <SidebarItem to="/tools" active={pathname.startsWith("/tools")}
-            icon={<I.Wand size={14} />} collapsed={collapsed} label={t("sidebar.tools")} />
-          <SidebarItem to="/feedback" active={pathname.startsWith("/feedback")}
-            icon={<I.HelpCircle size={14} />} collapsed={collapsed} label={t("sidebar.feedback")} />
+          <SidebarItem
+            to="/activity"
+            active={pathname === "/activity"}
+            icon={<I.Activity size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.activity")}
+          />
+          <SidebarItem
+            to="/approvals"
+            active={pathname === "/approvals"}
+            icon={<I.CheckSq size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.approvals")}
+          />
+          <SidebarItem
+            to="/org-chart"
+            active={pathname === "/org-chart"}
+            icon={<I.GitBranch size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.org_chart")}
+          />
+          <SidebarItem
+            to="/knowledge"
+            active={pathname === "/knowledge"}
+            icon={<I.File size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.knowledge")}
+          />
+          <SidebarItem
+            to="/iot"
+            active={pathname.startsWith("/iot")}
+            icon={<I.Server size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.iot")}
+          />
+          <SidebarItem
+            to="/procedures"
+            active={pathname.startsWith("/procedures")}
+            icon={<I.Terminal size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.procedures")}
+          />
+          <SidebarItem
+            to="/enums"
+            active={pathname.startsWith("/enums")}
+            icon={<I.Tag size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.enums")}
+          />
+          <SidebarItem
+            to="/tools"
+            active={pathname.startsWith("/tools")}
+            icon={<I.Wand size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.tools")}
+          />
+          <SidebarItem
+            to="/feedback"
+            active={pathname.startsWith("/feedback")}
+            icon={<I.HelpCircle size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.feedback")}
+          />
         </NavGroup>
         <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
-          <SidebarItem to="/settings/agents" active={pathname === "/settings/agents"}
-            icon={<I.Bot size={14} />} collapsed={collapsed} label={t("sidebar.my_agents")} />
-          <SidebarItem to="/settings/rbac" active={pathname === "/settings/rbac"}
-            icon={<I.Users size={14} />} collapsed={collapsed} label={t("sidebar.rbac")} />
-          <SidebarItem to="/settings/companies" active={pathname === "/settings/companies"}
-            icon={<I.Briefcase size={14} />} collapsed={collapsed} label={t("sidebar.companies")} />
-          <SidebarItem to="/settings/llm" active={pathname === "/settings/llm"}
-            icon={<I.Sparkles size={14} />} collapsed={collapsed} label={t("sidebar.llm_profiles")} />
-          <SidebarItem to="/settings/embedding" active={pathname === "/settings/embedding"}
-            icon={<I.Hash size={14} />} collapsed={collapsed} label={t("sidebar.embedding")} />
-          <SidebarItem to="/settings/mcp" active={pathname === "/settings/mcp"}
-            icon={<I.Server size={14} />} collapsed={collapsed} label={t("sidebar.mcp_server")} />
-          <SidebarItem to="/settings/transfer" active={pathname === "/settings/transfer"}
-            icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.transfer")} />
-          <SidebarItem to="/settings/backup" active={pathname === "/settings/backup"}
-            icon={<I.Save size={14} />} collapsed={collapsed} label={t("sidebar.backup")} />
-          <SidebarItem to="/settings/plugins" active={pathname === "/settings/plugins"}
-            icon={<I.Package size={14} />} collapsed={collapsed} label={t("sidebar.plugins")} />
-          <SidebarItem to="/settings/tools" active={pathname === "/settings/tools"}
-            icon={<I.Wand size={14} />} collapsed={collapsed} label={t("sidebar.tools_mgmt")} />
-          <SidebarItem to="/settings/embed" active={pathname === "/settings/embed"}
-            icon={<I.Link size={14} />} collapsed={collapsed} label={t("sidebar.embed")} />
+          <SidebarItem
+            to="/settings/agents"
+            active={pathname === "/settings/agents"}
+            icon={<I.Bot size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.my_agents")}
+          />
+          <SidebarItem
+            to="/settings/rbac"
+            active={pathname === "/settings/rbac"}
+            icon={<I.Users size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.rbac")}
+          />
+          <SidebarItem
+            to="/settings/companies"
+            active={pathname === "/settings/companies"}
+            icon={<I.Briefcase size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.companies")}
+          />
+          <SidebarItem
+            to="/settings/llm"
+            active={pathname === "/settings/llm"}
+            icon={<I.Sparkles size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.llm_profiles")}
+          />
+          <SidebarItem
+            to="/settings/embedding"
+            active={pathname === "/settings/embedding"}
+            icon={<I.Hash size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.embedding")}
+          />
+          <SidebarItem
+            to="/settings/mcp"
+            active={pathname === "/settings/mcp"}
+            icon={<I.Server size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.mcp_server")}
+          />
+          <SidebarItem
+            to="/settings/transfer"
+            active={pathname === "/settings/transfer"}
+            icon={<I.Save size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.transfer")}
+          />
+          <SidebarItem
+            to="/settings/backup"
+            active={pathname === "/settings/backup"}
+            icon={<I.Save size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.backup")}
+          />
+          <SidebarItem
+            to="/settings/plugins"
+            active={pathname === "/settings/plugins"}
+            icon={<I.Package size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.plugins")}
+          />
+          <SidebarItem
+            to="/settings/tools"
+            active={pathname === "/settings/tools"}
+            icon={<I.Wand size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.tools_mgmt")}
+          />
+          <SidebarItem
+            to="/settings/embed"
+            active={pathname === "/settings/embed"}
+            icon={<I.Link size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.embed")}
+          />
         </NavGroup>
       </div>
     </aside>

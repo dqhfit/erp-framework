@@ -1,16 +1,18 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import {
+  type IotCommandRow,
+  type IotDevice,
+  type IotTelemetryRow,
+  createIotClient,
+} from "@erp-framework/client";
 /* ==========================================================
    iot.$id — Chi tiết thiết bị: telemetry gần đây + hàng đợi lệnh +
    form gửi lệnh + xoay key + xoá thiết bị. Tự refresh mỗi 5s.
    ========================================================== */
-import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Chip, Textarea, FormField } from "@/components/ui";
-import { I } from "@/components/Icons";
-import {
-  createIotClient,
-  type IotDevice, type IotTelemetryRow, type IotCommandRow,
-} from "@erp-framework/client";
-import { dialog } from "@/lib/dialog";
 
 const iot = createIotClient("");
 
@@ -31,14 +33,18 @@ function IotDeviceDetail() {
       iot.devices.list(),
       iot.telemetry.list({ deviceId: id, limit: 100 }),
       iot.commands.list(id, 50),
-    ]).then(([devs, tel, cmds]) => {
-      const list = devs as unknown as IotDevice[];
-      setDevice(list.find((d) => d.id === id) ?? null);
-      setTelemetry(tel as unknown as IotTelemetryRow[]);
-      setCommands(cmds as unknown as IotCommandRow[]);
-    }).catch((e) => setErr((e as Error).message));
+    ])
+      .then(([devs, tel, cmds]) => {
+        const list = devs as unknown as IotDevice[];
+        setDevice(list.find((d) => d.id === id) ?? null);
+        setTelemetry(tel as unknown as IotTelemetryRow[]);
+        setCommands(cmds as unknown as IotCommandRow[]);
+      })
+      .catch((e) => setErr((e as Error).message));
   }, [id]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Tự làm mới mỗi 5 giây — telemetry chảy về liên tục từ thiết bị.
   useEffect(() => {
@@ -47,7 +53,9 @@ function IotDeviceDetail() {
   }, [load]);
 
   const queueCmd = async () => {
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       const payload = JSON.parse(cmdPayload) as Record<string, unknown>;
       await iot.commands.queue(id, payload);
@@ -55,7 +63,9 @@ function IotDeviceDetail() {
       load();
     } catch (e) {
       setErr((e as Error).message || "Payload không phải JSON hợp lệ.");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const rotateKey = async () => {
@@ -64,8 +74,12 @@ function IotDeviceDetail() {
       { title: "Xoay device key", confirmText: "Xoay key", danger: true },
     );
     if (!ok) return;
-    try { const r = await iot.devices.rotateKey(id); setRotated(r.key); }
-    catch (e) { setErr((e as Error).message); }
+    try {
+      const r = await iot.devices.rotateKey(id);
+      setRotated(r.key);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   const doDelete = async () => {
@@ -74,8 +88,12 @@ function IotDeviceDetail() {
       { title: "Xoá thiết bị", confirmText: "Xoá", danger: true },
     );
     if (!ok) return;
-    try { await iot.devices.delete(id); void navigate({ to: "/iot" }); }
-    catch (e) { setErr((e as Error).message); }
+    try {
+      await iot.devices.delete(id);
+      void navigate({ to: "/iot" });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   };
 
   if (!device) {
@@ -87,29 +105,35 @@ function IotDeviceDetail() {
       <div className="max-w-[1000px] mx-auto p-8">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-xl font-semibold flex-1">{device.name}</h1>
-          <Button size="sm" variant="default" icon={<I.Redo size={12} />}
-            onClick={rotateKey}>Xoay key</Button>
-          <Button size="sm" variant="danger" icon={<I.Trash size={12} />}
-            onClick={doDelete}>Xoá</Button>
+          <Button size="sm" variant="default" icon={<I.Redo size={12} />} onClick={rotateKey}>
+            Xoay key
+          </Button>
+          <Button size="sm" variant="danger" icon={<I.Trash size={12} />} onClick={doDelete}>
+            Xoá
+          </Button>
         </div>
         <div className="text-sm text-muted mb-4">
           {device.label && <>{device.label} · </>}
-          {device.lastSeenAt
-            ? <>Cập nhật lần cuối {new Date(device.lastSeenAt).toLocaleString("vi-VN")}</>
-            : <>Chưa kết nối</>}
+          {device.lastSeenAt ? (
+            <>Cập nhật lần cuối {new Date(device.lastSeenAt).toLocaleString("vi-VN")}</>
+          ) : (
+            <>Chưa kết nối</>
+          )}
         </div>
 
         {rotated && (
           <Card className="mb-4 border-warning/40 bg-warning/5">
-            <div className="font-semibold mb-2">
-              ⚠ Key MỚI (lưu NGAY, chỉ hiện 1 lần):
-            </div>
+            <div className="font-semibold mb-2">⚠ Key MỚI (lưu NGAY, chỉ hiện 1 lần):</div>
             <div className="font-mono text-xs break-all p-2 bg-bg-soft border border-border rounded">
               {rotated}
             </div>
             <div className="flex gap-2 mt-2">
-              <Button size="sm" variant="default" icon={<I.Copy size={12} />}
-                onClick={() => void navigator.clipboard.writeText(rotated)}>
+              <Button
+                size="sm"
+                variant="default"
+                icon={<I.Copy size={12} />}
+                onClick={() => void navigator.clipboard.writeText(rotated)}
+              >
                 Sao chép
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setRotated(null)}>
@@ -123,11 +147,18 @@ function IotDeviceDetail() {
           <Card className="space-y-2">
             <div className="font-semibold">Gửi lệnh xuống thiết bị</div>
             <FormField label="Payload (JSON)">
-              <Textarea rows={4} value={cmdPayload}
-                onChange={(e) => setCmdPayload(e.target.value)} />
+              <Textarea
+                rows={4}
+                value={cmdPayload}
+                onChange={(e) => setCmdPayload(e.target.value)}
+              />
             </FormField>
-            <Button variant="primary" icon={<I.Send size={13} />}
-              disabled={busy} onClick={queueCmd}>
+            <Button
+              variant="primary"
+              icon={<I.Send size={13} />}
+              disabled={busy}
+              onClick={queueCmd}
+            >
               Đưa vào hàng đợi
             </Button>
           </Card>
@@ -135,10 +166,12 @@ function IotDeviceDetail() {
           <Card>
             <div className="font-semibold mb-2">Tóm tắt</div>
             <div className="text-sm space-y-1">
-              <div>Telemetry: <span className="font-medium">{telemetry.length}</span> bản ghi gần đây</div>
-              <div>Lệnh: <span className="font-medium">{commands.length}</span>
-                {" "}
-                ({commands.filter((c) => c.status === "pending").length} đang chờ)
+              <div>
+                Telemetry: <span className="font-medium">{telemetry.length}</span> bản ghi gần đây
+              </div>
+              <div>
+                Lệnh: <span className="font-medium">{commands.length}</span> (
+                {commands.filter((c) => c.status === "pending").length} đang chờ)
               </div>
             </div>
           </Card>
@@ -151,12 +184,17 @@ function IotDeviceDetail() {
               <div className="text-sm text-muted py-2">Chưa có dữ liệu.</div>
             )}
             {telemetry.map((t) => (
-              <div key={t.id} className="text-xs font-mono p-2 bg-bg-soft border border-border rounded">
+              <div
+                key={t.id}
+                className="text-xs font-mono p-2 bg-bg-soft border border-border rounded"
+              >
                 <div className="flex items-center gap-2 text-muted mb-1">
                   <Chip className="!text-[10px]">{t.channel}</Chip>
                   <span>{new Date(t.ts).toLocaleString("vi-VN")}</span>
                 </div>
-                <pre className="whitespace-pre-wrap break-all">{JSON.stringify(t.payload, null, 2)}</pre>
+                <pre className="whitespace-pre-wrap break-all">
+                  {JSON.stringify(t.payload, null, 2)}
+                </pre>
               </div>
             ))}
           </div>
@@ -165,17 +203,24 @@ function IotDeviceDetail() {
         <Card className="mt-4">
           <div className="font-semibold mb-2">Hàng đợi lệnh</div>
           <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-            {commands.length === 0 && (
-              <div className="text-sm text-muted py-2">Chưa có lệnh.</div>
-            )}
+            {commands.length === 0 && <div className="text-sm text-muted py-2">Chưa có lệnh.</div>}
             {commands.map((c) => (
               <div key={c.id} className="text-xs p-2 bg-bg-soft border border-border rounded">
                 <div className="flex items-center gap-2 mb-1">
-                  <Chip className="!text-[10px]" variant={
-                    c.status === "ack" ? "success"
-                    : c.status === "error" ? "danger"
-                    : c.status === "sent" ? "accent" : undefined
-                  }>{c.status}</Chip>
+                  <Chip
+                    className="!text-[10px]"
+                    variant={
+                      c.status === "ack"
+                        ? "success"
+                        : c.status === "error"
+                          ? "danger"
+                          : c.status === "sent"
+                            ? "accent"
+                            : undefined
+                    }
+                  >
+                    {c.status}
+                  </Chip>
                   <span className="text-muted">
                     {new Date(c.createdAt).toLocaleString("vi-VN")}
                   </span>
@@ -193,8 +238,16 @@ function IotDeviceDetail() {
           </div>
         </Card>
 
-        {msg && <div className="mt-4"><Chip variant="success">{msg}</Chip></div>}
-        {err && <div className="mt-4"><Chip variant="danger">{err}</Chip></div>}
+        {msg && (
+          <div className="mt-4">
+            <Chip variant="success">{msg}</Chip>
+          </div>
+        )}
+        {err && (
+          <div className="mt-4">
+            <Chip variant="danger">{err}</Chip>
+          </div>
+        )}
       </div>
     </div>
   );

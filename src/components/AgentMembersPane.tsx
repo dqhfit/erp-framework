@@ -1,3 +1,9 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Modal, Select, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
+import { createCompaniesClient, createObjectsClient } from "@erp-framework/client";
+import type { AgentMemberRole, AgentMemberRow } from "@erp-framework/client";
 /* ==========================================================
    AgentMembersPane — Tab "Thành viên" trong /agents/$id.
    ────────────────────────────────────────────────────────────
@@ -7,13 +13,7 @@
    ai có quyền company-edit:agent đều edit được — agent_members chỉ
    là tag "my agents" cho Sidebar.
    ========================================================== */
-import { useEffect, useState, useMemo } from "react";
-import { Button, Card, Chip, Modal, Select, Switch } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { createObjectsClient, createCompaniesClient } from "@erp-framework/client";
-import type { AgentMemberRow, AgentMemberRole } from "@erp-framework/client";
-import { useAuth } from "@/stores/auth";
-import { dialog } from "@/lib/dialog";
+import { useEffect, useMemo, useState } from "react";
 
 interface Props {
   agentId: string;
@@ -59,7 +59,9 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
       setLoading(false);
     }
   };
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [agentId]);
+  useEffect(() => {
+    void load(); /* eslint-disable-next-line */
+  }, [agentId]);
 
   const changeRole = async (userId: string, role: AgentMemberRole) => {
     try {
@@ -71,10 +73,11 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
     }
   };
   const remove = async (userId: string, userName: string | null) => {
-    const ok = await dialog.confirm(
-      `Gỡ ${userName ?? userId} khỏi agent này?`,
-      { title: "Gỡ thành viên", confirmText: "Gỡ", danger: true },
-    );
+    const ok = await dialog.confirm(`Gỡ ${userName ?? userId} khỏi agent này?`, {
+      title: "Gỡ thành viên",
+      confirmText: "Gỡ",
+      danger: true,
+    });
     if (!ok) return;
     try {
       await api.agents.removeMember({ agentId, userId });
@@ -92,7 +95,11 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <div className="text-sm font-medium flex items-center gap-2">
-              {isPrivate ? <I.Lock size={13} className="text-accent" /> : <I.Unlock size={13} className="text-muted" />}
+              {isPrivate ? (
+                <I.Lock size={13} className="text-accent" />
+              ) : (
+                <I.Unlock size={13} className="text-muted" />
+              )}
               {isPrivate ? "Agent riêng tư" : "Agent mở (open mode)"}
             </div>
             <div className="text-xs text-muted mt-0.5">
@@ -102,11 +109,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
             </div>
           </div>
           {amOwner ? (
-            <Switch
-              checked={isPrivate}
-              onChange={(c) => onSetPrivate(c)}
-              label="Riêng tư"
-            />
+            <Switch checked={isPrivate} onChange={(c) => onSetPrivate(c)} label="Riêng tư" />
           ) : (
             <Chip variant={isPrivate ? "accent" : "default"} className="!text-[10px]">
               {isPrivate ? "Riêng tư" : "Open"}
@@ -122,8 +125,12 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
             Thành viên ({members.length})
           </div>
           {amOwner && (
-            <Button size="sm" variant="primary" icon={<I.Plus size={12} />}
-              onClick={() => setAddOpen(true)}>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<I.Plus size={12} />}
+              onClick={() => setAddOpen(true)}
+            >
               Thêm thành viên
             </Button>
           )}
@@ -132,43 +139,59 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
         {loading && <div className="text-xs text-muted">Đang tải…</div>}
         {!loading && members.length === 0 && (
           <div className="text-sm text-muted py-4 text-center">
-            Chưa có thành viên nào. Agent đang ở mode "open" — ai có quyền edit:agent trong công ty đều thao tác được.
+            Chưa có thành viên nào. Agent đang ở mode "open" — ai có quyền edit:agent trong công ty
+            đều thao tác được.
           </div>
         )}
         <div className="space-y-1">
           {members.map((m) => (
-            <div key={m.userId}
-              className="flex items-center gap-2 px-2 py-1.5 rounded border border-border">
+            <div
+              key={m.userId}
+              className="flex items-center gap-2 px-2 py-1.5 rounded border border-border"
+            >
               <span className="w-7 h-7 rounded-full flex items-center justify-center bg-bg-soft text-accent shrink-0">
                 <I.User size={12} />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{m.userName ?? m.userEmail ?? m.userId}</div>
+                <div className="text-sm font-medium truncate">
+                  {m.userName ?? m.userEmail ?? m.userId}
+                </div>
                 <div className="text-xs text-muted truncate">{m.userEmail ?? ""}</div>
               </div>
               {amOwner ? (
-                <Select className="!h-7 !text-xs w-[120px]"
+                <Select
+                  className="!h-7 !text-xs w-[120px]"
                   value={m.role}
                   onChange={(e) => changeRole(m.userId, e.target.value as AgentMemberRole)}
-                  title={ROLE_HINT[m.role]}>
+                  title={ROLE_HINT[m.role]}
+                >
                   {(["owner", "operator", "observer"] as AgentMemberRole[]).map((r) => (
-                    <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
                   ))}
                 </Select>
               ) : (
-                <Chip className="!text-[10px]" title={ROLE_HINT[m.role]}>{ROLE_LABEL[m.role]}</Chip>
+                <Chip className="!text-[10px]" title={ROLE_HINT[m.role]}>
+                  {ROLE_LABEL[m.role]}
+                </Chip>
               )}
               {amOwner && (
-                <Button size="sm" variant="ghost" icon={<I.Trash size={12} />}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<I.Trash size={12} />}
                   onClick={() => remove(m.userId, m.userName)}
-                  title="Gỡ thành viên" />
+                  title="Gỡ thành viên"
+                />
               )}
             </div>
           ))}
         </div>
         {!amOwner && (
           <div className="text-[11px] text-muted mt-2 pt-2 border-t border-border">
-            Chỉ <strong>owner</strong> mới sửa được danh sách thành viên. Vai trò của bạn: <Chip className="!text-[10px]">{myRole ?? "không phải member"}</Chip>
+            Chỉ <strong>owner</strong> mới sửa được danh sách thành viên. Vai trò của bạn:{" "}
+            <Chip className="!text-[10px]">{myRole ?? "không phải member"}</Chip>
           </div>
         )}
       </Card>
@@ -199,9 +222,14 @@ interface AddProps {
   onClose: () => void;
   existingMemberIds: Set<string>;
   onAdd: (userId: string, role: AgentMemberRole) => Promise<void>;
-  loadUsers: () => Promise<Array<{
-    userId: string; email: string; name: string; role: string;
-  }>>;
+  loadUsers: () => Promise<
+    Array<{
+      userId: string;
+      email: string;
+      name: string;
+      role: string;
+    }>
+  >;
 }
 function AddMemberModal({ open, onClose, existingMemberIds, onAdd, loadUsers }: AddProps) {
   const [users, setUsers] = useState<Array<{ userId: string; email: string; name: string }>>([]);
@@ -212,50 +240,57 @@ function AddMemberModal({ open, onClose, existingMemberIds, onAdd, loadUsers }: 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    loadUsers().then((rows) => {
-      const available = rows.filter((u) => !existingMemberIds.has(u.userId));
-      setUsers(available);
-      setPicked(available[0]?.userId ?? "");
-    }).finally(() => setLoading(false));
+    loadUsers()
+      .then((rows) => {
+        const available = rows.filter((u) => !existingMemberIds.has(u.userId));
+        setUsers(available);
+        setPicked(available[0]?.userId ?? "");
+      })
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
     <Modal open={open} onClose={onClose} title="Thêm thành viên cho agent" width={460}>
-      {loading
-        ? <div className="text-sm text-muted">Đang tải danh sách user…</div>
-        : users.length === 0
-        ? <div className="text-sm text-muted">Mọi user trong công ty đều đã là thành viên.</div>
-        : (
-          <div className="space-y-3">
-            <div>
-              <div className="text-xs text-muted mb-1">User</div>
-              <Select value={picked} onChange={(e) => setPicked(e.target.value)}>
-                {users.map((u) => (
-                  <option key={u.userId} value={u.userId}>
-                    {u.name} ({u.email})
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <div className="text-xs text-muted mb-1">Vai trò</div>
-              <Select value={role} onChange={(e) => setRole(e.target.value as AgentMemberRole)}>
-                <option value="observer">Observer — view + chat read-only</option>
-                <option value="operator">Operator — view + chat + edit cấu hình</option>
-                <option value="owner">Owner — toàn quyền + quản lý thành viên</option>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="default" size="sm" onClick={onClose}>Huỷ</Button>
-              <Button variant="primary" size="sm"
-                disabled={!picked}
-                onClick={() => onAdd(picked, role)}>
-                Thêm
-              </Button>
-            </div>
+      {loading ? (
+        <div className="text-sm text-muted">Đang tải danh sách user…</div>
+      ) : users.length === 0 ? (
+        <div className="text-sm text-muted">Mọi user trong công ty đều đã là thành viên.</div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-muted mb-1">User</div>
+            <Select value={picked} onChange={(e) => setPicked(e.target.value)}>
+              {users.map((u) => (
+                <option key={u.userId} value={u.userId}>
+                  {u.name} ({u.email})
+                </option>
+              ))}
+            </Select>
           </div>
-        )}
+          <div>
+            <div className="text-xs text-muted mb-1">Vai trò</div>
+            <Select value={role} onChange={(e) => setRole(e.target.value as AgentMemberRole)}>
+              <option value="observer">Observer — view + chat read-only</option>
+              <option value="operator">Operator — view + chat + edit cấu hình</option>
+              <option value="owner">Owner — toàn quyền + quản lý thành viên</option>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="default" size="sm" onClick={onClose}>
+              Huỷ
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!picked}
+              onClick={() => onAdd(picked, role)}
+            >
+              Thêm
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

@@ -1,3 +1,5 @@
+import type { IconName, MockAgent, MockEntity, MockPage, MockWorkflow } from "@/lib/object-types";
+import { createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    userObjects — Đối tượng low-code (entity / page / workflow /
    agent). Nguồn dữ liệu: PostgreSQL qua @erp-framework/client.
@@ -6,10 +8,6 @@
    Gọi hydrate() sau khi đăng nhập để nạp dữ liệu.
    ========================================================== */
 import { create } from "zustand";
-import { createObjectsClient } from "@erp-framework/client";
-import type {
-  MockEntity, MockPage, MockWorkflow, MockAgent, IconName,
-} from "@/lib/object-types";
 
 /* URL tương đối — đi qua proxy /trpc của Vite (dev) hoặc nginx (prod). */
 const api = createObjectsClient("");
@@ -18,19 +16,21 @@ type Row = Record<string, unknown>;
 
 /* ─── slug + tên máy ────────────────────────────────────── */
 export function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40) || "obj";
+  return (
+    name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "obj"
+  );
 }
 
 /** Tên máy duy nhất cho cột UNIQUE (slug + 6 ký tự id). */
 function machineName(displayName: string, id: string): string {
-  return slugify(displayName) + "_" + id.replace(/-/g, "").slice(0, 6);
+  return `${slugify(displayName)}_${id.replace(/-/g, "").slice(0, 6)}`;
 }
 
 /* Helper cũ — giữ export để chỗ khác khỏi vỡ; backend là nguồn
@@ -46,11 +46,11 @@ function rowToEntity(r: Row): MockEntity {
   // procBindings (chỉ giữ phần proc, lưu name không prefix).
   const rawBindings = (meta.bindings ?? null) as Record<string, string> | null;
   const procBindings: MockEntity["procBindings"] = rawBindings
-    ? Object.fromEntries(
+    ? (Object.fromEntries(
         Object.entries(rawBindings)
           .filter(([, v]) => typeof v === "string" && v.startsWith("proc:"))
           .map(([k, v]) => [k, v.slice(5)]),
-      ) as MockEntity["procBindings"]
+      ) as MockEntity["procBindings"])
     : undefined;
   return {
     id: r.id as string,
@@ -188,7 +188,9 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
         pages: (pgs as Row[]).map(rowToPage),
         workflows: (wfs as Row[]).map(rowToWorkflow),
         agents: (ags as Row[]).map(rowToAgent),
-        pageContent, workflowContent, agentContent,
+        pageContent,
+        workflowContent,
+        agentContent,
       });
     } catch (e) {
       console.error("[userObjects] hydrate lỗi:", e);
@@ -211,7 +213,11 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   upsertEntity: (e) => {
     set((s) => {
       const i = s.entities.findIndex((x) => x.id === e.id);
-      if (i >= 0) { const n = [...s.entities]; n[i] = e; return { entities: n }; }
+      if (i >= 0) {
+        const n = [...s.entities];
+        n[i] = e;
+        return { entities: n };
+      }
       return { entities: [...s.entities, e] };
     });
     bg(api.entities.save(entityToInput(e)), "lưu entity");
@@ -231,21 +237,37 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   /* ── Page ── */
   addPage: (p) => {
     set((s) => ({ pages: [...s.pages, p] }));
-    bg(api.pages.save({
-      id: p.id, name: machineName(p.name, p.id), label: p.name,
-      icon: p.icon, content: {},
-    }), "lưu page");
+    bg(
+      api.pages.save({
+        id: p.id,
+        name: machineName(p.name, p.id),
+        label: p.name,
+        icon: p.icon,
+        content: {},
+      }),
+      "lưu page",
+    );
   },
   upsertPage: (p) => {
     set((s) => {
       const i = s.pages.findIndex((x) => x.id === p.id);
-      if (i >= 0) { const n = [...s.pages]; n[i] = p; return { pages: n }; }
+      if (i >= 0) {
+        const n = [...s.pages];
+        n[i] = p;
+        return { pages: n };
+      }
       return { pages: [...s.pages, p] };
     });
-    bg(api.pages.save({
-      id: p.id, name: machineName(p.name, p.id), label: p.name,
-      icon: p.icon, content: (get().pageContent[p.id] ?? {}) as Record<string, unknown>,
-    }), "lưu page");
+    bg(
+      api.pages.save({
+        id: p.id,
+        name: machineName(p.name, p.id),
+        label: p.name,
+        icon: p.icon,
+        content: (get().pageContent[p.id] ?? {}) as Record<string, unknown>,
+      }),
+      "lưu page",
+    );
   },
   deletePage: (id) => {
     set((s) => {
@@ -268,9 +290,15 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   /* ── Workflow ── */
   addWorkflow: (w) => {
     set((s) => ({ workflows: [...s.workflows, w] }));
-    bg(api.workflows.save({
-      id: w.id, name: w.name, isActive: w.status === "active", graph: {},
-    }), "lưu workflow");
+    bg(
+      api.workflows.save({
+        id: w.id,
+        name: w.name,
+        isActive: w.status === "active",
+        graph: {},
+      }),
+      "lưu workflow",
+    );
   },
   deleteWorkflow: (id) => {
     set((s) => {
@@ -293,8 +321,7 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   /* ── Agent ── */
   addAgent: (a) => {
     set((s) => ({ agents: [...s.agents, a] }));
-    bg(api.agents.save({ id: a.id, name: a.name, model: a.model, config: {} }),
-      "lưu agent");
+    bg(api.agents.save({ id: a.id, name: a.name, model: a.model, config: {} }), "lưu agent");
   },
   deleteAgent: (id) => {
     set((s) => {
@@ -316,13 +343,18 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     const d = (data ?? {}) as { name?: string; model?: string };
     set((s) => ({
       agentContent: { ...s.agentContent, [id]: data },
-      agents: (d.name || d.model)
-        ? s.agents.map((x) => x.id === id ? {
-            ...x,
-            ...(d.name ? { name: d.name } : {}),
-            ...(d.model ? { model: d.model } : {}),
-          } : x)
-        : s.agents,
+      agents:
+        d.name || d.model
+          ? s.agents.map((x) =>
+              x.id === id
+                ? {
+                    ...x,
+                    ...(d.name ? { name: d.name } : {}),
+                    ...(d.model ? { model: d.model } : {}),
+                  }
+                : x,
+            )
+          : s.agents,
     }));
     saveAgentById(get, id);
   },
@@ -334,26 +366,42 @@ type Get = () => UserObjectsState;
 function savePageById(get: Get, id: string): void {
   const p = get().pages.find((x) => x.id === id);
   if (!p) return;
-  bg(api.pages.save({
-    id: p.id, name: machineName(p.name, p.id), label: p.name,
-    icon: p.icon, content: (get().pageContent[id] ?? {}) as Record<string, unknown>,
-  }), "lưu page");
+  bg(
+    api.pages.save({
+      id: p.id,
+      name: machineName(p.name, p.id),
+      label: p.name,
+      icon: p.icon,
+      content: (get().pageContent[id] ?? {}) as Record<string, unknown>,
+    }),
+    "lưu page",
+  );
 }
 
 function saveWorkflowById(get: Get, id: string): void {
   const w = get().workflows.find((x) => x.id === id);
   if (!w) return;
-  bg(api.workflows.save({
-    id: w.id, name: w.name, isActive: w.status === "active",
-    graph: (get().workflowContent[id] ?? {}) as Record<string, unknown>,
-  }), "lưu workflow");
+  bg(
+    api.workflows.save({
+      id: w.id,
+      name: w.name,
+      isActive: w.status === "active",
+      graph: (get().workflowContent[id] ?? {}) as Record<string, unknown>,
+    }),
+    "lưu workflow",
+  );
 }
 
 function saveAgentById(get: Get, id: string): void {
   const a = get().agents.find((x) => x.id === id);
   if (!a) return;
-  bg(api.agents.save({
-    id: a.id, name: a.name, model: a.model,
-    config: (get().agentContent[id] ?? {}) as Record<string, unknown>,
-  }), "lưu agent");
+  bg(
+    api.agents.save({
+      id: a.id,
+      name: a.name,
+      model: a.model,
+      config: (get().agentContent[id] ?? {}) as Record<string, unknown>,
+    }),
+    "lưu agent",
+  );
 }

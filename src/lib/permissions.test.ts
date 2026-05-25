@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { roleCan, permissionsOf } from "./permissions";
+import { describe, expect, it } from "vitest";
+import { permissionsOf, roleCan } from "./permissions";
 
 describe("roleCan", () => {
   it("admin có mọi quyền trên mọi object", () => {
@@ -30,10 +30,8 @@ describe("roleCan", () => {
 
 describe("permissionsOf", () => {
   it("admin có nhiều quyền hơn editor, editor hơn viewer", () => {
-    expect(permissionsOf("admin").length)
-      .toBeGreaterThan(permissionsOf("editor").length);
-    expect(permissionsOf("editor").length)
-      .toBeGreaterThan(permissionsOf("viewer").length);
+    expect(permissionsOf("admin").length).toBeGreaterThan(permissionsOf("editor").length);
+    expect(permissionsOf("editor").length).toBeGreaterThan(permissionsOf("viewer").length);
   });
 
   it("mọi quyền của viewer đều nằm trong tập quyền của admin", () => {

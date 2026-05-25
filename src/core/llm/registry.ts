@@ -1,3 +1,4 @@
+import { useSettings } from "@/stores/settings";
 /* ==========================================================
    LLM Registry — facade quanh adapters + profile store.
    - Adapters: in-memory Map (register lúc import index.ts)
@@ -5,7 +6,6 @@
      of truth, không còn 2 nơi lưu profile bị lệch nhau.
    ========================================================== */
 import type { LLMAdapter, LLMProfile, LLMRequest, LLMResponse } from "@/types/llm";
-import { useSettings } from "@/stores/settings";
 
 // Adapter mà không cần API key (OAuth / local bridge / local model)
 const NO_KEY_ADAPTERS = new Set(["claude-pro", "claude-cli", "ollama"]);
@@ -17,8 +17,12 @@ class LLMRegistry {
   register(adapter: LLMAdapter) {
     this.adapters.set(adapter.id, adapter);
   }
-  get(id: string) { return this.adapters.get(id); }
-  list() { return Array.from(this.adapters.values()); }
+  get(id: string) {
+    return this.adapters.get(id);
+  }
+  list() {
+    return Array.from(this.adapters.values());
+  }
 
   // ===== Profiles (đọc/ghi qua Zustand) =====
   listProfiles(): LLMProfile[] {

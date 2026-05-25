@@ -1,3 +1,7 @@
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { createEntitySyncClient } from "@erp-framework/client";
 /* ==========================================================
    EntitySyncPanel — Cấu hình ĐỒNG BỘ TỰ ĐỘNG dữ liệu MCP →
    entity_records cho một entity. Khác nút "Đồng bộ từ MCP"
@@ -8,10 +12,6 @@
    field khoá (tuỳ chọn), chạy ngay, xem kết quả lần gần nhất.
    ========================================================== */
 import { useEffect, useState } from "react";
-import { createEntitySyncClient } from "@erp-framework/client";
-import { Button, Card, Chip, Switch } from "@/components/ui";
-import { I } from "@/components/Icons";
-import { dialog } from "@/lib/dialog";
 
 const esClient = createEntitySyncClient("");
 
@@ -49,7 +49,8 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
   const [err, setErr] = useState("");
 
   const load = () => {
-    esClient.get(entityId)
+    esClient
+      .get(entityId)
       .then((row) => {
         const r = row as EntitySync | null;
         setCfg(r);
@@ -59,30 +60,45 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
           setEnabled(r.enabled);
         }
       })
-      .catch(() => { /* chưa đăng nhập / entity chưa lưu */ });
+      .catch(() => {
+        /* chưa đăng nhập / entity chưa lưu */
+      });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [entityId]);
+  useEffect(() => {
+    load();
+  }, [entityId]);
 
   const wrap = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true); setErr(""); setMsg("");
-    try { await fn(); if (ok) setMsg(ok); load(); }
-    catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await fn();
+      if (ok) setMsg(ok);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const save = () => void wrap(async () => {
-    await esClient.save({
-      entityId,
-      cronExpr: cron.trim(),
-      pkField: pkField.trim(),
-      enabled,
-    });
-  }, "✓ Đã lưu lịch đồng bộ.");
+  const save = () =>
+    void wrap(async () => {
+      await esClient.save({
+        entityId,
+        cronExpr: cron.trim(),
+        pkField: pkField.trim(),
+        enabled,
+      });
+    }, "✓ Đã lưu lịch đồng bộ.");
 
   const doRunNow = async () => {
     if (!cfg) return;
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true);
+    setErr("");
+    setMsg("");
     try {
       const r = await esClient.runNow(cfg.id);
       setMsg(`Đồng bộ — ${r.status}: ${r.summary.slice(0, 280)}`);
@@ -97,7 +113,8 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
   const doDelete = async () => {
     if (!cfg) return;
     const ok = await dialog.confirm("Xoá lịch đồng bộ tự động này?", {
-      title: "Xoá lịch đồng bộ", confirmText: "Xoá",
+      title: "Xoá lịch đồng bộ",
+      confirmText: "Xoá",
     });
     if (ok) void wrap(() => esClient.delete(cfg.id), "✓ Đã xoá lịch.");
   };
@@ -114,9 +131,9 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         )}
       </div>
       <div className="text-xs text-muted">
-        Server tự kéo dữ liệu từ tool MCP đã bind cho op <code>list</code> theo
-        lịch cron, rồi upsert vào DB theo field khoá (trùng khoá thì cập nhật,
-        chưa có thì thêm). Chạy nền 24/7, không cần mở trình duyệt.
+        Server tự kéo dữ liệu từ tool MCP đã bind cho op <code>list</code> theo lịch cron, rồi
+        upsert vào DB theo field khoá (trùng khoá thì cập nhật, chưa có thì thêm). Chạy nền 24/7,
+        không cần mở trình duyệt.
       </div>
 
       {/* Cron presets */}
@@ -126,7 +143,7 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
             key={p.expr}
             type="button"
             onClick={() => setCron(p.expr)}
-            className={"chip cursor-pointer " + (cron === p.expr ? "chip-accent" : "")}
+            className={`chip cursor-pointer ${cron === p.expr ? "chip-accent" : ""}`}
           >
             {p.label}
           </button>
@@ -168,15 +185,14 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         </div>
       )}
       {cfg?.lastSummary && (
-        <div className="text-xs bg-bg-soft rounded p-2 whitespace-pre-wrap">
-          {cfg.lastSummary}
-        </div>
+        <div className="text-xs bg-bg-soft rounded p-2 whitespace-pre-wrap">{cfg.lastSummary}</div>
       )}
 
       {/* Hành động */}
       <div className="flex items-center gap-2">
         <Button
-          variant="primary" icon={<I.Save size={13} />}
+          variant="primary"
+          icon={<I.Save size={13} />}
           disabled={busy || !cron.trim()}
           onClick={save}
         >
@@ -184,9 +200,8 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         </Button>
         {cfg && (
           <Button
-            variant="default" icon={busy
-              ? <I.Loader size={13} className="animate-spin" />
-              : <I.Play size={13} />}
+            variant="default"
+            icon={busy ? <I.Loader size={13} className="animate-spin" /> : <I.Play size={13} />}
             disabled={busy}
             onClick={() => void doRunNow()}
           >
@@ -195,7 +210,8 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         )}
         {cfg && (
           <Button
-            variant="danger" icon={<I.Trash size={13} />}
+            variant="danger"
+            icon={<I.Trash size={13} />}
             disabled={busy}
             onClick={() => void doDelete()}
           >

@@ -6,11 +6,11 @@
    ========================================================== */
 
 export interface CronFields {
-  minute: number[];   // 0-59
-  hour: number[];     // 0-23
-  dom: number[];      // 1-31 (day of month)
-  month: number[];    // 1-12
-  dow: number[];      // 0-6  (0 = Chủ nhật)
+  minute: number[]; // 0-59
+  hour: number[]; // 0-23
+  dom: number[]; // 1-31 (day of month)
+  month: number[]; // 1-12
+  dow: number[]; // 0-6  (0 = Chủ nhật)
 }
 
 const RANGES: Record<keyof CronFields, [number, number]> = {
@@ -26,15 +26,17 @@ function parseField(raw: string, [lo, hi]: [number, number]): number[] {
   const out = new Set<number>();
   for (const part of raw.split(",")) {
     const [rangePart, stepPart] = part.split("/");
-    const step = stepPart ? parseInt(stepPart, 10) : 1;
+    const step = stepPart ? Number.parseInt(stepPart, 10) : 1;
     if (!step || step < 1) throw new Error(`bước không hợp lệ: ${part}`);
 
-    let start = lo, end = hi;
+    let start = lo;
+    let end = hi;
     if (rangePart !== "*") {
       const m = (rangePart ?? "").split("-");
-      start = parseInt(m[0] ?? "", 10);
-      end = m.length > 1 ? parseInt(m[1] ?? "", 10) : start;
-      if (Number.isNaN(start) || Number.isNaN(end)) throw new Error(`giá trị không hợp lệ: ${part}`);
+      start = Number.parseInt(m[0] ?? "", 10);
+      end = m.length > 1 ? Number.parseInt(m[1] ?? "", 10) : start;
+      if (Number.isNaN(start) || Number.isNaN(end))
+        throw new Error(`giá trị không hợp lệ: ${part}`);
       // Nếu không có range mà có step (vd 5/10) → từ start đến hi
       if (m.length === 1 && stepPart) end = hi;
     }
@@ -115,9 +117,7 @@ export function describeCron(expr: string): string {
   };
   if (PRESETS[e]) return PRESETS[e];
   const next = nextCronRun(expr);
-  return next
-    ? `Tuỳ chỉnh — lần kế: ${next.toLocaleString("vi-VN")}`
-    : "Tuỳ chỉnh";
+  return next ? `Tuỳ chỉnh — lần kế: ${next.toLocaleString("vi-VN")}` : "Tuỳ chỉnh";
 }
 
 /** Các preset cron sẵn cho UI. */
