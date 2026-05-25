@@ -55,6 +55,12 @@ export function createCompaniesClient(baseUrl: string) {
     /** Phê duyệt thành viên đang chờ (đăng ký qua invite link). */
     approveMember: (userId: string) =>
       trpc.companies.approveMember.mutate({ userId }),
+    /** Vô hiệu hoá tài khoản thành viên trong công ty (force logout ngay). */
+    disableMember: (userId: string) =>
+      trpc.companies.disableMember.mutate({ userId }),
+    /** Khôi phục tài khoản thành viên đã bị vô hiệu hoá. */
+    enableMember: (userId: string) =>
+      trpc.companies.enableMember.mutate({ userId }),
     /** Từ chối + xoá thành viên đang chờ phê duyệt. */
     rejectMember: (userId: string) =>
       trpc.companies.rejectMember.mutate({ userId }),

@@ -74,6 +74,8 @@ export const chromeVi: Dict = {
   "auth.banner_first_admin_existed": "Tài khoản quản trị đã được khởi tạo. Vui lòng đăng nhập.",
   "auth.pending_title": "Đang chờ phê duyệt",
   "auth.pending_desc": "Tài khoản của bạn đã được tạo thành công. Quản trị viên cần phê duyệt trước khi bạn có thể sử dụng hệ thống.",
+  "auth.disabled_title": "Tài khoản bị vô hiệu hoá",
+  "auth.disabled_desc": "Tài khoản của bạn đã bị quản trị viên vô hiệu hoá. Vui lòng liên hệ quản trị viên để được hỗ trợ.",
 
   // sidebar — nav bổ sung (chưa có trong dict.ts)
   "sidebar.iot": "Thiết bị IoT",
@@ -164,6 +166,8 @@ export const chromeEn: Dict = {
   "auth.banner_first_admin_existed": "Admin account already exists. Please sign in.",
   "auth.pending_title": "Pending approval",
   "auth.pending_desc": "Your account has been created successfully. An administrator needs to approve it before you can access the system.",
+  "auth.disabled_title": "Account disabled",
+  "auth.disabled_desc": "Your account has been disabled by an administrator. Please contact your administrator for assistance.",
 
   // sidebar — nav additions
   "sidebar.iot": "IoT Devices",

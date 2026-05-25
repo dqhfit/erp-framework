@@ -166,6 +166,33 @@ function PendingApprovalScreen() {
   );
 }
 
+function DisabledScreen() {
+  const t = useT();
+  const logout = useAuth((s) => s.logout);
+  return (
+    <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
+      <Card className="w-[420px] space-y-4 text-center">
+        <div className="flex justify-center">
+          <span className="w-14 h-14 rounded-full bg-danger/15 flex items-center justify-center">
+            <I.Ban size={28} className="text-danger" />
+          </span>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">{t("auth.disabled_title")}</h2>
+          <p className="text-sm text-muted mt-1">{t("auth.disabled_desc")}</p>
+        </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-center"
+          onClick={() => void logout()}
+        >
+          {t("sidebar.logout")}
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const t = useT();
   const status = useAuth((s) => s.status);
@@ -180,6 +207,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (status === "checking") return <Splash text={t("auth.checking")} />;
   if (status === "out" && !isPublicRoute) return <LoginScreen />;
+  // Tài khoản bị vô hiệu hoá — ưu tiên kiểm tra trước pending.
+  if (status === "in" && user?.companyDisabled === true && !isPublicRoute) {
+    return <DisabledScreen />;
+  }
   // Đã đăng nhập nhưng đang chờ admin phê duyệt.
   if (status === "in" && user?.companyApproved === false && !isPublicRoute) {
     return <PendingApprovalScreen />;

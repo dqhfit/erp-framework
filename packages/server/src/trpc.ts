@@ -72,6 +72,12 @@ export function rbacProcedure(action: Action, obj: ObjectType) {
         message: "Tai khoan cua ban dang cho quan tri vien phe duyet.",
       });
     }
+    if (ctx.user.companyDisabled) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Tai khoan cua ban da bi vo hieu hoa.",
+      });
+    }
     if (!roleCan(ctx.user.role, action, obj)) {
       throw new TRPCError({
         code: "FORBIDDEN",

@@ -71,6 +71,11 @@ export const settingsVi: Dict = {
   "settings.companies.approve_ok": "✓ Đã phê duyệt thành viên.",
   "settings.companies.reject_btn": "Từ chối",
   "settings.companies.reject_ok": "✓ Đã từ chối và xoá thành viên.",
+  "settings.companies.disabled_chip": "Đã vô hiệu hoá",
+  "settings.companies.disable_btn": "Vô hiệu hoá",
+  "settings.companies.disable_ok": "✓ Đã vô hiệu hoá tài khoản.",
+  "settings.companies.enable_btn": "Kích hoạt lại",
+  "settings.companies.enable_ok": "✓ Đã kích hoạt lại tài khoản.",
 
   // --- rbac ---
   "settings.rbac.title": "Vai trò & Quyền (RBAC)",
@@ -276,6 +281,11 @@ export const settingsEn: Dict = {
   "settings.companies.approve_ok": "✓ Member approved.",
   "settings.companies.reject_btn": "Reject",
   "settings.companies.reject_ok": "✓ Member rejected and removed.",
+  "settings.companies.disabled_chip": "Disabled",
+  "settings.companies.disable_btn": "Disable",
+  "settings.companies.disable_ok": "✓ Account disabled.",
+  "settings.companies.enable_btn": "Enable",
+  "settings.companies.enable_ok": "✓ Account re-enabled.",
 
   // --- rbac ---
   "settings.rbac.title": "Roles & Permissions (RBAC)",

@@ -486,6 +486,12 @@ export const I = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </Icon>
   ),
+  Ban: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </Icon>
+  ),
 };
 
 export { Icon };

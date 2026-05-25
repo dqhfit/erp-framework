@@ -110,6 +110,8 @@ export const companyMembers = pgTable("company_members", {
   /** false = dang ky qua generic invite link, cho admin duyet.
      true  = tat ca cac truong hop khac (mac dinh). */
   approved: boolean("approved").notNull().default(true),
+  /** true = admin da vo hieu hoa tai khoan nay trong cong ty. */
+  disabled: boolean("disabled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   companyUserIdx: uniqueIndex("company_members_company_user_idx")

@@ -31,6 +31,8 @@ interface Member {
   pending?: boolean;
   /** false = đăng ký qua invite link, chờ admin phê duyệt. */
   approved?: boolean;
+  /** true = admin đã vô hiệu hoá tài khoản này. */
+  disabled?: boolean;
 }
 interface GenericLink {
   id: string;
@@ -246,6 +248,11 @@ function CompaniesSettings() {
                             {t("settings.companies.pending_approval_chip")}
                           </Chip>
                         )}
+                        {m.disabled && (
+                          <Chip variant="danger" className="h-[16px]! text-[10px]!">
+                            {t("settings.companies.disabled_chip")}
+                          </Chip>
+                        )}
                       </div>
                       <div className="text-xs text-muted">{m.email}</div>
                     </td>
@@ -342,6 +349,41 @@ function CompaniesSettings() {
                           >
                             {t("settings.companies.reset_pass_btn")}
                           </Button>
+                        )}
+                        {isAdmin && !m.pending && (
+                          m.disabled ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              icon={<I.Check size={13} />}
+                              disabled={busy}
+                              title={t("settings.companies.enable_btn")}
+                              onClick={() =>
+                                void run(
+                                  () => companies.enableMember(m.userId).then(() => {}),
+                                  t("settings.companies.enable_ok"),
+                                )
+                              }
+                            >
+                              {t("settings.companies.enable_btn")}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              icon={<I.Ban size={13} />}
+                              disabled={busy}
+                              title={t("settings.companies.disable_btn")}
+                              onClick={() =>
+                                void run(
+                                  () => companies.disableMember(m.userId).then(() => {}),
+                                  t("settings.companies.disable_ok"),
+                                )
+                              }
+                            >
+                              {t("settings.companies.disable_btn")}
+                            </Button>
+                          )
                         )}
                         {isAdmin && (
                           <Button

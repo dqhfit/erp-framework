@@ -142,6 +142,8 @@ export const companiesRouter = router({
         pending: sql<boolean>`(${users.passwordHash} = '')`,
         // approved=false = dang ky qua invite link, cho admin duyet.
         approved: companyMembers.approved,
+        // disabled=true = admin da vo hieu hoa tai khoan nay.
+        disabled: companyMembers.disabled,
       })
       .from(companyMembers)
       .innerJoin(users, eq(companyMembers.userId, users.id))
@@ -378,6 +380,48 @@ export const companiesRouter = router({
         await ctx.db.delete(sessions).where(eq(sessions.userId, input.userId));
         await ctx.db.delete(users).where(eq(users.id, input.userId));
       }
+      return { ok: true };
+    }),
+
+  /** Vo hieu hoa tai khoan thanh vien trong cong ty hien tai. */
+  disableMember: rbacProcedure("edit", "company")
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [m] = await ctx.db.select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy thành viên" });
+      await ctx.db.update(companyMembers)
+        .set({ disabled: true })
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      // Xoa phien dang nhap cua user de buoc ho dang xuat ngay lap tuc.
+      await ctx.db.delete(sessions).where(eq(sessions.userId, input.userId));
+      return { ok: true };
+    }),
+
+  /** Khoi phuc tai khoan thanh vien da bi vo hieu hoa. */
+  enableMember: rbacProcedure("edit", "company")
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [m] = await ctx.db.select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy thành viên" });
+      await ctx.db.update(companyMembers)
+        .set({ disabled: false })
+        .where(and(
+          eq(companyMembers.companyId, ctx.user.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
       return { ok: true };
     }),
 
