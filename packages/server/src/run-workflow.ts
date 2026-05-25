@@ -7,19 +7,25 @@
    (llm-client) — đều đọc cấu hình từ DB. Có thể tiêm callback
    riêng qua ExecuteOptions để test/ghi đè.
    ========================================================== */
-import { and, desc, eq } from "drizzle-orm";
-import { workflows, workflowRuns } from "@erp-framework/db";
+
 import {
-  runWorkflow, pluginRegistry,
-  type WfNode, type WfEdge, type RunWorkflowOptions,
+  pluginRegistry,
+  type Role,
+  type RunWorkflowOptions,
+  roleCan,
+  runWorkflow,
+  type WfEdge,
+  type WfNode,
 } from "@erp-framework/core";
-import type { DB } from "./db";
-import { makeCallTool } from "./mcp-client";
-import { makeCallAgent } from "./llm-client";
-import { makeRunCode } from "./code-runner";
-import { makeInvokeProcedure } from "./procedure-runner";
+import { workflowRuns, workflows } from "@erp-framework/db";
+import { and, desc, eq } from "drizzle-orm";
 import { logActivity } from "./activity";
 import { assertWithinBudget } from "./budget";
+import { makeRunCode } from "./code-runner";
+import type { DB } from "./db";
+import { makeCallAgent } from "./llm-client";
+import { makeCallTool } from "./mcp-client";
+import { makeInvokeProcedure } from "./procedure-runner";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
 interface RawGraph {
@@ -38,7 +44,34 @@ export interface ExecuteOptions {
   scheduleId?: string;
   /** Nếu có: từ chối chạy nếu workflow không thuộc công ty này (đa công ty). */
   companyId?: string;
+  /** Role của user trigger workflow. Nếu có node config requiresRole
+   *  cao hơn → fail-closed trước khi chạy (P3.3). Caller scheduler không
+   *  truyền → bỏ qua check (auto-run = system, trusted). */
+  actorRole?: Role;
 }
+
+/** Kiểm tra mọi node có config.requiresRole đều ≤ actorRole. Ném Error
+ *  nếu có node cần quyền cao hơn — fail-closed thay vì skip để tránh
+ *  workflow chạy nửa vời với edge bị đứt. */
+function assertNodeRoleRequirements(nodes: WfNode[], actorRole: Role): void {
+  for (const n of nodes) {
+    const cfg = (n.config ?? {}) as { requiresRole?: Role };
+    const need = cfg.requiresRole;
+    if (!need) continue;
+    // requiresRole là action "edit" trên ObjectType giả "workflow" —
+    // nếu role không edit được workflow thì cũng không trigger được node
+    // có gate. Simple level check: admin > editor > viewer.
+    const rank: Record<Role, number> = { viewer: 0, editor: 1, admin: 2 };
+    if (rank[actorRole] < rank[need]) {
+      throw new Error(
+        `Workflow bị chặn — node "${n.label}" (${n.type}) yêu cầu role "${need}" ` +
+          `nhưng user hiện tại là "${actorRole}". Nâng quyền hoặc bỏ requiresRole của node.`,
+      );
+    }
+  }
+}
+// roleCan unused for now — giữ import nếu cần check phức tạp hơn sau này.
+void roleCan;
 
 /** Chạy một workflow theo id, ghi 1 bản ghi workflow_runs. */
 export async function executeWorkflow(
@@ -46,8 +79,7 @@ export async function executeWorkflow(
   workflowId: string,
   opts: ExecuteOptions = {},
 ): Promise<{ runId: string; status: "completed" | "paused" | "error"; stepCount: number }> {
-  const [wf] = await db.select().from(workflows)
-    .where(eq(workflows.id, workflowId));
+  const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId));
   if (!wf) throw new Error(`Workflow không tồn tại: ${workflowId}`);
   // Đa công ty: workflow phải thuộc đúng công ty của người gọi.
   if (opts.companyId && wf.companyId !== opts.companyId) {
@@ -70,14 +102,23 @@ export async function executeWorkflow(
     label: typeof e.label === "string" ? e.label : undefined,
   }));
 
+  // P3.3 — field-level RBAC trên workflow step. Fail-closed nếu có
+  // node yêu cầu role cao hơn user trigger.
+  if (opts.actorRole) {
+    assertNodeRoleRequirements(nodes, opts.actorRole);
+  }
+
   // Bản ghi run — trạng thái "running"
-  const [run] = await db.insert(workflowRuns).values({
-    companyId: wf.companyId,
-    workflowId,
-    scheduleId: opts.scheduleId ?? null,
-    status: "running",
-    vars: opts.context ?? {},
-  }).returning();
+  const [run] = await db
+    .insert(workflowRuns)
+    .values({
+      companyId: wf.companyId,
+      workflowId,
+      scheduleId: opts.scheduleId ?? null,
+      status: "running",
+      vars: opts.context ?? {},
+    })
+    .returning();
   if (!run) throw new Error("Không tạo được bản ghi workflow_run");
 
   // Chạy lõi runtime — truyền registry để runner thực thi được
@@ -100,27 +141,39 @@ export async function executeWorkflow(
       registry: pluginRegistry,
       runCode: makeRunCode({ callTool, companyId: wf.companyId }),
       invokeProcedure: makeInvokeProcedure({
-        db, companyId: wf.companyId, callTool, actorUserId: null,
+        db,
+        companyId: wf.companyId,
+        callTool,
+        actorUserId: null,
       }),
     }),
     new Promise<never>((_, reject) => {
-      timeoutHandle = setTimeout(() => reject(
-        new Error(`Workflow "${wf.name}" timeout sau ${timeoutMs}ms — `
-          + "có thể loop vô hạn hoặc agent LLM hang. "
-          + "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu."),
-      ), timeoutMs);
+      timeoutHandle = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Workflow "${wf.name}" timeout sau ${timeoutMs}ms — ` +
+                "có thể loop vô hạn hoặc agent LLM hang. " +
+                "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu.",
+            ),
+          ),
+        timeoutMs,
+      );
     }),
   ]).finally(() => {
     if (timeoutHandle) clearTimeout(timeoutHandle);
   });
 
   // Ghi kết quả cuối
-  await db.update(workflowRuns).set({
-    status: result.status,
-    steps: result.steps,
-    vars: result.vars,
-    finishedAt: new Date(),
-  }).where(eq(workflowRuns.id, run.id));
+  await db
+    .update(workflowRuns)
+    .set({
+      status: result.status,
+      steps: result.steps,
+      vars: result.vars,
+      finishedAt: new Date(),
+    })
+    .where(eq(workflowRuns.id, run.id));
 
   // Ghi nhật ký hành động (gộp token của các bước agent).
   const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);
@@ -140,15 +193,11 @@ export async function executeWorkflow(
 }
 
 /** Lịch sử các lần chạy gần đây của một workflow (trong phạm vi công ty). */
-export function recentRuns(
-  db: DB,
-  workflowId: string,
-  companyId: string,
-  limit = 20,
-) {
-  return db.select().from(workflowRuns)
-    .where(and(eq(workflowRuns.workflowId, workflowId),
-      eq(workflowRuns.companyId, companyId)))
+export function recentRuns(db: DB, workflowId: string, companyId: string, limit = 20) {
+  return db
+    .select()
+    .from(workflowRuns)
+    .where(and(eq(workflowRuns.workflowId, workflowId), eq(workflowRuns.companyId, companyId)))
     .orderBy(desc(workflowRuns.startedAt))
     .limit(limit);
 }
