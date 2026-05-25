@@ -3,12 +3,16 @@ import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
 import { McpClient, type McpConfig } from "@/core/mcp";
 import { useT } from "@/hooks/useT";
 import { useSettings } from "@/stores/settings";
+import { useAuth } from "@/stores/auth";
 import { createConfigClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 function McpSettings() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const mcp = useSettings((s) => s.mcp);
   const setMcp = useSettings((s) => s.setMcp);
   const [headersJson, setHeadersJson] = useState(JSON.stringify(mcp.headers ?? {}, null, 2));
@@ -138,7 +142,7 @@ function McpSettings() {
               variant="primary"
               onClick={handleTest}
               icon={<I.Power size={14} />}
-              disabled={testing}
+              disabled={testing || !canEdit}
             >
               {testing ? t("settings.mcp.test_busy") : t("settings.mcp.test_btn")}
             </Button>
@@ -160,7 +164,7 @@ function McpSettings() {
             <Button
               variant="primary"
               icon={<I.Save size={14} />}
-              disabled={syncing}
+              disabled={syncing || !canEdit}
               onClick={saveToServer}
             >
               Lưu lên server

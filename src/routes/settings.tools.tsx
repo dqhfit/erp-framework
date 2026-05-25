@@ -1,6 +1,8 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input, Switch, Tabs } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
 import { type ToolListItem, createToolsClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    /settings/tools — Admin Tool registry.
    3 Tab: Installed | Discovery (scan) | Remote.
@@ -11,6 +13,8 @@ import { useEffect, useState } from "react";
 const tools = createToolsClient("");
 
 function ToolsAdmin() {
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const [tab, setTab] = useState<"installed" | "scan" | "remote">("installed");
   const [list, setList] = useState<ToolListItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -101,6 +105,7 @@ function ToolsAdmin() {
                 key={t.id}
                 t={t}
                 busy={busy}
+                canEdit={canEdit}
                 onToggle={(v) => toggleEnable(t, v)}
                 onSpawn={() => doSpawn(t)}
                 onStop={() => doStop(t)}
@@ -120,7 +125,7 @@ function ToolsAdmin() {
             <Button
               variant="primary"
               icon={<I.Bolt size={14} />}
-              disabled={busy}
+              disabled={busy || !canEdit}
               onClick={doRescan}
             >
               Quét ngay
@@ -170,7 +175,7 @@ function ToolsAdmin() {
               <Button
                 variant="primary"
                 icon={<I.Plus size={14} />}
-                disabled={busy || !remoteUrl.trim()}
+                disabled={busy || !remoteUrl.trim() || !canEdit}
                 onClick={doRegisterRemote}
               >
                 Đăng ký
@@ -197,12 +202,14 @@ function ToolsAdmin() {
 function ToolRow({
   t,
   busy,
+  canEdit,
   onToggle,
   onSpawn,
   onStop,
 }: {
   t: ToolListItem;
   busy: boolean;
+  canEdit: boolean;
   onToggle: (v: boolean) => void;
   onSpawn: () => void;
   onStop: () => void;
@@ -232,14 +239,14 @@ function ToolRow({
       >
         {t.status}
       </Chip>
-      <Switch checked={t.enabledForCompany} onChange={onToggle} />
+      <Switch checked={t.enabledForCompany} disabled={!canEdit} onChange={onToggle} />
       {canSpawn &&
         (t.status === "running" ? (
           <Button
             size="sm"
             variant="default"
             icon={<I.Power size={12} />}
-            disabled={busy}
+            disabled={busy || !canEdit}
             onClick={onStop}
           >
             Stop
@@ -249,7 +256,7 @@ function ToolRow({
             size="sm"
             variant="default"
             icon={<I.Play size={12} />}
-            disabled={busy}
+            disabled={busy || !canEdit}
             onClick={onSpawn}
           >
             Spawn

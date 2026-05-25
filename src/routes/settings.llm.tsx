@@ -6,12 +6,16 @@ import { getTokens, isLoggedIn, logout, startLogin } from "@/core/llm/oauth";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { useSettings } from "@/stores/settings";
+import { useAuth } from "@/stores/auth";
 import { createConfigClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 function LlmSettings() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const profiles = useSettings((s) => s.llmProfiles);
   const setProfile = useSettings((s) => s.setLlmProfile);
   const deleteProfile = useSettings((s) => s.deleteLlmProfile);
@@ -165,6 +169,7 @@ function LlmSettings() {
                     <Button
                       variant="primary"
                       icon={<I.Sparkles size={13} />}
+                      disabled={!canEdit}
                       onClick={() => {
                         setProfile({
                           name: "Claude Pro",
@@ -256,6 +261,7 @@ function LlmSettings() {
                 </Button>
                 <Button
                   variant="default"
+                  disabled={!canEdit}
                   onClick={() => {
                     setProfile({
                       name: "Claude CLI",
@@ -286,7 +292,7 @@ function LlmSettings() {
             <Button
               variant="primary"
               icon={<I.Save size={14} />}
-              disabled={syncing}
+              disabled={syncing || !canEdit}
               onClick={saveProfilesToServer}
             >
               Lưu lên server
@@ -319,7 +325,7 @@ function LlmSettings() {
                 placeholder="default"
               />
             </FormField>
-            <Button variant="primary" onClick={handleAdd} icon={<I.Plus size={14} />}>
+            <Button variant="primary" onClick={handleAdd} disabled={!canEdit} icon={<I.Plus size={14} />}>
               Thêm
             </Button>
           </div>
@@ -334,6 +340,7 @@ function LlmSettings() {
               loggedInClaudePro={loggedIn}
               onChange={(next) => setProfile(next)}
               onDelete={() => deleteProfile(p.name)}
+              readOnly={!canEdit}
             />
           ))}
           {Object.keys(profiles).length === 0 && (

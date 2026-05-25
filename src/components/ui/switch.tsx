@@ -5,12 +5,13 @@ interface SwitchProps {
   onChange: (v: boolean) => void;
   label?: string;
   className?: string;
+  disabled?: boolean;
 }
-export function Switch({ checked, onChange, label, className }: SwitchProps) {
+export function Switch({ checked, onChange, label, className, disabled = false }: SwitchProps) {
   return (
-    <label className={cn("flex items-center gap-2 cursor-pointer select-none", className)}>
+    <label className={cn("flex items-center gap-2 select-none", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer", className)}>
       <span
-        onClick={() => onChange(!checked)}
+        onClick={() => !disabled && onChange(!checked)}
         className={cn(
           "w-8 h-[18px] rounded-full relative transition-colors",
           checked ? "bg-accent" : "bg-panel-2 border border-border",

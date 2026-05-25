@@ -2,8 +2,10 @@ import { I } from "@/components/Icons";
 import { Button, Card, Chip } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 import { createObjectsClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    settings.transfer — Xuất/nhập trọn cấu hình low-code:
    entity + page + workflow + agent thành một gói JSON. Dùng để
@@ -16,6 +18,8 @@ const objects = createObjectsClient("");
 
 function TransferSettings() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -111,7 +115,7 @@ function TransferSettings() {
           <Button
             variant="default"
             icon={<I.Eye size={14} />}
-            disabled={busy}
+            disabled={busy || !canEdit}
             onClick={() => fileRef.current?.click()}
           >
             {t("settings.transfer.import_btn")}

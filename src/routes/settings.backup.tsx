@@ -1,7 +1,9 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 import { type BackupConfigView, type BackupRun, createBackupClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    settings.backup — Cấu hình sao lưu Google Drive + chạy thủ công.
    Khác CLI ở chỗ: chạy server-side, mỗi công ty cấu hình riêng,
@@ -27,6 +29,8 @@ function fmtTime(d: string | Date | null | undefined): string {
 
 function BackupPage() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
 
   const CRON_PRESETS = [
     { label: "Mỗi ngày 3h sáng", expr: "0 3 * * *" },
@@ -255,13 +259,13 @@ function BackupPage() {
           </FormField>
 
           <div className="flex gap-2 pt-1">
-            <Button variant="default" icon={<I.Power size={13} />} disabled={busy} onClick={test}>
+            <Button variant="default" icon={<I.Power size={13} />} disabled={busy || !canEdit} onClick={test}>
               {t("settings.backup.test_btn")}
             </Button>
             <Button
               variant="primary"
               icon={<I.Save size={13} />}
-              disabled={busy || !folderId.trim()}
+              disabled={busy || !folderId.trim() || !canEdit}
               onClick={save}
             >
               {t("settings.backup.save_btn")}
@@ -270,7 +274,7 @@ function BackupPage() {
             <Button
               variant="primary"
               icon={<I.Save size={13} />}
-              disabled={busy || !cfg?.hasKey}
+              disabled={busy || !cfg?.hasKey || !canEdit}
               onClick={runNow}
             >
               {t("settings.backup.run_btn")}

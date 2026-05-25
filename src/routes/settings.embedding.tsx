@@ -1,7 +1,9 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 import { createKnowledgeClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    settings.embedding — Cấu hình profile embedding cho Knowledge
    Base. Hỗ trợ Ollama (local) và OpenAI-compatible (cloud). Mỗi
@@ -15,6 +17,8 @@ const kb = createKnowledgeClient("");
 
 function EmbeddingSettings() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const [adapter, setAdapter] = useState<"ollama" | "openai">("ollama");
   const [model, setModel] = useState("nomic-embed-text");
   const [endpoint, setEndpoint] = useState("");
@@ -123,7 +127,7 @@ function EmbeddingSettings() {
             <Button
               variant="primary"
               icon={<I.Save size={14} />}
-              disabled={busy || !model.trim()}
+              disabled={busy || !model.trim() || !canEdit}
               onClick={save}
             >
               {t("settings.embedding.save_btn")}

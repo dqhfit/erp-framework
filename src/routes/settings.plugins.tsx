@@ -2,7 +2,9 @@ import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input, Switch } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 import { createPluginsClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    settings.plugins — Plugin registry: đăng ký plugin (manifest),
    bật/tắt lúc chạy (không cần build lại), xuất manifest chia sẻ.
@@ -22,6 +24,8 @@ interface PluginReg {
 
 function PluginsSettings() {
   const t = useT();
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const [list, setList] = useState<PluginReg[]>([]);
   const [name, setName] = useState("");
   const [version, setVersion] = useState("1.0.0");
@@ -116,6 +120,7 @@ function PluginsSettings() {
               <div className="flex-1" />
               <Switch
                 checked={p.enabled}
+                disabled={!canEdit}
                 onChange={(v) =>
                   void run(() => plugins.setEnabled(p.id, v).then(() => {}), t("settings.plugins.toggle_ok"))
                 }
@@ -133,7 +138,7 @@ function PluginsSettings() {
                 size="sm"
                 variant="danger"
                 icon={<I.Trash size={12} />}
-                disabled={busy}
+                disabled={busy || !canEdit}
                 onClick={() => void doDelete(p)}
               />
             </div>
@@ -167,7 +172,7 @@ function PluginsSettings() {
           <Button
             variant="primary"
             icon={<I.Plus size={14} />}
-            disabled={busy || !name.trim()}
+            disabled={busy || !name.trim() || !canEdit}
             onClick={register}
           >
             {t("settings.plugins.register_btn")}

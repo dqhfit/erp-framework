@@ -16,9 +16,10 @@ interface Props {
   loggedInClaudePro: boolean;
   onChange: (next: LLMProfile) => void;
   onDelete: () => void;
+  readOnly?: boolean;
 }
 
-export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDelete }: Props) {
+export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDelete, readOnly = false }: Props) {
   // useDynamicModels được gọi trong ModelCombobox — không cần ở đây nữa.
 
   return (
@@ -43,29 +44,32 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
             <Chip variant="warning">⚠ Chưa có key</Chip>
           )}
         </div>
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={async () => {
-            if (
-              await dialog.confirm(`Xóa profile "${p.name}"?`, {
-                title: "Xóa LLM profile",
-                confirmText: "Xóa",
-                danger: true,
-              })
-            )
-              onDelete();
-          }}
-          icon={<I.Trash size={12} />}
-        >
-          Xóa
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={async () => {
+              if (
+                await dialog.confirm(`Xóa profile "${p.name}"?`, {
+                  title: "Xóa LLM profile",
+                  confirmText: "Xóa",
+                  danger: true,
+                })
+              )
+                onDelete();
+            }}
+            icon={<I.Trash size={12} />}
+          >
+            Xóa
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Adapter">
           <Select
             value={p.adapter}
+            disabled={readOnly}
             onChange={(e) => onChange({ ...p, adapter: e.target.value, model: "" })}
           >
             {ADAPTERS.map((a) => (
@@ -89,6 +93,7 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
             <Input
               type="password"
               value={p.apiKey ?? ""}
+              disabled={readOnly}
               onChange={(e) => onChange({ ...p, apiKey: e.target.value })}
               placeholder="sk-..."
             />
@@ -140,6 +145,7 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
             max="1"
             step="0.1"
             value={p.temperature ?? 0.7}
+            disabled={readOnly}
             onChange={(e) => onChange({ ...p, temperature: Number.parseFloat(e.target.value) })}
             className="w-full accent-[hsl(var(--accent))]"
           />
@@ -148,6 +154,7 @@ export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDele
           <Input
             type="number"
             value={p.max_tokens ?? 4096}
+            disabled={readOnly}
             onChange={(e) => onChange({ ...p, max_tokens: Number.parseInt(e.target.value, 10) })}
           />
         </FormField>

@@ -1,7 +1,9 @@
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Input, Select } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
 import { type EmbedScope, createEmbedClient } from "@erp-framework/client";
+import { roleCan, type Role } from "@erp-framework/core";
 /* ==========================================================
    settings.embed — Token nhúng builder vào sản phẩm khác.
    Tạo token + lấy đoạn mã iframe. Trang mở kèm ?embed=1 sẽ ẩn
@@ -22,6 +24,8 @@ interface EmbedToken {
 const SCOPES: EmbedScope[] = ["all", "page", "workflow", "entity"];
 
 function EmbedSettings() {
+  const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
+  const canEdit = roleCan(userRole, "edit", "settings");
   const [list, setList] = useState<EmbedToken[]>([]);
   const [label, setLabel] = useState("");
   const [scope, setScope] = useState<EmbedScope>("all");
@@ -112,7 +116,7 @@ function EmbedSettings() {
                 </option>
               ))}
             </Select>
-            <Button variant="primary" icon={<I.Plus size={14} />} disabled={busy} onClick={create}>
+            <Button variant="primary" icon={<I.Plus size={14} />} disabled={busy || !canEdit} onClick={create}>
               Tạo token
             </Button>
           </div>
@@ -132,7 +136,7 @@ function EmbedSettings() {
                   size="sm"
                   variant="danger"
                   icon={<I.Trash size={12} />}
-                  disabled={busy}
+                  disabled={busy || !canEdit}
                   onClick={() => void doRevoke(t)}
                 >
                   Thu hồi
