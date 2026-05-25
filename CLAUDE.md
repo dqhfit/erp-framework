@@ -65,9 +65,30 @@
 
 ## 4. RBAC + Security
 
-- Mặc định mọi tRPC procedure thao tác data dùng `rbacProcedure(action,
-  resource)`. Chỉ 4 endpoint public (register/login/invitePreview/
-  acceptInvite), rate-limited 5/15min.
+**4-tier procedure chain** (`packages/server/src/trpc.ts`):
+
+| Layer | Check | Khi nào dùng |
+|---|---|---|
+| `publicProcedure` | — | 4 endpoint auth + invite verify (rate-limit) |
+| `protectedProcedure` | đăng nhập | White-list: auth.logout/me, companies.list/current/switch, notifications.unreadCount |
+| `approvedProcedure` | + companyId + approved + !disabled | Endpoint user-personal không vào RBAC matrix (vd agents.get) |
+| `rbacProcedure(action, obj)` | + role-can(action, obj) | **Mọi endpoint thao tác data** |
+| `resourceProcedure(action, policy)` | + per-resource ACL | Endpoint thao tác resource cá nhân (agent share, page share) |
+
+- Mặc định MỌI tRPC procedure thao tác data dùng `rbacProcedure` hoặc
+  `resourceProcedure`. KHÔNG dùng `protectedProcedure` cho mutate data —
+  nếu pending user gọi sẽ bypass approval gate.
+- Matrix RBAC tại `packages/core/src/permissions.ts`. 3 Role × 8 Action ×
+  18 ObjectType. Frontend re-export qua `src/lib/permissions.ts` —
+  KHÔNG tự định nghĩa MATRIX song song.
+- Per-resource ACL: bảng `resource_members` (P2.3) generic cho mọi loại
+  resource. Policy thuộc về từng resource type (`agent-acl.ts`).
+- Field-level RBAC: `fieldCan(role, action, field)` + `stripUnreadable/
+  Unwritable Fields`. Áp dụng đồng nhất ở `records.create/update/
+  bulkUpdate/bulkImport/export`, `procedures.invoke` (args), `workflow`
+  step config (`requiresRole`).
+- REST API key scopes (`api_keys.scopes`): **deny-by-default** (empty =
+  không quyền gì). Dùng `"*"` cho full hoặc `entity:<name>:read|write`.
 - Encryption: `crypto.ts` AES-256-GCM, prefix `enc:v1:`. `ENCRYPTION_KEY`
   bắt buộc ở production.
 - LLM API key: lưu encrypted `llm_profiles.api_key_enc`. Fallback env
@@ -75,6 +96,10 @@
   `ERP_ALLOW_ENV_LLM_KEY=1` — tránh leak tenant isolation.
 - Tool proxy HMAC header: `TOOL_SIGNING_SECRET` ký `X-ERP-User-Id`,
   `X-ERP-Company-Id`, `X-ERP-Role` trước khi forward đến tool external.
+  Pre-flight check `company_tools.enabled=true` (P4.2) — fail-closed.
+- WebSocket subscribe: channel allowlist + scope check (`isChannelAllowed`
+  trong `index.ts`). Cross-tenant channel reject silently. Patterns:
+  `notifications:<userId>`, `record:<entity>:<companyId>`, `presence:<uuid>`.
 
 ## 5. Plugin vs Tool
 
