@@ -32,7 +32,8 @@ export const FIELD_TYPES: FieldType[] = [
   { id: "address",     name: "Address",      icon: "MapPin",    desc: "VN address" },
   { id: "file",        name: "File",         icon: "File",      desc: "Upload file" },
   { id: "image",       name: "Image",        icon: "Image",     desc: "Upload image" },
-  { id: "lookup",      name: "Lookup",       icon: "Link",      desc: "Ref entity" },
+  { id: "lookup",      name: "Lookup",       icon: "Link",      desc: "Ref 1 entity" },
+  { id: "multi-lookup", name: "Multi-lookup", icon: "Link",     desc: "Ref nhiều entity (M2M)" },
   { id: "formula",     name: "Formula",      icon: "Wand",      desc: "Computed" },
   { id: "tag",         name: "Tag",          icon: "Tag",       desc: "Color tags" },
 ];

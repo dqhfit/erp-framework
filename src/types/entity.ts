@@ -1,9 +1,13 @@
 export type FieldType =
   | "text" | "textarea" | "number" | "integer"
   | "boolean" | "date" | "datetime" | "time"
-  | "select" | "multi-select" | "enum" | "multi-enum" | "lookup"
+  | "select" | "multi-select" | "enum" | "multi-enum"
+  | "lookup" | "multi-lookup"
   | "file" | "image" | "url" | "email" | "phone"
   | "json" | "formula";
+
+/** Hành vi khi record đích của lookup bị xoá. */
+export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
 
 export interface FieldOption {
   value: string;
@@ -24,8 +28,10 @@ export interface FieldDef {
   options?: FieldOption[];
   /** Cho enum / multi-enum — id của object enum (xem /enums). */
   enumId?: string;
-  /** Cho lookup — ref entity id */
+  /** Cho lookup / multi-lookup — ref entity id */
   ref?: string;
+  /** Cho lookup / multi-lookup — hành vi khi record đích bị xoá. */
+  onDelete?: OnDeleteBehavior;
   /** Cho formula — JS expression dùng row + fn helpers */
   formula?: string;
   /** Validation */

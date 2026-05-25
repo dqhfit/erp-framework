@@ -11,7 +11,14 @@
 export type FieldType =
   | "text" | "number" | "boolean" | "date" | "datetime"
   | "select" | "multiselect" | "enum" | "multienum"
-  | "relation" | "formula" | "json";
+  | "relation" | "lookup" | "multilookup"
+  | "formula" | "json";
+
+/** Hành vi khi record được trỏ tới bị xoá (lookup/multilookup).
+ *  - restrict: chặn xoá nếu còn ref (mặc định an toàn).
+ *  - setnull : xoá ref khỏi field (null hoá lookup, xoá value khỏi multilookup).
+ *  - cascade : soft-delete chuỗi (record nguồn cũng soft-delete). */
+export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
 
 /** Định nghĩa một field trong entity (lưu ở entities.fields). */
 export interface EntityFieldDef {
@@ -22,7 +29,9 @@ export interface EntityFieldDef {
   options?: string[];           // cho select / multiselect (inline)
   /** Cho enum/multienum — id của bản ghi `enums` */
   enumId?: string;
-  relationEntityId?: string;    // cho relation
+  relationEntityId?: string;    // cho relation / lookup / multilookup
+  /** Cho lookup/multilookup — hành vi khi record đích bị xoá. */
+  onDelete?: OnDeleteBehavior;
   formula?: string;             // cho formula
   /** Cờ điều khiển sinh index — xem data governance UPGRADE-PLAN 3.5 */
   filterable?: boolean;

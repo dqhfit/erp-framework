@@ -18,6 +18,8 @@ export interface EntityField {
   formula?: string;
   /** Cho field type "enum" / "multi-enum" — id của enum object (xem /enums). */
   enumId?: string;
+  /** Cho field type "lookup" / "multi-lookup" — hành vi khi record đích bị xoá. */
+  onDelete?: "restrict" | "setnull" | "cascade";
 }
 export interface MockEntity {
   id: string; name: string; icon: IconName; mcp: string;

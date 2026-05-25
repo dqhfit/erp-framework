@@ -88,7 +88,13 @@ function coerce(
     }
 
     case "relation":
+    case "lookup":
       return [String(raw), null];
+
+    case "multilookup": {
+      if (!Array.isArray(raw)) return [null, "Phải là danh sách id"];
+      return [raw.map(String), null];
+    }
 
     case "json":
       return [raw, null];

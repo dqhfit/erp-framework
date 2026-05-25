@@ -122,6 +122,17 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
         <EnumMultiSelect enumId={field.enumId}
           value={Array.isArray(value) ? (value as string[]) : []}
           setValue={(vs) => setValue(vs)} />
+      ) : field.type === "lookup" ? (
+        <Input
+          placeholder={field.placeholder ?? "ID record đích"}
+          {...reg}
+        />
+      ) : field.type === "multi-lookup" ? (
+        <MultiLookupInput
+          value={Array.isArray(value) ? (value as string[]) : []}
+          setValue={(vs) => setValue(vs)}
+          placeholder={field.placeholder ?? "Nhập ID, ngăn cách bằng dấu phẩy"}
+        />
       ) : field.type === "date" || field.type === "datetime" ? (
         <Input type={field.type === "datetime" ? "datetime-local" : "date"} {...reg} />
       ) : field.type === "time" ? (
@@ -167,6 +178,27 @@ interface EnumMultiSelectProps {
   value: string[];
   setValue: (vs: string[]) => void;
 }
+/* Multi-lookup input — đơn giản nhập IDs cách bằng dấu phẩy; v2 sẽ thay
+   bằng record picker thật khi có index records.search. */
+interface MultiLookupInputProps {
+  value: string[];
+  setValue: (vs: string[]) => void;
+  placeholder?: string;
+}
+function MultiLookupInput({ value, setValue, placeholder }: MultiLookupInputProps) {
+  const text = value.join(", ");
+  return (
+    <Input
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        const next = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+        setValue(next);
+      }}
+    />
+  );
+}
+
 function EnumMultiSelect({ enumId, value, setValue }: EnumMultiSelectProps) {
   const e = useEnum(enumId);
   const lang = useLocale((s) => s.lang);

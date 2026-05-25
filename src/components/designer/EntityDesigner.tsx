@@ -667,13 +667,26 @@ function FieldInspector({ field, onUpdate, onDelete, tab, setTab, siblingFields 
               </FormField>
             )}
 
-            {field.type === "lookup" && (
-              <FormField label="Reference entity">
-                <Select value={field.ref ?? ""} onChange={(e) => onUpdate({ ref: e.target.value })}>
-                  <option value="">{t("field.choose_entity")}</option>
-                  {userEntities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </Select>
-              </FormField>
+            {(field.type === "lookup" || field.type === "multi-lookup") && (
+              <>
+                <FormField label="Reference entity">
+                  <Select value={field.ref ?? ""} onChange={(e) => onUpdate({ ref: e.target.value })}>
+                    <option value="">{t("field.choose_entity")}</option>
+                    {userEntities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </Select>
+                </FormField>
+                <FormField label="Khi record đích bị xoá"
+                  hint="restrict: chặn xoá (mặc định) · setnull: xoá ref · cascade: soft-delete chuỗi">
+                  <Select
+                    value={(field as { onDelete?: string }).onDelete ?? "restrict"}
+                    onChange={(e) => onUpdate({ onDelete: e.target.value } as Partial<EntityField>)}
+                  >
+                    <option value="restrict">Restrict (chặn)</option>
+                    <option value="setnull">Set null</option>
+                    <option value="cascade">Cascade (xoá chuỗi)</option>
+                  </Select>
+                </FormField>
+              </>
             )}
 
             {field.type === "formula" && (

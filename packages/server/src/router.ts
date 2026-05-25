@@ -14,7 +14,7 @@ import {
   pages, agents, agentMembers, workflows, schedules, activityLog,
   companies, companyMembers, userInvites,
 } from "@erp-framework/db";
-import { validateRecord, pluginRegistry, type EntityFieldDef } from "@erp-framework/core";
+import { validateRecord, pluginRegistry, type EntityFieldDef, type OnDeleteBehavior } from "@erp-framework/core";
 import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
 import { assertCanActOnAgent } from "./agent-acl";
 import { logActivity } from "./activity";
@@ -179,6 +179,127 @@ function assertValid(fields: EntityFieldDef[], data: Record<string, unknown>, pa
     });
   }
   return v.data;
+}
+
+/** Quét tất cả entity trong công ty có field lookup/multi-lookup, tìm các
+ *  record active đang trỏ tới targetRecordId. Trả group theo entity:
+ *  [{ entityId, entityName, entityLabel, fieldKey, count, sampleIds[] }].
+ *  Dùng cho records.backRefs (UI hiển thị "5 đơn hàng trỏ tới khách") và
+ *  applyCascadeOnDelete (xử lý onDelete behavior). */
+async function scanBackRefs(
+  db: DB, companyId: string, targetRecordId: string,
+): Promise<Array<{
+  entityId: string; entityName: string; entityLabel: string;
+  fieldKey: string; fieldType: string; count: number; sampleIds: string[];
+}>> {
+  const ents = await db.select({
+    id: entities.id, name: entities.name, label: entities.label,
+    fields: entities.fields,
+  }).from(entities).where(eq(entities.companyId, companyId));
+
+  const out: Array<{
+    entityId: string; entityName: string; entityLabel: string;
+    fieldKey: string; fieldType: string; count: number; sampleIds: string[];
+  }> = [];
+
+  for (const ent of ents) {
+    const fields = (ent.fields ?? []) as Array<{
+      name: string; type: string; relationEntityId?: string;
+    }>;
+    for (const f of fields) {
+      if (f.type !== "lookup" && f.type !== "multilookup"
+          && f.type !== "multi-lookup" && f.type !== "relation") continue;
+      // Tìm record active của entity này có data->fieldKey trỏ tới target.
+      // Lookup: equality. Multi-lookup: containment trong JSONB array.
+      const isMulti = f.type === "multilookup" || f.type === "multi-lookup";
+      const filter = isMulti
+        ? sql`${entityRecords.data}->${f.name} @> ${JSON.stringify(targetRecordId)}::jsonb`
+        : sql`${entityRecords.data}->>${f.name} = ${targetRecordId}`;
+      const rows = await db.select({ id: entityRecords.id }).from(entityRecords)
+        .where(and(
+          eq(entityRecords.companyId, companyId),
+          eq(entityRecords.entityId, ent.id),
+          sql`${entityRecords.deletedAt} IS NULL`,
+          filter,
+        ))
+        .limit(50);
+      if (rows.length > 0) {
+        out.push({
+          entityId: ent.id, entityName: ent.name, entityLabel: ent.label,
+          fieldKey: f.name, fieldType: f.type,
+          count: rows.length, sampleIds: rows.slice(0, 5).map((r) => r.id),
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Áp dụng hành vi onDelete (restrict/setnull/cascade) cho mọi back-ref.
+ *  Default = restrict (an toàn nhất — fail-fast nếu còn ref). */
+async function applyCascadeOnDelete(
+  db: DB, companyId: string, targetRecordId: string, actorUserId: string,
+): Promise<void> {
+  const backRefs = await scanBackRefs(db, companyId, targetRecordId);
+  if (backRefs.length === 0) return;
+
+  // Lấy onDelete behavior từ field def cho mỗi back-ref.
+  const ents = await db.select({
+    id: entities.id, fields: entities.fields,
+  }).from(entities).where(eq(entities.companyId, companyId));
+  const entFields = new Map(ents.map((e) => [e.id, (e.fields ?? []) as Array<{
+    name: string; type: string; onDelete?: OnDeleteBehavior;
+  }>]));
+
+  for (const ref of backRefs) {
+    const f = entFields.get(ref.entityId)?.find((ff) => ff.name === ref.fieldKey);
+    const behavior: OnDeleteBehavior = f?.onDelete ?? "restrict";
+
+    if (behavior === "restrict") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Không xoá được — còn ${ref.count} record ở "${ref.entityLabel}" trỏ tới (field "${ref.fieldKey}"). Đổi onDelete hoặc xoá các record nguồn trước.`,
+      });
+    }
+
+    // Lấy danh sách record nguồn cần xử lý (giới hạn ở sampleIds đã lấy + extend).
+    const allRefs = await db.select({
+      id: entityRecords.id, data: entityRecords.data, version: entityRecords.version,
+    }).from(entityRecords).where(and(
+      eq(entityRecords.companyId, companyId),
+      eq(entityRecords.entityId, ref.entityId),
+      sql`${entityRecords.deletedAt} IS NULL`,
+      ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup"
+        ? sql`${entityRecords.data}->${ref.fieldKey} @> ${JSON.stringify(targetRecordId)}::jsonb`
+        : sql`${entityRecords.data}->>${ref.fieldKey} = ${targetRecordId}`,
+    ));
+
+    if (behavior === "setnull") {
+      for (const r of allRefs) {
+        const data = { ...(r.data as Record<string, unknown>) };
+        if (ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup") {
+          const arr = (data[ref.fieldKey] as string[] | undefined) ?? [];
+          data[ref.fieldKey] = arr.filter((id) => id !== targetRecordId);
+        } else {
+          data[ref.fieldKey] = null;
+        }
+        await db.update(entityRecords).set({
+          data, version: r.version + 1, updatedAt: new Date(),
+        }).where(eq(entityRecords.id, r.id));
+      }
+    } else if (behavior === "cascade") {
+      // Soft-delete chuỗi — đệ quy để cascade tiếp các back-ref của nó.
+      // Giới hạn depth không có (back-refs không tạo cycle nếu DAG); với
+      // cycle, các record đã soft-delete ở vòng trước sẽ bị scanBackRefs
+      // bỏ qua (deleted_at IS NULL filter), không loop vô tận.
+      for (const r of allRefs) {
+        await applyCascadeOnDelete(db, companyId, r.id, actorUserId);
+        await db.update(entityRecords).set({
+          deletedAt: new Date(), updatedAt: new Date(),
+        }).where(eq(entityRecords.id, r.id));
+      }
+    }
+  }
 }
 
 /** Deep equality nông cho JSONB primitive/object — dùng tính diff records.update.
@@ -652,11 +773,23 @@ export const appRouter = router({
     delete: rbacProcedure("delete", "entity")
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
-        // SOFT delete: set deleted_at; data còn nguyên cho restore.
+        // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
+        // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
+        await applyCascadeOnDelete(
+          ctx.db, ctx.user.companyId, input, ctx.user.id);
+        // SOFT delete bản thân: set deleted_at; data còn nguyên cho restore.
         await ctx.db.update(entityRecords)
           .set({ deletedAt: new Date(), updatedAt: new Date() })
           .where(and(eq(entityRecords.id, input),
             eq(entityRecords.companyId, ctx.user.companyId)));
+      }),
+
+    backRefs: rbacProcedure("view", "entity")
+      .input(z.string().uuid())
+      .query(async ({ ctx, input }) => {
+        // Trả danh sách entity-source + count + sampleIds cho các record
+        // active có field lookup/multi-lookup trỏ tới recordId này.
+        return scanBackRefs(ctx.db, ctx.user.companyId, input);
       }),
 
     restore: rbacProcedure("edit", "entity")
