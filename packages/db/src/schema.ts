@@ -172,6 +172,40 @@ export const recordComments = pgTable("record_comments", {
   parentIdx: index("record_comments_parent_idx").on(t.parentId),
 }));
 
+/* In-app notifications — mention / comment / webhook_failure / system.
+   read_at NULL = chưa đọc. user_id = recipient; actor_user_id = ai gây ra. */
+export const notifications = pgTable("notifications", {
+  id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  targetRecordId: uuid("target_record_id"),
+  targetUrl: text("target_url"),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("notifications_user_idx").on(t.userId, t.readAt),
+  recordIdx: index("notifications_record_idx").on(t.targetRecordId),
+}));
+
+/* Presence "đang xem" per record per user — UPSERT mỗi ping client. */
+export const recordPresence = pgTable("record_presence", {
+  recordId: uuid("record_id").notNull()
+    .references(() => entityRecords.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  companyId: uuid("company_id").notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  lastSeen: timestamp("last_seen").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.recordId, t.userId] }),
+  lastSeenIdx: index("rp_last_seen_idx").on(t.lastSeen),
+}));
+
 /* Templates print/email per entity — Mustache-like {{field}} substitution
    với record data. kind: "print" (HTML cho in/PDF) hoặc "email" (subject+body). */
 export const entityTemplates = pgTable("entity_templates", {

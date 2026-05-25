@@ -6,6 +6,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { recordComments, entityRecords } from "@erp-framework/db";
 import { router, rbacProcedure } from "./trpc";
 import { TRPCError } from "@trpc/server";
+import { notifyMentions } from "./notifications-router";
 
 export const recordCommentsRouter = router({
   list: rbacProcedure("view", "entity")
@@ -44,6 +45,14 @@ export const recordCommentsRouter = router({
         authorUserId: ctx.user.id,
         body: input.body,
       }).returning();
+      // Notify @mentions (best-effort, không await caller).
+      void notifyMentions(ctx.db, {
+        companyId: ctx.user.companyId,
+        actorUserId: ctx.user.id,
+        body: input.body,
+        targetRecordId: input.recordId,
+        kind: "mention",
+      });
       return row;
     }),
 
