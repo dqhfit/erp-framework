@@ -36,5 +36,42 @@ export default defineConfig({
       },
     },
   },
-  build: { sourcemap: true, target: "es2022" },
+  build: {
+    sourcemap: true,
+    target: "es2022",
+    rollupOptions: {
+      output: {
+        /* Tách bundle để main chunk <500KB:
+           - react-vendor: react core (chia sẻ mọi nơi)
+           - router: TanStack Router + lib config
+           - query: TanStack React Query + Table
+           - designer: xyflow + dnd-kit (chỉ EntityDesigner/PageDesigner/
+             WorkflowDesigner dùng — sẽ lazy load route)
+           - viz: recharts + leaflet (Dashboard + Map views)
+           - icons: lucide-react (đôi khi gom được)
+           Các package khác giữ trong main chunk.
+           Mỗi alias chỉ match khi import path khớp prefix → tránh
+           false-positive (vd "@tanstack/react-virtual" không vào router). */
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-dom/client"],
+          router: ["@tanstack/react-router"],
+          query: [
+            "@tanstack/react-query",
+            "@tanstack/react-table",
+          ],
+          designer: [
+            "@xyflow/react",
+            "@dnd-kit/core",
+            "@dnd-kit/sortable",
+          ],
+          viz: [
+            "recharts",
+            "leaflet",
+            "react-leaflet",
+          ],
+          icons: ["lucide-react"],
+        },
+      },
+    },
+  },
 });
