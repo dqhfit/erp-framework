@@ -31,6 +31,12 @@ jobs:
         run: pnpm -r typecheck
       - name: Test
         run: pnpm -r test
+      # Lint Biome — hiện còn ~153 pre-existing a11y/useButtonType errors,
+      # tạm continue-on-error để surface diagnostics mà không block CI.
+      # Sprint cleanup riêng sẽ siết về fail-on-error.
+      - name: Lint (Biome, soft-fail)
+        run: pnpm lint
+        continue-on-error: true
 
   e2e:
     runs-on: ubuntu-latest
