@@ -14,10 +14,10 @@
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.36.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.28.0",
+    "drizzle-kit": "^0.31.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }
