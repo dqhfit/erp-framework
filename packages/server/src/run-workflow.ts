@@ -83,19 +83,35 @@ export async function executeWorkflow(
   // Chạy lõi runtime — truyền registry để runner thực thi được
   // node do plugin định nghĩa (xem nhánh default trong runWorkflow).
   const callTool = opts.callTool ?? makeCallTool(db, wf.companyId);
-  const result = await runWorkflow({
-    workflowId,
-    workflowName: wf.name,
-    nodes,
-    edges,
-    callTool,
-    callAgent: opts.callAgent ?? makeCallAgent(db),
-    initialVars: opts.context,
-    registry: pluginRegistry,
-    runCode: makeRunCode({ callTool, companyId: wf.companyId }),
-    invokeProcedure: makeInvokeProcedure({
-      db, companyId: wf.companyId, callTool, actorUserId: null,
+  /* Timeout cứng: bảo vệ pg-boss pool (5 worker) khỏi loop vô hạn
+     trong subworkflow recursive hoặc agent gọi LLM hang.
+     Default 5 phút; override qua env WORKFLOW_TIMEOUT_MS. */
+  const timeoutMs = Number(process.env.WORKFLOW_TIMEOUT_MS ?? 300_000);
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  const result = await Promise.race([
+    runWorkflow({
+      workflowId,
+      workflowName: wf.name,
+      nodes,
+      edges,
+      callTool,
+      callAgent: opts.callAgent ?? makeCallAgent(db),
+      initialVars: opts.context,
+      registry: pluginRegistry,
+      runCode: makeRunCode({ callTool, companyId: wf.companyId }),
+      invokeProcedure: makeInvokeProcedure({
+        db, companyId: wf.companyId, callTool, actorUserId: null,
+      }),
     }),
+    new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(
+        new Error(`Workflow "${wf.name}" timeout sau ${timeoutMs}ms — `
+          + "có thể loop vô hạn hoặc agent LLM hang. "
+          + "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu."),
+      ), timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   });
 
   // Ghi kết quả cuối
