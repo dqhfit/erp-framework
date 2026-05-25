@@ -122,19 +122,7 @@ services:
       - default
       - coolify
     labels:
-      - "traefik.enable=true"
-      # Chỉ định tường minh `coolify` — network shared với coolify-proxy.
       - "traefik.docker.network=coolify"
-      # HTTP router — chuyển hướng sang HTTPS
-      - "traefik.http.routers.erp-http.entryPoints=http"
-      - "traefik.http.routers.erp-http.rule=Host(`erp.vfmgroup.vn`)"
-      - "traefik.http.routers.erp-http.middlewares=redirect-to-https"
-      # HTTPS router + TLS Let's Encrypt
-      - "traefik.http.routers.erp-https.entryPoints=https"
-      - "traefik.http.routers.erp-https.rule=Host(`erp.vfmgroup.vn`)"
-      - "traefik.http.routers.erp-https.tls=true"
-      - "traefik.http.routers.erp-https.tls.certresolver=letsencrypt"
-      - "traefik.http.services.erp-https.loadbalancer.server.port=80"
     # Traefik cần thấy `expose` để biết forward sang cổng nào.
     expose:
       - "80"
