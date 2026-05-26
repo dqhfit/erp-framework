@@ -56,11 +56,16 @@
 
 ### 🔴 P0 — Critical (phải fix ngay)
 
-| # | Vấn đề | File | Tác động |
-|---|---|---|---|
-| P0.1 | **CVE-GHSA-gpj5-g38j-94v9** — `drizzle-orm@0.36.4` SQL injection qua escaped identifiers. Phải bump ≥**0.45.2**. | `packages/{db,server}/package.json` | Attacker có thể inject SQL nếu identifier (column/table name) đến từ user input — hiện không có nhưng tránh blast radius. |
-| P0.2 | `llm-client.ts` TODO: decrypt **fallback về plaintext env var** → API key Claude/OpenAI có thể bị log/leak qua heap dump. | `packages/server/src/llm-client.ts` | Vi phạm "secrets at rest". Nếu env file lộ → leak full API key. |
-| P0.3 | `vite@6.4.2` CVE path traversal (moderate) + `esbuild ≤0.24.2` dev server CSRF (moderate). | `package.json` root | Chỉ ảnh hưởng dev server, không production — nhưng nên patch để tránh blast vào CI runner. |
+| # | Vấn đề | File | Tác động | Status |
+|---|---|---|---|---|
+| P0.1 | **CVE-GHSA-gpj5-g38j-94v9** — `drizzle-orm@0.36.4` SQL injection qua escaped identifiers. Phải bump ≥**0.45.2**. | `packages/{db,server}/package.json` | Attacker có thể inject SQL nếu identifier (column/table name) đến từ user input — hiện không có nhưng tránh blast radius. | ✅ DONE (Sprint hardening) |
+| P0.2 | `llm-client.ts` TODO: decrypt **fallback về plaintext env var** → API key Claude/OpenAI có thể bị log/leak qua heap dump. | `packages/server/src/llm-client.ts` | Vi phạm "secrets at rest". Nếu env file lộ → leak full API key. | ✅ DONE (gated `ERP_ALLOW_ENV_LLM_KEY=1`) |
+| P0.3 | `vite@6.4.2` CVE path traversal (moderate) + `esbuild ≤0.24.2` dev server CSRF (moderate). | `package.json` root | Chỉ ảnh hưởng dev server, không production — nhưng nên patch để tránh blast vào CI runner. | ✅ DONE (pnpm overrides) |
+| P0.4 | **Pending/disabled user bypass** — endpoint dùng `protectedProcedure` thuần (agents/notifications) không enforce `companyApproved`/`companyDisabled` → user chưa duyệt vẫn gọi mutate được qua tRPC trực tiếp. | `packages/server/src/trpc.ts` | Bypass approval gate; pending user tạo agent, đọc notifications. | ✅ DONE (commit c244496 — `approvedProcedure` middleware) |
+| P0.5 | **Feedback action mismatch** — 11/11 procedure dùng `rbacProcedure("view","activity")` → viewer có quyền create/edit/delete/setStatus feedback (chỉ chặn ở handler `canMutate`). | `packages/server/src/feedback-router.ts` | Permission matrix lệch ngữ nghĩa, defense-in-depth thủng. | ✅ DONE (commit 2574633 — `feedback` ObjectType + đúng action) |
+| P0.6 | **REST API empty scope = full access** — `hasScope()` trả `true` nếu `scopes.length === 0`, mọi API key tạo mặc định scope=[] → toàn quyền entity. | `packages/server/src/rest-api.ts`, `api-keys-router.ts` | Cross-tenant nếu key tạo nhầm, key cũ vẫn hoạt động sau breach. | ✅ DONE (commit ccd5010 — deny-by-default + scope regex) |
+| P0.7 | **WS cross-tenant** — `/ws` subscribe `record:<entity>:<otherCompanyId>` nhận event của công ty khác (channel chứa companyId nhưng không verify). | `packages/server/src/index.ts` | Data leak realtime cross-tenant. | ✅ DONE (commit ffef249 — `isChannelAllowed` allowlist) |
+| P0.8 | **Tool proxy không check company-enabled** — user company A có session valid truy cập `/tools/<slug>` của tool công ty B chưa kích hoạt. | `packages/server/src/tools/proxy.ts` | Cross-tenant tool access. | ✅ DONE (commit ffef249 — pre-flight `companyTools.enabled`) |
 
 ### 🟠 P1 — Production readiness (fix trong tuần)
 
@@ -161,10 +166,74 @@
 | pnpm audit | 1 HIGH + 2 MOD | **0 HIGH 0 MOD** ✅ | giữ |
 | Command Palette entries | 8 | **12** ✅ | thêm Quick Action |
 | Modal a11y (focus trap) | ❌ | **✅** (`useFocusTrap` hook) | + screen reader test |
-| CLAUDE.md | ❌ | **✅** (155 dòng) | + decision log |
+| CLAUDE.md | ❌ | **✅** (180 dòng sau RBAC section) | + decision log |
 | Biome lint errors | 467 | **153** ✅ (-67%) | 0 |
 | pgvector IVFFlat | ❌ | **✅** 3 bảng | giữ |
 | Workflow worker timeout | ❌ | **✅** 5min default | giữ |
+| Unit test count | 9 file | **22 file / 237 test** ✅ (+13 file +66 test) | tăng coverage records bulk + agent ACL |
+| RBAC matrix size | 3×5×11 | **3×8×18** ✅ (P2.2 expand) | freeze |
+| P0 security gaps | 3 | **0** ✅ (8/8 resolved sau Sprint hardening) | regression test guard |
+
+---
+
+## 5b. RBAC architecture (sau Sprint hardening 2026-05-26)
+
+**5-tier procedure chain** trong `packages/server/src/trpc.ts`:
+
+```
+publicProcedure         → ai cũng gọi được (4 auth endpoint, rate-limit)
+  ↓
+protectedProcedure      → cần login (UNAUTHORIZED nếu user null)
+  ↓ White-list: auth.logout/me, companies.list/current/switch,
+                notifications.unreadCount (UI badge cần render cho
+                pending user)
+approvedProcedure       → + companyId + companyApproved + !companyDisabled
+  ↓                        (P0.4 fix — chặn pending/disabled bypass)
+rbacProcedure(act, obj) → + roleCan(role, action, object) qua MATRIX
+                           (3 Role × 8 Action × 18 ObjectType)
+  ↓
+resourceProcedure(act, policyCheck, idField?)
+                        → + per-resource ACL (vd agent share/private)
+                           Build trên approvedProcedure → kế thừa check
+                           pending/disabled tự động.
+```
+
+**Centralized RBAC matrix** (`packages/core/src/permissions.ts`):
+
+| Role | Khái lược |
+|---|---|
+| `admin` | `*:*` toàn quyền |
+| `editor` | view all + CRUD entity/page/workflow/agent/knowledge/iot/procedure/enum/feedback/view/comment + publish entity/page/workflow + manage_members:agent + edit:tool + edit:notification |
+| `viewer` | view all + run workflow/agent/procedure + create:feedback + CRUD comment/view cá nhân (handler filter `createdBy=user.id`) + edit:notification (mark own read) |
+
+**Frontend re-export** (`src/lib/permissions.ts`): re-export thuần từ
+core — KHÔNG tự định nghĩa MATRIX song song (P2.1 fix lệch UI vs server).
+
+**Per-resource ACL** (`packages/server/src/resource-acl.ts` + bảng
+`resource_members`): generic membership pivot cho mọi loại resource —
+agent (P2.3 backfill), page/record (defer). Policy thuộc về từng
+resource type (`agent-acl.ts` apply private/owner-only rules).
+
+**Field-level RBAC** (`fieldCan(role, action, field)`): áp dụng đồng
+nhất qua `stripUnreadableFields` / `stripUnwritableFields` ở:
+- `records.create/update/bulkUpdate/bulkImport/export` (P3.1)
+- `procedures.invoke` args theo `paramsSchema[].writableBy` (P3.2)
+- `workflow` step `config.requiresRole` — fail-closed (P3.3)
+
+**REST API key scopes** (`api_keys.scopes`): **deny-by-default** (P1.3).
+Format hợp lệ: `"*"` | `entity:<name>:read|write` | `entity:*:read|write`.
+Empty scopes hoặc sai format → reject từ create time + runtime.
+
+**WebSocket subscribe** (`packages/server/src/ws-channels.ts`):
+allowlist + scope check. Patterns:
+- `notifications:<userId>` — khớp session user
+- `approval:<userId>` — khớp session user
+- `record:<entityName>:<companyId>` — khớp active company (cross-tenant guard P4.1)
+- `presence:<recordId>` — UUID format check (presence payload không leak data)
+
+**Tool proxy** (`packages/server/src/tools/proxy.ts`): pre-flight
+`companyTools.enabled === true` (P4.2) trước khi forward. Cross-tenant
+hoặc disabled tool → 403.
 
 ---
 
@@ -178,6 +247,9 @@
 6. **AI enrichment phải fail-safe** — embedding/LLM lỗi không được vỡ submit. `callLlmJson` trả `null` khi sai, caller phải handle.
 7. **Major dep bumps CẦN dedicated sprint** — Tailwind 3→4 (CSS-first config + opacity syntax), Zod 3→4 (touches ~50 file routers + forms), router.ts split (15 helper share) đều cần visual regression / e2e fixture đầy đủ. KHÔNG gộp với các fix nhỏ.
 8. **Biome auto-fix --unsafe an toàn** — clean 129/144 file mà không phá test. Còn `useButtonType` cần manual (153 nơi) vì Biome không tự biết button có chạy submit form hay không.
+9. **RBAC defense-in-depth phải có middleware-level check, không tin handler** — audit 2026-05-26 tìm thấy 5 P0 (P0.4-P0.8): `protectedProcedure` thuần để mutate data bypass approval gate; `rbacProcedure("view","activity")` cho mọi action feedback; REST `scopes=[]`=full; WS subscribe trust caller; tool proxy không check enable. Bài học: mọi tRPC procedure thao tác data PHẢI qua `rbacProcedure` hoặc `resourceProcedure` (build trên `approvedProcedure` chain). Nếu thấy `protectedProcedure.input(...).mutation(...)` trong PR review → reject.
+10. **`getRawInput()` thay `input` trong tRPC v11 middleware** — middleware đặt trước `.input()` chain của consumer chỉ thấy raw payload qua `getRawInput()` (async). Dùng `input` trực tiếp sẽ thấy undefined hoặc giá trị đã accumulate từ middleware trước, không phải payload thật.
+11. **Drizzle middleware queue bị reset giữa chain** — khi extend procedure builder bằng nhiều `.use()` liên tiếp, ngữ cảnh `ctx.user.companyId` (tightening type narrowing) chỉ propagate xuống chain hiện tại. `approvedProcedure` build từ `protectedProcedure.use(...)` đã narrow `companyId: string`; `rbacProcedure` build từ `protectedProcedure.use(...)` ĐỘC LẬP cũng narrow lại — KHÔNG share narrowing giữa các chain, mỗi factory tự assert lại trong middleware.
 
 ---
 
