@@ -240,7 +240,7 @@ export function Sidebar() {
     ops: true,
     settings: false,
   });
-  const allOpen = Object.values(sectionsOpen).every(Boolean);
+  const allOpen = Object.values(sectionsOpen).some(Boolean);
   const toggleAll = () => {
     const next = !allOpen;
     setSectionsOpen({

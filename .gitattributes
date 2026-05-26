@@ -1,0 +1,18 @@
+# Normalize line endings to LF in the repository.
+# This prevents Windows git autocrlf from converting LF -> CRLF in the index,
+# which breaks biome formatter checks in pre-commit hooks.
+* text=auto eol=lf
+
+# Binary files — no conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
