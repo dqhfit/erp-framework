@@ -117,6 +117,12 @@ export const I = {
       <path d="m18 15-6-6-6 6" />
     </Icon>
   ),
+  ChevronsUpDown: (p: IP) => (
+    <Icon {...p}>
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </Icon>
+  ),
   Sun: (p: IP) => (
     <Icon {...p}>
       <circle cx="12" cy="12" r="4" />

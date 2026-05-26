@@ -89,6 +89,8 @@ export const chromeVi: Dict = {
   "sidebar.my_agents": "Agent của tôi",
   "sidebar.backup": "Sao lưu",
   "sidebar.tools_mgmt": "Quản lý Tools",
+  "sidebar.collapse_all": "Thu gọn tất cả",
+  "sidebar.expand_all": "Mở rộng tất cả",
 
   // oauth callback
   "oauth.verifying": "Đang xác thực với Anthropic...",
@@ -184,6 +186,8 @@ export const chromeEn: Dict = {
   "sidebar.my_agents": "My Agents",
   "sidebar.backup": "Backup",
   "sidebar.tools_mgmt": "Manage Tools",
+  "sidebar.collapse_all": "Collapse all",
+  "sidebar.expand_all": "Expand all",
 
   // oauth callback
   "oauth.verifying": "Authenticating with Anthropic...",

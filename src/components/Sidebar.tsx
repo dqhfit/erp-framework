@@ -105,6 +105,8 @@ interface SectionProps {
   collapsed: boolean;
   items: SectionItem[];
   pathname: string;
+  open: boolean;
+  onToggle: () => void;
   onAdd?: () => void;
   onAiAdd?: () => void;
   onDelete?: (id: string) => void;
@@ -115,20 +117,21 @@ function SidebarSection({
   collapsed,
   items,
   pathname,
+  open,
+  onToggle,
   onAdd,
   onAiAdd,
   onDelete,
   onRename,
 }: SectionProps) {
   const t = useT();
-  const [open, setOpen] = useState(true);
   return (
     <div className="mb-1.5">
       {!collapsed && (
         <div className="flex items-center justify-between px-3 mt-3 mb-1">
           <button
             type="button"
-            onClick={() => setOpen((o) => !o)}
+            onClick={onToggle}
             className="flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted hover:text-text min-w-0"
           >
             <I.ChevronRight
@@ -186,21 +189,22 @@ function SidebarSection({
 function NavGroup({
   title,
   collapsed,
-  defaultOpen = true,
+  open,
+  onToggle,
   children,
 }: {
   title: string;
   collapsed: boolean;
-  defaultOpen?: boolean;
+  open: boolean;
+  onToggle: () => void;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   if (collapsed) return <>{children}</>;
   return (
     <div className="mb-0.5">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={onToggle}
         className="w-full flex items-center gap-1 px-3 mt-2.5 mb-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted hover:text-text"
       >
         <I.ChevronRight
@@ -220,6 +224,29 @@ export function Sidebar() {
   const setAiCreateTarget = useUI((s) => s.setAiCreateTarget);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+
+  const [sectionsOpen, setSectionsOpen] = useState({
+    entities: true,
+    pages: true,
+    workflows: true,
+    agents: true,
+    ops: true,
+    settings: false,
+  });
+  const allOpen = Object.values(sectionsOpen).every(Boolean);
+  const toggleAll = () => {
+    const next = !allOpen;
+    setSectionsOpen({
+      entities: next,
+      pages: next,
+      workflows: next,
+      agents: next,
+      ops: next,
+      settings: next,
+    });
+  };
+  const toggle = (key: keyof typeof sectionsOpen) => () =>
+    setSectionsOpen((s) => ({ ...s, [key]: !s[key] }));
 
   // RBAC — chặn nút theo role. Lấy role+enforce để component re-render khi đổi.
   const role = useRbac((s) => s.role);
@@ -342,11 +369,26 @@ export function Sidebar() {
           collapsed={collapsed}
           label={t("sidebar.workspace")}
         />
+        {!collapsed && (
+          <div className="flex justify-end px-2 pt-1 pb-0">
+            <button
+              type="button"
+              onClick={toggleAll}
+              title={allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
+              className="flex items-center gap-1 text-[10px] text-muted hover:text-text px-1.5 py-0.5 rounded hover:bg-hover/60 transition-colors"
+            >
+              <I.ChevronsUpDown size={10} />
+              {allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
+            </button>
+          </div>
+        )}
 
         <SidebarSection
           title={t("sidebar.entities")}
           collapsed={collapsed}
           pathname={pathname}
+          open={sectionsOpen.entities}
+          onToggle={toggle("entities")}
           onAdd={can("create", "entity") ? handleAddEntity : undefined}
           onAiAdd={can("create", "entity") ? () => setAiCreateTarget("entity") : undefined}
           onDelete={can("delete", "entity") ? handleDeleteEntity : undefined}
@@ -363,6 +405,8 @@ export function Sidebar() {
           title={t("sidebar.pages")}
           collapsed={collapsed}
           pathname={pathname}
+          open={sectionsOpen.pages}
+          onToggle={toggle("pages")}
           onAdd={can("create", "page") ? handleAddPage : undefined}
           onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
           onDelete={can("delete", "page") ? handleDeletePage : undefined}
@@ -379,6 +423,8 @@ export function Sidebar() {
           title={t("sidebar.workflows")}
           collapsed={collapsed}
           pathname={pathname}
+          open={sectionsOpen.workflows}
+          onToggle={toggle("workflows")}
           onAdd={can("create", "workflow") ? handleAddWorkflow : undefined}
           onAiAdd={can("create", "workflow") ? () => setAiCreateTarget("workflow") : undefined}
           onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
@@ -396,6 +442,8 @@ export function Sidebar() {
           title={t("sidebar.agents")}
           collapsed={collapsed}
           pathname={pathname}
+          open={sectionsOpen.agents}
+          onToggle={toggle("agents")}
           onAdd={can("create", "agent") ? handleAddAgent : undefined}
           onAiAdd={can("create", "agent") ? () => setAiCreateTarget("agent") : undefined}
           onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
@@ -413,7 +461,12 @@ export function Sidebar() {
       </div>
 
       <div className="border-t border-border py-1 overflow-y-auto shrink min-h-0">
-        <NavGroup title={t("sidebar.group_ops")} collapsed={collapsed}>
+        <NavGroup
+          title={t("sidebar.group_ops")}
+          collapsed={collapsed}
+          open={sectionsOpen.ops}
+          onToggle={toggle("ops")}
+        >
           {/* /server-data ẩn khỏi Sidebar — Sidebar đã auto-hydrate từ
               __root.tsx; trang chỉ dành cho admin debug raw record/MCP,
               truy cập trực tiếp qua URL khi cần. */}
@@ -481,7 +534,12 @@ export function Sidebar() {
             label={t("sidebar.feedback")}
           />
         </NavGroup>
-        <NavGroup title={t("sidebar.group_settings")} collapsed={collapsed} defaultOpen={false}>
+        <NavGroup
+          title={t("sidebar.group_settings")}
+          collapsed={collapsed}
+          open={sectionsOpen.settings}
+          onToggle={toggle("settings")}
+        >
           <SidebarItem
             to="/settings/agents"
             active={pathname === "/settings/agents"}
