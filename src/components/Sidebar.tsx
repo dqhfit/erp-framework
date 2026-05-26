@@ -368,28 +368,33 @@ export function Sidebar() {
       className="shrink-0 border-r border-border bg-panel flex flex-col overflow-hidden"
       style={{ width: collapsed ? 56 : 240, transition: "width 180ms ease" }}
     >
-      <div className="flex-1 overflow-y-auto py-1">
-        <SidebarItem
-          to="/"
-          active={pathname === "/"}
-          icon={<I.Home size={14} />}
-          collapsed={collapsed}
-          label={t("sidebar.workspace")}
-        />
-        {!collapsed && (
-          <div className="flex justify-end px-2 pt-1 pb-0">
+      {/* Home — shrink-0 nên luôn hiển thị, NavGroups dù cao đến đâu cũng không che được */}
+      <div className="shrink-0 pt-1">
+        <div className="relative group">
+          <Link
+            to="/"
+            className={cn("sidebar-item", pathname === "/" && "active", !collapsed && "pr-8")}
+            title={collapsed ? t("sidebar.workspace") : ""}
+          >
+            <span className="icon text-muted shrink-0">
+              <I.Home size={14} />
+            </span>
+            {!collapsed && <span className="truncate flex-1">{t("sidebar.workspace")}</span>}
+          </Link>
+          {!collapsed && (
             <button
               type="button"
               onClick={toggleAll}
               title={allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
-              className="flex items-center gap-1 text-[10px] text-muted hover:text-text px-1.5 py-0.5 rounded hover:bg-hover/60 transition-colors"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-sm flex items-center justify-center text-muted/50 hover:text-text hover:bg-hover/60 transition-colors"
             >
-              <I.ChevronsUpDown size={10} />
-              {allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
+              <I.ChevronsUpDown size={11} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
 
+      <div className="flex-1 overflow-y-auto pb-1">
         <SidebarSection
           title={t("sidebar.entities")}
           collapsed={collapsed}
