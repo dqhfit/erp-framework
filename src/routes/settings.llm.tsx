@@ -62,7 +62,9 @@ function LlmSettings() {
     try {
       const rows = await config.listLlm();
       const cur = useSettings.getState();
-      Object.keys(cur.llmProfiles).forEach((n) => cur.deleteLlmProfile(n));
+      Object.keys(cur.llmProfiles).forEach((n) => {
+        cur.deleteLlmProfile(n);
+      });
       for (const r of rows) {
         cur.setLlmProfile({
           name: r.name,

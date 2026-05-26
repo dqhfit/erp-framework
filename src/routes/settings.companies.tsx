@@ -103,9 +103,10 @@ function CompaniesSettings() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, []);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);

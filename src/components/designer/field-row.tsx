@@ -8,7 +8,7 @@ import { useState } from "react";
 import { I } from "@/components/Icons";
 import { Chip } from "@/components/ui";
 import { useT } from "@/hooks/useT";
-import { ftLabel, getFieldTypes } from "@/lib/field-types";
+import { FALLBACK_FIELD_TYPE, ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,8 @@ export function FieldRow({
   onReorder,
 }: FieldRowProps) {
   const t = useT();
-  const ft = getFieldTypes().find((f) => f.id === field.type) ?? getFieldTypes()[0]!;
+  const ft =
+    getFieldTypes().find((f) => f.id === field.type) ?? getFieldTypes()[0] ?? FALLBACK_FIELD_TYPE;
   const IC = I[ft.icon] ?? I.Type;
   const [dragging, setDragging] = useState(false);
   const [dragOver, setDragOver] = useState(false);

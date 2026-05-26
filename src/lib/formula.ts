@@ -16,7 +16,7 @@ export interface FormulaFn {
   args: string; // Vd: "(value, [decimals])"
   hint: string; // Mô tả ngắn
   example: string; // Vd: "ROUND(price * 1.1, 2)"
-  fn: (...args: any[]) => unknown;
+  fn: (...args: unknown[]) => unknown;
 }
 
 // Coerce helpers (an toàn với null/undefined/empty)

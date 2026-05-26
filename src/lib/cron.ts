@@ -50,13 +50,15 @@ function parseField(raw: string, [lo, hi]: [number, number]): number[] {
 export function parseCron(expr: string): CronFields | null {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return null;
+  // Sau split + check length === 5, từng phần tử chắc chắn có (tuple).
+  const [m, h, dom, mo, dow] = parts as [string, string, string, string, string];
   try {
     return {
-      minute: parseField(parts[0]!, RANGES.minute),
-      hour: parseField(parts[1]!, RANGES.hour),
-      dom: parseField(parts[2]!, RANGES.dom),
-      month: parseField(parts[3]!, RANGES.month),
-      dow: parseField(parts[4]!, RANGES.dow),
+      minute: parseField(m, RANGES.minute),
+      hour: parseField(h, RANGES.hour),
+      dom: parseField(dom, RANGES.dom),
+      month: parseField(mo, RANGES.month),
+      dow: parseField(dow, RANGES.dow),
     };
   } catch {
     return null;

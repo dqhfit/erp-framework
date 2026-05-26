@@ -231,8 +231,7 @@ function WorkflowInner({ workflowId }: Props) {
     if (stored?.nodes) setNodes(stored.nodes);
     if (stored?.edges) setEdges(stored.edges);
     setSelected(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId, setEdges, setNodes]);
+  }, [setEdges, workflowId, setNodes]);
 
   const save = () => {
     setWorkflowContent(workflowId, { nodes, edges });
@@ -250,6 +249,7 @@ function WorkflowInner({ workflowId }: Props) {
       console.error("[workflow] publish lỗi:", e);
     }
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -259,8 +259,7 @@ function WorkflowInner({ workflowId }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [save]);
+  }, []);
 
   // AI apply — replace toàn bộ nodes + edges
   const handleAiApply = (design: WorkflowDesign) => {

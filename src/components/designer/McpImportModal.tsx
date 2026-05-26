@@ -80,8 +80,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
       if (d !== undefined) defaults[k] = d;
     }
     setArgsObj(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool, tools.find]);
+  }, [tools.find, tool]);
 
   const fetchSample = async () => {
     if (!tool) return;
@@ -333,6 +332,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
                   </thead>
                   <tbody>
                     {sampleRows.slice(0, 50).map((row, ri) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                       <tr key={ri} className="border-t border-border hover:bg-hover/30">
                         {inferred.map((f) => {
                           const v = row[f.key];

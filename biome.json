@@ -2,7 +2,14 @@
   "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "files": {
-    "includes": ["**/*", "!**/*.css"]
+    "includes": [
+      "**/*",
+      "!**/*.css",
+      "!**/routeTree.gen.ts",
+      "!**/.tanstack/**",
+      "!**/dist/**",
+      "!**/coverage/**"
+    ]
   },
   "linter": {
     "enabled": true,

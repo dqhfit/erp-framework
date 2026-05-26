@@ -79,7 +79,8 @@ export function McpBindingsEditor({
   };
 
   const ensureBinding = (op: McpOp): McpOpBinding => {
-    if (value[op]) return value[op]!;
+    const existing = value[op];
+    if (existing) return existing;
     const initial: McpOpBinding = {
       tool: toolPrefix ? `${toolPrefix}.${op}` : "",
       args: DEFAULT_ARGS[op] ?? [],
@@ -218,6 +219,7 @@ function ArgsTable({ args, fieldKeys, onChange }: ArgsTableProps) {
       </div>
       {args.map((a, i) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
           key={i}
           className="grid grid-cols-[1fr_120px_2fr_28px] gap-2 px-2 py-1.5 border-t border-border items-center"
         >

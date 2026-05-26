@@ -45,10 +45,11 @@ const PALETTE = [
 ];
 
 function detect(data: Array<Record<string, unknown>>, labelKey?: string, valueKeys?: string[]) {
-  if (!data.length) return { lk: "", vks: [] };
-  const sample = data[0]!;
+  // length === 0 → guarded return ngay; sample sau đó luôn có.
+  const sample = data[0];
+  if (!sample) return { lk: "", vks: [] };
   const keys = Object.keys(sample);
-  const lk = labelKey ?? keys.find((k) => typeof sample[k] !== "number") ?? keys[0]!;
+  const lk = labelKey ?? keys.find((k) => typeof sample[k] !== "number") ?? keys[0] ?? "";
   const numKeys = keys.filter((k) => k !== lk && typeof sample[k] === "number");
   const vks = valueKeys ?? (numKeys.length ? numKeys : keys.slice(1, 2));
   return { lk, vks };
@@ -157,6 +158,7 @@ export function Chart({
               label={(e) => `${e.name}: ${e.value}`}
             >
               {data.map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                 <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
               ))}
             </Pie>

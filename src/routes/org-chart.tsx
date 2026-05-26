@@ -39,10 +39,10 @@ function OrgChartRoute() {
         /* chưa đăng nhập */
       });
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     load();
-  }, [load]);
+  }, []);
 
   const setManager = async (a: OrgAgent, managerId: string | null) => {
     setBusy(true);

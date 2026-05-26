@@ -82,7 +82,11 @@ function EnumDesigner() {
       const j = i + dir;
       if (j < 0 || j >= vs.length) return vs;
       const out = [...vs];
-      [out[i], out[j]] = [out[j]!, out[i]!];
+      const a = out[i];
+      const b = out[j];
+      if (a === undefined || b === undefined) return vs;
+      out[i] = b;
+      out[j] = a;
       return out;
     });
 
@@ -162,6 +166,7 @@ function EnumDesigner() {
               </div>
               {values.map((v, i) => (
                 <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                   key={i}
                   className="grid grid-cols-[1fr_1fr_1fr_84px] gap-2 px-2 py-1.5 border-t border-border items-center"
                 >

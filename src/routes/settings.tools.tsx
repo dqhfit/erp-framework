@@ -146,6 +146,7 @@ function ToolsAdmin() {
                     Lỗi ({scanResult.errors.length}):
                     <ul className="ml-4 list-disc">
                       {scanResult.errors.map((e, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                         <li key={i}>
                           <code>{e.path}</code>: {e.message}
                         </li>

@@ -4,12 +4,14 @@ import type { FieldDef, FieldType } from "@/types/entity";
 export function normalizeRows(data: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(data)) {
     if (data.length && Array.isArray(data[0])) {
-      return data.map((row) =>
-        (row as unknown[]).reduce<Record<string, unknown>>(
-          (o, v, i) => ({ ...o, [`col_${i + 1}`]: v }),
-          {},
-        ),
-      );
+      return data.map((row) => {
+        // Mutate accumulator thay vì spread mỗi iteration (noAccumulatingSpread).
+        const out: Record<string, unknown> = {};
+        (row as unknown[]).forEach((v, i) => {
+          out[`col_${i + 1}`] = v;
+        });
+        return out;
+      });
     }
     if (data.length && typeof data[0] !== "object") {
       return data.map((v) => ({ value: v }));
@@ -25,7 +27,9 @@ export function normalizeRows(data: unknown): Array<Record<string, unknown>> {
       const cols = obj.columns as string[];
       return (obj.rows as unknown[][]).map((r) => {
         const o: Record<string, unknown> = {};
-        cols.forEach((c, i) => (o[c] = r[i]));
+        cols.forEach((c, i) => {
+          o[c] = r[i];
+        });
         return o;
       });
     }
@@ -106,7 +110,11 @@ function toLabel(key: string): string {
 export function inferSchema(rows: Array<Record<string, unknown>>): InferredField[] {
   if (!rows.length) return [];
   const allKeys = new Set<string>();
-  for (const r of rows) Object.keys(r).forEach((k) => allKeys.add(k));
+  for (const r of rows) {
+    Object.keys(r).forEach((k) => {
+      allKeys.add(k);
+    });
+  }
   const out: InferredField[] = [];
   for (const key of allKeys) {
     const vals = rows.map((r) => r[key]);

@@ -10,7 +10,7 @@ import { sampleValueFor } from "@/components/designer/field-row";
 import { I } from "@/components/Icons";
 import { FormField, Input, Select, Switch, Tabs, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
-import { ftLabel, getFieldTypes } from "@/lib/field-types";
+import { FALLBACK_FIELD_TYPE, ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
@@ -47,7 +47,8 @@ export function FieldInspector({
       </aside>
     );
   }
-  const ft = getFieldTypes().find((f) => f.id === field.type) ?? getFieldTypes()[0]!;
+  const ft =
+    getFieldTypes().find((f) => f.id === field.type) ?? getFieldTypes()[0] ?? FALLBACK_FIELD_TYPE;
   const IC = I[ft.icon] ?? I.Type;
 
   return (

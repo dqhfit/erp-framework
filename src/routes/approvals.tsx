@@ -51,10 +51,10 @@ function ApprovalsRoute() {
         /* chưa đăng nhập */
       });
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     load();
-  }, [load]);
+  }, []);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);

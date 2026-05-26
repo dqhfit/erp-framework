@@ -51,6 +51,16 @@ export function ftLabel(ft: FieldType, t: (k: string) => string): string {
   return translated === `ft.${ft.id}` ? ft.name : translated;
 }
 
+/** Kiểu field fallback khi field.type không khớp builtin/plugin nào.
+ *  FIELD_TYPES luôn có "text" làm phần tử đầu (module const) — dùng
+ *  làm safe fallback để tránh non-null assertion ở caller. */
+export const FALLBACK_FIELD_TYPE: FieldType = {
+  id: "text",
+  name: "Text",
+  icon: "Type",
+  desc: "Fallback type",
+};
+
 /** Kiểu field cho designer = builtin + plugin (bỏ trùng theo id). */
 export function getFieldTypes(): FieldType[] {
   const builtinIds = new Set(FIELD_TYPES.map((f) => f.id));

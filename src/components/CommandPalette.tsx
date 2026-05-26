@@ -139,6 +139,7 @@ export function CommandPalette() {
     else if (item.to) navigate({ to: item.to });
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {

@@ -86,7 +86,9 @@ export function AgentPanel() {
         if (!p) return false;
         return llmRegistry.isUsable(p);
       });
-      setProfileName(usable ?? profileNames[0]!);
+      // profileNames.length > 0 đã được if-guard ở scope ngoài (xem caller).
+      const fallback = profileNames[0];
+      if (usable || fallback) setProfileName(usable ?? fallback ?? "");
     }
   }, [profileNames, profileName, llmProfiles]);
 
@@ -197,8 +199,10 @@ export function AgentPanel() {
               if (ri < 0) return m;
               const idx = m.length - 1 - ri;
               const copy = [...m];
+              const target = copy[idx];
+              if (!target) return m;
               copy[idx] = {
-                ...copy[idx]!,
+                ...target,
                 pending: false,
                 toolCall: undefined,
                 error: !!ev.error,
@@ -285,7 +289,8 @@ export function AgentPanel() {
             {Object.entries(
               profileNames.reduce<Record<string, string[]>>((acc, n) => {
                 const ad = llmProfiles[n]?.adapter ?? "khác";
-                (acc[ad] = acc[ad] ?? []).push(n);
+                if (!acc[ad]) acc[ad] = [];
+                acc[ad].push(n);
                 return acc;
               }, {}),
             ).map(([ad, names]) => (
@@ -431,9 +436,9 @@ function MessageBubble({
         )}
         {msg.suggestions && (
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {msg.suggestions.map((s, i) => (
+            {msg.suggestions.map((s) => (
               <button
-                key={i}
+                key={s}
                 onClick={() => onSuggest(s)}
                 className="text-[11px] px-2 py-0.5 rounded-sm border border-border bg-bg-soft hover:bg-hover/40"
               >

@@ -47,11 +47,11 @@ export function EntityDesigner({ entityId }: Props) {
   const [aiOpen, setAiOpen] = useState(false);
   const { tools: mcpTools } = useMcpClient();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     setEntity(userEntities.find((e) => e.id === entityId) ?? fallbackEntity);
     setSelected(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, userEntities, fallbackEntity]);
+  }, [userEntities.find, entityId]);
 
   const addField = (type: string, atIdx?: number) => {
     const ft = getFieldTypes().find((f) => f.id === type);
@@ -224,6 +224,7 @@ export function EntityDesigner({ entityId }: Props) {
       })();
     }, 700);
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -233,7 +234,7 @@ export function EntityDesigner({ entityId }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [save]);
+  }, []);
 
   // Đồng bộ thủ công: kéo dữ liệu từ MCP, upsert vào DB theo khóa.
   const doMcpSync = async () => {

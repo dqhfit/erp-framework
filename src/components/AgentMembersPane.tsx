@@ -59,9 +59,10 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
       setLoading(false);
     }
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     void load(); /* eslint-disable-next-line */
-  }, [load]);
+  }, []);
 
   const changeRole = async (userId: string, role: AgentMemberRole) => {
     try {
@@ -247,8 +248,7 @@ function AddMemberModal({ open, onClose, existingMemberIds, onAdd, loadUsers }: 
         setPicked(available[0]?.userId ?? "");
       })
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, existingMemberIds.has, loadUsers]);
+  }, [open, loadUsers, existingMemberIds.has]);
 
   return (
     <Modal open={open} onClose={onClose} title="Thêm thành viên cho agent" width={460}>

@@ -114,6 +114,7 @@ export function PageDesigner({ pageId }: Props) {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -123,8 +124,7 @@ export function PageDesigner({ pageId }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [save]);
+  }, []);
 
   // AI apply — replace toàn bộ components từ đề xuất
   const handleAiApply = (design: PageDesign) => {
@@ -572,6 +572,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
     return (
       <div
         className="p-3 text-xs"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: widget HTML do admin-designer nhập, in-app preview
         dangerouslySetInnerHTML={{ __html: html ?? "<i>HTML / Markdown note</i>" }}
       />
     );

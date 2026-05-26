@@ -115,7 +115,6 @@ function AgentRoute() {
       setState(next);
       setLastSaved(next);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Lấy 7 template mặc định (server đã chèn tên agent vào).
@@ -139,6 +138,7 @@ function AgentRoute() {
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 2000);
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -148,8 +148,7 @@ function AgentRoute() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [save]);
+  }, []);
 
   // Adapter chỉ dùng để hiển thị hint — ModelCombobox tự suy bên trong.
   const adapter = state.adapter ?? inferAdapterFromModel(state.model);
@@ -198,9 +197,12 @@ function AgentRoute() {
       const j = i + dir;
       if (j < 0 || j >= s.fallbackModels.length) return s;
       const next = [...s.fallbackModels];
-      const tmp = next[i]!;
-      next[i] = next[j]!;
-      next[j] = tmp;
+      // i và j đã được bound-check ngay phía trên (i >= 0, j ∈ [0, length)).
+      const a = next[i];
+      const b = next[j];
+      if (a === undefined || b === undefined) return s;
+      next[i] = b;
+      next[j] = a;
       return { ...s, fallbackModels: next };
     });
   };

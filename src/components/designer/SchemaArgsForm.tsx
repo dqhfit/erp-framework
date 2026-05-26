@@ -172,6 +172,7 @@ function PropField({ name, schema, required, value, onChange }: PropFieldProps) 
         >
           {!required && <option value="">— bỏ trống —</option>}
           {schema.enum.map((opt, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
             <option key={i} value={String(opt)}>
               {String(opt)}
             </option>

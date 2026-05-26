@@ -8,8 +8,8 @@ export function useApplyTheme() {
     root.classList.toggle("light", theme === "light");
     root.classList.toggle("dark", theme === "dark");
     root.classList.toggle("density-compact", density === "compact");
-    (["violet", "cyan", "green", "amber"] as const).forEach((a) =>
-      root.classList.toggle(`accent-${a}`, accent === a && a !== "violet"),
-    );
+    (["violet", "cyan", "green", "amber"] as const).forEach((a) => {
+      root.classList.toggle(`accent-${a}`, accent === a && a !== "violet");
+    });
   }, [theme, accent, density]);
 }

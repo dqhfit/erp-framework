@@ -27,9 +27,10 @@ function SettingsAgents() {
     ? (allAgents.find((a) => a.id === primaryAgentId) ?? null)
     : null;
 
-  const myAgents = allAgents
-    .filter((a) => myAgentRoles[a.id])
-    .map((a) => ({ ...a, role: myAgentRoles[a.id]! }));
+  const myAgents = allAgents.flatMap((a) => {
+    const role = myAgentRoles[a.id];
+    return role ? [{ ...a, role }] : [];
+  });
 
   return (
     <div className="overflow-y-auto h-full">

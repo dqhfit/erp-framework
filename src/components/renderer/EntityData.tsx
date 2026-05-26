@@ -131,9 +131,10 @@ export function EntityData({ entityId }: { entityId: string }) {
       });
   }, [entityId, tab, q]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
   useEffect(() => {
     reload();
-  }, [reload]);
+  }, []);
 
   const fields = ent?.fields ?? [];
   const lang = useLocale((s) => s.lang);
@@ -228,6 +229,7 @@ export function EntityData({ entityId }: { entityId: string }) {
   const toggleAll = () =>
     setSelected((s) => (s.size === rows.length ? new Set() : new Set(rows.map((r) => r.__id))));
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: callback refs ổn định trong scope
   const columns = useMemo(
     () => [
       {
@@ -288,9 +290,8 @@ export function EntityData({ entityId }: { entityId: string }) {
           </div>
         ),
       },
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     ],
-    [fields, selected, rows.length, tab, lang, toggleRow, restore, toggleAll, del],
+    [fields, selected, rows.length, tab, lang],
   );
 
   if (!ent) {

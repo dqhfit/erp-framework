@@ -167,6 +167,7 @@ function Home() {
                 const IconC = I[r.icon] ?? I.Folder;
                 return (
                   <Link
+                    // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                     key={i}
                     to={r.to}
                     className="flex items-center gap-3 p-3 hover:bg-hover/30 cursor-pointer group"

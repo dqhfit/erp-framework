@@ -225,6 +225,7 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
           {steps.length > 0 && (
             <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[300px] overflow-auto">
               {steps.map((s, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                 <StepRow key={i} step={s} />
               ))}
             </div>

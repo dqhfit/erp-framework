@@ -281,6 +281,7 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
             </div>
             <div className="p-1.5 space-y-1.5">
               {items.slice(0, 30).map((it, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                 <div key={i} className="card p-2 text-xs">
                   {String(it[titleField] ?? "(không tên)")}
                 </div>
@@ -339,6 +340,7 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
             </div>
             <div className="p-1.5 space-y-1">
               {items.slice(0, 5).map((it, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
                 <div key={i} className="text-xs truncate">
                   {String(it[titleField] ?? "(không tên)")}
                 </div>
@@ -424,6 +426,7 @@ function LeafletMap({ points }: { points: Array<{ lat: number; lng: number; titl
         attribution="&copy; OpenStreetMap"
       />
       {points.map((p, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
         <Marker key={i} position={[p.lat, p.lng]}>
           <Popup>{p.title || "(không tên)"}</Popup>
         </Marker>
@@ -455,8 +458,11 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
     const ck = String(r[colField] ?? "(trống)");
     rowKeys.add(rk);
     colKeys.add(ck);
-    if (!matrix.has(rk)) matrix.set(rk, new Map());
-    const m = matrix.get(rk)!;
+    let m = matrix.get(rk);
+    if (!m) {
+      m = new Map();
+      matrix.set(rk, m);
+    }
     if (!m.has(ck)) m.set(ck, []);
     const v = valueField ? Number(r[valueField] ?? 0) : 1;
     m.get(ck)?.push(v);
@@ -544,6 +550,7 @@ function Widget({ comp }: { comp: PageComponent }) {
     return (
       <div
         className="p-3 text-sm"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: widget HTML do admin-designer nhập, render trong consumer page
         dangerouslySetInnerHTML={{ __html: (cfg.html as string) ?? "" }}
       />
     );
