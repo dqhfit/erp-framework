@@ -41,6 +41,7 @@ export function TweaksPanel() {
             Tweaks
           </div>
           <button
+            type="button"
             onClick={() => setTweaksOpen(false)}
             className="w-6 h-6 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted"
           >
@@ -63,6 +64,7 @@ export function TweaksPanel() {
             <div className="grid grid-cols-4 gap-2">
               {ACCENTS.map((a) => (
                 <button
+                  type="button"
                   key={a.id}
                   onClick={() => setAccent(a.id)}
                   className={cn(
@@ -157,6 +159,7 @@ function Radio({ value, options, onChange }: RadioProps) {
     <div className="inline-flex bg-bg-soft border border-border rounded-md p-0.5 w-full">
       {options.map((opt) => (
         <button
+          type="button"
           key={opt.id}
           onClick={() => onChange(opt.id)}
           className={cn(

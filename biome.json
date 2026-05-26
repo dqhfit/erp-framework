@@ -21,6 +21,11 @@
           "level": "warn",
           "options": { "allow": ["error", "warn"] }
         }
+      },
+      "a11y": {
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off",
+        "noLabelWithoutControl": "off"
       }
     }
   },

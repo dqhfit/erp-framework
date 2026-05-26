@@ -135,12 +135,14 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
             <div className="flex items-center gap-2 text-xs mr-auto">
               <span className="text-muted">{t("mcpimport.apply_label")}</span>
               <button
+                type="button"
                 onClick={() => setMode("replace")}
                 className={`chip ${mode === "replace" ? "chip-accent" : ""}`}
               >
                 {t("mcpimport.mode_replace")}
               </button>
               <button
+                type="button"
                 onClick={() => setMode("append")}
                 className={`chip ${mode === "append" ? "chip-accent" : ""}`}
               >
@@ -227,12 +229,14 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted">{t("mcpimport.data_apply")}</span>
             <button
+              type="button"
               onClick={() => setDataMode("schema")}
               className={`chip ${dataMode === "schema" ? "chip-accent" : ""}`}
             >
               {t("mcpimport.data_schema_only")}
             </button>
             <button
+              type="button"
               onClick={() => setDataMode("snapshot")}
               className={`chip ${dataMode === "snapshot" ? "chip-accent" : ""}`}
             >

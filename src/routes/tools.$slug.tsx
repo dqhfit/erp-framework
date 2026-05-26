@@ -224,6 +224,7 @@ function CliRunner({ tool }: { tool: ToolListItem }) {
         <div className="font-semibold mb-1">Actions</div>
         {actions.map((a) => (
           <button
+            type="button"
             key={a.name}
             className={`w-full text-left p-2 rounded-md text-sm ${selected?.name === a.name ? "bg-accent/10 text-accent" : "hover:bg-panel-2"}`}
             onClick={() => setSelected(a)}

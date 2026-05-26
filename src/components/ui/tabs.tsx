@@ -15,6 +15,7 @@ export function Tabs<T extends string>({ value, onChange, options, className }: 
     <div className={cn("flex border-b border-border", className)}>
       {options.map((opt) => (
         <button
+          type="button"
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(

@@ -64,6 +64,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {error.message}
           </pre>
           <button
+            type="button"
             onClick={() => window.location.reload()}
             style={{
               padding: "8px 18px",

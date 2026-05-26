@@ -193,6 +193,7 @@ export function CommandPalette() {
               const IC = I[item.iconName] ?? I.Folder;
               return (
                 <button
+                  type="button"
                   key={item.id}
                   onClick={() => run(item)}
                   onMouseEnter={() => setIdx(i)}

@@ -267,12 +267,14 @@ export function EntityData({ entityId }: { entityId: string }) {
             {tab === "active" ? (
               <>
                 <button
+                  type="button"
                   onClick={() => setHistoryOpen(c.row.original.__id)}
                   className="text-accent hover:underline"
                 >
                   Lịch sử
                 </button>
                 <button
+                  type="button"
                   onClick={() => del(c.row.original.__id)}
                   className="text-danger hover:underline"
                 >
@@ -281,6 +283,7 @@ export function EntityData({ entityId }: { entityId: string }) {
               </>
             ) : (
               <button
+                type="button"
                 onClick={() => restore(c.row.original.__id)}
                 className="text-success hover:underline"
               >
@@ -325,12 +328,14 @@ export function EntityData({ entityId }: { entityId: string }) {
         {/* Tabs Active / Đã xoá */}
         <div className="flex items-center gap-2 mb-3">
           <button
+            type="button"
             onClick={() => setTab("active")}
             className={`chip ${tab === "active" ? "chip-accent" : ""}`}
           >
             Đang dùng
           </button>
           <button
+            type="button"
             onClick={() => setTab("deleted")}
             className={`chip ${tab === "deleted" ? "chip-accent" : ""}`}
           >

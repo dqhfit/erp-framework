@@ -470,6 +470,7 @@ function ComponentCard({ comp, selected, onSelect, onRemove, isConsumer }: Compo
         <div className="h-7 shrink-0 px-2 flex items-center justify-between border-b border-border bg-panel-2/50 text-[11px] text-muted">
           <span className="font-mono uppercase">{comp.kind}</span>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();

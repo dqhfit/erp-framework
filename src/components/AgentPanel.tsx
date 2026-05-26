@@ -419,6 +419,7 @@ function MessageBubble({
         {canSave && (
           <div className="mt-1.5">
             <button
+              type="button"
               onClick={saveKb}
               disabled={kbState === "saving" || kbState === "saved"}
               className="text-[11px] px-2 py-0.5 rounded-sm border border-border bg-bg-soft hover:bg-hover/40 inline-flex items-center gap-1 disabled:opacity-60"
@@ -438,6 +439,7 @@ function MessageBubble({
           <div className="mt-2 flex flex-wrap gap-1.5">
             {msg.suggestions.map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => onSuggest(s)}
                 className="text-[11px] px-2 py-0.5 rounded-sm border border-border bg-bg-soft hover:bg-hover/40"

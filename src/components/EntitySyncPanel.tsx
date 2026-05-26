@@ -164,7 +164,6 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
           disabled={busy}
           onChange={(e) => setPkField(e.target.value)}
         />
-        {/* biome-ignore lint/a11y/noLabelWithoutControl: Switch là control component, lint không nhận diện */}
         <label className="flex items-center gap-1.5 text-xs text-muted">
           <Switch checked={enabled} onChange={() => setEnabled((v) => !v)} />
           Bật lịch

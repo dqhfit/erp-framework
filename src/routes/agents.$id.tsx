@@ -334,6 +334,7 @@ function AgentRoute() {
             const active = state.tools.includes(t);
             return (
               <button
+                type="button"
                 key={t}
                 onClick={() => toggleTool(t)}
                 className={`chip ${active ? "chip-accent" : ""} font-mono cursor-pointer`}

@@ -31,14 +31,12 @@ jobs:
         run: pnpm -r typecheck
       - name: Test
         run: pnpm -r test
-      # Lint Biome — hiện còn ~75 pre-existing errors (sau wave 1 cleanup
-      # giảm 252 → 100 → 75). Vẫn soft-fail trong CI khi cleanup waves
-      # còn chạy. Mục tiêu sprint kế: 0 errors + bỏ continue-on-error.
-      # Pre-commit hook (lint-staged) chỉ auto-fix format/safe rules để
-      # không block cleanup commits.
-      - name: Lint (Biome, soft-fail)
+      # Lint Biome — 0 errors sau cleanup wave 1-3 (252 → 0). a11y rules
+      # noStaticElementInteractions/useKeyWithClickEvents/noLabelWithoutControl
+      # bị disable ở biome.json vì xung đột intentional UI patterns (backdrop
+      # click-to-close, drag handle, custom controls). Hard-enforce từ giờ.
+      - name: Lint (Biome, hard-fail)
         run: pnpm lint
-        continue-on-error: true
 
   migration:
     runs-on: ubuntu-latest

@@ -231,6 +231,7 @@ function FormWidget({ cfg }: { cfg: Record<string, unknown> }) {
           </div>
         ))}
         <button
+          type="button"
           className="btn btn-primary btn-sm"
           disabled={busy || fields.length === 0}
           onClick={() => void submit()}

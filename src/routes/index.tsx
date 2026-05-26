@@ -155,7 +155,7 @@ function Home() {
           <div>
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="text-lg font-semibold">{t("home.recent_title")}</h2>
-              <button className="text-xs text-muted hover:text-text">
+              <button type="button" className="text-xs text-muted hover:text-text">
                 {t("home.recent_view_all")}
               </button>
             </div>
