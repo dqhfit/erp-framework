@@ -45,8 +45,9 @@ async function authApiKey(db: DB, req: FastifyRequest): Promise<ApiKeyContext | 
 }
 
 /** Deny-by-default. Empty scopes = không được phép gì. Admin muốn cấp
- *  full access phải explicit thêm "*" vào scopes (xem api-keys-router). */
-function hasScope(ctx: ApiKeyContext, entityName: string, action: string): boolean {
+ *  full access phải explicit thêm "*" vào scopes (xem api-keys-router).
+ *  Export để test (`rest-api.test.ts`) — không phải public API. */
+export function hasScope(ctx: ApiKeyContext, entityName: string, action: string): boolean {
   if (ctx.scopes.length === 0) return false;
   return ctx.scopes.some(
     (s) => s === `entity:${entityName}:${action}` || s === `entity:*:${action}` || s === "*",

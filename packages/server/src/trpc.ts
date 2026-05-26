@@ -101,7 +101,12 @@ export const approvedProcedure = protectedProcedure.use(({ ctx, next }) => {
  *  từ input (string UUID hoặc object có `.id`/`.resourceId`/`.<typeId>`)
  *  rồi gọi `policyCheck(ctx, resourceId, action)` — policy thuộc về
  *  từng resource type (vd agent-acl.assertCanActOnAgent).
- *  Build trên approvedProcedure để tự động enforce member status. */
+ *  Build trên approvedProcedure để tự động enforce member status.
+ *
+ *  Lưu ý: middleware dùng `getRawInput()` (tRPC v11) thay vì `input`
+ *  trực tiếp — `input` ở middleware-level chỉ tích luỹ từ `.input()`
+ *  CHAIN trước, không bao gồm `.input()` consumer thêm sau khi nhận
+ *  procedure builder. getRawInput() trả raw payload trước parse. */
 export function resourceProcedure<Action extends string>(
   action: Action,
   policyCheck: (
@@ -111,11 +116,12 @@ export function resourceProcedure<Action extends string>(
   ) => Promise<void>,
   idField = "id",
 ) {
-  return approvedProcedure.use(async ({ ctx, input, next }) => {
+  return approvedProcedure.use(async ({ ctx, getRawInput, next }) => {
+    const raw = await getRawInput();
     let id: string | undefined;
-    if (typeof input === "string") id = input;
-    else if (input && typeof input === "object") {
-      const obj = input as Record<string, unknown>;
+    if (typeof raw === "string") id = raw;
+    else if (raw && typeof raw === "object") {
+      const obj = raw as Record<string, unknown>;
       const cand = obj[idField] ?? obj.resourceId ?? obj.id;
       if (typeof cand === "string") id = cand;
     }
