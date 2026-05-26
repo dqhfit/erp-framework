@@ -1,126 +1,133 @@
 /* @erp-framework/client — DataSource + client xác thực + client
    cấu hình cho frontend. App chọn rồi inject vào core/ui. */
-export { LocalStorageDataSource } from "./local-storage";
+
 export { ApiDataSource, createApiDataSource } from "./api";
+export {
+  type ApiKeyCreateResult,
+  type ApiKeyListItem,
+  type ApiKeysClient,
+  createApiKeysClient,
+} from "./api-keys";
+export {
+  type ApprovalCreateInput,
+  type ApprovalStatus,
+  type ApprovalsClient,
+  createApprovalsClient,
+} from "./approvals";
 export { createAuthClient } from "./auth";
 export {
-  createCompaniesClient,
+  type BackupClient,
+  type BackupConfigView,
+  type BackupRun,
+  createBackupClient,
+} from "./backup";
+export {
   type CompaniesClient,
   type CompanyRole,
+  createCompaniesClient,
 } from "./companies";
-export {
-  createHeartbeatsClient,
-  type HeartbeatsClient,
-  type HeartbeatSaveInput,
-} from "./heartbeats";
-export {
-  createEntitySyncClient,
-  type EntitySyncClient,
-  type EntitySyncSaveInput,
-  type EntitySyncRunResult,
-} from "./entity-sync";
-export {
-  createApprovalsClient,
-  type ApprovalsClient,
-  type ApprovalStatus,
-  type ApprovalCreateInput,
-} from "./approvals";
-export { createOrgClient, type OrgClient } from "./org";
-export {
-  createPluginsClient,
-  type PluginsClient,
-  type PluginSaveInput,
-} from "./plugins";
-export {
-  createToolsClient,
-  type ToolsClient,
-  type ToolKind,
-  type ToolRuntime,
-  type ToolStatus,
-  type ToolListItem,
-  type ToolManifestView,
-  type ToolActionDef,
-  type ToolIODef,
-  type ToolInvokeArgs,
-} from "./tools";
-export {
-  createFeedbackClient,
-  type FeedbackClient,
-  type FeedbackArea,
-  type FeedbackStatus,
-  type FeedbackSeverity,
-  type FeedbackListItem,
-  type FeedbackDetail,
-  type FeedbackCommentRow,
-  type FeedbackCreateInput,
-  type SimilarHit,
-} from "./feedback";
-export {
-  createProceduresClient,
-  type ProceduresClient,
-  type ProcedureSaveInput,
-  type ProcedureInvokeResult,
-  type ProcedureAiDraft,
-} from "./procedures";
-export {
-  createEnumsClient,
-  type EnumsClient,
-  type EnumSaveInput,
-  type EnumValue,
-  type EnumAiDraft,
-} from "./enums";
-export {
-  createSavedViewsClient,
-  type SavedViewsClient,
-  type SavedView,
-  type SavedViewSaveInput,
-} from "./saved-views";
-export {
-  createRecordCommentsClient,
-  type RecordCommentsClient,
-  type RecordComment,
-} from "./record-comments";
-export {
-  createEntityWebhooksClient,
-  type EntityWebhooksClient,
-  type EntityWebhook,
-  type EntityWebhookSaveInput,
-} from "./entity-webhooks";
+export { createConfigClient, type LlmProfileInput } from "./config";
 export {
   createEmbedClient,
   type EmbedClient,
   type EmbedScope,
 } from "./embed";
-export { createConfigClient, type LlmProfileInput } from "./config";
 export {
-  createKnowledgeClient,
-  type KnowledgeClient,
-  type KnowledgeSource,
-  type KnowledgeHit,
-  type EmbeddingProfileInput,
-} from "./knowledge";
+  createEntitySyncClient,
+  type EntitySyncClient,
+  type EntitySyncRunResult,
+  type EntitySyncSaveInput,
+} from "./entity-sync";
 export {
-  createObjectsClient,
-  type ObjectsClient,
-  type EntitySaveInput,
-  type EntityFieldInput,
-  type PageSaveInput,
-  type AgentSaveInput,
-  type AgentMemberRole,
-  type AgentMemberRow,
-  type WorkflowSaveInput,
-  type ScheduleSaveInput,
-} from "./objects";
+  createEntityWebhooksClient,
+  type EntityWebhook,
+  type EntityWebhookSaveInput,
+  type EntityWebhooksClient,
+} from "./entity-webhooks";
+export {
+  createEnumsClient,
+  type EnumAiDraft,
+  type EnumSaveInput,
+  type EnumsClient,
+  type EnumValue,
+} from "./enums";
+export {
+  createFeedbackClient,
+  type FeedbackArea,
+  type FeedbackClient,
+  type FeedbackCommentRow,
+  type FeedbackCreateInput,
+  type FeedbackDetail,
+  type FeedbackListItem,
+  type FeedbackSeverity,
+  type FeedbackStatus,
+  type SimilarHit,
+} from "./feedback";
+export {
+  createHeartbeatsClient,
+  type HeartbeatSaveInput,
+  type HeartbeatsClient,
+} from "./heartbeats";
 export {
   createIotClient,
   type IotClient,
+  type IotCommandRow,
   type IotDevice,
   type IotTelemetryRow,
-  type IotCommandRow,
 } from "./iot";
 export {
-  createBackupClient,
-  type BackupClient,
-  type BackupConfigView,
-  type BackupRun,
-} from "./backup";
+  createKnowledgeClient,
+  type EmbeddingProfileInput,
+  type KnowledgeClient,
+  type KnowledgeHit,
+  type KnowledgeSource,
+} from "./knowledge";
+export { LocalStorageDataSource } from "./local-storage";
+export {
+  type AgentMemberRole,
+  type AgentMemberRow,
+  type AgentSaveInput,
+  createObjectsClient,
+  type EntityFieldInput,
+  type EntitySaveInput,
+  type ObjectsClient,
+  type PageSaveInput,
+  type ScheduleSaveInput,
+  type WorkflowSaveInput,
+} from "./objects";
+export { createOrgClient, type OrgClient } from "./org";
+export {
+  createPluginsClient,
+  type PluginSaveInput,
+  type PluginsClient,
+} from "./plugins";
+export {
+  createProceduresClient,
+  type ProcedureAiDraft,
+  type ProcedureInvokeResult,
+  type ProcedureSaveInput,
+  type ProceduresClient,
+} from "./procedures";
+export {
+  createRecordCommentsClient,
+  type RecordComment,
+  type RecordCommentsClient,
+} from "./record-comments";
+export {
+  createSavedViewsClient,
+  type SavedView,
+  type SavedViewSaveInput,
+  type SavedViewsClient,
+} from "./saved-views";
+export {
+  createToolsClient,
+  type ToolActionDef,
+  type ToolInvokeArgs,
+  type ToolIODef,
+  type ToolKind,
+  type ToolListItem,
+  type ToolManifestView,
+  type ToolRuntime,
+  type ToolStatus,
+  type ToolsClient,
+} from "./tools";
