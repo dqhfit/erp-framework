@@ -1,7 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useT } from "@/hooks/useT";
 import { type CompanyRole, createCompaniesClient } from "@erp-framework/client";
 /* ==========================================================
    settings.companies — Quản lý đa công ty:
@@ -11,6 +7,10 @@ import { type CompanyRole, createCompaniesClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
 
 const companies = createCompaniesClient("");
 
@@ -105,7 +105,7 @@ function CompaniesSettings() {
 
   useEffect(() => {
     void reload();
-  }, []);
+  }, [reload]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -137,9 +137,7 @@ function CompaniesSettings() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[820px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.companies.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.companies.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.companies.subtitle")}</div>
 
         {/* === Công ty hiện tại === */}
         <Card className="mb-4 space-y-3">
@@ -193,7 +191,9 @@ function CompaniesSettings() {
                 )}
               </div>
             ))}
-            {list.length === 0 && <div className="text-sm text-muted">{t("settings.companies.no_company")}</div>}
+            {list.length === 0 && (
+              <div className="text-sm text-muted">{t("settings.companies.no_company")}</div>
+            )}
           </div>
           <div className="border-t border-border pt-3 flex items-center gap-2">
             <Input
@@ -227,9 +227,15 @@ function CompaniesSettings() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="text-muted text-xs uppercase tracking-wide">
-                  <th className="text-left py-2 pr-3 font-semibold">{t("settings.companies.col_user")}</th>
-                  <th className="text-left py-2 px-2 font-semibold">{t("settings.companies.col_role")}</th>
-                  <th className="py-2 pl-2 font-semibold text-right">{t("settings.companies.col_actions")}</th>
+                  <th className="text-left py-2 pr-3 font-semibold">
+                    {t("settings.companies.col_user")}
+                  </th>
+                  <th className="text-left py-2 px-2 font-semibold">
+                    {t("settings.companies.col_role")}
+                  </th>
+                  <th className="py-2 pl-2 font-semibold text-right">
+                    {t("settings.companies.col_actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -350,8 +356,9 @@ function CompaniesSettings() {
                             {t("settings.companies.reset_pass_btn")}
                           </Button>
                         )}
-                        {isAdmin && !m.pending && (
-                          m.disabled ? (
+                        {isAdmin &&
+                          !m.pending &&
+                          (m.disabled ? (
                             <Button
                               variant="default"
                               size="sm"
@@ -383,8 +390,7 @@ function CompaniesSettings() {
                             >
                               {t("settings.companies.disable_btn")}
                             </Button>
-                          )
-                        )}
+                          ))}
                         {isAdmin && (
                           <Button
                             variant="danger"
@@ -392,10 +398,13 @@ function CompaniesSettings() {
                             icon={<I.Trash size={13} />}
                             disabled={busy}
                             onClick={async () => {
-                              const ok = await dialog.confirm(t("settings.companies.remove_confirm", { email: m.email }), {
-                                title: t("settings.companies.remove_title"),
-                                confirmText: t("settings.companies.remove_confirm_btn"),
-                              });
+                              const ok = await dialog.confirm(
+                                t("settings.companies.remove_confirm", { email: m.email }),
+                                {
+                                  title: t("settings.companies.remove_title"),
+                                  confirmText: t("settings.companies.remove_confirm_btn"),
+                                },
+                              );
                               if (ok)
                                 void run(
                                   () => companies.removeMember(m.userId).then(() => {}),
@@ -471,9 +480,7 @@ function CompaniesSettings() {
               >
                 {t("settings.companies.invite_btn")}
               </Button>
-              <div className="text-xs text-muted">
-                {t("settings.companies.invite_hint")}
-              </div>
+              <div className="text-xs text-muted">{t("settings.companies.invite_hint")}</div>
             </div>
           )}
         </Card>
@@ -496,7 +503,9 @@ function CompaniesSettings() {
                 className="w-36"
               >
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
                 ))}
               </Select>
               <Button
@@ -505,7 +514,9 @@ function CompaniesSettings() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const r = (await companies.createInviteLink(genericRole)) as { inviteLink?: string };
+                    const r = (await companies.createInviteLink(genericRole)) as {
+                      inviteLink?: string;
+                    };
                     if (r.inviteLink) {
                       const full = window.location.origin + r.inviteLink;
                       setNewGenericLink(full);
@@ -561,7 +572,9 @@ function CompaniesSettings() {
                       </span>
                       <Chip>{ROLE_LABEL[lk.role] ?? lk.role}</Chip>
                       {used && <Chip variant="success">{t("settings.companies.link_used")}</Chip>}
-                      {expired && <Chip variant="warning">{t("settings.companies.link_expired")}</Chip>}
+                      {expired && (
+                        <Chip variant="warning">{t("settings.companies.link_expired")}</Chip>
+                      )}
                       {active && (
                         <Button
                           variant="ghost"
@@ -602,7 +615,8 @@ function CompaniesSettings() {
             <div className="flex items-center gap-2">
               <I.Send size={14} className="text-accent" />
               <div className="font-medium text-sm">
-                {t("settings.companies.link_label")} <span className="font-mono">{inviteEmail}</span>
+                {t("settings.companies.link_label")}{" "}
+                <span className="font-mono">{inviteEmail}</span>
               </div>
               <div className="flex-1" />
               <Button
@@ -629,9 +643,7 @@ function CompaniesSettings() {
                 Copy
               </Button>
             </div>
-            <div className="text-xs text-muted">
-              {t("settings.companies.link_expires")}
-            </div>
+            <div className="text-xs text-muted">{t("settings.companies.link_expires")}</div>
           </Card>
         )}
 
@@ -641,7 +653,8 @@ function CompaniesSettings() {
             <div className="flex items-center gap-2">
               <I.Lock size={14} className="text-warning" />
               <div className="font-medium text-sm">
-                {t("settings.companies.reset_panel_title")} <span className="font-mono">{resetTarget.email}</span>
+                {t("settings.companies.reset_panel_title")}{" "}
+                <span className="font-mono">{resetTarget.email}</span>
               </div>
               <div className="flex-1" />
               <Button
@@ -665,19 +678,20 @@ function CompaniesSettings() {
                 variant="danger"
                 disabled={busy || resetPwd.length < 8}
                 onClick={() =>
-                  void run(async () => {
-                    await companies.resetMemberPassword(resetTarget.userId, resetPwd);
-                    setResetTarget(null);
-                    setResetPwd("");
-                  }, t("settings.companies.reset_ok", { email: resetTarget.email }))
+                  void run(
+                    async () => {
+                      await companies.resetMemberPassword(resetTarget.userId, resetPwd);
+                      setResetTarget(null);
+                      setResetPwd("");
+                    },
+                    t("settings.companies.reset_ok", { email: resetTarget.email }),
+                  )
                 }
               >
                 {t("settings.companies.reset_confirm_btn")}
               </Button>
             </div>
-            <div className="text-xs text-muted">
-              {t("settings.companies.reset_hint")}
-            </div>
+            <div className="text-xs text-muted">{t("settings.companies.reset_hint")}</div>
           </Card>
         )}
 

@@ -1,7 +1,7 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { EntityDesigner } from "@/components/designer/EntityDesigner";
 import { EntityData } from "@/components/renderer/EntityData";
 import { useUI } from "@/stores/ui";
-import { createFileRoute } from "@tanstack/react-router";
 
 /* mode "consumer" → màn hình dữ liệu (xem/thêm record);
    mode "designer" → trình thiết kế schema. Khớp mẫu pages/$id. */

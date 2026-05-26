@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Card, Chip, Select } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import { createOrgClient } from "@erp-framework/client";
 /* ==========================================================
    org-chart — Sơ đồ phân cấp agent. Mỗi agent có thể chọn agent
@@ -13,6 +10,9 @@ import { createOrgClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Card, Chip, Select } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 const org = createOrgClient("");
 
@@ -42,7 +42,7 @@ function OrgChartRoute() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const setManager = async (a: OrgAgent, managerId: string | null) => {
     setBusy(true);
@@ -145,15 +145,7 @@ function OrgChartRoute() {
     );
   };
 
-  const ToggleBtn = ({
-    mode,
-    icon,
-    label,
-  }: {
-    mode: ViewMode;
-    icon: ReactNode;
-    label: string;
-  }) => (
+  const ToggleBtn = ({ mode, icon, label }: { mode: ViewMode; icon: ReactNode; label: string }) => (
     <button
       type="button"
       onClick={() => setView(mode)}

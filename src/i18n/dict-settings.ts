@@ -40,8 +40,7 @@ export const settingsVi: Dict = {
   "settings.companies.invite_email_ph": "Email",
   "settings.companies.invite_name_ph": "Tên hiển thị (tuỳ chọn)",
   "settings.companies.invite_btn": "Tạo tài khoản + sinh link đăng ký",
-  "settings.companies.invite_ok":
-    "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.",
+  "settings.companies.invite_ok": "✓ Đã tạo tài khoản. Link đăng ký đã copy vào clipboard.",
   "settings.companies.invite_hint":
     "Server tạo tài khoản với mật khẩu trống, sinh link đăng ký 1 lần có hiệu lực 7 ngày. Bạn copy link gửi cho user — họ tự đặt mật khẩu khi vào link. Email đã có user → chỉ gán quyền, không sinh link.",
   "settings.companies.link_label": "Link đăng ký cho",
@@ -112,8 +111,7 @@ export const settingsVi: Dict = {
   "settings.agents.subtitle":
     "Đặt agent chính bạn hay làm việc cùng và quản lý các agent mà bạn là thành viên. Khi chưa đặt, app vẫn dùng được — Topbar/AgentPanel sẽ ưu tiên CEO mặc định của công ty.",
   "settings.agents.primary_label": "Agent chính",
-  "settings.agents.primary_unset":
-    "Chưa chọn — app dùng CEO của công ty làm assistant mặc định.",
+  "settings.agents.primary_unset": "Chưa chọn — app dùng CEO của công ty làm assistant mặc định.",
   "settings.agents.open_btn": "Mở",
   "settings.agents.change_btn": "Đổi",
   "settings.agents.deselect_btn": "Bỏ chọn",
@@ -132,8 +130,7 @@ export const settingsVi: Dict = {
   "settings.backup.subtitle":
     "Dump PostgreSQL + đồng bộ thư mục /data/uploads lên một thư mục Google Drive bạn chọn. Files sync incremental (không re-upload file chưa đổi).",
   "settings.backup.config_title": "Cấu hình",
-  "settings.backup.guide_title":
-    "Hướng dẫn đăng nhập Google Drive (web) & lấy Folder ID",
+  "settings.backup.guide_title": "Hướng dẫn đăng nhập Google Drive (web) & lấy Folder ID",
   "settings.backup.guide_open": "Mở",
   "settings.backup.guide_close": "Đóng",
   "settings.backup.key_label": "Service account JSON key",
@@ -199,16 +196,13 @@ export const settingsVi: Dict = {
   "settings.transfer.subtitle":
     'Đóng gói toàn bộ entity, page, workflow, agent thành một file JSON — để sao lưu hoặc chia sẻ "ERP mẫu". (Dữ liệu bản ghi và plugin không nằm trong gói này.)',
   "settings.transfer.export_title": "Xuất cấu hình",
-  "settings.transfer.export_desc":
-    "Tải về một file JSON chứa mọi đối tượng low-code đang có.",
+  "settings.transfer.export_desc": "Tải về một file JSON chứa mọi đối tượng low-code đang có.",
   "settings.transfer.export_btn": "Tải gói cấu hình",
   "settings.transfer.export_ok": "✓ Đã tải xuống gói cấu hình.",
   "settings.transfer.import_title": "Nhập cấu hình",
-  "settings.transfer.import_desc":
-    "Chọn file JSON đã xuất. Đối tượng trùng id sẽ bị ghi đè.",
+  "settings.transfer.import_desc": "Chọn file JSON đã xuất. Đối tượng trùng id sẽ bị ghi đè.",
   "settings.transfer.import_btn": "Chọn file để nhập",
-  "settings.transfer.import_confirm":
-    "Nhập cấu hình sẽ ghi đè các đối tượng trùng id. Tiếp tục?",
+  "settings.transfer.import_confirm": "Nhập cấu hình sẽ ghi đè các đối tượng trùng id. Tiếp tục?",
   "settings.transfer.import_confirm_title": "Nhập cấu hình",
   "settings.transfer.import_confirm_btn": "Nhập",
   "settings.transfer.import_ok":
@@ -322,8 +316,7 @@ export const settingsEn: Dict = {
   "settings.agents.subtitle":
     "Set your primary agent to work with and manage agents you're a member of. When not set, the app still works — Topbar/AgentPanel will default to the company's CEO agent.",
   "settings.agents.primary_label": "Primary agent",
-  "settings.agents.primary_unset":
-    "Not set — app uses the company CEO as default assistant.",
+  "settings.agents.primary_unset": "Not set — app uses the company CEO as default assistant.",
   "settings.agents.open_btn": "Open",
   "settings.agents.change_btn": "Change",
   "settings.agents.deselect_btn": "Deselect",
@@ -408,8 +401,7 @@ export const settingsEn: Dict = {
   "settings.transfer.subtitle":
     'Package all entities, pages, workflows, agents into a JSON file — for backup or sharing an "ERP template". (Record data and plugins are not included.)',
   "settings.transfer.export_title": "Export configuration",
-  "settings.transfer.export_desc":
-    "Download a JSON file containing all current low-code objects.",
+  "settings.transfer.export_desc": "Download a JSON file containing all current low-code objects.",
   "settings.transfer.export_btn": "Download config bundle",
   "settings.transfer.export_ok": "✓ Config bundle downloaded.",
   "settings.transfer.import_title": "Import configuration",

@@ -4,8 +4,9 @@
    pluginRegistry. Plugin thêm kiểu field → tự hiện trong palette
    mà không sửa lõi.
    ========================================================== */
-import type { I as IconSet } from "@/components/Icons";
+
 import { pluginRegistry } from "@erp-framework/core";
+import type { I as IconSet } from "@/components/Icons";
 
 type IconName = keyof typeof IconSet;
 

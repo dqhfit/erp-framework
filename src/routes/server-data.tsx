@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, FormField, Input, Select, Textarea } from "@/components/ui";
-import { useUserObjects } from "@/stores/userObjects";
 import { createApiDataSource, createAuthClient, createConfigClient } from "@erp-framework/client";
 import type { EntityConfig, EntityRecord } from "@erp-framework/core";
 /* server-data.tsx — Demo nối frontend với backend THẬT.
@@ -9,6 +6,9 @@ import type { EntityConfig, EntityRecord } from "@erp-framework/core";
    MCP — tất cả lưu trong PostgreSQL, không localStorage. */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, FormField, Input, Select, Textarea } from "@/components/ui";
+import { useUserObjects } from "@/stores/userObjects";
 
 interface SessionUser {
   email: string;

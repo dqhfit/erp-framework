@@ -1,14 +1,14 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Switch, Tabs } from "@/components/ui";
-import { useAuth } from "@/stores/auth";
-import { type ToolListItem, createToolsClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { createToolsClient, type ToolListItem } from "@erp-framework/client";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    /settings/tools — Admin Tool registry.
    3 Tab: Installed | Discovery (scan) | Remote.
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Switch, Tabs } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
 
 const tools = createToolsClient("");
 

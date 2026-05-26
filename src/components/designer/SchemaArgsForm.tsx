@@ -1,5 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Chip, FormField, Input, Select, Switch } from "@/components/ui";
 /* ==========================================================
    SchemaArgsForm — Render form tự động từ JSON Schema
    của MCP tool.inputSchema. Hỗ trợ:
@@ -12,6 +10,8 @@ import { Button, Chip, FormField, Input, Select, Switch } from "@/components/ui"
    Ngoài ra có "Raw JSON" details để edit thẳng object.
    ========================================================== */
 import { useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input, Select, Switch } from "@/components/ui";
 
 // JSON Schema shape lỏng — chỉ định nghĩa các field thường gặp
 interface PropSchema {

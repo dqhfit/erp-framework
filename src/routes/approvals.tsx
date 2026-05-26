@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input } from "@/components/ui";
-import { useT } from "@/hooks/useT";
 import { createApprovalsClient } from "@erp-framework/client";
 /* ==========================================================
    approvals — Hộp phê duyệt (governance). Tạo yêu cầu phê duyệt,
@@ -8,6 +5,9 @@ import { createApprovalsClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 
 const approvals = createApprovalsClient("");
 
@@ -54,7 +54,7 @@ function ApprovalsRoute() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -94,7 +94,11 @@ function ApprovalsRoute() {
         </div>
         {r.detail && <div className="text-sm text-muted whitespace-pre-wrap">{r.detail}</div>}
         <div className="text-xs text-muted">
-          {t("approvals.approved_count", { approved: String(approved), required: String(r.requiredApprovals), decisions: String(r.decisions.length) })}
+          {t("approvals.approved_count", {
+            approved: String(approved),
+            required: String(r.requiredApprovals),
+            decisions: String(r.decisions.length),
+          })}
         </div>
         {r.status === "pending" && (
           <div className="flex items-center gap-2">
@@ -126,9 +130,7 @@ function ApprovalsRoute() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[820px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("approvals.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("approvals.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("approvals.subtitle")}</div>
 
         <Card className="mb-4 space-y-2">
           <div className="font-semibold">{t("approvals.create_title")}</div>
@@ -170,7 +172,9 @@ function ApprovalsRoute() {
         </Card>
 
         <Card className="mb-4 space-y-2">
-          <div className="font-semibold">{t("approvals.pending_title", { count: String(pending.length) })}</div>
+          <div className="font-semibold">
+            {t("approvals.pending_title", { count: String(pending.length) })}
+          </div>
           {pending.length === 0 && (
             <div className="text-sm text-muted">{t("approvals.pending_empty")}</div>
           )}
@@ -179,7 +183,9 @@ function ApprovalsRoute() {
 
         {done.length > 0 && (
           <Card className="space-y-2">
-            <div className="font-semibold">{t("approvals.done_title", { count: String(done.length) })}</div>
+            <div className="font-semibold">
+              {t("approvals.done_title", { count: String(done.length) })}
+            </div>
             {done.map(renderReq)}
           </Card>
         )}

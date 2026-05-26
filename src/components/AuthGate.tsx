@@ -1,13 +1,13 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
 /* ==========================================================
    AuthGate — cổng đăng nhập toàn app. Chưa đăng nhập → màn hình
    login/đăng ký; đã đăng nhập → render children. Backend RBAC
    yêu cầu phiên nên mọi trang đều nằm sau cổng này.
    ========================================================== */
 import { type ReactNode, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 
 function Splash({ text }: { text: string }) {
   return (
@@ -154,11 +154,7 @@ function PendingApprovalScreen() {
           <h2 className="text-lg font-semibold">{t("auth.pending_title")}</h2>
           <p className="text-sm text-muted mt-1">{t("auth.pending_desc")}</p>
         </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-center"
-          onClick={() => void logout()}
-        >
+        <Button variant="ghost" className="w-full justify-center" onClick={() => void logout()}>
           {t("sidebar.logout")}
         </Button>
       </Card>
@@ -181,11 +177,7 @@ function DisabledScreen() {
           <h2 className="text-lg font-semibold">{t("auth.disabled_title")}</h2>
           <p className="text-sm text-muted mt-1">{t("auth.disabled_desc")}</p>
         </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-center"
-          onClick={() => void logout()}
-        >
+        <Button variant="ghost" className="w-full justify-center" onClick={() => void logout()}>
           {t("sidebar.logout")}
         </Button>
       </Card>

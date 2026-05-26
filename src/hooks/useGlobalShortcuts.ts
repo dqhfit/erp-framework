@@ -1,5 +1,5 @@
-import { useUI } from "@/stores/ui";
 import { useEffect } from "react";
+import { useUI } from "@/stores/ui";
 
 export function useGlobalShortcuts() {
   const setCmdOpen = useUI((s) => s.setCmdOpen);

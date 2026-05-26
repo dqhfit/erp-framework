@@ -1,12 +1,12 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type FieldErrors, useForm } from "react-hook-form";
+import { z } from "zod";
 import { I } from "@/components/Icons";
 import { Button, FormField, Input, Select, Switch, Textarea } from "@/components/ui";
 import { useEnum } from "@/hooks/useEnum";
 import { pickLabel } from "@/lib/enum-label";
 import { useLocale } from "@/stores/locale";
 import type { EntityDef, FieldDef } from "@/types/entity";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { type FieldErrors, useForm } from "react-hook-form";
-import { z } from "zod";
 
 interface AutoFormProps {
   entity: EntityDef;

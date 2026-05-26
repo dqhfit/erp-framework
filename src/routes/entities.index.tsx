@@ -1,7 +1,7 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button, Card } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { useEntities } from "@/stores/entities";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/entities/")({
   component: function EntitiesIndex() {

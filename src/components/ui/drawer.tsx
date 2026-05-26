@@ -1,5 +1,5 @@
-import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { type ReactNode, useId } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { I } from "../Icons";
 import { Button } from "./button";
 

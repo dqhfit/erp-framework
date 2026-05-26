@@ -1,14 +1,14 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Switch, Textarea } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import { createProceduresClient } from "@erp-framework/client";
 /* ==========================================================
    /procedures — Danh sách native procedure.
    Native procedure = JS chạy server (isolated-vm) với db/entity
    bindings. Dùng thay stored proc MSSQL / MCP tool tính toán.
    ========================================================== */
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Switch, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const procs = createProceduresClient("");
 
@@ -44,7 +44,7 @@ function ProceduresList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);

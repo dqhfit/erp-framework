@@ -339,7 +339,7 @@ export interface EvalResult {
 const FN_NAMES = FORMULA_FUNCTIONS.map((f) => f.name);
 
 export function evaluate(expr: string, row: Record<string, unknown>): EvalResult {
-  if (!expr || !expr.trim()) return { ok: true, value: undefined };
+  if (!expr?.trim()) return { ok: true, value: undefined };
 
   // Resolve {field} → row.field — escape các ký tự đặc biệt trong key
   const code = expr.replace(/\{([a-zA-Z_$][\w$]*)\}/g, (_, k) => {

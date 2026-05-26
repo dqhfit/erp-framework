@@ -1,11 +1,8 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
-import { useAuth } from "@/stores/auth";
 import {
+  createFeedbackClient,
   type FeedbackCommentRow,
   type FeedbackDetail,
   type FeedbackStatus,
-  createFeedbackClient,
 } from "@erp-framework/client";
 /* ==========================================================
    /feedback/$id — Chi tiết 1 feedback: vote, AI summary/tags,
@@ -13,7 +10,10 @@ import {
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 
 const client = createFeedbackClient("");
 
@@ -151,7 +151,9 @@ function FeedbackDetailRoute() {
 
         {fb.aiSummary && (
           <Card className="mb-3 bg-accent/5 border-accent/20">
-            <div className="text-xs uppercase text-accent font-semibold mb-1">✨ {t("feedback.ai_summary_label")}</div>
+            <div className="text-xs uppercase text-accent font-semibold mb-1">
+              ✨ {t("feedback.ai_summary_label")}
+            </div>
             <div className="text-sm">{fb.aiSummary}</div>
             {fb.aiTags && fb.aiTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -166,13 +168,17 @@ function FeedbackDetailRoute() {
         )}
 
         <Card className="mb-3">
-          <div className="text-xs uppercase text-muted font-semibold mb-1">{t("feedback.issue_label")}</div>
+          <div className="text-xs uppercase text-muted font-semibold mb-1">
+            {t("feedback.issue_label")}
+          </div>
           <div className="whitespace-pre-wrap text-sm">{fb.body}</div>
         </Card>
 
         {fb.suggestion && (
           <Card className="mb-3">
-            <div className="text-xs uppercase text-muted font-semibold mb-1">{t("feedback.suggestion_label")}</div>
+            <div className="text-xs uppercase text-muted font-semibold mb-1">
+              {t("feedback.suggestion_label")}
+            </div>
             <div className="whitespace-pre-wrap text-sm">{fb.suggestion}</div>
           </Card>
         )}
@@ -220,9 +226,13 @@ function FeedbackDetailRoute() {
         )}
 
         <Card className="mb-3">
-          <div className="font-semibold mb-2">{t("feedback.comments_title", { count: String(comments.length) })}</div>
+          <div className="font-semibold mb-2">
+            {t("feedback.comments_title", { count: String(comments.length) })}
+          </div>
           <div className="space-y-2 mb-3">
-            {comments.length === 0 && <div className="text-sm text-muted">{t("feedback.comments_empty")}</div>}
+            {comments.length === 0 && (
+              <div className="text-sm text-muted">{t("feedback.comments_empty")}</div>
+            )}
             {comments.map((c) => (
               <div key={c.id} className="border-l-2 border-border pl-3 py-1">
                 <div className="text-xs text-muted">{new Date(c.createdAt).toLocaleString()}</div>

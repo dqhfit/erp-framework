@@ -19,7 +19,13 @@ interface Props {
   readOnly?: boolean;
 }
 
-export function LlmProfileCard({ profile: p, loggedInClaudePro, onChange, onDelete, readOnly = false }: Props) {
+export function LlmProfileCard({
+  profile: p,
+  loggedInClaudePro,
+  onChange,
+  onDelete,
+  readOnly = false,
+}: Props) {
   // useDynamicModels được gọi trong ModelCombobox — không cần ở đây nữa.
 
   return (

@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Switch } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import { createHeartbeatsClient } from "@erp-framework/client";
 /* ==========================================================
    HeartbeatPanel — Cấu hình "heartbeat" cho một agent: agent tự
@@ -9,6 +6,9 @@ import { createHeartbeatsClient } from "@erp-framework/client";
    (bật/tắt, chạy thử, xoá) + tóm tắt kết quả lần gần nhất.
    ========================================================== */
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const hbClient = createHeartbeatsClient("");
 
@@ -52,10 +52,10 @@ export function HeartbeatPanel({ agentId }: { agentId: string }) {
         /* chưa đăng nhập / agent chưa lưu */
       });
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load closure ổn định, gọi 1 lần ở mount
   useEffect(() => {
     load();
-  }, [agentId]);
+  }, []);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);

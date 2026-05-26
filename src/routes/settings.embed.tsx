@@ -1,9 +1,5 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useAuth } from "@/stores/auth";
-import { type EmbedScope, createEmbedClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { createEmbedClient, type EmbedScope } from "@erp-framework/client";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    settings.embed — Token nhúng builder vào sản phẩm khác.
    Tạo token + lấy đoạn mã iframe. Trang mở kèm ?embed=1 sẽ ẩn
@@ -11,6 +7,10 @@ import { roleCan, type Role } from "@erp-framework/core";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
 
 const embed = createEmbedClient("");
 
@@ -46,7 +46,7 @@ function EmbedSettings() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -91,8 +91,8 @@ function EmbedSettings() {
         <h1 className="text-xl font-semibold mb-1">Nhúng builder (Embed)</h1>
         <div className="text-sm text-muted mb-6">
           Tạo token để nhúng trang designer vào sản phẩm khác qua iframe. Thêm{" "}
-          <code className="bg-bg-soft px-1 rounded-sm">?embed=1</code> vào URL để ẩn thanh điều hướng —
-          chỉ hiện nội dung.
+          <code className="bg-bg-soft px-1 rounded-sm">?embed=1</code> vào URL để ẩn thanh điều
+          hướng — chỉ hiện nội dung.
         </div>
 
         <Card className="mb-4 space-y-2">
@@ -116,7 +116,12 @@ function EmbedSettings() {
                 </option>
               ))}
             </Select>
-            <Button variant="primary" icon={<I.Plus size={14} />} disabled={busy || !canEdit} onClick={create}>
+            <Button
+              variant="primary"
+              icon={<I.Plus size={14} />}
+              disabled={busy || !canEdit}
+              onClick={create}
+            >
               Tạo token
             </Button>
           </div>

@@ -4,10 +4,11 @@
    upsert vào DB theo khóa (pkField): trùng khóa thì cập nhật,
    chưa có thì thêm mới. Chạy phía client (thủ công).
    ========================================================== */
+
+import { createApiDataSource } from "@erp-framework/client";
 import type { McpBindings } from "@/components/designer/McpBindingsEditor";
 import { callMcpTool } from "@/hooks/useMcpClient";
 import { normalizeRows } from "@/lib/schema-infer";
-import { createApiDataSource } from "@erp-framework/client";
 
 export interface SyncResult {
   created: number;

@@ -1,7 +1,7 @@
-import type { McpConfig } from "@/core/mcp";
-import type { LLMProfile } from "@/types/llm";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { McpConfig } from "@/core/mcp";
+import type { LLMProfile } from "@/types/llm";
 
 interface SettingsState {
   mcp: McpConfig;

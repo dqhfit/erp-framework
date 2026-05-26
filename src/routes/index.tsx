@@ -1,3 +1,4 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { I } from "@/components/Icons";
 import { Button, Kbd, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
@@ -5,7 +6,6 @@ import type { IconName } from "@/lib/object-types";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { Link, createFileRoute } from "@tanstack/react-router";
 
 type Tint = "accent" | "accent-2" | "success" | "warning";
 

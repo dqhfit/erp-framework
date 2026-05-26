@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Chip } from "@/components/ui";
-import { useT } from "@/hooks/useT";
 import { createCompaniesClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
 /* ==========================================================
@@ -10,6 +7,9 @@ import { useNavigate } from "@tanstack/react-router";
    theo công ty mới.
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Chip } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 
 const companiesClient = createCompaniesClient("");
 
@@ -64,6 +64,7 @@ export function CompanySwitcher() {
   return (
     <div ref={ref} className="relative shrink-0">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm max-w-[180px]"
         title={t("company.active_title")}
@@ -84,6 +85,7 @@ export function CompanySwitcher() {
           {items.map((c) => (
             <button
               key={c.id}
+              type="button"
               disabled={busy}
               onClick={() => (c.isActive ? setOpen(false) : void doSwitch(c.id))}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover/50 text-left disabled:opacity-50"
@@ -96,6 +98,7 @@ export function CompanySwitcher() {
           ))}
           <div className="border-t border-border mt-1 pt-1">
             <button
+              type="button"
               onClick={() => {
                 setOpen(false);
                 void navigate({ to: "/settings/companies" });

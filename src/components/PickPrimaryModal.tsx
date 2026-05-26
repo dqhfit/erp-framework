@@ -1,9 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Chip } from "@/components/ui";
-import { Modal } from "@/components/ui/modal";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 /* ==========================================================
    PickPrimaryModal — Chọn "Agent chính" của user hiện tại.
    ────────────────────────────────────────────────────────────
@@ -16,6 +10,12 @@ import { useUserObjects } from "@/stores/userObjects";
    - "Bỏ chọn" hiển thị khi user đang có primary — xoá liên kết.
    ========================================================== */
 import { useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Chip } from "@/components/ui";
+import { Modal } from "@/components/ui/modal";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 
 interface Props {
   open: boolean;

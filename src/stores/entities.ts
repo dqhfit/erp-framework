@@ -1,7 +1,7 @@
-import { uid } from "@/lib/utils";
-import type { EntityDef } from "@/types/entity";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { uid } from "@/lib/utils";
+import type { EntityDef } from "@/types/entity";
 
 interface EntitiesState {
   entities: EntityDef[];

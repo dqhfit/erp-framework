@@ -1,9 +1,9 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card } from "@/components/ui";
 import { handleCallback } from "@/core/llm/oauth";
 import { useT } from "@/hooks/useT";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 function OAuthCallback() {
   const t = useT();

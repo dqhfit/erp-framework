@@ -1,11 +1,8 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Textarea } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import {
+  createIotClient,
   type IotCommandRow,
   type IotDevice,
   type IotTelemetryRow,
-  createIotClient,
 } from "@erp-framework/client";
 /* ==========================================================
    iot.$id — Chi tiết thiết bị: telemetry gần đây + hàng đợi lệnh +
@@ -13,6 +10,9 @@ import {
    ========================================================== */
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const iot = createIotClient("");
 

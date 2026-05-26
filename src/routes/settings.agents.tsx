@@ -1,9 +1,3 @@
-import { I } from "@/components/Icons";
-import { PickPrimaryModal } from "@/components/PickPrimaryModal";
-import { Button, Card, Chip, EmptyState } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 /* ==========================================================
    /settings/agents — "Agent của tôi" tập trung tại đây.
    ────────────────────────────────────────────────────────────
@@ -13,6 +7,12 @@ import { useUserObjects } from "@/stores/userObjects";
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { I } from "@/components/Icons";
+import { PickPrimaryModal } from "@/components/PickPrimaryModal";
+import { Button, Card, Chip, EmptyState } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 
 function SettingsAgents() {
   const t = useT();
@@ -35,9 +35,7 @@ function SettingsAgents() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8 space-y-4">
         <h1 className="text-xl font-semibold mb-1">{t("settings.agents.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.agents.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.agents.subtitle")}</div>
 
         {/* === Card Agent chính === */}
         <Card>
@@ -53,7 +51,9 @@ function SettingsAgents() {
                   <I.Bot size={18} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-muted">{t("settings.agents.primary_label")}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted">
+                    {t("settings.agents.primary_label")}
+                  </div>
                   <div className="font-semibold truncate">{primaryAgent.name}</div>
                   <div className="text-xs text-muted font-mono truncate">{primaryAgent.model}</div>
                 </div>
@@ -90,10 +90,10 @@ function SettingsAgents() {
                   <I.Bot size={18} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-muted">{t("settings.agents.primary_label")}</div>
-                  <div className="text-sm text-muted">
-                    {t("settings.agents.primary_unset")}
+                  <div className="text-[10px] uppercase tracking-wider text-muted">
+                    {t("settings.agents.primary_label")}
                   </div>
+                  <div className="text-sm text-muted">{t("settings.agents.primary_unset")}</div>
                 </div>
                 <Button
                   variant="primary"
@@ -157,9 +157,7 @@ function SettingsAgents() {
           )}
         </Card>
 
-        <div className="text-[11px] text-muted">
-          {t("settings.agents.role_note")}
-        </div>
+        <div className="text-[11px] text-muted">{t("settings.agents.role_note")}</div>
 
         <PickPrimaryModal open={pickOpen} onClose={() => setPickOpen(false)} />
       </div>

@@ -1,10 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Select } from "@/components/ui";
-import { designWithAi, listLlmProfileNames } from "@/core/ai-design";
-import { useT } from "@/hooks/useT";
-import type { DesignByType, DesignContext, DesignObjectType } from "@/lib/ai-design-prompts";
-import { cn } from "@/lib/utils";
-import { useSettings } from "@/stores/settings";
 /* ==========================================================
    AiAssistDrawer — Drawer phải 400px gọi LLM đề xuất config
    cho 4 loại designer (entity/page/workflow/agent).
@@ -14,6 +7,13 @@ import { useSettings } from "@/stores/settings";
    - Hiển thị token usage
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Select } from "@/components/ui";
+import { designWithAi, listLlmProfileNames } from "@/core/ai-design";
+import { useT } from "@/hooks/useT";
+import type { DesignByType, DesignContext, DesignObjectType } from "@/lib/ai-design-prompts";
+import { cn } from "@/lib/utils";
+import { useSettings } from "@/stores/settings";
 
 interface Props<T extends DesignObjectType> {
   open: boolean;
@@ -73,7 +73,7 @@ export function AiAssistDrawer<T extends DesignObjectType>({
   // Auto scroll cuối
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 1e9, behavior: "smooth" });
-  }, [messages.length, busy]);
+  }, []);
 
   const send = async () => {
     const text = prompt.trim();
@@ -131,8 +131,11 @@ export function AiAssistDrawer<T extends DesignObjectType>({
 
   return (
     <>
-      {/* Backdrop */}
-      <div
+      {/* Backdrop — click-to-close. Dùng button thay div để có a11y semantics
+          (keyboard Enter/Space close + tab-stop). Style như div fullscreen. */}
+      <button
+        type="button"
+        aria-label="Đóng drawer"
         onClick={onClose}
         className={cn(
           "fixed inset-0 z-40 bg-black/30 transition-opacity",
@@ -198,7 +201,8 @@ export function AiAssistDrawer<T extends DesignObjectType>({
                 {Object.entries(
                   profiles.reduce<Record<string, string[]>>((acc, p) => {
                     const ad = llmProfiles[p]?.adapter ?? "khác";
-                    (acc[ad] = acc[ad] ?? []).push(p);
+                    if (!acc[ad]) acc[ad] = [];
+                    acc[ad].push(p);
                     return acc;
                   }, {}),
                 ).map(([ad, names]) => (

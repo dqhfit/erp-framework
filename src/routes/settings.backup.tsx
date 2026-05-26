@@ -1,9 +1,5 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input, Textarea } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
 import { type BackupConfigView, type BackupRun, createBackupClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    settings.backup — Cấu hình sao lưu Google Drive + chạy thủ công.
    Khác CLI ở chỗ: chạy server-side, mỗi công ty cấu hình riêng,
@@ -11,6 +7,10 @@ import { roleCan, type Role } from "@erp-framework/core";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Textarea } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 
 const bk = createBackupClient("");
 
@@ -125,9 +125,7 @@ function BackupPage() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.backup.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.backup.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.backup.subtitle")}</div>
 
         {/* === Cấu hình === */}
         <Card className="mb-4 space-y-3">
@@ -138,8 +136,12 @@ function BackupPage() {
             <summary className="cursor-pointer select-none px-3 py-2 font-medium flex items-center gap-2 hover:bg-surface-2/70">
               <I.HelpCircle size={14} />
               <span>{t("settings.backup.guide_title")}</span>
-              <span className="ml-auto text-xs text-muted group-open:hidden">{t("settings.backup.guide_open")}</span>
-              <span className="ml-auto text-xs text-muted hidden group-open:inline">{t("settings.backup.guide_close")}</span>
+              <span className="ml-auto text-xs text-muted group-open:hidden">
+                {t("settings.backup.guide_open")}
+              </span>
+              <span className="ml-auto text-xs text-muted hidden group-open:inline">
+                {t("settings.backup.guide_close")}
+              </span>
             </summary>
             <div className="px-3 pb-3 pt-1 space-y-3 text-[13px] leading-relaxed">
               <ol className="list-decimal pl-5 space-y-1.5">
@@ -197,9 +199,7 @@ function BackupPage() {
           <FormField
             label={t("settings.backup.key_label")}
             hint={
-              cfg?.hasKey
-                ? t("settings.backup.key_hint_has")
-                : t("settings.backup.key_hint_no")
+              cfg?.hasKey ? t("settings.backup.key_hint_has") : t("settings.backup.key_hint_no")
             }
           >
             <Textarea
@@ -224,10 +224,7 @@ function BackupPage() {
             />
           </FormField>
 
-          <FormField
-            label={t("settings.backup.cron_label")}
-            hint={t("settings.backup.cron_hint")}
-          >
+          <FormField label={t("settings.backup.cron_label")} hint={t("settings.backup.cron_hint")}>
             <div className="space-y-2">
               <div className="flex flex-wrap gap-1.5">
                 {CRON_PRESETS.map((p) => (
@@ -259,7 +256,12 @@ function BackupPage() {
           </FormField>
 
           <div className="flex gap-2 pt-1">
-            <Button variant="default" icon={<I.Power size={13} />} disabled={busy || !canEdit} onClick={test}>
+            <Button
+              variant="default"
+              icon={<I.Power size={13} />}
+              disabled={busy || !canEdit}
+              onClick={test}
+            >
               {t("settings.backup.test_btn")}
             </Button>
             <Button
@@ -286,7 +288,9 @@ function BackupPage() {
         <Card className="space-y-2">
           <div className="font-semibold">{t("settings.backup.history_title")}</div>
           {runs.length === 0 && (
-            <div className="text-sm text-muted py-3 text-center">{t("settings.backup.history_empty")}</div>
+            <div className="text-sm text-muted py-3 text-center">
+              {t("settings.backup.history_empty")}
+            </div>
           )}
           {runs.map((r) => (
             <div key={r.id} className="rounded-md border border-border p-3 text-sm">

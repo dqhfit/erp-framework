@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import {
   Area,
   AreaChart,
@@ -16,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { cn } from "@/lib/utils";
 
 export type ChartKind = "bar" | "line" | "area" | "pie" | "doughnut";
 

@@ -1,8 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Chip, FormField, Input } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { FORMULA_FUNCTIONS, type FormulaCategory, type FormulaFn, evaluate } from "@/lib/formula";
-import { cn } from "@/lib/utils";
 /* ==========================================================
    FormulaEditor — Inspector cho field type="formula":
    - Multi-line textarea với syntax hint
@@ -11,6 +6,11 @@ import { cn } from "@/lib/utils";
    - Live preview với sample row
    ========================================================== */
 import { useMemo, useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { evaluate, FORMULA_FUNCTIONS, type FormulaCategory, type FormulaFn } from "@/lib/formula";
+import { cn } from "@/lib/utils";
 
 interface FormulaEditorProps {
   /** Expression hiện tại */
@@ -136,7 +136,9 @@ export function FormulaEditor({
       {/* Field picker */}
       {availableFields.length > 0 && (
         <div>
-          <div className="text-[11px] uppercase text-muted mb-1 tracking-wider">{t("field.insert_field")}</div>
+          <div className="text-[11px] uppercase text-muted mb-1 tracking-wider">
+            {t("field.insert_field")}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {availableFields.map((f) => (
               <button
@@ -222,7 +224,11 @@ function CatPill({
   active,
   onClick,
   children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"

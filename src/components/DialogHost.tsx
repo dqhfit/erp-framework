@@ -1,11 +1,11 @@
-import { Button, Modal } from "@/components/ui";
-import { useDialog } from "@/stores/dialog";
 /* ==========================================================
    DialogHost — Render Modal cho alert/confirm/prompt do
    dialog.alert/confirm/prompt() dispatch qua useDialog store.
    Mount 1 lần ở __root.tsx.
    ========================================================== */
 import { useEffect, useRef, useState } from "react";
+import { Button, Modal } from "@/components/ui";
+import { useDialog } from "@/stores/dialog";
 
 export function DialogHost() {
   const current = useDialog((s) => s.current);

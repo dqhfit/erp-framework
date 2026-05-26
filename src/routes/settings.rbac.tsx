@@ -1,3 +1,4 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { I } from "@/components/Icons";
 import { Card, Chip, Switch } from "@/components/ui";
 import { useT } from "@/hooks/useT";
@@ -10,7 +11,6 @@ import {
   roleCan,
 } from "@/lib/permissions";
 import { useRbac } from "@/stores/rbac";
-import { createFileRoute } from "@tanstack/react-router";
 
 function RbacSettings() {
   const t = useT();
@@ -42,9 +42,7 @@ function RbacSettings() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[900px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.rbac.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.rbac.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.rbac.subtitle")}</div>
 
         {/* === Enforcement toggle === */}
         <Card className="mb-4">
@@ -97,13 +95,16 @@ function RbacSettings() {
         {/* === Permission matrix === */}
         <Card>
           <div className="font-semibold mb-3">
-            {t("settings.rbac.matrix_title")} <span className="text-accent">{ROLE_LABEL[role]}</span>
+            {t("settings.rbac.matrix_title")}{" "}
+            <span className="text-accent">{ROLE_LABEL[role]}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="text-muted text-xs uppercase tracking-wide">
-                  <th className="text-left py-2 pr-3 font-semibold">{t("settings.rbac.col_object")}</th>
+                  <th className="text-left py-2 pr-3 font-semibold">
+                    {t("settings.rbac.col_object")}
+                  </th>
                   {ALL_ACTIONS.map((a) => (
                     <th key={a} className="py-2 px-2 font-semibold text-center">
                       {ACTION_LABEL[a]}
@@ -132,9 +133,7 @@ function RbacSettings() {
               </tbody>
             </table>
           </div>
-          <div className="text-xs text-muted mt-3">
-            {t("settings.rbac.note")}
-          </div>
+          <div className="text-xs text-muted mt-3">{t("settings.rbac.note")}</div>
         </Card>
       </div>
     </div>

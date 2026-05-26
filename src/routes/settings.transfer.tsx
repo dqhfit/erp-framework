@@ -1,11 +1,5 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 import { createObjectsClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    settings.transfer — Xuất/nhập trọn cấu hình low-code:
    entity + page + workflow + agent thành một gói JSON. Dùng để
@@ -13,6 +7,12 @@ import { roleCan, type Role } from "@erp-framework/core";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 
 const objects = createObjectsClient("");
 
@@ -69,7 +69,12 @@ function TransferSettings() {
       });
       await useUserObjects.getState().hydrate();
       setMsg(
-        t("settings.transfer.import_ok", { entities: String(counts.entities), pages: String(counts.pages), workflows: String(counts.workflows), agents: String(counts.agents) }),
+        t("settings.transfer.import_ok", {
+          entities: String(counts.entities),
+          pages: String(counts.pages),
+          workflows: String(counts.workflows),
+          agents: String(counts.agents),
+        }),
       );
     } catch (e) {
       setErr(`${t("settings.transfer.import_error")} ${(e as Error).message}`);
@@ -83,15 +88,11 @@ function TransferSettings() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[720px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.transfer.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.transfer.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.transfer.subtitle")}</div>
 
         <Card className="space-y-3 mb-4">
           <div className="font-semibold">{t("settings.transfer.export_title")}</div>
-          <div className="text-xs text-muted">
-            {t("settings.transfer.export_desc")}
-          </div>
+          <div className="text-xs text-muted">{t("settings.transfer.export_desc")}</div>
           <Button variant="primary" icon={<I.Save size={14} />} disabled={busy} onClick={doExport}>
             {t("settings.transfer.export_btn")}
           </Button>
@@ -99,9 +100,7 @@ function TransferSettings() {
 
         <Card className="space-y-3">
           <div className="font-semibold">{t("settings.transfer.import_title")}</div>
-          <div className="text-xs text-muted">
-            {t("settings.transfer.import_desc")}
-          </div>
+          <div className="text-xs text-muted">{t("settings.transfer.import_desc")}</div>
           <input
             ref={fileRef}
             type="file"

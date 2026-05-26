@@ -1,8 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { dialog } from "@/lib/dialog";
-import { formatUsd } from "@/lib/pricing";
 import { createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    activity — Dashboard Nhật ký & Chi phí. Đọc bảng activity_log
@@ -11,6 +6,11 @@ import { createObjectsClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
+import { formatUsd } from "@/lib/pricing";
 
 const objects = createObjectsClient("");
 
@@ -144,9 +144,7 @@ function ActivityDashboard() {
             </Button>
           )}
         </div>
-        <div className="text-sm text-muted mb-5">
-          {t("activity.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-5">{t("activity.subtitle")}</div>
 
         <div className="flex gap-3 mb-5">
           <Stat
@@ -163,7 +161,9 @@ function ActivityDashboard() {
         <Card className="mb-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="text-xs text-muted uppercase tracking-wide">{t("activity.budget_label")}</div>
+              <div className="text-xs text-muted uppercase tracking-wide">
+                {t("activity.budget_label")}
+              </div>
               <div className="text-sm mt-1">
                 {t("activity.budget_used")} <b>{formatUsd(budget.usedUsd)}</b>
                 {budget.monthlyUsd > 0 ? (

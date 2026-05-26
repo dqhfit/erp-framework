@@ -31,7 +31,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "biome check --no-errors-on-unmatched --files-ignore-unknown=true"
+      "biome format --write --no-errors-on-unmatched --files-ignore-unknown=true"
     ]
   },
   "dependencies": {

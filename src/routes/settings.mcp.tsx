@@ -1,13 +1,13 @@
+import { createConfigClient } from "@erp-framework/client";
+import { type Role, roleCan } from "@erp-framework/core";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
 import { McpClient, type McpConfig } from "@/core/mcp";
 import { useT } from "@/hooks/useT";
-import { useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
-import { createConfigClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useSettings } from "@/stores/settings";
 
 function McpSettings() {
   const t = useT();

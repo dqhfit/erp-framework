@@ -1,4 +1,3 @@
-import { type Action, type ObjectType, type Role, roleCan } from "@/lib/permissions";
 /* ==========================================================
    rbac store — Giữ role của người dùng hiện tại + tiện ích
    kiểm tra quyền. Persist localStorage. Đây là RBAC "client
@@ -7,6 +6,7 @@ import { type Action, type ObjectType, type Role, roleCan } from "@/lib/permissi
    ========================================================== */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { type Action, type ObjectType, type Role, roleCan } from "@/lib/permissions";
 
 interface RbacState {
   /** Role của phiên hiện tại. Mặc định admin (single-user dev). */

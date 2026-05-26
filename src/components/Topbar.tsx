@@ -1,15 +1,15 @@
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
+import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { I } from "@/components/Icons";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { PickPrimaryModal } from "@/components/PickPrimaryModal";
-import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { Button, Chip, Kbd } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
 
 export function Topbar() {
   const t = useT();
@@ -54,17 +54,19 @@ export function Topbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [userMenuOpen]);
 
-  const initials = user?.name
-    ?.split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() ?? "?";
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() ?? "?";
 
   return (
     <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
       {/* Brand */}
       <button
+        type="button"
         onClick={() => navigate({ to: "/" })}
         className="flex items-center gap-2 px-1.5 h-8 rounded-md hover:bg-hover/50"
       >
@@ -92,6 +94,7 @@ export function Topbar() {
 
       {/* Search / Command */}
       <button
+        type="button"
         onClick={() => setCmdOpen(true)}
         className="flex items-center gap-2 h-8 px-2.5 rounded-md bg-bg-soft border border-border text-muted hover:text-text hover:border-hover transition-colors min-w-0 flex-1 max-w-[420px] mx-2 whitespace-nowrap overflow-hidden"
       >
@@ -108,12 +111,20 @@ export function Topbar() {
       {/* Mode toggle */}
       {isDesignerRoute && (
         <div className="mode-toggle shrink-0">
-          <button className={mode === "designer" ? "on" : ""} onClick={() => setMode("designer")}>
+          <button
+            type="button"
+            className={mode === "designer" ? "on" : ""}
+            onClick={() => setMode("designer")}
+          >
             <span className="inline-flex items-center gap-1.5">
               <I.Edit size={11} /> {t("topbar.edit")}
             </span>
           </button>
-          <button className={mode === "consumer" ? "on" : ""} onClick={() => setMode("consumer")}>
+          <button
+            type="button"
+            className={mode === "consumer" ? "on" : ""}
+            onClick={() => setMode("consumer")}
+          >
             <span className="inline-flex items-center gap-1.5">
               <I.Eye size={11} /> {t("topbar.preview")}
             </span>
@@ -209,7 +220,9 @@ export function Topbar() {
           type="button"
           onClick={() => setUserMenuOpen((o) => !o)}
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent hover:ring-accent/40 transition-all"
-          style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))" }}
+          style={{
+            background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+          }}
           title={user?.name ?? ""}
         >
           {initials}
@@ -223,8 +236,7 @@ export function Topbar() {
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
                   style={{
-                    background:
-                      "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
+                    background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
                   }}
                 >
                   {initials}

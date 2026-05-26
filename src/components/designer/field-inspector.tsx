@@ -3,18 +3,12 @@
    3 tab inline: Data (props field + RBAC + formula), Style, Events.
    Tách khỏi EntityDesigner.tsx (P2.7 refactor).
    ========================================================== */
-import { I } from "@/components/Icons";
+
 import { EnumPicker } from "@/components/designer/EnumPicker";
-import { sampleValueFor } from "@/components/designer/field-row";
 import { FormulaEditor } from "@/components/designer/FormulaEditor";
-import {
-  FormField,
-  Input,
-  Select,
-  Switch,
-  Tabs,
-  Textarea,
-} from "@/components/ui";
+import { sampleValueFor } from "@/components/designer/field-row";
+import { I } from "@/components/Icons";
+import { FormField, Input, Select, Switch, Tabs, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
@@ -137,10 +131,7 @@ export function FieldInspector({
             )}
 
             {(field.type === "enum" || field.type === "multi-enum") && (
-              <FormField
-                label={t("field.enum")}
-                hint={t("field.enum_hint")}
-              >
+              <FormField label={t("field.enum")} hint={t("field.enum_hint")}>
                 <EnumPicker value={field.enumId} onChange={(id) => onUpdate({ enumId: id })} />
               </FormField>
             )}
@@ -160,10 +151,7 @@ export function FieldInspector({
                     ))}
                   </Select>
                 </FormField>
-                <FormField
-                  label={t("field.on_delete")}
-                  hint={t("field.on_delete_hint")}
-                >
+                <FormField label={t("field.on_delete")} hint={t("field.on_delete_hint")}>
                   <Select
                     value={(field as { onDelete?: string }).onDelete ?? "restrict"}
                     onChange={(e) => onUpdate({ onDelete: e.target.value } as Partial<EntityField>)}
@@ -224,10 +212,7 @@ export function FieldInspector({
                 </label>
               </div>
             </FormField>
-            <FormField
-              label={t("field.read_rbac")}
-              hint={t("field.read_rbac_hint")}
-            >
+            <FormField label={t("field.read_rbac")} hint={t("field.read_rbac_hint")}>
               <div className="flex gap-3 text-sm">
                 {(["admin", "editor", "viewer"] as const).map((r) => {
                   const cur = field.readableBy ?? [];

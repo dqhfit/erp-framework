@@ -1,6 +1,4 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Textarea } from "@/components/ui";
-import { type ToolActionDef, type ToolListItem, createToolsClient } from "@erp-framework/client";
+import { createToolsClient, type ToolActionDef, type ToolListItem } from "@erp-framework/client";
 /* ==========================================================
    /tools/$slug — Runner kind-aware. Dispatch:
    - web-app  → iframe + spawn lifecycle
@@ -10,6 +8,8 @@ import { type ToolActionDef, type ToolListItem, createToolsClient } from "@erp-f
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Textarea } from "@/components/ui";
 
 const tools = createToolsClient("");
 
@@ -18,7 +18,7 @@ function Runner() {
   const nav = useNavigate();
   const [tool, setTool] = useState<ToolListItem | null>(null);
   const [err, setErr] = useState("");
-  const [reload, setReload] = useState(0);
+  const [_reload, setReload] = useState(0);
 
   useEffect(() => {
     tools
@@ -29,7 +29,7 @@ function Runner() {
         else setTool(found);
       })
       .catch((e) => setErr((e as Error).message));
-  }, [slug, reload]);
+  }, [slug]);
 
   if (err)
     return (

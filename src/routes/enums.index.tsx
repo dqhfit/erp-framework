@@ -1,14 +1,14 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Switch, Textarea } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import { createEnumsClient } from "@erp-framework/client";
 /* ==========================================================
    /enums — Danh sách enum (option set) tái sử dụng đa ngôn ngữ.
    Field type "enum"/"multi-enum" tham chiếu qua id để chia chung
    danh sách giá trị giữa nhiều entity.
    ========================================================== */
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Switch, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const ec = createEnumsClient("");
 
@@ -44,7 +44,7 @@ function EnumsList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);

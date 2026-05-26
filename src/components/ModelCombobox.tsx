@@ -1,7 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Select } from "@/components/ui";
-import { useDynamicModels } from "@/hooks/useDynamicModels";
-import { useSettings } from "@/stores/settings";
 import { inferAdapterFromModel } from "@erp-framework/core";
 /* ==========================================================
    ModelCombobox — 1 combobox xổ xuống chọn model LLM, items
@@ -15,6 +11,10 @@ import { inferAdapterFromModel } from "@erp-framework/core";
    và LlmProfileCard.tsx.
    ========================================================== */
 import { useMemo } from "react";
+import { I } from "@/components/Icons";
+import { Button, Select } from "@/components/ui";
+import { useDynamicModels } from "@/hooks/useDynamicModels";
+import { useSettings } from "@/stores/settings";
 
 /* 6 adapter — gọi useDynamicModels cho từng cái để optgroup nào cũng
    có discovery list. claude/claude-pro/claude-cli cùng họ Claude
@@ -90,7 +90,8 @@ export function ModelCombobox({
     const push = (ad: string, model: string, from: string) => {
       if (!model) return;
       if (lockedAdapter && ad !== lockedAdapter) return;
-      const list = (out[ad] = out[ad] ?? []);
+      if (!out[ad]) out[ad] = [];
+      const list = out[ad];
       if (!list.find((x) => x.model === model)) list.push({ model, from });
     };
     // 1. Model từ profile của user (mỗi profile 1 model).
@@ -110,18 +111,8 @@ export function ModelCombobox({
       }
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    llmProfiles,
-    m.claude.models,
-    m["claude-pro"].models,
-    m["claude-cli"].models,
-    m.openai.models,
-    m.gemini.models,
-    m.ollama.models,
-    lockedAdapter,
-    excludeModels,
-  ]);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: KNOWN_ADAPTERS module-const
+  }, [llmProfiles, lockedAdapter, excludeModels, discoveryByAdapter]);
 
   // Model đang dùng không có trong groups → hiển thị "custom" để giữ
   // tương thích với agent.config.model lưu tay từ trước.

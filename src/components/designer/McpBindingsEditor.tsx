@@ -1,7 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { cn } from "@/lib/utils";
 /* ==========================================================
    McpBindingsEditor — Editor cho mapping arg của 5 op MCP.
    - Mỗi op (list/get/create/update/delete) có:
@@ -10,6 +6,10 @@ import { cn } from "@/lib/utils";
    - UI: collapsible card cho từng op, table args, picker.
    ========================================================== */
 import { useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { cn } from "@/lib/utils";
 
 export type McpOp = "list" | "get" | "create" | "update" | "delete";
 export type ArgKind = "literal" | "field" | "formula";
@@ -151,7 +151,9 @@ export function McpBindingsEditor({
                 {/* Args table */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="text-[11px] uppercase text-muted tracking-wider">{t("designer.mcp_params")}</div>
+                    <div className="text-[11px] uppercase text-muted tracking-wider">
+                      {t("designer.mcp_params")}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"

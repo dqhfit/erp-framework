@@ -3,13 +3,14 @@
    Drag-and-drop reorder + select/duplicate/delete inline.
    Tách khỏi EntityDesigner.tsx (P2.7 refactor) để giảm monolith.
    ========================================================== */
+
+import { useState } from "react";
 import { I } from "@/components/Icons";
 import { Chip } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 export interface FieldRowProps {
   field: EntityField;

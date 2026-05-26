@@ -39,7 +39,7 @@ export class ClaudeCliAdapter extends LLMAdapterBase {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-    } catch (e) {
+    } catch (_e) {
       throw new Error(
         `Không kết nối được Claude CLI bridge tại ${base}. Chạy 'node scripts/claude-bridge.mjs' trước.`,
       );

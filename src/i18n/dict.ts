@@ -308,7 +308,8 @@ const VI: Dict = {
   "designer.node_type": "Loại node",
   "designer.mcp_tool": "MCP Tool",
   "designer.proc_bindings": "Procedure bindings (nâng cao)",
-  "designer.proc_bindings_desc": "Override mỗi op bằng tên native procedure ở /procedures. Để trống = dùng path mặc định (native record hoặc MCP).",
+  "designer.proc_bindings_desc":
+    "Override mỗi op bằng tên native procedure ở /procedures. Để trống = dùng path mặc định (native record hoặc MCP).",
   "designer.proc_placeholder": "procedure_name (để trống = bỏ qua)",
   "designer.comp_type": "Loại",
   "designer.comp_height": "Chiều cao",
@@ -355,7 +356,8 @@ const VI: Dict = {
   "field.enum_hint": "Chọn enum tái sử dụng từ /enums. Nhãn vi/en lấy theo locale.",
   "field.ref_entity": "Entity tham chiếu",
   "field.on_delete": "Khi record đích bị xoá",
-  "field.on_delete_hint": "restrict: chặn xoá (mặc định) · setnull: xoá ref · cascade: soft-delete chuỗi",
+  "field.on_delete_hint":
+    "restrict: chặn xoá (mặc định) · setnull: xoá ref · cascade: soft-delete chuỗi",
   "field.restrict": "Restrict (chặn)",
   "field.setnull": "Set null",
   "field.cascade": "Cascade (xoá chuỗi)",
@@ -771,7 +773,8 @@ const EN: Dict = {
   "field.enum_hint": "Select a reusable enum from /enums. Labels use the current locale.",
   "field.ref_entity": "Reference entity",
   "field.on_delete": "When target record is deleted",
-  "field.on_delete_hint": "restrict: block delete (default) · setnull: clear ref · cascade: soft-delete chain",
+  "field.on_delete_hint":
+    "restrict: block delete (default) · setnull: clear ref · cascade: soft-delete chain",
   "field.restrict": "Restrict (block delete)",
   "field.setnull": "Set null",
   "field.cascade": "Cascade (delete chain)",
@@ -806,7 +809,8 @@ const EN: Dict = {
   "designer.node_type": "Node type",
   "designer.mcp_tool": "MCP Tool",
   "designer.proc_bindings": "Procedure bindings (advanced)",
-  "designer.proc_bindings_desc": "Override each op with a native procedure name at /procedures. Leave blank to use the default path (native record or MCP).",
+  "designer.proc_bindings_desc":
+    "Override each op with a native procedure name at /procedures. Leave blank to use the default path (native record or MCP).",
   "designer.proc_placeholder": "procedure_name (blank = skip)",
   "designer.comp_type": "Type",
   "designer.comp_height": "Height",
@@ -828,8 +832,24 @@ const EN: Dict = {
 /* DICT gộp map lõi + các map mở rộng theo nhóm (dict-*.ts).
    Mỗi nhóm i18n bổ sung thêm 1 import + 1 spread ở đây. */
 export const DICT: Record<Lang, Dict> = {
-  vi: { ...VI, ...chromeVi, ...homeVi, ...activityVi, ...approvalsVi, ...feedbackVi, ...settingsVi },
-  en: { ...EN, ...chromeEn, ...homeEn, ...activityEn, ...approvalsEn, ...feedbackEn, ...settingsEn },
+  vi: {
+    ...VI,
+    ...chromeVi,
+    ...homeVi,
+    ...activityVi,
+    ...approvalsVi,
+    ...feedbackVi,
+    ...settingsVi,
+  },
+  en: {
+    ...EN,
+    ...chromeEn,
+    ...homeEn,
+    ...activityEn,
+    ...approvalsEn,
+    ...feedbackEn,
+    ...settingsEn,
+  },
 };
 
 /** Lấy chuỗi dịch, support {var} substitution. */

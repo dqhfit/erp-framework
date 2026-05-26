@@ -1,11 +1,11 @@
-import { I } from "@/components/Icons";
+import { useEffect, useState } from "react";
 import { SchemaArgsForm } from "@/components/designer/SchemaArgsForm";
+import { I } from "@/components/Icons";
 import { Button, Chip, FormField, Modal, Select, Tabs } from "@/components/ui";
 import { callMcpTool, useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
 import { type InferredField, inferSchema, normalizeRows, toFieldDefs } from "@/lib/schema-infer";
 import type { FieldDef } from "@/types/entity";
-import { useEffect, useState } from "react";
 
 /** Định dạng một ô dữ liệu để hiển thị trong bảng. */
 function formatCell(v: unknown): string {
@@ -81,7 +81,7 @@ export function McpImportModal({ open, onClose, onApply }: Props) {
     }
     setArgsObj(defaults);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool]);
+  }, [tool, tools.find]);
 
   const fetchSample = async () => {
     if (!tool) return;

@@ -1,9 +1,5 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Modal, Select, Switch } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useAuth } from "@/stores/auth";
-import { createCompaniesClient, createObjectsClient } from "@erp-framework/client";
 import type { AgentMemberRole, AgentMemberRow } from "@erp-framework/client";
+import { createCompaniesClient, createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    AgentMembersPane — Tab "Thành viên" trong /agents/$id.
    ────────────────────────────────────────────────────────────
@@ -14,6 +10,10 @@ import type { AgentMemberRole, AgentMemberRow } from "@erp-framework/client";
    là tag "my agents" cho Sidebar.
    ========================================================== */
 import { useEffect, useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Modal, Select, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
 
 interface Props {
   agentId: string;
@@ -61,7 +61,7 @@ export function AgentMembersPane({ agentId, isPrivate, onSetPrivate }: Props) {
   };
   useEffect(() => {
     void load(); /* eslint-disable-next-line */
-  }, [agentId]);
+  }, [load]);
 
   const changeRole = async (userId: string, role: AgentMemberRole) => {
     try {
@@ -248,7 +248,7 @@ function AddMemberModal({ open, onClose, existingMemberIds, onAdd, loadUsers }: 
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, existingMemberIds.has, loadUsers]);
 
   return (
     <Modal open={open} onClose={onClose} title="Thêm thành viên cho agent" width={460}>

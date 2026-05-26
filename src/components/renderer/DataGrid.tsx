@@ -1,17 +1,17 @@
-import { I } from "@/components/Icons";
-import { Chip, Input } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import {
   type ColumnDef,
   type ColumnFiltersState,
-  type SortingState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
+import { I } from "@/components/Icons";
+import { Chip, Input } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];

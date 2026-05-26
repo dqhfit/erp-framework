@@ -9,7 +9,13 @@ interface SwitchProps {
 }
 export function Switch({ checked, onChange, label, className, disabled = false }: SwitchProps) {
   return (
-    <label className={cn("flex items-center gap-2 select-none", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer", className)}>
+    <label
+      className={cn(
+        "flex items-center gap-2 select-none",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        className,
+      )}
+    >
       <span
         onClick={() => !disabled && onChange(!checked)}
         className={cn(

@@ -31,9 +31,11 @@ jobs:
         run: pnpm -r typecheck
       - name: Test
         run: pnpm -r test
-      # Lint Biome — hiện còn ~153 pre-existing a11y/useButtonType errors,
-      # tạm continue-on-error để surface diagnostics mà không block CI.
-      # Sprint cleanup riêng sẽ siết về fail-on-error.
+      # Lint Biome — hiện còn ~75 pre-existing errors (sau wave 1 cleanup
+      # giảm 252 → 100 → 75). Vẫn soft-fail trong CI khi cleanup waves
+      # còn chạy. Mục tiêu sprint kế: 0 errors + bỏ continue-on-error.
+      # Pre-commit hook (lint-staged) chỉ auto-fix format/safe rules để
+      # không block cleanup commits.
       - name: Lint (Biome, soft-fail)
         run: pnpm lint
         continue-on-error: true

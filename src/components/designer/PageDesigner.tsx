@@ -1,5 +1,6 @@
-import { I } from "@/components/Icons";
+import { useEffect, useState } from "react";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { I } from "@/components/Icons";
 import { Button, Chip, EmptyState, FormField, Input, Select } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
@@ -8,7 +9,6 @@ import type { IconName } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { useEffect, useState } from "react";
 
 type ComponentKind = "list" | "form" | "chart" | "kpi" | "kanban" | "html";
 
@@ -124,7 +124,7 @@ export function PageDesigner({ pageId }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [components, pageId]);
+  }, [save]);
 
   // AI apply — replace toàn bộ components từ đề xuất
   const handleAiApply = (design: PageDesign) => {
@@ -339,7 +339,7 @@ export function PageDesigner({ pageId }: Props) {
                       value={sel.w}
                       onChange={(e) =>
                         update(sel.id, {
-                          w: Math.max(1, Math.min(12, Number.parseInt(e.target.value) || 1)),
+                          w: Math.max(1, Math.min(12, Number.parseInt(e.target.value, 10) || 1)),
                         })
                       }
                     />
@@ -350,7 +350,7 @@ export function PageDesigner({ pageId }: Props) {
                       min="1"
                       value={sel.h}
                       onChange={(e) =>
-                        update(sel.id, { h: Math.max(1, Number.parseInt(e.target.value) || 1) })
+                        update(sel.id, { h: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })
                       }
                     />
                   </FormField>

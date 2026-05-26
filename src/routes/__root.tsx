@@ -1,3 +1,6 @@
+import { createEmbedClient } from "@erp-framework/client";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { type ReactNode, useEffect, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { AuthGate } from "@/components/AuthGate";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -10,9 +13,6 @@ import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { createEmbedClient } from "@erp-framework/client";
-import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
 
 /* Phần thân app — chỉ mount khi đã đăng nhập (sau AuthGate).
    Scheduler chạy phía server (pg-boss) — không còn scheduler client. */

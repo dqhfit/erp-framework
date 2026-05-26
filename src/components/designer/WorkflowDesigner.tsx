@@ -1,4 +1,5 @@
 import {
+  addEdge,
   Background,
   type Connection,
   Controls,
@@ -9,15 +10,16 @@ import {
   type NodeProps,
   ReactFlow,
   ReactFlowProvider,
-  addEdge,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
 import "@xyflow/react/dist/style.css";
-import { I } from "@/components/Icons";
+import { createObjectsClient } from "@erp-framework/client";
+import { pluginRegistry } from "@erp-framework/core";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { WorkflowRunPanel } from "@/components/designer/WorkflowRunPanel";
+import { I } from "@/components/Icons";
 import { Button, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
@@ -26,8 +28,6 @@ import type { IconName } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { createObjectsClient } from "@erp-framework/client";
-import { pluginRegistry } from "@erp-framework/core";
 
 const objectsClient = createObjectsClient("");
 
@@ -232,7 +232,7 @@ function WorkflowInner({ workflowId }: Props) {
     if (stored?.edges) setEdges(stored.edges);
     setSelected(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId]);
+  }, [workflowId, setEdges, setNodes]);
 
   const save = () => {
     setWorkflowContent(workflowId, { nodes, edges });
@@ -260,7 +260,7 @@ function WorkflowInner({ workflowId }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, edges, workflowId]);
+  }, [save]);
 
   // AI apply — replace toàn bộ nodes + edges
   const handleAiApply = (design: WorkflowDesign) => {
@@ -431,7 +431,9 @@ function WorkflowInner({ workflowId }: Props) {
                     </span>
                     <div className="min-w-0">
                       <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
-                      <div className="text-[10px] text-muted truncate">{t(`wf.node.${p.kind}.desc`)}</div>
+                      <div className="text-[10px] text-muted truncate">
+                        {t(`wf.node.${p.kind}.desc`)}
+                      </div>
                     </div>
                   </div>
                 );

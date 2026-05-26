@@ -13,7 +13,7 @@ llmRegistry.register(new OpenAIAdapter());
 llmRegistry.register(new GeminiAdapter());
 llmRegistry.register(new OllamaAdapter());
 
-export { llmRegistry };
-export * from "./oauth";
+export type { LLMAdapter, LLMProfile, LLMRequest, LLMResponse } from "@/types/llm";
 export { ClaudeCliAdapter } from "./claude-cli";
-export type { LLMAdapter, LLMRequest, LLMResponse, LLMProfile } from "@/types/llm";
+export * from "./oauth";
+export { llmRegistry };

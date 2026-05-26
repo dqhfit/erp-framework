@@ -1,7 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 import { createAuthClient } from "@erp-framework/client";
 /* ==========================================================
    /join?token=... — Trang công khai đăng ký qua invite link.
@@ -13,6 +9,10 @@ import { createAuthClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 
 const auth = createAuthClient("");
 
@@ -57,10 +57,22 @@ function JoinRoute() {
 
   const submit = async () => {
     setErr("");
-    if (!name.trim()) { setErr("Vui lòng nhập họ tên."); return; }
-    if (!email.trim()) { setErr("Vui lòng nhập email."); return; }
-    if (password.length < 8) { setErr("Mật khẩu phải có ít nhất 8 ký tự."); return; }
-    if (password !== confirm) { setErr("Mật khẩu xác nhận không khớp."); return; }
+    if (!name.trim()) {
+      setErr("Vui lòng nhập họ tên.");
+      return;
+    }
+    if (!email.trim()) {
+      setErr("Vui lòng nhập email.");
+      return;
+    }
+    if (password.length < 8) {
+      setErr("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (password !== confirm) {
+      setErr("Mật khẩu xác nhận không khớp.");
+      return;
+    }
     setBusy(true);
     try {
       const u = await auth.acceptInviteLink(token, name.trim(), email.trim(), password);
@@ -90,9 +102,7 @@ function JoinRoute() {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold">Tạo tài khoản</h1>
             <div className="text-sm text-muted truncate">
-              {preview?.valid
-                ? `Tham gia công ty ${preview.companyName}`
-                : "Đang xác thực link…"}
+              {preview?.valid ? `Tham gia công ty ${preview.companyName}` : "Đang xác thực link…"}
             </div>
           </div>
         </div>
@@ -107,7 +117,8 @@ function JoinRoute() {
           <div className="space-y-3 py-2">
             <Chip variant="danger">
               {preview.reason === "not_found" && "Link không hợp lệ hoặc đã bị thu hồi."}
-              {preview.reason === "used" && "Link này đã được sử dụng. Mỗi link chỉ dùng được 1 lần."}
+              {preview.reason === "used" &&
+                "Link này đã được sử dụng. Mỗi link chỉ dùng được 1 lần."}
               {preview.reason === "expired" && "Link đã hết hạn. Hãy yêu cầu admin tạo link mới."}
             </Chip>
             <Button

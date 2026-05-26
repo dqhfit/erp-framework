@@ -1,9 +1,9 @@
-import type { Lang } from "@/i18n/dict";
 /* ==========================================================
    locale store — Persist ngôn ngữ hiện tại (vi/en).
    ========================================================== */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { Lang } from "@/i18n/dict";
 
 interface LocaleState {
   lang: Lang;

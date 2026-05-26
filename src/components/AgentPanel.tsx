@@ -1,3 +1,6 @@
+import { createKnowledgeClient } from "@erp-framework/client";
+import { useLocation } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Chip, Select, Textarea } from "@/components/ui";
 import { mcpToolsToToolDefs } from "@/core/agent-runner";
@@ -11,9 +14,6 @@ import { useRbac } from "@/stores/rbac";
 import { useSettings } from "@/stores/settings";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { createKnowledgeClient } from "@erp-framework/client";
-import { useLocation } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
 
 /* Client Knowledge Base — dùng cho nút "Lưu vào tri thức" trên tin nhắn. */
 const kb = createKnowledgeClient("");
@@ -92,7 +92,7 @@ export function AgentPanel() {
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-  }, [messages]);
+  }, []);
 
   const send = async (text: string) => {
     if (!text.trim()) return;

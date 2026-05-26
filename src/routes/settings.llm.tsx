@@ -1,3 +1,7 @@
+import { createConfigClient } from "@erp-framework/client";
+import { type Role, roleCan } from "@erp-framework/core";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { LlmProfileCard } from "@/components/settings/LlmProfileCard";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
@@ -5,12 +9,8 @@ import { ClaudeCliAdapter } from "@/core/llm/claude-cli";
 import { getTokens, isLoggedIn, logout, startLogin } from "@/core/llm/oauth";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
-import { useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
-import { createConfigClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useSettings } from "@/stores/settings";
 
 function LlmSettings() {
   const t = useT();
@@ -325,7 +325,12 @@ function LlmSettings() {
                 placeholder="default"
               />
             </FormField>
-            <Button variant="primary" onClick={handleAdd} disabled={!canEdit} icon={<I.Plus size={14} />}>
+            <Button
+              variant="primary"
+              onClick={handleAdd}
+              disabled={!canEdit}
+              icon={<I.Plus size={14} />}
+            >
               Thêm
             </Button>
           </div>

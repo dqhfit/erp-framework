@@ -1,9 +1,5 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
 import { createKnowledgeClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    settings.embedding — Cấu hình profile embedding cho Knowledge
    Base. Hỗ trợ Ollama (local) và OpenAI-compatible (cloud). Mỗi
@@ -12,6 +8,10 @@ import { roleCan, type Role } from "@erp-framework/core";
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input, Select } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 
 const kb = createKnowledgeClient("");
 
@@ -64,9 +64,7 @@ function EmbeddingSettings() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[760px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.embedding.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.embedding.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.embedding.subtitle")}</div>
 
         <Card className="space-y-3">
           <FormField label={t("settings.embedding.provider_label")}>
@@ -112,7 +110,10 @@ function EmbeddingSettings() {
           </FormField>
 
           {adapter === "openai" && (
-            <FormField label={t("settings.embedding.apikey_label")} hint={t("settings.embedding.apikey_hint")}>
+            <FormField
+              label={t("settings.embedding.apikey_label")}
+              hint={t("settings.embedding.apikey_hint")}
+            >
               <Input
                 type="password"
                 value={apiKey}

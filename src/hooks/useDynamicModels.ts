@@ -1,4 +1,3 @@
-import { FALLBACK_MODELS, type ListModelsResult, listModels } from "@/core/llm/list-models";
 /* ==========================================================
    useDynamicModels — Hook load model list theo adapter + creds.
    - Tự fetch khi mount + khi adapter/apiKey/endpoint đổi
@@ -6,6 +5,7 @@ import { FALLBACK_MODELS, type ListModelsResult, listModels } from "@/core/llm/l
    - source: "cache" | "api" | "fallback"
    ========================================================== */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FALLBACK_MODELS, type ListModelsResult, listModels } from "@/core/llm/list-models";
 
 export interface UseDynamicModelsResult {
   models: string[];
@@ -39,7 +39,7 @@ export function useDynamicModels(
       setError(res.error);
       setLoading(false);
     },
-    [adapter, opts.apiKey, opts.endpoint],
+    [adapter, opts.apiKey, opts.endpoint, opts],
   ); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-fetch khi adapter/key/endpoint đổi

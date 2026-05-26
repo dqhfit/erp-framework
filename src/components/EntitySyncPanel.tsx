@@ -1,6 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Switch } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import { createEntitySyncClient } from "@erp-framework/client";
 /* ==========================================================
    EntitySyncPanel — Cấu hình ĐỒNG BỘ TỰ ĐỘNG dữ liệu MCP →
@@ -12,6 +9,9 @@ import { createEntitySyncClient } from "@erp-framework/client";
    field khoá (tuỳ chọn), chạy ngay, xem kết quả lần gần nhất.
    ========================================================== */
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Switch } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const esClient = createEntitySyncClient("");
 
@@ -64,10 +64,10 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         /* chưa đăng nhập / entity chưa lưu */
       });
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load closure ổn định, gọi 1 lần ở mount
   useEffect(() => {
     load();
-  }, [entityId]);
+  }, []);
 
   const wrap = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -164,6 +164,7 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
           disabled={busy}
           onChange={(e) => setPkField(e.target.value)}
         />
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Switch là control component, lint không nhận diện */}
         <label className="flex items-center gap-1.5 text-xs text-muted">
           <Switch checked={enabled} onChange={() => setEnabled((v) => !v)} />
           Bật lịch
@@ -185,7 +186,9 @@ export function EntitySyncPanel({ entityId }: { entityId: string }) {
         </div>
       )}
       {cfg?.lastSummary && (
-        <div className="text-xs bg-bg-soft rounded-sm p-2 whitespace-pre-wrap">{cfg.lastSummary}</div>
+        <div className="text-xs bg-bg-soft rounded-sm p-2 whitespace-pre-wrap">
+          {cfg.lastSummary}
+        </div>
       )}
 
       {/* Hành động */}

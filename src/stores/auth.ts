@@ -1,4 +1,3 @@
-import { t } from "@/hooks/useT";
 import { type AgentMemberRole, createAuthClient, createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    auth — Phiên đăng nhập. Backend (RBAC) yêu cầu đăng nhập nên
@@ -10,6 +9,7 @@ import { type AgentMemberRole, createAuthClient, createObjectsClient } from "@er
    "agent của tôi" và RBAC client-side hiển thị nút Quản lý.
    ========================================================== */
 import { create } from "zustand";
+import { t } from "@/hooks/useT";
 import { useUserObjects } from "./userObjects";
 
 const auth = createAuthClient("");

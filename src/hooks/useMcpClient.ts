@@ -1,6 +1,6 @@
+import { useEffect, useState } from "react";
 import { McpClient, type McpTool } from "@/core/mcp";
 import { useSettings } from "@/stores/settings";
-import { useEffect, useState } from "react";
 
 let clientInstance: McpClient | null = null;
 let toolsCache: McpTool[] = [];

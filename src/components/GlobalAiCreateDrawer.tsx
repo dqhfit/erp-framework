@@ -1,3 +1,12 @@
+/* ==========================================================
+   GlobalAiCreateDrawer — Drawer toàn cục mở từ Sidebar +.
+   Sau khi AI propose config:
+     - Sinh id uuid (khớp khoá chính backend)
+     - Lưu vào useUserObjects (đẩy lên PostgreSQL)
+     - Navigate sang designer tương ứng
+   Mount 1 lần ở __root.tsx; điều khiển qua useUI.aiCreateTarget
+   ========================================================== */
+import { useNavigate } from "@tanstack/react-router";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import type {
@@ -9,15 +18,6 @@ import type {
 import type { MockEntity } from "@/lib/object-types";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-/* ==========================================================
-   GlobalAiCreateDrawer — Drawer toàn cục mở từ Sidebar +.
-   Sau khi AI propose config:
-     - Sinh id uuid (khớp khoá chính backend)
-     - Lưu vào useUserObjects (đẩy lên PostgreSQL)
-     - Navigate sang designer tương ứng
-   Mount 1 lần ở __root.tsx; điều khiển qua useUI.aiCreateTarget
-   ========================================================== */
-import { useNavigate } from "@tanstack/react-router";
 
 export function GlobalAiCreateDrawer() {
   const target = useUI((s) => s.aiCreateTarget);

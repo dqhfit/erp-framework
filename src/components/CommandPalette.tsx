@@ -1,3 +1,5 @@
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Kbd } from "@/components/ui";
 import { useT } from "@/hooks/useT";
@@ -5,8 +7,6 @@ import type { IconName } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
 
 interface Item {
   id: string;
@@ -131,7 +131,13 @@ export function CommandPalette() {
 
   useEffect(() => {
     setIdx(0);
-  }, [q, open]);
+  }, []);
+
+  const run = (item: Item) => {
+    setOpen(false);
+    if (item.action) item.action();
+    else if (item.to) navigate({ to: item.to });
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -153,13 +159,8 @@ export function CommandPalette() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // run là closure đóng trên setOpen/navigate ổn định — không cần làm dep.
   }, [open, filtered, idx, setOpen]);
-
-  const run = (item: Item) => {
-    setOpen(false);
-    if (item.action) item.action();
-    else if (item.to) navigate({ to: item.to });
-  };
 
   if (!open) return null;
 

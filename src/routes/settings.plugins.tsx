@@ -1,16 +1,16 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Switch } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useT } from "@/hooks/useT";
-import { useAuth } from "@/stores/auth";
 import { createPluginsClient } from "@erp-framework/client";
-import { roleCan, type Role } from "@erp-framework/core";
+import { type Role, roleCan } from "@erp-framework/core";
 /* ==========================================================
    settings.plugins — Plugin registry: đăng ký plugin (manifest),
    bật/tắt lúc chạy (không cần build lại), xuất manifest chia sẻ.
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Input, Switch } from "@/components/ui";
+import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
 
 const plugins = createPluginsClient("");
 
@@ -45,7 +45,7 @@ function PluginsSettings() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -104,25 +104,32 @@ function PluginsSettings() {
     <div className="overflow-y-auto h-full">
       <div className="max-w-[760px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.plugins.title")}</h1>
-        <div className="text-sm text-muted mb-6">
-          {t("settings.plugins.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-6">{t("settings.plugins.subtitle")}</div>
 
         <Card className="mb-4 space-y-2">
           <div className="font-semibold">{t("settings.plugins.registered_title")}</div>
-          {list.length === 0 && <div className="text-sm text-muted">{t("settings.plugins.empty")}</div>}
+          {list.length === 0 && (
+            <div className="text-sm text-muted">{t("settings.plugins.empty")}</div>
+          )}
           {list.map((p) => (
             <div key={p.id} className="flex items-center gap-2 p-2 rounded-md border border-border">
               <I.Folder size={15} className="text-muted shrink-0" />
               <span className="font-medium">{p.name}</span>
               <Chip className="text-[10px]!">v{p.version}</Chip>
-              <Chip variant={p.enabled ? "success" : "default"}>{p.enabled ? t("settings.plugins.enabled_chip") : t("settings.plugins.disabled_chip")}</Chip>
+              <Chip variant={p.enabled ? "success" : "default"}>
+                {p.enabled
+                  ? t("settings.plugins.enabled_chip")
+                  : t("settings.plugins.disabled_chip")}
+              </Chip>
               <div className="flex-1" />
               <Switch
                 checked={p.enabled}
                 disabled={!canEdit}
                 onChange={(v) =>
-                  void run(() => plugins.setEnabled(p.id, v).then(() => {}), t("settings.plugins.toggle_ok"))
+                  void run(
+                    () => plugins.setEnabled(p.id, v).then(() => {}),
+                    t("settings.plugins.toggle_ok"),
+                  )
                 }
               />
               <Button
@@ -177,9 +184,7 @@ function PluginsSettings() {
           >
             {t("settings.plugins.register_btn")}
           </Button>
-          <div className="text-xs text-muted">
-            {t("settings.plugins.register_hint")}
-          </div>
+          <div className="text-xs text-muted">{t("settings.plugins.register_hint")}</div>
         </Card>
 
         {msg && (

@@ -1,8 +1,12 @@
+import { createObjectsClient } from "@erp-framework/client";
+import { inferAdapterFromModel } from "@erp-framework/core";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { AgentMembersPane } from "@/components/AgentMembersPane";
+import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { I } from "@/components/Icons";
 import { ModelCombobox } from "@/components/ModelCombobox";
-import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
@@ -10,10 +14,6 @@ import type { MockAgent } from "@/lib/object-types";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { createObjectsClient } from "@erp-framework/client";
-import { inferAdapterFromModel } from "@erp-framework/core";
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
 
 // 7 file memory chuẩn giống paperclip/openclaw — agent đọc thành
 // preamble system prompt, có thể tự ghi nhớ qua tool memory_remember.
@@ -149,7 +149,7 @@ function AgentRoute() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, id]);
+  }, [save]);
 
   // Adapter chỉ dùng để hiển thị hint — ModelCombobox tự suy bên trong.
   const adapter = state.adapter ?? inferAdapterFromModel(state.model);

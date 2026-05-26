@@ -1,11 +1,13 @@
-import { EntitySyncPanel } from "@/components/EntitySyncPanel";
-import { I } from "@/components/Icons";
+import { createApiDataSource } from "@erp-framework/client";
+import { Fragment, useEffect, useState } from "react";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
-import { type McpBindings, McpBindingsEditor } from "@/components/designer/McpBindingsEditor";
 import { EntityFormPreview } from "@/components/designer/entity-preview";
 import { FieldInspector } from "@/components/designer/field-inspector";
 import { FieldRow } from "@/components/designer/field-row";
+import { type McpBindings, McpBindingsEditor } from "@/components/designer/McpBindingsEditor";
 import { McpImportModal, type McpImportResult } from "@/components/designer/McpImportModal";
+import { EntitySyncPanel } from "@/components/EntitySyncPanel";
+import { I } from "@/components/Icons";
 import { Button, EmptyState, InlineEdit, Input } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
@@ -17,8 +19,6 @@ import type { EntityField, MockEntity } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { createApiDataSource } from "@erp-framework/client";
-import { Fragment, useEffect, useState } from "react";
 
 interface Props {
   entityId: string;
@@ -51,7 +51,7 @@ export function EntityDesigner({ entityId }: Props) {
     setEntity(userEntities.find((e) => e.id === entityId) ?? fallbackEntity);
     setSelected(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, userEntities]);
+  }, [entityId, userEntities, fallbackEntity]);
 
   const addField = (type: string, atIdx?: number) => {
     const ft = getFieldTypes().find((f) => f.id === type);
@@ -233,7 +233,7 @@ export function EntityDesigner({ entityId }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [save]);
 
   // Đồng bộ thủ công: kéo dữ liệu từ MCP, upsert vào DB theo khóa.
   const doMcpSync = async () => {
@@ -468,7 +468,9 @@ export function EntityDesigner({ entityId }: Props) {
               <div className="mt-8">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{t("entity.mcp_bindings")}</h3>
-                  <span className="text-[11px] text-muted font-mono">{t("entity.mcp_prefix", { prefix: entity.mcp })}</span>
+                  <span className="text-[11px] text-muted font-mono">
+                    {t("entity.mcp_prefix", { prefix: entity.mcp })}
+                  </span>
                 </div>
                 <p className="text-xs text-muted mb-3">{t("entity.mcp_desc")}</p>
                 <McpBindingsEditor

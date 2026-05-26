@@ -45,8 +45,7 @@ export const activityVi: Dict = {
 
 export const activityEn: Dict = {
   "activity.title": "Activity & Cost",
-  "activity.subtitle":
-    "Server-recorded actions (activity_log) — workflow runs, token costs.",
+  "activity.subtitle": "Server-recorded actions (activity_log) — workflow runs, token costs.",
   "activity.clear_btn": "Clear log",
   "activity.clear_confirm": "Delete all activity logs?",
   "activity.clear_title": "Clear Log",

@@ -1,7 +1,3 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
 import { createAuthClient } from "@erp-framework/client";
 /* ==========================================================
    /invite?token=... — Trang công khai (ngoài AuthGate).
@@ -15,6 +11,10 @@ import { createAuthClient } from "@erp-framework/client";
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
 
 const auth = createAuthClient("");
 

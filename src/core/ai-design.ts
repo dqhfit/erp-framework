@@ -5,12 +5,12 @@
 
 import { llmRegistry } from "@/core/llm/registry";
 import {
+  buildUserMessage,
   type DesignByType,
   type DesignContext,
   type DesignObjectType,
   type DesignRequest,
   SYSTEM_PROMPTS,
-  buildUserMessage,
 } from "@/lib/ai-design-prompts";
 
 export interface AiDesignCallOptions {
@@ -103,8 +103,10 @@ function pickProfileName(explicit?: string): string {
       "Chưa có LLM profile khả dụng — vào Settings → LLM Profiles để tạo (cần API key hoặc bridge).",
     );
   }
-  // profiles.length đã kiểm tra > 0 ở trên — non-null assertion an toàn.
-  return profiles[0]!.name;
+  // profiles.length đã kiểm tra > 0 ở trên — first element không thể vắng.
+  const first = profiles[0];
+  if (!first) throw new Error("LLM profile vắng bất ngờ.");
+  return first.name;
 }
 
 /** ============= Main entry =============

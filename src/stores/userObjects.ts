@@ -1,4 +1,3 @@
-import type { IconName, MockAgent, MockEntity, MockPage, MockWorkflow } from "@/lib/object-types";
 import { createObjectsClient } from "@erp-framework/client";
 /* ==========================================================
    userObjects — Đối tượng low-code (entity / page / workflow /
@@ -8,6 +7,7 @@ import { createObjectsClient } from "@erp-framework/client";
    Gọi hydrate() sau khi đăng nhập để nạp dữ liệu.
    ========================================================== */
 import { create } from "zustand";
+import type { IconName, MockAgent, MockEntity, MockPage, MockWorkflow } from "@/lib/object-types";
 
 /* URL tương đối — đi qua proxy /trpc của Vite (dev) hoặc nginx (prod). */
 const api = createObjectsClient("");

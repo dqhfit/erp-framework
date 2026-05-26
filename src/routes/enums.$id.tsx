@@ -1,12 +1,12 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { type EnumValue, createEnumsClient } from "@erp-framework/client";
+import { createEnumsClient, type EnumValue } from "@erp-framework/client";
 /* ==========================================================
    /enums/$id — Designer enum: nhãn vi/en + danh sách giá trị.
    Mỗi giá trị có { value, label (vi), labelEn? }.
    ========================================================== */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
 
 const ec = createEnumsClient("");
 

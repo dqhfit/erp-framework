@@ -1,11 +1,7 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, Drawer, FormField, Input, Select, Textarea } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { useUserObjects } from "@/stores/userObjects";
 import {
+  createKnowledgeClient,
   type KnowledgeHit,
   type KnowledgeSource,
-  createKnowledgeClient,
 } from "@erp-framework/client";
 /* ==========================================================
    knowledge — Trang Knowledge Base (RAG). Quản lý nguồn tri thức
@@ -15,6 +11,10 @@ import {
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, Drawer, FormField, Input, Select, Textarea } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { useUserObjects } from "@/stores/userObjects";
 
 const kb = createKnowledgeClient("");
 

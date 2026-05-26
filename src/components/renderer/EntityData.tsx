@@ -1,13 +1,4 @@
-import { I } from "@/components/Icons";
-import { DataGrid } from "@/components/renderer/DataGrid";
-import { Button, Chip, Drawer, FormField, Input, Select } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { pickFieldLabel } from "@/lib/enum-label";
-import { formatVND } from "@/lib/format";
-import type { MockEntity } from "@/lib/object-types";
-import { useLocale } from "@/stores/locale";
-import { useUserObjects } from "@/stores/userObjects";
-import { type SavedView, createApiDataSource, createSavedViewsClient } from "@erp-framework/client";
+import { createApiDataSource, createSavedViewsClient, type SavedView } from "@erp-framework/client";
 /* ==========================================================
    EntityData — màn hình DỮ LIỆU của một entity (chế độ người
    dùng). Xem danh sách record thật trong DataGrid, thêm record
@@ -21,6 +12,15 @@ import { type SavedView, createApiDataSource, createSavedViewsClient } from "@er
    - Search bar FTS — server-side q param qua records.list.
    ========================================================== */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { DataGrid } from "@/components/renderer/DataGrid";
+import { Button, Chip, Drawer, FormField, Input, Select } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { pickFieldLabel } from "@/lib/enum-label";
+import { formatVND } from "@/lib/format";
+import type { MockEntity } from "@/lib/object-types";
+import { useLocale } from "@/stores/locale";
+import { useUserObjects } from "@/stores/userObjects";
 
 const api = createApiDataSource("");
 const savedViewsApi = createSavedViewsClient("");
@@ -290,7 +290,7 @@ export function EntityData({ entityId }: { entityId: string }) {
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
     ],
-    [fields, selected, rows.length, tab, lang],
+    [fields, selected, rows.length, tab, lang, toggleRow, restore, toggleAll, del],
   );
 
   if (!ent) {

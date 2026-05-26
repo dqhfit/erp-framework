@@ -14,8 +14,7 @@ export const feedbackVi: Dict = {
   "feedback.tab_mine": "Của tôi",
   "feedback.loading": "Đang tải…",
   "feedback.empty_title": "Chưa có phản hồi nào",
-  "feedback.empty_hint":
-    'Bấm "Gửi phản hồi" hoặc nút HelpCircle ở thanh trên để bắt đầu.',
+  "feedback.empty_hint": 'Bấm "Gửi phản hồi" hoặc nút HelpCircle ở thanh trên để bắt đầu.',
   "feedback.status_all": "Tất cả trạng thái",
   "feedback.status_new": "Mới",
   "feedback.status_in_progress": "Đang xử lý",
@@ -56,8 +55,7 @@ export const feedbackVi: Dict = {
   "feedback.body_placeholder":
     "VD: Khi nhập email vào form đăng nhập, lần sau quay lại không nhớ giúp.",
   "feedback.suggestion_field_label": "Đề xuất cải thiện (tuỳ chọn)",
-  "feedback.suggestion_placeholder":
-    "VD: Thêm tuỳ chọn 'Ghi nhớ tôi' giống các app khác.",
+  "feedback.suggestion_placeholder": "VD: Thêm tuỳ chọn 'Ghi nhớ tôi' giống các app khác.",
   "feedback.current_page": "Trang hiện tại:",
   "feedback.cancel_btn": "Huỷ",
   "feedback.sev_nice_to_have": "Mong muốn",
@@ -74,8 +72,7 @@ export const feedbackEn: Dict = {
   "feedback.tab_mine": "Mine",
   "feedback.loading": "Loading…",
   "feedback.empty_title": "No feedback yet",
-  "feedback.empty_hint":
-    'Click "Submit feedback" or the HelpCircle button in the header to start.',
+  "feedback.empty_hint": 'Click "Submit feedback" or the HelpCircle button in the header to start.',
   "feedback.status_all": "All statuses",
   "feedback.status_new": "New",
   "feedback.status_in_progress": "In progress",

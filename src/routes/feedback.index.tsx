@@ -1,18 +1,18 @@
-import { I } from "@/components/Icons";
-import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
-import { Button, Card, Chip, EmptyState, Select, Tabs } from "@/components/ui";
 import {
+  createFeedbackClient,
   type FeedbackArea,
   type FeedbackListItem,
   type FeedbackStatus,
-  createFeedbackClient,
 } from "@erp-framework/client";
 /* ==========================================================
    /feedback — List feedback của công ty, filter status/area + tab Mine.
    Sort: voteCount desc → createdAt desc. AI summary hiển thị nếu có.
    ========================================================== */
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, EmptyState, Select, Tabs } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
@@ -78,9 +78,7 @@ function FeedbackIndex() {
             {t("feedback.submit_btn")}
           </Button>
         </div>
-        <div className="text-sm text-muted mb-4">
-          {t("feedback.subtitle")}
-        </div>
+        <div className="text-sm text-muted mb-4">{t("feedback.subtitle")}</div>
 
         <Tabs<"all" | "mine">
           options={[

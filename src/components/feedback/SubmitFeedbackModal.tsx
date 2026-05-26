@@ -1,10 +1,8 @@
-import { I } from "@/components/Icons";
-import { Button, Chip, FormField, Input, Modal, Select, Textarea } from "@/components/ui";
 import {
+  createFeedbackClient,
   type FeedbackArea,
   type FeedbackSeverity,
   type SimilarHit,
-  createFeedbackClient,
 } from "@erp-framework/client";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 /* ==========================================================
@@ -15,6 +13,8 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
    - Submit thành công → nav tới /feedback/$id
    ========================================================== */
 import { useEffect, useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Chip, FormField, Input, Modal, Select, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
@@ -186,10 +186,7 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
           </div>
         )}
 
-        <FormField
-          label={t("feedback.body_label")}
-          hint={t("feedback.body_hint")}
-        >
+        <FormField label={t("feedback.body_label")} hint={t("feedback.body_hint")}>
           <Textarea
             rows={5}
             value={body}

@@ -1,14 +1,14 @@
-import { I } from "@/components/Icons";
-import { Button, Card, Chip, FormField, Input } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
-import { type IotDevice, createIotClient } from "@erp-framework/client";
+import { createIotClient, type IotDevice } from "@erp-framework/client";
 /* ==========================================================
    iot — Danh sách thiết bị IoT + modal tạo (hiện device key 1 lần).
    Thiết bị gửi telemetry qua REST /iot/v1/telemetry (header
    X-Device-Key) hoặc MQTT (topic iot/<deviceId>/telemetry/<channel>).
    ========================================================== */
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
 
 const iot = createIotClient("");
 
