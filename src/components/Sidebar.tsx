@@ -121,14 +121,23 @@ function SidebarSection({
   onRename,
 }: SectionProps) {
   const t = useT();
+  const [open, setOpen] = useState(true);
   return (
     <div className="mb-1.5">
       {!collapsed && (
         <div className="flex items-center justify-between px-3 mt-3 mb-1">
-          <div className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted">
-            {title}
-          </div>
-          <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted hover:text-text min-w-0"
+          >
+            <I.ChevronRight
+              size={10}
+              className={cn("transition-transform shrink-0", open && "rotate-90")}
+            />
+            <span className="truncate">{title}</span>
+          </button>
+          <div className="flex items-center gap-0.5 shrink-0">
             {onAiAdd && (
               <button
                 type="button"
@@ -151,22 +160,23 @@ function SidebarSection({
           </div>
         </div>
       )}
-      {items.map((item) => {
-        const IconC = I[item.iconName] || I.Folder;
-        return (
-          <SidebarItem
-            key={item.id}
-            to={item.to}
-            active={pathname === item.to}
-            icon={<IconC size={14} />}
-            collapsed={collapsed}
-            label={item.name}
-            badge={item.badge}
-            onDelete={item.userOwned && onDelete ? () => onDelete(item.id) : undefined}
-            onRename={item.userOwned && onRename ? () => onRename(item.id, item.name) : undefined}
-          />
-        );
-      })}
+      {(collapsed || open) &&
+        items.map((item) => {
+          const IconC = I[item.iconName] || I.Folder;
+          return (
+            <SidebarItem
+              key={item.id}
+              to={item.to}
+              active={pathname === item.to}
+              icon={<IconC size={14} />}
+              collapsed={collapsed}
+              label={item.name}
+              badge={item.badge}
+              onDelete={item.userOwned && onDelete ? () => onDelete(item.id) : undefined}
+              onRename={item.userOwned && onRename ? () => onRename(item.id, item.name) : undefined}
+            />
+          );
+        })}
     </div>
   );
 }
@@ -548,6 +558,13 @@ export function Sidebar() {
             icon={<I.Link size={14} />}
             collapsed={collapsed}
             label={t("sidebar.embed")}
+          />
+          <SidebarItem
+            to="/settings/api-keys"
+            active={pathname === "/settings/api-keys"}
+            icon={<I.Key size={14} />}
+            collapsed={collapsed}
+            label={t("sidebar.api_keys")}
           />
         </NavGroup>
       </div>
