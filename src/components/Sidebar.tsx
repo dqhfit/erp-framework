@@ -1,3 +1,5 @@
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { type ReactNode, useState } from "react";
 import { I } from "@/components/Icons";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
@@ -8,8 +10,6 @@ import { useAuth } from "@/stores/auth";
 import { useRbac } from "@/stores/rbac";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
 
 interface SidebarItemProps {
   to: string;
@@ -402,7 +402,7 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="border-t border-border py-1">
+      <div className="border-t border-border py-1 overflow-y-auto shrink min-h-0">
         <NavGroup title={t("sidebar.group_ops")} collapsed={collapsed}>
           {/* /server-data ẩn khỏi Sidebar — Sidebar đã auto-hydrate từ
               __root.tsx; trang chỉ dành cho admin debug raw record/MCP,
