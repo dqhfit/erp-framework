@@ -20,7 +20,7 @@ import {
   type Role,
   validateRecord,
 } from "@erp-framework/core";
-import { agentMembers, entities, entityRecords } from "@erp-framework/db";
+import { entities, entityRecords } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -547,18 +547,7 @@ export async function resolveProcBinding(
   return b.startsWith("proc:") ? b.slice(5).trim() : null;
 }
 
-/** Khi user tạo agent mới: tự động chèn họ vào resource_members với role=owner.
- *  Dual-write agent_members song song để backward-compat 1 sprint (sẽ
- *  drop agent_members ở migration sau khi mọi code đọc đã chuyển hẳn). */
+/** Khi user tạo agent mới: tự động chèn họ vào resource_members với role=owner. */
 export async function autoAddOwner(db: DB, agentId: string, userId: string): Promise<void> {
   await upsertResourceMember(db, "agent", agentId, userId, "owner", userId);
-  await db
-    .insert(agentMembers)
-    .values({
-      agentId,
-      userId,
-      role: "owner",
-      addedBy: userId,
-    })
-    .onConflictDoNothing();
 }

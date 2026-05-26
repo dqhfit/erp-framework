@@ -3,7 +3,7 @@
    Tách khỏi router.ts (Sprint 1 P2.8 step 7).
    ========================================================== */
 
-import { agentMembers, agents, companyMembers, resourceMembers, users } from "@erp-framework/db";
+import { agents, companyMembers, resourceMembers, users } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -239,8 +239,6 @@ export const agentsRouter = router({
           message: "User không phải thành viên công ty này",
         });
       }
-      // Upsert resource_members (P2.3) + dual-write agent_members
-      // cho backward-compat 1 sprint.
       await upsertResourceMember(
         ctx.db,
         "agent",
@@ -249,18 +247,6 @@ export const agentsRouter = router({
         input.role,
         ctx.user.id,
       );
-      await ctx.db
-        .insert(agentMembers)
-        .values({
-          agentId: input.agentId,
-          userId: input.userId,
-          role: input.role,
-          addedBy: ctx.user.id,
-        })
-        .onConflictDoUpdate({
-          target: [agentMembers.agentId, agentMembers.userId],
-          set: { role: input.role, addedBy: ctx.user.id, addedAt: new Date() },
-        });
       await logActivity(ctx.db, {
         companyId: ctx.user.companyId,
         kind: "agent.member_added",
@@ -283,11 +269,7 @@ export const agentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user?.companyId) throw new TRPCError({ code: "FORBIDDEN" });
       await assertCanActOnAgent(ctx, input.agentId, "manage_members");
-      // Remove from resource_members (P2.3) + dual-write agent_members.
       await removeResourceMember(ctx.db, "agent", input.agentId, input.userId);
-      await ctx.db
-        .delete(agentMembers)
-        .where(and(eq(agentMembers.agentId, input.agentId), eq(agentMembers.userId, input.userId)));
       await logActivity(ctx.db, {
         companyId: ctx.user.companyId,
         kind: "agent.member_removed",

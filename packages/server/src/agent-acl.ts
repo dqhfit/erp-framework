@@ -19,7 +19,7 @@
    ========================================================== */
 
 import { roleCan } from "@erp-framework/core";
-import { type agentMemberRole, agents } from "@erp-framework/db";
+import { agents } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "./context";
@@ -27,7 +27,9 @@ import { getResourceRole } from "./resource-acl";
 import { approvedProcedure } from "./trpc";
 
 export type AgentAction = "view" | "chat" | "edit" | "delete" | "manage_members";
-export type MemberRole = (typeof agentMemberRole.enumValues)[number]; // "owner"|"operator"|"observer"
+// Sau migration 0045 drop pgEnum agent_member_role — literal union ở app
+// layer, lưu role là text trong resource_members.
+export type MemberRole = "owner" | "operator" | "observer";
 
 /* Action chỉ owner (hoặc admin) mới làm được — kể cả ở open mode. */
 const OWNER_ONLY: AgentAction[] = ["delete", "manage_members"];
@@ -105,7 +107,8 @@ export async function canActOnAgentLite(
   if (OWNER_ONLY.includes(action)) return memberRole === "owner";
   if (isPrivate) {
     if (!memberRole) return false;
-    return PRIVATE_MATRIX[memberRole].includes(action);
+    const allowed = PRIVATE_MATRIX[memberRole];
+    return allowed ? allowed.includes(action) : false;
   }
   const rbacAction = action === "chat" ? "run" : action;
   return roleCan(

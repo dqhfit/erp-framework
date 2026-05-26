@@ -527,9 +527,9 @@ export const agents = pgTable(
       .references(() => companies.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     model: text("model").notNull(),
-    // config.isPrivate (boolean, optional): true → ACL chặt theo agent_members;
-    // false/undefined → fallback về company-RBAC (mọi editor đều edit OK). Xem
-    // packages/server/src/agent-acl.ts.
+    // config.isPrivate (boolean, optional): true → ACL chặt theo resource_members
+    // (resource_type='agent'); false/undefined → fallback về company-RBAC (mọi
+    // editor đều edit OK). Xem packages/server/src/agent-acl.ts.
     config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
     // managerId: agent cấp trên (org chart / phân cấp agent). null = cấp cao nhất.
     managerId: uuid("manager_id").references((): AnyPgColumn => agents.id, {
@@ -545,37 +545,16 @@ export const agents = pgTable(
   }),
 );
 
-/* Pivot N:M user × agent. role per cặp quyết định quyền khi
-   agent.config.isPrivate=true. Khi isPrivate=false (default), table này
-   chỉ dùng cho UI ★ "my agents" + ưu tiên trong sidebar — RBAC fallback
-   về company-role. */
-export const agentMemberRole = pgEnum("agent_member_role", ["owner", "operator", "observer"]);
-
-export const agentMembers = pgTable(
-  "agent_members",
-  {
-    agentId: uuid("agent_id")
-      .notNull()
-      .references(() => agents.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    role: agentMemberRole("role").notNull().default("operator"),
-    addedBy: uuid("added_by").references(() => users.id, { onDelete: "set null" }),
-    addedAt: timestamp("added_at").defaultNow().notNull(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.agentId, t.userId] }),
-    userIdx: index("agent_members_user_idx").on(t.userId),
-  }),
-);
+/* agent_members + agent_member_role: DROP ở migration 0045 sau khi
+   resource_members (P2.3) trở thành nguồn sự thật. Mọi đọc/ghi đã
+   migrate sang resource_members qua resource-acl.ts. */
 
 /* ─── resource_members — generic per-resource membership ──────────
    Bảng tổng quát hoá pattern "user là member của resource X" cho
    mọi loại (agent hiện tại, page/record sau này) qua 1 bảng duy
    nhất. KHÔNG FK resource_id (refer nhiều bảng) — cleanup khi xoá
    resource là trách nhiệm caller. Xem packages/server/src/resource-acl.ts.
-   Migration 0044 backfill từ agent_members. */
+   Migration 0044 backfill từ agent_members; 0045 drop bảng cũ. */
 export const resourceMembers = pgTable(
   "resource_members",
   {

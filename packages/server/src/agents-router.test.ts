@@ -2,12 +2,10 @@
    agents-router.test.ts — Unit test agent CRUD + membership.
    Mock assertCanActOnAgent + logActivity vì per-agent ACL phức tạp.
    ========================================================== */
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { agentsRouter } from "./agents-router";
+import { assertThrowsTRPCError, makeMockCtx, makeMockDb, makeMockUser } from "./test-helpers";
 import { createCallerFactory } from "./trpc";
-import {
-  makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError,
-} from "./test-helpers";
 
 const caller = createCallerFactory(agentsRouter);
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -20,9 +18,7 @@ vi.mock("./activity", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("./agent-memory", () => ({
-  allDefaultTemplates: vi.fn((name: string) => [
-    { file: "IDENTITY", content: `Agent ${name}` },
-  ]),
+  allDefaultTemplates: vi.fn((name: string) => [{ file: "IDENTITY", content: `Agent ${name}` }]),
 }));
 
 describe("agents-router", () => {
@@ -49,19 +45,19 @@ describe("agents-router", () => {
       const r = await caller(makeMockCtx({ db })).get(VALID_UUID);
       expect(r?.name).toBe("x");
       const { assertCanActOnAgent } = await import("./agent-acl");
-      expect(assertCanActOnAgent).toHaveBeenCalledWith(
-        expect.anything(), VALID_UUID, "view",
-      );
+      expect(assertCanActOnAgent).toHaveBeenCalledWith(expect.anything(), VALID_UUID, "view");
     });
   });
 
   describe("save (create vs update)", () => {
-    it("create: insert + auto-add owner trong agentMembers", async () => {
+    it("create: insert agent + auto-add owner trong resource_members", async () => {
       const { db, enqueueInsert, ops } = makeMockDb();
       enqueueInsert([{ id: VALID_UUID, name: "new agent", model: "claude" }]);
-      // autoAddOwner gọi insert lần 2 — không cần queue (onConflictDoNothing)
+      // autoAddOwner gọi upsertResourceMember (insert.onConflictDoUpdate)
+      // → 2 insert tổng: agents + resource_members.
       await caller(makeMockCtx({ db })).save({
-        name: "new agent", model: "claude",
+        name: "new agent",
+        model: "claude",
       });
       expect(ops.filter((o) => o.kind === "insert").length).toBeGreaterThanOrEqual(2);
     });
@@ -76,10 +72,7 @@ describe("agents-router", () => {
 
     it("FORBIDDEN khi user không thuộc company", async () => {
       const ctx = makeMockCtx({ user: makeMockUser({ companyId: null }) });
-      await assertThrowsTRPCError(
-        () => caller(ctx).save({ name: "x", model: "y" }),
-        "FORBIDDEN",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).save({ name: "x", model: "y" }), "FORBIDDEN");
     });
   });
 
@@ -95,10 +88,7 @@ describe("agents-router", () => {
 
     it("FORBIDDEN nếu user không thuộc company", async () => {
       const ctx = makeMockCtx({ user: makeMockUser({ companyId: null }) });
-      await assertThrowsTRPCError(
-        () => caller(ctx).delete(VALID_UUID),
-        "FORBIDDEN",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).delete(VALID_UUID), "FORBIDDEN");
     });
   });
 
@@ -114,10 +104,7 @@ describe("agents-router", () => {
       const { db, enqueueSelect } = makeMockDb();
       enqueueSelect([]);
       const ctx = makeMockCtx({ db });
-      await assertThrowsTRPCError(
-        () => caller(ctx).memoryTemplates(VALID_UUID),
-        "NOT_FOUND",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).memoryTemplates(VALID_UUID), "NOT_FOUND");
     });
   });
 
@@ -150,21 +137,26 @@ describe("agents-router", () => {
   describe("addMember / removeMember", () => {
     it("addMember: BAD_REQUEST khi user không là member công ty", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([]);  // companyMembers check → not found
+      enqueueSelect([]); // companyMembers check → not found
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).addMember({
-          agentId: VALID_UUID, userId: VALID_UUID_2, role: "operator",
-        }),
+        () =>
+          caller(ctx).addMember({
+            agentId: VALID_UUID,
+            userId: VALID_UUID_2,
+            role: "operator",
+          }),
         "BAD_REQUEST",
       );
     });
 
     it("addMember: happy path + log", async () => {
       const { db, enqueueSelect, ops } = makeMockDb();
-      enqueueSelect([{ companyId: "co_test_1" }]);  // user trong company
+      enqueueSelect([{ companyId: "co_test_1" }]); // user trong company
       await caller(makeMockCtx({ db })).addMember({
-        agentId: VALID_UUID, userId: VALID_UUID_2, role: "operator",
+        agentId: VALID_UUID,
+        userId: VALID_UUID_2,
+        role: "operator",
       });
       expect(ops.some((o) => o.kind === "insert")).toBe(true);
       const { logActivity } = await import("./activity");
@@ -174,7 +166,8 @@ describe("agents-router", () => {
     it("removeMember: delete + log", async () => {
       const { db, ops } = makeMockDb();
       await caller(makeMockCtx({ db })).removeMember({
-        agentId: VALID_UUID, userId: VALID_UUID_2,
+        agentId: VALID_UUID,
+        userId: VALID_UUID_2,
       });
       expect(ops.some((o) => o.kind === "delete")).toBe(true);
     });
@@ -182,10 +175,12 @@ describe("agents-router", () => {
     it("addMember validation: role enum", async () => {
       const ctx = makeMockCtx();
       await assertThrowsTRPCError(
-        () => caller(ctx).addMember({
-          agentId: VALID_UUID, userId: VALID_UUID_2,
-          role: "invalid" as never,
-        }),
+        () =>
+          caller(ctx).addMember({
+            agentId: VALID_UUID,
+            userId: VALID_UUID_2,
+            role: "invalid" as never,
+          }),
         "BAD_REQUEST",
       );
     });
