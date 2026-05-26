@@ -126,18 +126,25 @@ function SidebarSection({
 }: SectionProps) {
   const t = useT();
   return (
-    <div className="mb-1.5">
-      {!collapsed && (
+    <div className={cn("mb-1.5", !collapsed && !open && "mb-0")}>
+      {!collapsed && !open && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full flex items-center gap-1 px-3 py-0.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted/40 hover:text-muted transition-colors"
+        >
+          <I.ChevronRight size={10} className="shrink-0" />
+          <span className="truncate">{title}</span>
+        </button>
+      )}
+      {!collapsed && open && (
         <div className="flex items-center justify-between px-3 mt-3 mb-1">
           <button
             type="button"
             onClick={onToggle}
             className="flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted hover:text-text min-w-0"
           >
-            <I.ChevronRight
-              size={10}
-              className={cn("transition-transform shrink-0", open && "rotate-90")}
-            />
+            <I.ChevronRight size={10} className="transition-transform shrink-0 rotate-90" />
             <span className="truncate">{title}</span>
           </button>
           <div className="flex items-center gap-0.5 shrink-0">
