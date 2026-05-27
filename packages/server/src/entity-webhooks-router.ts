@@ -12,14 +12,20 @@ import { z } from "zod";
 import type { DB } from "./db";
 import { rbacProcedure, router } from "./trpc";
 
-/** Chặn SSRF: reject URL trỏ vào localhost / private RFC1918 range. */
+/** Chặn SSRF: reject URL trỏ vào localhost / private RFC1918 range.
+ *  Lưu ý: check chỉ theo hostname tại thời điểm save. Để chống DNS-rebinding
+ *  hoàn toàn cần resolve IP tại lúc fire — hiện giảm thiểu qua redirect:"error". */
 function assertPublicWebhookUrl(url: string): void {
-  let hostname: string;
+  let parsed: URL;
   try {
-    hostname = new URL(url).hostname.toLowerCase();
+    parsed = new URL(url);
   } catch {
     throw new Error("URL webhook không hợp lệ");
   }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("URL webhook phải dùng http hoặc https");
+  }
+  const hostname = parsed.hostname.toLowerCase();
   const blocked = [
     /^localhost$/,
     /^127\./,
@@ -151,7 +157,9 @@ export function fireEntityWebhooks(
           ...((h.headers ?? {}) as Record<string, string>),
         };
         try {
-          const res = await fetch(h.url, { method: "POST", headers, body });
+          // redirect: "error" chặn server không follow redirect sang IP nội bộ
+          // (giảm thiểu DNS-rebinding — hostname được validate lúc save).
+          const res = await fetch(h.url, { method: "POST", headers, body, redirect: "error" });
           await db
             .update(entityWebhooks)
             .set({
