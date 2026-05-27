@@ -56,6 +56,17 @@ export interface MockPage {
   icon: IconName;
   updated: string;
   author: string;
+  isPublished?: boolean;
+  publishMode?: "private" | "public";
+  viewerGroupIds?: string[];
+}
+
+export interface MockViewerGroup {
+  id: string;
+  name: string;
+  color: string;
+  memberIds: string[];
+  pageIds: string[];
 }
 
 export interface MockWorkflow {

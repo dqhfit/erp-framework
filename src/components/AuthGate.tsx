@@ -137,7 +137,7 @@ function LoginScreen() {
 }
 
 /** Các route public không cần đăng nhập — bỏ qua AuthGate. */
-const PUBLIC_ROUTE_PREFIXES = ["/invite", "/join", "/oauth/callback"];
+const PUBLIC_ROUTE_PREFIXES = ["/invite", "/join", "/oauth/callback", "/view"];
 
 function PendingApprovalScreen() {
   const t = useT();

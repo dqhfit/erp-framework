@@ -13,6 +13,7 @@ import { approvalsEn, approvalsVi } from "./dict-approvals";
 import { chromeEn, chromeVi } from "./dict-chrome";
 import { feedbackEn, feedbackVi } from "./dict-feedback";
 import { homeEn, homeVi } from "./dict-home";
+import { migrationEn, migrationVi } from "./dict-migration";
 import { settingsEn, settingsVi } from "./dict-settings";
 
 export type Lang = "vi" | "en";
@@ -264,6 +265,21 @@ const VI: Dict = {
   "designer.save_with_shortcut": "Lưu (⌘S)",
   "designer.saving": "Đang lưu…",
   "designer.saved": "Đã lưu",
+  "designer.publish": "Xuất bản",
+  "designer.publish_as": "Xuất bản dưới dạng",
+  "designer.publish_options": "Tùy chọn xuất bản",
+  "designer.publish_private": "Riêng tư (Viewer nội bộ)",
+  "designer.publish_private_desc": "Chỉ người dùng đã đăng nhập với quyền Xem",
+  "designer.publish_public": "Công khai (Đối tác)",
+  "designer.publish_public_desc": "URL chia sẻ được cho đối tác bên ngoài",
+  "designer.published_private": "Đã xuất bản · Riêng tư",
+  "designer.published_public": "Đã xuất bản · Công khai",
+  "designer.change_mode": "Thay đổi chế độ",
+  "designer.public_url": "URL công khai",
+  "designer.copy_link": "Sao chép link",
+  "designer.copied": "Đã sao chép!",
+  "designer.open_in_tab": "Mở tab mới",
+  "designer.unpublish": "Hủy xuất bản",
   "designer.entity_designer": "Thiết kế Đối tượng",
   "designer.page_designer": "Thiết kế Trang",
   "designer.workflow_designer": "Thiết kế Workflow",
@@ -325,6 +341,9 @@ const VI: Dict = {
   "designer.published": "Đã publish",
   "designer.chart_group_field": "Nhóm theo field",
   "designer.chart_value_field": "Field giá trị (trống = đếm)",
+  "designer.fields_to_show": "Trường hiển thị",
+  "designer.fields_select_all": "Chọn tất cả",
+  "designer.fields_count": "{count} trường",
   "designer.proc_name_field": "Tên procedure",
   // field inspector
   "field.label": "Label hiển thị",
@@ -423,6 +442,33 @@ const VI: Dict = {
   "entity.sync_btn": "Đồng bộ từ MCP",
   "entity.syncing": "Đang đồng bộ…",
   "entity.sync_done": "✓ Đồng bộ MCP: {created} thêm mới, {updated} cập nhật",
+  // portal
+  "portal.title": "Cổng người dùng",
+  "portal.pages_heading": "Trang",
+  "portal.logout": "Đăng xuất",
+  "portal.no_pages":
+    "Chưa có trang nào được xuất bản. Admin/Editor hãy vào thiết kế trang và nhấn Xuất bản.",
+  "portal.empty_hint": "Chưa có trang nào được xuất bản.",
+  "portal.select_page": "Chọn trang ở thanh bên trái",
+  "portal.public_badge": "Công khai",
+  "portal.refresh": "Làm mới",
+  // view (public page)
+  "view.login_title": "Đăng nhập để xem trang",
+  "view.login_sub": "Trang này yêu cầu xác thực",
+  "view.login_desc": "Dùng tài khoản được cấp bởi quản trị viên công ty.",
+  "view.not_published_title": "Trang không khả dụng",
+  "view.not_published_desc": "Trang này chưa được xuất bản hoặc không tồn tại.",
+
+  // viewer groups
+  "sidebar.viewer_groups": "Nhóm người xem",
+  "designer.visible_to_groups": "Nhóm được phép xem",
+  "designer.no_groups_hint": "Trống = tất cả viewer đều xem được",
+  "settings.viewer_groups": "Nhóm người xem",
+  "settings.vg_create": "Tạo nhóm",
+  "settings.vg_name_ph": "Tên nhóm...",
+  "settings.vg_members": "Thành viên",
+  "settings.vg_pages": "Trang được gán",
+  "settings.vg_empty": "Chưa có nhóm nào. Tạo nhóm để phân quyền truy cập portal.",
 };
 
 // ============= English =============
@@ -666,6 +712,21 @@ const EN: Dict = {
   "designer.save_with_shortcut": "Save (⌘S)",
   "designer.saving": "Saving…",
   "designer.saved": "Saved",
+  "designer.publish": "Publish",
+  "designer.publish_as": "Publish as",
+  "designer.publish_options": "Publish options",
+  "designer.publish_private": "Private (Internal viewers)",
+  "designer.publish_private_desc": "Only logged-in users with Viewer role",
+  "designer.publish_public": "Public (Partners)",
+  "designer.publish_public_desc": "Shareable URL for external partners",
+  "designer.published_private": "Published · Private",
+  "designer.published_public": "Published · Public",
+  "designer.change_mode": "Change mode",
+  "designer.public_url": "Public URL",
+  "designer.copy_link": "Copy link",
+  "designer.copied": "Copied!",
+  "designer.open_in_tab": "Open in new tab",
+  "designer.unpublish": "Unpublish",
   "designer.entity_designer": "Entity Designer",
   "designer.page_designer": "Page Designer",
   "designer.workflow_designer": "Workflow Designer",
@@ -826,7 +887,37 @@ const EN: Dict = {
   "designer.published": "Published",
   "designer.chart_group_field": "Group by field",
   "designer.chart_value_field": "Value field (blank = count)",
+  "designer.fields_to_show": "Fields to show",
+  "designer.fields_select_all": "Select all",
+  "designer.fields_count": "{count} fields",
   "designer.proc_name_field": "Procedure name",
+  // portal
+  "portal.title": "User Portal",
+  "portal.pages_heading": "Pages",
+  "portal.logout": "Log out",
+  "portal.no_pages":
+    "No pages published yet. Admin/Editor: open the page designer and click Publish.",
+  "portal.empty_hint": "No pages published yet.",
+  "portal.select_page": "Select a page from the left panel",
+  "portal.public_badge": "Public",
+  "portal.refresh": "Refresh",
+  // view (public page)
+  "view.login_title": "Sign in to view this page",
+  "view.login_sub": "This page requires authentication",
+  "view.login_desc": "Use the account provided by your company administrator.",
+  "view.not_published_title": "Page unavailable",
+  "view.not_published_desc": "This page has not been published or does not exist.",
+
+  // viewer groups
+  "sidebar.viewer_groups": "Viewer Groups",
+  "designer.visible_to_groups": "Visible to groups",
+  "designer.no_groups_hint": "Empty = all viewers can see",
+  "settings.viewer_groups": "Viewer Groups",
+  "settings.vg_create": "Create group",
+  "settings.vg_name_ph": "Group name...",
+  "settings.vg_members": "Members",
+  "settings.vg_pages": "Assigned pages",
+  "settings.vg_empty": "No groups yet. Create groups to restrict portal access.",
 };
 
 /* DICT gộp map lõi + các map mở rộng theo nhóm (dict-*.ts).
@@ -840,6 +931,7 @@ export const DICT: Record<Lang, Dict> = {
     ...approvalsVi,
     ...feedbackVi,
     ...settingsVi,
+    ...migrationVi,
   },
   en: {
     ...EN,
@@ -849,6 +941,7 @@ export const DICT: Record<Lang, Dict> = {
     ...approvalsEn,
     ...feedbackEn,
     ...settingsEn,
+    ...migrationEn,
   },
 };
 

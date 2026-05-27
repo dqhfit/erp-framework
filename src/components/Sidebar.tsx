@@ -258,6 +258,8 @@ export function Sidebar() {
   // RBAC — chặn nút theo role. Lấy role+enforce để component re-render khi đổi.
   const role = useRbac((s) => s.role);
   const enforce = useRbac((s) => s.enforce);
+  const isViewer = role === "viewer";
+  const myGroupIds = useUserObjects((s) => s.myGroupIds);
   const can = (action: "create" | "edit" | "delete", obj: ObjectType) =>
     !enforce || roleCan(role, action, obj);
 
@@ -395,24 +397,26 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-1">
-        <SidebarSection
-          title={t("sidebar.entities")}
-          collapsed={collapsed}
-          pathname={pathname}
-          open={sectionsOpen.entities}
-          onToggle={toggle("entities")}
-          onAdd={can("create", "entity") ? handleAddEntity : undefined}
-          onAiAdd={can("create", "entity") ? () => setAiCreateTarget("entity") : undefined}
-          onDelete={can("delete", "entity") ? handleDeleteEntity : undefined}
-          onRename={can("edit", "entity") ? handleRenameEntity : undefined}
-          items={userEntities.map((e) => ({
-            id: e.id,
-            name: e.name,
-            iconName: e.icon,
-            to: `/entities/${e.id}`,
-            userOwned: true,
-          }))}
-        />
+        {!isViewer && (
+          <SidebarSection
+            title={t("sidebar.entities")}
+            collapsed={collapsed}
+            pathname={pathname}
+            open={sectionsOpen.entities}
+            onToggle={toggle("entities")}
+            onAdd={can("create", "entity") ? handleAddEntity : undefined}
+            onAiAdd={can("create", "entity") ? () => setAiCreateTarget("entity") : undefined}
+            onDelete={can("delete", "entity") ? handleDeleteEntity : undefined}
+            onRename={can("edit", "entity") ? handleRenameEntity : undefined}
+            items={userEntities.map((e) => ({
+              id: e.id,
+              name: e.name,
+              iconName: e.icon,
+              to: `/entities/${e.id}`,
+              userOwned: true,
+            }))}
+          />
+        )}
         <SidebarSection
           title={t("sidebar.pages")}
           collapsed={collapsed}
@@ -423,7 +427,15 @@ export function Sidebar() {
           onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
           onDelete={can("delete", "page") ? handleDeletePage : undefined}
           onRename={can("edit", "page") ? handleRenamePage : undefined}
-          items={userPages.map((p) => ({
+          items={(isViewer
+            ? userPages.filter(
+                (p) =>
+                  p.isPublished &&
+                  (!p.viewerGroupIds?.length ||
+                    p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
+              )
+            : userPages
+          ).map((p) => ({
             id: p.id,
             name: p.name,
             iconName: p.icon,
@@ -431,45 +443,48 @@ export function Sidebar() {
             userOwned: true,
           }))}
         />
-        <SidebarSection
-          title={t("sidebar.workflows")}
-          collapsed={collapsed}
-          pathname={pathname}
-          open={sectionsOpen.workflows}
-          onToggle={toggle("workflows")}
-          onAdd={can("create", "workflow") ? handleAddWorkflow : undefined}
-          onAiAdd={can("create", "workflow") ? () => setAiCreateTarget("workflow") : undefined}
-          onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
-          onRename={can("edit", "workflow") ? handleRenameWorkflow : undefined}
-          items={userWorkflows.map((w) => ({
-            id: w.id,
-            name: w.name,
-            iconName: w.icon,
-            to: `/workflows/${w.id}`,
-            badge: w.status === "paused" ? "⏸" : undefined,
-            userOwned: true,
-          }))}
-        />
-        <SidebarSection
-          title={t("sidebar.agents")}
-          collapsed={collapsed}
-          pathname={pathname}
-          open={sectionsOpen.agents}
-          onToggle={toggle("agents")}
-          onAdd={can("create", "agent") ? handleAddAgent : undefined}
-          onAiAdd={can("create", "agent") ? () => setAiCreateTarget("agent") : undefined}
-          onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
-          onRename={can("edit", "agent") ? handleRenameAgent : undefined}
-          items={sortedAgents.map((a) => ({
-            id: a.id,
-            name: a.name,
-            iconName: "Bot" as const,
-            to: `/agents/${a.id}`,
-            // 2★ primary, ★ my-agent, không-marker = thường.
-            badge: a.id === primaryAgentId ? "★★" : myAgentRoles[a.id] ? "★" : undefined,
-            userOwned: true,
-          }))}
-        />
+        {!isViewer && (
+          <SidebarSection
+            title={t("sidebar.workflows")}
+            collapsed={collapsed}
+            pathname={pathname}
+            open={sectionsOpen.workflows}
+            onToggle={toggle("workflows")}
+            onAdd={can("create", "workflow") ? handleAddWorkflow : undefined}
+            onAiAdd={can("create", "workflow") ? () => setAiCreateTarget("workflow") : undefined}
+            onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
+            onRename={can("edit", "workflow") ? handleRenameWorkflow : undefined}
+            items={userWorkflows.map((w) => ({
+              id: w.id,
+              name: w.name,
+              iconName: w.icon,
+              to: `/workflows/${w.id}`,
+              badge: w.status === "paused" ? "⏸" : undefined,
+              userOwned: true,
+            }))}
+          />
+        )}
+        {!isViewer && (
+          <SidebarSection
+            title={t("sidebar.agents")}
+            collapsed={collapsed}
+            pathname={pathname}
+            open={sectionsOpen.agents}
+            onToggle={toggle("agents")}
+            onAdd={can("create", "agent") ? handleAddAgent : undefined}
+            onAiAdd={can("create", "agent") ? () => setAiCreateTarget("agent") : undefined}
+            onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
+            onRename={can("edit", "agent") ? handleRenameAgent : undefined}
+            items={sortedAgents.map((a) => ({
+              id: a.id,
+              name: a.name,
+              iconName: "Bot" as const,
+              to: `/agents/${a.id}`,
+              badge: a.id === primaryAgentId ? "★★" : myAgentRoles[a.id] ? "★" : undefined,
+              userOwned: true,
+            }))}
+          />
+        )}
       </div>
 
       <div className="border-t border-border py-1 overflow-y-auto shrink min-h-0">
@@ -510,34 +525,42 @@ export function Sidebar() {
             collapsed={collapsed}
             label={t("sidebar.knowledge")}
           />
-          <SidebarItem
-            to="/iot"
-            active={pathname.startsWith("/iot")}
-            icon={<I.Server size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.iot")}
-          />
-          <SidebarItem
-            to="/procedures"
-            active={pathname.startsWith("/procedures")}
-            icon={<I.Terminal size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.procedures")}
-          />
-          <SidebarItem
-            to="/enums"
-            active={pathname.startsWith("/enums")}
-            icon={<I.Tag size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.enums")}
-          />
-          <SidebarItem
-            to="/tools"
-            active={pathname.startsWith("/tools")}
-            icon={<I.Wand size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.tools")}
-          />
+          {!isViewer && (
+            <SidebarItem
+              to="/iot"
+              active={pathname.startsWith("/iot")}
+              icon={<I.Server size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.iot")}
+            />
+          )}
+          {!isViewer && (
+            <SidebarItem
+              to="/procedures"
+              active={pathname.startsWith("/procedures")}
+              icon={<I.Terminal size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.procedures")}
+            />
+          )}
+          {!isViewer && (
+            <SidebarItem
+              to="/enums"
+              active={pathname.startsWith("/enums")}
+              icon={<I.Tag size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.enums")}
+            />
+          )}
+          {!isViewer && (
+            <SidebarItem
+              to="/tools"
+              active={pathname.startsWith("/tools")}
+              icon={<I.Wand size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.tools")}
+            />
+          )}
           <SidebarItem
             to="/feedback"
             active={pathname.startsWith("/feedback")}
@@ -546,97 +569,113 @@ export function Sidebar() {
             label={t("sidebar.feedback")}
           />
         </NavGroup>
-        <NavGroup
-          title={t("sidebar.group_settings")}
-          collapsed={collapsed}
-          open={sectionsOpen.settings}
-          onToggle={toggle("settings")}
-        >
-          <SidebarItem
-            to="/settings/agents"
-            active={pathname === "/settings/agents"}
-            icon={<I.Bot size={14} />}
+        {!isViewer && (
+          <NavGroup
+            title={t("sidebar.group_settings")}
             collapsed={collapsed}
-            label={t("sidebar.my_agents")}
-          />
-          <SidebarItem
-            to="/settings/rbac"
-            active={pathname === "/settings/rbac"}
-            icon={<I.Users size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.rbac")}
-          />
-          <SidebarItem
-            to="/settings/companies"
-            active={pathname === "/settings/companies"}
-            icon={<I.Briefcase size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.companies")}
-          />
-          <SidebarItem
-            to="/settings/llm"
-            active={pathname === "/settings/llm"}
-            icon={<I.Sparkles size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.llm_profiles")}
-          />
-          <SidebarItem
-            to="/settings/embedding"
-            active={pathname === "/settings/embedding"}
-            icon={<I.Hash size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.embedding")}
-          />
-          <SidebarItem
-            to="/settings/mcp"
-            active={pathname === "/settings/mcp"}
-            icon={<I.Server size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.mcp_server")}
-          />
-          <SidebarItem
-            to="/settings/transfer"
-            active={pathname === "/settings/transfer"}
-            icon={<I.Save size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.transfer")}
-          />
-          <SidebarItem
-            to="/settings/backup"
-            active={pathname === "/settings/backup"}
-            icon={<I.Save size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.backup")}
-          />
-          <SidebarItem
-            to="/settings/plugins"
-            active={pathname === "/settings/plugins"}
-            icon={<I.Package size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.plugins")}
-          />
-          <SidebarItem
-            to="/settings/tools"
-            active={pathname === "/settings/tools"}
-            icon={<I.Wand size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.tools_mgmt")}
-          />
-          <SidebarItem
-            to="/settings/embed"
-            active={pathname === "/settings/embed"}
-            icon={<I.Link size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.embed")}
-          />
-          <SidebarItem
-            to="/settings/api-keys"
-            active={pathname === "/settings/api-keys"}
-            icon={<I.Key size={14} />}
-            collapsed={collapsed}
-            label={t("sidebar.api_keys")}
-          />
-        </NavGroup>
+            open={sectionsOpen.settings}
+            onToggle={toggle("settings")}
+          >
+            <SidebarItem
+              to="/settings/agents"
+              active={pathname === "/settings/agents"}
+              icon={<I.Bot size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.my_agents")}
+            />
+            <SidebarItem
+              to="/settings/rbac"
+              active={pathname === "/settings/rbac"}
+              icon={<I.Users size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.rbac")}
+            />
+            <SidebarItem
+              to="/settings/companies"
+              active={pathname === "/settings/companies"}
+              icon={<I.Briefcase size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.companies")}
+            />
+            <SidebarItem
+              to="/settings/llm"
+              active={pathname === "/settings/llm"}
+              icon={<I.Sparkles size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.llm_profiles")}
+            />
+            <SidebarItem
+              to="/settings/embedding"
+              active={pathname === "/settings/embedding"}
+              icon={<I.Hash size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.embedding")}
+            />
+            <SidebarItem
+              to="/settings/mcp"
+              active={pathname === "/settings/mcp"}
+              icon={<I.Server size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.mcp_server")}
+            />
+            <SidebarItem
+              to="/settings/transfer"
+              active={pathname === "/settings/transfer"}
+              icon={<I.Save size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.transfer")}
+            />
+            <SidebarItem
+              to="/settings/backup"
+              active={pathname === "/settings/backup"}
+              icon={<I.Save size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.backup")}
+            />
+            <SidebarItem
+              to="/settings/migration"
+              active={pathname === "/settings/migration"}
+              icon={<I.Database size={14} />}
+              collapsed={collapsed}
+              label="Migration MSSQL"
+            />
+            <SidebarItem
+              to="/settings/plugins"
+              active={pathname === "/settings/plugins"}
+              icon={<I.Package size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.plugins")}
+            />
+            <SidebarItem
+              to="/settings/tools"
+              active={pathname === "/settings/tools"}
+              icon={<I.Wand size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.tools_mgmt")}
+            />
+            <SidebarItem
+              to="/settings/embed"
+              active={pathname === "/settings/embed"}
+              icon={<I.Link size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.embed")}
+            />
+            <SidebarItem
+              to="/settings/api-keys"
+              active={pathname === "/settings/api-keys"}
+              icon={<I.Key size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.api_keys")}
+            />
+            <SidebarItem
+              to="/settings/viewer-groups"
+              active={pathname === "/settings/viewer-groups"}
+              icon={<I.Users size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.viewer_groups")}
+            />
+          </NavGroup>
+        )}
       </div>
 
       {/* === User info + Đăng xuất === */}

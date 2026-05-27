@@ -7,7 +7,14 @@ import { createObjectsClient } from "@erp-framework/client";
    Gọi hydrate() sau khi đăng nhập để nạp dữ liệu.
    ========================================================== */
 import { create } from "zustand";
-import type { IconName, MockAgent, MockEntity, MockPage, MockWorkflow } from "@/lib/object-types";
+import type {
+  IconName,
+  MockAgent,
+  MockEntity,
+  MockPage,
+  MockViewerGroup,
+  MockWorkflow,
+} from "@/lib/object-types";
 
 /* URL tương đối — đi qua proxy /trpc của Vite (dev) hoặc nginx (prod). */
 const api = createObjectsClient("");
@@ -93,6 +100,9 @@ function rowToPage(r: Row): MockPage {
     icon: ((r.icon as string) || "Layout") as IconName,
     updated: upd ? upd.toLocaleDateString("vi-VN") : "—",
     author: "—",
+    isPublished: (r.published as boolean) ?? false,
+    publishMode: ((r.publishMode ?? r.publish_mode) as "private" | "public") ?? "private",
+    viewerGroupIds: (r.viewerGroupIds as string[]) ?? [],
   };
 }
 
@@ -127,6 +137,8 @@ interface UserObjectsState {
   pageContent: Record<string, unknown>;
   workflowContent: Record<string, unknown>;
   agentContent: Record<string, unknown>;
+  myGroupIds: string[];
+  viewerGroupsList: MockViewerGroup[];
 
   hydrate: () => Promise<void>;
 
@@ -141,6 +153,8 @@ interface UserObjectsState {
   deletePage: (id: string) => void;
   renamePage: (id: string, name: string) => void;
   setPageContent: (id: string, data: unknown) => void;
+  publishPage: (id: string, mode: "private" | "public") => void;
+  unpublishPage: (id: string) => void;
 
   addWorkflow: (w: MockWorkflow) => void;
   deleteWorkflow: (id: string) => void;
@@ -151,6 +165,8 @@ interface UserObjectsState {
   deleteAgent: (id: string) => void;
   renameAgent: (id: string, name: string) => void;
   setAgentContent: (id: string, data: unknown) => void;
+
+  setPageViewerGroups: (pageId: string, groupIds: string[]) => void;
 }
 
 /** Ghi nhật ký lỗi backend nhưng không chặn UI (cập nhật lạc quan). */
@@ -167,14 +183,20 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   pageContent: {},
   workflowContent: {},
   agentContent: {},
+  myGroupIds: [],
+  viewerGroupsList: [],
 
   hydrate: async () => {
     try {
-      const [ents, pgs, wfs, ags] = await Promise.all([
+      const [ents, pgs, wfs, ags, myGroups, vGroups] = await Promise.all([
         api.entities.list(),
         api.pages.list(),
         api.workflows.list(),
         api.agents.list(),
+        api.viewerGroups.getMyGroups().catch(() => [] as string[]),
+        api.viewerGroups
+          .list()
+          .catch(() => [] as Awaited<ReturnType<typeof api.viewerGroups.list>>),
       ]);
       const pageContent: Record<string, unknown> = {};
       for (const r of pgs as Row[]) pageContent[r.id as string] = r.content ?? {};
@@ -191,6 +213,8 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
         pageContent,
         workflowContent,
         agentContent,
+        myGroupIds: myGroups,
+        viewerGroupsList: vGroups as MockViewerGroup[],
       });
     } catch (e) {
       console.error("[userObjects] hydrate lỗi:", e);
@@ -286,6 +310,18 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     set((s) => ({ pageContent: { ...s.pageContent, [id]: data } }));
     savePageById(get, id);
   },
+  publishPage: (id, mode) => {
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, isPublished: true, publishMode: mode } : p)),
+    }));
+    bg(api.pages.publish(id, mode), "xuất bản page");
+  },
+  unpublishPage: (id) => {
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, isPublished: false } : p)),
+    }));
+    bg(api.pages.unpublish(id), "hủy xuất bản page");
+  },
 
   /* ── Workflow ── */
   addWorkflow: (w) => {
@@ -357,6 +393,14 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
           : s.agents,
     }));
     saveAgentById(get, id);
+  },
+
+  /* ── Viewer groups ── */
+  setPageViewerGroups: (pageId, groupIds) => {
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === pageId ? { ...p, viewerGroupIds: groupIds } : p)),
+    }));
+    bg(api.viewerGroups.setPageGroups(pageId, groupIds), "gan nhom cho trang");
   },
 }));
 

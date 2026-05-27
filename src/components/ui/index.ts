@@ -12,4 +12,5 @@ export { Modal } from "./modal";
 export { Select } from "./select";
 export { Switch } from "./switch";
 export { Tabs } from "./tabs";
+export { TagBox } from "./tagbox";
 export { Textarea } from "./textarea";

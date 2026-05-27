@@ -14,6 +14,9 @@
                                          không liên quan, payload chỉ
                                          là user list editing, không
                                          leak data nhạy cảm.
+   - migration:<userId>                — UI migration nhận progress job
+                                         (start/log/done/error) chỉ user
+                                         khởi job.
    - other                             → reject (silently drop ở caller)
    ========================================================== */
 
@@ -23,6 +26,7 @@ const UUID_RE = /^[0-9a-f-]{36}$/;
 export function isChannelAllowed(channel: string, userId: string, companyId: string): boolean {
   if (channel === `notifications:${userId}`) return true;
   if (channel === `approval:${userId}`) return true;
+  if (channel === `migration:${userId}`) return true;
   const m = channel.match(RECORD_CH);
   if (m) return m[1] === companyId;
   if (channel.startsWith("presence:")) {

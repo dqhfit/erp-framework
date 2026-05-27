@@ -71,14 +71,29 @@ function useEntity(entityId?: string): MockEntity | undefined {
 }
 
 /** Widget "list" — bảng record thật, cột suy từ field của entity. */
-function ListWidget({ entityId }: { entityId?: string }) {
+function ListWidget({
+  entityId,
+  stateKey,
+  fields,
+}: {
+  entityId?: string;
+  stateKey?: string;
+  fields?: string[];
+}) {
   const ent = useEntity(entityId);
   const { rows, loading, err } = useRecords(entityId);
 
   if (!entityId) {
     return <div className="p-3 text-xs text-muted">Widget list chưa bind entity.</div>;
   }
-  const columns = (ent?.fields ?? []).slice(0, 6).map((f) => ({
+  const allFields = ent?.fields ?? [];
+  // fields=[] hoặc undefined → hiện tất cả (tối đa 6); fields=[...] → dùng đúng list đó
+  const visibleFields =
+    fields && fields.length > 0
+      ? allFields.filter((f) => fields.includes(f.name))
+      : allFields.slice(0, 6);
+
+  const columns = visibleFields.map((f) => ({
     accessorKey: f.name,
     header: f.label,
     cell: (c: { getValue: () => unknown }) => {
@@ -90,20 +105,24 @@ function ListWidget({ entityId }: { entityId?: string }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
-        <I.Table size={11} />
-        {ent?.name ?? "List"}
-        <span className="ml-auto">{loading ? "đang tải…" : `${rows.length} bản ghi`}</span>
-      </div>
+      {loading && (
+        <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
+          <I.Table size={11} />
+          {ent?.name ?? "List"}
+          <span className="ml-auto">đang tải…</span>
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-auto">
         {err ? (
           <div className="p-3 text-xs text-danger">Lỗi tải dữ liệu: {err}</div>
         ) : (
           <DataGrid
-            toolbar={false}
+            toolbar={!loading}
+            label={ent?.name ?? "List"}
             data={rows}
             columns={columns}
             emptyText="Chưa có bản ghi nào."
+            stateKey={stateKey}
           />
         )}
       </div>
@@ -168,7 +187,11 @@ function FormWidget({ cfg }: { cfg: Record<string, unknown> }) {
   if (!entityId || !ent) {
     return <div className="p-3 text-xs text-muted">Form chưa bind entity.</div>;
   }
-  const fields = ent.fields ?? [];
+  const selectedFieldNames = (cfg.fields as string[] | undefined) ?? [];
+  const fields =
+    selectedFieldNames.length > 0
+      ? (ent.fields ?? []).filter((f) => selectedFieldNames.includes(f.name))
+      : (ent.fields ?? []);
 
   const submit = async () => {
     setBusy(true);
@@ -525,8 +548,9 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
 }
 
 /** Render một widget theo kind. */
-function Widget({ comp }: { comp: PageComponent }) {
+function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   const cfg = comp.config ?? {};
+  const stateKey = `${pageId}:${comp.id}`;
   if (comp.kind === "kpi") {
     return (
       <div className="p-3 h-full flex flex-col justify-center">
@@ -540,7 +564,13 @@ function Widget({ comp }: { comp: PageComponent }) {
   }
   if (comp.kind === "chart") return <ChartWidget cfg={cfg} />;
   if (comp.kind === "list") {
-    return <ListWidget entityId={cfg.entity as string | undefined} />;
+    return (
+      <ListWidget
+        entityId={cfg.entity as string | undefined}
+        stateKey={stateKey}
+        fields={cfg.fields as string[] | undefined}
+      />
+    );
   }
   if (comp.kind === "form") return <FormWidget cfg={cfg} />;
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
@@ -594,7 +624,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                   gridRow: `span ${c.h || 2}`,
                 }}
               >
-                <Widget comp={c} />
+                <Widget comp={c} pageId={pageId} />
               </div>
             ))}
           </div>

@@ -172,17 +172,32 @@ function LlmSettings() {
                       variant="primary"
                       icon={<I.Sparkles size={13} />}
                       disabled={!canEdit}
-                      onClick={() => {
-                        setProfile({
+                      onClick={async () => {
+                        const pr = {
                           name: "Claude Pro",
                           adapter: "claude-pro",
                           model: "claude-sonnet-4-6",
                           temperature: 0.7,
                           max_tokens: 4096,
-                        });
-                        dialog.alert("Đã tạo profile 'Claude Pro' dùng OAuth token.", {
-                          title: "Thành công",
-                        });
+                        };
+                        setProfile(pr);
+                        try {
+                          await config.saveLlm({
+                            name: pr.name,
+                            adapter: pr.adapter,
+                            model: pr.model,
+                            temperature: pr.temperature,
+                            maxTokens: pr.max_tokens,
+                          });
+                          dialog.alert("Đã tạo và lưu profile 'Claude Pro' lên server.", {
+                            title: "Thành công",
+                          });
+                        } catch {
+                          dialog.alert(
+                            "Đã tạo profile 'Claude Pro' nhưng chưa lưu lên server. Nhấn 'Lưu lên server' để đồng bộ.",
+                            { title: "Tạo thành công" },
+                          );
+                        }
                       }}
                     >
                       Tạo profile "Claude Pro"
@@ -264,16 +279,34 @@ function LlmSettings() {
                 <Button
                   variant="default"
                   disabled={!canEdit}
-                  onClick={() => {
-                    setProfile({
+                  onClick={async () => {
+                    const pr = {
                       name: "Claude CLI",
                       adapter: "claude-cli",
                       model: "claude-sonnet-4-6",
                       endpoint: bridgeUrl,
                       temperature: 0.7,
                       max_tokens: 4096,
-                    });
-                    dialog.alert("Đã tạo profile 'Claude CLI'.", { title: "Thành công" });
+                    };
+                    setProfile(pr);
+                    try {
+                      await config.saveLlm({
+                        name: pr.name,
+                        adapter: pr.adapter,
+                        model: pr.model,
+                        endpoint: pr.endpoint,
+                        temperature: pr.temperature,
+                        maxTokens: pr.max_tokens,
+                      });
+                      dialog.alert("Đã tạo và lưu profile 'Claude CLI' lên server.", {
+                        title: "Thành công",
+                      });
+                    } catch {
+                      dialog.alert(
+                        "Đã tạo profile 'Claude CLI' nhưng chưa lưu lên server. Nhấn 'Lưu lên server' để đồng bộ.",
+                        { title: "Tạo thành công" },
+                      );
+                    }
                   }}
                 >
                   + Tạo profile

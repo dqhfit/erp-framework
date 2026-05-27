@@ -1,0 +1,34 @@
+{
+  "name": "@erp-framework/migration-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "erp-migrate": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/cli.ts",
+    "./discover": "./src/discover.ts",
+    "./enrich": "./src/ai/enrich.ts",
+    "./capture-golden": "./src/capture-golden.ts",
+    "./generate": "./src/generate.ts",
+    "./data": "./src/data.ts",
+    "./manifest": "./src/manifest.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "start": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@erp-framework/db": "workspace:*",
+    "@erp-framework/mssql-client": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.0",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

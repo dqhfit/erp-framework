@@ -44,3 +44,9 @@ backups/
 # compiled output (TS project — .js belongs in dist/ only)
 src/**/*.js
 src/**/*.js.map
+
+# migration-cli AI runtime logs (prompt/response per LLM call)
+migration-plan/ai-log/
+# AI-generated artifacts (kept in repo by default; uncomment to gitignore)
+# migration-plan/samples/
+# migration-plan/audit/

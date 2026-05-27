@@ -45,6 +45,7 @@ export const users = pgTable("users", {
   primaryAgentId: uuid("primary_agent_id").references((): AnyPgColumn => agents.id, {
     onDelete: "set null",
   }),
+  preferences: jsonb("preferences").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -477,12 +478,50 @@ export const pages = pgTable(
     label: text("label").notNull(),
     icon: text("icon"),
     content: jsonb("content").notNull().default(sql`'{}'::jsonb`),
+    published: boolean("published").notNull().default(false),
+    publishMode: text("publish_mode").notNull().default("private"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
     companyNameIdx: uniqueIndex("pages_company_name_idx").on(t.companyId, t.name),
   }),
+);
+
+export const viewerGroups = pgTable("viewer_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color").notNull().default("#6366f1"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userViewerGroups = pgTable(
+  "user_viewer_groups",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => viewerGroups.id, { onDelete: "cascade" }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.groupId] }) }),
+);
+
+export const pageViewerGroups = pgTable(
+  "page_viewer_groups",
+  {
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => viewerGroups.id, { onDelete: "cascade" }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.pageId, t.groupId] }) }),
 );
 
 export const workflowTrigger = pgEnum("workflow_trigger", [
@@ -590,6 +629,35 @@ export const mcpConfigs = pgTable(
   },
   (t) => ({
     companyNameIdx: uniqueIndex("mcp_configs_company_name_idx").on(t.companyId, t.name),
+  }),
+);
+
+/** Kết nối MSSQL legacy per-company — dùng cho UI migration.
+ *  Password mã hoá qua crypto.ts (AES-256-GCM); chỉ admin xem được
+ *  via tRPC (router strip ra trước khi gửi xuống FE). */
+export const mssqlConnections = pgTable(
+  "mssql_connections",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    host: text("host").notNull(),
+    port: integer("port").default(1433).notNull(),
+    database: text("database").notNull(),
+    username: text("username").notNull(),
+    passwordEnc: text("password_enc").default("").notNull(),
+    encrypt: boolean("encrypt").default(true).notNull(),
+    trustServerCert: boolean("trust_server_cert").default(false).notNull(),
+    allowWrite: boolean("allow_write").default(false).notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyNameIdx: uniqueIndex("mssql_connections_company_name_idx").on(t.companyId, t.name),
   }),
 );
 

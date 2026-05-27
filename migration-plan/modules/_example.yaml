@@ -1,0 +1,74 @@
+# Manifest mau — copy ra <module>.yaml roi chinh.
+# Cac dau "#" la chu thich huong dan.
+
+module: example                  # ten module — snake_case, dung trong route/CLI
+
+# Bang thuoc module — duoc CLI discover tu seed tables + BFS qua JOIN trong proc.
+# Moi bang map sang 1 entity trong framework (data nam o entity_records.data jsonb).
+tables:
+  - name: dbo.ORDERS             # ten goc MSSQL
+    suggestedEntityName: don_hang  # ten entity moi — snake_case, tieng Viet hoac Anh
+    primaryKey: [ID]
+    columns:
+      - { name: ID,           type: int,        mapTo: { field: id,         entityType: text     } }
+      - { name: CUSTOMER_ID,  type: int,        mapTo: { field: khach_id,   entityType: relation, relationEntity: khach_hang } }
+      - { name: TOTAL,        type: decimal,    mapTo: { field: tong_tien,  entityType: number   } }
+      - { name: STATUS,       type: nvarchar,   mapTo: { field: trang_thai, entityType: select, options: [moi, dang_giao, hoan_thanh] } }
+      - { name: CREATED_AT,   type: datetime,   mapTo: { field: tao_luc,    entityType: datetime } }
+    # Relation suy ra tu JOIN trong proc — co the khong khop FK declared.
+    inferredRelations:
+      - { column: CUSTOMER_ID, refTable: dbo.CUSTOMERS, refColumn: ID, sourceProc: sp_GetOrderSummary }
+
+  - name: dbo.ORDER_ITEMS
+    suggestedEntityName: chi_tiet_don_hang
+    primaryKey: [ID]
+    columns:
+      - { name: ORDER_ID,   type: int, mapTo: { field: don_hang_id, entityType: relation, relationEntity: don_hang } }
+      - { name: PRODUCT_ID, type: int, mapTo: { field: san_pham_id, entityType: relation, relationEntity: san_pham } }
+      - { name: QTY,        type: int, mapTo: { field: so_luong,    entityType: number } }
+
+# Stored procedure thuoc module — phan loai tier (B/C/D) + dich.
+procs:
+  - name: dbo.sp_GetOrderSummary
+    reads: [dbo.ORDERS, dbo.ORDER_ITEMS, dbo.CUSTOMERS]
+    writes: []
+    flags: [has-group-by, has-window]
+    suggestedTier: D             # report phuc tap → plugin in-process
+    targetFile: packages/plugins/module-example/order-summary.ts
+
+  - name: dbo.sp_UpdateOrderStatus
+    reads: [dbo.ORDERS]
+    writes: [dbo.ORDERS]
+    flags: []
+    suggestedTier: B             # CRUD don gian → procedure JS
+    targetProcName: cap_nhat_trang_thai_don   # ten procedure sau khi port
+
+  - name: dbo.sp_PlaceOrder
+    reads: [dbo.ORDERS, dbo.ORDER_ITEMS, dbo.INVENTORY, dbo.CUSTOMERS]
+    writes: [dbo.ORDERS, dbo.ORDER_ITEMS, dbo.INVENTORY]
+    flags: [has-transaction, has-try-catch, writes-multi-table, calls-other-proc]
+    suggestedTier: D             # transaction + cross-module
+    targetFile: packages/plugins/module-example/place-order.ts
+
+  - name: dbo.sp_NightlyClosing
+    reads: [dbo.ORDERS, dbo.INVENTORY]
+    writes: [dbo.INVENTORY_DAILY_SNAPSHOT]
+    flags: [has-cursor, has-while]
+    suggestedTier: C             # batch dem — workflow scheduled
+    schedule: "0 2 * * *"        # cron — chi dien neu detect duoc tu SQL Agent
+
+# Bang thuoc module khac ma proc trong module nay dang dung — phai thiet ke
+# contract (tRPC neu module kia da port; mssql-bridge neu chua).
+crossModuleEdges:
+  - proc: dbo.sp_PlaceOrder
+    externalTable: dbo.INVENTORY
+    kind: write
+    suggestedContract: "tRPC inventory.deduct({ sku, qty })"
+
+# Trang thai cutover.
+status:
+  phase: discovered              # discovered | scaffolded | filled | migrating | live | retired
+  capturedGoldenAt: null
+  scaffoldedAt: null
+  cutoverAt: null
+  retiredAt: null

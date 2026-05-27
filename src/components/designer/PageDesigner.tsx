@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { I } from "@/components/Icons";
 import { Button, Chip, EmptyState, FormField, Input, Select } from "@/components/ui";
@@ -98,9 +98,31 @@ export function PageDesigner({ pageId }: Props) {
   const [dragKind, setDragKind] = useState<ComponentKind | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const publishRef = useRef<HTMLDivElement>(null);
   const { tools: mcpTools } = useMcpClient();
   const setPageContent = useUserObjects((s) => s.setPageContent);
+  const publishPage = useUserObjects((s) => s.publishPage);
+  const unpublishPage = useUserObjects((s) => s.unpublishPage);
+  const setPageViewerGroups = useUserObjects((s) => s.setPageViewerGroups);
+  const page = useUserObjects((s) => s.pages.find((p) => p.id === pageId));
+  const vGroups = useUserObjects((s) => s.viewerGroupsList);
+  const isPublished = page?.isPublished ?? false;
+  const publishMode = page?.publishMode ?? "private";
   const entities = useUserObjects((s) => s.entities);
+
+  // Click ngoài dropdown publish → đóng
+  useEffect(() => {
+    if (!publishOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (publishRef.current && !publishRef.current.contains(e.target as Node)) {
+        setPublishOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [publishOpen]);
 
   // Load nội dung đã lưu khi đổi page
   useEffect(() => {
@@ -209,6 +231,219 @@ export function PageDesigner({ pageId }: Props) {
             <I.Check size={11} /> {t("designer.saved")}
           </span>
         )}
+        {/* Publish dropdown */}
+        <div ref={publishRef} className="relative">
+          {isPublished ? (
+            <div className="flex items-center gap-1">
+              <Chip variant="success" className="text-[10px]! h-6! gap-1">
+                <I.Globe size={10} />
+                {publishMode === "public"
+                  ? t("designer.published_public")
+                  : t("designer.published_private")}
+              </Chip>
+              <button
+                type="button"
+                onClick={() => setPublishOpen((v) => !v)}
+                className="h-6 px-1.5 rounded border border-border hover:bg-hover text-xs text-muted"
+                title={t("designer.publish_options")}
+              >
+                <I.ChevronDown size={11} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-0.5">
+              <Button
+                variant="default"
+                size="sm"
+                icon={<I.Globe size={13} />}
+                onClick={() => publishPage(pageId, "private")}
+              >
+                {t("designer.publish")}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setPublishOpen((v) => !v)}
+                className="h-7 px-1 rounded border border-border hover:bg-hover text-muted"
+                title={t("designer.publish_options")}
+              >
+                <I.ChevronDown size={11} />
+              </button>
+            </div>
+          )}
+          {publishOpen && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-panel border border-border rounded shadow-lg py-1 w-52 text-sm">
+              {isPublished ? (
+                <>
+                  <div className="px-3 py-1.5 text-[11px] text-muted uppercase tracking-wider">
+                    {t("designer.change_mode")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      publishPage(pageId, "private");
+                      setPublishOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 hover:bg-hover flex items-center gap-2",
+                      publishMode === "private" && "text-accent",
+                    )}
+                  >
+                    <I.Lock size={13} /> {t("designer.publish_private")}
+                    {publishMode === "private" && <I.Check size={11} className="ml-auto" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      publishPage(pageId, "public");
+                      setPublishOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 hover:bg-hover flex items-center gap-2",
+                      publishMode === "public" && "text-accent",
+                    )}
+                  >
+                    <I.Globe size={13} /> {t("designer.publish_public")}
+                    {publishMode === "public" && <I.Check size={11} className="ml-auto" />}
+                  </button>
+                  {publishMode === "public" && (
+                    <div className="px-3 py-2 border-t border-border mt-1 space-y-1.5">
+                      <div className="text-[11px] text-muted">{t("designer.public_url")}</div>
+                      <div className="flex items-center gap-1 bg-panel rounded px-2 py-1 text-[11px] font-mono text-text/70 min-w-0">
+                        <span className="truncate flex-1">
+                          {window.location.origin}/view/{pageId}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard
+                              .writeText(`${window.location.origin}/view/${pageId}`)
+                              .then(() => {
+                                setLinkCopied(true);
+                                setTimeout(() => setLinkCopied(false), 2000);
+                              });
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[11px] bg-panel-2 hover:bg-hover border border-border transition-colors"
+                        >
+                          {linkCopied ? (
+                            <>
+                              <I.Check size={11} className="text-success" /> {t("designer.copied")}
+                            </>
+                          ) : (
+                            <>
+                              <I.Copy size={11} /> {t("designer.copy_link")}
+                            </>
+                          )}
+                        </button>
+                        <a
+                          href={`/view/${pageId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[11px] bg-panel-2 hover:bg-hover border border-border transition-colors"
+                          title={t("designer.open_in_tab")}
+                        >
+                          <I.ExternalLink size={11} />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  <div className="px-3 py-2 border-t border-border">
+                    <div className="text-[11px] text-muted mb-1">
+                      {t("designer.visible_to_groups")}
+                    </div>
+                    {vGroups.length === 0 ? (
+                      <div className="text-[10px] text-muted/60">
+                        {t("designer.no_groups_hint")}
+                      </div>
+                    ) : (
+                      <>
+                        {vGroups.map((g) => {
+                          const checked = (page?.viewerGroupIds ?? []).includes(g.id);
+                          return (
+                            <label
+                              key={g.id}
+                              className="flex items-center gap-2 py-0.5 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  const current = page?.viewerGroupIds ?? [];
+                                  const next = checked
+                                    ? current.filter((id) => id !== g.id)
+                                    : [...current, g.id];
+                                  setPageViewerGroups(pageId, next);
+                                }}
+                                className="w-3 h-3"
+                              />
+                              <span className="text-[11px]" style={{ color: g.color }}>
+                                {g.name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                        <div className="text-[10px] text-muted/60 mt-1">
+                          {t("designer.no_groups_hint")}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="border-t border-border mt-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        unpublishPage(pageId);
+                        setPublishOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-hover text-danger flex items-center gap-2"
+                    >
+                      <I.X size={13} /> {t("designer.unpublish")}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="px-3 py-1.5 text-[11px] text-muted uppercase tracking-wider">
+                    {t("designer.publish_as")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      publishPage(pageId, "private");
+                      setPublishOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-hover flex items-center gap-2"
+                  >
+                    <I.Lock size={13} />
+                    <div>
+                      <div>{t("designer.publish_private")}</div>
+                      <div className="text-[11px] text-muted">
+                        {t("designer.publish_private_desc")}
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      publishPage(pageId, "public");
+                      setPublishOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-hover flex items-center gap-2"
+                  >
+                    <I.Globe size={13} />
+                    <div>
+                      <div>{t("designer.publish_public")}</div>
+                      <div className="text-[11px] text-muted">
+                        {t("designer.publish_public_desc")}
+                      </div>
+                    </div>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <AiAssistDrawer
         open={aiOpen}
@@ -355,73 +590,231 @@ export function PageDesigner({ pageId }: Props) {
                     />
                   </FormField>
                 </div>
+
+                {/* Entity selector — reset fields khi đổi entity */}
                 {(sel.kind === "list" ||
                   sel.kind === "form" ||
                   sel.kind === "chart" ||
-                  sel.kind === "kanban") && (
-                  <FormField label="Entity">
-                    <Select
-                      value={(sel.config.entity as string) ?? ""}
-                      onChange={(e) =>
-                        update(sel.id, { config: { ...sel.config, entity: e.target.value } })
-                      }
-                    >
-                      <option value="">{t("field.choose")}</option>
-                      {entities.map((en) => (
-                        <option key={en.id} value={en.id}>
-                          {en.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormField>
-                )}
-                {sel.kind === "chart" && (
-                  <>
-                    <FormField label={t("field.chart_type")}>
-                      <Select
-                        value={(sel.config.kind as string) ?? "bar"}
-                        onChange={(e) =>
-                          update(sel.id, { config: { ...sel.config, kind: e.target.value } })
-                        }
-                      >
-                        <option value="bar">Bar</option>
-                        <option value="line">Line</option>
-                        <option value="area">Area</option>
-                        <option value="pie">Pie</option>
-                        <option value="doughnut">Doughnut</option>
-                      </Select>
-                    </FormField>
-                    <FormField label={t("designer.chart_group_field")}>
-                      <Input
-                        value={(sel.config.groupBy as string) ?? ""}
-                        placeholder="vd: status"
-                        onChange={(e) =>
-                          update(sel.id, { config: { ...sel.config, groupBy: e.target.value } })
-                        }
-                      />
-                    </FormField>
-                    <FormField label={t("designer.chart_value_field")}>
-                      <Input
-                        value={(sel.config.valueField as string) ?? ""}
-                        placeholder="vd: tong_tien"
-                        onChange={(e) =>
-                          update(sel.id, { config: { ...sel.config, valueField: e.target.value } })
-                        }
-                      />
-                    </FormField>
-                  </>
-                )}
-                {sel.kind === "kanban" && (
-                  <FormField label="Nhóm theo field">
-                    <Input
-                      value={(sel.config.groupBy as string) ?? "status"}
-                      placeholder="vd: status"
-                      onChange={(e) =>
-                        update(sel.id, { config: { ...sel.config, groupBy: e.target.value } })
-                      }
-                    />
-                  </FormField>
-                )}
+                  sel.kind === "kanban") &&
+                  (() => {
+                    const selEntity = entities.find(
+                      (e) => e.id === (sel.config.entity as string | undefined),
+                    );
+                    const entityFields = selEntity?.fields ?? [];
+                    const selectedFieldNames = (sel.config.fields as string[] | undefined) ?? [];
+
+                    return (
+                      <>
+                        <FormField label="Entity">
+                          <Select
+                            value={(sel.config.entity as string) ?? ""}
+                            onChange={(e) =>
+                              update(sel.id, {
+                                config: {
+                                  ...sel.config,
+                                  entity: e.target.value,
+                                  fields: [],
+                                  groupBy: "",
+                                  valueField: "",
+                                },
+                              })
+                            }
+                          >
+                            <option value="">{t("field.choose")}</option>
+                            {entities.map((en) => (
+                              <option key={en.id} value={en.id}>
+                                {en.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormField>
+
+                        {/* Field checklist — chỉ hiện cho list / form khi đã bind entity */}
+                        {(sel.kind === "list" || sel.kind === "form") &&
+                          entityFields.length > 0 && (
+                            <FormField label={t("designer.fields_to_show")}>
+                              <div className="border border-border rounded-md overflow-hidden">
+                                <div className="max-h-44 overflow-y-auto bg-bg-soft">
+                                  {entityFields.map((f) => {
+                                    const checked =
+                                      selectedFieldNames.length === 0 ||
+                                      selectedFieldNames.includes(f.name);
+                                    return (
+                                      <label
+                                        key={f.name}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          className="accent-accent shrink-0"
+                                          checked={checked}
+                                          onChange={(e) => {
+                                            const base =
+                                              selectedFieldNames.length === 0
+                                                ? entityFields.map((x) => x.name)
+                                                : [...selectedFieldNames];
+                                            const next = e.target.checked
+                                              ? base.includes(f.name)
+                                                ? base
+                                                : [...base, f.name]
+                                              : base.filter((n) => n !== f.name);
+                                            const value =
+                                              next.length === entityFields.length ? [] : next;
+                                            update(sel.id, {
+                                              config: { ...sel.config, fields: value },
+                                            });
+                                          }}
+                                        />
+                                        <span className="flex-1 truncate">{f.label}</span>
+                                        <code className="text-[10px] text-muted font-mono shrink-0">
+                                          {f.name}
+                                        </code>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                <div className="px-2 py-1 border-t border-border flex items-center justify-between bg-panel">
+                                  <span className="text-[10px] text-muted">
+                                    {selectedFieldNames.length === 0
+                                      ? t("designer.fields_count", { count: entityFields.length })
+                                      : t("designer.fields_count", {
+                                          count: selectedFieldNames.length,
+                                        })}
+                                  </span>
+                                  {selectedFieldNames.length > 0 && (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] text-accent hover:underline"
+                                      onClick={() =>
+                                        update(sel.id, { config: { ...sel.config, fields: [] } })
+                                      }
+                                    >
+                                      {t("designer.fields_select_all")}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </FormField>
+                          )}
+
+                        {/* Chart config */}
+                        {sel.kind === "chart" && (
+                          <>
+                            <FormField label={t("field.chart_type")}>
+                              <Select
+                                value={(sel.config.kind as string) ?? "bar"}
+                                onChange={(e) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, kind: e.target.value },
+                                  })
+                                }
+                              >
+                                <option value="bar">Bar</option>
+                                <option value="line">Line</option>
+                                <option value="area">Area</option>
+                                <option value="pie">Pie</option>
+                                <option value="doughnut">Doughnut</option>
+                              </Select>
+                            </FormField>
+                            <FormField label={t("designer.chart_group_field")}>
+                              {entityFields.length > 0 ? (
+                                <Select
+                                  value={(sel.config.groupBy as string) ?? ""}
+                                  onChange={(e) =>
+                                    update(sel.id, {
+                                      config: { ...sel.config, groupBy: e.target.value },
+                                    })
+                                  }
+                                >
+                                  <option value="">{t("field.choose")}</option>
+                                  {entityFields.map((f) => (
+                                    <option key={f.name} value={f.name}>
+                                      {f.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              ) : (
+                                <Input
+                                  value={(sel.config.groupBy as string) ?? ""}
+                                  placeholder="vd: status"
+                                  onChange={(e) =>
+                                    update(sel.id, {
+                                      config: { ...sel.config, groupBy: e.target.value },
+                                    })
+                                  }
+                                />
+                              )}
+                            </FormField>
+                            <FormField label={t("designer.chart_value_field")}>
+                              {entityFields.length > 0 ? (
+                                <Select
+                                  value={(sel.config.valueField as string) ?? ""}
+                                  onChange={(e) =>
+                                    update(sel.id, {
+                                      config: { ...sel.config, valueField: e.target.value },
+                                    })
+                                  }
+                                >
+                                  <option value="">Đếm số bản ghi</option>
+                                  {entityFields
+                                    .filter((f) => ["number", "currency"].includes(f.type))
+                                    .map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {f.label}
+                                      </option>
+                                    ))}
+                                </Select>
+                              ) : (
+                                <Input
+                                  value={(sel.config.valueField as string) ?? ""}
+                                  placeholder="vd: tong_tien"
+                                  onChange={(e) =>
+                                    update(sel.id, {
+                                      config: { ...sel.config, valueField: e.target.value },
+                                    })
+                                  }
+                                />
+                              )}
+                            </FormField>
+                          </>
+                        )}
+
+                        {/* Kanban config */}
+                        {sel.kind === "kanban" && (
+                          <FormField label="Nhóm theo field">
+                            {entityFields.length > 0 ? (
+                              <Select
+                                value={(sel.config.groupBy as string) ?? ""}
+                                onChange={(e) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, groupBy: e.target.value },
+                                  })
+                                }
+                              >
+                                <option value="">{t("field.choose")}</option>
+                                {entityFields.map((f) => (
+                                  <option key={f.name} value={f.name}>
+                                    {f.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            ) : (
+                              <Input
+                                value={(sel.config.groupBy as string) ?? "status"}
+                                placeholder="vd: status"
+                                onChange={(e) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, groupBy: e.target.value },
+                                  })
+                                }
+                              />
+                            )}
+                          </FormField>
+                        )}
+                      </>
+                    );
+                  })()}
+
                 <Button
                   variant="danger"
                   size="sm"
@@ -536,24 +929,26 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
     );
   }
   if (comp.kind === "list") {
-    const { entity } = comp.config as { entity?: string };
+    const { entity, fields } = comp.config as { entity?: string; fields?: string[] };
     const ent = entities.find((e) => e.id === entity);
+    const colCount = fields?.length || Math.min(ent?.fields.length ?? 0, 6);
     return (
       <PreviewBox
         icon="Table"
         label={ent?.name ?? "List"}
-        hint={ent ? "Bảng record thật (xem ở chế độ người dùng)" : "Chưa bind entity"}
+        hint={ent ? `${colCount} cột · xem ở chế độ người dùng` : "Chưa bind entity"}
       />
     );
   }
   if (comp.kind === "form") {
-    const { entity } = comp.config as { entity?: string };
+    const { entity, fields } = comp.config as { entity?: string; fields?: string[] };
     const ent = entities.find((e) => e.id === entity);
+    const fieldCount = fields?.length || ent?.fields.length || 0;
     return (
       <PreviewBox
         icon="Edit"
         label={ent ? `Form ${ent.name}` : "Form"}
-        hint={ent ? "Ghi record thật vào backend" : "Chưa bind entity"}
+        hint={ent ? `${fieldCount} trường · ghi record thật` : "Chưa bind entity"}
       />
     );
   }

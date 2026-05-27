@@ -95,6 +95,22 @@ export {
   type ScheduleSaveInput,
   type WorkflowSaveInput,
 } from "./objects";
+export {
+  createMigrationClient,
+  type MigrationAction,
+  type MigrationAiLogEntry,
+  type MigrationClient,
+  type MigrationEnvCheck,
+  type MigrationJobState,
+  type MigrationModuleSummary,
+} from "./migration";
+export {
+  createMssqlConnectionsClient,
+  type MssqlConnectionSaveInput,
+  type MssqlConnectionView,
+  type MssqlConnectionsClient,
+  type MssqlTestResult,
+} from "./mssql-connections";
 export { createOrgClient, type OrgClient } from "./org";
 export {
   createPluginsClient,

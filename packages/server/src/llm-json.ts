@@ -26,36 +26,43 @@ export interface CallLlmJsonOpts {
 /** Gọi LLM 1 shot. Trả object đã parse, hoặc null nếu lỗi/không hợp lệ.
  *  Generic <T>: caller annotate kiểu kỳ vọng để TS hỗ trợ. */
 export async function callLlmJson<T = unknown>(
-  db: DB, companyId: string, opts: CallLlmJsonOpts,
+  db: DB,
+  companyId: string,
+  opts: CallLlmJsonOpts,
 ): Promise<T | null> {
-  const conds = [
-    eq(llmProfiles.companyId, companyId),
-    eq(llmProfiles.kind, "chat"),
-  ];
+  const conds = [eq(llmProfiles.companyId, companyId), eq(llmProfiles.kind, "chat")];
   if (opts.profileName) conds.push(eq(llmProfiles.name, opts.profileName));
-  const [p] = await db.select().from(llmProfiles).where(and(...conds)).limit(1);
+  const [p] = await db
+    .select()
+    .from(llmProfiles)
+    .where(and(...conds))
+    .limit(1);
   if (!p) return null;
 
   const user = opts.user.slice(0, 8000);
   const maxTokens = opts.maxTokens ?? 1024;
   const temperature = opts.temperature ?? 0.2;
 
-  const isAnthropic = ["claude", "claude-pro", "anthropic"].includes(p.adapter);
-  const key = (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "")
-    || process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] || "";
-  if (!key && p.adapter !== "ollama") return null;
+  // claude-cli dùng local bridge (localhost:8909/v1/messages) — Anthropic format, không cần API key.
+  const isAnthropic = ["claude", "claude-pro", "anthropic", "claude-cli"].includes(p.adapter);
+  const key =
+    (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "") ||
+    process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] ||
+    "";
+  if (!key && p.adapter !== "ollama" && p.adapter !== "claude-cli") return null;
 
   let raw = "";
   try {
     if (isAnthropic) {
       const endpoint = (p.endpoint ?? "https://api.anthropic.com") + "/v1/messages";
+      const headers: Record<string, string> = {
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      };
+      if (key) headers["x-api-key"] = key;
       const r = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           model: p.model,
           max_tokens: maxTokens,
@@ -66,14 +73,15 @@ export async function callLlmJson<T = unknown>(
         signal: AbortSignal.timeout(45_000),
       });
       if (!r.ok) return null;
-      const j = await r.json() as { content?: Array<{ text?: string }> };
+      const j = (await r.json()) as { content?: Array<{ text?: string }> };
       raw = j.content?.[0]?.text ?? "";
     } else {
       const endpoint = (p.endpoint ?? "https://api.openai.com") + "/v1/chat/completions";
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (key) headers.authorization = `Bearer ${key}`;
       const r = await fetch(endpoint, {
-        method: "POST", headers,
+        method: "POST",
+        headers,
         body: JSON.stringify({
           model: p.model,
           max_tokens: maxTokens,
@@ -87,7 +95,7 @@ export async function callLlmJson<T = unknown>(
         signal: AbortSignal.timeout(45_000),
       });
       if (!r.ok) return null;
-      const j = await r.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const j = (await r.json()) as { choices?: Array<{ message?: { content?: string } }> };
       raw = j.choices?.[0]?.message?.content ?? "";
     }
   } catch (e) {

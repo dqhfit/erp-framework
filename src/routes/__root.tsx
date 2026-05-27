@@ -1,5 +1,5 @@
 import { createEmbedClient } from "@erp-framework/client";
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { AuthGate } from "@/components/AuthGate";
@@ -73,6 +73,10 @@ function EmbedGate({ children }: { children: ReactNode }) {
 function AppShell() {
   useGlobalShortcuts();
   const agentOpen = useUI((s) => s.agentOpen);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // /view/* renders its own full-screen layout — skip AppShell chrome.
+  if (pathname.startsWith("/view/")) return <Outlet />;
 
   /* Nạp store dùng chung (entity/page/workflow/agent) ngay khi vào
      app — và nạp lại mỗi khi quay lại tab. Nhờ vậy sidebar luôn
@@ -134,4 +138,50 @@ function Root() {
   );
 }
 
-export const Route = createRootRoute({ component: Root });
+function NotFoundPage() {
+  return (
+    <div className="h-screen flex items-center justify-center bg-bg text-text">
+      <div className="text-center space-y-3 max-w-sm">
+        <div className="text-4xl font-bold text-muted">404</div>
+        <div className="font-semibold">Không tìm thấy trang</div>
+        <div className="text-sm text-muted">Trang này không tồn tại hoặc đã bị xóa.</div>
+        <Link
+          to="/"
+          className="inline-block mt-2 px-4 py-2 rounded-md bg-accent text-white text-sm hover:opacity-90 transition-opacity"
+        >
+          Về trang chủ
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ErrorPage({ error }: { error: Error }) {
+  const msg = error?.message ?? String(error);
+  const is404 = msg.includes("404") || msg.includes("not found") || msg.includes("Not Found");
+  return (
+    <div className="h-screen flex items-center justify-center bg-bg text-text p-6">
+      <div className="text-center space-y-3 max-w-md">
+        <div className={`text-4xl font-bold ${is404 ? "text-muted" : "text-danger"}`}>
+          {is404 ? "404" : "Lỗi"}
+        </div>
+        <div className="font-semibold">{is404 ? "Không tìm thấy" : "Đã xảy ra lỗi"}</div>
+        <div className="text-xs text-muted font-mono bg-bg-soft border border-border rounded px-3 py-2 text-left break-all max-h-32 overflow-y-auto">
+          {msg}
+        </div>
+        <Link
+          to="/"
+          className="inline-block mt-2 px-4 py-2 rounded-md bg-accent text-white text-sm hover:opacity-90 transition-opacity"
+        >
+          Về trang chủ
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export const Route = createRootRoute({
+  component: Root,
+  notFoundComponent: NotFoundPage,
+  errorComponent: ({ error }) => <ErrorPage error={error as Error} />,
+});

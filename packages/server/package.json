@@ -16,7 +16,10 @@
   "dependencies": {
     "@erp-framework/core": "workspace:*",
     "@erp-framework/db": "workspace:*",
+    "@erp-framework/migration-cli": "workspace:*",
+    "@erp-framework/mssql-client": "workspace:*",
     "@erp-framework/plugins": "workspace:*",
+    "yaml": "^2.6.0",
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/http-proxy": "^11.0.0",

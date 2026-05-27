@@ -4,6 +4,11 @@
    - app  : để plugin hiện trong designer (palette field/node).
    - server: để workflow-runner THỰC THI node do plugin định nghĩa.
    Hết lặp định nghĩa giữa app và server.
+
+   CHU Y: plugin nao dung Node-only API (vd MssqlClient → driver
+   `mssql` voi `Buffer`/`net`) PHAI export qua subpath rieng, vi du
+   `./mssql-bridge`, de Vite KHONG bundle vao client bundle. Khong
+   re-export tu file `index.ts` nay.
    ========================================================== */
 import type { PluginModule } from "@erp-framework/core";
 

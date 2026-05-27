@@ -10,7 +10,7 @@ export default defineConfig({
   // Vitest — unit test cho src/. Thư mục e2e/ là Playwright spec,
   // loại khỏi vitest để không bị gom nhầm.
   test: {
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    exclude: [...configDefaults.exclude, "e2e/**", ".claude/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -18,7 +18,8 @@ export default defineConfig({
       // loại test file, types, route tree generated, config.
       include: ["packages/*/src/**/*.{ts,tsx}", "src/**/*.{ts,tsx}"],
       exclude: [
-        "**/*.test.ts", "**/*.spec.ts",
+        "**/*.test.ts",
+        "**/*.spec.ts",
         "**/*.d.ts",
         "**/routeTree.gen.ts",
         "**/types/**",
@@ -77,20 +78,9 @@ export default defineConfig({
         manualChunks: {
           "react-vendor": ["react", "react-dom", "react-dom/client"],
           router: ["@tanstack/react-router"],
-          query: [
-            "@tanstack/react-query",
-            "@tanstack/react-table",
-          ],
-          designer: [
-            "@xyflow/react",
-            "@dnd-kit/core",
-            "@dnd-kit/sortable",
-          ],
-          viz: [
-            "recharts",
-            "leaflet",
-            "react-leaflet",
-          ],
+          query: ["@tanstack/react-query", "@tanstack/react-table"],
+          designer: ["@xyflow/react", "@dnd-kit/core", "@dnd-kit/sortable"],
+          viz: ["recharts", "leaflet", "react-leaflet"],
           icons: ["lucide-react"],
         },
       },

@@ -9,8 +9,15 @@ import { z } from "zod";
 import { and, eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
-  users, sessions, mcpConfigs, llmProfiles, activityLog,
-  companies, companyMembers, userInvites, inviteLinks,
+  users,
+  sessions,
+  mcpConfigs,
+  llmProfiles,
+  activityLog,
+  companies,
+  companyMembers,
+  userInvites,
+  inviteLinks,
 } from "@erp-framework/db";
 import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
 import { logActivity } from "./activity";
@@ -42,13 +49,20 @@ import { embedRouter } from "./embed-router";
 import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
+import { migrationRouter } from "./migration-router";
+import { mssqlConnectionsRouter } from "./mssql-connections-router";
+import { preferencesRouter } from "./preferences-router";
+import { viewerGroupsRouter } from "./viewer-groups-router";
 import { encryptSecret, decryptSecret } from "./crypto";
 
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
 import {
-  hashPassword, verifyPassword, newSessionToken,
-  SESSION_TTL_MS, SESSION_COOKIE,
+  hashPassword,
+  verifyPassword,
+  newSessionToken,
+  SESSION_TTL_MS,
+  SESSION_COOKIE,
 } from "./auth";
 
 /* ─── AppRouter ──────────────────────────────────────────── */
@@ -63,11 +77,13 @@ export const appRouter = router({
   auth: router({
     register: publicProcedure
       .use(rateLimit("auth.register", 5, 15 * 60 * 1000))
-      .input(z.object({
-        email: z.string().email(),
-        name: z.string().min(1),
-        password: z.string().min(8),
-      }))
+      .input(
+        z.object({
+          email: z.string().email(),
+          name: z.string().min(1),
+          password: z.string().min(8),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
         const existing = await ctx.db.select({ id: users.id }).from(users).limit(1);
         if (existing.length > 0) {
@@ -76,21 +92,28 @@ export const appRouter = router({
             message: "Đã có tài khoản — người quản trị tạo tài khoản mới.",
           });
         }
-        const [u] = await ctx.db.insert(users).values({
-          email: input.email,
-          name: input.name,
-          passwordHash: await hashPassword(input.password),
-          role: "admin",
-        }).returning();
+        const [u] = await ctx.db
+          .insert(users)
+          .values({
+            email: input.email,
+            name: input.name,
+            passwordHash: await hashPassword(input.password),
+            role: "admin",
+          })
+          .returning();
         if (!u) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         // Công ty mặc định — tạo nếu chưa có, gắn user đầu tiên làm admin.
-        await ctx.db.insert(companies)
+        await ctx.db
+          .insert(companies)
           .values({ name: "Công ty của tôi", slug: "default" })
           .onConflictDoNothing({ target: companies.slug });
-        const [co] = await ctx.db.select({ id: companies.id }).from(companies)
+        const [co] = await ctx.db
+          .select({ id: companies.id })
+          .from(companies)
           .where(eq(companies.slug, "default"));
         if (co) {
-          await ctx.db.insert(companyMembers)
+          await ctx.db
+            .insert(companyMembers)
             .values({ companyId: co.id, userId: u.id, role: "admin" })
             .onConflictDoNothing();
           await logActivity(ctx.db, {
@@ -109,8 +132,7 @@ export const appRouter = router({
       .use(rateLimit("auth.login", 5, 15 * 60 * 1000))
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const [u] = await ctx.db.select().from(users)
-          .where(eq(users.email, input.email));
+        const [u] = await ctx.db.select().from(users).where(eq(users.email, input.email));
         if (!u || !(await verifyPassword(input.password, u.passwordHash))) {
           // Log thất bại nếu user tồn tại (có company để gắn). Email lạ →
           // skip (không spam log với email tuỳ ý nhập sai).
@@ -118,7 +140,8 @@ export const appRouter = router({
             const [m] = await ctx.db
               .select({ companyId: companyMembers.companyId })
               .from(companyMembers)
-              .where(eq(companyMembers.userId, u.id)).limit(1);
+              .where(eq(companyMembers.userId, u.id))
+              .limit(1);
             if (m) {
               await logActivity(ctx.db, {
                 companyId: m.companyId,
@@ -140,7 +163,8 @@ export const appRouter = router({
         const [m] = await ctx.db
           .select({ companyId: companyMembers.companyId })
           .from(companyMembers)
-          .where(eq(companyMembers.userId, u.id)).limit(1);
+          .where(eq(companyMembers.userId, u.id))
+          .limit(1);
         await ctx.db.insert(sessions).values({
           id: token,
           userId: u.id,
@@ -193,12 +217,15 @@ export const appRouter = router({
       .use(rateLimit("auth.invitePreview", 20, 15 * 60 * 1000))
       .input(z.object({ token: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        const [inv] = await ctx.db.select({
-          userId: userInvites.userId,
-          companyId: userInvites.companyId,
-          expiresAt: userInvites.expiresAt,
-          acceptedAt: userInvites.acceptedAt,
-        }).from(userInvites).where(eq(userInvites.token, input.token));
+        const [inv] = await ctx.db
+          .select({
+            userId: userInvites.userId,
+            companyId: userInvites.companyId,
+            expiresAt: userInvites.expiresAt,
+            acceptedAt: userInvites.acceptedAt,
+          })
+          .from(userInvites)
+          .where(eq(userInvites.token, input.token));
         if (!inv) {
           return { valid: false as const, reason: "not_found" as const };
         }
@@ -208,10 +235,14 @@ export const appRouter = router({
         if (inv.expiresAt < new Date()) {
           return { valid: false as const, reason: "expired" as const };
         }
-        const [u] = await ctx.db.select({ email: users.email, name: users.name })
-          .from(users).where(eq(users.id, inv.userId));
-        const [co] = await ctx.db.select({ name: companies.name })
-          .from(companies).where(eq(companies.id, inv.companyId));
+        const [u] = await ctx.db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, inv.userId));
+        const [co] = await ctx.db
+          .select({ name: companies.name })
+          .from(companies)
+          .where(eq(companies.id, inv.companyId));
         return {
           valid: true as const,
           email: u?.email ?? "",
@@ -226,17 +257,23 @@ export const appRouter = router({
       .use(rateLimit("auth.inviteLinkPreview", 20, 15 * 60 * 1000))
       .input(z.object({ token: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        const [link] = await ctx.db.select({
-          companyId: inviteLinks.companyId,
-          role: inviteLinks.role,
-          expiresAt: inviteLinks.expiresAt,
-          usedAt: inviteLinks.usedAt,
-        }).from(inviteLinks).where(eq(inviteLinks.token, input.token));
+        const [link] = await ctx.db
+          .select({
+            companyId: inviteLinks.companyId,
+            role: inviteLinks.role,
+            expiresAt: inviteLinks.expiresAt,
+            usedAt: inviteLinks.usedAt,
+          })
+          .from(inviteLinks)
+          .where(eq(inviteLinks.token, input.token));
         if (!link) return { valid: false as const, reason: "not_found" as const };
         if (link.usedAt) return { valid: false as const, reason: "used" as const };
-        if (link.expiresAt < new Date()) return { valid: false as const, reason: "expired" as const };
-        const [co] = await ctx.db.select({ name: companies.name })
-          .from(companies).where(eq(companies.id, link.companyId));
+        if (link.expiresAt < new Date())
+          return { valid: false as const, reason: "expired" as const };
+        const [co] = await ctx.db
+          .select({ name: companies.name })
+          .from(companies)
+          .where(eq(companies.id, link.companyId));
         return {
           valid: true as const,
           companyName: co?.name ?? "",
@@ -249,30 +286,45 @@ export const appRouter = router({
        Server tao user moi, gan vao cong ty, cap session, mark link da dung. */
     acceptInviteLink: publicProcedure
       .use(rateLimit("auth.acceptInviteLink", 5, 15 * 60 * 1000))
-      .input(z.object({
-        token: z.string().min(1),
-        name: z.string().min(1, "Vui lòng nhập họ tên"),
-        email: z.string().email("Email không hợp lệ"),
-        password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
-      }))
+      .input(
+        z.object({
+          token: z.string().min(1),
+          name: z.string().min(1, "Vui lòng nhập họ tên"),
+          email: z.string().email("Email không hợp lệ"),
+          password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
-        const [link] = await ctx.db.select().from(inviteLinks)
+        const [link] = await ctx.db
+          .select()
+          .from(inviteLinks)
           .where(eq(inviteLinks.token, input.token));
         if (!link) throw new TRPCError({ code: "NOT_FOUND", message: "Link không hợp lệ" });
-        if (link.usedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã được sử dụng" });
-        if (link.expiresAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã hết hạn" });
+        if (link.usedAt)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã được sử dụng" });
+        if (link.expiresAt < new Date())
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã hết hạn" });
         // Kiem tra email chua ton tai.
-        const [existing] = await ctx.db.select({ id: users.id })
-          .from(users).where(eq(users.email, input.email));
-        if (existing) throw new TRPCError({ code: "CONFLICT", message: "Email đã được dùng bởi tài khoản khác" });
+        const [existing] = await ctx.db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.email, input.email));
+        if (existing)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Email đã được dùng bởi tài khoản khác",
+          });
         // Tao user moi.
         const passwordHash = await hashPassword(input.password);
-        const [newUser] = await ctx.db.insert(users).values({
-          email: input.email,
-          name: input.name,
-          passwordHash,
-          role: link.role,
-        }).returning();
+        const [newUser] = await ctx.db
+          .insert(users)
+          .values({
+            email: input.email,
+            name: input.name,
+            passwordHash,
+            role: link.role,
+          })
+          .returning();
         if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         // Gan vao cong ty -- approved=false, cho admin duyet.
         await ctx.db.insert(companyMembers).values({
@@ -282,7 +334,8 @@ export const appRouter = router({
           approved: false,
         });
         // Danh dau link da dung (1 lan).
-        await ctx.db.update(inviteLinks)
+        await ctx.db
+          .update(inviteLinks)
           .set({ usedAt: new Date(), usedBy: newUser.id })
           .where(eq(inviteLinks.id, link.id));
         // Cap session tu dong.
@@ -315,12 +368,16 @@ export const appRouter = router({
        Cùng cơ chế rate-limit như login (chống brute-force token). */
     acceptInvite: publicProcedure
       .use(rateLimit("auth.acceptInvite", 5, 15 * 60 * 1000))
-      .input(z.object({
-        token: z.string().min(1),
-        password: z.string().min(8),
-      }))
+      .input(
+        z.object({
+          token: z.string().min(1),
+          password: z.string().min(8),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
-        const [inv] = await ctx.db.select().from(userInvites)
+        const [inv] = await ctx.db
+          .select()
+          .from(userInvites)
           .where(eq(userInvites.token, input.token));
         if (!inv) throw new TRPCError({ code: "NOT_FOUND", message: "Link không hợp lệ" });
         if (inv.acceptedAt) {
@@ -330,10 +387,12 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Link đã hết hạn" });
         }
         // Đặt password + đánh dấu invite accepted (cùng transaction logic).
-        await ctx.db.update(users)
+        await ctx.db
+          .update(users)
           .set({ passwordHash: await hashPassword(input.password) })
           .where(eq(users.id, inv.userId));
-        await ctx.db.update(userInvites)
+        await ctx.db
+          .update(userInvites)
           .set({ acceptedAt: new Date() })
           .where(eq(userInvites.id, inv.id));
 
@@ -352,8 +411,7 @@ export const appRouter = router({
           secure: process.env.NODE_ENV === "production",
           maxAge: Math.floor(SESSION_TTL_MS / 1000),
         });
-        const [u] = await ctx.db.select().from(users)
-          .where(eq(users.id, inv.userId));
+        const [u] = await ctx.db.select().from(users).where(eq(users.id, inv.userId));
         await logActivity(ctx.db, {
           companyId: inv.companyId,
           kind: "user.invite_accepted",
@@ -389,7 +447,6 @@ export const appRouter = router({
 
   /* ── Agent CRUD + membership + memory templates ── */
   agents: agentsRouter,
-
 
   /* ── Đa công ty ── */
   companies: companiesRouter,
@@ -438,6 +495,9 @@ export const appRouter = router({
   /* ── Notifications (in-app, @mentions) ── */
   notifications: notificationsRouter,
 
+  /* ── User preferences — layout + last viewed per user ── */
+  preferences: preferencesRouter,
+
   /* ── Feedback — user báo bất cập + đề xuất cải thiện ── */
   feedback: feedbackRouter,
 
@@ -459,17 +519,27 @@ export const appRouter = router({
   /* ── Backup — sao lưu DB + sync uploads lên Google Drive ── */
   backup: backupRouter,
 
+  /* ── Migration MSSQL → framework (admin tooling) ── */
+  migration: migrationRouter,
+  mssqlConnections: mssqlConnectionsRouter,
+
+  /* -- Nhom nguoi xem (viewer groups) -- phan quyen portal theo nhom -- */
+  viewerGroups: viewerGroupsRouter,
+
   /* ── Xuất/nhập cấu hình (entity+page+workflow+agent) ── */
   transfer: router({
-    export: rbacProcedure("view", "settings")
-      .query(({ ctx }) => exportBundle(ctx.db, ctx.user.companyId)),
+    export: rbacProcedure("view", "settings").query(({ ctx }) =>
+      exportBundle(ctx.db, ctx.user.companyId),
+    ),
     import: rbacProcedure("edit", "settings")
-      .input(z.object({
-        entities: z.array(z.record(z.string(), z.unknown())).optional(),
-        pages: z.array(z.record(z.string(), z.unknown())).optional(),
-        workflows: z.array(z.record(z.string(), z.unknown())).optional(),
-        agents: z.array(z.record(z.string(), z.unknown())).optional(),
-      }))
+      .input(
+        z.object({
+          entities: z.array(z.record(z.string(), z.unknown())).optional(),
+          pages: z.array(z.record(z.string(), z.unknown())).optional(),
+          workflows: z.array(z.record(z.string(), z.unknown())).optional(),
+          agents: z.array(z.record(z.string(), z.unknown())).optional(),
+        }),
+      )
       .mutation(({ ctx, input }) => importBundle(ctx.db, ctx.user.companyId, input)),
   }),
 
@@ -489,37 +559,44 @@ export const appRouter = router({
 
   /* ── Nhật ký hành động (activity_log) — lọc theo công ty ── */
   activity: router({
-    list: rbacProcedure("view", "activity")
-      .query(({ ctx }) => ctx.db.select().from(activityLog)
+    list: rbacProcedure("view", "activity").query(({ ctx }) =>
+      ctx.db
+        .select()
+        .from(activityLog)
         .where(eq(activityLog.companyId, ctx.user.companyId))
-        .orderBy(desc(activityLog.at)).limit(200)),
-    clear: rbacProcedure("delete", "activity")
-      .mutation(async ({ ctx }) => {
-        await ctx.db.delete(activityLog)
-          .where(eq(activityLog.companyId, ctx.user.companyId));
-        return { ok: true };
-      }),
+        .orderBy(desc(activityLog.at))
+        .limit(200),
+    ),
+    clear: rbacProcedure("delete", "activity").mutation(async ({ ctx }) => {
+      await ctx.db.delete(activityLog).where(eq(activityLog.companyId, ctx.user.companyId));
+      return { ok: true };
+    }),
   }),
 
   /* ── Cấu hình MCP (theo công ty) ── */
   mcp: router({
     get: rbacProcedure("view", "settings").query(async ({ ctx }) => {
-      const [row] = await ctx.db.select().from(mcpConfigs)
-        .where(and(eq(mcpConfigs.companyId, ctx.user.companyId),
-          eq(mcpConfigs.name, "default")));
+      const [row] = await ctx.db
+        .select()
+        .from(mcpConfigs)
+        .where(and(eq(mcpConfigs.companyId, ctx.user.companyId), eq(mcpConfigs.name, "default")));
       return row?.config ?? null;
     }),
     save: rbacProcedure("edit", "settings")
       .input(z.object({ config: z.record(z.string(), z.unknown()) }))
       .mutation(async ({ ctx, input }) => {
-        const [ex] = await ctx.db.select({ id: mcpConfigs.id })
-          .from(mcpConfigs).where(and(eq(mcpConfigs.name, "default"),
-            eq(mcpConfigs.companyId, ctx.user.companyId)));
+        const [ex] = await ctx.db
+          .select({ id: mcpConfigs.id })
+          .from(mcpConfigs)
+          .where(and(eq(mcpConfigs.name, "default"), eq(mcpConfigs.companyId, ctx.user.companyId)));
         if (ex) {
-          await ctx.db.update(mcpConfigs).set({ config: input.config })
+          await ctx.db
+            .update(mcpConfigs)
+            .set({ config: input.config })
             .where(eq(mcpConfigs.id, ex.id));
         } else {
-          await ctx.db.insert(mcpConfigs)
+          await ctx.db
+            .insert(mcpConfigs)
             .values({ companyId: ctx.user.companyId, name: "default", config: input.config });
         }
         return { ok: true };
@@ -531,32 +608,40 @@ export const appRouter = router({
      Base cũng nằm chung bảng llm_profiles (kind='embedding') — phải
      lọc kind để nó KHÔNG lọt vào danh sách model chat / AgentPanel. */
   llm: router({
-    list: rbacProcedure("view", "settings")
-      .query(async ({ ctx }) => {
-        const rows = await ctx.db.select().from(llmProfiles)
-          .where(and(eq(llmProfiles.companyId, ctx.user.companyId),
-            eq(llmProfiles.kind, "chat")));
-        // Giải mã apiKey để client nạp lại profile.
-        return rows.map((r) => ({
-          ...r,
-          apiKeyEnc: r.apiKeyEnc ? decryptSecret(r.apiKeyEnc) : null,
-        }));
-      }),
+    list: rbacProcedure("view", "settings").query(async ({ ctx }) => {
+      const rows = await ctx.db
+        .select()
+        .from(llmProfiles)
+        .where(and(eq(llmProfiles.companyId, ctx.user.companyId), eq(llmProfiles.kind, "chat")));
+      // Giải mã apiKey để client nạp lại profile.
+      return rows.map((r) => ({
+        ...r,
+        apiKeyEnc: r.apiKeyEnc ? decryptSecret(r.apiKeyEnc) : null,
+      }));
+    }),
     save: rbacProcedure("edit", "settings")
-      .input(z.object({
-        name: z.string().min(1),
-        adapter: z.string(),
-        model: z.string(),
-        endpoint: z.string().optional(),
-        apiKeyEnc: z.string().optional(),
-        temperature: z.number().optional(),
-        maxTokens: z.number().int().optional(),
-      }))
+      .input(
+        z.object({
+          name: z.string().min(1),
+          adapter: z.string(),
+          model: z.string(),
+          endpoint: z.string().optional(),
+          apiKeyEnc: z.string().optional(),
+          temperature: z.number().optional(),
+          maxTokens: z.number().int().optional(),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
-        const [ex] = await ctx.db.select({ id: llmProfiles.id })
-          .from(llmProfiles).where(and(eq(llmProfiles.name, input.name),
-            eq(llmProfiles.companyId, ctx.user.companyId),
-            eq(llmProfiles.kind, "chat")));
+        const [ex] = await ctx.db
+          .select({ id: llmProfiles.id })
+          .from(llmProfiles)
+          .where(
+            and(
+              eq(llmProfiles.name, input.name),
+              eq(llmProfiles.companyId, ctx.user.companyId),
+              eq(llmProfiles.kind, "chat"),
+            ),
+          );
         const values = {
           adapter: input.adapter,
           model: input.model,
@@ -566,10 +651,10 @@ export const appRouter = router({
           maxTokens: input.maxTokens ?? 4096,
         };
         if (ex) {
-          await ctx.db.update(llmProfiles).set(values)
-            .where(eq(llmProfiles.id, ex.id));
+          await ctx.db.update(llmProfiles).set(values).where(eq(llmProfiles.id, ex.id));
         } else {
-          await ctx.db.insert(llmProfiles)
+          await ctx.db
+            .insert(llmProfiles)
             .values({ companyId: ctx.user.companyId, name: input.name, kind: "chat", ...values });
         }
         return { ok: true };
@@ -577,9 +662,15 @@ export const appRouter = router({
     delete: rbacProcedure("edit", "settings")
       .input(z.string().min(1))
       .mutation(async ({ ctx, input }) => {
-        await ctx.db.delete(llmProfiles).where(and(eq(llmProfiles.name, input),
-          eq(llmProfiles.companyId, ctx.user.companyId),
-          eq(llmProfiles.kind, "chat")));
+        await ctx.db
+          .delete(llmProfiles)
+          .where(
+            and(
+              eq(llmProfiles.name, input),
+              eq(llmProfiles.companyId, ctx.user.companyId),
+              eq(llmProfiles.kind, "chat"),
+            ),
+          );
       }),
   }),
 });

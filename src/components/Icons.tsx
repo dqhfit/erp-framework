@@ -271,6 +271,13 @@ export const I = {
       <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L13 18" />
     </Icon>
   ),
+  ExternalLink: (p: IP) => (
+    <Icon {...p}>
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </Icon>
+  ),
   Key: (p: IP) => (
     <Icon {...p}>
       <circle cx="7.5" cy="15.5" r="5.5" />
@@ -341,6 +348,13 @@ export const I = {
   Filter: (p: IP) => (
     <Icon {...p}>
       <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
+    </Icon>
+  ),
+  Layers: (p: IP) => (
+    <Icon {...p}>
+      <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+      <path d="m2 17 10 5 10-5" />
+      <path d="m2 12 10 5 10-5" />
     </Icon>
   ),
   Kanban: (p: IP) => (
@@ -497,6 +511,20 @@ export const I = {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
+    </Icon>
+  ),
+  Globe: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </Icon>
+  ),
+  RefreshCw: (p: IP) => (
+    <Icon {...p}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
     </Icon>
   ),
   Ban: (p: IP) => (

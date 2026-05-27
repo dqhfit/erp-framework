@@ -3,16 +3,19 @@
    workflows / agents. Bọc router cùng tên của @erp-framework/server.
    App dùng client này để thay localStorage bằng PostgreSQL.
    ========================================================== */
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
 import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 function makeTrpc(baseUrl: string) {
   return createTRPCClient<AppRouter>({
-    links: [httpBatchLink({
-      url: baseUrl.replace(/\/$/, "") + "/trpc",
-      // Gửi kèm cookie phiên — RBAC server cần.
-      fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
-    })],
+    links: [
+      httpBatchLink({
+        url: baseUrl.replace(/\/$/, "") + "/trpc",
+        // Gửi kèm cookie phiên — RBAC server cần.
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
   });
 }
 
@@ -96,6 +99,9 @@ export function createObjectsClient(baseUrl: string) {
       get: (id: string) => trpc.pages.get.query(id),
       save: (input: PageSaveInput) => trpc.pages.save.mutate(input),
       delete: (id: string) => trpc.pages.delete.mutate(id),
+      publish: (id: string, mode: "private" | "public") => trpc.pages.publish.mutate({ id, mode }),
+      unpublish: (id: string) => trpc.pages.unpublish.mutate(id),
+      getPublic: (id: string) => trpc.pages.getPublic.query(id),
     },
     workflows: {
       list: () => trpc.workflows.list.query(),
@@ -116,17 +122,14 @@ export function createObjectsClient(baseUrl: string) {
       save: (input: AgentSaveInput) => trpc.agents.save.mutate(input),
       delete: (id: string) => trpc.agents.delete.mutate(id),
       // 7 template memory mặc định cho UI dùng làm "Khôi phục mặc định".
-      memoryTemplates: (id: string) =>
-        trpc.agents.memoryTemplates.query(id),
+      memoryTemplates: (id: string) => trpc.agents.memoryTemplates.query(id),
       // ── Membership (N:M) ──
       /** Trả về primaryAgentId + danh sách agentId user đang là member. */
       myAgents: () => trpc.agents.myAgents.query(),
       /** Đặt agent chính của user (null = bỏ chọn). */
-      setPrimary: (agentId: string | null) =>
-        trpc.agents.setPrimary.mutate({ agentId }),
+      setPrimary: (agentId: string | null) => trpc.agents.setPrimary.mutate({ agentId }),
       /** Liệt kê thành viên của 1 agent. */
-      listMembers: (agentId: string) =>
-        trpc.agents.listMembers.query(agentId),
+      listMembers: (agentId: string) => trpc.agents.listMembers.query(agentId),
       /** Thêm hoặc đổi role 1 thành viên. */
       addMember: (input: { agentId: string; userId: string; role: AgentMemberRole }) =>
         trpc.agents.addMember.mutate(input),
@@ -155,6 +158,22 @@ export function createObjectsClient(baseUrl: string) {
         workflows?: Record<string, unknown>[];
         agents?: Record<string, unknown>[];
       }) => trpc.transfer.import.mutate(bundle),
+    },
+    preferences: {
+      load: () => trpc.preferences.load.query(),
+      save: (prefs: Record<string, unknown>) => trpc.preferences.save.mutate(prefs),
+    },
+    viewerGroups: {
+      list: () => trpc.viewerGroups.list.query(),
+      create: (name: string, color?: string) => trpc.viewerGroups.create.mutate({ name, color }),
+      rename: (id: string, name: string, color?: string) =>
+        trpc.viewerGroups.rename.mutate({ id, name, color }),
+      delete: (id: string) => trpc.viewerGroups.delete.mutate(id),
+      setMembers: (groupId: string, userIds: string[]) =>
+        trpc.viewerGroups.setMembers.mutate({ groupId, userIds }),
+      setPageGroups: (pageId: string, groupIds: string[]) =>
+        trpc.viewerGroups.setPageGroups.mutate({ pageId, groupIds }),
+      getMyGroups: () => trpc.viewerGroups.getMyGroups.query(),
     },
   };
 }

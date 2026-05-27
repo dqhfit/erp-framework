@@ -26,12 +26,14 @@ export function useDynamicModels(
   const [error, setError] = useState<string | undefined>();
   const reqId = useRef(0);
 
+  const apiKey = opts.apiKey;
+  const endpoint = opts.endpoint;
   const doFetch = useCallback(
     async (force: boolean) => {
       const myId = ++reqId.current;
       setLoading(true);
       setError(undefined);
-      const res = await listModels(adapter, { ...opts, force });
+      const res = await listModels(adapter, { apiKey, endpoint, force });
       // Tránh race: chỉ cập nhật khi vẫn là request mới nhất
       if (myId !== reqId.current) return;
       setModels(res.models);
@@ -39,8 +41,8 @@ export function useDynamicModels(
       setError(res.error);
       setLoading(false);
     },
-    [adapter, opts.apiKey, opts.endpoint, opts],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+    [adapter, apiKey, endpoint],
+  );
 
   // Auto-fetch khi adapter/key/endpoint đổi
   useEffect(() => {
