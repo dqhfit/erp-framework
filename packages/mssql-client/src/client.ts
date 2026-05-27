@@ -9,13 +9,13 @@
 
 import sql, { type ConnectionPool, type config as MssqlConfig } from "mssql";
 import {
-  introspectListTables,
+  introspectFindProcsReferencing,
+  introspectGetProc,
   introspectGetTable,
   introspectListProcs,
-  introspectGetProc,
-  introspectFindProcsReferencing,
+  introspectListTables,
 } from "./introspect.js";
-import type { TableInfo, ProcInfo } from "./types.js";
+import type { ProcInfo, TableInfo } from "./types.js";
 
 export interface MssqlClientOptions {
   /** Connection string dạng "Server=...;Database=...;User Id=...;Password=...;". */
@@ -27,6 +27,24 @@ export interface MssqlClientOptions {
 }
 
 const WRITE_KEYWORDS = /\b(insert|update|delete|merge|drop|truncate|alter|create)\b/i;
+
+/** Validate và bracket-escape schema.table hoặc table để dùng an toàn trong SQL.
+ *  Chỉ chấp nhận tên gồm chữ cái, số, underscore, space (tên tiếng Việt hợp lệ).
+ *  Ném Error nếu format không hợp lệ. */
+function escapeMssqlIdentifier(schemaTable: string): string {
+  // Bỏ bracket bên ngoài nếu đã có (vd [dbo].[MyTable])
+  const bare = schemaTable.replace(/\[([^\]]*)\]/g, "$1");
+  const parts = bare.split(".");
+  if (parts.length < 1 || parts.length > 2) {
+    throw new Error(`Invalid schemaTable format: "${schemaTable}"`);
+  }
+  for (const part of parts) {
+    if (!/^[\w\s]+$/.test(part) || part.trim() === "") {
+      throw new Error(`Invalid identifier in schemaTable: "${part}"`);
+    }
+  }
+  return parts.map((p) => `[${p.replace(/]/g, "]]")}]`).join(".");
+}
 
 export class MssqlClient {
   private pool: ConnectionPool | null = null;
@@ -134,16 +152,18 @@ export class MssqlClient {
     return r.recordset as T[];
   }
 
-  /** Dump 1 bảng ra mảng. limit mặc định 10000, cắp 100000. */
+  /** Dump 1 bảng ra mảng. limit mặc định 10000, cắp 100000.
+   *  SECURITY: schemaTable được validate + bracket-escape trước khi đưa vào SQL.
+   *  where là raw SQL — caller có trách nhiệm đảm bảo an toàn (chỉ dùng nội bộ). */
   async bulkRead<T = unknown>(
     schemaTable: string,
     options: { where?: string; limit?: number } = {},
   ): Promise<T[]> {
     const limit = Math.min(Math.max(options.limit ?? 10_000, 1), 100_000);
     const where = options.where ? ` WHERE ${options.where}` : "";
-    // bulkRead chỉ SELECT — luôn an toàn, không qua read-only check.
+    const safeName = escapeMssqlIdentifier(schemaTable);
     const pool = this.requirePool();
-    const r = await pool.request().query<T>(`SELECT TOP ${limit} * FROM ${schemaTable}${where}`);
+    const r = await pool.request().query<T>(`SELECT TOP ${limit} * FROM ${safeName}${where}`);
     return r.recordset as T[];
   }
 

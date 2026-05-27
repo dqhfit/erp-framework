@@ -261,8 +261,13 @@ export function makeInvokeProcedure(deps: MakeInvokeProcedureDeps) {
         new ivm.Reference(async (url: unknown, init: unknown) => {
           try {
             if (typeof url !== "string") throw new Error("fetch: url phải là chuỗi");
-            if (allowlist.length && !allowlist.some((d) => url.startsWith(d))) {
-              throw new Error(`fetch domain không nằm trong allowlist: ${url}`);
+            // Deny-by-default: allowlist rỗng = block mọi fetch.
+            // Cấu hình CODE_NODE_FETCH_ALLOWLIST="https://api.example.com,https://..."
+            if (!allowlist.some((d) => url.startsWith(d))) {
+              throw new Error(
+                `fetch domain không nằm trong allowlist: ${url}. ` +
+                  `Set CODE_NODE_FETCH_ALLOWLIST để cho phép domain.`,
+              );
             }
             const res = await fetch(url, (init ?? {}) as RequestInit);
             const text = await res.text();

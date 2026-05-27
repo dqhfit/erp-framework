@@ -71,7 +71,8 @@ function LlmSettings() {
           adapter: r.adapter,
           model: r.model,
           endpoint: r.endpoint ?? undefined,
-          apiKey: r.apiKeyEnc ?? undefined,
+          // Không lưu masked sentinel vào local store — key được giữ trên server.
+          apiKey: undefined,
           temperature: r.temperature ?? undefined,
           max_tokens: r.maxTokens ?? undefined,
         });

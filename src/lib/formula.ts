@@ -353,10 +353,40 @@ export function evaluate(expr: string, row: Record<string, unknown>): EvalResult
   // Destructure hàm thành local consts (an toàn trong strict mode)
   const destructure = `const { ${FN_NAMES.join(", ")} } = fn;`;
 
+  // Shadow browser globals nguy hiểm để formula không thể exfil data
+  // qua fetch/XMLHttpRequest hay truy cập DOM của app.
+  const BLOCKED = [
+    "window",
+    "document",
+    "globalThis",
+    "self",
+    "top",
+    "parent",
+    "frames",
+    "fetch",
+    "XMLHttpRequest",
+    "WebSocket",
+    "EventSource",
+    "navigator",
+    "location",
+    "history",
+    "localStorage",
+    "sessionStorage",
+    "indexedDB",
+    "eval",
+    "Function",
+    "setTimeout",
+    "setInterval",
+  ] as const;
+
   try {
     // eslint-disable-next-line no-new-func
-    const f = new Function("row", "fn", `${destructure} return (${code});`);
-    return { ok: true, value: f(row ?? {}, ns) };
+    const f = new Function("row", "fn", ...BLOCKED, `${destructure} return (${code});`);
+    return {
+      ok: true,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      value: (f as (...a: unknown[]) => unknown)(row ?? {}, ns, ...BLOCKED.map(() => undefined)),
+    };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

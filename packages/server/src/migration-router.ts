@@ -9,7 +9,7 @@
    ========================================================== */
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, sep } from "node:path";
 import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -208,8 +208,8 @@ export const migrationRouter = router({
       }
       const p = resolve(AI_LOG_DIR(), input.module, input.file);
       if (!existsSync(p)) return null;
-      // Đảm bảo path nằm trong AI_LOG_DIR (không escape qua ../).
-      if (!dirname(p).startsWith(AI_LOG_DIR())) {
+      // Đảm bảo path nằm trong AI_LOG_DIR (+ sep tránh prefix-match partial dir).
+      if (!dirname(p).startsWith(AI_LOG_DIR() + sep)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Path không hợp lệ." });
       }
       return JSON.parse(readFileSync(p, "utf8")) as unknown;
@@ -520,11 +520,14 @@ export const migrationRouter = router({
         .where(eq(procedures.companyId, ctx.user.companyId));
 
       // Tải plugin files (theo manifest.procs[].targetFile tier D).
+      // Chỉ cho phép đọc file nằm trong pluginDir để chặn path traversal.
       const procs = (manifest.procs as Array<{ targetFile?: string }> | undefined) ?? [];
       const plugins: Array<{ fileName: string; code: string }> = [];
+      const allowedPluginBase = resolve(process.cwd(), "packages", "plugins");
       for (const proc of procs) {
         if (!proc.targetFile) continue;
         const fullPath = resolve(process.cwd(), proc.targetFile);
+        if (!fullPath.startsWith(allowedPluginBase + sep)) continue;
         if (existsSync(fullPath)) {
           try {
             plugins.push({
@@ -1334,8 +1337,8 @@ export const migrationRouter = router({
       const pluginDir = resolve(process.cwd(), "packages", "plugins", `module-${input.module}`);
       mkdirSync(pluginDir, { recursive: true });
       const target = resolve(pluginDir, input.fileName);
-      // Safety: target phải nằm trong pluginDir (không escape).
-      if (!target.startsWith(pluginDir)) {
+      // Safety: target phải nằm trong pluginDir (+ sep tránh prefix-match partial dir).
+      if (!target.startsWith(pluginDir + sep)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Path không hợp lệ." });
       }
       const fileExists = existsSync(target);

@@ -578,11 +578,16 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "html") {
+    // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
+    // là cross-origin nên script bên trong không thể truy cập cookie/
+    // localStorage/DOM của app cha — ngăn XSS exfil token.
     return (
-      <div
-        className="p-3 text-sm"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: widget HTML do admin-designer nhập, render trong consumer page
-        dangerouslySetInnerHTML={{ __html: (cfg.html as string) ?? "" }}
+      <iframe
+        sandbox="allow-scripts"
+        srcDoc={(cfg.html as string) ?? ""}
+        className="w-full border-0 block"
+        title="HTML widget"
+        style={{ minHeight: "120px", height: "100%" }}
       />
     );
   }

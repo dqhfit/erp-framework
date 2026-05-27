@@ -53,7 +53,7 @@ import { migrationRouter } from "./migration-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
 import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
-import { encryptSecret, decryptSecret } from "./crypto";
+import { encryptSecret } from "./crypto";
 
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
@@ -613,10 +613,12 @@ export const appRouter = router({
         .select()
         .from(llmProfiles)
         .where(and(eq(llmProfiles.companyId, ctx.user.companyId), eq(llmProfiles.kind, "chat")));
-      // Giải mã apiKey để client nạp lại profile.
+      // Trả masked key để client biết profile có key hay không,
+      // không trả plaintext tránh leak qua API.
       return rows.map((r) => ({
         ...r,
-        apiKeyEnc: r.apiKeyEnc ? decryptSecret(r.apiKeyEnc) : null,
+        apiKeyEnc: r.apiKeyEnc ? "••••configured••••" : null,
+        hasApiKey: r.apiKeyEnc !== null,
       }));
     }),
     save: rbacProcedure("edit", "settings")

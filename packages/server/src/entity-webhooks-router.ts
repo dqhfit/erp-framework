@@ -4,12 +4,38 @@
    HMAC-SHA256 signature qua secret. Caller phải verify chữ ký
    trước khi tin payload.
    ========================================================== */
-import { z } from "zod";
-import { and, desc, eq } from "drizzle-orm";
+
 import { createHmac } from "node:crypto";
 import { entityWebhooks } from "@erp-framework/db";
-import { router, rbacProcedure } from "./trpc";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import type { DB } from "./db";
+import { rbacProcedure, router } from "./trpc";
+
+/** Chặn SSRF: reject URL trỏ vào localhost / private RFC1918 range. */
+function assertPublicWebhookUrl(url: string): void {
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    throw new Error("URL webhook không hợp lệ");
+  }
+  const blocked = [
+    /^localhost$/,
+    /^127\./,
+    /^0\.0\.0\.0$/,
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^::1$/,
+    /^fc00:/,
+    /^fe80:/,
+    /^169\.254\./,
+  ];
+  if (blocked.some((re) => re.test(hostname))) {
+    throw new Error(`URL webhook không được trỏ vào địa chỉ nội bộ: ${hostname}`);
+  }
+}
 
 const webhookInput = z.object({
   entityId: z.string().uuid(),
@@ -25,18 +51,22 @@ export const entityWebhooksRouter = router({
   list: rbacProcedure("view", "settings")
     .input(z.string().uuid())
     .query(({ ctx, input }) =>
-      ctx.db.select().from(entityWebhooks)
-        .where(and(
-          eq(entityWebhooks.companyId, ctx.user.companyId),
-          eq(entityWebhooks.entityId, input),
-        ))
-        .orderBy(desc(entityWebhooks.updatedAt))),
+      ctx.db
+        .select()
+        .from(entityWebhooks)
+        .where(
+          and(eq(entityWebhooks.companyId, ctx.user.companyId), eq(entityWebhooks.entityId, input)),
+        )
+        .orderBy(desc(entityWebhooks.updatedAt)),
+    ),
 
   save: rbacProcedure("edit", "settings")
     .input(webhookInput.extend({ id: z.string().uuid().optional() }))
     .mutation(async ({ ctx, input }) => {
+      assertPublicWebhookUrl(input.url);
       const values = {
-        name: input.name, url: input.url,
+        name: input.name,
+        url: input.url,
         events: input.events ?? ["create", "update", "delete"],
         headers: input.headers ?? null,
         secret: input.secret ?? null,
@@ -44,29 +74,33 @@ export const entityWebhooksRouter = router({
         updatedAt: new Date(),
       };
       if (input.id) {
-        const [row] = await ctx.db.update(entityWebhooks)
-          .set(values).where(and(
-            eq(entityWebhooks.id, input.id),
-            eq(entityWebhooks.companyId, ctx.user.companyId),
-          )).returning();
+        const [row] = await ctx.db
+          .update(entityWebhooks)
+          .set(values)
+          .where(
+            and(eq(entityWebhooks.id, input.id), eq(entityWebhooks.companyId, ctx.user.companyId)),
+          )
+          .returning();
         return row;
       }
-      const [row] = await ctx.db.insert(entityWebhooks).values({
-        companyId: ctx.user.companyId,
-        entityId: input.entityId,
-        createdBy: ctx.user.id,
-        ...values,
-      }).returning();
+      const [row] = await ctx.db
+        .insert(entityWebhooks)
+        .values({
+          companyId: ctx.user.companyId,
+          entityId: input.entityId,
+          createdBy: ctx.user.id,
+          ...values,
+        })
+        .returning();
       return row;
     }),
 
   delete: rbacProcedure("edit", "settings")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.delete(entityWebhooks).where(and(
-        eq(entityWebhooks.id, input),
-        eq(entityWebhooks.companyId, ctx.user.companyId),
-      ));
+      await ctx.db
+        .delete(entityWebhooks)
+        .where(and(eq(entityWebhooks.id, input), eq(entityWebhooks.companyId, ctx.user.companyId)));
     }),
 });
 
@@ -87,12 +121,16 @@ export function fireEntityWebhooks(
   // Async không await — caller không bị block.
   void (async () => {
     try {
-      const hooks = await db.select().from(entityWebhooks)
-        .where(and(
-          eq(entityWebhooks.companyId, args.companyId),
-          eq(entityWebhooks.entityId, args.entityId),
-          eq(entityWebhooks.enabled, true),
-        ));
+      const hooks = await db
+        .select()
+        .from(entityWebhooks)
+        .where(
+          and(
+            eq(entityWebhooks.companyId, args.companyId),
+            eq(entityWebhooks.entityId, args.entityId),
+            eq(entityWebhooks.enabled, true),
+          ),
+        );
       for (const h of hooks) {
         const events = (h.events ?? []) as string[];
         if (!events.includes(args.event)) continue;
@@ -105,9 +143,7 @@ export function fireEntityWebhooks(
           after: args.after,
           ts: new Date().toISOString(),
         });
-        const sig = h.secret
-          ? createHmac("sha256", h.secret).update(body).digest("hex")
-          : "";
+        const sig = h.secret ? createHmac("sha256", h.secret).update(body).digest("hex") : "";
         const headers: Record<string, string> = {
           "content-type": "application/json",
           "x-erp-event": args.event,
@@ -116,14 +152,24 @@ export function fireEntityWebhooks(
         };
         try {
           const res = await fetch(h.url, { method: "POST", headers, body });
-          await db.update(entityWebhooks).set({
-            lastFiredAt: new Date(), lastStatus: res.status, updatedAt: new Date(),
-          }).where(eq(entityWebhooks.id, h.id));
+          await db
+            .update(entityWebhooks)
+            .set({
+              lastFiredAt: new Date(),
+              lastStatus: res.status,
+              updatedAt: new Date(),
+            })
+            .where(eq(entityWebhooks.id, h.id));
         } catch (e) {
           console.error(`[entity-webhook ${h.name}] lỗi gọi ${h.url}:`, (e as Error).message);
-          await db.update(entityWebhooks).set({
-            lastFiredAt: new Date(), lastStatus: 0, updatedAt: new Date(),
-          }).where(eq(entityWebhooks.id, h.id));
+          await db
+            .update(entityWebhooks)
+            .set({
+              lastFiredAt: new Date(),
+              lastStatus: 0,
+              updatedAt: new Date(),
+            })
+            .where(eq(entityWebhooks.id, h.id));
         }
       }
     } catch (e) {
