@@ -15,7 +15,7 @@ import {
   introspectListProcs,
   introspectListTables,
 } from "./introspect.js";
-import type { ProcInfo, TableInfo } from "./types.js";
+import type { ProcInfo, ProcStats, TableInfo } from "./types.js";
 
 export interface MssqlClientOptions {
   /** Connection string dạng "Server=...;Database=...;User Id=...;Password=...;". */
@@ -167,6 +167,56 @@ export class MssqlClient {
     return r.recordset as T[];
   }
 
+  /** Phase U — Streaming read theo PK. Trả batch + nextLastPk để caller
+   *  resume lần sau. Dùng cho Full import: lặp gọi method này cho đến khi
+   *  rows.length < batchSize (hết data).
+   *
+   *  SECURITY: schemaTable + pkColumn validate qua MSSQL identifier rules
+   *  (chỉ a-z, 0-9, _, space). Bracket-escape trước khi đưa vào SQL.
+   *  lastPk parameterized — chống injection. */
+  async streamReadByPk<T = Record<string, unknown>>(opts: {
+    schemaTable: string;
+    pkColumn: string;
+    lastPk?: string | number | null;
+    batchSize?: number;
+  }): Promise<{ rows: T[]; nextLastPk: string | null; isEnd: boolean }> {
+    const batchSize = Math.min(Math.max(opts.batchSize ?? 5_000, 1), 50_000);
+    const safeName = escapeMssqlIdentifier(opts.schemaTable);
+    // Validate pkColumn: chỉ word + space chars.
+    if (!/^[\w\s]+$/.test(opts.pkColumn) || opts.pkColumn.trim() === "") {
+      throw new Error(`Invalid pkColumn: "${opts.pkColumn}"`);
+    }
+    const safePk = `[${opts.pkColumn.replace(/]/g, "]]")}]`;
+
+    const pool = this.requirePool();
+    const req = pool.request();
+    let where = "";
+    if (opts.lastPk !== undefined && opts.lastPk !== null && opts.lastPk !== "") {
+      req.input("lastPk", opts.lastPk);
+      where = ` WHERE ${safePk} > @lastPk`;
+    }
+    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName}${where} ORDER BY ${safePk} ASC`;
+    const r = await req.query<T>(queryText);
+    const rows = r.recordset as T[];
+    let nextLastPk: string | null = null;
+    if (rows.length > 0) {
+      const lastRow = rows[rows.length - 1] as Record<string, unknown>;
+      // Tìm key match pkColumn case-insensitive (MSSQL có thể trả khác case).
+      const pkKey = Object.keys(lastRow).find(
+        (k) => k.toLowerCase() === opts.pkColumn.toLowerCase(),
+      );
+      if (pkKey) {
+        const v = lastRow[pkKey];
+        nextLastPk = v == null ? null : String(v);
+      }
+    }
+    return {
+      rows,
+      nextLastPk,
+      isEnd: rows.length < batchSize,
+    };
+  }
+
   /* ── Introspection — ủy thác sang module introspect.ts ──── */
 
   listTables(schema?: string): Promise<Array<{ schema: string; name: string }>> {
@@ -187,5 +237,37 @@ export class MssqlClient {
 
   findProcsReferencing(table: string): Promise<Array<{ schema: string; name: string }>> {
     return introspectFindProcsReferencing(this.requirePool(), table);
+  }
+
+  /** Đọc thống kê hoạt động proc từ sys.dm_exec_procedure_stats.
+   *  Phase Q1: dùng để detect proc còn được gọi vs đã chết.
+   *
+   *  Caveat: chỉ trả proc còn trong plan cache + có execute kể từ MSSQL restart.
+   *  Proc chưa từng được gọi (hoặc plan bị evict) sẽ KHÔNG xuất hiện ở đây
+   *  — caller phải LEFT JOIN với danh sách proc tổng để phân biệt "chưa gọi"
+   *  vs "không tồn tại". */
+  async getProcStats(): Promise<ProcStats[]> {
+    const pool = this.requirePool();
+    const r = await pool.request().query<{
+      schema: string;
+      name: string;
+      last_execution_time: Date | null;
+      execution_count: number;
+    }>(`
+      SELECT
+        OBJECT_SCHEMA_NAME(ps.object_id) AS [schema],
+        OBJECT_NAME(ps.object_id)        AS [name],
+        ps.last_execution_time,
+        ps.execution_count
+      FROM sys.dm_exec_procedure_stats ps
+      WHERE ps.database_id = DB_ID()
+      ORDER BY ps.last_execution_time DESC
+    `);
+    return r.recordset.map((row) => ({
+      schema: row.schema,
+      name: row.name,
+      lastExecAt: row.last_execution_time ? row.last_execution_time.toISOString() : null,
+      execCount: row.execution_count,
+    }));
   }
 }

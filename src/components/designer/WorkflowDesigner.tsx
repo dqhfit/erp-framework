@@ -208,9 +208,7 @@ export function WorkflowDesigner({ workflowId }: Props) {
 
 function WorkflowInner({ workflowId }: Props) {
   const t = useT();
-  const mode = useUI((s) => s.mode);
   const inspectorVisible = useUI((s) => s.inspectorVisible);
-  const isConsumer = mode === "consumer";
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<WfNodeData>>(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(INITIAL_EDGES);
@@ -396,50 +394,48 @@ function WorkflowInner({ workflowId }: Props) {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Palette */}
-        {!isConsumer && (
-          <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
-            <div className="px-3 py-2.5 border-b border-border">
-              <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-                {t("designer.nodes")}
-              </div>
-              <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
+        <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
+          <div className="px-3 py-2.5 border-b border-border">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
+              {t("designer.nodes")}
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-              {getNodePalette().map((p) => {
-                const IC = I[p.icon];
-                return (
-                  <div
-                    key={p.kind}
-                    draggable
-                    onDragStart={(e) => {
-                      setDragKind(p.kind);
-                      e.dataTransfer.setData("application/x-wf-kind", p.kind);
-                      e.dataTransfer.effectAllowed = "copy";
-                    }}
-                    onDragEnd={() => setDragKind(null)}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
-                      dragKind === p.kind && "dragging",
-                    )}
+            <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            {getNodePalette().map((p) => {
+              const IC = I[p.icon];
+              return (
+                <div
+                  key={p.kind}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragKind(p.kind);
+                    e.dataTransfer.setData("application/x-wf-kind", p.kind);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  onDragEnd={() => setDragKind(null)}
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
+                    dragKind === p.kind && "dragging",
+                  )}
+                >
+                  <span
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
+                    style={{ background: p.color }}
                   >
-                    <span
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
-                      style={{ background: p.color }}
-                    >
-                      <IC size={12} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
-                      <div className="text-[10px] text-muted truncate">
-                        {t(`wf.node.${p.kind}.desc`)}
-                      </div>
+                    <IC size={12} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
+                    <div className="text-[10px] text-muted truncate">
+                      {t(`wf.node.${p.kind}.desc`)}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {/* Canvas */}
         <div
@@ -483,7 +479,7 @@ function WorkflowInner({ workflowId }: Props) {
         </div>
 
         {/* Inspector */}
-        {!isConsumer && inspectorVisible && (
+        {inspectorVisible && (
           <aside className="w-[280px] shrink-0 border-l border-border bg-panel overflow-y-auto">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">

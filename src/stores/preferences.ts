@@ -5,10 +5,19 @@ import { create } from "zustand";
 
 const api = createObjectsClient("");
 
+export interface SidebarFavItem {
+  id: string;
+  to: string;
+  label: string;
+  iconName: string;
+}
+
 export interface UserPreferences {
   portal?: {
     lastPageId?: string;
   };
+  /** Danh sách yêu thích sidebar — sync across browsers qua server. */
+  sidebarFavorites?: SidebarFavItem[];
 }
 
 interface PreferencesState {

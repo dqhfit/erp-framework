@@ -39,6 +39,10 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    // migration-plan/ là thư mục server ghi (YAML manifest, decisions.yaml,
+    // ai-log, audit report). Không cho Vite watch để tránh full-reload mỗi
+    // khi server ghi file (appendDecision, writeManifest, v.v.).
+    watch: { ignored: ["**/migration-plan/**"] },
     // Proxy API sang server backend → trình duyệt chỉ gọi cùng origin.
     // Target dùng 127.0.0.1 (IPv4) khớp đúng địa chỉ server bind —
     // tránh việc "localhost" phân giải sang ::1 (IPv6) làm proxy lỗi.

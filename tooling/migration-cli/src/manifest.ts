@@ -67,6 +67,15 @@ export interface ManifestTable {
   label?: string;
   /** AI enrich gán — mô tả nghiệp vụ. */
   description?: string;
+  /** Phase Q3 — timestamp ETL bulk-read thành công cho bảng này.
+   *  Codegen guard check field này để cho phép sinh code proc đụng bảng này. */
+  migratedAt?: string;
+  /** Phase Q3 — kết quả lần migrate cuối: số row read/upsert. */
+  migrateStats?: {
+    rowsRead: number;
+    rowsUpserted: number;
+    errors: number;
+  };
 }
 
 export interface ManifestProc {
@@ -89,6 +98,16 @@ export interface ManifestProc {
   description?: string;
   /** AI enrich gán — lý do chọn tier (debug). */
   tierReason?: string;
+  /** Phase Q1 — proc có còn được dùng không. Mặc định true.
+   *  false = mark dead, skip codegen + bỏ khỏi live tables aggregation. */
+  active?: boolean;
+  /** Phase Q1 — ISO timestamp lần gọi cuối (sys.dm_exec_procedure_stats).
+   *  null = không có entry trong plan cache (chưa gọi kể từ restart hoặc evicted). */
+  lastExecAt?: string | null;
+  /** Phase Q1 — tổng số lần gọi kể từ MSSQL restart gần nhất. */
+  execCount?: number;
+  /** Phase Q1 — ISO timestamp lần đọc proc-stats. Để biết data này tươi hay cũ. */
+  statsLastReadAt?: string;
 }
 
 export interface ManifestCrossModuleEdge {

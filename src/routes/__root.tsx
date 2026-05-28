@@ -1,16 +1,18 @@
 import { createEmbedClient } from "@erp-framework/client";
-import { createRootRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createRootRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { AuthGate } from "@/components/AuthGate";
 import { CommandPalette } from "@/components/CommandPalette";
 import { DialogHost } from "@/components/DialogHost";
+import { ToastHost } from "@/components/ui/ToastHost";
 import { GlobalAiCreateDrawer } from "@/components/GlobalAiCreateDrawer";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { TweaksPanel } from "@/components/TweaksPanel";
 import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
@@ -74,9 +76,8 @@ function AppShell() {
   useGlobalShortcuts();
   const agentOpen = useUI((s) => s.agentOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  // /view/* renders its own full-screen layout — skip AppShell chrome.
-  if (pathname.startsWith("/view/")) return <Outlet />;
+  const role = useAuth((s) => s.user?.role);
+  const navigate = useNavigate();
 
   /* Nạp store dùng chung (entity/page/workflow/agent) ngay khi vào
      app — và nạp lại mỗi khi quay lại tab. Nhờ vậy sidebar luôn
@@ -95,6 +96,16 @@ function AppShell() {
     };
   }, []);
 
+  // Viewer chỉ được vào /portal và /view — các route khác redirect sang portal
+  useEffect(() => {
+    if (role === "viewer" && !pathname.startsWith("/portal") && !pathname.startsWith("/view")) {
+      void navigate({ to: "/portal" });
+    }
+  }, [role, pathname, navigate]);
+
+  // /view/* và /portal tự render full-screen layout — bỏ qua AppShell chrome
+  if (pathname.startsWith("/view/") || pathname.startsWith("/portal")) return <Outlet />;
+
   if (isEmbedMode()) {
     return (
       <EmbedGate>
@@ -103,6 +114,7 @@ function AppShell() {
             <Outlet />
           </main>
           <DialogHost />
+          <ToastHost />
         </div>
       </EmbedGate>
     );
@@ -125,6 +137,7 @@ function AppShell() {
       <TweaksPanel />
       <GlobalAiCreateDrawer />
       <DialogHost />
+      <ToastHost />
     </div>
   );
 }

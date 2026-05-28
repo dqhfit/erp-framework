@@ -28,4 +28,5 @@ export type {
   ProcAnalysis,
   JoinPair,
   ProcFlag,
+  ProcStats,
 } from "./types.js";

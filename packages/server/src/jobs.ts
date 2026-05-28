@@ -29,7 +29,8 @@ import {
   registerEnqueueFeedbackAi,
   type FeedbackAiJobData,
 } from "./feedback-ai";
-import { registerMigrationWorker, QUEUE_MIGRATION } from "./migration-worker";
+import { registerMigrationWorker, enqueueMigrationJob, QUEUE_MIGRATION } from "./migration-worker";
+import { resumeStaleFullJobs } from "./migration-full-import";
 
 const QUEUE_RUN = "workflow-run";
 const QUEUE_TICK = "scheduler-tick";
@@ -153,6 +154,25 @@ export async function startJobs(): Promise<void> {
       await boss.work(queue, handler);
     },
   });
+
+  // Phase U: resume stale full-import jobs sau khi worker register xong.
+  // Nếu server crash giữa chừng → status='running'/'queued'/'paused' →
+  // re-enqueue để worker tự pickup từ lastPk hiện tại.
+  try {
+    await resumeStaleFullJobs(async (jobId, userId) => {
+      // Re-enqueue qua enqueueMigrationJob để hệ thống ws-state tracking đúng.
+      // dummy companyId — runFullImportJob đọc lại từ DB.
+      await enqueueMigrationJob({
+        action: "full-import",
+        module: jobId,
+        args: {},
+        userId,
+        companyId: "",
+      });
+    });
+  } catch (e) {
+    console.warn("[jobs] Resume stale full jobs lỗi:", (e as Error).message);
+  }
 
   // Worker: nạp một nguồn tri thức vào Knowledge Base.
   await boss.work<KbIngestJobData>(QUEUE_KB_INGEST, async (jobs) => {

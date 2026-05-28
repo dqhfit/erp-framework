@@ -14,7 +14,15 @@ import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import YAML from "yaml";
-import { mssqlConnections, enums } from "@erp-framework/db";
+import {
+  mssqlConnections,
+  enums,
+  entities,
+  entityRecords,
+  migrationFullJobs,
+  migrationFullJobTables,
+  pages,
+} from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
 import {
   enrichOneProc,
@@ -30,6 +38,7 @@ import { runDiscover } from "@erp-framework/migration-cli/discover";
 import { rbacProcedure, router } from "./trpc";
 import { decryptSecret } from "./crypto";
 import { enqueueMigrationJob, getMigrationJobStatus } from "./migration-worker";
+import { prepareFullJobTables, type FullJobItem } from "./migration-full-import";
 import type { DB } from "./db";
 
 const MIGRATION_ROOT = () => resolve(process.cwd(), "migration-plan");
@@ -152,10 +161,12 @@ export const migrationRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.action === "generate" || input.action === "audit") {
+      // Phase R: action "generate" đã triển khai (batch codegen). "audit" vẫn
+      // chưa — dùng auditModuleDryRun + saveAuditReport per-module.
+      if (input.action === "audit") {
         throw new TRPCError({
           code: "NOT_IMPLEMENTED",
-          message: `Action "${input.action}" thuộc Tier 2/4 — chưa triển khai.`,
+          message: `Action "audit" thuộc Tier 4 — dùng auditModuleDryRun + saveAuditReport thay vì batch job.`,
         });
       }
       const jobId = await enqueueMigrationJob({
@@ -1398,6 +1409,2164 @@ export const migrationRouter = router({
       }
     }),
 
+  /* ── Phase Q — Pre-import live tables + defer dirty proc ─────── */
+
+  /** Q1: Đọc sys.dm_exec_procedure_stats từ MSSQL → trả thống kê hoạt
+   *  động proc. Kèm cờ `seenInAnyModule` để FE highlight proc đang trong
+   *  manifest. Lưu ý: data chỉ có từ lần MSSQL restart gần nhất + plan
+   *  còn trong cache — proc CHƯA gọi không có entry (có thể "dead" hoặc
+   *  "evicted from cache"). */
+  detectActiveProcs: rbacProcedure("edit", "settings").mutation(async ({ ctx }) => {
+    const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+    let stats: Awaited<ReturnType<typeof client.getProcStats>>;
+    try {
+      stats = await client.getProcStats();
+    } finally {
+      await client.close();
+    }
+
+    // Build set procs đã có trong manifest cross-module để FE phân biệt
+    // "proc lạ" vs "proc thuộc manifest đã track".
+    const knownProcs = new Set<string>();
+    const dir = MODULES_DIR();
+    if (existsSync(dir)) {
+      const files = readdirSync(dir).filter(
+        (f) => f.endsWith(".yaml") && !f.startsWith("_") && !f.endsWith(".enriched.yaml"),
+      );
+      for (const f of files) {
+        try {
+          const m = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as {
+            procs?: Array<{ name?: string }>;
+          };
+          for (const p of m.procs ?? []) {
+            if (p.name) knownProcs.add(p.name.toLowerCase());
+          }
+        } catch {
+          /* skip yaml hỏng */
+        }
+      }
+    }
+
+    return {
+      readAt: new Date().toISOString(),
+      total: stats.length,
+      procs: stats.map((s) => {
+        const fullName = `${s.schema}.${s.name}`;
+        return {
+          schema: s.schema,
+          name: s.name,
+          fullName,
+          lastExecAt: s.lastExecAt,
+          execCount: s.execCount,
+          inManifest: knownProcs.has(fullName.toLowerCase()),
+        };
+      }),
+    };
+  }),
+
+  /** Q1: Ghi kết quả detect vào manifest của 1 module — cập nhật field
+   *  `active`/`lastExecAt`/`execCount`/`statsLastReadAt` cho mỗi proc.
+   *  Input dùng `marks` để user override active (vd quyết định "proc này
+   *  có trong stats nhưng nội bộ vẫn dùng tay → giữ active=true"). */
+  markProcActivity: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        module: moduleNameSchema,
+        readAt: z.string().min(1),
+        marks: z.array(
+          z.object({
+            procName: z.string().min(1),
+            active: z.boolean(),
+            lastExecAt: z.string().nullable().optional(),
+            execCount: z.number().int().min(0).optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(({ ctx, input }) => {
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
+      }
+      const m = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<{
+          name: string;
+          active?: boolean;
+          lastExecAt?: string | null;
+          execCount?: number;
+          statsLastReadAt?: string;
+        }>;
+      };
+      const procs = m.procs ?? [];
+      const updates: string[] = [];
+      const byName = new Map(input.marks.map((mk) => [mk.procName.toLowerCase(), mk]));
+      for (const proc of procs) {
+        const mk = byName.get(proc.name.toLowerCase());
+        if (!mk) continue;
+        proc.active = mk.active;
+        if (mk.lastExecAt !== undefined) proc.lastExecAt = mk.lastExecAt;
+        if (mk.execCount !== undefined) proc.execCount = mk.execCount;
+        proc.statsLastReadAt = input.readAt;
+        updates.push(proc.name);
+      }
+      writeFileSync(p, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+      appendDecision({
+        module: input.module,
+        action: {
+          type: "markProcActivity",
+          readAt: input.readAt,
+          updated: updates.length,
+          marks: input.marks.map((mk) => ({
+            procName: mk.procName,
+            active: mk.active,
+            execCount: mk.execCount,
+          })),
+        },
+        by: ctx.user.id,
+      });
+      return { updated: updates.length, procs: updates };
+    }),
+
+  /** Q2: Tổng hợp cross-module — gom union reads∪writes của mọi proc
+   *  active từ TẤT CẢ manifest. Bảng "dead" = trong manifest nhưng KHÔNG
+   *  được active proc nào đụng (skip data migration). */
+  getLiveTablesAcrossModules: rbacProcedure("edit", "settings").query(() => {
+    const dir = MODULES_DIR();
+    if (!existsSync(dir)) {
+      return {
+        modules: [],
+        liveTables: [],
+        deadTables: [],
+        stats: {
+          modulesScanned: 0,
+          totalProcs: 0,
+          activeProcs: 0,
+          deadProcs: 0,
+          unknownProcs: 0,
+          totalTables: 0,
+          liveTables: 0,
+          deadTables: 0,
+          migratedTables: 0,
+        },
+      };
+    }
+    // Phase S4: include `_quick-*.yaml` để bảng quick-migrated được tính
+    // vào liveTables (touched bởi proc nào đó). Skip chỉ `_example.yaml`.
+    const files = readdirSync(dir).filter(
+      (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
+    );
+
+    interface TableEntry {
+      name: string;
+      module: string;
+      entityName?: string;
+      label?: string;
+      kind: "entity" | "enum";
+      migratedAt?: string;
+      touchedBy: string[]; // procs active đụng vào
+    }
+    const tableMap = new Map<string, TableEntry>(); // key = lowercase fullname
+    let totalProcs = 0;
+    let activeProcs = 0;
+    let unknownProcs = 0; // chưa có field active
+    const modulesScanned: string[] = [];
+
+    for (const f of files) {
+      try {
+        const m = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as {
+          module?: string;
+          tables?: Array<{
+            name: string;
+            suggestedEntityName?: string;
+            suggestedKind?: "entity" | "enum";
+            label?: string;
+            migratedAt?: string;
+          }>;
+          procs?: Array<{
+            name: string;
+            active?: boolean;
+            reads?: string[];
+            writes?: string[];
+          }>;
+        };
+        const moduleName = m.module ?? f.replace(/\.yaml$/, "");
+        modulesScanned.push(moduleName);
+        // Index bảng
+        for (const t of m.tables ?? []) {
+          const key = t.name.toLowerCase();
+          if (!tableMap.has(key)) {
+            tableMap.set(key, {
+              name: t.name,
+              module: moduleName,
+              entityName: t.suggestedEntityName,
+              label: t.label,
+              kind: t.suggestedKind ?? "entity",
+              migratedAt: t.migratedAt,
+              touchedBy: [],
+            });
+          }
+        }
+        // Aggregate proc activity
+        for (const p of m.procs ?? []) {
+          totalProcs++;
+          if (p.active === undefined) unknownProcs++;
+          // Mặc định active=true nếu chưa có cờ (chưa chạy detect).
+          const isActive = p.active !== false;
+          if (!isActive) continue;
+          activeProcs++;
+          for (const tname of [...(p.reads ?? []), ...(p.writes ?? [])]) {
+            const key = tname.toLowerCase();
+            const entry = tableMap.get(key);
+            if (entry) {
+              if (!entry.touchedBy.includes(p.name)) entry.touchedBy.push(p.name);
+            } else {
+              // Bảng nằm ngoài tables[] (cross-module ref) — vẫn track.
+              tableMap.set(key, {
+                name: tname,
+                module: "(external)",
+                kind: "entity",
+                touchedBy: [p.name],
+              });
+            }
+          }
+        }
+      } catch {
+        /* skip yaml hỏng */
+      }
+    }
+
+    const allTables = Array.from(tableMap.values());
+    const liveTables = allTables.filter((t) => t.touchedBy.length > 0);
+    const deadTables = allTables.filter((t) => t.touchedBy.length === 0);
+    const migratedTables = allTables.filter((t) => t.migratedAt).length;
+
+    return {
+      modules: modulesScanned.sort(),
+      liveTables: liveTables.sort((a, b) => a.name.localeCompare(b.name)),
+      deadTables: deadTables.sort((a, b) => a.name.localeCompare(b.name)),
+      stats: {
+        modulesScanned: modulesScanned.length,
+        totalProcs,
+        activeProcs,
+        deadProcs: totalProcs - activeProcs - unknownProcs,
+        unknownProcs,
+        totalTables: allTables.length,
+        liveTables: liveTables.length,
+        deadTables: deadTables.length,
+        migratedTables,
+      },
+    };
+  }),
+
+  /** Q3: Bulk ETL — chạy bulkRead MSSQL + upsert entity_records cho TẤT
+   *  CẢ bảng được caller chọn. Mỗi bảng: resolve entity theo
+   *  manifest.suggestedEntityName, tạo entity nếu chưa có, INSERT records.
+   *  Cập nhật manifest.tables[i].migratedAt khi thành công. */
+  bulkMigrateLiveTables: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        // Bảng schema.name. Caller phải tự chọn (FE đề xuất = liveTables).
+        tableNames: z.array(z.string().min(1)).min(1).max(200),
+        limitPerTable: z.number().int().min(1).max(100_000).default(10_000),
+        dryRun: z.boolean().default(false),
+        /** force=true → xoá tất cả entity_records hiện có của entity trước khi import.
+         *  Mặc định false → INSERT thêm (caveat: có thể tạo duplicate). */
+        force: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Index toàn bộ manifest để map tableName → (module, entityName, columns).
+      const dir = MODULES_DIR();
+      interface TableMeta {
+        moduleName: string;
+        modulePath: string;
+        tableName: string;
+        entityName: string;
+        label?: string;
+        columns: Array<{ name: string; mapTo?: { field: string; entityType?: string } }>;
+      }
+      const tableMap = new Map<string, TableMeta>();
+      if (existsSync(dir)) {
+        // Phase S4: include `_quick-*.yaml` để bulkMigrateLiveTables resolve
+        // được bảng do Quick Migrate đăng ký.
+        const files = readdirSync(dir).filter(
+          (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
+        );
+        for (const f of files) {
+          const full = resolve(dir, f);
+          try {
+            const m = YAML.parse(readFileSync(full, "utf8")) as {
+              module?: string;
+              tables?: Array<{
+                name: string;
+                suggestedEntityName?: string;
+                suggestedKind?: "entity" | "enum";
+                label?: string;
+                columns?: Array<{ name: string; mapTo?: { field: string; entityType?: string } }>;
+              }>;
+            };
+            const moduleName = m.module ?? f.replace(/\.yaml$/, "");
+            for (const t of m.tables ?? []) {
+              // Bỏ enum: Q3 chỉ migrate data entity, enum dùng materializeEnum.
+              if (t.suggestedKind === "enum") continue;
+              if (!t.suggestedEntityName) continue;
+              tableMap.set(t.name.toLowerCase(), {
+                moduleName,
+                modulePath: full,
+                tableName: t.name,
+                entityName: t.suggestedEntityName,
+                label: t.label,
+                columns: t.columns ?? [],
+              });
+            }
+          } catch {
+            /* skip */
+          }
+        }
+      }
+
+      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      const results: Array<{
+        tableName: string;
+        entityName?: string;
+        ok: boolean;
+        skipped?: string;
+        rowsRead: number;
+        rowsUpserted: number;
+        rowsDeleted: number;
+        error?: string;
+        durationMs: number;
+      }> = [];
+
+      // Phase T1: lookup default connection ID để ghi vào meta.source — cho
+      // phép cleanup sau này biết entity migrate từ connection nào.
+      const [defaultConn] = await ctx.db
+        .select({ id: mssqlConnections.id })
+        .from(mssqlConnections)
+        .where(
+          and(
+            eq(mssqlConnections.companyId, ctx.user.companyId),
+            eq(mssqlConnections.isDefault, true),
+          ),
+        )
+        .limit(1);
+      const defaultConnId = defaultConn?.id ?? null;
+
+      try {
+        // Group bảng theo manifest để batch update YAML 1 lần / module.
+        const manifestUpdates = new Map<
+          string,
+          { path: string; stats: Map<string, { rowsRead: number; rowsUpserted: number }> }
+        >();
+
+        for (const tn of input.tableNames) {
+          const t0 = Date.now();
+          const meta = tableMap.get(tn.toLowerCase());
+          if (!meta) {
+            results.push({
+              tableName: tn,
+              ok: false,
+              skipped: "not-in-manifest",
+              rowsRead: 0,
+              rowsUpserted: 0,
+              rowsDeleted: 0,
+              error: "Bảng không có trong manifest entity nào (có thể là enum hoặc external).",
+              durationMs: Date.now() - t0,
+            });
+            continue;
+          }
+
+          try {
+            // Resolve entity (tạo nếu chưa có) — chỉ khi !dryRun.
+            let entityId: string | null = null;
+            if (!input.dryRun) {
+              const [existing] = await ctx.db
+                .select({ id: entities.id, meta: entities.meta })
+                .from(entities)
+                .where(
+                  and(
+                    eq(entities.companyId, ctx.user.companyId),
+                    eq(entities.name, meta.entityName),
+                  ),
+                )
+                .limit(1);
+              if (existing) {
+                // Phase T1 guard: nếu entity tồn tại nhưng KHÔNG phải do migration tạo
+                // → KHÔNG đè meta tay user; skip với cảnh báo.
+                const existingMeta = existing.meta as { source?: { kind?: string } } | null;
+                const sourceKind = existingMeta?.source?.kind;
+                if (sourceKind && sourceKind !== "migration") {
+                  results.push({
+                    tableName: tn,
+                    entityName: meta.entityName,
+                    ok: false,
+                    skipped: "manual-entity",
+                    rowsRead: 0,
+                    rowsUpserted: 0,
+                    rowsDeleted: 0,
+                    error: `Entity "${meta.entityName}" đã có (kind=${sourceKind}) — không đè entity do user tạo tay/seed.`,
+                    durationMs: Date.now() - t0,
+                  });
+                  continue;
+                }
+                entityId = existing.id;
+              } else {
+                // Tạo entity mới từ manifest columns → fields.
+                const fields = meta.columns.flatMap((c) =>
+                  c.mapTo?.field
+                    ? [
+                        {
+                          name: c.mapTo.field,
+                          label: c.mapTo.field,
+                          type: c.mapTo.entityType ?? "text",
+                        },
+                      ]
+                    : [],
+                );
+                const [inserted] = await ctx.db
+                  .insert(entities)
+                  .values({
+                    companyId: ctx.user.companyId,
+                    name: meta.entityName,
+                    label: meta.label ?? meta.entityName,
+                    fields,
+                    meta: {
+                      source: {
+                        kind: "migration",
+                        connectionId: defaultConnId,
+                        module: meta.moduleName,
+                        mssqlTable: meta.tableName,
+                        importedAt: new Date().toISOString(),
+                        importedBy: ctx.user.id,
+                        rowsLastImported: 0,
+                      },
+                    },
+                  })
+                  .returning({ id: entities.id });
+                if (!inserted) {
+                  throw new Error(`Insert entity "${meta.entityName}" trả về rỗng.`);
+                }
+                entityId = inserted.id;
+              }
+            }
+
+            const rows = await client.bulkRead<Record<string, unknown>>(meta.tableName, {
+              limit: input.limitPerTable,
+            });
+
+            // Map row MSSQL → entity record data (theo mapTo.field).
+            const colMap = new Map<string, string>();
+            for (const c of meta.columns) {
+              if (c.mapTo?.field) colMap.set(c.name.toLowerCase(), c.mapTo.field);
+            }
+            const mapped = rows.map((r) => {
+              const data: Record<string, unknown> = {};
+              for (const [k, v] of Object.entries(r)) {
+                const field = colMap.get(k.toLowerCase()) ?? k.toLowerCase();
+                data[field] = v;
+              }
+              return data;
+            });
+
+            let rowsUpserted = 0;
+            let rowsDeleted = 0;
+            if (!input.dryRun && entityId) {
+              const eid = entityId;
+              if (input.force) {
+                const del = await ctx.db
+                  .delete(entityRecords)
+                  .where(
+                    and(
+                      eq(entityRecords.companyId, ctx.user.companyId),
+                      eq(entityRecords.entityId, eid),
+                    ),
+                  )
+                  .returning({ id: entityRecords.id });
+                rowsDeleted = del.length;
+              }
+              if (mapped.length > 0) {
+                // Batch insert — Drizzle hỗ trợ array values.
+                const inserted = await ctx.db
+                  .insert(entityRecords)
+                  .values(
+                    mapped.map((d) => ({
+                      companyId: ctx.user.companyId,
+                      entityId: eid,
+                      data: d,
+                      createdBy: ctx.user.id,
+                    })),
+                  )
+                  .returning({ id: entityRecords.id });
+                rowsUpserted = inserted.length;
+              }
+
+              // Phase T1: cập nhật meta.source.importedAt + rowsLastImported sau
+              // mỗi lần migrate thành công — dùng cho UI hiển thị "lần migrate cuối".
+              await ctx.db
+                .update(entities)
+                .set({
+                  meta: {
+                    source: {
+                      kind: "migration",
+                      connectionId: defaultConnId,
+                      module: meta.moduleName,
+                      mssqlTable: meta.tableName,
+                      importedAt: new Date().toISOString(),
+                      importedBy: ctx.user.id,
+                      rowsLastImported: rowsUpserted,
+                    },
+                  },
+                  updatedAt: new Date(),
+                })
+                .where(eq(entities.id, eid));
+
+              // Lưu stats để batch update manifest cuối loop.
+              let bucket = manifestUpdates.get(meta.modulePath);
+              if (!bucket) {
+                bucket = { path: meta.modulePath, stats: new Map() };
+                manifestUpdates.set(meta.modulePath, bucket);
+              }
+              bucket.stats.set(meta.tableName.toLowerCase(), {
+                rowsRead: rows.length,
+                rowsUpserted,
+              });
+            }
+
+            results.push({
+              tableName: meta.tableName,
+              entityName: meta.entityName,
+              ok: true,
+              rowsRead: rows.length,
+              rowsUpserted,
+              rowsDeleted,
+              durationMs: Date.now() - t0,
+            });
+          } catch (e) {
+            results.push({
+              tableName: tn,
+              entityName: meta.entityName,
+              ok: false,
+              rowsRead: 0,
+              rowsUpserted: 0,
+              rowsDeleted: 0,
+              error: (e as Error).message,
+              durationMs: Date.now() - t0,
+            });
+          }
+        }
+
+        // Batch ghi manifest cuối — set migratedAt cho tables thành công.
+        if (!input.dryRun) {
+          const now = new Date().toISOString();
+          for (const [path, bucket] of manifestUpdates) {
+            try {
+              const m = YAML.parse(readFileSync(path, "utf8")) as {
+                tables?: Array<{
+                  name: string;
+                  migratedAt?: string;
+                  migrateStats?: { rowsRead: number; rowsUpserted: number; errors: number };
+                }>;
+              };
+              for (const t of m.tables ?? []) {
+                const s = bucket.stats.get(t.name.toLowerCase());
+                if (!s) continue;
+                t.migratedAt = now;
+                t.migrateStats = { rowsRead: s.rowsRead, rowsUpserted: s.rowsUpserted, errors: 0 };
+              }
+              writeFileSync(path, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+            } catch {
+              /* skip path hỏng */
+            }
+          }
+        }
+      } finally {
+        await client.close();
+      }
+
+      const successTables = results.filter((r) => r.ok).map((r) => r.tableName);
+      appendDecision({
+        module: "(cross-module)",
+        action: {
+          type: "bulkMigrateLiveTables",
+          dryRun: input.dryRun,
+          force: input.force,
+          limitPerTable: input.limitPerTable,
+          requested: input.tableNames.length,
+          succeeded: successTables.length,
+          failed: results.length - successTables.length,
+          tables: successTables,
+        },
+        by: ctx.user.id,
+      });
+
+      return {
+        dryRun: input.dryRun,
+        total: results.length,
+        succeeded: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+        totalRowsRead: results.reduce((s, r) => s + r.rowsRead, 0),
+        totalRowsUpserted: results.reduce((s, r) => s + r.rowsUpserted, 0),
+        results,
+      };
+    }),
+
+  /** Q4: Check 1 proc đã đủ điều kiện codegen chưa — mọi bảng trong
+   *  reads∪writes phải `migratedAt != null`. Trả `missingTables` + gợi ý
+   *  hành động (codegen / wait / mark-inactive). */
+  getProcMigrationStatus: rbacProcedure("edit", "settings")
+    .input(z.object({ module: moduleNameSchema, procName: z.string().min(1) }))
+    .query(({ input }) => {
+      // Đọc proc từ manifest module được chỉ định.
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
+      }
+      const m = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<{
+          name: string;
+          active?: boolean;
+          reads?: string[];
+          writes?: string[];
+        }>;
+      };
+      const proc = (m.procs ?? []).find(
+        (x) => x.name.toLowerCase() === input.procName.toLowerCase(),
+      );
+      if (!proc) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Proc không có trong manifest." });
+      }
+
+      // Build migrated-table set cross-module (table có migratedAt).
+      const migrated = new Set<string>();
+      const inAnyManifest = new Set<string>();
+      const dir = MODULES_DIR();
+      if (existsSync(dir)) {
+        // Phase S4: include `_quick-*.yaml` để Q4 nhận bảng đã migrate qua
+        // Quick Migrate path là "clean" — không block codegen.
+        const files = readdirSync(dir).filter(
+          (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
+        );
+        for (const f of files) {
+          try {
+            const mm = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as {
+              tables?: Array<{
+                name: string;
+                migratedAt?: string;
+                suggestedKind?: "entity" | "enum";
+              }>;
+            };
+            for (const t of mm.tables ?? []) {
+              const key = t.name.toLowerCase();
+              inAnyManifest.add(key);
+              // Enum được materialize qua materializeEnum, không qua bulk
+              // migrate — nhưng nếu user đã materialize coi như "sạch".
+              if (t.migratedAt) migrated.add(key);
+              if (t.suggestedKind === "enum") migrated.add(key); // enum không cần data ETL
+            }
+          } catch {
+            /* skip */
+          }
+        }
+      }
+
+      const touched = Array.from(new Set([...(proc.reads ?? []), ...(proc.writes ?? [])]));
+      const missingTables: Array<{ table: string; reason: string }> = [];
+      for (const t of touched) {
+        const key = t.toLowerCase();
+        if (migrated.has(key)) continue;
+        const reason = inAnyManifest.has(key) ? "chưa migrate data" : "không trong manifest nào";
+        missingTables.push({ table: t, reason });
+      }
+
+      const isActive = proc.active !== false;
+      const isClean = missingTables.length === 0;
+      let suggestedAction: "codegen" | "wait" | "mark-inactive";
+      if (!isActive) suggestedAction = "mark-inactive";
+      else if (isClean) suggestedAction = "codegen";
+      else suggestedAction = "wait";
+
+      return {
+        procName: proc.name,
+        active: isActive,
+        isClean,
+        canCodegen: isClean && isActive,
+        missingTables,
+        touchedTables: touched,
+        suggestedAction,
+      };
+    }),
+
+  /* ── Phase S — Quick migrate: chọn bảng MSSQL → ETL không cần module ── */
+
+  /** S1: Liệt kê tất cả bảng từ 1 connection MSSQL — kèm rowCount approx
+   *  để UI ưu tiên chọn bảng có data. RowCount lấy từ sys.partitions. */
+  listConnectionTables: rbacProcedure("edit", "settings")
+    .input(z.object({ connectionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const client = await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId);
+      try {
+        const tables = await client.listTables();
+        let rowCounts = new Map<string, number>();
+        try {
+          const counts = await client.query<{
+            full: string;
+            row_count: number;
+          }>(`
+            SELECT
+              CONCAT(s.name, '.', t.name) AS [full],
+              SUM(p.rows) AS row_count
+            FROM sys.partitions p
+            JOIN sys.tables t ON p.object_id = t.object_id
+            JOIN sys.schemas s ON t.schema_id = s.schema_id
+            WHERE p.index_id IN (0, 1)
+            GROUP BY s.name, t.name
+          `);
+          rowCounts = new Map(counts.map((c) => [c.full.toLowerCase(), c.row_count]));
+        } catch {
+          /* MSSQL deny VIEW SYS → fallback rowCount null */
+        }
+        return tables.map((t) => ({
+          schema: t.schema,
+          name: t.name,
+          fullName: `${t.schema}.${t.name}`,
+          rowCount: rowCounts.get(`${t.schema}.${t.name}`.toLowerCase()) ?? null,
+        }));
+      } finally {
+        await client.close();
+      }
+    }),
+
+  /** S1: Preview 1 bảng — columns + sample rows + suggested entity/fields
+   *  để dialog Quick Migrate dùng. */
+  previewQuickTable: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        connectionId: z.string().uuid(),
+        tableName: z.string().min(1),
+        samples: z.number().int().min(0).max(20).default(5),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const client = await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId);
+      try {
+        const [schema, name] = input.tableName.includes(".")
+          ? input.tableName.split(".")
+          : ["dbo", input.tableName];
+        const info = await client.getTable(schema ?? "dbo", name ?? input.tableName);
+        if (!info) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `Bảng "${input.tableName}" không tồn tại trong MSSQL.`,
+          });
+        }
+        const rows =
+          input.samples > 0 ? await client.bulkRead(input.tableName, { limit: input.samples }) : [];
+
+        const mapType = (dt: string): string => {
+          const t = dt.toLowerCase();
+          if (/int|bigint|smallint|tinyint|decimal|numeric|money|float|real/.test(t))
+            return "number";
+          if (t === "bit") return "boolean";
+          if (t === "date") return "date";
+          if (/datetime|smalldatetime|datetimeoffset/.test(t)) return "datetime";
+          if (/xml|json/.test(t)) return "json";
+          return "text";
+        };
+        const slug = (s: string) =>
+          s
+            .toLowerCase()
+            .replace(/[^a-z0-9_]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+        return {
+          tableName: input.tableName,
+          info,
+          samples: rows,
+          suggested: {
+            entityName: slug(info.name),
+            label: info.name,
+            fields: info.columns.map((c) => ({
+              name: slug(c.name),
+              label: c.name,
+              type: mapType(c.dataType),
+            })),
+          },
+        };
+      } finally {
+        await client.close();
+      }
+    }),
+
+  /** S1: Bulk ETL nhiều bảng cùng lúc, kèm tuỳ chọn ghi manifest
+   *  _quick-<connId>.yaml để Phase Q4 codegen guard nhận diện. */
+  quickMigrateTables: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        connectionId: z.string().uuid(),
+        items: z
+          .array(
+            z.object({
+              tableName: z.string().min(1),
+              entityName: z.string().regex(/^[a-z][a-z0-9_]*$/),
+              label: z.string().min(1),
+              fields: z.array(
+                z.object({
+                  name: z.string().regex(/^[a-z][a-z0-9_]*$/),
+                  label: z.string().min(1),
+                  type: z.string().min(1),
+                }),
+              ),
+              force: z.boolean().default(false),
+              /** Tên field MSSQL PK (single col, lower-case theo fields.name).
+               *  Nếu cung cấp → upsert theo PK (chống duplicate khi migrate lại).
+               *  Nếu không → INSERT thẳng (legacy, có thể duplicate). */
+              pkField: z.string().optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
+        limitPerTable: z.number().int().min(1).max(100_000).default(10_000),
+        dryRun: z.boolean().default(false),
+        writeManifest: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const client = await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId);
+      const moduleName = `_quick-${input.connectionId}`;
+      const results: Array<{
+        tableName: string;
+        entityName: string;
+        ok: boolean;
+        skipped?: string;
+        rowsRead: number;
+        rowsUpserted: number;
+        rowsUpdated: number;
+        rowsDeleted: number;
+        error?: string;
+        durationMs: number;
+      }> = [];
+
+      try {
+        for (const it of input.items) {
+          const t0 = Date.now();
+          try {
+            let entityId: string | null = null;
+            if (!input.dryRun) {
+              const [existing] = await ctx.db
+                .select({ id: entities.id, meta: entities.meta })
+                .from(entities)
+                .where(
+                  and(eq(entities.companyId, ctx.user.companyId), eq(entities.name, it.entityName)),
+                )
+                .limit(1);
+              if (existing) {
+                const sourceKind = (existing.meta as { source?: { kind?: string } } | null)?.source
+                  ?.kind;
+                if (sourceKind && sourceKind !== "migration") {
+                  results.push({
+                    tableName: it.tableName,
+                    entityName: it.entityName,
+                    ok: false,
+                    skipped: "manual-entity",
+                    rowsRead: 0,
+                    rowsUpserted: 0,
+                    rowsUpdated: 0,
+                    rowsDeleted: 0,
+                    error: `Entity "${it.entityName}" đã có (kind=${sourceKind}) — không đè entity tay/seed.`,
+                    durationMs: Date.now() - t0,
+                  });
+                  continue;
+                }
+                entityId = existing.id;
+              } else {
+                const [inserted] = await ctx.db
+                  .insert(entities)
+                  .values({
+                    companyId: ctx.user.companyId,
+                    name: it.entityName,
+                    label: it.label,
+                    fields: it.fields,
+                    meta: {
+                      source: {
+                        kind: "migration",
+                        connectionId: input.connectionId,
+                        module: moduleName,
+                        mssqlTable: it.tableName,
+                        importedAt: new Date().toISOString(),
+                        importedBy: ctx.user.id,
+                        rowsLastImported: 0,
+                      },
+                    },
+                  })
+                  .returning({ id: entities.id });
+                if (!inserted) {
+                  throw new Error(`Insert entity "${it.entityName}" trả về rỗng.`);
+                }
+                entityId = inserted.id;
+              }
+            }
+
+            const rows = await client.bulkRead<Record<string, unknown>>(it.tableName, {
+              limit: input.limitPerTable,
+            });
+
+            const fieldNames = new Set(it.fields.map((f) => f.name.toLowerCase()));
+            const mapped = rows.map((r) => {
+              const data: Record<string, unknown> = {};
+              for (const [k, v] of Object.entries(r)) {
+                const key = k.toLowerCase();
+                if (fieldNames.size === 0 || fieldNames.has(key)) {
+                  data[key] = v;
+                }
+              }
+              return data;
+            });
+
+            let rowsUpserted = 0;
+            let rowsUpdated = 0;
+            let rowsDeleted = 0;
+            if (!input.dryRun && entityId) {
+              const eid = entityId;
+              if (it.force) {
+                // Force: xoá toàn bộ records cũ rồi INSERT fresh.
+                const del = await ctx.db
+                  .delete(entityRecords)
+                  .where(
+                    and(
+                      eq(entityRecords.companyId, ctx.user.companyId),
+                      eq(entityRecords.entityId, eid),
+                    ),
+                  )
+                  .returning({ id: entityRecords.id });
+                rowsDeleted = del.length;
+                if (mapped.length > 0) {
+                  const inserted = await ctx.db
+                    .insert(entityRecords)
+                    .values(
+                      mapped.map((d) => ({
+                        companyId: ctx.user.companyId,
+                        entityId: eid,
+                        data: d,
+                        createdBy: ctx.user.id,
+                      })),
+                    )
+                    .returning({ id: entityRecords.id });
+                  rowsUpserted = inserted.length;
+                }
+              } else if (it.pkField && mapped.length > 0) {
+                // UPSERT theo PK: query existing records, build map, sau đó
+                // chia mapped thành toUpdate (đã có) + toInsert (mới).
+                const pkValues = mapped
+                  .map((d) => d[it.pkField as string])
+                  .filter((v) => v != null);
+                const pkValuesText = pkValues.map((v) => String(v));
+                const existingRows =
+                  pkValuesText.length > 0
+                    ? await ctx.db
+                        .select({ id: entityRecords.id, data: entityRecords.data })
+                        .from(entityRecords)
+                        .where(
+                          and(
+                            eq(entityRecords.companyId, ctx.user.companyId),
+                            eq(entityRecords.entityId, eid),
+                            sql`${entityRecords.data}->>${it.pkField} = ANY(${pkValuesText}::text[])`,
+                          ),
+                        )
+                    : [];
+                const existingMap = new Map<string, string>(); // pkValue → record.id
+                for (const r of existingRows) {
+                  const pkVal = (r.data as Record<string, unknown>)[it.pkField];
+                  if (pkVal != null) existingMap.set(String(pkVal), r.id);
+                }
+
+                const toInsert: typeof mapped = [];
+                const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
+                for (const d of mapped) {
+                  const pkVal = d[it.pkField as string];
+                  if (pkVal == null) {
+                    toInsert.push(d);
+                    continue;
+                  }
+                  const existingId = existingMap.get(String(pkVal));
+                  if (existingId) toUpdate.push({ id: existingId, data: d });
+                  else toInsert.push(d);
+                }
+
+                if (toInsert.length > 0) {
+                  const inserted = await ctx.db
+                    .insert(entityRecords)
+                    .values(
+                      toInsert.map((d) => ({
+                        companyId: ctx.user.companyId,
+                        entityId: eid,
+                        data: d,
+                        createdBy: ctx.user.id,
+                      })),
+                    )
+                    .returning({ id: entityRecords.id });
+                  rowsUpserted = inserted.length;
+                }
+                // UPDATE từng cái — không có batch UPDATE Drizzle hỗ trợ trực tiếp.
+                for (const u of toUpdate) {
+                  await ctx.db
+                    .update(entityRecords)
+                    .set({ data: u.data, updatedAt: new Date() })
+                    .where(eq(entityRecords.id, u.id));
+                }
+                rowsUpdated = toUpdate.length;
+              } else if (mapped.length > 0) {
+                // Không có pkField + không force → INSERT thẳng (legacy, có thể
+                // duplicate nếu user re-migrate). UI nên cảnh báo.
+                const inserted = await ctx.db
+                  .insert(entityRecords)
+                  .values(
+                    mapped.map((d) => ({
+                      companyId: ctx.user.companyId,
+                      entityId: eid,
+                      data: d,
+                      createdBy: ctx.user.id,
+                    })),
+                  )
+                  .returning({ id: entityRecords.id });
+                rowsUpserted = inserted.length;
+              }
+
+              await ctx.db
+                .update(entities)
+                .set({
+                  meta: {
+                    source: {
+                      kind: "migration",
+                      connectionId: input.connectionId,
+                      module: moduleName,
+                      mssqlTable: it.tableName,
+                      importedAt: new Date().toISOString(),
+                      importedBy: ctx.user.id,
+                      rowsLastImported: rowsUpserted + rowsUpdated,
+                    },
+                  },
+                  updatedAt: new Date(),
+                })
+                .where(eq(entities.id, eid));
+            }
+
+            results.push({
+              tableName: it.tableName,
+              entityName: it.entityName,
+              ok: true,
+              rowsRead: rows.length,
+              rowsUpserted,
+              rowsUpdated,
+              rowsDeleted,
+              durationMs: Date.now() - t0,
+            });
+          } catch (e) {
+            results.push({
+              tableName: it.tableName,
+              entityName: it.entityName,
+              ok: false,
+              rowsRead: 0,
+              rowsUpserted: 0,
+              rowsUpdated: 0,
+              rowsDeleted: 0,
+              error: (e as Error).message,
+              durationMs: Date.now() - t0,
+            });
+          }
+        }
+      } finally {
+        await client.close();
+      }
+
+      // Ghi manifest _quick-<connId>.yaml để Q4 codegen guard nhận diện.
+      if (!input.dryRun && input.writeManifest) {
+        const p = resolve(MODULES_DIR(), `${moduleName}.yaml`);
+        mkdirSync(dirname(p), { recursive: true });
+        let existing: {
+          module?: string;
+          connectionRef?: string;
+          tables?: Array<{
+            name: string;
+            suggestedEntityName?: string;
+            label?: string;
+            columns?: Array<unknown>;
+            migratedAt?: string;
+            migrateStats?: Record<string, unknown>;
+          }>;
+          procs?: unknown[];
+          crossModuleEdges?: unknown[];
+          status?: Record<string, unknown>;
+        } = {};
+        if (existsSync(p)) {
+          try {
+            existing = YAML.parse(readFileSync(p, "utf8")) as typeof existing;
+          } catch {
+            /* file hỏng → ghi lại từ đầu */
+          }
+        }
+        existing.module = moduleName;
+        existing.connectionRef = input.connectionId;
+        existing.procs = [];
+        existing.crossModuleEdges = [];
+        existing.status = {
+          phase: "live",
+          capturedGoldenAt: null,
+          scaffoldedAt: null,
+          cutoverAt: new Date().toISOString(),
+          retiredAt: null,
+        };
+        const tableMap = new Map<string, NonNullable<typeof existing.tables>[number]>();
+        for (const t of existing.tables ?? []) tableMap.set(t.name.toLowerCase(), t);
+        for (let i = 0; i < input.items.length; i++) {
+          const it = input.items[i];
+          const r = results[i];
+          if (!it || !r?.ok) continue;
+          tableMap.set(it.tableName.toLowerCase(), {
+            name: it.tableName,
+            suggestedEntityName: it.entityName,
+            label: it.label,
+            columns: it.fields.map((f) => ({
+              name: f.name,
+              type: f.type,
+              mapTo: { field: f.name, entityType: f.type },
+            })),
+            migratedAt: new Date().toISOString(),
+            migrateStats: {
+              rowsRead: r.rowsRead,
+              rowsUpserted: r.rowsUpserted,
+              errors: 0,
+            },
+          });
+        }
+        existing.tables = Array.from(tableMap.values()).sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+        writeFileSync(p, YAML.stringify(existing, { lineWidth: 0 }), "utf8");
+      }
+
+      appendDecision({
+        module: moduleName,
+        action: {
+          type: "quickMigrateTables",
+          dryRun: input.dryRun,
+          connectionId: input.connectionId,
+          itemCount: input.items.length,
+          succeeded: results.filter((r) => r.ok).length,
+          failed: results.filter((r) => !r.ok).length,
+        },
+        by: ctx.user.id,
+      });
+
+      return {
+        dryRun: input.dryRun,
+        connectionId: input.connectionId,
+        moduleName,
+        total: results.length,
+        succeeded: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+        totalRowsRead: results.reduce((s, r) => s + r.rowsRead, 0),
+        totalRowsUpserted: results.reduce((s, r) => s + r.rowsUpserted, 0),
+        totalRowsUpdated: results.reduce((s, r) => s + r.rowsUpdated, 0),
+        results,
+      };
+    }),
+
+  /* ── Phase U — Full import (queue + resume + sync) ──────── */
+
+  /** U4: Tạo job full-import. Items = bảng đã chọn (như Quick). Worker
+   *  stream import theo PK; resume tự nếu lỗi mạng. */
+  startFullImport: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        connectionId: z.string().uuid(),
+        items: z
+          .array(
+            z.object({
+              tableName: z.string().min(1),
+              entityName: z.string().regex(/^[a-z][a-z0-9_]*$/),
+              label: z.string().min(1),
+              fields: z.array(
+                z.object({
+                  name: z.string().regex(/^[a-z][a-z0-9_]*$/),
+                  label: z.string().min(1),
+                  type: z.string().min(1),
+                }),
+              ),
+            }),
+          )
+          .min(1)
+          .max(200),
+        batchSize: z.number().int().min(100).max(50_000).default(5_000),
+        writeManifest: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Tạo job record + per-table records (prepare detect PK).
+      const [job] = await ctx.db
+        .insert(migrationFullJobs)
+        .values({
+          companyId: ctx.user.companyId,
+          connectionId: input.connectionId,
+          kind: "full",
+          status: "queued",
+          config: {
+            items: input.items,
+            batchSize: input.batchSize,
+            writeManifest: input.writeManifest,
+          },
+          totalTables: input.items.length,
+          createdBy: ctx.user.id,
+        })
+        .returning({ id: migrationFullJobs.id });
+      if (!job) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert job fail." });
+      }
+
+      // Prepare tables — detect PK + tạo entity nếu cần.
+      try {
+        await prepareFullJobTables(
+          job.id,
+          ctx.user.companyId,
+          ctx.user.id,
+          input.connectionId,
+          input.items as FullJobItem[],
+          input.batchSize,
+        );
+      } catch (e) {
+        await ctx.db
+          .update(migrationFullJobs)
+          .set({ status: "failed", error: (e as Error).message, updatedAt: new Date() })
+          .where(eq(migrationFullJobs.id, job.id));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
+      }
+
+      // Enqueue qua pg-boss. data.module = jobId.
+      await enqueueMigrationJob({
+        action: "full-import",
+        module: job.id,
+        args: {},
+        userId: ctx.user.id,
+        companyId: ctx.user.companyId,
+      });
+
+      appendDecision({
+        module: `_quick-${input.connectionId}`,
+        action: {
+          type: "startFullImport",
+          jobId: job.id,
+          connectionId: input.connectionId,
+          itemCount: input.items.length,
+          batchSize: input.batchSize,
+        },
+        by: ctx.user.id,
+      });
+
+      return { jobId: job.id };
+    }),
+
+  /** U4: List full jobs của company với progress summary. */
+  listFullJobs: rbacProcedure("edit", "settings")
+    .input(
+      z
+        .object({
+          connectionId: z.string().uuid().optional(),
+          statuses: z
+            .array(z.enum(["queued", "running", "paused", "completed", "failed", "canceled"]))
+            .optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          id: migrationFullJobs.id,
+          connectionId: migrationFullJobs.connectionId,
+          kind: migrationFullJobs.kind,
+          status: migrationFullJobs.status,
+          totalTables: migrationFullJobs.totalTables,
+          completedTables: migrationFullJobs.completedTables,
+          totalRowsImported: migrationFullJobs.totalRowsImported,
+          startedAt: migrationFullJobs.startedAt,
+          completedAt: migrationFullJobs.completedAt,
+          lastHeartbeat: migrationFullJobs.lastHeartbeat,
+          error: migrationFullJobs.error,
+          createdAt: migrationFullJobs.createdAt,
+          updatedAt: migrationFullJobs.updatedAt,
+        })
+        .from(migrationFullJobs)
+        .where(eq(migrationFullJobs.companyId, ctx.user.companyId));
+
+      const conns = await ctx.db
+        .select({ id: mssqlConnections.id, name: mssqlConnections.name })
+        .from(mssqlConnections)
+        .where(eq(mssqlConnections.companyId, ctx.user.companyId));
+      const connMap = new Map(conns.map((c) => [c.id, c.name]));
+
+      const filtered = rows.filter((r) => {
+        if (input?.connectionId && r.connectionId !== input.connectionId) return false;
+        if (
+          input?.statuses &&
+          input.statuses.length > 0 &&
+          !input.statuses.includes(r.status as never)
+        )
+          return false;
+        return true;
+      });
+
+      return filtered
+        .map((r) => ({
+          ...r,
+          connectionName: connMap.get(r.connectionId) ?? "(đã xoá)",
+          startedAt: r.startedAt?.toISOString() ?? null,
+          completedAt: r.completedAt?.toISOString() ?? null,
+          lastHeartbeat: r.lastHeartbeat.toISOString(),
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        }))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }),
+
+  /** U4: Chi tiết per-table của 1 job — progress + lastPk + error. */
+  getFullJobDetail: rbacProcedure("edit", "settings")
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select()
+        .from(migrationFullJobs)
+        .where(
+          and(
+            eq(migrationFullJobs.id, input.jobId),
+            eq(migrationFullJobs.companyId, ctx.user.companyId),
+          ),
+        )
+        .limit(1);
+      if (!job) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job không tồn tại." });
+      }
+      const tables = await ctx.db
+        .select()
+        .from(migrationFullJobTables)
+        .where(eq(migrationFullJobTables.jobId, input.jobId));
+      return {
+        job: {
+          ...job,
+          startedAt: job.startedAt?.toISOString() ?? null,
+          completedAt: job.completedAt?.toISOString() ?? null,
+          lastHeartbeat: job.lastHeartbeat.toISOString(),
+          createdAt: job.createdAt.toISOString(),
+          updatedAt: job.updatedAt.toISOString(),
+        },
+        tables: tables.map((t) => ({
+          ...t,
+          updatedAt: t.updatedAt.toISOString(),
+        })),
+      };
+    }),
+
+  /** U4: Re-enqueue 1 job để worker pickup lại — dùng cho resume thủ
+   *  công khi job bị paused do lỗi network. Sync mode (kind='sync') sẽ
+   *  chỉ lấy data mới theo lastPk hiện tại. */
+  resumeFullJob: rbacProcedure("edit", "settings")
+    .input(
+      z.object({ jobId: z.string().uuid(), kind: z.enum(["resume", "sync"]).default("resume") }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select()
+        .from(migrationFullJobs)
+        .where(
+          and(
+            eq(migrationFullJobs.id, input.jobId),
+            eq(migrationFullJobs.companyId, ctx.user.companyId),
+          ),
+        )
+        .limit(1);
+      if (!job) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job không tồn tại." });
+      }
+      if (job.status === "canceled") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Job đã canceled — không thể resume.",
+        });
+      }
+
+      // Sync mode: reset tables done → pending để worker re-stream với lastPk
+      // hiện tại (chỉ lấy data mới). Resume thường: chỉ pickup tables chưa done.
+      if (input.kind === "sync") {
+        await ctx.db
+          .update(migrationFullJobTables)
+          .set({ status: "pending", error: null, updatedAt: new Date() })
+          .where(
+            and(
+              eq(migrationFullJobTables.jobId, input.jobId),
+              sql`${migrationFullJobTables.status} = 'done'`,
+            ),
+          );
+        await ctx.db
+          .update(migrationFullJobs)
+          .set({
+            kind: "sync",
+            status: "queued",
+            startedAt: null,
+            completedAt: null,
+            error: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(migrationFullJobs.id, input.jobId));
+      } else {
+        // Resume: reset failed tables về pending để retry.
+        await ctx.db
+          .update(migrationFullJobTables)
+          .set({ status: "pending", error: null, updatedAt: new Date() })
+          .where(
+            and(
+              eq(migrationFullJobTables.jobId, input.jobId),
+              sql`${migrationFullJobTables.status} = 'failed'`,
+            ),
+          );
+        await ctx.db
+          .update(migrationFullJobs)
+          .set({
+            status: "queued",
+            completedAt: null,
+            error: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(migrationFullJobs.id, input.jobId));
+      }
+
+      await enqueueMigrationJob({
+        action: "full-import",
+        module: input.jobId,
+        args: {},
+        userId: ctx.user.id,
+        companyId: ctx.user.companyId,
+      });
+
+      appendDecision({
+        module: `_quick-${job.connectionId}`,
+        action: {
+          type: "resumeFullJob",
+          jobId: input.jobId,
+          mode: input.kind,
+        },
+        by: ctx.user.id,
+      });
+
+      return { jobId: input.jobId, status: "queued", mode: input.kind };
+    }),
+
+  /** U4: Cancel 1 job — set status='canceled'. Tables đã import giữ
+   *  nguyên (records không bị xoá). */
+  cancelFullJob: rbacProcedure("edit", "settings")
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({ id: migrationFullJobs.id })
+        .from(migrationFullJobs)
+        .where(
+          and(
+            eq(migrationFullJobs.id, input.jobId),
+            eq(migrationFullJobs.companyId, ctx.user.companyId),
+          ),
+        )
+        .limit(1);
+      if (!job) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job không tồn tại." });
+      }
+      await ctx.db
+        .update(migrationFullJobs)
+        .set({
+          status: "canceled",
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(migrationFullJobs.id, input.jobId));
+      appendDecision({
+        module: "(full-import)",
+        action: { type: "cancelFullJob", jobId: input.jobId },
+        by: ctx.user.id,
+      });
+      return { jobId: input.jobId, status: "canceled" };
+    }),
+
+  /* ── Phase V — Auto-generate master-detail page từ relation graph ── */
+
+  /** V1: Sinh page split-pane master-detail cho 1 entity. Scan forward
+   *  refs (lookup fields trên master) + backward refs (entity khác trỏ
+   *  về master) → build PageComponent[] gồm list trái + detail phải +
+   *  N tab child list. Lưu vào pages, trả pageId. */
+  generateMasterDetailPage: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        entityId: z.string().uuid(),
+        pageName: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]*$/)
+          .optional(),
+        pageLabel: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Load master entity.
+      const [master] = await ctx.db
+        .select()
+        .from(entities)
+        .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, input.entityId)))
+        .limit(1);
+      if (!master) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại." });
+      }
+
+      interface EntityField {
+        name: string;
+        label?: string;
+        type: string;
+        ref?: string;
+        fkField?: string;
+      }
+      const masterFields = (master.fields as EntityField[]) ?? [];
+
+      // Forward refs: lookup/relation field trên master.
+      const forwardRefIds = new Set<string>();
+      const forwardFields: Array<{ field: string; refEntityId: string }> = [];
+      for (const f of masterFields) {
+        if ((f.type === "lookup" || f.type === "multi-lookup" || f.type === "relation") && f.ref) {
+          forwardRefIds.add(f.ref);
+          forwardFields.push({ field: f.name, refEntityId: f.ref });
+        }
+      }
+
+      const allEnts = await ctx.db
+        .select({
+          id: entities.id,
+          name: entities.name,
+          label: entities.label,
+          fields: entities.fields,
+        })
+        .from(entities)
+        .where(eq(entities.companyId, ctx.user.companyId));
+      const entMap = new Map(allEnts.map((e) => [e.id, e]));
+
+      // Source 1 — Collection fields trên master (explicit declaration).
+      // Ưu tiên: nếu master khai báo field type='collection' → dùng config đó.
+      const backwardChildren: Array<{
+        entityId: string;
+        entityName: string;
+        entityLabel: string;
+        fkField: string;
+        label?: string;
+        source: "collection" | "backward-ref";
+      }> = [];
+      const seenKey = new Set<string>(); // dedup theo "entityId:fkField"
+      for (const f of masterFields) {
+        if (f.type === "collection" && f.ref && f.fkField) {
+          const child = entMap.get(f.ref);
+          if (!child) continue;
+          const key = `${child.id}:${f.fkField}`;
+          if (seenKey.has(key)) continue;
+          seenKey.add(key);
+          backwardChildren.push({
+            entityId: child.id,
+            entityName: child.name,
+            entityLabel: child.label,
+            fkField: f.fkField,
+            label: f.label ?? child.label,
+            source: "collection",
+          });
+        }
+      }
+
+      // Source 2 — Backward refs auto-scan: bổ sung child entity có field
+      // lookup trỏ về master nhưng CHƯA có collection field tương ứng.
+      for (const e of allEnts) {
+        if (e.id === master.id) continue;
+        const fs = (e.fields as EntityField[]) ?? [];
+        for (const f of fs) {
+          if (
+            (f.type === "lookup" || f.type === "multi-lookup" || f.type === "relation") &&
+            f.ref === master.id
+          ) {
+            const key = `${e.id}:${f.name}`;
+            if (seenKey.has(key)) continue;
+            seenKey.add(key);
+            backwardChildren.push({
+              entityId: e.id,
+              entityName: e.name,
+              entityLabel: e.label,
+              fkField: f.name,
+              source: "backward-ref",
+            });
+          }
+        }
+      }
+
+      // Build PageComponent[]. Grid 12 cột, list trái w=6, detail phải w=6.
+      const components: Array<{
+        id: string;
+        kind: string;
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        config: Record<string, unknown>;
+      }> = [];
+
+      const stateKey = "selected_master";
+
+      // Layout: list trái w=6 h=10, detail phải h=4, child stack dưới.
+      // gridAutoRows 76px → list ~760px, detail 304px, mỗi child 304px.
+      components.push({
+        id: `list-master-${master.id.slice(0, 8)}`,
+        kind: "list",
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 10,
+        config: {
+          entity: master.id,
+          selectionStateKey: stateKey,
+          title: master.label,
+        },
+      });
+
+      components.push({
+        id: `detail-master-${master.id.slice(0, 8)}`,
+        kind: "detail",
+        x: 6,
+        y: 0,
+        w: 6,
+        h: 4,
+        config: {
+          entity: master.id,
+          recordIdFromState: stateKey,
+          forwardRefs: forwardFields,
+          title: `Chi tiết ${master.label}`,
+        },
+      });
+
+      let curY = 4;
+      const childHeight = 3;
+      for (const child of backwardChildren) {
+        components.push({
+          id: `list-child-${child.entityId.slice(0, 8)}-${child.fkField}`,
+          kind: "list",
+          x: 6,
+          y: curY,
+          w: 6,
+          h: childHeight,
+          config: {
+            entity: child.entityId,
+            filterFromState: { field: child.fkField, stateKey },
+            title: child.label ?? child.entityLabel,
+            // Đánh dấu source để FE biết đây là collection-driven (giúp debug).
+            source: child.source,
+          },
+        });
+        curY += childHeight;
+      }
+
+      // Sinh name + label.
+      const slug = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[^a-z0-9_]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      const pageName = input.pageName ?? `${slug(master.name)}_master_detail`;
+      const pageLabel = input.pageLabel ?? `${master.label} - Chi tiết`;
+
+      // Upsert page (theo name unique per company).
+      const [existing] = await ctx.db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.companyId, ctx.user.companyId), eq(pages.name, pageName)))
+        .limit(1);
+
+      let pageId: string;
+      if (existing) {
+        const [updated] = await ctx.db
+          .update(pages)
+          .set({
+            label: pageLabel,
+            content: components,
+            updatedAt: new Date(),
+          })
+          .where(eq(pages.id, existing.id))
+          .returning({ id: pages.id });
+        if (!updated) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Update page fail." });
+        }
+        pageId = updated.id;
+      } else {
+        const [inserted] = await ctx.db
+          .insert(pages)
+          .values({
+            companyId: ctx.user.companyId,
+            name: pageName,
+            label: pageLabel,
+            icon: "Layout",
+            content: components,
+          })
+          .returning({ id: pages.id });
+        if (!inserted) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert page fail." });
+        }
+        pageId = inserted.id;
+      }
+
+      appendDecision({
+        module: "(master-detail)",
+        action: {
+          type: "generateMasterDetailPage",
+          masterEntity: master.name,
+          forwardRefs: forwardFields.length,
+          backwardChildren: backwardChildren.length,
+          pageId,
+          pageName,
+        },
+        by: ctx.user.id,
+      });
+
+      return {
+        pageId,
+        pageName,
+        pageLabel,
+        upserted: existing ? ("updated" as const) : ("created" as const),
+        masterEntity: master.name,
+        forwardRefs: forwardFields,
+        backwardChildren,
+      };
+    }),
+
+  /* ── Phase T — Tracking + cleanup an toàn ────────────────── */
+
+  /** T2: Liệt kê tất cả entity do migration tạo (meta.source.kind=migration).
+   *  Trả kèm recordCount + meta.source để UI hiển thị + làm cleanup. */
+  listMigratedEntities: rbacProcedure("edit", "settings")
+    .input(
+      z
+        .object({
+          connectionId: z.string().uuid().optional(),
+          module: z.string().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      // Drizzle filter trên JSONB path: dùng raw SQL fragment.
+      const rows = await ctx.db
+        .select({
+          id: entities.id,
+          name: entities.name,
+          label: entities.label,
+          meta: entities.meta,
+          createdAt: entities.createdAt,
+          updatedAt: entities.updatedAt,
+        })
+        .from(entities)
+        .where(
+          and(
+            eq(entities.companyId, ctx.user.companyId),
+            sql`${entities.meta}->'source'->>'kind' = 'migration'`,
+          ),
+        );
+
+      // Lấy recordCount + connection name song song.
+      const connIds = new Set<string>();
+      for (const r of rows) {
+        const src = (r.meta as { source?: { connectionId?: string } } | null)?.source;
+        if (src?.connectionId) connIds.add(src.connectionId);
+      }
+      const connNames = new Map<string, string>();
+      if (connIds.size > 0) {
+        const conns = await ctx.db
+          .select({ id: mssqlConnections.id, name: mssqlConnections.name })
+          .from(mssqlConnections)
+          .where(eq(mssqlConnections.companyId, ctx.user.companyId));
+        for (const c of conns) connNames.set(c.id, c.name);
+      }
+
+      const counts = await ctx.db
+        .select({
+          entityId: entityRecords.entityId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(entityRecords)
+        .where(eq(entityRecords.companyId, ctx.user.companyId))
+        .groupBy(entityRecords.entityId);
+      const countMap = new Map(counts.map((c) => [c.entityId, c.count]));
+
+      const filtered = rows.filter((r) => {
+        const src = (r.meta as { source?: { connectionId?: string; module?: string } } | null)
+          ?.source;
+        if (input?.connectionId && src?.connectionId !== input.connectionId) return false;
+        if (input?.module && src?.module !== input.module) return false;
+        return true;
+      });
+
+      return filtered
+        .map((r) => {
+          const src = (
+            r.meta as {
+              source?: {
+                connectionId?: string;
+                module?: string;
+                mssqlTable?: string;
+                importedAt?: string;
+                importedBy?: string;
+                rowsLastImported?: number;
+              };
+            } | null
+          )?.source;
+          return {
+            id: r.id,
+            name: r.name,
+            label: r.label,
+            mssqlTable: src?.mssqlTable ?? null,
+            module: src?.module ?? null,
+            connectionId: src?.connectionId ?? null,
+            connectionName: src?.connectionId
+              ? (connNames.get(src.connectionId) ?? "(đã xoá)")
+              : null,
+            importedAt: src?.importedAt ?? null,
+            rowsLastImported: src?.rowsLastImported ?? 0,
+            recordCount: countMap.get(r.id) ?? 0,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
+          };
+        })
+        .sort((a, b) => (b.importedAt ?? "").localeCompare(a.importedAt ?? ""));
+    }),
+
+  /** T2: Xoá selective. Mode quyết định scope. Guard cứng: chỉ xoá nếu
+   *  meta.source.kind === 'migration'. */
+  cleanupMigratedEntity: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        entityId: z.string().uuid(),
+        mode: z.enum(["records-only", "entity-and-records", "re-migrate"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [ent] = await ctx.db
+        .select()
+        .from(entities)
+        .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, input.entityId)))
+        .limit(1);
+      if (!ent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại." });
+      }
+      const src = (
+        ent.meta as {
+          source?: {
+            kind?: string;
+            connectionId?: string;
+            mssqlTable?: string;
+            module?: string;
+          };
+        } | null
+      )?.source;
+      if (src?.kind !== "migration") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Entity "${ent.name}" không phải do migration tạo (kind=${
+            src?.kind ?? "undefined"
+          }). Không cho xoá qua endpoint này để tránh xoá nhầm entity hệ thống.`,
+        });
+      }
+
+      // records-only: xoá entity_records, giữ entity.
+      if (input.mode === "records-only" || input.mode === "re-migrate") {
+        const del = await ctx.db
+          .delete(entityRecords)
+          .where(
+            and(
+              eq(entityRecords.companyId, ctx.user.companyId),
+              eq(entityRecords.entityId, input.entityId),
+            ),
+          )
+          .returning({ id: entityRecords.id });
+        appendDecision({
+          module: src.module ?? "(unknown)",
+          action: {
+            type: "cleanupMigratedEntity",
+            mode: input.mode === "re-migrate" ? "records-only-prelude" : "records-only",
+            entityId: input.entityId,
+            entityName: ent.name,
+            deletedRecords: del.length,
+          },
+          by: ctx.user.id,
+        });
+        if (input.mode === "records-only") {
+          return {
+            mode: "records-only" as const,
+            entityId: input.entityId,
+            deletedRecords: del.length,
+            entityKept: true,
+          };
+        }
+      }
+
+      // entity-and-records: xoá entity (CASCADE FK sẽ xoá records).
+      if (input.mode === "entity-and-records") {
+        // Đếm trước để báo về.
+        const [cnt] = await ctx.db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(entityRecords)
+          .where(
+            and(
+              eq(entityRecords.companyId, ctx.user.companyId),
+              eq(entityRecords.entityId, input.entityId),
+            ),
+          );
+        await ctx.db
+          .delete(entities)
+          .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, input.entityId)));
+
+        // Gỡ migratedAt khỏi manifest _quick-* hoặc module yaml tương ứng.
+        if (src.module && src.mssqlTable) {
+          const p = resolve(MODULES_DIR(), `${src.module}.yaml`);
+          if (existsSync(p)) {
+            try {
+              const m = YAML.parse(readFileSync(p, "utf8")) as {
+                tables?: Array<{
+                  name: string;
+                  migratedAt?: string;
+                  migrateStats?: Record<string, unknown>;
+                }>;
+              };
+              for (const t of m.tables ?? []) {
+                if (t.name.toLowerCase() === src.mssqlTable.toLowerCase()) {
+                  delete t.migratedAt;
+                  delete t.migrateStats;
+                }
+              }
+              writeFileSync(p, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+            } catch {
+              /* skip yaml hỏng */
+            }
+          }
+        }
+
+        appendDecision({
+          module: src.module ?? "(unknown)",
+          action: {
+            type: "cleanupMigratedEntity",
+            mode: "entity-and-records",
+            entityId: input.entityId,
+            entityName: ent.name,
+            mssqlTable: src.mssqlTable,
+            deletedRecords: cnt?.n ?? 0,
+          },
+          by: ctx.user.id,
+        });
+        return {
+          mode: "entity-and-records" as const,
+          entityId: input.entityId,
+          deletedRecords: cnt?.n ?? 0,
+          entityDeleted: true,
+        };
+      }
+
+      // re-migrate: records đã xoá ở nhánh trên → mở MSSQL + bulkRead + insert.
+      if (!src.connectionId || !src.mssqlTable) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Entity thiếu source.connectionId hoặc source.mssqlTable — không thể re-migrate. Xoá entity rồi tạo lại qua Quick Migrate.",
+        });
+      }
+
+      // Load connection trực tiếp (không qua openDefaultMssql vì có thể đã đổi default).
+      const [conn] = await ctx.db
+        .select()
+        .from(mssqlConnections)
+        .where(
+          and(
+            eq(mssqlConnections.companyId, ctx.user.companyId),
+            eq(mssqlConnections.id, src.connectionId),
+          ),
+        )
+        .limit(1);
+      if (!conn) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Connection MSSQL gốc đã bị xoá (id=${src.connectionId}). Không re-migrate được.`,
+        });
+      }
+      const client = MssqlClient.fromConfig({
+        host: conn.host,
+        port: conn.port,
+        database: conn.database,
+        username: conn.username,
+        password: decryptSecret(conn.passwordEnc),
+        encrypt: conn.encrypt,
+        trustServerCert: conn.trustServerCert,
+        allowWrite: conn.allowWrite,
+        requestTimeoutMs: 60_000,
+      });
+      let rowsRead = 0;
+      let rowsUpserted = 0;
+      try {
+        await client.connect();
+        const rows = await client.bulkRead<Record<string, unknown>>(src.mssqlTable, {
+          limit: 50_000,
+        });
+        rowsRead = rows.length;
+        if (rows.length > 0) {
+          // Tái dùng map cột: lower-case key theo fields hiện có của entity.
+          const fields = (ent.fields as Array<{ name: string }>) ?? [];
+          const fieldSet = new Set(fields.map((f) => f.name.toLowerCase()));
+          const mapped = rows.map((r) => {
+            const data: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(r)) {
+              const key = k.toLowerCase();
+              if (fieldSet.size === 0 || fieldSet.has(key)) {
+                data[key] = v;
+              }
+            }
+            return data;
+          });
+          const inserted = await ctx.db
+            .insert(entityRecords)
+            .values(
+              mapped.map((d) => ({
+                companyId: ctx.user.companyId,
+                entityId: input.entityId,
+                data: d,
+                createdBy: ctx.user.id,
+              })),
+            )
+            .returning({ id: entityRecords.id });
+          rowsUpserted = inserted.length;
+        }
+      } finally {
+        await client.close().catch(() => undefined);
+      }
+
+      // Cập nhật meta.source.importedAt.
+      await ctx.db
+        .update(entities)
+        .set({
+          meta: {
+            source: {
+              ...src,
+              kind: "migration",
+              importedAt: new Date().toISOString(),
+              importedBy: ctx.user.id,
+              rowsLastImported: rowsUpserted,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(entities.id, input.entityId));
+
+      appendDecision({
+        module: src.module ?? "(unknown)",
+        action: {
+          type: "cleanupMigratedEntity",
+          mode: "re-migrate",
+          entityId: input.entityId,
+          entityName: ent.name,
+          mssqlTable: src.mssqlTable,
+          rowsRead,
+          rowsUpserted,
+        },
+        by: ctx.user.id,
+      });
+
+      return {
+        mode: "re-migrate" as const,
+        entityId: input.entityId,
+        rowsRead,
+        rowsUpserted,
+      };
+    }),
+
+  /** T2: Bulk cleanup theo scope (connectionId hoặc module). Loop apply
+   *  cleanupMigratedEntity cho từng entity match. */
+  cleanupAllMigrated: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        scope: z
+          .object({
+            connectionId: z.string().uuid().optional(),
+            module: z.string().optional(),
+          })
+          .default({}),
+        mode: z.enum(["records-only", "entity-and-records", "re-migrate"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const all = await ctx.db
+        .select({ id: entities.id, name: entities.name, meta: entities.meta })
+        .from(entities)
+        .where(
+          and(
+            eq(entities.companyId, ctx.user.companyId),
+            sql`${entities.meta}->'source'->>'kind' = 'migration'`,
+          ),
+        );
+
+      const targets = all.filter((r) => {
+        const src = (r.meta as { source?: { connectionId?: string; module?: string } } | null)
+          ?.source;
+        if (input.scope.connectionId && src?.connectionId !== input.scope.connectionId)
+          return false;
+        if (input.scope.module && src?.module !== input.scope.module) return false;
+        return true;
+      });
+
+      const results: Array<{ entityId: string; name: string; ok: boolean; error?: string }> = [];
+      for (const t of targets) {
+        try {
+          // Reuse logic: gọi inline qua DB ops giống cleanupMigratedEntity.
+          // Để tránh duplicate code lớn, ghi nhận đơn giản — caller có thể
+          // chia nhỏ qua cleanupMigratedEntity từng cái.
+          if (input.mode === "records-only") {
+            await ctx.db
+              .delete(entityRecords)
+              .where(
+                and(
+                  eq(entityRecords.companyId, ctx.user.companyId),
+                  eq(entityRecords.entityId, t.id),
+                ),
+              );
+          } else if (input.mode === "entity-and-records") {
+            await ctx.db
+              .delete(entities)
+              .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, t.id)));
+          } else if (input.mode === "re-migrate") {
+            // Skip — re-migrate phức tạp (cần MSSQL), caller nên gọi tuần
+            // tự qua cleanupMigratedEntity per entity để có progress + retry.
+            throw new Error("Bulk re-migrate chưa hỗ trợ — gọi cleanupMigratedEntity từng entity.");
+          }
+          results.push({ entityId: t.id, name: t.name, ok: true });
+        } catch (e) {
+          results.push({ entityId: t.id, name: t.name, ok: false, error: (e as Error).message });
+        }
+      }
+
+      appendDecision({
+        module: input.scope.module ?? "(cross-module)",
+        action: {
+          type: "cleanupAllMigrated",
+          mode: input.mode,
+          scope: input.scope,
+          total: targets.length,
+          succeeded: results.filter((r) => r.ok).length,
+          failed: results.filter((r) => !r.ok).length,
+        },
+        by: ctx.user.id,
+      });
+
+      return {
+        total: targets.length,
+        succeeded: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+        results,
+      };
+    }),
+
   /** Kiểm tra trạng thái trước khi user chạy job — UI hiển thị cảnh báo. */
   envCheck: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
     // Connection MSSQL lấy từ DB theo company (active session).
@@ -1582,6 +3751,38 @@ async function materializeOneEnum(opts: MaterializeOneOpts) {
     extraColumns: opts.extraColumns ?? [],
     upserted: (existing ? "updated" : "created") as "updated" | "created",
   };
+}
+
+/** Mở MssqlClient theo connectionId cụ thể. Caller PHẢI close. */
+async function openMssqlById(
+  db: DB,
+  companyId: string,
+  connectionId: string,
+): Promise<MssqlClient> {
+  const [row] = await db
+    .select()
+    .from(mssqlConnections)
+    .where(and(eq(mssqlConnections.companyId, companyId), eq(mssqlConnections.id, connectionId)))
+    .limit(1);
+  if (!row) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Connection MSSQL không tồn tại hoặc thuộc company khác.",
+    });
+  }
+  const client = MssqlClient.fromConfig({
+    host: row.host,
+    port: row.port,
+    database: row.database,
+    username: row.username,
+    password: decryptSecret(row.passwordEnc),
+    encrypt: row.encrypt,
+    trustServerCert: row.trustServerCert,
+    allowWrite: row.allowWrite,
+    requestTimeoutMs: 30_000,
+  });
+  await client.connect();
+  return client;
 }
 
 /** Mở MssqlClient từ default connection của company. Caller PHẢI close. */

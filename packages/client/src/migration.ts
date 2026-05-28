@@ -355,6 +355,373 @@ export function createMigrationClient(baseUrl: string) {
         tokensOut: number;
         durationMs: number;
       }>,
+
+    /* ── Phase Q — Pre-import live tables + defer dirty proc ──── */
+
+    /** Q1: Query sys.dm_exec_procedure_stats từ MSSQL — caller hợp với
+     *  markProcActivity để ghi vào manifest. */
+    detectActiveProcs: () =>
+      trpc.migration.detectActiveProcs.mutate() as Promise<{
+        readAt: string;
+        total: number;
+        procs: Array<{
+          schema: string;
+          name: string;
+          fullName: string;
+          lastExecAt: string | null;
+          execCount: number;
+          inManifest: boolean;
+        }>;
+      }>,
+
+    /** Q1: Ghi cờ active + stats vào manifest cho 1 module. */
+    markProcActivity: (input: {
+      module: string;
+      readAt: string;
+      marks: Array<{
+        procName: string;
+        active: boolean;
+        lastExecAt?: string | null;
+        execCount?: number;
+      }>;
+    }) =>
+      trpc.migration.markProcActivity.mutate(input) as Promise<{
+        updated: number;
+        procs: string[];
+      }>,
+
+    /** Q2: Tổng hợp bảng live/dead cross-module để FE preview trước khi
+     *  bulk migrate. */
+    getLiveTablesAcrossModules: () =>
+      trpc.migration.getLiveTablesAcrossModules.query() as Promise<{
+        modules: string[];
+        liveTables: Array<{
+          name: string;
+          module: string;
+          entityName?: string;
+          label?: string;
+          kind: "entity" | "enum";
+          migratedAt?: string;
+          touchedBy: string[];
+        }>;
+        deadTables: Array<{
+          name: string;
+          module: string;
+          entityName?: string;
+          label?: string;
+          kind: "entity" | "enum";
+          migratedAt?: string;
+          touchedBy: string[];
+        }>;
+        stats: {
+          modulesScanned: number;
+          totalProcs: number;
+          activeProcs: number;
+          deadProcs: number;
+          unknownProcs: number;
+          totalTables: number;
+          liveTables: number;
+          deadTables: number;
+          migratedTables: number;
+        };
+      }>,
+
+    /** Q3: Bulk ETL nhiều bảng cùng lúc → entity_records. */
+    bulkMigrateLiveTables: (input: {
+      tableNames: string[];
+      limitPerTable?: number;
+      dryRun?: boolean;
+      force?: boolean;
+    }) =>
+      trpc.migration.bulkMigrateLiveTables.mutate({
+        limitPerTable: 10_000,
+        dryRun: false,
+        force: false,
+        ...input,
+      }) as Promise<{
+        dryRun: boolean;
+        total: number;
+        succeeded: number;
+        failed: number;
+        totalRowsRead: number;
+        totalRowsUpserted: number;
+        results: Array<{
+          tableName: string;
+          entityName?: string;
+          ok: boolean;
+          skipped?: string;
+          rowsRead: number;
+          rowsUpserted: number;
+          rowsDeleted: number;
+          error?: string;
+          durationMs: number;
+        }>;
+      }>,
+
+    /** Q4: Codegen guard — check 1 proc có sẵn sàng codegen chưa. */
+    getProcMigrationStatus: (module: string, procName: string) =>
+      trpc.migration.getProcMigrationStatus.query({ module, procName }) as Promise<{
+        procName: string;
+        active: boolean;
+        isClean: boolean;
+        canCodegen: boolean;
+        missingTables: Array<{ table: string; reason: string }>;
+        touchedTables: string[];
+        suggestedAction: "codegen" | "wait" | "mark-inactive";
+      }>,
+
+    /* ── Phase S — Quick migrate ──────────────────────────── */
+
+    /** S1: Liệt kê bảng từ 1 MSSQL connection — kèm rowCount approx. */
+    listConnectionTables: (connectionId: string) =>
+      trpc.migration.listConnectionTables.query({ connectionId }) as Promise<
+        Array<{
+          schema: string;
+          name: string;
+          fullName: string;
+          rowCount: number | null;
+        }>
+      >,
+
+    /** S1: Preview 1 bảng — columns + sample + suggested entity/fields. */
+    previewQuickTable: (connectionId: string, tableName: string, samples: number = 5) =>
+      trpc.migration.previewQuickTable.query({ connectionId, tableName, samples }) as Promise<{
+        tableName: string;
+        info: {
+          schema: string;
+          name: string;
+          columns: Array<{ name: string; dataType: string; isNullable: boolean }>;
+          primaryKey: string[];
+          foreignKeys: Array<{ column: string; refTable: string; refColumn: string }>;
+        };
+        samples: Array<Record<string, unknown>>;
+        suggested: {
+          entityName: string;
+          label: string;
+          fields: Array<{ name: string; label: string; type: string }>;
+        };
+      }>,
+
+    /** S1: Bulk ETL nhiều bảng qua quick migrate path. Truyền `pkField`
+     *  để upsert theo PK (chống duplicate khi migrate lại). */
+    quickMigrateTables: (input: {
+      connectionId: string;
+      items: Array<{
+        tableName: string;
+        entityName: string;
+        label: string;
+        fields: Array<{ name: string; label: string; type: string }>;
+        force?: boolean;
+        pkField?: string;
+      }>;
+      limitPerTable?: number;
+      dryRun?: boolean;
+      writeManifest?: boolean;
+    }) =>
+      trpc.migration.quickMigrateTables.mutate({
+        limitPerTable: 10_000,
+        dryRun: false,
+        writeManifest: true,
+        ...input,
+        items: input.items.map((it) => ({ force: false, ...it })),
+      }) as Promise<{
+        dryRun: boolean;
+        connectionId: string;
+        moduleName: string;
+        total: number;
+        succeeded: number;
+        failed: number;
+        totalRowsRead: number;
+        totalRowsUpserted: number;
+        totalRowsUpdated: number;
+        results: Array<{
+          tableName: string;
+          entityName: string;
+          ok: boolean;
+          skipped?: string;
+          rowsRead: number;
+          rowsUpserted: number;
+          rowsUpdated: number;
+          rowsDeleted: number;
+          error?: string;
+          durationMs: number;
+        }>;
+      }>,
+
+    /* ── Phase U — Full import (queue + resume + sync) ────── */
+
+    /** U4: Tạo full-import job — bảng đã chọn import toàn bộ qua queue. */
+    startFullImport: (input: {
+      connectionId: string;
+      items: Array<{
+        tableName: string;
+        entityName: string;
+        label: string;
+        fields: Array<{ name: string; label: string; type: string }>;
+      }>;
+      batchSize?: number;
+      writeManifest?: boolean;
+    }) =>
+      trpc.migration.startFullImport.mutate({
+        batchSize: 5000,
+        writeManifest: true,
+        ...input,
+      }) as Promise<{ jobId: string }>,
+
+    /** U4: List full jobs với progress summary. */
+    listFullJobs: (filter?: {
+      connectionId?: string;
+      statuses?: Array<"queued" | "running" | "paused" | "completed" | "failed" | "canceled">;
+    }) =>
+      trpc.migration.listFullJobs.query(filter) as Promise<
+        Array<{
+          id: string;
+          connectionId: string;
+          connectionName: string;
+          kind: string;
+          status: string;
+          totalTables: number;
+          completedTables: number;
+          totalRowsImported: number;
+          startedAt: string | null;
+          completedAt: string | null;
+          lastHeartbeat: string;
+          error: string | null;
+          createdAt: string;
+          updatedAt: string;
+        }>
+      >,
+
+    /** U4: Chi tiết per-table của 1 job. */
+    getFullJobDetail: (jobId: string) =>
+      trpc.migration.getFullJobDetail.query({ jobId }) as Promise<{
+        job: {
+          id: string;
+          kind: string;
+          status: string;
+          totalTables: number;
+          completedTables: number;
+          totalRowsImported: number;
+          startedAt: string | null;
+          completedAt: string | null;
+          lastHeartbeat: string;
+          error: string | null;
+        };
+        tables: Array<{
+          id: string;
+          tableName: string;
+          entityName: string;
+          pkColumn: string | null;
+          lastPk: string | null;
+          rowsImported: number;
+          batchSize: number;
+          status: string;
+          error: string | null;
+          updatedAt: string;
+        }>;
+      }>,
+
+    /** U4: Resume 1 job (re-enqueue). mode='resume' retry failed, 'sync' reset done. */
+    resumeFullJob: (jobId: string, mode: "resume" | "sync" = "resume") =>
+      trpc.migration.resumeFullJob.mutate({ jobId, kind: mode }) as Promise<{
+        jobId: string;
+        status: string;
+        mode: "resume" | "sync";
+      }>,
+
+    /** U4: Cancel 1 job. */
+    cancelFullJob: (jobId: string) =>
+      trpc.migration.cancelFullJob.mutate({ jobId }) as Promise<{
+        jobId: string;
+        status: string;
+      }>,
+
+    /* ── Phase V — Auto master-detail page ────────────────── */
+
+    /** V1: Sinh page split-pane master-detail cho 1 entity. */
+    generateMasterDetailPage: (input: {
+      entityId: string;
+      pageName?: string;
+      pageLabel?: string;
+    }) =>
+      trpc.migration.generateMasterDetailPage.mutate(input) as Promise<{
+        pageId: string;
+        pageName: string;
+        pageLabel: string;
+        upserted: "created" | "updated";
+        masterEntity: string;
+        forwardRefs: Array<{ field: string; refEntityId: string }>;
+        backwardChildren: Array<{
+          entityId: string;
+          entityName: string;
+          entityLabel: string;
+          fkField: string;
+          label?: string;
+          source: "collection" | "backward-ref";
+        }>;
+      }>,
+
+    /* ── Phase T — Tracking + cleanup an toàn ──────────────── */
+
+    /** T2: Liệt kê entity do migration tạo. */
+    listMigratedEntities: (filter?: { connectionId?: string; module?: string }) =>
+      trpc.migration.listMigratedEntities.query(filter) as Promise<
+        Array<{
+          id: string;
+          name: string;
+          label: string;
+          mssqlTable: string | null;
+          module: string | null;
+          connectionId: string | null;
+          connectionName: string | null;
+          importedAt: string | null;
+          rowsLastImported: number;
+          recordCount: number;
+          createdAt: string;
+          updatedAt: string;
+        }>
+      >,
+
+    /** T2: Cleanup 1 entity migrate. Mode = records-only / entity-and-records / re-migrate. */
+    cleanupMigratedEntity: (input: {
+      entityId: string;
+      mode: "records-only" | "entity-and-records" | "re-migrate";
+    }) =>
+      trpc.migration.cleanupMigratedEntity.mutate(input) as Promise<
+        | {
+            mode: "records-only";
+            entityId: string;
+            deletedRecords: number;
+            entityKept: true;
+          }
+        | {
+            mode: "entity-and-records";
+            entityId: string;
+            deletedRecords: number;
+            entityDeleted: true;
+          }
+        | {
+            mode: "re-migrate";
+            entityId: string;
+            rowsRead: number;
+            rowsUpserted: number;
+          }
+      >,
+
+    /** T2: Bulk cleanup theo scope. */
+    cleanupAllMigrated: (input: {
+      scope?: { connectionId?: string; module?: string };
+      mode: "records-only" | "entity-and-records" | "re-migrate";
+    }) =>
+      trpc.migration.cleanupAllMigrated.mutate({
+        scope: input.scope ?? {},
+        mode: input.mode,
+      }) as Promise<{
+        total: number;
+        succeeded: number;
+        failed: number;
+        results: Array<{ entityId: string; name: string; ok: boolean; error?: string }>;
+      }>,
   };
 }
 

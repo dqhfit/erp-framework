@@ -1,0 +1,219 @@
+- at: 2026-05-27T12:36:44.878Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: startFullImport
+    jobId: 019e696f-e8f8-768f-8197-7dadf99a9f4c
+    connectionId: 019e64d2-9e43-7d49-a16e-51e32303457e
+    itemCount: 2
+    batchSize: 5000
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T12:40:38.786Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: startFullImport
+    jobId: 019e6973-7a4e-7443-8d6f-3e7a9d423025
+    connectionId: 019e64d2-9e43-7d49-a16e-51e32303457e
+    itemCount: 2
+    batchSize: 5000
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T16:19:44.508Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6973-7a4e-7443-8d6f-3e7a9d423025
+    mode: sync
+  by: 0c5ba547-1472-4e9c-ab10-c380507dd9ea
+- at: 2026-05-27T17:51:11.810Z
+  module: (master-detail)
+  action:
+    type: generateMasterDetailPage
+    masterEntity: don_ban_1048fd
+    forwardRefs: 0
+    backwardChildren: 0
+    pageId: 1ff5759f-418e-4c71-8406-1c4aefb0b427
+    pageName: don_ban_1048fd_master_detail
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T22:57:01.634Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: startFullImport
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    connectionId: 019e64d2-9e43-7d49-a16e-51e32303457e
+    itemCount: 2
+    batchSize: 5000
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T22:57:21.685Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T22:57:49.903Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6973-7a4e-7443-8d6f-3e7a9d423025
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:01:16.442Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e696f-e8f8-768f-8197-7dadf99a9f4c
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:03:04.988Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: cleanupMigratedEntity
+    mode: records-only-prelude
+    entityId: a9f9c401-8436-404a-b8c5-cc479e48c265
+    entityName: tr_order_detail
+    deletedRecords: 0
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:03:51.456Z
+  module: (cross-module)
+  action:
+    type: cleanupAllMigrated
+    mode: records-only
+    scope: {}
+    total: 2
+    succeeded: 2
+    failed: 0
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:03:58.773Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: cleanupMigratedEntity
+    mode: records-only-prelude
+    entityId: a9f9c401-8436-404a-b8c5-cc479e48c265
+    entityName: tr_order_detail
+    deletedRecords: 0
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:04:09.879Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: cleanupMigratedEntity
+    mode: records-only-prelude
+    entityId: e1c25c90-b6bb-459d-83c3-63b0ef9b45ca
+    entityName: tr_order
+    deletedRecords: 0
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:04:11.902Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: cleanupMigratedEntity
+    mode: re-migrate
+    entityId: e1c25c90-b6bb-459d-83c3-63b0ef9b45ca
+    entityName: tr_order
+    mssqlTable: dbo.tr_order
+    rowsRead: 2310
+    rowsUpserted: 2310
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:04:52.750Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:39:54.649Z
+  module: (master-detail)
+  action:
+    type: generateMasterDetailPage
+    masterEntity: don_ban_e1c25c
+    forwardRefs: 0
+    backwardChildren: 1
+    pageId: 8e471e7b-2694-4960-b863-8934501a1329
+    pageName: don_ban_e1c25c_master_detail
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:42:25.794Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e696f-e8f8-768f-8197-7dadf99a9f4c
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:43:43.573Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6973-7a4e-7443-8d6f-3e7a9d423025
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-27T23:44:07.663Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:01:28.304Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: startFullImport
+    jobId: 019e6c19-beaf-7241-a0e6-d1fa46c082de
+    connectionId: 019e64d2-9e43-7d49-a16e-51e32303457e
+    itemCount: 1
+    batchSize: 5000
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:06:14.456Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6c19-beaf-7241-a0e6-d1fa46c082de
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:06:47.901Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:18:32.615Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6c19-beaf-7241-a0e6-d1fa46c082de
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:18:42.586Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6c19-beaf-7241-a0e6-d1fa46c082de
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:19:34.316Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6973-7a4e-7443-8d6f-3e7a9d423025
+    mode: resume
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T01:28:59.629Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6c19-beaf-7241-a0e6-d1fa46c082de
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T02:15:09.177Z
+  module: (master-detail)
+  action:
+    type: generateMasterDetailPage
+    masterEntity: don_ban_e1c25c
+    forwardRefs: 0
+    backwardChildren: 1
+    pageId: 4c589ef6-5d8b-474f-99e2-1e6c8bbb9e8b
+    pageName: don_ban_e1c25c_master_detail
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-28T03:01:23.706Z
+  module: _quick-019e64d2-9e43-7d49-a16e-51e32303457e
+  action:
+    type: resumeFullJob
+    jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
+    mode: sync
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724

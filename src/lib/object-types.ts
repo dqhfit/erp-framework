@@ -11,6 +11,30 @@ import type { I as IconSet } from "@/components/Icons";
 
 export type IconName = keyof typeof IconSet;
 
+export interface FieldFormat {
+  /** Number / currency / formula: số chữ số thập phân (0-6). */
+  decimals?: number;
+  /** Dấu phân cách hàng nghìn. */
+  thousandSep?: "comma" | "period" | "space" | "none";
+  /** Text tiền tố hiển thị (vd: "+", "~"). */
+  prefix?: string;
+  /** Text hậu tố hiển thị (vd: "kg", "%"). */
+  suffix?: string;
+  /** Currency: ký hiệu tiền tệ (₫, $, €, …). */
+  currencySymbol?: string;
+  /** Currency: vị trí ký hiệu. */
+  symbolPosition?: "before" | "after";
+  /** Date / datetime: chuỗi định dạng. */
+  dateFormat?: "dd/MM/yyyy" | "MM/dd/yyyy" | "yyyy-MM-dd" | "relative";
+  /** Datetime: định dạng giờ. */
+  timeFormat?: "HH:mm" | "HH:mm:ss" | "hh:mm a" | "relative";
+  /** Text: biến đổi chuỗi khi hiển thị. */
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+  /** Boolean: nhãn tuỳ chỉnh. */
+  trueLabel?: string;
+  falseLabel?: string;
+}
+
 export interface EntityField {
   id: string;
   name: string;
@@ -36,6 +60,13 @@ export interface EntityField {
   /** Cho field type "sequence". */
   sequencePrefix?: string;
   sequencePadding?: number;
+  /** Tuỳ chọn định dạng hiển thị. */
+  format?: FieldFormat;
+  /** Cho field type "collection" — tên field FK trên entity con trỏ về cha.
+   *  childEntityId lưu qua `ref`, FK field name lưu qua đây. */
+  fkField?: string;
+  /** Mặc định hiển thị trong danh sách / grid. Không đặt hoặc true = hiện; false = ẩn. */
+  defaultVisible?: boolean;
 }
 export interface MockEntity {
   id: string;

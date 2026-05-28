@@ -1,5 +1,7 @@
-import { createApiDataSource } from "@erp-framework/client";
-import { Fragment, useEffect, useState } from "react";
+import { createApiDataSource, createMigrationClient } from "@erp-framework/client";
+import { useNavigate } from "@tanstack/react-router";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { useUndoable } from "@/hooks/useUndoable";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { EntityFormPreview } from "@/components/designer/entity-preview";
 import { FieldInspector } from "@/components/designer/field-inspector";
@@ -8,6 +10,7 @@ import { type McpBindings, McpBindingsEditor } from "@/components/designer/McpBi
 import { McpImportModal, type McpImportResult } from "@/components/designer/McpImportModal";
 import { EntitySyncPanel } from "@/components/EntitySyncPanel";
 import { I } from "@/components/Icons";
+import { EntityData } from "@/components/renderer/EntityData";
 import { Button, EmptyState, InlineEdit, Input } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
@@ -16,6 +19,7 @@ import { ftLabel, getFieldTypes } from "@/lib/field-types";
 import { countBoundOps, inferMcpBindings } from "@/lib/mcp-binding-infer";
 import { inferPkField, syncEntityFromMcp } from "@/lib/mcp-sync";
 import type { EntityField, MockEntity } from "@/lib/object-types";
+import { dialog } from "@/lib/dialog";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
@@ -24,9 +28,15 @@ interface Props {
   entityId: string;
 }
 
+const migrationApi = createMigrationClient("");
+
 export function EntityDesigner({ entityId }: Props) {
   const t = useT();
+  const navigate = useNavigate();
   const userEntities = useUserObjects((s) => s.entities);
+  const addPage = useUserObjects((s) => s.addPage);
+  const setPageContent = useUserObjects((s) => s.setPageContent);
+  const hydrate = useUserObjects((s) => s.hydrate);
   const fallbackEntity: MockEntity = {
     id: entityId,
     name: "Entity",
@@ -35,16 +45,18 @@ export function EntityDesigner({ entityId }: Props) {
     fields: [],
   };
   const initial = userEntities.find((e) => e.id === entityId) ?? fallbackEntity;
-  const mode = useUI((s) => s.mode);
   const inspectorVisible = useUI((s) => s.inspectorVisible);
 
-  const [entity, setEntity] = useState<MockEntity>(initial);
+  const [entity, setEntity, { canUndo, canRedo, undo, redo }] = useUndoable<MockEntity>(initial);
   const [selected, setSelected] = useState<string | null>(null);
   const [insTab, setInsTab] = useState<"data" | "style" | "events">("data");
+  const [localView, setLocalView] = useState<"schema" | "form" | "data">("schema");
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [dragFromPalette, setDragFromPalette] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [pageMenuOpen, setPageMenuOpen] = useState(false);
+  const pageMenuRef = useRef<HTMLDivElement>(null);
   const { tools: mcpTools } = useMcpClient();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
@@ -187,8 +199,19 @@ export function EntityDesigner({ entityId }: Props) {
     return () => clearTimeout(t);
   }, [importToast]);
 
+  useEffect(() => {
+    if (!pageMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (pageMenuRef.current && !pageMenuRef.current.contains(e.target as Node))
+        setPageMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [pageMenuOpen]);
+
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [generatingMd, setGeneratingMd] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const upsertEntity = useUserObjects((s) => s.upsertEntity);
   const save = () => {
@@ -224,12 +247,24 @@ export function EntityDesigner({ entityId }: Props) {
       })();
     }, 700);
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const undoRef = useRef(undo);
+  undoRef.current = undo;
+  const redoRef = useRef(redo);
+  redoRef.current = redo;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "s") {
         e.preventDefault();
-        save();
+        saveRef.current();
+      } else if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undoRef.current();
+      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        e.preventDefault();
+        redoRef.current();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -256,8 +291,67 @@ export function EntityDesigner({ entityId }: Props) {
     }
   };
 
+  const handleAutoPage = () => {
+    const pageId = crypto.randomUUID();
+    addPage({
+      id: pageId,
+      name: entity.name,
+      icon: entity.icon,
+      updated: "vừa xong",
+      author: "auto",
+    });
+    setPageContent(pageId, [
+      {
+        id: `${pageId}_list`,
+        kind: "list",
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 4,
+        config: { entity: entity.id, title: entity.name },
+      },
+      {
+        id: `${pageId}_form`,
+        kind: "form",
+        x: 0,
+        y: 4,
+        w: 6,
+        h: 5,
+        config: {
+          entity: entity.id,
+          title: t("entity.auto_page_form_title", { name: entity.name }),
+        },
+      },
+    ]);
+    void navigate({ to: "/pages/$id", params: { id: pageId } });
+  };
+
+  const handleMasterDetailPage = async () => {
+    if (generatingMd) return;
+    setGeneratingMd(true);
+    try {
+      const r = await migrationApi.generateMasterDetailPage({ entityId: entity.id });
+      await hydrate();
+      const childMsg =
+        r.backwardChildren.length > 0
+          ? `\n\nChild entity (${r.backwardChildren.length}):\n` +
+            r.backwardChildren
+              .map((c) => `• ${c.label ?? c.entityLabel} (qua ${c.fkField})`)
+              .join("\n")
+          : "\n\nKhông có child entity.";
+      const open = await dialog.confirm(
+        `${r.upserted === "created" ? "Đã tạo" : "Đã cập nhật"} trang "${r.pageLabel}".${childMsg}\n\nMở trang ngay?`,
+        { title: t("entity.md_page_title"), confirmText: t("entity.md_page_open") },
+      );
+      if (open) void navigate({ to: "/pages/$id", params: { id: r.pageId } });
+    } catch (e) {
+      void dialog.alert((e as Error).message, { title: t("common.error") });
+    } finally {
+      setGeneratingMd(false);
+    }
+  };
+
   const IconC = I[entity.icon] ?? I.Database;
-  const isConsumer = mode === "consumer";
 
   return (
     <div className="flex flex-col h-full">
@@ -310,16 +404,40 @@ export function EntityDesigner({ entityId }: Props) {
           </Button>
         )}
         <div className="w-px h-5 bg-border mx-1" />
-        <Button variant="ghost" size="sm" icon={<I.Undo size={13} />}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<I.Undo size={13} />}
+          onClick={undo}
+          disabled={!canUndo}
+          title="Ctrl+Z"
+        >
           {t("designer.undo")}
         </Button>
-        <Button variant="ghost" size="sm" icon={<I.Redo size={13} />} title={t("designer.redo")} />
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<I.Redo size={13} />}
+          onClick={redo}
+          disabled={!canRedo}
+          title="Ctrl+Shift+Z"
+        />
         <div className="w-px h-5 bg-border mx-1" />
-        <Button variant="ghost" size="sm" icon={<I.Play size={13} />}>
-          {t("designer.form_btn")}
+        <Button
+          variant={localView === "form" ? "primary" : "ghost"}
+          size="sm"
+          icon={<I.Play size={13} />}
+          onClick={() => setLocalView((v) => (v === "form" ? "schema" : "form"))}
+        >
+          {localView === "form" ? t("designer.exit_preview") : t("designer.form_btn")}
         </Button>
-        <Button variant="default" size="sm" icon={<I.Eye size={13} />}>
-          {t("designer.preview")}
+        <Button
+          variant={localView === "data" ? "primary" : "default"}
+          size="sm"
+          icon={localView === "data" ? <I.EyeOff size={13} /> : <I.Eye size={13} />}
+          onClick={() => setLocalView((v) => (v === "data" ? "schema" : "data"))}
+        >
+          {localView === "data" ? t("designer.exit_preview") : t("designer.preview")}
         </Button>
         <Button
           variant="primary"
@@ -334,12 +452,73 @@ export function EntityDesigner({ entityId }: Props) {
             <I.Check size={11} className="text-success" /> {t("designer.saved")}
           </span>
         )}
+        <div className="w-px h-5 bg-border mx-1" />
+        <div ref={pageMenuRef} className="relative flex">
+          <Button
+            variant="default"
+            size="sm"
+            icon={
+              generatingMd ? (
+                <I.Loader size={13} className="animate-spin" />
+              ) : (
+                <I.PanelLeft size={13} />
+              )
+            }
+            onClick={() => void handleMasterDetailPage()}
+            disabled={generatingMd}
+            title={t("entity.md_page_hint")}
+            className="rounded-r-none border-r-0"
+          >
+            {t("entity.create_page_btn")}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setPageMenuOpen((v) => !v)}
+            className="btn btn-default btn-sm rounded-l-none px-1.5"
+            title={t("entity.create_page_menu_tip")}
+            disabled={generatingMd}
+          >
+            <I.ChevronDown size={11} />
+          </button>
+          {pageMenuOpen && (
+            <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded-md shadow-lg min-w-[210px] py-1">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover text-left"
+                onClick={() => {
+                  setPageMenuOpen(false);
+                  void handleMasterDetailPage();
+                }}
+              >
+                <I.PanelLeft size={13} className="shrink-0 text-accent" />
+                <div className="flex flex-col leading-tight">
+                  <span>{t("entity.md_page_btn")}</span>
+                  <span className="text-[11px] text-muted">{t("entity.md_page_hint_short")}</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover text-left"
+                onClick={() => {
+                  setPageMenuOpen(false);
+                  handleAutoPage();
+                }}
+              >
+                <I.Layout size={13} className="shrink-0 text-muted" />
+                <div className="flex flex-col leading-tight">
+                  <span>{t("entity.auto_page_btn")}</span>
+                  <span className="text-[11px] text-muted">{t("entity.auto_page_hint_short")}</span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 flex overflow-auto min-w-0">
         {/* Field palette */}
-        {!isConsumer && (
+        {localView === "schema" && (
           <div className="w-[220px] shrink-0 border-r border-border bg-panel flex flex-col">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
@@ -384,10 +563,18 @@ export function EntityDesigner({ entityId }: Props) {
         )}
 
         {/* Fields list canvas */}
-        <div className="flex-1 overflow-y-auto bg-bg min-w-[480px]">
-          {isConsumer ? (
-            <EntityFormPreview entity={entity} />
-          ) : (
+        <div className="flex-1 overflow-y-auto bg-bg min-w-[480px] relative">
+          {localView === "form" && (
+            <div className="absolute inset-0 z-10 bg-bg overflow-auto">
+              <EntityFormPreview entity={entity} />
+            </div>
+          )}
+          {localView === "data" && (
+            <div className="absolute inset-0 z-10 bg-bg overflow-auto">
+              <EntityData entityId={entity.id} />
+            </div>
+          )}
+          {localView === "schema" && (
             <div className="max-w-[760px] mx-auto py-6 px-6">
               <div className="flex items-baseline justify-between mb-3">
                 <div>
@@ -406,7 +593,7 @@ export function EntityDesigner({ entityId }: Props) {
               ) : (
                 <div className="card divide-y divide-border overflow-hidden">
                   {entity.fields.map((f, idx) => (
-                    <Fragment key={f.id}>
+                    <Fragment key={f.id ?? idx}>
                       <div
                         onDragOver={(e) => {
                           if (dragFromPalette) {
@@ -425,6 +612,7 @@ export function EntityDesigner({ entityId }: Props) {
                         }}
                         className={cn(
                           "h-2 -my-1 transition-all",
+                          !dragFromPalette && "pointer-events-none",
                           dragOverIdx === idx && dragFromPalette && "drop-zone-active h-6 my-0",
                         )}
                       />
@@ -457,6 +645,7 @@ export function EntityDesigner({ entityId }: Props) {
                     }}
                     className={cn(
                       "h-8 flex items-center justify-center text-xs text-muted transition-colors",
+                      !dragFromPalette && "pointer-events-none",
                       dragOverIdx === entity.fields.length && dragFromPalette && "drop-zone-active",
                     )}
                   >
@@ -522,7 +711,7 @@ export function EntityDesigner({ entityId }: Props) {
         </div>
 
         {/* Inspector */}
-        {!isConsumer && inspectorVisible && (
+        {localView === "schema" && inspectorVisible && (
           <FieldInspector
             field={selectedField}
             onUpdate={(p) => selectedField && updateField(selectedField.id, p)}

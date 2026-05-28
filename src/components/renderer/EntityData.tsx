@@ -17,7 +17,7 @@ import { DataGrid } from "@/components/renderer/DataGrid";
 import { Button, Chip, Drawer, FormField, Input, Select } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { pickFieldLabel } from "@/lib/enum-label";
-import { formatVND } from "@/lib/format";
+import { applyFieldFormat } from "@/lib/format";
 import type { MockEntity } from "@/lib/object-types";
 import { useLocale } from "@/stores/locale";
 import { useUserObjects } from "@/stores/userObjects";
@@ -249,16 +249,13 @@ export function EntityData({ entityId }: { entityId: string }) {
           />
         ),
       },
-      ...fields.slice(0, 7).map((f) => ({
-        accessorKey: f.name,
-        header: pickFieldLabel(f, lang),
-        cell: (c: { getValue: () => unknown }) => {
-          const v = c.getValue();
-          if (f.type === "currency") return formatVND(Number(v ?? 0));
-          if (Array.isArray(v)) return v.join(", ");
-          return v == null ? "" : String(v);
-        },
-      })),
+      ...fields
+        .filter((f) => f.defaultVisible !== false)
+        .map((f) => ({
+          accessorKey: f.name,
+          header: pickFieldLabel(f, lang),
+          cell: (c: { getValue: () => unknown }) => applyFieldFormat(f, c.getValue()),
+        })),
       {
         id: "__actions",
         header: "",

@@ -18,8 +18,6 @@ export function Topbar() {
   const {
     theme,
     setTheme,
-    mode,
-    setMode,
     sidebarCollapsed,
     setSidebarCollapsed,
     agentOpen,
@@ -28,8 +26,6 @@ export function Topbar() {
     tweaksOpen,
     setTweaksOpen,
   } = useUI();
-
-  const isDesignerRoute = /^\/(entities|pages|workflows)\//.test(matches);
 
   // Chip "Agent chính": có primary → avatar + tên; chưa có → chip dashed.
   const primaryAgentId = useAuth((s) => s.primaryAgentId);
@@ -107,30 +103,6 @@ export function Topbar() {
       </button>
 
       <div className="flex-1 min-w-0" />
-
-      {/* Mode toggle */}
-      {isDesignerRoute && (
-        <div className="mode-toggle shrink-0">
-          <button
-            type="button"
-            className={mode === "designer" ? "on" : ""}
-            onClick={() => setMode("designer")}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <I.Edit size={11} /> {t("topbar.edit")}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={mode === "consumer" ? "on" : ""}
-            onClick={() => setMode("consumer")}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <I.Eye size={11} /> {t("topbar.preview")}
-            </span>
-          </button>
-        </div>
-      )}
 
       {/* Công ty đang làm việc (đa công ty) */}
       <CompanySwitcher />

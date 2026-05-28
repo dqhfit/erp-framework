@@ -41,13 +41,6 @@ export function FieldRow({
   return (
     <div
       onClick={onSelect}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/field-idx", String(idx));
-        e.dataTransfer.effectAllowed = "move";
-        setDragging(true);
-      }}
-      onDragEnd={() => setDragging(false)}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("text/field-idx")) {
           e.preventDefault();
@@ -61,16 +54,25 @@ export function FieldRow({
         setDragOver(false);
       }}
       className={cn(
-        "flex items-center gap-3 px-3 h-12 cursor-pointer group transition-colors",
+        "flex items-center gap-3 px-3 h-12 cursor-pointer select-none group transition-colors",
         active ? "bg-accent/10" : "hover:bg-hover/30",
         dragging && "dragging",
         dragOver && "drop-zone-active",
       )}
     >
-      <I.Grip
-        size={14}
-        className="text-muted opacity-0 group-hover:opacity-100 cursor-grab shrink-0"
-      />
+      <span
+        draggable
+        onMouseDown={(e) => e.preventDefault()}
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/field-idx", String(idx));
+          e.dataTransfer.effectAllowed = "move";
+          setDragging(true);
+        }}
+        onDragEnd={() => setDragging(false)}
+        className="shrink-0 flex items-center"
+      >
+        <I.Grip size={14} className="text-muted opacity-0 group-hover:opacity-100 cursor-grab" />
+      </span>
       <div className="w-7 h-7 rounded-md bg-panel-2 border border-border flex items-center justify-center text-muted shrink-0">
         <IC size={13} />
       </div>

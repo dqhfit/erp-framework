@@ -351,6 +351,13 @@
       "when": 1783700600000,
       "tag": "0049_viewer_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1783700700000,
+      "tag": "0050_migration_full_jobs",
+      "breakpoints": true
     }
   ]
 }

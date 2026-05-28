@@ -64,7 +64,10 @@ function rowToEntity(r: Row): MockEntity {
     name: (r.label as string) || (r.name as string) || "",
     icon: ((r.icon as string) || "Database") as IconName,
     mcp: (meta.mcp as string) || "",
-    fields: (r.fields ?? []) as MockEntity["fields"],
+    fields: ((r.fields ?? []) as MockEntity["fields"]).map((f, i) => ({
+      ...f,
+      id: f.id ?? `fld_${f.name ?? i}`,
+    })),
     mcpBindings: meta.mcpBindings as MockEntity["mcpBindings"],
     procBindings,
   };

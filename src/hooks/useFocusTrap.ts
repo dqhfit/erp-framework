@@ -20,6 +20,10 @@ const FOCUSABLE_SELECTOR = [
 export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () => void) {
   const containerRef = useRef<T>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  // Dùng ref để luôn gọi phiên bản onClose mới nhất mà không cần
+  // thêm nó vào deps — tránh effect re-run mỗi khi parent re-render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +40,7 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !container) return;
@@ -67,7 +71,7 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
       const prev = previousFocusRef.current;
       if (prev && document.body.contains(prev)) prev.focus();
     };
-  }, [open, onClose]);
+  }, [open]); // onClose được đọc qua ref — không cần trong deps
 
   return containerRef;
 }

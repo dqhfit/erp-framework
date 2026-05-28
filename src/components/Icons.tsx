@@ -97,6 +97,12 @@ export const I = {
       <path d="M20 6 9 17l-5-5" />
     </Icon>
   ),
+  Columns2: (p: IP) => (
+    <Icon {...p}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M12 3v18" />
+    </Icon>
+  ),
   ChevronDown: (p: IP) => (
     <Icon {...p}>
       <path d="m6 9 6 6 6-6" />
@@ -161,6 +167,14 @@ export const I = {
     <Icon {...p}>
       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
       <circle cx="12" cy="12" r="3" />
+    </Icon>
+  ),
+  EyeOff: (p: IP) => (
+    <Icon {...p}>
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <path d="M10.73 10.73a3 3 0 0 0 4.17 4.31" />
+      <line x1="2" y1="2" x2="22" y2="22" />
     </Icon>
   ),
   Edit: (p: IP) => (
@@ -531,6 +545,14 @@ export const I = {
     <Icon {...p}>
       <circle cx="12" cy="12" r="10" />
       <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </Icon>
+  ),
+  Toolbar: (p: IP) => (
+    <Icon {...p}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <rect x="5" y="9" width="4" height="6" rx="1" />
+      <rect x="11" y="9" width="4" height="6" rx="1" />
+      <rect x="17" y="9" width="2" height="6" rx="1" />
     </Icon>
   ),
 };

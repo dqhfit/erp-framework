@@ -88,6 +88,7 @@ export function decryptDataOut(
 export const fieldDef = z.object({
   name: z.string(),
   label: z.string(),
+  labelEn: z.string().optional(),
   type: z.string(), // chuỗi tuỳ ý — cho phép cả kiểu do plugin thêm
   required: z.boolean().optional(),
   options: z.array(z.string()).optional(),
@@ -97,6 +98,18 @@ export const fieldDef = z.object({
   sortable: z.boolean().optional(),
   id: z.string().optional(),
   ref: z.string().optional(),
+  enumId: z.string().optional(),
+  onDelete: z.enum(["restrict", "setnull", "cascade"]).optional(),
+  searchable: z.boolean().optional(),
+  unique: z.boolean().optional(),
+  readableBy: z.array(z.enum(["admin", "editor", "viewer"])).optional(),
+  writableBy: z.array(z.enum(["admin", "editor", "viewer"])).optional(),
+  sequencePrefix: z.string().optional(),
+  sequencePadding: z.number().int().optional(),
+  format: z.record(z.string(), z.unknown()).optional(),
+  // collection field: childEntityId lưu qua `ref`, FK field name lưu qua `fkField`
+  fkField: z.string().optional(),
+  defaultVisible: z.boolean().optional(),
 });
 
 export const entityInput = z.object({
@@ -115,7 +128,7 @@ export const pageInput = z.object({
   name: z.string().min(1),
   label: z.string().min(1),
   icon: z.string().optional(),
-  content: z.record(z.string(), z.unknown()).optional(),
+  content: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]).optional(),
 });
 
 export const agentInput = z.object({

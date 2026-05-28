@@ -13,6 +13,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   doublePrecision,
   index,
@@ -658,6 +659,65 @@ export const mssqlConnections = pgTable(
   },
   (t) => ({
     companyNameIdx: uniqueIndex("mssql_connections_company_name_idx").on(t.companyId, t.name),
+  }),
+);
+
+/** Phase U — Background full import job từ MSSQL.
+ *  1 job = 1 lần user bấm "Full import"; chứa N table riêng.
+ *  status: queued | running | paused | completed | failed | canceled
+ *  kind:   full (lần đầu) | sync (re-run lấy data mới theo lastPk) */
+export const migrationFullJobs = pgTable(
+  "migration_full_jobs",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => mssqlConnections.id, { onDelete: "restrict" }),
+    kind: text("kind").default("full").notNull(),
+    status: text("status").default("queued").notNull(),
+    // {items: [{tableName, entityName, label, fields[]}], batchSize, writeManifest}
+    config: jsonb("config").default(sql`'{}'::jsonb`).notNull(),
+    totalTables: integer("total_tables").default(0).notNull(),
+    completedTables: integer("completed_tables").default(0).notNull(),
+    totalRowsImported: bigint("total_rows_imported", { mode: "number" }).default(0).notNull(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
+    error: text("error"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyStatusIdx: index("migration_full_jobs_company_status_idx").on(t.companyId, t.status),
+  }),
+);
+
+/** Phase U — Per-table state cho full import job. Lưu lastPk để resume
+ *  + sync. pkColumn detect tự động từ MSSQL primary key (single col). */
+export const migrationFullJobTables = pgTable(
+  "migration_full_job_tables",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => migrationFullJobs.id, { onDelete: "cascade" }),
+    tableName: text("table_name").notNull(),
+    entityId: uuid("entity_id").references(() => entities.id, { onDelete: "set null" }),
+    entityName: text("entity_name").notNull(),
+    pkColumn: text("pk_column"),
+    lastPk: text("last_pk"),
+    rowsImported: bigint("rows_imported", { mode: "number" }).default(0).notNull(),
+    batchSize: integer("batch_size").default(5000).notNull(),
+    status: text("status").default("pending").notNull(),
+    error: text("error"),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    jobStatusIdx: index("migration_full_job_tables_job_status_idx").on(t.jobId, t.status),
   }),
 );
 

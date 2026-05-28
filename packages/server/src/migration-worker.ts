@@ -23,10 +23,19 @@ import { runData } from "@erp-framework/migration-cli/data";
 import { db } from "./db";
 import { decryptSecret } from "./crypto";
 import { publish as publishWs } from "./ws-hub";
+import { runGenerateModule } from "./migration-codegen-batch";
+import { runFullImportJob } from "./migration-full-import";
 
 const QUEUE_MIGRATION = "migration-run";
 
-type MigrationAction = "discover" | "enrich" | "capture-golden" | "generate" | "data" | "audit";
+type MigrationAction =
+  | "discover"
+  | "enrich"
+  | "capture-golden"
+  | "generate"
+  | "data"
+  | "audit"
+  | "full-import";
 
 interface MigrationJobData {
   jobId: string;
@@ -110,10 +119,19 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
 
   let mssqlClient: MssqlClient | null = null;
   try {
-    // Resolve MSSQL connection: arg connectionId > isDefault của company.
-    const connectionId =
-      typeof data.args.connectionId === "string" ? data.args.connectionId : undefined;
-    mssqlClient = await loadMssqlClient(data.companyId, connectionId);
+    // full-import KHÔNG cần MSSQL client ở scope worker — runFullImportJob
+    // tự mở connection theo job.connectionId trong DB (per-job, per-resume).
+    if (data.action !== "full-import") {
+      // Resolve MSSQL connection: arg connectionId > isDefault của company.
+      const connectionId =
+        typeof data.args.connectionId === "string" ? data.args.connectionId : undefined;
+      mssqlClient = await loadMssqlClient(data.companyId, connectionId);
+    }
+    // Helper non-null assert — các case dưới đây (trừ full-import) luôn có client.
+    const mc = () => {
+      if (!mssqlClient) throw new Error("MSSQL client chưa khởi tạo cho action này.");
+      return mssqlClient;
+    };
 
     switch (data.action) {
       case "discover":
@@ -122,7 +140,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           seedTables: arrayArg(data.args.seedTables),
           excludeTables: arrayArg(data.args.excludeTables),
           maxTables: numArg(data.args.maxTables, 30),
-          mssqlClient,
+          mssqlClient: mc(),
         });
         break;
       case "enrich":
@@ -132,7 +150,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           maxCostUsd: numArg(data.args.maxCostUsd, 5),
           skipEnriched: boolArg(data.args.skipEnriched, false),
           onlyProcs: arrayArg(data.args.onlyProcs),
-          mssqlClient,
+          mssqlClient: mc(),
           companyId: data.companyId,
         });
         break;
@@ -140,7 +158,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
         await runCaptureGolden({
           module: data.module,
           samples: numArg(data.args.samples, 10),
-          mssqlClient,
+          mssqlClient: mc(),
         });
         break;
       case "data":
@@ -149,12 +167,38 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           tables: arrayArg(data.args.tables),
           table: typeof data.args.table === "string" ? data.args.table : undefined,
           limit: numArg(data.args.limit, 10_000),
-          mssqlClient,
+          mssqlClient: mc(),
         });
         break;
-      case "generate":
+      case "generate": {
+        const r = await runGenerateModule({
+          db,
+          mssqlClient: mc(),
+          module: data.module,
+          companyId: data.companyId,
+          userId: data.userId,
+          opts: {
+            skipExisting: boolArg(data.args.skipExisting, true),
+            overwriteFiles: boolArg(data.args.overwriteFiles, false),
+            includeDirty: boolArg(data.args.includeDirty, false),
+            onlyTier: strTierArg(data.args.onlyTier),
+          },
+          publishProgress: (p) =>
+            publishWs(`migration:${data.userId}`, { kind: "progress", jobId: data.jobId, ...p }),
+        });
+        state.message = `Codegen: ${r.succeeded} apply / ${r.skipped} skip / ${r.failed} fail (tổng ${r.total})`;
+        break;
+      }
       case "audit":
-        throw new Error(`Action "${data.action}" chưa triển khai (Tier 2/4).`);
+        throw new Error(`Action "audit" chưa triển khai (Tier 4).`);
+      case "full-import": {
+        // Full import: data.module = jobId (re-use field cho tiện);
+        // không cần MSSQL client ở scope worker — runFullImportJob tự
+        // mở connection theo job.connectionId trong DB.
+        const r = await runFullImportJob({ jobId: data.module, userId: data.userId });
+        state.message = `Full import: ${r.succeededTables} table done, ${r.failedTables} failed, ${r.totalRows} rows this run`;
+        break;
+      }
     }
 
     state.status = "completed";
@@ -222,6 +266,10 @@ function numArg(v: unknown, def: number): number {
     return Number.isFinite(n) ? n : def;
   }
   return def;
+}
+function strTierArg(v: unknown): "B" | "D" | undefined {
+  if (v === "B" || v === "D") return v;
+  return undefined;
 }
 function boolArg(v: unknown, def: boolean): boolean {
   if (typeof v === "boolean") return v;

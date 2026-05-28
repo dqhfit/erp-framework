@@ -34,6 +34,8 @@ export interface EntityFieldInput {
   sortable?: boolean;
   id?: string;
   ref?: string;
+  fkField?: string;
+  defaultVisible?: boolean;
 }
 export interface EntitySaveInput {
   id?: string;

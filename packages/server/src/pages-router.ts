@@ -44,7 +44,7 @@ export const pagesRouter = router({
         name: input.name,
         label: input.label,
         icon: input.icon ?? null,
-        content: input.content ?? {},
+        content: (input.content ?? []) as unknown,
       };
       if (input.id) {
         const [ex] = await ctx.db

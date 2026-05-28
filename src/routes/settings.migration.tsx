@@ -123,6 +123,19 @@ function MigrationPage() {
     },
     [navigate],
   );
+  // Phase V refactor: active screen ưu tiên hơn module (khi set, main area
+  // hiển thị screen full-page thay vì module tabs).
+  type ScreenId = "quick-migrate" | "full-jobs" | "migrated-entities";
+  const activeScreen = urlSearch.screen ?? null;
+  const setActiveScreen = useCallback(
+    (id: ScreenId | null) => {
+      navigate({
+        search: (prev) => ({ ...prev, screen: id ?? undefined }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const [modules, setModules] = useState<MigrationModuleSummary[]>([]);
   const [env, setEnv] = useState<MigrationEnvCheck | null>(null);
@@ -209,7 +222,66 @@ function MigrationPage() {
         ].join(" ")}
       >
         <ConnectionsPanel onChanged={reload} />
-        <MigratedEntitiesPanel onChanged={reload} />
+        <SidebarSection
+          storageKey="migration:tools-open"
+          title="Công cụ migrate"
+          actions={
+            <a
+              href="/migration-guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Mở hướng dẫn vận hành"
+              className="p-1 rounded text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+            >
+              <I.HelpCircle size={13} />
+            </a>
+          }
+        >
+          <div className="p-3 space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveScreen("quick-migrate")}
+              className={[
+                "w-full flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors",
+                activeScreen === "quick-migrate"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-surface hover:bg-hover/30",
+              ].join(" ")}
+            >
+              <I.Wand size={14} />
+              <span className="font-medium">Migrate nhanh</span>
+              <span className="ml-auto text-[10px] text-muted">chọn bảng → ETL</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveScreen("full-jobs")}
+              className={[
+                "w-full flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors",
+                activeScreen === "full-jobs"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-surface hover:bg-hover/30",
+              ].join(" ")}
+            >
+              <I.Activity size={14} />
+              <span className="font-medium">Jobs import</span>
+              <span className="ml-auto text-[10px] text-muted">lịch sử · resume · cancel</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveScreen("migrated-entities")}
+              className={[
+                "w-full flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors",
+                activeScreen === "migrated-entities"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-surface hover:bg-hover/30",
+              ].join(" ")}
+            >
+              <I.Database size={14} />
+              <span className="font-medium">Bảng đã migrate</span>
+              <span className="ml-auto text-[10px] text-muted">cleanup · re-migrate</span>
+            </button>
+          </div>
+        </SidebarSection>
         <ModuleListPane
           modules={modules}
           selected={selected}
@@ -238,7 +310,19 @@ function MigrationPage() {
         >
           {sidebarOpen ? <I.PanelLeft size={14} /> : <I.PanelRight size={14} />}
         </button>
-        {!selected ? (
+        {activeScreen === "quick-migrate" ? (
+          <div className="h-full pl-9">
+            <QuickMigrateScreen onClose={() => setActiveScreen(null)} onChanged={reload} />
+          </div>
+        ) : activeScreen === "full-jobs" ? (
+          <div className="h-full pl-9 flex flex-col">
+            <FullJobsScreen onClose={() => setActiveScreen(null)} />
+          </div>
+        ) : activeScreen === "migrated-entities" ? (
+          <div className="h-full pl-9 flex flex-col">
+            <MigratedEntitiesScreen onClose={() => setActiveScreen(null)} onChanged={reload} />
+          </div>
+        ) : !selected ? (
           <div className="p-8 pl-12">
             <EmptyState
               icon={<I.Database size={32} />}
@@ -649,26 +733,397 @@ function ModuleDetailPane({
             onChanged={onChanged}
           />
         )}
-        {activeTab === "generate" && (
-          <DisabledTab title={t("mig.generate_title")} reason={t("mig.generate_reason")} />
-        )}
+        {activeTab === "generate" && <GenerateTab moduleName={moduleName} onChanged={onChanged} />}
         {/* tab audit đã enable + render ở trên qua <AuditTab /> */}
       </div>
     </div>
   );
 }
 
-function DisabledTab({ title, reason }: { title: string; reason: string }) {
+/* ── Phase R — GenerateTab: list proc + batch codegen ──────── */
+function GenerateTab({ moduleName, onChanged }: { moduleName: string; onChanged: () => void }) {
+  const [data, setData] = useState<ReviewStatus | null>(null);
+  const [readiness, setReadiness] = useState<
+    Record<
+      string,
+      { canCodegen: boolean; active: boolean; missingCount: number; missing: string[] }
+    >
+  >({});
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [skipExisting, setSkipExisting] = useState(true);
+  const [overwriteFiles, setOverwriteFiles] = useState(false);
+  const [includeDirty, setIncludeDirty] = useState(false);
+  const [onlyTier, setOnlyTier] = useState<"" | "B" | "D">("");
+  const [busy, setBusy] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{
+    current: number;
+    total: number;
+    last: string;
+  } | null>(null);
+  const [batchResult, setBatchResult] = useState<{
+    succeeded: number;
+    skipped: number;
+    failed: number;
+    total: number;
+  } | null>(null);
+  const [err, setErr] = useState("");
+
+  const load = useCallback(() => {
+    migration
+      .getReviewStatus(moduleName)
+      .then(setData)
+      .catch(() => setData(null));
+  }, [moduleName]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    Promise.all(
+      data.procs.map(async (p) => {
+        try {
+          const r = await migration.getProcMigrationStatus(moduleName, p.name);
+          return [
+            p.name,
+            {
+              canCodegen: r.canCodegen,
+              active: r.active,
+              missingCount: r.missingTables.length,
+              missing: r.missingTables.map((m) => m.table),
+            },
+          ] as const;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((rows) => {
+      if (cancelled) return;
+      const map: Record<
+        string,
+        { canCodegen: boolean; active: boolean; missingCount: number; missing: string[] }
+      > = {};
+      for (const row of rows) if (row) map[row[0]] = row[1];
+      setReadiness(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [data, moduleName]);
+
+  // Poll job status (WS subscribe có thể ko sẵn — fallback poll mỗi 1s).
+  useEffect(() => {
+    if (!jobId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const st = await migration.jobStatus(jobId);
+        if (cancelled) return;
+        if (st?.status === "completed") {
+          setBusy(false);
+          // Parse message: "Codegen: N apply / M skip / K fail (tổng T)"
+          const m = st.message?.match(
+            /(\d+) apply.*?(\d+) skip.*?(\d+) fail.*?\((?:tổng )?(\d+)\)/,
+          );
+          if (m) {
+            setBatchResult({
+              succeeded: Number(m[1]),
+              skipped: Number(m[2]),
+              failed: Number(m[3]),
+              total: Number(m[4]),
+            });
+          }
+          setProgress(null);
+          load();
+          onChanged();
+        } else if (st?.status === "failed") {
+          setBusy(false);
+          setErr(st.error ?? "Job failed");
+          setProgress(null);
+        } else {
+          setTimeout(tick, 1500);
+        }
+      } catch {
+        setBusy(false);
+      }
+    };
+    tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId, load, onChanged]);
+
+  const runBatch = async () => {
+    setBusy(true);
+    setErr("");
+    setBatchResult(null);
+    setProgress({ current: 0, total: 0, last: "đang khởi tạo..." });
+    try {
+      const { jobId: id } = await migration.startJob("generate", moduleName, {
+        skipExisting,
+        overwriteFiles,
+        includeDirty,
+        onlyTier: onlyTier || undefined,
+      });
+      setJobId(id);
+      setBatchOpen(false);
+    } catch (e) {
+      setBusy(false);
+      setErr((e as Error).message);
+    }
+  };
+
+  if (!data) return <div className="text-sm text-muted p-4">Đang tải...</div>;
+
+  const stats = (() => {
+    let cleanB = 0;
+    let cleanD = 0;
+    let dirty = 0;
+    let inactive = 0;
+    let appliedB = 0;
+    let appliedD = 0;
+    let tierC = 0;
+    for (const p of data.procs) {
+      if (p.tier === "C") {
+        tierC++;
+        continue;
+      }
+      const r = readiness[p.name];
+      if (r) {
+        if (!r.active) inactive++;
+        else if (!r.canCodegen) dirty++;
+        else if (p.tier === "B") cleanB++;
+        else if (p.tier === "D") cleanD++;
+      }
+      if (p.codegenApplied) {
+        if (p.tier === "B") appliedB++;
+        else if (p.tier === "D") appliedD++;
+      }
+    }
+    return { cleanB, cleanD, dirty, inactive, appliedB, appliedD, tierC };
+  })();
+
   return (
-    <Card className="p-6">
-      <div className="flex items-start gap-3">
-        <I.Lock size={20} className="text-muted mt-0.5" />
-        <div>
-          <h3 className="font-medium mb-1">{title}</h3>
-          <p className="text-sm text-muted">{reason}</p>
+    <div className="space-y-3">
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="font-medium">Sinh code (Tier 2 AI codegen)</h3>
+            <div className="text-xs text-muted mt-1">
+              Mỗi proc có nút "AI codegen" riêng. Bấm "Codegen tất cả clean" để batch sinh code +
+              auto-apply qua background job.
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy || stats.cleanB + stats.cleanD === 0}
+            onClick={() => setBatchOpen(true)}
+            icon={<I.Wand size={12} />}
+          >
+            Codegen tất cả clean ({stats.cleanB + stats.cleanD})
+          </Button>
         </div>
-      </div>
-    </Card>
+        <div className="grid md:grid-cols-4 gap-2 mt-3 text-[11px]">
+          <div className="p-2 rounded border border-success/40 bg-success/5">
+            <div className="text-success">Clean (sẵn sàng)</div>
+            <div className="text-base font-semibold text-success">
+              {stats.cleanB + stats.cleanD}
+            </div>
+            <div className="text-[10px] text-muted">
+              B: {stats.cleanB} · D: {stats.cleanD}
+            </div>
+          </div>
+          <div className="p-2 rounded border border-warning/40 bg-warning/5">
+            <div className="text-warning">Dirty (chờ migrate)</div>
+            <div className="text-base font-semibold text-warning">{stats.dirty}</div>
+          </div>
+          <div className="p-2 rounded border border-border bg-surface">
+            <div className="text-muted">Inactive (skip)</div>
+            <div className="text-base font-semibold">{stats.inactive}</div>
+            {stats.tierC > 0 && (
+              <div className="text-[10px] text-muted">+{stats.tierC} tier C (workflow)</div>
+            )}
+          </div>
+          <div className="p-2 rounded border border-accent/40 bg-accent/5">
+            <div className="text-accent">Đã apply</div>
+            <div className="text-base font-semibold text-accent">
+              {stats.appliedB + stats.appliedD}
+            </div>
+            <div className="text-[10px] text-muted">
+              B: {stats.appliedB} · D: {stats.appliedD}
+            </div>
+          </div>
+        </div>
+        {err && <div className="text-danger text-xs mt-2">{err}</div>}
+        {progress && (
+          <div className="mt-3 p-2 rounded border border-accent/40 bg-accent/5 text-[11px]">
+            <div className="font-medium text-accent">
+              Đang chạy... {progress.current}/{progress.total}
+            </div>
+            <div className="text-muted truncate">{progress.last}</div>
+          </div>
+        )}
+        {batchResult && (
+          <div className="mt-3 p-2 rounded border border-success/40 bg-success/5 text-[11px]">
+            <div className="font-medium text-success">
+              ✓ Xong: {batchResult.succeeded} apply, {batchResult.skipped} skip,{" "}
+              {batchResult.failed} fail (tổng {batchResult.total})
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4">
+        <div className="font-medium mb-2">Procedure ({data.procs.length})</div>
+        <div className="border border-border rounded overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-surface text-muted">
+              <tr>
+                <th className="text-left px-2 py-1.5">MSSQL proc</th>
+                <th className="text-left px-2 py-1.5">Target</th>
+                <th className="text-left px-2 py-1.5">Tier</th>
+                <th className="text-center px-2 py-1.5">Sẵn sàng</th>
+                <th className="text-center px-2 py-1.5">Applied</th>
+                <th className="text-center px-2 py-1.5 w-32">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.procs.map((p) => {
+                const r = readiness[p.name];
+                return (
+                  <tr key={p.name} className="border-t border-border">
+                    <td className="px-2 py-1 font-mono">{p.name}</td>
+                    <td className="px-2 py-1 text-accent text-[11px]">
+                      {p.targetProcName ?? p.targetFile ?? "—"}
+                    </td>
+                    <td className="px-2 py-1">
+                      <Chip
+                        variant={p.tier === "D" ? "warning" : p.tier === "C" ? "accent" : "default"}
+                        className="text-[9px]!"
+                      >
+                        {p.tier}
+                      </Chip>
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      {p.tier === "C" ? (
+                        <span className="text-muted text-[10px]">N/A</span>
+                      ) : !r ? (
+                        <span className="text-muted text-[10px]">…</span>
+                      ) : !r.active ? (
+                        <Chip variant="default" className="text-[9px]!">
+                          💤
+                        </Chip>
+                      ) : r.canCodegen ? (
+                        <Chip variant="success" className="text-[9px]!">
+                          ✓
+                        </Chip>
+                      ) : (
+                        <Chip
+                          variant="warning"
+                          className="text-[9px]!"
+                          title={`Chờ ${r.missingCount} bảng: ${r.missing.join(", ")}`}
+                        >
+                          ⏳ {r.missingCount}
+                        </Chip>
+                      )}
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      {p.tier === "C" ? (
+                        <span className="text-muted text-[10px]">N/A</span>
+                      ) : p.codegenApplied ? (
+                        <I.Check size={12} className="inline text-success" />
+                      ) : (
+                        <I.X size={12} className="inline text-muted" />
+                      )}
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      {p.tier !== "C" && (
+                        <CodegenProcButton
+                          moduleName={moduleName}
+                          procName={p.name}
+                          suggestedTier={p.tier}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {data.procs.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-2 py-4 text-muted text-center">
+                    Không có proc nào trong module này.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Modal
+        open={batchOpen}
+        onClose={() => setBatchOpen(false)}
+        title="Codegen batch — config"
+        width={600}
+      >
+        <div className="space-y-3 text-xs">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={skipExisting}
+              onChange={(e) => setSkipExisting(e.target.checked)}
+            />
+            <span>Skip procedure đã apply (tier B đã có name trong DB)</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={overwriteFiles}
+              onChange={(e) => setOverwriteFiles(e.target.checked)}
+            />
+            <span>Ghi đè file plugin nếu đã tồn tại (tier D)</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={includeDirty}
+              onChange={(e) => setIncludeDirty(e.target.checked)}
+            />
+            <span>Bao gồm cả proc dirty (chờ migrate) — KHÔNG khuyến khích</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <span>Chỉ tier:</span>
+            {(["", "B", "D"] as const).map((tt) => (
+              <button
+                key={tt || "all"}
+                type="button"
+                onClick={() => setOnlyTier(tt)}
+                className={[
+                  "px-2 h-6 border rounded text-[11px]",
+                  onlyTier === tt
+                    ? "border-accent text-accent bg-accent/10"
+                    : "border-border hover:bg-surface",
+                ].join(" ")}
+              >
+                {tt || "B+D"}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button size="sm" variant="default" onClick={() => setBatchOpen(false)}>
+              Huỷ
+            </Button>
+            <Button size="sm" variant="primary" disabled={busy} onClick={runBatch}>
+              {busy ? "Đang chạy..." : "Chạy batch codegen"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 }
 
@@ -2994,6 +3449,1051 @@ function ConnectionsPanel({ onChanged }: { onChanged: () => void }) {
   );
 }
 
+/* ── Phase S — QuickMigrateScreen: full-page 2-pane UI ────────
+ *
+ * Layout:
+ *  - Header: title + connection dropdown + close.
+ *  - Left pane (2/5): list bảng MSSQL + filter + checkbox.
+ *  - Right pane (3/5): khi có bảng chọn → preview entity/fields + options
+ *    + nút "Bắt đầu migrate". Khi chưa chọn → empty state hướng dẫn. */
+function QuickMigrateScreen({
+  onClose,
+  onChanged,
+}: {
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [conns, setConns] = useState<MssqlConnectionView[]>([]);
+  const [pickedConnId, setPickedConnId] = useState<string>("");
+  const [tables, setTables] = useState<Awaited<ReturnType<typeof migration.listConnectionTables>>>(
+    [],
+  );
+  const [filter, setFilter] = useState("");
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  // Map mssqlTable (lowercase) → entityName của entity đã migrate cho conn này.
+  // Dùng để disable + đánh dấu chip "đã migrate" trong list.
+  const [migratedMap, setMigratedMap] = useState<Map<string, string>>(new Map());
+  const [migratedReloadKey, setMigratedReloadKey] = useState(0);
+  const reloadMigrated = () => setMigratedReloadKey((k) => k + 1);
+
+  // Load connections + default conn (chỉ 1 lần).
+  useEffect(() => {
+    connectionsApi
+      .list()
+      .then((cs) => {
+        setConns(cs);
+        const def = cs.find((c) => c.isDefault) ?? cs[0];
+        if (def && !pickedConnId) setPickedConnId(def.id);
+      })
+      .catch(() => setConns([]));
+    // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần
+  }, []);
+
+  // Load tables khi pickedConnId đổi.
+  useEffect(() => {
+    if (!pickedConnId) {
+      setTables([]);
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    migration
+      .listConnectionTables(pickedConnId)
+      .then((ts) => setTables(ts))
+      .catch((e) => setErr((e as Error).message))
+      .finally(() => setBusy(false));
+  }, [pickedConnId]);
+
+  // Load migrated entities theo connection để biết bảng nào đã migrate.
+  // Reload sau mỗi lần migrate thành công (migratedReloadKey++).
+  useEffect(() => {
+    if (!pickedConnId) {
+      setMigratedMap(new Map());
+      return;
+    }
+    migration
+      .listMigratedEntities({ connectionId: pickedConnId })
+      .then((rows) => {
+        const m = new Map<string, string>();
+        for (const r of rows) {
+          if (r.mssqlTable) m.set(r.mssqlTable.toLowerCase(), r.name);
+        }
+        setMigratedMap(m);
+      })
+      .catch(() => setMigratedMap(new Map()));
+  }, [pickedConnId, migratedReloadKey]);
+
+  const filtered = tables.filter(
+    (t) => !filter || t.fullName.toLowerCase().includes(filter.toLowerCase()),
+  );
+  // Helper: 1 bảng đã migrate khi mssqlTable (case-insensitive) có trong migratedMap.
+  const isMigrated = (fullName: string) => migratedMap.has(fullName.toLowerCase());
+  // Bảng có thể chọn = filtered + chưa migrated.
+  const selectableFiltered = filtered.filter((t) => !isMigrated(t.fullName));
+  const migratedCountInFiltered = filtered.length - selectableFiltered.length;
+  const selectedNames = Object.keys(selected).filter((k) => selected[k]);
+  const selectedCount = selectedNames.length;
+  const allSelected =
+    selectableFiltered.length > 0 && selectableFiltered.every((t) => selected[t.fullName]);
+  const toggleAll = () => {
+    const next = { ...selected };
+    // Chỉ toggle những bảng chưa migrated.
+    for (const t of selectableFiltered) next[t.fullName] = !allSelected;
+    setSelected(next);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="border-b border-border bg-surface/40 px-4 py-2.5 flex items-center gap-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onClose}
+          icon={<I.X size={14} />}
+          title="Đóng (về module view)"
+        />
+        <h2 className="text-base font-semibold flex items-center gap-1.5">
+          <I.Wand size={16} className="text-accent" />
+          Migrate nhanh
+        </h2>
+        <span className="text-xs text-muted">
+          Chọn bảng MSSQL → ETL vào hệ thống (không cần module)
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted">Connection:</span>
+          <select
+            value={pickedConnId}
+            onChange={(e) => {
+              setPickedConnId(e.target.value);
+              setSelected({});
+            }}
+            className="text-xs h-8 px-2 border border-border rounded bg-bg min-w-[200px]"
+          >
+            {conns.length === 0 && <option value="">(chưa có)</option>}
+            {conns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.database}) {c.isDefault ? "★" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {conns.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <EmptyState
+            icon={<I.Server size={32} />}
+            title="Chưa có connection MSSQL"
+            hint="Thêm 1 connection ở panel 'Kết nối MSSQL' (sidebar trái) trước khi migrate."
+          />
+        </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-[2fr_3fr] min-h-0">
+          {/* Left pane: tables list */}
+          <div className="border-r border-border flex flex-col min-h-0">
+            <div className="p-3 border-b border-border bg-surface/30 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <div className="font-medium">
+                  Bảng MSSQL ({tables.length})
+                  {migratedCountInFiltered > 0 && (
+                    <span className="ml-1.5 text-[10px] text-success">
+                      · {migratedCountInFiltered} đã migrate
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  disabled={selectableFiltered.length === 0}
+                  className="text-accent hover:underline disabled:text-muted disabled:no-underline"
+                  title="Chỉ chọn bảng chưa migrate"
+                >
+                  {allSelected ? "Bỏ chọn" : "Chọn"} {selectableFiltered.length}
+                </button>
+              </div>
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="🔍 Lọc tên bảng..."
+                className="h-8 text-xs"
+              />
+              {err && <div className="text-danger text-xs">{err}</div>}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {busy && tables.length === 0 ? (
+                <div className="text-xs text-muted p-4 text-center">Đang tải...</div>
+              ) : filtered.length === 0 ? (
+                <div className="text-xs text-muted p-4 text-center">
+                  {tables.length === 0 ? "Không có bảng" : "Không match filter"}
+                </div>
+              ) : (
+                <ul>
+                  {filtered.map((t) => {
+                    const checked = selected[t.fullName] ?? false;
+                    const migrated = isMigrated(t.fullName);
+                    const migratedEntityName = migrated
+                      ? migratedMap.get(t.fullName.toLowerCase())
+                      : undefined;
+                    return (
+                      <li
+                        key={t.fullName}
+                        className={[
+                          "text-xs border-b border-border last:border-0 transition-colors",
+                          migrated
+                            ? "opacity-60 bg-surface/40"
+                            : checked
+                              ? "bg-accent/10 cursor-pointer"
+                              : "hover:bg-hover/20 cursor-pointer",
+                        ].join(" ")}
+                        onClick={
+                          migrated
+                            ? undefined
+                            : () => setSelected((s) => ({ ...s, [t.fullName]: !s[t.fullName] }))
+                        }
+                        title={
+                          migrated
+                            ? `Đã migrate sang entity "${migratedEntityName}". Re-import qua sidebar "Bảng đã migrate".`
+                            : undefined
+                        }
+                      >
+                        <label
+                          className={[
+                            "flex items-center gap-2 px-3 py-1.5",
+                            migrated ? "cursor-not-allowed" : "cursor-pointer",
+                          ].join(" ")}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={migrated}
+                            onChange={(e) =>
+                              setSelected((s) => ({
+                                ...s,
+                                [t.fullName]: e.target.checked,
+                              }))
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span
+                            className={[
+                              "font-mono flex-1 truncate",
+                              migrated ? "text-muted line-through" : "",
+                            ].join(" ")}
+                            title={t.fullName}
+                          >
+                            {t.fullName}
+                          </span>
+                          {migrated && (
+                            <Chip
+                              variant="success"
+                              className="text-[9px]!"
+                              title={`Entity: ${migratedEntityName}`}
+                            >
+                              ✓ đã migrate
+                            </Chip>
+                          )}
+                          <span className="text-muted text-[10px] tabular-nums">
+                            {t.rowCount !== null ? `${t.rowCount.toLocaleString("vi-VN")}r` : "?"}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="px-3 py-2 border-t border-border bg-surface/40 text-xs flex items-center justify-between">
+              <span>
+                Đã chọn: <span className="font-semibold text-accent">{selectedCount}</span> bảng
+              </span>
+              {selectedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelected({})}
+                  className="text-muted hover:text-danger"
+                >
+                  Bỏ chọn tất cả
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right pane: preview + options + start */}
+          <div className="flex flex-col min-h-0 overflow-hidden">
+            {selectedCount === 0 ? (
+              <div className="flex-1 flex items-center justify-center p-8">
+                <EmptyState
+                  icon={<I.Table size={32} />}
+                  title="Chọn bảng từ list bên trái"
+                  hint="Tích vào checkbox bảng cần migrate. Có thể chọn nhiều bảng cùng lúc — hệ thống sẽ preview entity/fields tự sinh."
+                />
+              </div>
+            ) : (
+              <QuickMigratePreviewPane
+                connectionId={pickedConnId}
+                tableNames={selectedNames}
+                onDone={() => {
+                  setSelected({});
+                  onChanged();
+                }}
+                onTablesChanged={() => {
+                  reloadMigrated();
+                  onChanged();
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Pane preview + options + start — được mount lại khi tableNames đổi
+ * (key trên parent) để clear state preview cũ. */
+function QuickMigratePreviewPane({
+  connectionId,
+  tableNames,
+  onDone,
+  onTablesChanged,
+}: {
+  connectionId: string;
+  tableNames: string[];
+  onDone: () => void;
+  /** Gọi khi entity được tạo/cập nhật trong DB (sau quick apply hoặc full
+   *  job create). Parent dùng để reload migratedMap → disable bảng trong list. */
+  onTablesChanged: () => void;
+}) {
+  const [previews, setPreviews] = useState<QuickPreview[]>([]);
+  const [limit, setLimit] = useState(10_000);
+  const [dryRun, setDryRun] = useState(true);
+  const [force, setForce] = useState(false);
+  const [writeManifest, setWriteManifest] = useState(true);
+  const [fullMode, setFullMode] = useState(false);
+  const [batchSize, setBatchSize] = useState(5000);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<Awaited<
+    ReturnType<typeof migration.quickMigrateTables>
+  > | null>(null);
+  const [fullJobResult, setFullJobResult] = useState<{ jobId: string } | null>(null);
+  const [err, setErr] = useState("");
+
+  // Load preview cho mỗi bảng song song khi tableNames đổi.
+  useEffect(() => {
+    let cancelled = false;
+    setPreviews(
+      tableNames.map((t) => ({
+        tableName: t,
+        entityName: "",
+        label: "",
+        fields: [],
+        loading: true,
+      })),
+    );
+    setResult(null);
+    setFullJobResult(null);
+    Promise.all(
+      tableNames.map(async (t) => {
+        try {
+          const p = await migration.previewQuickTable(connectionId, t, 0);
+          // Suy pkField: PK MSSQL → slug lower-case → match với fields[].name.
+          const pkRawCol = p.info.primaryKey?.[0];
+          let pkField: string | undefined;
+          if (pkRawCol) {
+            const slug = pkRawCol
+              .toLowerCase()
+              .replace(/[^a-z0-9_]+/g, "_")
+              .replace(/^_+|_+$/g, "");
+            // Match exact với fields name; fallback dùng slug nếu không có.
+            pkField = p.suggested.fields.find((f) => f.name === slug)?.name ?? slug;
+          }
+          return {
+            tableName: t,
+            entityName: p.suggested.entityName,
+            label: p.suggested.label,
+            fields: p.suggested.fields,
+            pkField,
+            loading: false,
+          } as QuickPreview;
+        } catch (e) {
+          return {
+            tableName: t,
+            entityName: "",
+            label: "",
+            fields: [],
+            loading: false,
+            error: (e as Error).message,
+          } as QuickPreview;
+        }
+      }),
+    ).then((rows) => {
+      if (!cancelled) setPreviews(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [connectionId, tableNames]);
+
+  const updatePreview = (tableName: string, patch: Partial<QuickPreview>) => {
+    setPreviews((ps) => ps.map((p) => (p.tableName === tableName ? { ...p, ...patch } : p)));
+  };
+  const updateField = (
+    tableName: string,
+    fieldIdx: number,
+    patch: Partial<{ name: string; label: string; type: string }>,
+  ) => {
+    setPreviews((ps) =>
+      ps.map((p) => {
+        if (p.tableName !== tableName) return p;
+        const next = [...p.fields];
+        const cur = next[fieldIdx];
+        if (!cur) return p;
+        next[fieldIdx] = { ...cur, ...patch };
+        return { ...p, fields: next };
+      }),
+    );
+  };
+
+  const run = async () => {
+    setBusy(true);
+    setErr("");
+    setResult(null);
+    setFullJobResult(null);
+    try {
+      const items = previews
+        .filter((p) => !p.loading && !p.error && p.entityName && p.fields.length > 0)
+        .map((p) => ({
+          tableName: p.tableName,
+          entityName: p.entityName,
+          label: p.label || p.entityName,
+          fields: p.fields,
+          pkField: p.pkField,
+        }));
+      if (items.length === 0) {
+        setErr("Không có bảng nào hợp lệ để migrate.");
+        return;
+      }
+      if (fullMode) {
+        const r = await migration.startFullImport({
+          connectionId,
+          items,
+          batchSize,
+          writeManifest,
+        });
+        setFullJobResult(r);
+        // Full mode: entity được prep ngay khi job tạo → reload migratedMap
+        // để disable bảng tương ứng trong list.
+        onTablesChanged();
+      } else {
+        const r = await migration.quickMigrateTables({
+          connectionId,
+          items: items.map((i) => ({ ...i, force })),
+          limitPerTable: limit,
+          dryRun,
+          writeManifest,
+        });
+        setResult(r);
+        if (!dryRun) {
+          // Reload migratedMap + parent — KHÔNG gọi onDone() tự động
+          // để kết quả không biến mất. User nhấn "Chọn bảng khác" để clear.
+          onTablesChanged();
+        }
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const allReady = previews.every((p) => !p.loading);
+
+  return (
+    <>
+      {/* Step 2: Preview */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold flex items-center gap-1.5">
+            <Chip variant="accent" className="text-[9px]!">
+              Bước 1
+            </Chip>
+            Preview entity + fields ({tableNames.length} bảng)
+          </div>
+          {!allReady && <span className="text-xs text-muted">Đang tải preview...</span>}
+        </div>
+
+        {previews.map((p) => (
+          <details
+            key={p.tableName}
+            className="border border-border rounded bg-bg"
+            open={previews.length <= 2}
+          >
+            <summary className="px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-hover/20">
+              <span className="font-mono text-xs flex-1 truncate">{p.tableName}</span>
+              {p.loading ? (
+                <span className="text-muted text-[10px]">Đang tải...</span>
+              ) : p.error ? (
+                <Chip variant="warning" className="text-[9px]!">
+                  {p.error.slice(0, 40)}
+                </Chip>
+              ) : (
+                <>
+                  <I.ChevronRight size={12} className="text-muted" />
+                  <span className="text-accent text-xs font-mono">{p.entityName}</span>
+                  <Chip variant="default" className="text-[9px]!">
+                    {p.fields.length} fields
+                  </Chip>
+                </>
+              )}
+            </summary>
+            {!p.loading && !p.error && (
+              <div className="p-3 space-y-2 border-t border-border bg-surface/20">
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField label="Tên entity (snake_case)">
+                    <Input
+                      value={p.entityName}
+                      onChange={(e) => updatePreview(p.tableName, { entityName: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Label hiển thị">
+                    <Input
+                      value={p.label}
+                      onChange={(e) => updatePreview(p.tableName, { label: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+                <div className="border border-border rounded overflow-hidden">
+                  <table className="w-full text-[10px]">
+                    <thead className="bg-surface text-muted">
+                      <tr>
+                        <th className="text-left px-2 py-1 w-1/3">Field name</th>
+                        <th className="text-left px-2 py-1 w-1/3">Label</th>
+                        <th className="text-left px-2 py-1 w-1/3">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.fields.map((f, idx) => (
+                        <tr
+                          key={`${p.tableName}:${f.name}:${idx}`}
+                          className="border-t border-border"
+                        >
+                          <td className="px-1 py-0.5">
+                            <Input
+                              value={f.name}
+                              onChange={(e) =>
+                                updateField(p.tableName, idx, { name: e.target.value })
+                              }
+                              className="h-6 text-[10px] font-mono"
+                            />
+                          </td>
+                          <td className="px-1 py-0.5">
+                            <Input
+                              value={f.label}
+                              onChange={(e) =>
+                                updateField(p.tableName, idx, { label: e.target.value })
+                              }
+                              className="h-6 text-[10px]"
+                            />
+                          </td>
+                          <td className="px-1 py-0.5">
+                            <select
+                              value={f.type}
+                              onChange={(e) =>
+                                updateField(p.tableName, idx, { type: e.target.value })
+                              }
+                              className="h-6 text-[10px] w-full px-1 border border-border rounded bg-bg"
+                            >
+                              {[
+                                "text",
+                                "number",
+                                "boolean",
+                                "date",
+                                "datetime",
+                                "json",
+                                "select",
+                              ].map((t) => (
+                                <option key={t} value={t}>
+                                  {t}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </details>
+        ))}
+
+        {err && (
+          <div className="p-2 rounded border border-danger/40 bg-danger/5 text-danger text-xs whitespace-pre-wrap">
+            {err}
+          </div>
+        )}
+
+        {fullJobResult && (
+          <div className="p-3 rounded border border-accent/40 bg-accent/5">
+            <div className="font-medium text-accent text-sm">✓ Đã tạo full-import job</div>
+            <div className="text-xs text-muted mt-1">
+              Worker đang chạy nền. Theo dõi tiến độ ở "Jobs import" (sidebar).
+            </div>
+            <div className="font-mono text-[10px] mt-1 break-all">{fullJobResult.jobId}</div>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={onDone}
+                className="text-xs text-accent hover:underline"
+              >
+                Chọn bảng khác →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {result && (
+          <div
+            className={[
+              "p-3 rounded border",
+              result.failed === 0
+                ? "border-success/40 bg-success/5"
+                : "border-warning/40 bg-warning/5",
+            ].join(" ")}
+          >
+            <div className="font-medium text-sm">
+              {result.dryRun ? "🔍 Dry-run kết quả" : "✓ Đã migrate"}:{" "}
+              <span className="text-success">{result.succeeded}</span>
+              {result.failed > 0 && (
+                <span className="text-warning ml-1">/ {result.failed} fail</span>
+              )}
+              / {result.total} bảng — đọc {result.totalRowsRead.toLocaleString("vi-VN")} row,{" "}
+              <span className="text-success">
+                {result.totalRowsUpserted.toLocaleString("vi-VN")} mới
+              </span>
+              {result.totalRowsUpdated > 0 && (
+                <>
+                  ,{" "}
+                  <span className="text-accent">
+                    {result.totalRowsUpdated.toLocaleString("vi-VN")} cập nhật
+                  </span>
+                </>
+              )}
+              .
+            </div>
+            <div className="mt-2 max-h-[150px] overflow-y-auto text-[10px] font-mono space-y-0.5">
+              {result.results.map((r) => (
+                <div
+                  key={r.tableName}
+                  className={r.ok ? "text-muted" : "text-warning"}
+                  title={r.error}
+                >
+                  {r.ok ? "✓" : "✗"} {r.tableName} → {r.entityName}: {r.rowsRead}r → +
+                  {r.rowsUpserted} mới
+                  {r.rowsUpdated > 0 && `, ↻${r.rowsUpdated} cập nhật`}
+                  {r.error && ` — ${r.error.slice(0, 80)}`}
+                </div>
+              ))}
+            </div>
+            {!result.dryRun && (
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={onDone}
+                  className="text-xs text-accent hover:underline"
+                >
+                  Chọn bảng khác →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Step 3: Options + Start */}
+      <div className="border-t border-border bg-surface/40 p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <Chip variant="accent" className="text-[9px]!">
+            Bước 2
+          </Chip>
+          <label className="flex items-center gap-1.5 cursor-pointer flex-1">
+            <input
+              type="checkbox"
+              checked={fullMode}
+              onChange={(e) => setFullMode(e.target.checked)}
+            />
+            <span className="text-sm font-medium">Full mode</span>
+            <span className="text-xs text-muted">(chạy nền + resume tự, không giới hạn rows)</span>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap text-xs pl-12">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={dryRun}
+              disabled={fullMode}
+              onChange={(e) => setDryRun(e.target.checked)}
+            />
+            <span>Dry-run</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={force}
+              disabled={dryRun || fullMode}
+              onChange={(e) => setForce(e.target.checked)}
+            />
+            <span>Force xoá rec cũ</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={writeManifest}
+              disabled={dryRun}
+              onChange={(e) => setWriteManifest(e.target.checked)}
+            />
+            <span>Ghi manifest _quick</span>
+          </label>
+          {fullMode ? (
+            <label className="flex items-center gap-1.5">
+              <span>Batch:</span>
+              <input
+                type="number"
+                min={100}
+                max={50_000}
+                value={batchSize}
+                onChange={(e) =>
+                  setBatchSize(
+                    Math.max(100, Math.min(50_000, Number.parseInt(e.target.value, 10) || 100)),
+                  )
+                }
+                className="w-20 px-1 py-0.5 border border-border rounded bg-bg"
+              />
+            </label>
+          ) : (
+            <label className="flex items-center gap-1.5">
+              <span>Limit/bảng:</span>
+              <input
+                type="number"
+                min={1}
+                max={100_000}
+                value={limit}
+                onChange={(e) =>
+                  setLimit(Math.max(1, Math.min(100_000, Number.parseInt(e.target.value, 10) || 1)))
+                }
+                className="w-24 px-1 py-0.5 border border-border rounded bg-bg"
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            size="md"
+            disabled={busy || !allReady}
+            onClick={run}
+            icon={busy ? <I.Loader size={14} /> : <I.Database size={14} />}
+          >
+            {busy
+              ? "Đang xử lý..."
+              : fullMode
+                ? "🚀 Tạo full-import job"
+                : dryRun
+                  ? "Dry-run preview"
+                  : "🚀 Migrate ngay"}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface QuickPreview {
+  tableName: string;
+  entityName: string;
+  label: string;
+  fields: Array<{ name: string; label: string; type: string }>;
+  /** PK field (lower-case theo fields.name) suy từ MSSQL info.primaryKey[0].
+   *  Dùng để upsert chống duplicate khi migrate lại. */
+  pkField?: string;
+  loading: boolean;
+  error?: string;
+}
+
+/* ── Phase U — FullImportJobsPanel: list jobs + Resume/Sync/Cancel ─ */
+function FullImportJobsPanel() {
+  const [jobs, setJobs] = useState<Awaited<ReturnType<typeof migration.listFullJobs>>>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Awaited<
+    ReturnType<typeof migration.getFullJobDetail>
+  > | null>(null);
+
+  const load = useCallback(() => {
+    migration
+      .listFullJobs()
+      .then(setJobs)
+      .catch(() => {}); // Giữ data cũ khi lỗi — tránh flash empty + tắt auto-refresh
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Auto-refresh mỗi 3s nếu có job running/queued/paused.
+  useEffect(() => {
+    const active = jobs.some(
+      (j) => j.status === "running" || j.status === "queued" || j.status === "paused",
+    );
+    if (!active) return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [jobs, load]);
+
+  // Load chi tiết khi user expand hoặc khi jobs thay đổi (để table status
+  // cập nhật real-time theo auto-refresh 3s).
+  useEffect(() => {
+    if (!expandedJobId) {
+      setDetail(null);
+      return;
+    }
+    migration
+      .getFullJobDetail(expandedJobId)
+      .then(setDetail)
+      .catch(() => setDetail(null));
+  }, [expandedJobId, jobs]);
+
+  const doResume = async (jobId: string, mode: "resume" | "sync") => {
+    const labels = {
+      resume: {
+        title: "Resume",
+        body: "Re-enqueue job để worker pickup lại các bảng failed/pending.",
+      },
+      sync: {
+        title: "Sync update",
+        body: "Reset các bảng đã 'done' về 'pending' để stream lấy data MỚI từ MSSQL (theo lastPk). Records cũ giữ nguyên.",
+      },
+    } as const;
+    const ok = await dialog.confirm(labels[mode].body, {
+      title: labels[mode].title,
+      confirmText: labels[mode].title,
+    });
+    if (!ok) return;
+    setBusyId(jobId);
+    setErr("");
+    try {
+      await migration.resumeFullJob(jobId, mode);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const doCancel = async (jobId: string) => {
+    const ok = await dialog.confirm(
+      "Cancel job này? Records đã import giữ nguyên — chỉ dừng worker không pickup tiếp.",
+      { title: "Cancel job", confirmText: "Cancel" },
+    );
+    if (!ok) return;
+    setBusyId(jobId);
+    setErr("");
+    try {
+      await migration.cancelFullJob(jobId);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const statusVariant = (st: string): "success" | "warning" | "default" | "accent" => {
+    if (st === "completed") return "success";
+    if (st === "running" || st === "queued") return "accent";
+    if (st === "paused" || st === "failed") return "warning";
+    return "default";
+  };
+
+  return (
+    <div className="border-b border-border">
+      <div className="p-3 bg-surface/50">
+        <h2 className="text-sm font-semibold flex items-center gap-1 mb-2">
+          <I.Activity size={13} /> Jobs import
+          <Chip variant="accent" className="text-[9px]!">
+            {jobs.length}
+          </Chip>
+        </h2>
+        {err && <div className="text-danger text-xs mb-2">{err}</div>}
+        {jobs.length === 0 ? (
+          <div className="text-xs text-muted">Chưa có job full-import nào.</div>
+        ) : (
+          <ul className="space-y-1">
+            {jobs.map((j) => (
+              <li key={j.id} className="text-xs border border-border rounded bg-bg">
+                <div className="p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Chip variant={statusVariant(j.status)} className="text-[9px]!">
+                          {j.status}
+                        </Chip>
+                        {j.kind === "sync" && (
+                          <Chip variant="accent" className="text-[9px]!">
+                            sync
+                          </Chip>
+                        )}
+                        <span className="text-muted text-[10px] truncate">{j.connectionName}</span>
+                      </div>
+                      <div className="text-[10px] text-muted mt-0.5">
+                        {j.completedTables}/{j.totalTables} bảng ·{" "}
+                        {j.totalRowsImported.toLocaleString("vi-VN")} rows ·{" "}
+                        {j.startedAt ? new Date(j.startedAt).toLocaleString("vi-VN") : "—"}
+                      </div>
+                      {j.error && (
+                        <div className="text-warning text-[10px] mt-0.5 truncate" title={j.error}>
+                          {j.error}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 mt-1.5 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => setExpandedJobId(expandedJobId === j.id ? null : j.id)}
+                      icon={
+                        expandedJobId === j.id ? (
+                          <I.ChevronUp size={11} />
+                        ) : (
+                          <I.ChevronDown size={11} />
+                        )
+                      }
+                    >
+                      {expandedJobId === j.id ? "Ẩn" : "Chi tiết"}
+                    </Button>
+                    {(j.status === "paused" || j.status === "failed") && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busyId === j.id}
+                        onClick={() => doResume(j.id, "resume")}
+                        icon={<I.Redo size={11} />}
+                      >
+                        Resume
+                      </Button>
+                    )}
+                    {j.status === "completed" && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busyId === j.id}
+                        onClick={() => doResume(j.id, "sync")}
+                        icon={<I.Redo size={11} />}
+                        title="Lấy data mới từ MSSQL theo lastPk"
+                      >
+                        Sync
+                      </Button>
+                    )}
+                    {(j.status === "running" || j.status === "queued" || j.status === "paused") && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busyId === j.id}
+                        onClick={() => doCancel(j.id)}
+                        icon={<I.X size={11} />}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {expandedJobId === j.id && detail && detail.job.id === j.id && (
+                  <div className="border-t border-border p-2 bg-surface/30 max-h-[200px] overflow-y-auto">
+                    <table className="w-full text-[10px]">
+                      <thead className="text-muted">
+                        <tr>
+                          <th className="text-left">Bảng</th>
+                          <th className="text-left">Status</th>
+                          <th className="text-right">Rows</th>
+                          <th className="text-left">lastPk</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.tables.map((t) => (
+                          <tr key={t.id} className="border-t border-border/40">
+                            <td className="font-mono truncate max-w-[120px]" title={t.tableName}>
+                              {t.tableName}
+                            </td>
+                            <td>
+                              <Chip variant={statusVariant(t.status)} className="text-[9px]!">
+                                {t.status}
+                              </Chip>
+                            </td>
+                            <td className="text-right">{t.rowsImported.toLocaleString("vi-VN")}</td>
+                            <td
+                              className="font-mono text-muted truncate max-w-[80px]"
+                              title={t.lastPk ?? ""}
+                            >
+                              {t.lastPk ?? "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {detail.tables.some((t) => t.error) && (
+                      <div className="mt-1 space-y-0.5">
+                        {detail.tables
+                          .filter((t) => t.error)
+                          .map((t) => (
+                            <div key={t.id} className="text-warning text-[10px]">
+                              {t.tableName}: {t.error}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FullJobsScreen({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
+        <I.Activity size={15} />
+        <span className="font-semibold">Jobs import</span>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-7 h-7 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60"
+          title="Đóng"
+        >
+          <I.X size={14} />
+        </button>
+      </header>
+      <div className="flex-1 overflow-y-auto">
+        <FullImportJobsPanel />
+      </div>
+    </div>
+  );
+}
+
 /* ── Phase T — MigratedEntitiesPanel: tracking + cleanup an toàn ─
  *
  * Chỉ hiển thị entity có `meta.source.kind === 'migration'`. Entity hệ
@@ -3046,6 +4546,37 @@ function MigratedEntitiesPanel({ onChanged }: { onChanged: () => void }) {
       await migration.cleanupMigratedEntity({ entityId: row.id, mode });
       load();
       onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyRowId(null);
+    }
+  };
+
+  const doGeneratePage = async (row: (typeof rows)[number]) => {
+    setBusyRowId(row.id);
+    setErr("");
+    try {
+      const r = await migration.generateMasterDetailPage({ entityId: row.id });
+      const childMsg =
+        r.backwardChildren.length > 0
+          ? `\n\nChild entity (${r.backwardChildren.length}):\n` +
+            r.backwardChildren
+              .map(
+                (c) =>
+                  `• ${c.label ?? c.entityLabel} (qua ${c.fkField})${
+                    c.source === "collection" ? " [collection]" : ""
+                  }`,
+              )
+              .join("\n")
+          : "\n\nKhông có child entity (chỉ list + detail).";
+      const open = await dialog.confirm(
+        `${r.upserted === "created" ? "Đã tạo" : "Đã cập nhật"} page "${r.pageLabel}".${childMsg}\n\nMở page ngay?`,
+        { title: "Tạo page master-detail", confirmText: "Mở page" },
+      );
+      if (open) {
+        window.open(`/pages/${r.pageId}`, "_blank");
+      }
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -3180,12 +4711,51 @@ function MigratedEntitiesPanel({ onChanged }: { onChanged: () => void }) {
                 >
                   Migrate lại
                 </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  disabled={busyRowId === r.id}
+                  onClick={() => doGeneratePage(r)}
+                  title="Sinh page master-detail từ relation graph"
+                  icon={<I.Layout size={11} />}
+                >
+                  Tạo page
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
     </SidebarSection>
+  );
+}
+
+function MigratedEntitiesScreen({
+  onClose,
+  onChanged,
+}: {
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
+        <I.Database size={15} />
+        <span className="font-semibold">Bảng đã migrate</span>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-7 h-7 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60"
+          title="Đóng"
+        >
+          <I.X size={14} />
+        </button>
+      </header>
+      <div className="flex-1 overflow-y-auto">
+        <MigratedEntitiesPanel onChanged={onChanged} />
+      </div>
+    </div>
   );
 }
 
@@ -6222,5 +7792,10 @@ export const Route = createFileRoute("/settings/migration")({
   validateSearch: (search: Record<string, unknown>) => ({
     module: typeof search.module === "string" ? search.module : undefined,
     tab: typeof search.tab === "string" ? search.tab : undefined,
+    screen:
+      typeof search.screen === "string" &&
+      ["quick-migrate", "full-jobs", "migrated-entities"].includes(search.screen)
+        ? (search.screen as "quick-migrate" | "full-jobs" | "migrated-entities")
+        : undefined,
   }),
 });

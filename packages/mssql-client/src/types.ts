@@ -75,6 +75,18 @@ export interface JoinPair {
   rightColumn: string;
 }
 
+/** Thống kê hoạt động proc đọc từ sys.dm_exec_procedure_stats.
+ *  Phase Q1 — dùng để detect proc còn dùng vs đã chết.
+ *  Lưu ý: data chỉ có từ lần restart MSSQL gần nhất + plan còn trong cache. */
+export interface ProcStats {
+  schema: string;
+  name: string;
+  /** ISO timestamp lần gọi cuối, hoặc null nếu chưa từng gọi. */
+  lastExecAt: string | null;
+  /** Tổng số lần gọi kể từ lần MSSQL restart. */
+  execCount: number;
+}
+
 export type ProcFlag =
   | "has-transaction"
   | "has-try-catch"

@@ -19,6 +19,7 @@ export function Button({
   const isIconOnly = !children && !!icon;
   return (
     <button
+      type="button"
       className={cn(
         "btn",
         `btn-${variant}`,

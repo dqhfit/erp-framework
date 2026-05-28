@@ -13,6 +13,7 @@ export type FieldType =
   | "multi-enum"
   | "lookup"
   | "multi-lookup"
+  | "collection"
   | "file"
   | "image"
   | "url"
@@ -75,10 +76,16 @@ export interface FieldDef {
   options?: FieldOption[];
   /** Cho enum / multi-enum — id của object enum (xem /enums). */
   enumId?: string;
-  /** Cho lookup / multi-lookup — ref entity id */
+  /** Cho lookup / multi-lookup / collection — ref entity id (collection thì
+   *  đây là entity con; lookup/multi-lookup là entity đích). */
   ref?: string;
   /** Cho lookup / multi-lookup — hành vi khi record đích bị xoá. */
   onDelete?: OnDeleteBehavior;
+  /** Cho collection — tên field FK trên entity con trỏ ngược về parent.
+   *  Ví dụ entity 'don_hang' có field collection 'items' { ref: 'chi_tiet',
+   *  fkField: 'don_hang_id' } → liệt kê record 'chi_tiet' có data.don_hang_id
+   *  = parent.id. */
+  fkField?: string;
   /** Cho formula — JS expression dùng row + fn helpers */
   formula?: string;
   /** Validation */

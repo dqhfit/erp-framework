@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Chip, Input } from "@/components/ui";
+import { useT } from "@/hooks/useT";
 import { idbGet, idbSet } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
 
@@ -36,19 +37,42 @@ export interface DataGridProps<T> {
   toolbar?: boolean;
   /** Key IDB để persist sort/filter qua session. Format: "${pageId}:${widgetId}". */
   stateKey?: string;
+  /** Callback khi user click 1 row — dùng cho master-detail pattern. */
+  onRowClick?: (row: T) => void;
+  /** Predicate đánh dấu row đang được chọn (highlight border + bg). */
+  isRowSelected?: (row: T) => boolean;
+  /** V2 P5: controlled globalFilter — khi pass, override state nội bộ.
+   *  ListWidget set khi cfg.searchStateKey để bind 2 chiều với pageState. */
+  globalFilter?: string;
+  onGlobalFilterChange?: (value: string) => void;
 }
 
 export function DataGrid<T>({
   columns,
   data,
-  emptyText = "Không có dữ liệu.",
+  emptyText,
   className,
   label,
   toolbar = true,
   stateKey,
+  onRowClick,
+  isRowSelected,
+  globalFilter: gfControlled,
+  onGlobalFilterChange,
 }: DataGridProps<T>) {
+  const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilterInner, setGlobalFilterInner] = useState("");
+  const isControlled = gfControlled !== undefined;
+  const globalFilter = isControlled ? gfControlled : globalFilterInner;
+  const setGlobalFilter = (next: string | ((cur: string) => string)) => {
+    const v = typeof next === "function" ? next(globalFilter) : next;
+    if (isControlled) {
+      onGlobalFilterChange?.(v);
+    } else {
+      setGlobalFilterInner(v);
+    }
+  };
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [grouping, setGrouping] = useState<GroupingState>([]);
   const [expanded, setExpanded] = useState<ExpandedState>(true);
@@ -111,6 +135,7 @@ export function DataGrid<T>({
     getExpandedRowModel: getExpandedRowModel(),
     globalFilterFn: "includesString",
     enableMultiSort: true,
+    isMultiSortEvent: (e) => (e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey,
     groupedColumnMode: false,
   });
 
@@ -131,7 +156,7 @@ export function DataGrid<T>({
           <div className="relative flex-1 min-w-[140px] max-w-[260px]">
             <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
             <Input
-              placeholder="Tìm kiếm..."
+              placeholder={t("datagrid.search_placeholder")}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               className="pl-6 pr-6 h-7 text-xs"
@@ -191,13 +216,15 @@ export function DataGrid<T>({
               className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
             >
               <I.Layers size={11} />
-              Nhóm
+              {t("datagrid.group_btn")}
               <I.ChevronDown size={10} />
             </button>
             {groupPickerOpen && (
               <div className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[160px] py-1">
                 {availableGroupCols.length === 0 ? (
-                  <div className="px-3 py-1.5 text-xs text-muted">Đã nhóm tất cả cột</div>
+                  <div className="px-3 py-1.5 text-xs text-muted">
+                    {t("datagrid.group_all_grouped")}
+                  </div>
                 ) : (
                   availableGroupCols.map((col) => (
                     <button
@@ -225,7 +252,7 @@ export function DataGrid<T>({
                       }}
                       className="w-full text-left px-3 py-1.5 text-xs text-danger hover:bg-hover/40 transition-colors"
                     >
-                      Xóa tất cả nhóm
+                      {t("datagrid.group_clear")}
                     </button>
                   </>
                 )}
@@ -234,7 +261,7 @@ export function DataGrid<T>({
           </div>
 
           <Chip className="ml-auto shrink-0 text-xs">
-            {filteredCount}/{data.length} dòng
+            {t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
           </Chip>
         </div>
       )}
@@ -282,7 +309,7 @@ export function DataGrid<T>({
                   <th key={header.id} className="px-1.5 py-1">
                     {header.column.getCanFilter() ? (
                       <Input
-                        placeholder="Lọc..."
+                        placeholder={t("datagrid.col_filter_placeholder")}
                         value={(header.column.getFilterValue() as string) ?? ""}
                         onChange={(e) => header.column.setFilterValue(e.target.value || undefined)}
                         className="h-6 text-xs px-2 font-normal"
@@ -297,7 +324,7 @@ export function DataGrid<T>({
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="text-center py-8 text-muted text-sm">
-                  {emptyText}
+                  {emptyText ?? t("datagrid.empty")}
                 </td>
               </tr>
             ) : (
@@ -326,10 +353,17 @@ export function DataGrid<T>({
                     </tr>
                   );
                 }
+                const selected = isRowSelected?.(row.original) ?? false;
+                const clickable = !!onRowClick;
                 return (
                   <tr
                     key={row.id}
-                    className="border-b border-border hover:bg-hover/30 transition-colors"
+                    className={[
+                      "border-b border-border transition-colors",
+                      clickable ? "cursor-pointer" : "",
+                      selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
+                    ].join(" ")}
+                    onClick={clickable ? () => onRowClick(row.original) : undefined}
                   >
                     {row.getVisibleCells().map((cell) => {
                       if (cell.getIsPlaceholder()) return <td key={cell.id} />;

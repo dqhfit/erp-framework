@@ -9,10 +9,34 @@
 
 /** Kiểu field hỗ trợ trong định nghĩa entity. */
 export type FieldType =
-  | "text" | "number" | "boolean" | "date" | "datetime"
-  | "select" | "multiselect" | "enum" | "multienum"
-  | "relation" | "lookup" | "multilookup"
-  | "sequence" | "rollup" | "timeseries" | "formula" | "json";
+  | "text"
+  | "number"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "select"
+  | "multiselect"
+  | "enum"
+  | "multienum"
+  | "relation"
+  | "lookup"
+  | "multilookup"
+  | "collection"
+  | "sequence"
+  | "rollup"
+  | "timeseries"
+  | "formula"
+  | "json";
+
+/** Cấu hình field "collection" — chứa danh sách records của entity con
+ *  trỏ ngược về entity hiện tại qua `fkField`. KHÔNG lưu data trong record
+ *  của entity cha (chỉ là metadata để UI biết hiển thị + CRUD inline). */
+export interface CollectionConfig {
+  /** Entity con (vd "order_item"). */
+  childEntityId: string;
+  /** Field trên entity con trỏ về parent (vd "order_id"). */
+  fkField: string;
+}
 
 /** Cấu hình field "rollup" — gom giá trị từ entity khác trỏ vào.
  *  vd customer.total_orders = COUNT(order WHERE order.customer_id = customer.id). */
@@ -30,7 +54,17 @@ export interface RollupConfig {
 
 /** Rule điều kiện cho requiredIf/visibleIf — DSL nhỏ, sync, pure.
  *  Hỗ trợ AND/OR cấp 1 + so sánh primitive. Phức tạp hơn → dùng formula. */
-export type FieldRuleOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "notin" | "empty" | "nonempty";
+export type FieldRuleOp =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "in"
+  | "notin"
+  | "empty"
+  | "nonempty";
 export interface FieldRuleCondition {
   field: string;
   op: FieldRuleOp;
@@ -50,17 +84,17 @@ export type OnDeleteBehavior = "restrict" | "setnull" | "cascade";
 
 /** Định nghĩa một field trong entity (lưu ở entities.fields). */
 export interface EntityFieldDef {
-  name: string;                 // định danh máy — làm key trong record.data
+  name: string; // định danh máy — làm key trong record.data
   label: string;
-  type: FieldType | (string & {});  // built-in hoặc kiểu do plugin thêm
+  type: FieldType | (string & {}); // built-in hoặc kiểu do plugin thêm
   required?: boolean;
-  options?: string[];           // cho select / multiselect (inline)
+  options?: string[]; // cho select / multiselect (inline)
   /** Cho enum/multienum — id của bản ghi `enums` */
   enumId?: string;
-  relationEntityId?: string;    // cho relation / lookup / multilookup
+  relationEntityId?: string; // cho relation / lookup / multilookup
   /** Cho lookup/multilookup — hành vi khi record đích bị xoá. */
   onDelete?: OnDeleteBehavior;
-  formula?: string;             // cho formula
+  formula?: string; // cho formula
   /** Cờ điều khiển sinh index — xem data governance UPGRADE-PLAN 3.5 */
   filterable?: boolean;
   sortable?: boolean;
@@ -85,6 +119,8 @@ export interface EntityFieldDef {
   encrypted?: boolean;
   /** Cho field type "rollup" — config aggregate cross-row. */
   rollup?: RollupConfig;
+  /** Cho field type "collection" — danh sách records của entity con. */
+  collection?: CollectionConfig;
   /** Đánh dấu field cho semantic search (embedding) — server hook khi
    *  save sẽ build embedding từ giá trị các field này gộp. */
   embedSearchable?: boolean;
@@ -92,6 +128,9 @@ export interface EntityFieldDef {
    *  approval_request thay vì update thẳng). v1: per-field; per-entity
    *  qua entity.meta.requiresApproval bool. */
   requiresApproval?: boolean;
+  /** Mặc định hiển thị trong danh sách / grid khi trang không cấu hình cột cụ thể.
+   *  Không đặt hoặc true = hiện; false = ẩn. */
+  defaultVisible?: boolean;
 }
 
 /** Định nghĩa một entity (metadata low-code). */
@@ -110,7 +149,7 @@ export interface EntityRecord {
   schemaVersion: string;
   data: Record<string, unknown>;
   createdBy?: string;
-  createdAt: string;            // ISO string
+  createdAt: string; // ISO string
   updatedAt: string;
 }
 

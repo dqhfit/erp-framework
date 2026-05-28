@@ -38,6 +38,12 @@ export const FIELD_TYPES: FieldType[] = [
   { id: "image", name: "Image", icon: "Image", desc: "Upload image" },
   { id: "lookup", name: "Lookup", icon: "Link", desc: "Ref 1 entity" },
   { id: "multi-lookup", name: "Multi-lookup", icon: "Link", desc: "Ref nhiều entity (M2M)" },
+  {
+    id: "collection",
+    name: "Collection",
+    icon: "Layout",
+    desc: "Danh sách record entity con (1-N)",
+  },
   { id: "formula", name: "Formula", icon: "Wand", desc: "Computed" },
   { id: "sequence", name: "Sequence", icon: "Hash", desc: "Auto-number (INV-001)" },
   { id: "rollup", name: "Rollup", icon: "BarChart", desc: "Aggregate từ entity con" },
