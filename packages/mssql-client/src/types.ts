@@ -73,6 +73,9 @@ export interface JoinPair {
   leftColumn: string;
   rightTable: string;
   rightColumn: string;
+  /** Nếu có: quan hệ được suy luận qua bảng trung gian.
+   *  Format: "cte:<name>" hoặc "tmp:<#name>". Undefined = direct JOIN. */
+  via?: string;
 }
 
 /** Thống kê hoạt động proc đọc từ sys.dm_exec_procedure_stats.

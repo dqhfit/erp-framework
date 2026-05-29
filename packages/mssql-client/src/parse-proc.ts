@@ -6,6 +6,10 @@
      - flag tính chất (transaction, CTE, window, GROUP BY, …)
    Output dùng cho generator sinh manifest YAML — HUMAN REVIEW
    trước khi sinh code, nên độ chính xác ~80% là đủ.
+
+   Hỗ trợ trace qua bảng tạm:
+     - CTE: extract body, map alias → CTE name → permanent tables
+     - #tmp / @var: trace SELECT INTO / INSERT INTO để tìm nguồn
    ========================================================== */
 
 import type { JoinPair, ProcAnalysis, ProcFlag } from "./types.js";
@@ -83,8 +87,136 @@ function isTransient(name: string): boolean {
 const IDENT = `(?:\\[[^\\]]+\\]|"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)`;
 const QNAME = `(?:${IDENT}(?:\\s*\\.\\s*${IDENT}){0,2})`;
 
-/** Trích alias map từ FROM/JOIN: alias → schema.table. */
-export function extractAliasMap(sqlClean: string): Map<string, string> {
+/** Extract tên bảng permanent từ một đoạn SQL con (dùng lại cho CTE body + temp source). */
+function extractPermanentTablesFrom(sql: string): string[] {
+  const set = new Set<string>();
+  const re = new RegExp(`\\b(?:from|join)\\s+(${QNAME})`, "gi");
+  for (const m of sql.matchAll(re)) {
+    if (!m[1]) continue;
+    const t = qualify(m[1]);
+    if (!isTransient(t)) set.add(t);
+  }
+  return [...set];
+}
+
+/** Trích map CTE: cteName (lowercase) → [permanent tables in body].
+ *
+ *  Dùng bracket counting để tìm body chính xác — tránh bị lừa bởi SELECT
+ *  bên trong CTE body. Xử lý: multi-CTE, column list `name(c1,c2) AS (...)`.
+ *
+ *  Lưu ý: CTE lồng nhau tham chiếu CTE khác (b AS (SELECT FROM a)) → sources
+ *  của b là [] vì `a` không phải real table — safe, không tạo hint sai. */
+export function extractCteMap(sqlClean: string): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  const withMatch = /\bwith\b/i.exec(sqlClean);
+  if (!withMatch) return map;
+
+  let pos = withMatch.index + withMatch[0].length;
+
+  // Parse comma-separated CTE definitions: name [(cols)] AS (body)
+  while (pos < sqlClean.length) {
+    // Skip whitespace
+    const ws = /^\s+/.exec(sqlClean.slice(pos));
+    if (ws) pos += ws[0].length;
+
+    // Match: identifier [(optional column list)] AS (
+    const nameMatch = /^(\w+)\s*(?:\([^)]*\)\s*)?as\s*\(/i.exec(sqlClean.slice(pos));
+    if (!nameMatch) break;
+
+    const cteName = (nameMatch[1] ?? "").toLowerCase();
+    if (!cteName) break;
+    // Move to position of the opening '(' (last char of nameMatch[0])
+    pos += nameMatch[0].length - 1;
+
+    // Bracket counting to find matching ')'
+    let depth = 0;
+    const bodyStart = pos + 1;
+    let bodyEnd = pos;
+    for (let i = pos; i < sqlClean.length; i++) {
+      if (sqlClean[i] === "(") depth++;
+      else if (sqlClean[i] === ")") {
+        depth--;
+        if (depth === 0) {
+          bodyEnd = i;
+          break;
+        }
+      }
+    }
+    if (bodyEnd <= bodyStart) break;
+
+    const body = sqlClean.slice(bodyStart, bodyEnd);
+    map.set(cteName, extractPermanentTablesFrom(body));
+
+    pos = bodyEnd + 1;
+
+    // Continue if there's another CTE (comma separator)
+    const comma = /^\s*,\s*/.exec(sqlClean.slice(pos));
+    if (comma) {
+      pos += comma[0].length;
+    } else {
+      break;
+    }
+  }
+
+  return map;
+}
+
+/** Track nguồn permanent table của mỗi #tmp được tạo trong cùng proc.
+ *
+ *  Pattern 1: SELECT [...] INTO #tmp FROM table1 JOIN table2 ...
+ *  Pattern 2: INSERT INTO #tmp [...] SELECT [...] FROM table1 ...
+ *
+ *  Trả Map: #tmpName (lowercase) → [permanent source tables]. */
+export function extractTempSources(sqlClean: string): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  const addSources = (tmpName: string, sql: string) => {
+    const tables = extractPermanentTablesFrom(sql);
+    if (tables.length === 0) return;
+    const existing = map.get(tmpName) ?? [];
+    map.set(tmpName, [...new Set([...existing, ...tables])]);
+  };
+
+  // Pattern 1: SELECT [...] INTO #tmp (FROM comes after INTO #tmp in ~600 chars)
+  const selectIntoRe = /\binto\s+(#\w+)\b/gi;
+  for (const m of sqlClean.matchAll(selectIntoRe)) {
+    if (!m[1]) continue;
+    const tmpName = m[1].toLowerCase();
+    const afterPos = (m.index ?? 0) + m[0].length;
+    const chunk = sqlClean.slice(afterPos, afterPos + 600);
+    // FROM clause ends at WHERE / GROUP BY / ORDER BY / next statement keyword
+    const fromMatch =
+      /\bfrom\b([\s\S]+?)(?=\bwhere\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|\b(?:insert|update|delete|merge|exec(?:ute)?|create|drop|select)\b|$)/i.exec(
+        chunk,
+      );
+    if (fromMatch) addSources(tmpName, `FROM ${fromMatch[1]}`);
+  }
+
+  // Pattern 2: INSERT INTO #tmp [(...)] SELECT [...] FROM [...]
+  const insertIntoRe = /\binsert\s+into\s+(#\w+)\b/gi;
+  for (const m of sqlClean.matchAll(insertIntoRe)) {
+    if (!m[1]) continue;
+    const tmpName = m[1].toLowerCase();
+    const afterPos = (m.index ?? 0) + m[0].length;
+    const chunk = sqlClean.slice(afterPos, afterPos + 1000);
+    const fromMatch =
+      /\bfrom\b([\s\S]+?)(?=\bwhere\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|\b(?:insert|update|delete|merge|exec(?:ute)?|create|drop)\b|;|$)/i.exec(
+        chunk,
+      );
+    if (fromMatch) addSources(tmpName, `FROM ${fromMatch[1]}`);
+  }
+
+  return map;
+}
+
+/** Trích alias map từ FROM/JOIN: alias → schema.table.
+ *
+ *  cteNames: tập CTE name để bỏ qua (không phải bảng thật). */
+export function extractAliasMap(
+  sqlClean: string,
+  cteNames: Set<string> = new Set(),
+): Map<string, string> {
   const map = new Map<string, string>();
   // FROM/JOIN <qname> [AS] <alias>
   const re = new RegExp(`\\b(?:from|join)\\s+(${QNAME})(?:\\s+(?:as\\s+)?(${IDENT}))?`, "gi");
@@ -96,16 +228,99 @@ export function extractAliasMap(sqlClean: string): Map<string, string> {
     // capture (do FROM (SELECT ..) không khớp). Vậy nếu khớp là table thật.
     const table = qualify(tableRaw);
     if (isTransient(table)) continue;
+    // Bỏ CTE name — không phải real table
+    const shortName = table.split(".").pop()!.toLowerCase();
+    if (cteNames.has(shortName)) continue;
     // alias = alias riêng nếu có, nếu không dùng tên ngắn của bảng.
     if (aliasRaw) {
       const alias = normalizeIdent(aliasRaw);
       // Bỏ các keyword T-SQL bị nhầm là alias (vd "ON", "WHERE", "INNER"...).
       if (!isKeywordLike(alias)) map.set(alias, table);
     }
-    const shortName = table.split(".").pop()!;
     if (!map.has(shortName)) map.set(shortName, table);
   }
   return map;
+}
+
+/** Build map: CTE alias (và tên ngắn CTE) → cteName để dùng khi resolve joinPairs. */
+function buildCteAliasMap(sqlClean: string, cteMap: Map<string, string[]>): Map<string, string> {
+  const map = new Map<string, string>(); // alias → cteName
+  const re = new RegExp(`\\b(?:from|join)\\s+(${QNAME})(?:\\s+(?:as\\s+)?(${IDENT}))?`, "gi");
+  for (const m of sqlClean.matchAll(re)) {
+    const tableRaw = m[1];
+    const aliasRaw = m[2];
+    if (!tableRaw) continue;
+    const shortTable = normalizeIdent(tableRaw.split(".").pop() ?? tableRaw);
+    if (!cteMap.has(shortTable)) continue;
+    map.set(shortTable, shortTable);
+    if (aliasRaw) {
+      const alias = normalizeIdent(aliasRaw);
+      if (!isKeywordLike(alias)) map.set(alias, shortTable);
+    }
+  }
+  return map;
+}
+
+/** Build map: temp table alias → #tmpName để dùng khi resolve joinPairs.
+ *
+ *  Ví dụ: "JOIN #active t ON ..." → {"t": "#active", "#active": "#active"}.
+ *  Chỉ track các #tmp đã có trong tempMap (có biết nguồn). */
+function buildTempAliasMap(sqlClean: string): Map<string, string> {
+  const map = new Map<string, string>(); // alias → #tmpName
+  // Tìm FROM/JOIN #tmpName [AS] alias
+  const re = new RegExp(`\\b(?:from|join)\\s+(#\\w+)(?:\\s+(?:as\\s+)?(${IDENT}))?`, "gi");
+  for (const m of sqlClean.matchAll(re)) {
+    const tmpRaw = m[1];
+    const aliasRaw = m[2];
+    if (!tmpRaw) continue;
+    const tmpName = tmpRaw.toLowerCase();
+    // Map cả tên #tmp chưa biết nguồn (sẽ resolve về [] nhưng không fallback về alias string)
+    map.set(tmpName, tmpName);
+    if (aliasRaw) {
+      const alias = normalizeIdent(aliasRaw);
+      if (!isKeywordLike(alias)) map.set(alias, tmpName);
+    }
+  }
+  return map;
+}
+
+/** Resolve 1 alias → {tables: permanent table names, via: trace string nếu gián tiếp}.
+ *
+ *  Priority: CTE alias → temp table alias → regular alias → fallback. */
+function resolveToTables(
+  alias: string,
+  aliases: Map<string, string>,
+  cteAliasMap: Map<string, string>,
+  cteMap: Map<string, string[]>,
+  tempAliasMap: Map<string, string>,
+  tempMap: Map<string, string[]>,
+): { tables: string[]; via?: string } {
+  // 1. CTE alias → expand to CTE's permanent sources
+  const cteName = cteAliasMap.get(alias);
+  if (cteName) {
+    const sources = cteMap.get(cteName) ?? [];
+    return { tables: sources, via: `cte:${cteName}` };
+  }
+
+  // 2. Temp table alias → expand to temp's permanent sources
+  const tmpName = tempAliasMap.get(alias);
+  if (tmpName) {
+    const sources = tempMap.get(tmpName) ?? [];
+    return { tables: sources, via: `tmp:${tmpName}` };
+  }
+
+  // 3. Direct transient reference (alias starts with #/@)
+  if (alias.startsWith("#") || alias.startsWith("@")) {
+    const sources = tempMap.get(alias) ?? [];
+    return { tables: sources, via: `tmp:${alias}` };
+  }
+
+  // 4. Regular permanent table
+  const resolved = aliases.get(alias);
+  if (resolved) return { tables: [resolved] };
+
+  // 5. Fallback (unresolved alias — won't match entity, filtered server-side)
+  return { tables: [alias] };
 }
 
 const ALIAS_KEYWORDS = new Set([
@@ -168,7 +383,14 @@ export function extractWrites(sqlClean: string): string[] {
   return [...set].sort();
 }
 
-export function extractJoinPairs(sqlClean: string, aliases: Map<string, string>): JoinPair[] {
+export function extractJoinPairs(
+  sqlClean: string,
+  aliases: Map<string, string>,
+  cteAliasMap: Map<string, string> = new Map(),
+  cteMap: Map<string, string[]> = new Map(),
+  tempAliasMap: Map<string, string> = new Map(),
+  tempMap: Map<string, string[]> = new Map(),
+): JoinPair[] {
   const pairs: JoinPair[] = [];
   // ON <ident>.<ident> = <ident>.<ident>  — chấp nhận brackets / quoted.
   const re = new RegExp(
@@ -181,9 +403,26 @@ export function extractJoinPairs(sqlClean: string, aliases: Map<string, string>)
     const leftCol = normalizeIdent(m[2]);
     const rightAlias = normalizeIdent(m[3]);
     const rightCol = normalizeIdent(m[4]);
-    const leftTable = aliases.get(leftAlias) ?? leftAlias;
-    const rightTable = aliases.get(rightAlias) ?? rightAlias;
-    pairs.push({ leftTable, leftColumn: leftCol, rightTable, rightColumn: rightCol });
+
+    const left = resolveToTables(leftAlias, aliases, cteAliasMap, cteMap, tempAliasMap, tempMap);
+    const right = resolveToTables(rightAlias, aliases, cteAliasMap, cteMap, tempAliasMap, tempMap);
+
+    for (const lt of left.tables) {
+      for (const rt of right.tables) {
+        if (lt === rt) continue;
+        const pair: JoinPair = {
+          leftTable: lt,
+          leftColumn: leftCol,
+          rightTable: rt,
+          rightColumn: rightCol,
+        };
+        // Ghi lại nguồn trace khi suy luận gián tiếp qua CTE/tmp
+        if (left.via ?? right.via) {
+          pair.via = left.via ?? right.via;
+        }
+        pairs.push(pair);
+      }
+    }
   }
   return pairs;
 }
@@ -250,10 +489,15 @@ export function pickTier(flags: ProcFlag[], writes: string[]): "B" | "C" | "D" {
 /** Entry chính: phân tích 1 proc body. */
 export function analyzeProc(body: string): ProcAnalysis {
   const clean = stripCommentsAndStrings(body);
-  const aliases = extractAliasMap(clean);
+  const cteMap = extractCteMap(clean);
+  const tempMap = extractTempSources(clean);
+  const cteNames = new Set(cteMap.keys());
+  const aliases = extractAliasMap(clean, cteNames);
+  const cteAliasMap = buildCteAliasMap(clean, cteMap);
+  const tempAliasMap = buildTempAliasMap(clean);
   const readsTables = extractReads(clean);
   const writesTables = extractWrites(clean);
-  const joinPairs = extractJoinPairs(clean, aliases);
+  const joinPairs = extractJoinPairs(clean, aliases, cteAliasMap, cteMap, tempAliasMap, tempMap);
   const callsProcs = extractExecCalls(clean);
   const flags = detectFlags(clean, writesTables, callsProcs);
   const suggestedTier = pickTier(flags, writesTables);

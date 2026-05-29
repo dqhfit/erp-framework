@@ -15,6 +15,8 @@ import {
   extractExecCalls,
   detectFlags,
   pickTier,
+  extractCteMap,
+  extractTempSources,
 } from "./parse-proc.js";
 
 describe("stripCommentsAndStrings", () => {
@@ -228,5 +230,167 @@ describe("analyzeProc tổng hợp", () => {
       ]),
     );
     expect(a.suggestedTier).toBe("D");
+  });
+});
+
+describe("extractCteMap", () => {
+  test("CTE đơn — trả đúng bảng nguồn", () => {
+    const sql = `
+      WITH ActiveOrders AS (
+        SELECT OrderId, CustomerId FROM dbo.Orders WHERE Status = 'A'
+      )
+      SELECT c.Name FROM dbo.Customers c JOIN ActiveOrders ao ON c.CustomerId = ao.CustomerId
+    `;
+    const map = extractCteMap(sql);
+    expect(map.get("activeorders")).toEqual(["dbo.orders"]);
+  });
+
+  test("CTE nhiều bảng nguồn trong body", () => {
+    const sql = `
+      WITH Summary AS (
+        SELECT O.OrderId, I.Qty FROM dbo.Orders O JOIN dbo.Items I ON O.OrderId = I.OrderId
+      )
+      SELECT * FROM Summary s JOIN dbo.Customers c ON s.CustomerId = c.CustomerId
+    `;
+    const map = extractCteMap(sql);
+    const sources = map.get("summary") ?? [];
+    expect(sources).toContain("dbo.orders");
+    expect(sources).toContain("dbo.items");
+  });
+
+  test("Multiple CTE", () => {
+    const sql = `
+      WITH cte1 AS (SELECT id FROM dbo.TableA),
+           cte2 AS (SELECT id FROM dbo.TableB)
+      SELECT * FROM cte1 JOIN cte2 ON cte1.id = cte2.id
+    `;
+    const map = extractCteMap(sql);
+    expect(map.get("cte1")).toEqual(["dbo.tablea"]);
+    expect(map.get("cte2")).toEqual(["dbo.tableb"]);
+  });
+
+  test("CTE có column list", () => {
+    const sql = `
+      WITH cte (col1, col2) AS (SELECT a, b FROM dbo.Source)
+      SELECT * FROM cte
+    `;
+    const map = extractCteMap(sql);
+    expect(map.get("cte")).toEqual(["dbo.source"]);
+  });
+
+  test("Không có WITH → map rỗng", () => {
+    const sql = "SELECT * FROM dbo.A JOIN dbo.B ON A.id = B.id";
+    expect(extractCteMap(sql).size).toBe(0);
+  });
+});
+
+describe("extractTempSources", () => {
+  test("SELECT INTO #tmp FROM permanent table", () => {
+    const sql = `
+      SELECT OrderId, CustomerId INTO #active FROM dbo.Orders WHERE Status = 'A';
+    `;
+    const map = extractTempSources(sql);
+    expect(map.get("#active")).toContain("dbo.orders");
+  });
+
+  test("SELECT INTO #tmp với JOIN", () => {
+    const sql = `
+      SELECT O.OrderId, I.Qty INTO #tmp FROM dbo.Orders O JOIN dbo.Items I ON O.OrderId = I.OrderId;
+    `;
+    const map = extractTempSources(sql);
+    const sources = map.get("#tmp") ?? [];
+    expect(sources).toContain("dbo.orders");
+    expect(sources).toContain("dbo.items");
+  });
+
+  test("INSERT INTO #tmp SELECT FROM", () => {
+    const sql = `
+      INSERT INTO #result SELECT CustomerId FROM dbo.Customers WHERE Active = 1;
+    `;
+    const map = extractTempSources(sql);
+    expect(map.get("#result")).toContain("dbo.customers");
+  });
+
+  test("Không có temp table → map rỗng", () => {
+    const sql = "SELECT * FROM dbo.A JOIN dbo.B ON A.id = B.id";
+    expect(extractTempSources(sql).size).toBe(0);
+  });
+});
+
+describe("analyzeProc — trace qua bảng tạm", () => {
+  test("CTE: JOIN qua CTE → hint permanent tables", () => {
+    const sql = `
+      WITH ActiveOrders AS (
+        SELECT OrderId, CustomerId FROM dbo.Orders WHERE Status = 'A'
+      )
+      SELECT c.Name, ao.OrderId
+      FROM dbo.Customers c
+      JOIN ActiveOrders ao ON c.CustomerId = ao.CustomerId
+    `;
+    const a = analyzeProc(sql);
+    // Phải tìm được hint Customers ↔ Orders qua CTE
+    const hasHint = a.joinPairs.some(
+      (p) =>
+        (p.leftTable === "dbo.customers" && p.rightTable === "dbo.orders") ||
+        (p.leftTable === "dbo.orders" && p.rightTable === "dbo.customers"),
+    );
+    expect(hasHint).toBe(true);
+    // via phải ghi lại nguồn CTE
+    const indirect = a.joinPairs.find((p) => p.via);
+    expect(indirect?.via).toMatch(/^cte:/);
+  });
+
+  test("SELECT INTO #tmp rồi JOIN: trace về bảng nguồn", () => {
+    const sql = `
+      SELECT OrderId, CustomerId INTO #active FROM dbo.Orders WHERE Status = 'A';
+      SELECT c.Name, t.OrderId
+      FROM dbo.Customers c
+      JOIN #active t ON c.CustomerId = t.CustomerId
+    `;
+    const a = analyzeProc(sql);
+    const hasHint = a.joinPairs.some(
+      (p) =>
+        (p.leftTable === "dbo.customers" && p.rightTable === "dbo.orders") ||
+        (p.leftTable === "dbo.orders" && p.rightTable === "dbo.customers"),
+    );
+    expect(hasHint).toBe(true);
+    const indirect = a.joinPairs.find((p) => p.via);
+    expect(indirect?.via).toMatch(/^tmp:/);
+  });
+
+  test("INSERT INTO #tmp SELECT FROM rồi JOIN", () => {
+    const sql = `
+      INSERT INTO #ids SELECT CustomerId FROM dbo.Customers WHERE Region = @r;
+      SELECT O.* FROM dbo.Orders O JOIN #ids t ON O.CustomerId = t.CustomerId;
+    `;
+    const a = analyzeProc(sql);
+    const hasHint = a.joinPairs.some(
+      (p) =>
+        (p.leftTable === "dbo.orders" && p.rightTable === "dbo.customers") ||
+        (p.leftTable === "dbo.customers" && p.rightTable === "dbo.orders"),
+    );
+    expect(hasHint).toBe(true);
+  });
+
+  test("Direct JOIN vẫn không có via", () => {
+    const sql = `
+      SELECT * FROM dbo.Orders O JOIN dbo.Customers C ON O.CustomerId = C.CustomerId
+    `;
+    const a = analyzeProc(sql);
+    expect(a.joinPairs.length).toBeGreaterThan(0);
+    expect(a.joinPairs.every((p) => !p.via)).toBe(true);
+  });
+
+  test("CTE không tạo fake hint đến tên CTE", () => {
+    const sql = `
+      WITH SummaryAlias AS (SELECT OrderId FROM dbo.Orders)
+      SELECT * FROM SummaryAlias s JOIN dbo.Products p ON s.OrderId = p.OrderId
+    `;
+    const a = analyzeProc(sql);
+    // Không được có pair với "dbo.summaryalias"
+    const fakePair = a.joinPairs.find(
+      (p) => p.leftTable === "dbo.summaryalias" || p.rightTable === "dbo.summaryalias",
+    );
+    expect(fakePair).toBeUndefined();
   });
 });
