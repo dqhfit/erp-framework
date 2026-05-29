@@ -31,8 +31,11 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { ProceduresTab } from "@/components/migration/ProceduresTab";
+import { RelationsTab } from "@/components/migration/RelationsTab";
+import { RunAllProcsScreen } from "@/components/migration/RunAllProcsScreen";
 import { SqlBlock } from "@/components/SqlHighlight";
 import {
   Button,
@@ -58,8 +61,10 @@ type TabId =
   | "enrich"
   | "capture-golden"
   | "generate"
+  | "procedures"
   | "data"
   | "review"
+  | "relations"
   | "audit";
 
 interface TabDef {
@@ -76,8 +81,10 @@ const TAB_DEFS: TabDef[] = [
   { id: "enrich", labelKey: "mig.tab_enrich", action: "enrich", enabled: true },
   { id: "capture-golden", labelKey: "mig.tab_capture", action: "capture-golden", enabled: true },
   { id: "generate", labelKey: "mig.tab_generate", action: "generate", enabled: true },
+  { id: "procedures", labelKey: "mig.tab_procedures", action: null, enabled: true },
   { id: "data", labelKey: "mig.tab_data", action: "data", enabled: true },
   { id: "review", labelKey: "mig.tab_review", action: null, enabled: true },
+  { id: "relations", labelKey: "mig.tab_relations", action: null, enabled: true },
   {
     id: "audit",
     labelKey: "mig.tab_audit",
@@ -125,7 +132,7 @@ function MigrationPage() {
   );
   // Phase V refactor: active screen ưu tiên hơn module (khi set, main area
   // hiển thị screen full-page thay vì module tabs).
-  type ScreenId = "quick-migrate" | "full-jobs" | "migrated-entities";
+  type ScreenId = "quick-migrate" | "full-jobs" | "migrated-entities" | "run-all-procs";
   const activeScreen = urlSearch.screen ?? null;
   const setActiveScreen = useCallback(
     (id: ScreenId | null) => {
@@ -280,6 +287,20 @@ function MigrationPage() {
               <span className="font-medium">Bảng đã migrate</span>
               <span className="ml-auto text-[10px] text-muted">cleanup · re-migrate</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveScreen("run-all-procs")}
+              className={[
+                "w-full flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors",
+                activeScreen === "run-all-procs"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-surface hover:bg-hover/30",
+              ].join(" ")}
+            >
+              <I.Workflow size={14} />
+              <span className="font-medium">Migrate proc</span>
+              <span className="ml-auto text-[10px] text-muted">1 lần · idempotent</span>
+            </button>
           </div>
         </SidebarSection>
         <ModuleListPane
@@ -321,6 +342,10 @@ function MigrationPage() {
         ) : activeScreen === "migrated-entities" ? (
           <div className="h-full pl-9 flex flex-col">
             <MigratedEntitiesScreen onClose={() => setActiveScreen(null)} onChanged={reload} />
+          </div>
+        ) : activeScreen === "run-all-procs" ? (
+          <div className="h-full pl-9 flex flex-col">
+            <RunAllProcsScreen onClose={() => setActiveScreen(null)} />
           </div>
         ) : !selected ? (
           <div className="p-8 pl-12">
@@ -686,6 +711,12 @@ function ModuleDetailPane({
         {activeTab === "diagram" && <DiagramTab moduleName={moduleName} onChanged={onChanged} />}
         {activeTab === "review" && <ReviewTab moduleName={moduleName} onChanged={onChanged} />}
         {activeTab === "audit" && <AuditTab moduleName={moduleName} />}
+        {activeTab === "procedures" && (
+          <ProceduresTab moduleName={moduleName} onChanged={onChanged} />
+        )}
+        {activeTab === "relations" && (
+          <RelationsTab moduleName={moduleName} onChanged={onChanged} />
+        )}
         {activeTab === "enrich" && (
           <EnrichTab moduleName={moduleName} summary={summary} onChanged={onChanged} />
         )}
@@ -3456,6 +3487,18 @@ function ConnectionsPanel({ onChanged }: { onChanged: () => void }) {
  *  - Left pane (2/5): list bảng MSSQL + filter + checkbox.
  *  - Right pane (3/5): khi có bảng chọn → preview entity/fields + options
  *    + nút "Bắt đầu migrate". Khi chưa chọn → empty state hướng dẫn. */
+const QM_CONN_KEY = "erp:qm:connId";
+const qmSelKey = (connId: string) => `erp:qm:sel:${connId}`;
+
+function readQmSel(connId: string): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(qmSelKey(connId));
+    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
 function QuickMigrateScreen({
   onClose,
   onChanged,
@@ -3464,32 +3507,91 @@ function QuickMigrateScreen({
   onChanged: () => void;
 }) {
   const [conns, setConns] = useState<MssqlConnectionView[]>([]);
-  const [pickedConnId, setPickedConnId] = useState<string>("");
+  const [pickedConnId, setPickedConnId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(QM_CONN_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [tables, setTables] = useState<Awaited<ReturnType<typeof migration.listConnectionTables>>>(
     [],
   );
   const [filter, setFilter] = useState("");
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  // Khởi tạo selection từ localStorage nếu có connId đã lưu.
+  const [selected, setSelected] = useState<Record<string, boolean>>(() =>
+    pickedConnId ? readQmSel(pickedConnId) : {},
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // Map mssqlTable (lowercase) → entityName của entity đã migrate cho conn này.
-  // Dùng để disable + đánh dấu chip "đã migrate" trong list.
   const [migratedMap, setMigratedMap] = useState<Map<string, string>>(new Map());
   const [migratedReloadKey, setMigratedReloadKey] = useState(0);
   const reloadMigrated = () => setMigratedReloadKey((k) => k + 1);
+  // Snapshot tableNames khi migrate xong để giữ right pane + result hiển thị
+  // trong khi left pane đã sẵn sàng chọn bảng mới.
+  const [lockedTableNames, setLockedTableNames] = useState<string[] | null>(null);
 
-  // Load connections + default conn (chỉ 1 lần).
+  // Load connections + validate connId đã lưu; fallback về default nếu không còn.
   useEffect(() => {
     connectionsApi
       .list()
       .then((cs) => {
         setConns(cs);
-        const def = cs.find((c) => c.isDefault) ?? cs[0];
-        if (def && !pickedConnId) setPickedConnId(def.id);
+        const storedValid = pickedConnId && cs.some((c) => c.id === pickedConnId);
+        if (!storedValid) {
+          const def = cs.find((c) => c.isDefault) ?? cs[0];
+          if (def) setPickedConnId(def.id);
+        }
       })
       .catch(() => setConns([]));
     // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần
   }, []);
+
+  // Persist connId mỗi khi thay đổi.
+  useEffect(() => {
+    if (!pickedConnId) return;
+    try {
+      localStorage.setItem(QM_CONN_KEY, pickedConnId);
+    } catch {
+      /* quota */
+    }
+  }, [pickedConnId]);
+
+  // Khi connId thay đổi: restore selection đã lưu cho conn đó.
+  const prevConnIdRef = useRef("");
+  useEffect(() => {
+    if (!pickedConnId || pickedConnId === prevConnIdRef.current) return;
+    prevConnIdRef.current = pickedConnId;
+    setSelected(readQmSel(pickedConnId));
+    setLockedTableNames(null);
+  }, [pickedConnId]);
+
+  // Persist selection mỗi khi thay đổi (debounce không cần vì ghi nhanh).
+  useEffect(() => {
+    if (!pickedConnId) return;
+    try {
+      localStorage.setItem(qmSelKey(pickedConnId), JSON.stringify(selected));
+    } catch {
+      /* quota */
+    }
+  }, [pickedConnId, selected]);
+
+  // Sau khi migratedMap load/update: bỏ chọn bảng đã migrate khỏi selection.
+  useEffect(() => {
+    if (migratedMap.size === 0) return;
+    setSelected((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const k of Object.keys(next)) {
+        if (next[k] && migratedMap.has(k.toLowerCase())) {
+          delete next[k];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [migratedMap]);
 
   // Load tables khi pickedConnId đổi.
   useEffect(() => {
@@ -3525,21 +3627,32 @@ function QuickMigrateScreen({
       .catch(() => setMigratedMap(new Map()));
   }, [pickedConnId, migratedReloadKey]);
 
-  const filtered = tables.filter(
-    (t) => !filter || t.fullName.toLowerCase().includes(filter.toLowerCase()),
-  );
   // Helper: 1 bảng đã migrate khi mssqlTable (case-insensitive) có trong migratedMap.
   const isMigrated = (fullName: string) => migratedMap.has(fullName.toLowerCase());
-  // Bảng có thể chọn = filtered + chưa migrated.
-  const selectableFiltered = filtered.filter((t) => !isMigrated(t.fullName));
-  const migratedCountInFiltered = filtered.length - selectableFiltered.length;
+  // Chỉ hiện bảng chưa migrate — bảng đã migrate ẩn khỏi list.
+  const migratedHiddenCount = tables.filter(
+    (t) =>
+      (!filter || t.fullName.toLowerCase().includes(filter.toLowerCase())) &&
+      isMigrated(t.fullName),
+  ).length;
+  const filtered = tables.filter(
+    (t) =>
+      (!filter || t.fullName.toLowerCase().includes(filter.toLowerCase())) &&
+      !isMigrated(t.fullName),
+  );
+  const selectableFiltered = filtered;
   const selectedNames = Object.keys(selected).filter((k) => selected[k]);
   const selectedCount = selectedNames.length;
+  // Khi user chọn bảng mới, xoá lock để pane reset về preview bảng mới.
+  useEffect(() => {
+    if (lockedTableNames !== null && selectedCount > 0) setLockedTableNames(null);
+  }, [selectedCount, lockedTableNames]);
+  // tableNames thực sự truyền xuống pane: locked snapshot hoặc selection hiện tại.
+  const activePaneTableNames = lockedTableNames ?? selectedNames;
   const allSelected =
     selectableFiltered.length > 0 && selectableFiltered.every((t) => selected[t.fullName]);
   const toggleAll = () => {
     const next = { ...selected };
-    // Chỉ toggle những bảng chưa migrated.
     for (const t of selectableFiltered) next[t.fullName] = !allSelected;
     setSelected(next);
   };
@@ -3568,7 +3681,6 @@ function QuickMigrateScreen({
             value={pickedConnId}
             onChange={(e) => {
               setPickedConnId(e.target.value);
-              setSelected({});
             }}
             className="text-xs h-8 px-2 border border-border rounded bg-bg min-w-[200px]"
           >
@@ -3598,9 +3710,9 @@ function QuickMigrateScreen({
               <div className="flex items-center justify-between text-xs">
                 <div className="font-medium">
                   Bảng MSSQL ({tables.length})
-                  {migratedCountInFiltered > 0 && (
+                  {migratedHiddenCount > 0 && (
                     <span className="ml-1.5 text-[10px] text-success">
-                      · {migratedCountInFiltered} đã migrate
+                      · {migratedHiddenCount} đã migrate (ẩn)
                     </span>
                   )}
                 </div>
@@ -3723,7 +3835,7 @@ function QuickMigrateScreen({
 
           {/* Right pane: preview + options + start */}
           <div className="flex flex-col min-h-0 overflow-hidden">
-            {selectedCount === 0 ? (
+            {selectedCount === 0 && lockedTableNames === null ? (
               <div className="flex-1 flex items-center justify-center p-8">
                 <EmptyState
                   icon={<I.Table size={32} />}
@@ -3734,12 +3846,19 @@ function QuickMigrateScreen({
             ) : (
               <QuickMigratePreviewPane
                 connectionId={pickedConnId}
-                tableNames={selectedNames}
+                tableNames={activePaneTableNames}
                 onDone={() => {
+                  setLockedTableNames(null);
                   setSelected({});
                   onChanged();
                 }}
                 onTablesChanged={() => {
+                  reloadMigrated();
+                  onChanged();
+                }}
+                onMigrateCompleted={(tNames) => {
+                  setLockedTableNames(tNames);
+                  setSelected({});
                   reloadMigrated();
                   onChanged();
                 }}
@@ -3759,20 +3878,23 @@ function QuickMigratePreviewPane({
   tableNames,
   onDone,
   onTablesChanged,
+  onMigrateCompleted,
 }: {
   connectionId: string;
   tableNames: string[];
   onDone: () => void;
-  /** Gọi khi entity được tạo/cập nhật trong DB (sau quick apply hoặc full
-   *  job create). Parent dùng để reload migratedMap → disable bảng trong list. */
+  /** Gọi khi entity được tạo/cập nhật trong DB (full-mode job create). */
   onTablesChanged: () => void;
+  /** Gọi sau quick migrate thực (non-dryRun) thành công. Parent snapshot
+   *  tableNames, clear selection, reload list — pane giữ result hiển thị. */
+  onMigrateCompleted: (tableNames: string[]) => void;
 }) {
   const [previews, setPreviews] = useState<QuickPreview[]>([]);
   const [limit, setLimit] = useState(10_000);
   const [dryRun, setDryRun] = useState(true);
   const [force, setForce] = useState(false);
   const [writeManifest, setWriteManifest] = useState(true);
-  const [fullMode, setFullMode] = useState(false);
+  const [fullMode, setFullMode] = useState(true);
   const [batchSize, setBatchSize] = useState(5000);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Awaited<
@@ -3781,64 +3903,118 @@ function QuickMigratePreviewPane({
   const [fullJobResult, setFullJobResult] = useState<{ jobId: string } | null>(null);
   const [err, setErr] = useState("");
 
-  // Load preview cho mỗi bảng song song khi tableNames đổi.
+  // Cache preview theo tableName — persist khi user thêm/bớt bảng, kể cả
+  // sau khi user chỉnh sửa entityName/label/fields. Xóa khi connection đổi.
+  const previewCacheRef = useRef<Map<string, QuickPreview>>(new Map());
+  const prevConnectionIdRef = useRef(connectionId);
+
+  // Stable key — không fire khi parent re-render với cùng selection.
+  const tableNamesKey = tableNames.join("\0");
+
+  // Debounce 300ms: chờ user chọn xong mới fetch, tránh bắn batch mỗi lần tick checkbox.
+  const [debouncedKey, setDebouncedKey] = useState(tableNamesKey);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: debounce intentional
   useEffect(() => {
-    let cancelled = false;
+    const id = setTimeout(() => setDebouncedKey(tableNamesKey), 300);
+    return () => clearTimeout(id);
+  }, [tableNamesKey]);
+
+  // Load preview: cache → hiện ngay; bảng mới → fetch với concurrency 3.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dùng debouncedKey thay array ref
+  useEffect(() => {
+    const cache = previewCacheRef.current;
+    // Connection đổi → xóa cache tránh hiện data sai server.
+    if (connectionId !== prevConnectionIdRef.current) {
+      cache.clear();
+      prevConnectionIdRef.current = connectionId;
+    }
+
+    // tableNames luôn tính từ prop gốc (không phải debouncedKey).
+    const names = debouncedKey ? debouncedKey.split("\0") : [];
+    const toFetch = names.filter((t) => !cache.has(t));
+
     setPreviews(
-      tableNames.map((t) => ({
-        tableName: t,
-        entityName: "",
-        label: "",
-        fields: [],
-        loading: true,
-      })),
-    );
-    setResult(null);
-    setFullJobResult(null);
-    Promise.all(
-      tableNames.map(async (t) => {
-        try {
-          const p = await migration.previewQuickTable(connectionId, t, 0);
-          // Suy pkField: PK MSSQL → slug lower-case → match với fields[].name.
-          const pkRawCol = p.info.primaryKey?.[0];
-          let pkField: string | undefined;
-          if (pkRawCol) {
-            const slug = pkRawCol
-              .toLowerCase()
-              .replace(/[^a-z0-9_]+/g, "_")
-              .replace(/^_+|_+$/g, "");
-            // Match exact với fields name; fallback dùng slug nếu không có.
-            pkField = p.suggested.fields.find((f) => f.name === slug)?.name ?? slug;
-          }
-          return {
-            tableName: t,
-            entityName: p.suggested.entityName,
-            label: p.suggested.label,
-            fields: p.suggested.fields,
-            pkField,
-            loading: false,
-          } as QuickPreview;
-        } catch (e) {
-          return {
+      names.map(
+        (t) =>
+          cache.get(t) ?? {
             tableName: t,
             entityName: "",
             label: "",
             fields: [],
-            loading: false,
-            error: (e as Error).message,
-          } as QuickPreview;
+            loading: true,
+          },
+      ),
+    );
+    setResult(null);
+    setFullJobResult(null);
+
+    if (toFetch.length === 0) return;
+
+    let cancelled = false;
+    let idx = 0;
+
+    const fetchOne = async (t: string) => {
+      try {
+        const p = await migration.previewQuickTable(connectionId, t, 0);
+        if (cancelled) return;
+        const pkRawCol = p.info.primaryKey?.[0];
+        let pkField: string | undefined;
+        if (pkRawCol) {
+          const slug = pkRawCol
+            .toLowerCase()
+            .replace(/[^a-z0-9_]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+          pkField = p.suggested.fields.find((f) => f.name === slug)?.name ?? slug;
         }
-      }),
-    ).then((rows) => {
-      if (!cancelled) setPreviews(rows);
-    });
+        const preview: QuickPreview = {
+          tableName: t,
+          entityName: p.suggested.entityName,
+          label: p.suggested.label,
+          fields: p.suggested.fields,
+          pkField,
+          loading: false,
+        };
+        cache.set(t, preview);
+        setPreviews((prev) => prev.map((r) => (r.tableName === t ? preview : r)));
+      } catch (e) {
+        if (cancelled) return;
+        const preview: QuickPreview = {
+          tableName: t,
+          entityName: "",
+          label: "",
+          fields: [],
+          loading: false,
+          error: (e as Error).message,
+        };
+        setPreviews((prev) => prev.map((r) => (r.tableName === t ? preview : r)));
+      }
+    };
+
+    // Chạy tối đa 3 request song song — tránh spam server khi chọn nhiều bảng.
+    const worker = async () => {
+      while (true) {
+        const i = idx++;
+        if (i >= toFetch.length) break;
+        await fetchOne(toFetch[i]!);
+      }
+    };
+    const CONCURRENCY = 3;
+    Promise.all(Array.from({ length: Math.min(CONCURRENCY, toFetch.length) }, worker));
+
     return () => {
       cancelled = true;
     };
-  }, [connectionId, tableNames]);
+  }, [connectionId, debouncedKey]);
 
   const updatePreview = (tableName: string, patch: Partial<QuickPreview>) => {
-    setPreviews((ps) => ps.map((p) => (p.tableName === tableName ? { ...p, ...patch } : p)));
+    setPreviews((ps) =>
+      ps.map((p) => {
+        if (p.tableName !== tableName) return p;
+        const updated = { ...p, ...patch };
+        previewCacheRef.current.set(tableName, updated);
+        return updated;
+      }),
+    );
   };
   const updateField = (
     tableName: string,
@@ -3852,9 +4028,40 @@ function QuickMigratePreviewPane({
         const cur = next[fieldIdx];
         if (!cur) return p;
         next[fieldIdx] = { ...cur, ...patch };
-        return { ...p, fields: next };
+        const updated = { ...p, fields: next };
+        previewCacheRef.current.set(tableName, updated);
+        return updated;
       }),
     );
+  };
+
+  const retryPreview = async (tableName: string) => {
+    previewCacheRef.current.delete(tableName);
+    updatePreview(tableName, { loading: true, error: undefined });
+    try {
+      const p = await migration.previewQuickTable(connectionId, tableName, 0);
+      const pkRawCol = p.info.primaryKey?.[0];
+      let pkField: string | undefined;
+      if (pkRawCol) {
+        const slug = pkRawCol
+          .toLowerCase()
+          .replace(/[^a-z0-9_]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+        pkField = p.suggested.fields.find((f) => f.name === slug)?.name ?? slug;
+      }
+      const preview: QuickPreview = {
+        tableName,
+        entityName: p.suggested.entityName,
+        label: p.suggested.label,
+        fields: p.suggested.fields,
+        pkField,
+        loading: false,
+      };
+      previewCacheRef.current.set(tableName, preview);
+      updatePreview(tableName, preview);
+    } catch (e) {
+      updatePreview(tableName, { loading: false, error: (e as Error).message });
+    }
   };
 
   const run = async () => {
@@ -3897,9 +4104,9 @@ function QuickMigratePreviewPane({
         });
         setResult(r);
         if (!dryRun) {
-          // Reload migratedMap + parent — KHÔNG gọi onDone() tự động
-          // để kết quả không biến mất. User nhấn "Chọn bảng khác" để clear.
-          onTablesChanged();
+          // Snapshot tableNames + clear selection trong parent để left pane sẵn
+          // sàng ngay. Pane giữ nguyên (tableNames không đổi → result không bị reset).
+          onMigrateCompleted(tableNames);
         }
       }
     } catch (e) {
@@ -3926,19 +4133,28 @@ function QuickMigratePreviewPane({
         </div>
 
         {previews.map((p) => (
-          <details
-            key={p.tableName}
-            className="border border-border rounded bg-bg"
-            open={previews.length <= 2}
-          >
+          <details key={p.tableName} className="border border-border rounded bg-bg" open={false}>
             <summary className="px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-hover/20">
               <span className="font-mono text-xs flex-1 truncate">{p.tableName}</span>
               {p.loading ? (
                 <span className="text-muted text-[10px]">Đang tải...</span>
               ) : p.error ? (
-                <Chip variant="warning" className="text-[9px]!">
-                  {p.error.slice(0, 40)}
-                </Chip>
+                <>
+                  <Chip variant="warning" className="text-[9px]!">
+                    {p.error.slice(0, 40)}
+                  </Chip>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      retryPreview(p.tableName);
+                    }}
+                    className="text-[10px] text-accent hover:underline px-1"
+                    title="Tải lại"
+                  >
+                    ↺ Thử lại
+                  </button>
+                </>
               ) : (
                 <>
                   <I.ChevronRight size={12} className="text-muted" />
@@ -7794,8 +8010,8 @@ export const Route = createFileRoute("/settings/migration")({
     tab: typeof search.tab === "string" ? search.tab : undefined,
     screen:
       typeof search.screen === "string" &&
-      ["quick-migrate", "full-jobs", "migrated-entities"].includes(search.screen)
-        ? (search.screen as "quick-migrate" | "full-jobs" | "migrated-entities")
+      ["quick-migrate", "full-jobs", "migrated-entities", "run-all-procs"].includes(search.screen)
+        ? (search.screen as "quick-migrate" | "full-jobs" | "migrated-entities" | "run-all-procs")
         : undefined,
   }),
 });

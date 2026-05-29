@@ -4,8 +4,8 @@
    poll status, đọc ai-log.
    ========================================================== */
 
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 export type MigrationAction =
   | "discover"
@@ -721,6 +721,122 @@ export function createMigrationClient(baseUrl: string) {
         succeeded: number;
         failed: number;
         results: Array<{ entityId: string; name: string; ok: boolean; error?: string }>;
+      }>,
+
+    /** V2 — Tab Procedures: list proc theo bảng đã migrate. */
+    listProcsToMigrate: (input: {
+      module: string;
+      filterMode?: "all" | "reads-only";
+      activeWithinDays?: number;
+      sortBy?: "complexity-asc" | "complexity-desc" | "name";
+      includeBlocked?: boolean;
+    }) => trpc.migration.listProcsToMigrate.query(input),
+
+    /** V2 — Aggregate cross-module: list proc của TẤT CẢ module YAML. */
+    listAllProcsToMigrate: (
+      input: {
+        filterMode?: "all" | "reads-only";
+        activeWithinDays?: number;
+        sortBy?: "complexity-asc" | "complexity-desc" | "name";
+        includeBlocked?: boolean;
+        moduleFilter?: string;
+      } = {},
+    ) => trpc.migration.listAllProcsToMigrate.query(input),
+
+    /** V2 — AI phân loại nghiệp vụ. mode mặc định "skip-existing" để chạy
+     *  lại nhiều lần không drift kết quả. */
+    classifyProcsAi: (input: {
+      module: string;
+      names?: string[];
+      connectionId?: string;
+      mode?: "skip-existing" | "if-stale" | "force";
+    }) =>
+      trpc.migration.classifyProcsAi.mutate({
+        module: input.module,
+        names: input.names ?? [],
+        connectionId: input.connectionId,
+        mode: input.mode ?? "skip-existing",
+      }),
+
+    /** V2 — User set businessCategory override. */
+    setProcCategory: (input: {
+      module: string;
+      procName: string;
+      category:
+        | "create"
+        | "read"
+        | "update"
+        | "delete"
+        | "report"
+        | "validation"
+        | "calculation"
+        | "workflow"
+        | "trigger"
+        | "batch"
+        | "unknown"
+        | null;
+    }) => trpc.migration.setProcCategory.mutate(input),
+
+    /** V2 — Tier C workflow codegen dry-run. useCache=true (default) trả cache
+     *  nếu bodyHash khớp → idempotent + tiết kiệm chi phí LLM. */
+    codegenProcWorkflowDryRun: (input: {
+      module: string;
+      procName: string;
+      connectionId?: string;
+      useCache?: boolean;
+    }) =>
+      trpc.migration.codegenProcWorkflowDryRun.mutate({
+        ...input,
+        useCache: input.useCache ?? true,
+      }),
+
+    /** V2 — Tier C workflow apply. overwriteIfExists=false (default) bảo vệ
+     *  graph user đã sửa thủ công sau lần apply đầu. */
+    codegenProcWorkflowApply: (input: {
+      module: string;
+      procName: string;
+      graph: { nodes: unknown[]; edges: unknown[] };
+      workflowName?: string;
+      overwriteIfExists?: boolean;
+    }) =>
+      trpc.migration.codegenProcWorkflowApply.mutate({
+        ...input,
+        graph: input.graph as {
+          nodes: Record<string, unknown>[];
+          edges: Record<string, unknown>[];
+        },
+        overwriteIfExists: input.overwriteIfExists ?? false,
+      }),
+
+    /** V2 — Tab Quan hệ: list migrated entities + hint FK. */
+    listMigratedRelations: (input: { module?: string } = {}) =>
+      trpc.migration.listMigratedRelations.query(input),
+
+    /** V2 — Apply 1 hint hoặc xoá ref. targetEntityId=null → unset. */
+    applyRelationHint: (input: {
+      sourceEntityId: string;
+      sourceField: string;
+      targetEntityId: string | null;
+    }) => trpc.migration.applyRelationHint.mutate(input),
+
+    /** Phân tích SQL tùy ý — trích xuất JOIN pairs, map sang entity đã
+     *  migrate, trả gợi ý ref để user xác nhận + apply. */
+    analyzeRelationsFromSql: (sql: string) =>
+      trpc.migration.analyzeRelationsFromSql.mutate({ sql }) as Promise<{
+        joinPairsTotal: number;
+        hints: Array<{
+          sourceEntityId: string;
+          sourceEntityName: string;
+          sourceEntityLabel: string;
+          sourceField: string;
+          sourceFieldLabel: string;
+          targetEntityId: string;
+          targetEntityName: string;
+          targetEntityLabel: string;
+          targetField: string;
+          applied: boolean;
+        }>;
+        unmappedTables: string[];
       }>,
   };
 }

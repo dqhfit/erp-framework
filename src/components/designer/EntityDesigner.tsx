@@ -1,17 +1,17 @@
 import { createApiDataSource, createMigrationClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUndoable } from "@/hooks/useUndoable";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { EntityFormPreview } from "@/components/designer/entity-preview";
 import { FieldInspector } from "@/components/designer/field-inspector";
-import { FieldRow } from "@/components/designer/field-row";
+import { FieldTable } from "@/components/designer/FieldTable";
 import { type McpBindings, McpBindingsEditor } from "@/components/designer/McpBindingsEditor";
 import { McpImportModal, type McpImportResult } from "@/components/designer/McpImportModal";
 import { EntitySyncPanel } from "@/components/EntitySyncPanel";
 import { I } from "@/components/Icons";
 import { EntityData } from "@/components/renderer/EntityData";
-import { Button, EmptyState, InlineEdit, Input } from "@/components/ui";
+import { Button, EmptyState, InlineEdit, Input, Tabs } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
 import type { EntityDesign } from "@/lib/ai-design-prompts";
@@ -46,6 +46,7 @@ export function EntityDesigner({ entityId }: Props) {
   };
   const initial = userEntities.find((e) => e.id === entityId) ?? fallbackEntity;
   const inspectorVisible = useUI((s) => s.inspectorVisible);
+  const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
   const [entity, setEntity, { canUndo, canRedo, undo, redo }] = useUndoable<MockEntity>(initial);
   const [selected, setSelected] = useState<string | null>(null);
@@ -57,6 +58,12 @@ export function EntityDesigner({ entityId }: Props) {
   const [aiOpen, setAiOpen] = useState(false);
   const [pageMenuOpen, setPageMenuOpen] = useState(false);
   const pageMenuRef = useRef<HTMLDivElement>(null);
+  const [previewMenuOpen, setPreviewMenuOpen] = useState(false);
+  const previewMenuRef = useRef<HTMLDivElement>(null);
+  const [mcpMenuOpen, setMcpMenuOpen] = useState(false);
+  const mcpMenuRef = useRef<HTMLDivElement>(null);
+  const [paletteVisible, setPaletteVisible] = useState(true);
+  const [schemaTab, setSchemaTab] = useState<"fields" | "mcp" | "proc" | "sync">("fields");
   const { tools: mcpTools } = useMcpClient();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
@@ -64,6 +71,26 @@ export function EntityDesigner({ entityId }: Props) {
     setEntity(userEntities.find((e) => e.id === entityId) ?? fallbackEntity);
     setSelected(null);
   }, [userEntities.find, entityId]);
+
+  useEffect(() => {
+    if (!previewMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (previewMenuRef.current && !previewMenuRef.current.contains(e.target as Node))
+        setPreviewMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [previewMenuOpen]);
+
+  useEffect(() => {
+    if (!mcpMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (mcpMenuRef.current && !mcpMenuRef.current.contains(e.target as Node))
+        setMcpMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [mcpMenuOpen]);
 
   const addField = (type: string, atIdx?: number) => {
     const ft = getFieldTypes().find((f) => f.id === type);
@@ -384,25 +411,54 @@ export function EntityDesigner({ entityId }: Props) {
         >
           AI Assist
         </Button>
-        <Button
-          variant="default"
-          size="sm"
-          icon={<I.Database size={13} />}
-          onClick={() => setImportOpen(true)}
-        >
-          {t("designer.import_from_mcp")}
-        </Button>
-        {entity.mcpBindings?.list?.tool && (
-          <Button
-            variant="default"
-            size="sm"
-            icon={syncing ? <I.Loader size={13} className="animate-spin" /> : <I.Redo size={13} />}
-            onClick={() => void doMcpSync()}
-            disabled={syncing}
+        <div ref={mcpMenuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMcpMenuOpen((v) => !v)}
+            className={cn(
+              "btn btn-sm flex items-center gap-1.5",
+              mcpMenuOpen ? "bg-accent/15 text-accent border-accent/40" : "",
+            )}
+            title="MCP"
           >
-            {syncing ? t("entity.syncing") : t("entity.sync_btn")}
-          </Button>
-        )}
+            <I.Database size={13} />
+            MCP
+            <I.ChevronDown size={11} />
+          </button>
+          {mcpMenuOpen && (
+            <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-lg border border-border bg-panel shadow-lg py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setImportOpen(true);
+                  setMcpMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover/50 text-left"
+              >
+                <I.Download size={13} className="shrink-0 text-muted" />
+                {t("designer.import_from_mcp")}
+              </button>
+              {entity.mcpBindings?.list?.tool && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void doMcpSync();
+                    setMcpMenuOpen(false);
+                  }}
+                  disabled={syncing}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover/50 text-left disabled:opacity-50"
+                >
+                  {syncing ? (
+                    <I.Loader size={13} className="shrink-0 text-muted animate-spin" />
+                  ) : (
+                    <I.Redo size={13} className="shrink-0 text-muted" />
+                  )}
+                  {syncing ? t("entity.syncing") : t("entity.sync_btn")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="w-px h-5 bg-border mx-1" />
         <Button
           variant="ghost"
@@ -410,10 +466,8 @@ export function EntityDesigner({ entityId }: Props) {
           icon={<I.Undo size={13} />}
           onClick={undo}
           disabled={!canUndo}
-          title="Ctrl+Z"
-        >
-          {t("designer.undo")}
-        </Button>
+          title={`${t("designer.undo")} (Ctrl+Z)`}
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -423,22 +477,83 @@ export function EntityDesigner({ entityId }: Props) {
           title="Ctrl+Shift+Z"
         />
         <div className="w-px h-5 bg-border mx-1" />
-        <Button
-          variant={localView === "form" ? "primary" : "ghost"}
-          size="sm"
-          icon={<I.Play size={13} />}
-          onClick={() => setLocalView((v) => (v === "form" ? "schema" : "form"))}
-        >
-          {localView === "form" ? t("designer.exit_preview") : t("designer.form_btn")}
-        </Button>
-        <Button
-          variant={localView === "data" ? "primary" : "default"}
-          size="sm"
-          icon={localView === "data" ? <I.EyeOff size={13} /> : <I.Eye size={13} />}
-          onClick={() => setLocalView((v) => (v === "data" ? "schema" : "data"))}
-        >
-          {localView === "data" ? t("designer.exit_preview") : t("designer.preview")}
-        </Button>
+        <div ref={previewMenuRef} className="relative flex">
+          <Button
+            variant={localView !== "schema" ? "primary" : "ghost"}
+            size="sm"
+            icon={
+              localView === "data" ? (
+                <I.EyeOff size={13} />
+              ) : localView === "form" ? (
+                <I.Play size={13} />
+              ) : (
+                <I.Eye size={13} />
+              )
+            }
+            onClick={() => {
+              if (localView !== "schema") {
+                setLocalView("schema");
+              } else {
+                setLocalView("data");
+              }
+              setPreviewMenuOpen(false);
+            }}
+            className="rounded-r-none border-r-0"
+          >
+            {localView !== "schema" ? t("designer.exit_preview") : t("designer.preview")}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setPreviewMenuOpen((v) => !v)}
+            className={cn(
+              "btn btn-sm rounded-l-none px-1.5",
+              localView !== "schema" ? "btn-primary" : "btn-ghost",
+            )}
+            title="Chọn chế độ xem"
+          >
+            <I.ChevronDown size={11} />
+          </button>
+          {previewMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded-md shadow-lg py-1 min-w-[150px]">
+              <button
+                type="button"
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover text-left",
+                  localView === "data" && "text-accent",
+                )}
+                onClick={() => {
+                  setLocalView("data");
+                  setPreviewMenuOpen(false);
+                }}
+              >
+                <I.Eye size={13} className="shrink-0" />
+                <div className="flex flex-col leading-tight">
+                  <span>{t("designer.preview")}</span>
+                  <span className="text-[10px] text-muted">Dữ liệu thật</span>
+                </div>
+                {localView === "data" && <I.Check size={11} className="ml-auto text-accent" />}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-hover text-left",
+                  localView === "form" && "text-accent",
+                )}
+                onClick={() => {
+                  setLocalView("form");
+                  setPreviewMenuOpen(false);
+                }}
+              >
+                <I.Play size={13} className="shrink-0" />
+                <div className="flex flex-col leading-tight">
+                  <span>{t("designer.form_btn")}</span>
+                  <span className="text-[10px] text-muted">Form nhập liệu</span>
+                </div>
+                {localView === "form" && <I.Check size={11} className="ml-auto text-accent" />}
+              </button>
+            </div>
+          )}
+        </div>
         <Button
           variant="primary"
           size="sm"
@@ -512,13 +627,40 @@ export function EntityDesigner({ entityId }: Props) {
               </button>
             </div>
           )}
+          <div className="w-px h-5 bg-border mx-1" />
+          <button
+            type="button"
+            title={paletteVisible ? "Ẩn bảng loại field" : "Hiện bảng loại field"}
+            onClick={() => setPaletteVisible((v) => !v)}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+              paletteVisible
+                ? "bg-accent/15 text-accent hover:bg-accent/25"
+                : "text-muted hover:bg-hover/60",
+            )}
+          >
+            <I.PanelLeft size={14} />
+          </button>
+          <button
+            type="button"
+            title={inspectorVisible ? "Ẩn inspector" : "Hiện inspector"}
+            onClick={() => setInspectorVisible(!inspectorVisible)}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+              inspectorVisible
+                ? "bg-accent/15 text-accent hover:bg-accent/25"
+                : "text-muted hover:bg-hover/60",
+            )}
+          >
+            <I.PanelRight size={14} />
+          </button>
         </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 flex overflow-auto min-w-0">
         {/* Field palette */}
-        {localView === "schema" && (
+        {localView === "schema" && paletteVisible && (
           <div className="w-[220px] shrink-0 border-r border-border bg-panel flex flex-col">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
@@ -563,7 +705,7 @@ export function EntityDesigner({ entityId }: Props) {
         )}
 
         {/* Fields list canvas */}
-        <div className="flex-1 overflow-y-auto bg-bg min-w-[480px] relative">
+        <div className="flex-1 overflow-auto bg-bg min-w-[480px] relative">
           {localView === "form" && (
             <div className="absolute inset-0 z-10 bg-bg overflow-auto">
               <EntityFormPreview entity={entity} />
@@ -575,137 +717,138 @@ export function EntityDesigner({ entityId }: Props) {
             </div>
           )}
           {localView === "schema" && (
-            <div className="max-w-[760px] mx-auto py-6 px-6">
-              <div className="flex items-baseline justify-between mb-3">
-                <div>
-                  <div className="text-lg font-semibold">{t("designer.schema_fields")}</div>
-                  <div className="text-xs text-muted">{t("designer.field_list_hint")}</div>
-                </div>
-                <div className="text-xs text-muted">{entity.fields.length} fields</div>
+            <div className="flex flex-col h-full">
+              {/* Tab bar */}
+              <div className="shrink-0 flex items-center px-4 border-b border-border bg-panel gap-2">
+                <Tabs
+                  value={schemaTab}
+                  onChange={setSchemaTab}
+                  options={[
+                    {
+                      value: "fields",
+                      label: `${t("designer.schema_fields")} (${entity.fields.length})`,
+                    },
+                    { value: "mcp", label: t("entity.mcp_bindings") },
+                    { value: "proc", label: t("designer.proc_bindings") },
+                    ...(entity.mcpBindings?.list?.tool
+                      ? [{ value: "sync" as const, label: t("entity.sync_btn") }]
+                      : []),
+                  ]}
+                  className="border-b-0"
+                />
               </div>
 
-              {entity.fields.length === 0 ? (
-                <EmptyState
-                  icon={<I.Database size={20} className="text-muted" />}
-                  title={t("designer.no_field_title")}
-                  hint={t("designer.no_field_hint")}
-                />
-              ) : (
-                <div className="card divide-y divide-border overflow-hidden">
-                  {entity.fields.map((f, idx) => (
-                    <Fragment key={f.id ?? idx}>
-                      <div
-                        onDragOver={(e) => {
-                          if (dragFromPalette) {
+              {/* Tab content — full width, scrolls independently */}
+              <div className="flex-1 overflow-y-auto">
+                {/* ── Trường ───────────────────────────────────────── */}
+                {schemaTab === "fields" && (
+                  <div className="p-4">
+                    {entity.fields.length === 0 ? (
+                      <EmptyState
+                        icon={<I.Database size={20} className="text-muted" />}
+                        title={t("designer.no_field_title")}
+                        hint={t("designer.no_field_hint")}
+                      />
+                    ) : (
+                      <>
+                        <FieldTable
+                          fields={entity.fields}
+                          selectedId={selected}
+                          entities={userEntities}
+                          onSelect={setSelected}
+                          onUpdate={updateField}
+                          onReorder={reorder}
+                          onDelete={deleteField}
+                          onDuplicate={(id) => {
+                            const f = entity.fields.find((x) => x.id === id);
+                            if (f)
+                              addField(f.type, entity.fields.findIndex((x) => x.id === id) + 1);
+                          }}
+                        />
+                        {/* Palette drop zone */}
+                        <div
+                          onDragOver={(e) => {
+                            if (dragFromPalette) {
+                              e.preventDefault();
+                              setDragOverIdx(entity.fields.length);
+                            }
+                          }}
+                          onDragLeave={() => setDragOverIdx(null)}
+                          onDrop={(e) => {
                             e.preventDefault();
-                            setDragOverIdx(idx);
-                          }
-                        }}
-                        onDragLeave={() => setDragOverIdx((v) => (v === idx ? null : v))}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (dragFromPalette) {
-                            addField(dragFromPalette, idx);
-                            setDragFromPalette(null);
-                            setDragOverIdx(null);
-                          }
-                        }}
-                        className={cn(
-                          "h-2 -my-1 transition-all",
-                          !dragFromPalette && "pointer-events-none",
-                          dragOverIdx === idx && dragFromPalette && "drop-zone-active h-6 my-0",
-                        )}
-                      />
-                      <FieldRow
-                        field={f}
-                        active={selected === f.id}
-                        onSelect={() => setSelected(f.id)}
-                        onDelete={() => deleteField(f.id)}
-                        onDuplicate={() => addField(f.type, idx + 1)}
-                        idx={idx}
-                        onReorder={reorder}
-                      />
-                    </Fragment>
-                  ))}
-                  <div
-                    onDragOver={(e) => {
-                      if (dragFromPalette) {
-                        e.preventDefault();
-                        setDragOverIdx(entity.fields.length);
-                      }
-                    }}
-                    onDragLeave={() => setDragOverIdx(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragFromPalette) {
-                        addField(dragFromPalette);
-                        setDragFromPalette(null);
-                        setDragOverIdx(null);
-                      }
-                    }}
-                    className={cn(
-                      "h-8 flex items-center justify-center text-xs text-muted transition-colors",
-                      !dragFromPalette && "pointer-events-none",
-                      dragOverIdx === entity.fields.length && dragFromPalette && "drop-zone-active",
+                            if (dragFromPalette) {
+                              addField(dragFromPalette);
+                              setDragFromPalette(null);
+                              setDragOverIdx(null);
+                            }
+                          }}
+                          className={cn(
+                            "h-8 mt-1 flex items-center justify-center text-xs text-muted transition-colors rounded-lg border-2 border-dashed border-transparent",
+                            !dragFromPalette && "pointer-events-none",
+                            dragOverIdx === entity.fields.length &&
+                              dragFromPalette &&
+                              "drop-zone-active border-accent",
+                          )}
+                        >
+                          {dragFromPalette ? t("designer.drop_here") : ""}
+                        </div>
+                      </>
                     )}
-                  >
-                    {dragFromPalette ? t("designer.drop_here") : t("designer.drop_between")}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* MCP bindings */}
-              <div className="mt-8">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">{t("entity.mcp_bindings")}</h3>
-                  <span className="text-[11px] text-muted font-mono">
-                    {t("entity.mcp_prefix", { prefix: entity.mcp })}
-                  </span>
-                </div>
-                <p className="text-xs text-muted mb-3">{t("entity.mcp_desc")}</p>
-                <McpBindingsEditor
-                  value={entity.mcpBindings ?? {}}
-                  onChange={(b: McpBindings) => setEntity((e) => ({ ...e, mcpBindings: b }))}
-                  fieldKeys={entity.fields.map((f) => f.name)}
-                  toolPrefix={entity.mcp}
-                />
-              </div>
-
-              {/* Procedure bindings (advanced) — override per-op sang native
-                  procedure (xem /procedures). Khi set, server records.*
-                  dispatch sang procedure-runner thay vì native CRUD. */}
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-2">{t("designer.proc_bindings")}</h3>
-                <p className="text-xs text-muted mb-3">{t("designer.proc_bindings_desc")}</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {(["list", "get", "create", "update", "delete"] as const).map((op) => (
-                    <div key={op} className="grid grid-cols-[80px_1fr] gap-2 items-center">
-                      <div className="text-xs uppercase font-mono text-muted">{op}</div>
-                      <Input
-                        placeholder={t("designer.proc_placeholder")}
-                        value={entity.procBindings?.[op] ?? ""}
-                        onChange={(e) =>
-                          setEntity((cur) => ({
-                            ...cur,
-                            procBindings: {
-                              ...(cur.procBindings ?? {}),
-                              [op]: e.target.value,
-                            },
-                          }))
-                        }
-                      />
+                {/* ── MCP bindings ─────────────────────────────────── */}
+                {schemaTab === "mcp" && (
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-muted">{t("entity.mcp_desc")}</p>
+                      <span className="text-[11px] text-muted font-mono">
+                        {t("entity.mcp_prefix", { prefix: entity.mcp })}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <McpBindingsEditor
+                      value={entity.mcpBindings ?? {}}
+                      onChange={(b: McpBindings) => setEntity((e) => ({ ...e, mcpBindings: b }))}
+                      fieldKeys={entity.fields.map((f) => f.name)}
+                      toolPrefix={entity.mcp}
+                    />
+                  </div>
+                )}
 
-              {/* Đồng bộ tự động theo lịch (server-side) — chỉ hiện
-                  khi op 'list' đã được bind tool MCP. */}
-              {entity.mcpBindings?.list?.tool && (
-                <div className="mt-8">
-                  <EntitySyncPanel entityId={entity.id} />
-                </div>
-              )}
+                {/* ── Procedure bindings ───────────────────────────── */}
+                {schemaTab === "proc" && (
+                  <div className="p-4">
+                    <p className="text-xs text-muted mb-4">{t("designer.proc_bindings_desc")}</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {(["list", "get", "create", "update", "delete"] as const).map((op) => (
+                        <div key={op} className="flex items-center gap-3">
+                          <div className="w-16 text-xs uppercase font-mono text-muted shrink-0">
+                            {op}
+                          </div>
+                          <Input
+                            className="flex-1"
+                            placeholder={t("designer.proc_placeholder")}
+                            value={entity.procBindings?.[op] ?? ""}
+                            onChange={(e) =>
+                              setEntity((cur) => ({
+                                ...cur,
+                                procBindings: { ...(cur.procBindings ?? {}), [op]: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Đồng bộ ─────────────────────────────────────── */}
+                {schemaTab === "sync" && entity.mcpBindings?.list?.tool && (
+                  <div className="p-4">
+                    <EntitySyncPanel entityId={entity.id} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

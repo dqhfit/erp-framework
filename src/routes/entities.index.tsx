@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { I } from "@/components/Icons";
 import { Button, Card } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { useEntities } from "@/stores/entities";
@@ -19,9 +20,18 @@ export const Route = createFileRoute("/entities/")({
       <div className="p-6 max-w-4xl">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Entities</h1>
-          <Button variant="primary" onClick={handleCreate}>
-            + Entity mới
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              icon={<I.Layers size={13} />}
+              onClick={() => navigate({ to: "/entities/erd" })}
+            >
+              ERD
+            </Button>
+            <Button variant="primary" onClick={handleCreate}>
+              + Entity mới
+            </Button>
+          </div>
         </div>
         {entities.length === 0 ? (
           <Card className="text-center text-muted py-12">

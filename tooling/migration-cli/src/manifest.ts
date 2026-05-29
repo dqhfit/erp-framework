@@ -108,6 +108,57 @@ export interface ManifestProc {
   execCount?: number;
   /** Phase Q1 — ISO timestamp lần đọc proc-stats. Để biết data này tươi hay cũ. */
   statsLastReadAt?: string;
+  /** V2 — AI phân loại nghiệp vụ proc.
+   *  create/read/update/delete: CRUD đơn giản
+   *  report: SELECT-heavy, aggregation, export
+   *  validation: kiểm tra rule + raise error
+   *  calculation: tính toán chỉ số, không ghi DB
+   *  workflow: nhiều branch IF/EXEC — phù hợp tier C
+   *  trigger: chạy on data-change (rare)
+   *  batch: chạy theo schedule (rare) */
+  businessCategory?:
+    | "create"
+    | "read"
+    | "update"
+    | "delete"
+    | "report"
+    | "validation"
+    | "calculation"
+    | "workflow"
+    | "trigger"
+    | "batch"
+    | "unknown";
+  /** Confidence 0-1 từ AI khi gán businessCategory. */
+  businessCategoryConfidence?: number;
+  /** ISO timestamp lần AI classify gần nhất. */
+  aiClassifiedAt?: string;
+  /** User override sau khi AI classify — override này ưu tiên hơn AI. */
+  userOverrideCategory?: ManifestProc["businessCategory"];
+  /** Complexity score (số reads + writes*2 + joinPairs + flags*5). Tính
+   *  on-demand nếu thiếu — dùng để sort proc đơn giản → phức tạp. */
+  complexity?: number;
+  /** sha256 (hex) của body T-SQL lần cuối được đọc. Dùng để skip classify
+   *  hoặc workflow codegen nếu body chưa đổi → kết quả ổn định, không drift. */
+  bodyHash?: string;
+  /** Cache kết quả AI classify cuối — nếu bodyHash khớp, dùng cache thay vì
+   *  gọi LLM (tiết kiệm chi phí + đảm bảo idempotent). */
+  aiClassifyCache?: {
+    bodyHash: string;
+    category: ManifestProc["businessCategory"];
+    confidence: number;
+    reasoning?: string;
+    recommendedTier?: "B" | "C" | "D";
+    at: string;
+  };
+  /** Cache kết quả AI workflow codegen cuối — dryRun có thể tái dùng. */
+  aiWorkflowCache?: {
+    bodyHash: string;
+    graph: { nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>> };
+    at: string;
+  };
+  /** ID workflow đã apply Tier C. Set khi codegenProcWorkflowApply chạy lần đầu. */
+  targetWorkflowId?: string;
+  targetWorkflowName?: string;
 }
 
 export interface ManifestCrossModuleEdge {

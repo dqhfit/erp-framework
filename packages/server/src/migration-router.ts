@@ -8,45 +8,61 @@
    Toàn bộ rbacProcedure("edit","settings") — admin only.
    ========================================================== */
 
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { resolve, dirname, sep } from "node:path";
-import { z } from "zod";
-import { and, eq, sql } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
-import YAML from "yaml";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, resolve, sep } from "node:path";
 import {
-  mssqlConnections,
-  enums,
   entities,
   entityRecords,
+  enums,
   migrationFullJobs,
   migrationFullJobTables,
+  mssqlConnections,
   pages,
+  procedures,
+  workflows,
 } from "@erp-framework/db";
-import { MssqlClient } from "@erp-framework/mssql-client";
+import { runDiscover } from "@erp-framework/migration-cli/discover";
 import {
-  enrichOneProc,
-  normalizeNames,
-  codegenProc,
-  generateProcSamples,
   auditModule,
+  codegenProc,
+  enrichOneProc,
+  generateProcSamples,
+  normalizeNames,
   type ProcSample,
 } from "@erp-framework/migration-cli/enrich";
-import { procedures } from "@erp-framework/db";
-import { mkdirSync } from "node:fs";
-import { runDiscover } from "@erp-framework/migration-cli/discover";
-import { rbacProcedure, router } from "./trpc";
+import { MssqlClient, analyzeProc } from "@erp-framework/mssql-client";
+import { TRPCError } from "@trpc/server";
+import { and, eq, sql } from "drizzle-orm";
+import YAML from "yaml";
+import { z } from "zod";
 import { decryptSecret } from "./crypto";
-import { enqueueMigrationJob, getMigrationJobStatus } from "./migration-worker";
-import { prepareFullJobTables, type FullJobItem } from "./migration-full-import";
 import type { DB } from "./db";
+import {
+  bodyHash,
+  classifyProcsBatch,
+  fetchProcBody,
+  type ProcClassifyInput,
+} from "./migration-classify-ai";
+import { codegenProcWorkflow } from "./migration-codegen-workflow";
+import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
+import { buildCombinedMigratedSet } from "./migration-migrated-set";
+import { enqueueMigrationJob, getMigrationJobStatus } from "./migration-worker";
+import { rbacProcedure, router } from "./trpc";
 
 const MIGRATION_ROOT = () => resolve(process.cwd(), "migration-plan");
 const MODULES_DIR = () => resolve(MIGRATION_ROOT(), "modules");
 const AI_LOG_DIR = () => resolve(MIGRATION_ROOT(), "ai-log");
 const DECISIONS_FILE = () => resolve(MIGRATION_ROOT(), "decisions.yaml");
 
+/** Số entry tối đa giữ trong decisions.yaml — rotate khi vượt (giữ tail). */
+const DECISION_LOG_CAP = 5000;
+/** Window dedupe — entry mới có cùng action+args với entry cuối trong window
+ *  này sẽ bỏ qua (không thêm). Tránh log phình khi user click lặp lại. */
+const DECISION_DEDUPE_WINDOW_MS = 10_000;
+
 /** Ghi log mọi thay đổi manifest vào decisions.yaml shared cross-module.
+ *  - Dedupe: nếu entry cuối trong 10s có cùng action+args → bỏ qua.
+ *  - Cap: giữ tail DECISION_LOG_CAP entry, rotate khi vượt.
  *  Khi seed module mới mà gặp cùng bảng MSSQL → có thể đọc decision cũ
  *  để auto-apply (vd kind=enum đã quyết). */
 function appendDecision(entry: Record<string, unknown>): void {
@@ -60,7 +76,30 @@ function appendDecision(entry: Record<string, unknown>): void {
       /* file hỏng → bắt đầu lại */
     }
   }
+
+  // Dedupe: so sánh với entry cuối cùng nếu trong window.
+  const last = arr[arr.length - 1] as Record<string, unknown> | undefined;
+  if (last && typeof last === "object") {
+    const lastAt = typeof last.at === "string" ? Date.parse(last.at) : 0;
+    const dt = Date.now() - lastAt;
+    if (
+      dt >= 0 &&
+      dt < DECISION_DEDUPE_WINDOW_MS &&
+      last.action === entry.action &&
+      last.module === entry.module &&
+      JSON.stringify(last.args ?? null) === JSON.stringify(entry.args ?? null)
+    ) {
+      return; // skip duplicate
+    }
+  }
+
   arr.push({ at: new Date().toISOString(), ...entry });
+
+  // Rotate nếu vượt cap.
+  if (arr.length > DECISION_LOG_CAP) {
+    arr = arr.slice(arr.length - DECISION_LOG_CAP);
+  }
+
   writeFileSync(p, YAML.stringify(arr, { lineWidth: 0 }), "utf8");
 }
 
@@ -90,6 +129,58 @@ const ACTION_VALUES = [
   "audit",
 ] as const;
 const moduleNameSchema = z.string().regex(/^[a-z][a-z0-9_]*$/, "Module name phải snake_case");
+
+/** Shape 1 proc-row chung — dùng bởi cả listProcsToMigrate (per-module)
+ *  và listAllProcsToMigrate (cross-module). filterMode ảnh hưởng đến
+ *  filterStatus đầu ra (reads-only chấp nhận partial). */
+function shapeProcRow(
+  proc: Record<string, unknown>,
+  migrated: Set<string>,
+  filterMode: "all" | "reads-only" = "all",
+) {
+  const reads = (proc.reads as string[]) ?? [];
+  const writes = (proc.writes as string[]) ?? [];
+  const flags = (proc.flags as string[]) ?? [];
+  const all = [...new Set([...reads, ...writes])];
+  const missing = all.filter((t) => !migrated.has(t.toLowerCase()));
+  const readsMissing = reads.filter((t) => !migrated.has(t.toLowerCase()));
+
+  let filterStatus: "ready" | "partial" | "blocked";
+  if (missing.length === 0) filterStatus = "ready";
+  else if (filterMode === "reads-only" && readsMissing.length === 0) filterStatus = "partial";
+  else filterStatus = "blocked";
+
+  const complexity =
+    reads.length +
+    writes.length * 2 +
+    ((proc.callsProcs as string[] | undefined)?.length ?? 0) * 3 +
+    flags.length * 5;
+
+  return {
+    name: proc.name as string,
+    reads,
+    writes,
+    missingTables: missing,
+    filterStatus,
+    active: proc.active !== false,
+    lastExecAt: (proc.lastExecAt as string | null) ?? null,
+    execCount: (proc.execCount as number | undefined) ?? 0,
+    complexity,
+    suggestedTier: (proc.suggestedTier as "B" | "C" | "D" | undefined) ?? "D",
+    businessCategory:
+      (proc.userOverrideCategory as string | undefined) ??
+      (proc.businessCategory as string | undefined) ??
+      null,
+    businessCategoryConfidence: (proc.businessCategoryConfidence as number | undefined) ?? null,
+    targetProcName: (proc.targetProcName as string | undefined) ?? null,
+    targetFile: (proc.targetFile as string | undefined) ?? null,
+    targetWorkflowId: (proc.targetWorkflowId as string | undefined) ?? null,
+    targetWorkflowName: (proc.targetWorkflowName as string | undefined) ?? null,
+    label: (proc.label as string | undefined) ?? null,
+    description: (proc.description as string | undefined) ?? null,
+    flags,
+  };
+}
 
 export const migrationRouter = router({
   /** Liệt kê module YAML hiện có + tóm tắt. */
@@ -3584,6 +3675,936 @@ export const migrationRouter = router({
       modulesDirExists: existsSync(MODULES_DIR()),
     };
   }),
+
+  /* ── V2: Migrate stored procedures ────────────────────────────
+   * Liệt kê proc trong manifest module + filter theo "đã migrate
+   * bảng nào" + sort theo complexity + đánh dấu nghiệp vụ AI. */
+  listProcsToMigrate: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        /** Module manifest YAML. Accept cả _quick-* prefix. */
+        module: z.string().min(1).max(80),
+        /** "all" → reads ∪ writes đã migrate. "reads-only" → chỉ reads. */
+        filterMode: z.enum(["all", "reads-only"]).default("all"),
+        /** Chỉ proc có lastExecAt < N ngày. 0 = bỏ filter. */
+        activeWithinDays: z.number().int().min(0).max(3650).default(0),
+        /** Sort. */
+        sortBy: z.enum(["complexity-asc", "complexity-desc", "name"]).default("complexity-asc"),
+        /** Bao gồm proc dirty (blocked) trong output để UI hiển thị disabled. */
+        includeBlocked: z.boolean().default(false),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Manifest module không tồn tại: ${input.module}`,
+        });
+      }
+      const manifest = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<{
+          name: string;
+          reads?: string[];
+          writes?: string[];
+          flags?: string[];
+          suggestedTier?: "B" | "C" | "D";
+          active?: boolean;
+          lastExecAt?: string | null;
+          execCount?: number;
+          businessCategory?: string;
+          businessCategoryConfidence?: number;
+          userOverrideCategory?: string;
+          targetProcName?: string;
+          targetFile?: string;
+          callsProcs?: string[];
+          label?: string;
+          description?: string;
+        }>;
+      };
+
+      // Combined: YAML manifest tables + DB entities (Migrate nhanh).
+      const migrated = (await buildCombinedMigratedSet(ctx.db, ctx.user.companyId)).tables;
+      const cutoff =
+        input.activeWithinDays > 0 ? Date.now() - input.activeWithinDays * 86_400_000 : 0;
+
+      const rows = (manifest.procs ?? []).map((proc) => {
+        const reads = proc.reads ?? [];
+        const writes = proc.writes ?? [];
+        const all = [...new Set([...reads, ...writes])];
+        const missing = all.filter((t) => !migrated.has(t.toLowerCase()));
+        const readsMissing = reads.filter((t) => !migrated.has(t.toLowerCase()));
+
+        let filterStatus: "ready" | "partial" | "blocked";
+        if (missing.length === 0) filterStatus = "ready";
+        else if (input.filterMode === "reads-only" && readsMissing.length === 0)
+          filterStatus = "partial";
+        else filterStatus = "blocked";
+
+        // Complexity: reads + writes*2 + (callsProcs nested) + flags*5
+        const complexity =
+          reads.length +
+          writes.length * 2 +
+          (proc.callsProcs?.length ?? 0) * 3 +
+          (proc.flags?.length ?? 0) * 5;
+
+        return {
+          name: proc.name,
+          reads,
+          writes,
+          missingTables: missing,
+          filterStatus,
+          active: proc.active !== false,
+          lastExecAt: proc.lastExecAt ?? null,
+          execCount: proc.execCount ?? 0,
+          complexity,
+          suggestedTier: proc.suggestedTier ?? "D",
+          businessCategory: proc.userOverrideCategory ?? proc.businessCategory ?? null,
+          businessCategoryConfidence: proc.businessCategoryConfidence ?? null,
+          targetProcName: proc.targetProcName ?? null,
+          targetFile: proc.targetFile ?? null,
+          label: proc.label ?? null,
+          description: proc.description ?? null,
+          flags: proc.flags ?? [],
+        };
+      });
+
+      const filtered = rows.filter((r) => {
+        if (!input.includeBlocked && r.filterStatus === "blocked") return false;
+        if (cutoff > 0) {
+          if (!r.lastExecAt) return false;
+          if (new Date(r.lastExecAt).getTime() < cutoff) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        if (input.sortBy === "name") return a.name.localeCompare(b.name);
+        if (input.sortBy === "complexity-desc") return b.complexity - a.complexity;
+        return a.complexity - b.complexity;
+      });
+
+      const totalReady = rows.filter((r) => r.filterStatus === "ready").length;
+      const totalBlocked = rows.filter((r) => r.filterStatus === "blocked").length;
+      const totalPartial = rows.filter((r) => r.filterStatus === "partial").length;
+
+      return {
+        module: input.module,
+        rows: filtered,
+        counts: {
+          total: rows.length,
+          ready: totalReady,
+          partial: totalPartial,
+          blocked: totalBlocked,
+          shown: filtered.length,
+        },
+        migratedTableCount: migrated.size,
+      };
+    }),
+
+  /** Aggregate cross-module — quét TẤT CẢ manifest YAML trong migration-plan/
+   *  modules/ và trả proc rows đã filter, grouped theo module.
+   *  Dùng cho screen "Migrate proc đa-module" trong nhóm Công cụ migrate. */
+  listAllProcsToMigrate: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        filterMode: z.enum(["all", "reads-only"]).default("all"),
+        activeWithinDays: z.number().int().min(0).max(3650).default(0),
+        sortBy: z.enum(["complexity-asc", "complexity-desc", "name"]).default("complexity-asc"),
+        includeBlocked: z.boolean().default(false),
+        /** Substring lọc module name (case-insensitive). */
+        moduleFilter: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const dir = MODULES_DIR();
+      // Combined: YAML + DB entities. Phải lấy ra trước cả check existsSync(dir)
+      // để cover trường hợp chỉ migrate bằng Migrate nhanh (không có YAML).
+      const migrated = (await buildCombinedMigratedSet(ctx.db, ctx.user.companyId)).tables;
+      if (!existsSync(dir)) {
+        return {
+          rowsByModule: {} as Record<string, ReturnType<typeof shapeProcRow>[]>,
+          modules: [] as string[],
+          counts: { total: 0, ready: 0, partial: 0, blocked: 0, shown: 0 },
+          migratedTableCount: migrated.size,
+        };
+      }
+      const cutoff =
+        input.activeWithinDays > 0 ? Date.now() - input.activeWithinDays * 86_400_000 : 0;
+      const mfLower = input.moduleFilter?.toLowerCase() ?? "";
+
+      const files = readdirSync(dir).filter(
+        (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
+      );
+
+      const rowsByModule: Record<string, ReturnType<typeof shapeProcRow>[]> = {};
+      const moduleNames: string[] = [];
+      let totTotal = 0;
+      let totReady = 0;
+      let totPartial = 0;
+      let totBlocked = 0;
+      let totShown = 0;
+
+      for (const f of files) {
+        const moduleName = f.replace(/\.yaml$/, "");
+        if (mfLower && !moduleName.toLowerCase().includes(mfLower)) continue;
+
+        let manifest: { procs?: Array<Record<string, unknown>> };
+        try {
+          manifest = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as typeof manifest;
+        } catch {
+          continue;
+        }
+
+        const allRows = (manifest.procs ?? []).map((p) =>
+          shapeProcRow(p, migrated, input.filterMode),
+        );
+
+        const filtered = allRows.filter((r) => {
+          if (!input.includeBlocked && r.filterStatus === "blocked") return false;
+          if (cutoff > 0) {
+            if (!r.lastExecAt) return false;
+            if (new Date(r.lastExecAt).getTime() < cutoff) return false;
+          }
+          return true;
+        });
+
+        filtered.sort((a, b) => {
+          if (input.sortBy === "name") return a.name.localeCompare(b.name);
+          if (input.sortBy === "complexity-desc") return b.complexity - a.complexity;
+          return a.complexity - b.complexity;
+        });
+
+        totTotal += allRows.length;
+        totReady += allRows.filter((r) => r.filterStatus === "ready").length;
+        totPartial += allRows.filter((r) => r.filterStatus === "partial").length;
+        totBlocked += allRows.filter((r) => r.filterStatus === "blocked").length;
+        totShown += filtered.length;
+
+        if (filtered.length > 0) {
+          rowsByModule[moduleName] = filtered;
+          moduleNames.push(moduleName);
+        }
+      }
+
+      return {
+        rowsByModule,
+        modules: moduleNames.sort(),
+        counts: {
+          total: totTotal,
+          ready: totReady,
+          partial: totPartial,
+          blocked: totBlocked,
+          shown: totShown,
+        },
+        migratedTableCount: migrated.size,
+      };
+    }),
+
+  /** AI phân loại nghiệp vụ cho list proc — ghi kết quả vào manifest YAML.
+   *  Idempotent: mode="skip-existing" (default) bỏ proc đã classify; "if-stale"
+   *  bỏ proc có bodyHash khớp; "force" chạy mọi proc.
+   *  Bảo toàn userOverrideCategory — không bao giờ ghi đè. */
+  classifyProcsAi: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        module: z.string().min(1).max(80),
+        /** Tên proc đầy đủ schema.name. Nếu rỗng → classify tất cả proc trong manifest. */
+        names: z.array(z.string()).default([]),
+        /** Kết nối MSSQL để fetch body. Nếu rỗng → dùng default connection. */
+        connectionId: z.string().uuid().optional(),
+        /** Chế độ chạy lại:
+         *  - skip-existing (default): bỏ proc đã có businessCategory
+         *  - if-stale: chạy lại nếu bodyHash khác cache (body đã đổi trong MSSQL)
+         *  - force: chạy lại tất cả không quan tâm cache */
+        mode: z.enum(["skip-existing", "if-stale", "force"]).default("skip-existing"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Manifest module không tồn tại: ${input.module}`,
+        });
+      }
+      const manifest = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<Record<string, unknown>>;
+      };
+      const procs = manifest.procs ?? [];
+      const targets =
+        input.names.length > 0
+          ? procs.filter((pr) => input.names.includes(pr.name as string))
+          : procs;
+
+      if (targets.length === 0) {
+        return { module: input.module, classified: 0, skipped: 0, results: [] };
+      }
+
+      const mssql = input.connectionId
+        ? await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId)
+        : await openDefaultMssql(ctx.db, ctx.user.companyId);
+
+      const skippedNames: string[] = [];
+      const cachedHits: Array<{ name: string; cache: Record<string, unknown> }> = [];
+
+      try {
+        const inputs: ProcClassifyInput[] = [];
+        for (const pr of targets) {
+          const name = pr.name as string;
+          const body = await fetchProcBody(mssql, name);
+          if (!body) {
+            skippedNames.push(name);
+            continue;
+          }
+          const hash = bodyHash(body);
+
+          // ── Skip logic theo mode ──
+          if (input.mode === "skip-existing" && pr.businessCategory) {
+            skippedNames.push(name);
+            continue;
+          }
+          if (input.mode === "if-stale" && pr.bodyHash === hash) {
+            // Body chưa đổi → re-use cache nếu có
+            if (
+              pr.aiClassifyCache &&
+              (pr.aiClassifyCache as { bodyHash: string }).bodyHash === hash
+            ) {
+              cachedHits.push({ name, cache: pr.aiClassifyCache as Record<string, unknown> });
+              skippedNames.push(name);
+              continue;
+            }
+          }
+
+          // Lưu bodyHash trên proc trước khi classify để track sau này.
+          pr.bodyHash = hash;
+
+          inputs.push({
+            name,
+            body,
+            reads: (pr.reads as string[]) ?? [],
+            writes: (pr.writes as string[]) ?? [],
+            flags: (pr.flags as string[]) ?? [],
+            label: pr.label as string | undefined,
+            description: pr.description as string | undefined,
+          });
+        }
+
+        const results =
+          inputs.length > 0 ? await classifyProcsBatch(ctx.db, ctx.user.companyId, inputs) : [];
+        const now = new Date().toISOString();
+        const byName = new Map(results.map((r) => [r.name, r]));
+
+        for (const pr of procs) {
+          const name = pr.name as string;
+          const r = byName.get(name);
+          if (!r) continue;
+          // KHÔNG ghi đè khi user đã override — preserve.
+          if (!pr.userOverrideCategory) {
+            pr.businessCategory = r.category;
+            pr.businessCategoryConfidence = r.confidence;
+          }
+          pr.aiClassifiedAt = now;
+          pr.aiClassifyCache = {
+            bodyHash: pr.bodyHash,
+            category: r.category,
+            confidence: r.confidence,
+            reasoning: r.reasoning,
+            recommendedTier: r.recommendedTier,
+            at: now,
+          };
+          if (r.recommendedTier && !pr.targetProcName && !pr.targetFile && !pr.targetWorkflowId) {
+            // Chỉ gợi ý tier khi user chưa apply codegen tier nào — không override.
+            pr.suggestedTier = r.recommendedTier;
+          }
+        }
+
+        if (results.length > 0 || cachedHits.length > 0) {
+          writeFileSync(p, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+        }
+
+        if (results.length > 0) {
+          appendDecision({
+            module: input.module,
+            action: "classifyProcsAi",
+            by: ctx.user.id,
+            args: { mode: input.mode, classified: results.length, skipped: skippedNames.length },
+          });
+        }
+
+        return {
+          module: input.module,
+          classified: results.length,
+          skipped: skippedNames.length,
+          cached: cachedHits.length,
+          results,
+          skippedNames,
+        };
+      } finally {
+        await mssql.close();
+      }
+    }),
+
+  /** Tier C codegen — convert proc → WorkflowDef. Dùng cache nếu bodyHash khớp,
+   *  tránh gọi LLM lặp lại (tiết kiệm chi phí + đảm bảo idempotent).
+   *  Set useCache=false để force re-call LLM. */
+  codegenProcWorkflowDryRun: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        module: z.string().min(1).max(80),
+        procName: z.string().min(1),
+        connectionId: z.string().uuid().optional(),
+        /** false → bypass cache, gọi LLM lại. Default true. */
+        useCache: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
+      }
+      const manifest = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<Record<string, unknown>>;
+        tables?: Array<{ name: string; suggestedEntityName?: string }>;
+      };
+      const proc = (manifest.procs ?? []).find((pr) => pr.name === input.procName);
+      if (!proc) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Proc không có trong manifest." });
+      }
+
+      const mssql = input.connectionId
+        ? await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId)
+        : await openDefaultMssql(ctx.db, ctx.user.companyId);
+
+      try {
+        const body = await fetchProcBody(mssql, input.procName);
+        if (!body) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Không lấy được body proc từ MSSQL.",
+          });
+        }
+        const hash = bodyHash(body);
+
+        // Cache hit check
+        if (input.useCache && proc.aiWorkflowCache) {
+          const cache = proc.aiWorkflowCache as {
+            bodyHash: string;
+            graph: { nodes: unknown[]; edges: unknown[] };
+            at: string;
+          };
+          if (cache.bodyHash === hash && cache.graph) {
+            return {
+              ok: true,
+              graph: cache.graph,
+              error: undefined,
+              fromCache: true,
+              cacheAt: cache.at,
+            };
+          }
+        }
+
+        // Build mapping table → entity từ manifest hiện tại.
+        const tableToEntity: Record<string, string> = {};
+        for (const t of manifest.tables ?? []) {
+          if (t.suggestedEntityName) tableToEntity[t.name] = t.suggestedEntityName;
+        }
+        const result = await codegenProcWorkflow(ctx.db, ctx.user.companyId, {
+          name: input.procName,
+          body,
+          reads: (proc.reads as string[]) ?? [],
+          writes: (proc.writes as string[]) ?? [],
+          tableToEntity,
+          label: proc.label as string | undefined,
+          description: proc.description as string | undefined,
+        });
+
+        // Lưu cache khi có graph hợp lệ.
+        if (result.graph) {
+          proc.bodyHash = hash;
+          proc.aiWorkflowCache = {
+            bodyHash: hash,
+            graph: result.graph,
+            at: new Date().toISOString(),
+          };
+          writeFileSync(p, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+        }
+
+        return {
+          ok: result.graph != null,
+          graph: result.graph,
+          error: result.error,
+          fromCache: false,
+        };
+      } finally {
+        await mssql.close();
+      }
+    }),
+
+  /** Tier C apply — sau khi user duyệt graph, upsert vào bảng workflows.
+   *  Idempotent: overwriteIfExists=false (default) bảo vệ graph user đã sửa
+   *  thủ công trong /workflows/<id>. Set =true mới override. */
+  codegenProcWorkflowApply: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        module: z.string().min(1).max(80),
+        procName: z.string().min(1),
+        /** WorkflowDef graph đã duyệt. Cho phép user sửa nodes/edges trước apply. */
+        graph: z.object({
+          nodes: z.array(z.record(z.string(), z.unknown())),
+          edges: z.array(z.record(z.string(), z.unknown())),
+        }),
+        /** Tên workflow trong hệ thống mới — default = procName sanitize. */
+        workflowName: z.string().min(1).optional(),
+        /** Khi workflow đã tồn tại:
+         *  - false (default): KHÔNG ghi đè, trả về existing ID + reused=true.
+         *    Bảo vệ user edits sau khi apply lần đầu.
+         *  - true: ghi đè graph. */
+        overwriteIfExists: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const name =
+        input.workflowName ?? input.procName.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+
+      const [existing] = await ctx.db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(and(eq(workflows.companyId, ctx.user.companyId), eq(workflows.name, name)))
+        .limit(1);
+
+      let workflowId: string;
+      let reused = false;
+      if (existing) {
+        if (!input.overwriteIfExists) {
+          // Idempotent: workflow đã tồn tại → reuse, bảo vệ user edits.
+          workflowId = existing.id;
+          reused = true;
+        } else {
+          const [r] = await ctx.db
+            .update(workflows)
+            .set({
+              graph: input.graph,
+              updatedAt: new Date(),
+            })
+            .where(eq(workflows.id, existing.id))
+            .returning({ id: workflows.id });
+          if (!r) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Update fail." });
+          workflowId = r.id;
+        }
+      } else {
+        const [r] = await ctx.db
+          .insert(workflows)
+          .values({
+            companyId: ctx.user.companyId,
+            name,
+            triggerType: "manual",
+            triggerConfig: {},
+            graph: input.graph,
+            isActive: false,
+          })
+          .returning({ id: workflows.id });
+        if (!r) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert fail." });
+        workflowId = r.id;
+      }
+
+      // Đánh dấu manifest proc đã codegen Tier C (only nếu chưa set hoặc thay đổi).
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (existsSync(p)) {
+        const manifest = YAML.parse(readFileSync(p, "utf8")) as {
+          procs?: Array<Record<string, unknown>>;
+        };
+        const proc = (manifest.procs ?? []).find((pr) => pr.name === input.procName);
+        if (
+          proc &&
+          (proc.targetWorkflowId !== workflowId ||
+            proc.targetWorkflowName !== name ||
+            proc.suggestedTier !== "C")
+        ) {
+          proc.targetWorkflowId = workflowId;
+          proc.targetWorkflowName = name;
+          proc.suggestedTier = "C";
+          writeFileSync(p, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+        }
+      }
+
+      // Chỉ log decision khi thật sự ghi DB (không log khi reused = no-op).
+      if (!reused) {
+        appendDecision({
+          module: input.module,
+          action: "codegenProcWorkflowApply",
+          by: ctx.user.id,
+          args: { procName: input.procName, workflowId, workflowName: name },
+        });
+      }
+
+      return { ok: true, workflowId, workflowName: name, reused };
+    }),
+
+  /** User override category cho 1 proc — ghi userOverrideCategory. */
+  setProcCategory: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        module: z.string().min(1).max(80),
+        procName: z.string().min(1),
+        category: z
+          .enum([
+            "create",
+            "read",
+            "update",
+            "delete",
+            "report",
+            "validation",
+            "calculation",
+            "workflow",
+            "trigger",
+            "batch",
+            "unknown",
+          ])
+          .nullable(),
+      }),
+    )
+    .mutation(({ ctx, input }) => {
+      const p = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(p)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
+      }
+      const manifest = YAML.parse(readFileSync(p, "utf8")) as {
+        procs?: Array<Record<string, unknown>>;
+      };
+      const proc = (manifest.procs ?? []).find((pr) => pr.name === input.procName);
+      if (!proc) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Proc không có trong manifest." });
+      }
+      if (input.category === null) {
+        delete proc.userOverrideCategory;
+      } else {
+        proc.userOverrideCategory = input.category;
+      }
+      writeFileSync(p, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+      appendDecision({
+        module: input.module,
+        action: "setProcCategory",
+        by: ctx.user.id,
+        args: { procName: input.procName, category: input.category },
+      });
+      return { ok: true };
+    }),
+
+  /** Liệt kê entity đã migrate + gợi ý FK (từ proc joinPairs trong manifest). */
+  listMigratedRelations: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        /** Filter theo module YAML (optional). null = mọi module. */
+        module: z.string().min(1).max(80).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Lấy entity có meta.source.kind = "migration"
+      const rows = await ctx.db
+        .select({
+          id: entities.id,
+          name: entities.name,
+          label: entities.label,
+          fields: entities.fields,
+          meta: entities.meta,
+        })
+        .from(entities)
+        .where(eq(entities.companyId, ctx.user.companyId));
+
+      const migratedEntities = rows
+        .map((r) => {
+          const meta = (r.meta ?? {}) as {
+            source?: { kind?: string; mssqlTable?: string; module?: string };
+          };
+          const src = meta.source;
+          if (src?.kind !== "migration") return null;
+          if (input.module && src.module !== input.module) return null;
+          const fields = (r.fields ?? []) as Array<{
+            name: string;
+            label?: string;
+            type: string;
+            ref?: string;
+          }>;
+          return {
+            id: r.id,
+            name: r.name,
+            label: r.label,
+            mssqlTable: src.mssqlTable ?? null,
+            module: src.module ?? null,
+            fields: fields.map((f) => ({
+              name: f.name,
+              label: f.label ?? f.name,
+              type: f.type,
+              ref: f.ref ?? null,
+            })),
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => x != null);
+
+      // Build lookup: mssqlTable → entityId
+      const tableToEntity = new Map<string, { id: string; name: string }>();
+      for (const e of migratedEntities) {
+        if (e.mssqlTable) {
+          tableToEntity.set(e.mssqlTable.toLowerCase(), { id: e.id, name: e.name });
+        }
+      }
+
+      // Đọc inferredRelations từ tất cả manifest YAML (cross-module).
+      const hints: Array<{
+        sourceEntityId: string;
+        sourceEntityName: string;
+        sourceField: string;
+        targetEntityId: string;
+        targetEntityName: string;
+        targetField: string;
+        fromProc: string;
+        module: string;
+        applied: boolean;
+      }> = [];
+      const dir = MODULES_DIR();
+      if (existsSync(dir)) {
+        const files = readdirSync(dir).filter(
+          (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
+        );
+        for (const f of files) {
+          if (input.module && !f.startsWith(`${input.module}.`)) continue;
+          try {
+            const m = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as {
+              tables?: Array<{
+                name: string;
+                inferredRelations?: Array<{
+                  column: string;
+                  refTable: string;
+                  refColumn: string;
+                  sourceProc: string;
+                }>;
+              }>;
+            };
+            for (const t of m.tables ?? []) {
+              const sourceEntity = tableToEntity.get(t.name.toLowerCase());
+              if (!sourceEntity) continue;
+              for (const rel of t.inferredRelations ?? []) {
+                const targetEntity = tableToEntity.get(rel.refTable.toLowerCase());
+                if (!targetEntity) continue;
+                // Đã apply nếu field source có .ref = targetEntity.id
+                const sourceFieldRow = migratedEntities
+                  .find((e) => e.id === sourceEntity.id)
+                  ?.fields.find((fld) => fld.name === rel.column);
+                const applied = sourceFieldRow?.ref === targetEntity.id;
+                hints.push({
+                  sourceEntityId: sourceEntity.id,
+                  sourceEntityName: sourceEntity.name,
+                  sourceField: rel.column,
+                  targetEntityId: targetEntity.id,
+                  targetEntityName: targetEntity.name,
+                  targetField: rel.refColumn,
+                  fromProc: rel.sourceProc,
+                  module: f.replace(/\.yaml$/, ""),
+                  applied,
+                });
+              }
+            }
+          } catch {
+            /* skip yaml hỏng */
+          }
+        }
+      }
+
+      // Dedup hints theo (sourceEntity, sourceField, targetEntity).
+      const seen = new Set<string>();
+      const dedupHints = hints.filter((h) => {
+        const key = `${h.sourceEntityId}|${h.sourceField}|${h.targetEntityId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return {
+        entities: migratedEntities,
+        hints: dedupHints,
+      };
+    }),
+
+  /** Apply 1 hint: set field.ref = targetEntityId trên source entity. */
+  applyRelationHint: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        sourceEntityId: z.string().uuid(),
+        sourceField: z.string().min(1),
+        targetEntityId: z.string().uuid().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [ent] = await ctx.db
+        .select()
+        .from(entities)
+        .where(
+          and(eq(entities.id, input.sourceEntityId), eq(entities.companyId, ctx.user.companyId)),
+        )
+        .limit(1);
+      if (!ent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Entity nguồn không tồn tại." });
+      }
+      const fields = (ent.fields ?? []) as Array<Record<string, unknown>>;
+      const field = fields.find((f) => (f.name as string) === input.sourceField);
+      if (!field) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Field nguồn không tồn tại." });
+      }
+
+      // Idempotent no-op: state đã đúng → return luôn, không ghi DB + không log.
+      const currentRef = (field.ref as string | undefined) ?? null;
+      if (currentRef === input.targetEntityId) {
+        return { ok: true, changed: false };
+      }
+
+      if (input.targetEntityId == null) {
+        delete field.ref;
+      } else {
+        // Verify target tồn tại + cùng company.
+        const [target] = await ctx.db
+          .select({ id: entities.id })
+          .from(entities)
+          .where(
+            and(eq(entities.id, input.targetEntityId), eq(entities.companyId, ctx.user.companyId)),
+          )
+          .limit(1);
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Entity đích không tồn tại." });
+        }
+        field.ref = input.targetEntityId;
+        // Đổi type sang "lookup" nếu chưa phải lookup/multi-lookup.
+        const curType = field.type as string;
+        if (curType !== "lookup" && curType !== "multi-lookup") {
+          field.type = "lookup";
+        }
+      }
+
+      await ctx.db
+        .update(entities)
+        .set({ fields, updatedAt: new Date() })
+        .where(eq(entities.id, input.sourceEntityId));
+
+      appendDecision({
+        action: "applyRelationHint",
+        by: ctx.user.id,
+        args: {
+          sourceEntityId: input.sourceEntityId,
+          sourceField: input.sourceField,
+          targetEntityId: input.targetEntityId,
+        },
+      });
+
+      return { ok: true, changed: true };
+    }),
+
+  /** Phân tích câu SQL tùy ý — trích xuất JOIN pairs, map sang entity đã
+   *  migrate, trả danh sách gợi ý ref để user xác nhận rồi apply.
+   *  Không yêu cầu kết nối MSSQL — chỉ parse text + đọc DB nội bộ. */
+  analyzeRelationsFromSql: rbacProcedure("edit", "settings")
+    .input(z.object({ sql: z.string().min(1).max(200_000) }))
+    .mutation(async ({ ctx, input }) => {
+      const { joinPairs } = analyzeProc(input.sql);
+
+      // Load toàn bộ entity công ty — filter migration entity bằng meta.
+      const rows = await ctx.db
+        .select({
+          id: entities.id,
+          name: entities.name,
+          label: entities.label,
+          fields: entities.fields,
+          meta: entities.meta,
+        })
+        .from(entities)
+        .where(eq(entities.companyId, ctx.user.companyId));
+
+      // Build lookup: mssqlTable.toLowerCase() → entity info + fields
+      const tableToEntity = new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          label: string;
+          fields: Array<{ name: string; label: string; type: string; ref?: string | null }>;
+        }
+      >();
+      for (const r of rows) {
+        const meta = (r.meta ?? {}) as { source?: { kind?: string; mssqlTable?: string } };
+        const mssqlTable = meta.source?.mssqlTable;
+        if (!mssqlTable) continue;
+        const fields = (
+          (r.fields ?? []) as Array<{ name: string; label?: string; type: string; ref?: string }>
+        ).map((f) => ({
+          name: f.name,
+          label: f.label ?? f.name,
+          type: f.type,
+          ref: f.ref ?? null,
+        }));
+        tableToEntity.set(mssqlTable.toLowerCase(), {
+          id: r.id,
+          name: r.name,
+          label: r.label,
+          fields,
+        });
+      }
+
+      // Với mỗi join pair, kiểm tra cả hai chiều: leftTable.leftCol → rightTable
+      // và rightTable.rightCol → leftTable. Ưu tiên chiều có field tồn tại.
+      type Hint = {
+        sourceEntityId: string;
+        sourceEntityName: string;
+        sourceEntityLabel: string;
+        sourceField: string;
+        sourceFieldLabel: string;
+        targetEntityId: string;
+        targetEntityName: string;
+        targetEntityLabel: string;
+        targetField: string;
+        applied: boolean;
+      };
+      const hints: Hint[] = [];
+      const seen = new Set<string>();
+
+      const addHint = (srcTable: string, srcCol: string, tgtTable: string, tgtCol: string) => {
+        const src = tableToEntity.get(srcTable.toLowerCase());
+        const tgt = tableToEntity.get(tgtTable.toLowerCase());
+        if (!src || !tgt) return;
+        const srcField = src.fields.find((f) => f.name.toLowerCase() === srcCol.toLowerCase());
+        if (!srcField) return;
+        const key = `${src.id}|${srcField.name}|${tgt.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        hints.push({
+          sourceEntityId: src.id,
+          sourceEntityName: src.name,
+          sourceEntityLabel: src.label,
+          sourceField: srcField.name,
+          sourceFieldLabel: srcField.label,
+          targetEntityId: tgt.id,
+          targetEntityName: tgt.name,
+          targetEntityLabel: tgt.label,
+          targetField: tgtCol,
+          applied: srcField.ref === tgt.id,
+        });
+      };
+
+      for (const p of joinPairs) {
+        addHint(p.leftTable, p.leftColumn, p.rightTable, p.rightColumn);
+        addHint(p.rightTable, p.rightColumn, p.leftTable, p.leftColumn);
+      }
+
+      return {
+        joinPairsTotal: joinPairs.length,
+        hints,
+        unmappedTables: [
+          ...new Set(
+            joinPairs
+              .flatMap((p) => [p.leftTable, p.rightTable])
+              .filter((t) => !tableToEntity.has(t.toLowerCase())),
+          ),
+        ],
+      };
+    }),
 });
 
 interface MaterializeOneOpts {

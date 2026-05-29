@@ -209,6 +209,7 @@ export function WorkflowDesigner({ workflowId }: Props) {
 function WorkflowInner({ workflowId }: Props) {
   const t = useT();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
+  const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<WfNodeData>>(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(INITIAL_EDGES);
@@ -350,6 +351,20 @@ function WorkflowInner({ workflowId }: Props) {
             <I.Check size={11} /> {t("designer.saved")}
           </span>
         )}
+        <div className="w-px h-5 bg-border mx-1" />
+        <button
+          type="button"
+          title={inspectorVisible ? "Ẩn inspector" : "Hiện inspector"}
+          onClick={() => setInspectorVisible(!inspectorVisible)}
+          className={cn(
+            "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+            inspectorVisible
+              ? "bg-accent/15 text-accent hover:bg-accent/25"
+              : "text-muted hover:bg-hover/60",
+          )}
+        >
+          <I.PanelRight size={14} />
+        </button>
       </div>
       <AiAssistDrawer
         open={aiOpen}

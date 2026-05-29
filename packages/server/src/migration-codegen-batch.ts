@@ -6,7 +6,7 @@
    progress per proc qua WS channel migration:<userId>.
    ========================================================== */
 
-import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import YAML from "yaml";
 import { and, eq } from "drizzle-orm";
@@ -14,6 +14,7 @@ import { entities, procedures } from "@erp-framework/db";
 import { codegenProc, type CodegenProcResult } from "@erp-framework/migration-cli/enrich";
 import type { MssqlClient } from "@erp-framework/mssql-client";
 import type { DB } from "./db";
+import { buildCombinedMigratedTableSet } from "./migration-migrated-set";
 
 const MODULES_DIR = (): string => resolve(process.cwd(), "migration-plan", "modules");
 
@@ -66,38 +67,6 @@ interface ManifestShape {
   procs?: ProcEntry[];
 }
 
-/** Build set bảng đã migrate cross-module (có migratedAt) — Phase Q4 logic
- *  inline để tránh round-trip qua tRPC. */
-function buildMigratedSet(): Set<string> {
-  const set = new Set<string>();
-  const dir = MODULES_DIR();
-  if (!existsSync(dir)) return set;
-  // Include _quick-* manifest (Phase S).
-  const files = readdirSync(dir).filter(
-    (f) => f.endsWith(".yaml") && !f.startsWith("_example") && !f.endsWith(".enriched.yaml"),
-  );
-  for (const f of files) {
-    try {
-      const m = YAML.parse(readFileSync(resolve(dir, f), "utf8")) as {
-        tables?: Array<{
-          name: string;
-          migratedAt?: string;
-          suggestedKind?: "entity" | "enum";
-        }>;
-      };
-      for (const t of m.tables ?? []) {
-        const key = t.name.toLowerCase();
-        if (t.migratedAt) set.add(key);
-        // Enum không cần ETL — coi như clean.
-        if (t.suggestedKind === "enum") set.add(key);
-      }
-    } catch {
-      /* skip yaml hỏng */
-    }
-  }
-  return set;
-}
-
 /** Loop tất cả proc trong manifest, sinh code + apply. Publish progress
  *  qua callback để worker forward ra WS. */
 export async function runGenerateModule(args: {
@@ -134,7 +103,8 @@ export async function runGenerateModule(args: {
     return true;
   });
 
-  const migratedSet = buildMigratedSet();
+  // Combined: YAML + DB entities (bao gồm bảng từ Migrate nhanh).
+  const migratedSet = await buildCombinedMigratedTableSet(args.db, args.companyId, MODULES_DIR());
   const results: RunGenerateResult["results"] = [];
   let succeeded = 0;
   let skipped = 0;
