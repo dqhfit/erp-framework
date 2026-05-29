@@ -135,6 +135,21 @@ select option {
   color: hsl(var(--text));
 }
 
+/* ReactFlow — override built-in control/minimap colors to match app theme.
+   ReactFlow defaults to light-mode (#fefefe buttons) unless .dark class is present.
+   Overriding the non-suffixed vars takes precedence over -default without touching props. */
+.react-flow {
+  --xy-controls-button-background-color: hsl(var(--panel));
+  --xy-controls-button-background-color-hover: hsl(var(--hover));
+  --xy-controls-button-color: hsl(var(--text));
+  --xy-controls-button-color-hover: hsl(var(--text));
+  --xy-controls-button-border-color: hsl(var(--border));
+  --xy-controls-box-shadow: 0 0 0 1px hsl(var(--border));
+  --xy-minimap-background-color: hsl(var(--panel));
+  --xy-minimap-mask-background-color: hsl(var(--bg) / 0.55);
+  --xy-minimap-node-background-color: hsl(var(--panel-2));
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

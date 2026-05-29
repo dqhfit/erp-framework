@@ -7,7 +7,12 @@
    để widget useRecords re-fetch (xem ConsumerPage.useRecords).
    ========================================================== */
 import type { ProceduresClient } from "@erp-framework/client";
-import type { ActionStep, ActionStepOpenPopup, BindingValue } from "@/types/page";
+import type {
+  ActionStep,
+  ActionStepOpenPopup,
+  ActionStepOpenWizard,
+  BindingValue,
+} from "@/types/page";
 
 export interface PageStateLike {
   get: (key: string) => unknown;
@@ -29,6 +34,10 @@ export interface ActionContext {
   navigate: (href: string) => void;
   openPopup?: (
     step: ActionStepOpenPopup,
+    getter: (key: string) => unknown,
+  ) => Promise<Record<string, unknown> | null>;
+  openWizard?: (
+    step: ActionStepOpenWizard,
     getter: (key: string) => unknown,
   ) => Promise<Record<string, unknown> | null>;
 }
@@ -127,6 +136,16 @@ export async function runActionSteps(
         return { completed: false, procedureRuns };
       }
       const result = await ctx.openPopup(step, rs.get);
+      if (result === null) return { completed: false, procedureRuns };
+      if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      continue;
+    }
+    if (step.kind === "open-wizard") {
+      if (!ctx.openWizard) {
+        ctx.toast.error("Wizard không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const result = await ctx.openWizard(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
       continue;

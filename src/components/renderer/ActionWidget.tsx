@@ -13,8 +13,9 @@ import { type Role, roleCan } from "@/lib/permissions";
 import { resolveBinding, type PageStateLike, runActionSteps } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/stores/auth";
-import type { ActionConfig, ActionStepOpenPopup } from "@/types/page";
+import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/types/page";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
+import { WizardModal } from "@/components/renderer/WizardModal";
 
 const procClient = createProceduresClient("");
 
@@ -33,6 +34,8 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
   const [popupStep, setPopupStep] = useState<ActionStepOpenPopup | null>(null);
   const [popupRecordId, setPopupRecordId] = useState<unknown>(undefined);
   const popupResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
+  const [wizardStep, setWizardStep] = useState<ActionStepOpenWizard | null>(null);
+  const wizardResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
 
   const hasProcedureStep = useMemo(
     () => (config.steps ?? []).some((s) => s.kind === "procedure"),
@@ -61,6 +64,22 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
     popupResolveRef.current = null;
   }, []);
 
+  const openWizard = useCallback(
+    (step: ActionStepOpenWizard): Promise<Record<string, unknown> | null> => {
+      setWizardStep(step);
+      return new Promise((resolve) => {
+        wizardResolveRef.current = resolve;
+      });
+    },
+    [],
+  );
+
+  const closeWizard = useCallback((value: Record<string, unknown> | null) => {
+    setWizardStep(null);
+    wizardResolveRef.current?.(value);
+    wizardResolveRef.current = null;
+  }, []);
+
   const onClick = async () => {
     if (busy || !canRun) return;
     // Hỏi xác nhận top-level (config.requireConfirm) trước khi vào chain.
@@ -80,6 +99,7 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
         toast: { success: toast.success, error: toast.error, info: toast.info },
         navigate: (href: string) => void navigate({ to: href }),
         openPopup,
+        openWizard: (s: ActionStepOpenWizard) => openWizard(s),
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
       if (res.completed && res.procedureRuns > 0) {
@@ -124,6 +144,17 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
           recordId={popupRecordId}
           onSelect={(value) => closePopup(value)}
           onCancel={() => closePopup(null)}
+        />
+      )}
+      {wizardStep && (
+        <WizardModal
+          step={wizardStep}
+          pageState={pageState}
+          onDone={(value) => closeWizard(value)}
+          onCancel={() => closeWizard(null)}
+          renderAction={(a, key) => (
+            <ActionWidget key={key} config={a} pageState={pageState} inline />
+          )}
         />
       )}
     </>

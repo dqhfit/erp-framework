@@ -126,12 +126,40 @@ export interface ActionStepOpenPopup {
   saveOutputTo: string;
 }
 
+/** Một bước trong wizard — có thể tạo bản ghi entity hoặc chỉ hiển thị form. */
+export interface WizardStepDef {
+  id: string;
+  title: string;
+  description?: string;
+  /** Entity để tạo bản ghi trong bước này (không bắt buộc). */
+  entity?: string;
+  /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
+  fields?: string[];
+  /** Sau khi tạo xong, lưu ID bản ghi vào page state key này. */
+  saveOutputTo?: string;
+  /** Nút hành động tuỳ chỉnh hiển thị trong bước này. */
+  actions?: Array<{ id: string } & ActionConfig>;
+}
+
+export interface ActionStepOpenWizard {
+  id: string;
+  kind: "open-wizard";
+  /** Tiêu đề modal wizard. */
+  title?: string;
+  /** Nhãn nút hoàn tất bước cuối. */
+  submitLabel?: string;
+  steps: WizardStepDef[];
+  /** Lưu dữ liệu tổng hợp từ tất cả bước vào page state key này. */
+  saveOutputTo?: string;
+}
+
 export type ActionStep =
   | ActionStepConfirm
   | ActionStepProcedure
   | ActionStepNavigate
   | ActionStepSetState
-  | ActionStepOpenPopup;
+  | ActionStepOpenPopup
+  | ActionStepOpenWizard;
 
 export type ActionVariant = "primary" | "default" | "danger" | "ghost";
 

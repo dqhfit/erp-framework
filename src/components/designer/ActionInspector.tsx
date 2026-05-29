@@ -14,10 +14,12 @@ import type {
   ActionStepConfirm,
   ActionStepNavigate,
   ActionStepOpenPopup,
+  ActionStepOpenWizard,
   ActionStepProcedure,
   ActionStepSetState,
   ActionVariant,
   BindingValue,
+  WizardStepDef,
 } from "@/types/page";
 
 const procs = createProceduresClient("");
@@ -106,6 +108,13 @@ export function ActionInspector({ config, onChange }: Props) {
         entity: "",
         saveOutputTo: "",
       } satisfies ActionStepOpenPopup;
+    } else if (kind === "open-wizard") {
+      step = {
+        id,
+        kind: "open-wizard",
+        title: "Wizard",
+        steps: [],
+      } satisfies ActionStepOpenWizard;
     } else {
       step = {
         id,
@@ -288,6 +297,7 @@ function StepAddMenu({ onAdd }: { onAdd: (kind: ActionStep["kind"]) => void }) {
                 { k: "navigate", label: "Điều hướng" },
                 { k: "set-state", label: "Đặt page state" },
                 { k: "open-popup", label: "Mở popup" },
+                { k: "open-wizard", label: "Mở wizard" },
               ] as const
             ).map((o) => (
               <button
@@ -335,6 +345,7 @@ function StepRow({
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
     "open-popup": "Mở popup",
+    "open-wizard": "Mở wizard",
   };
   return (
     <div className="border border-border rounded-md bg-panel">
@@ -377,6 +388,7 @@ function StepRow({
         {step.kind === "navigate" && <NavigateEditor step={step} onChange={onChange} />}
         {step.kind === "set-state" && <SetStateEditor step={step} onChange={onChange} />}
         {step.kind === "open-popup" && <PopupEditor step={step} onChange={onChange} />}
+        {step.kind === "open-wizard" && <WizardEditor step={step} onChange={onChange} />}
       </div>
     </div>
   );
@@ -740,6 +752,361 @@ function PopupEditor({
           placeholder="vd: selectedCustomer"
         />
       </FormField>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Wizard ───────────────────────── */
+function WizardEditor({
+  step,
+  onChange,
+}: {
+  step: ActionStepOpenWizard;
+  onChange: (next: ActionStepOpenWizard) => void;
+}) {
+  const entities = useUserObjects((s) => s.entities);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [autoEntity, setAutoEntity] = useState("");
+
+  const steps = step.steps ?? [];
+
+  const upd = (patch: Partial<ActionStepOpenWizard>) => onChange({ ...step, ...patch });
+
+  const addWizardStep = () => {
+    const id = `ws_${Math.random().toString(36).slice(2, 6)}`;
+    const newStep: WizardStepDef = { id, title: `Bước ${steps.length + 1}` };
+    upd({ steps: [...steps, newStep] });
+    setExpanded(id);
+  };
+
+  const removeWizardStep = (sid: string) => {
+    upd({ steps: steps.filter((s) => s.id !== sid) });
+    if (expanded === sid) setExpanded(null);
+  };
+
+  const updateWizardStep = (sid: string, patch: Partial<WizardStepDef>) =>
+    upd({ steps: steps.map((s) => (s.id === sid ? { ...s, ...patch } : s)) });
+
+  /** Tự sinh wizard từ cấu trúc bảng: nhóm mỗi 5 field thành 1 bước. */
+  const autoGenerate = () => {
+    const ent = entities.find((e) => e.id === autoEntity);
+    if (!ent) return;
+    const validFields = ent.fields
+      .filter((f) => !["formula", "collection"].includes(f.type))
+      .map((f) => f.name);
+    const CHUNK = 5;
+    const chunks: string[][] = [];
+    for (let i = 0; i < validFields.length; i += CHUNK) {
+      chunks.push(validFields.slice(i, i + CHUNK));
+    }
+    if (chunks.length === 0) chunks.push([]);
+    const generated: WizardStepDef[] = chunks.map((fs, i) => ({
+      id: `ws_${Math.random().toString(36).slice(2, 6)}`,
+      title:
+        chunks.length === 1
+          ? `Nhập ${ent.name}`
+          : i === 0
+            ? `Thông tin ${ent.name}`
+            : `Chi tiết (phần ${i + 1})`,
+      entity: ent.id,
+      fields: fs.length === validFields.length ? undefined : fs,
+      saveOutputTo: i === 0 ? `${ent.id}_id` : undefined,
+    }));
+    upd({ steps: [...steps, ...generated] });
+    setExpanded(generated[0]?.id ?? null);
+  };
+
+  return (
+    <div className="space-y-3">
+      <FormField label="Tiêu đề wizard">
+        <Input
+          value={step.title ?? ""}
+          onChange={(e) => upd({ title: e.target.value || undefined })}
+          placeholder="vd: Tạo đơn hàng"
+        />
+      </FormField>
+      <FormField label="Nhãn nút hoàn tất">
+        <Input
+          value={step.submitLabel ?? ""}
+          onChange={(e) => upd({ submitLabel: e.target.value || undefined })}
+          placeholder="Hoàn tất"
+        />
+      </FormField>
+      <FormField label="Lưu kết quả vào state" hint="Key để lưu data tổng hợp">
+        <Input
+          value={step.saveOutputTo ?? ""}
+          onChange={(e) => upd({ saveOutputTo: e.target.value || undefined })}
+          placeholder="vd: wizardResult"
+        />
+      </FormField>
+
+      {/* Auto-generate từ bảng */}
+      <div className="border border-dashed border-border rounded-md p-2 space-y-1.5">
+        <div className="text-[10px] uppercase text-muted tracking-wider font-semibold">
+          Tự sinh bước từ bảng
+        </div>
+        <div className="flex gap-1">
+          <Select
+            value={autoEntity}
+            onChange={(e) => setAutoEntity(e.target.value)}
+            className="flex-1"
+          >
+            <option value="">— chọn entity —</option>
+            {entities.map((en) => (
+              <option key={en.id} value={en.id}>
+                {en.name}
+              </option>
+            ))}
+          </Select>
+          <button
+            type="button"
+            disabled={!autoEntity}
+            onClick={autoGenerate}
+            className="px-2 py-1 rounded border border-border bg-panel hover:bg-hover text-xs disabled:opacity-40 shrink-0 whitespace-nowrap"
+          >
+            Tạo từ bảng
+          </button>
+        </div>
+        <div className="text-[10px] text-muted/70">
+          Tự động nhóm mỗi 5 field thành 1 bước — thêm vào danh sách bên dưới.
+        </div>
+      </div>
+
+      {/* Danh sách bước */}
+      <div className="text-[10px] uppercase text-muted tracking-wider font-semibold">
+        Các bước ({steps.length})
+      </div>
+
+      {steps.length === 0 ? (
+        <div className="text-xs text-muted border border-dashed border-border rounded-md p-3 text-center">
+          Chưa có bước nào.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {steps.map((s, i) => {
+            const stepEnt = entities.find((e) => e.id === s.entity);
+            const isOpen = expanded === s.id;
+            const entFields = stepEnt?.fields ?? [];
+            const allSelected = s.fields == null;
+            const selectedFields = s.fields ?? [];
+            return (
+              <div key={s.id} className="border border-border rounded-md overflow-hidden">
+                <button
+                  type="button"
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${isOpen ? "bg-accent/10" : "hover:bg-hover/50"}`}
+                  onClick={() => setExpanded(isOpen ? null : s.id)}
+                >
+                  <div className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] font-semibold shrink-0">
+                    {i + 1}
+                  </div>
+                  <span className="flex-1 text-xs font-medium truncate">
+                    {s.title || `Bước ${i + 1}`}
+                  </span>
+                  {s.entity && (
+                    <span className="text-[10px] text-muted truncate max-w-[60px]">
+                      {stepEnt?.name ?? s.entity}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeWizardStep(s.id);
+                    }}
+                    className="w-5 h-5 flex items-center justify-center text-muted hover:text-danger shrink-0"
+                  >
+                    <I.Trash size={11} />
+                  </button>
+                </button>
+                {isOpen && (
+                  <div className="p-2 space-y-2 border-t border-border bg-bg-soft">
+                    <FormField label="Tên bước">
+                      <Input
+                        placeholder={`Bước ${i + 1}`}
+                        value={s.title}
+                        onChange={(e) => updateWizardStep(s.id, { title: e.target.value })}
+                      />
+                    </FormField>
+                    <FormField label="Mô tả">
+                      <Input
+                        placeholder="Hướng dẫn người dùng..."
+                        value={s.description ?? ""}
+                        onChange={(e) =>
+                          updateWizardStep(s.id, { description: e.target.value || undefined })
+                        }
+                      />
+                    </FormField>
+                    <FormField label="Entity (tạo bản ghi)">
+                      <Select
+                        value={s.entity ?? ""}
+                        onChange={(e) =>
+                          updateWizardStep(s.id, {
+                            entity: e.target.value || undefined,
+                            fields: undefined,
+                          })
+                        }
+                      >
+                        <option value="">— chỉ hiển thị, không lưu —</option>
+                        {entities.map((en) => (
+                          <option key={en.id} value={en.id}>
+                            {en.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                    {stepEnt && entFields.length > 0 && (
+                      <FormField label="Field hiển thị">
+                        <div className="border border-border rounded overflow-hidden max-h-32 overflow-y-auto">
+                          {entFields.map((f) => {
+                            const checked = allSelected || selectedFields.includes(f.name);
+                            return (
+                              <label
+                                key={f.name}
+                                className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="accent-accent"
+                                  checked={checked}
+                                  onChange={(ev) => {
+                                    const base = allSelected
+                                      ? entFields.map((x) => x.name)
+                                      : [...selectedFields];
+                                    const next = ev.target.checked
+                                      ? base.includes(f.name)
+                                        ? base
+                                        : [...base, f.name]
+                                      : base.filter((n) => n !== f.name);
+                                    updateWizardStep(s.id, {
+                                      fields: next.length === entFields.length ? undefined : next,
+                                    });
+                                  }}
+                                />
+                                <span className="flex-1 truncate">{f.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </FormField>
+                    )}
+                    {s.entity && (
+                      <FormField label="Lưu ID vào state key">
+                        <Input
+                          placeholder="vd: order_id"
+                          value={s.saveOutputTo ?? ""}
+                          onChange={(e) =>
+                            updateWizardStep(s.id, { saveOutputTo: e.target.value || undefined })
+                          }
+                        />
+                      </FormField>
+                    )}
+                    <div className="pt-1 border-t border-border/60">
+                      <WizardStepActionsEditor
+                        actions={s.actions ?? []}
+                        onChange={(acts) =>
+                          updateWizardStep(s.id, { actions: acts.length ? acts : undefined })
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={addWizardStep}
+        className="w-full flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-xs text-muted hover:border-accent hover:text-accent transition-colors"
+      >
+        <I.Plus size={12} /> Thêm bước thủ công
+      </button>
+    </div>
+  );
+}
+
+/* ─────────────── Actions editor nhỏ cho từng bước wizard ─── */
+function WizardStepActionsEditor({
+  actions,
+  onChange,
+}: {
+  actions: Array<{ id: string } & ActionConfig>;
+  onChange: (next: Array<{ id: string } & ActionConfig>) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const addAction = () => {
+    const id = `wa_${Math.random().toString(36).slice(2, 7)}`;
+    const newItem: { id: string } & ActionConfig = { id, label: "Hành động", steps: [] };
+    const next = [...actions, newItem];
+    onChange(next);
+    setExpandedId(id);
+  };
+
+  const removeAction = (id: string) => {
+    onChange(actions.filter((a) => a.id !== id));
+    if (expandedId === id) setExpandedId(null);
+  };
+
+  const updateAction = (id: string, next: ActionConfig) => {
+    onChange(actions.map((a) => (a.id === id ? { ...next, id } : a)));
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] uppercase text-muted tracking-wider font-semibold">
+          Hành động của bước ({actions.length})
+        </div>
+        <button
+          type="button"
+          onClick={addAction}
+          className="flex items-center gap-0.5 text-[10px] text-accent hover:underline"
+        >
+          <I.Plus size={10} /> Thêm
+        </button>
+      </div>
+      {actions.length === 0 && (
+        <div className="text-[10px] text-muted/60 text-center py-1.5 border border-dashed border-border/50 rounded-md">
+          Chưa có hành động
+        </div>
+      )}
+      <div className="space-y-1">
+        {actions.map((item) => (
+          <div key={item.id} className="border border-border rounded-md overflow-hidden">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-bg-soft">
+              <input
+                className="flex-1 bg-transparent outline-none min-w-0 text-xs"
+                value={item.label}
+                placeholder="Nhãn"
+                onChange={(e) => updateAction(item.id, { ...item, label: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                type="button"
+                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                className="text-muted hover:text-text"
+              >
+                {expandedId === item.id ? <I.ChevronUp size={10} /> : <I.ChevronDown size={10} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeAction(item.id)}
+                className="hover:text-danger text-muted"
+              >
+                <I.X size={10} />
+              </button>
+            </div>
+            {expandedId === item.id && (
+              <div className="border-t border-border">
+                <ActionInspector config={item} onChange={(next) => updateAction(item.id, next)} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

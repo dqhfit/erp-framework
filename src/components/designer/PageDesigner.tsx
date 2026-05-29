@@ -35,7 +35,8 @@ type ComponentKind =
   | "pivot"
   | "html"
   | "action"
-  | "actionbar";
+  | "actionbar"
+  | "step";
 
 type ActionBarItem = { id: string } & ActionConfig;
 
@@ -69,6 +70,7 @@ const PALETTE: Array<{
   { kind: "html", label: "HTML / Note", icon: "Type", defaultSize: { w: 6, h: 2 } },
   { kind: "action", label: "Action", icon: "Play", defaultSize: { w: 3, h: 1 } },
   { kind: "actionbar", label: "Thanh hành động", icon: "Toolbar", defaultSize: { w: 12, h: 1 } },
+  { kind: "step", label: "Wizard / Theo bước", icon: "Workflow", defaultSize: { w: 12, h: 6 } },
 ];
 
 interface Props {
@@ -156,6 +158,7 @@ export function PageDesigner({ pageId }: Props) {
     compX: number;
   } | null>(null);
   const [resizingId, setResizingId] = useState<string | null>(null);
+  const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const { tools: mcpTools } = useMcpClient();
   const setPageContent = useUserObjects((s) => s.setPageContent);
   const publishPage = useUserObjects((s) => s.publishPage);
@@ -1846,6 +1849,230 @@ export function PageDesigner({ pageId }: Props) {
                       );
                     })()}
 
+                  {/* ── Wizard / Step ── */}
+                  {inspTab === "buoc" &&
+                    sel.kind === "step" &&
+                    (() => {
+                      interface StepDef {
+                        id: string;
+                        title: string;
+                        description?: string;
+                        entity?: string;
+                        fields?: string[];
+                        saveOutputTo?: string;
+                        actions?: ActionBarItem[];
+                      }
+                      const steps = (sel.config.steps as StepDef[] | undefined) ?? [];
+                      const submitLabel = (sel.config.submitLabel as string | undefined) ?? "";
+
+                      const addStep = () => {
+                        const newStep: StepDef = {
+                          id: `s_${Math.random().toString(36).slice(2, 6)}`,
+                          title: `Bước ${steps.length + 1}`,
+                        };
+                        update(sel.id, {
+                          config: { ...sel.config, steps: [...steps, newStep] },
+                        });
+                        setExpandedStep(newStep.id);
+                      };
+                      const removeStep = (sid: string) => {
+                        update(sel.id, {
+                          config: { ...sel.config, steps: steps.filter((s) => s.id !== sid) },
+                        });
+                        if (expandedStep === sid) setExpandedStep(null);
+                      };
+                      const updateStep = (sid: string, patch: Partial<StepDef>) =>
+                        update(sel.id, {
+                          config: {
+                            ...sel.config,
+                            steps: steps.map((s) => (s.id === sid ? { ...s, ...patch } : s)),
+                          },
+                        });
+
+                      return (
+                        <>
+                          <FormField label="Nhãn nút hoàn tất">
+                            <Input
+                              placeholder="Hoàn tất"
+                              value={submitLabel}
+                              onChange={(e) =>
+                                update(sel.id, {
+                                  config: { ...sel.config, submitLabel: e.target.value },
+                                })
+                              }
+                            />
+                          </FormField>
+                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
+                            Các bước ({steps.length})
+                          </div>
+                          <div className="space-y-2">
+                            {steps.map((s, i) => {
+                              const stepEnt = entities.find((e) => e.id === s.entity);
+                              const isOpen = expandedStep === s.id;
+                              const allSelected = s.fields == null;
+                              const selectedFieldNames = s.fields ?? [];
+                              const entFields = stepEnt?.fields ?? [];
+                              return (
+                                <div
+                                  key={s.id}
+                                  className="border border-border rounded-md overflow-hidden"
+                                >
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "w-full flex items-center gap-2 px-2 py-1.5 text-left",
+                                      isOpen ? "bg-accent/10" : "hover:bg-hover/50",
+                                    )}
+                                    onClick={() => setExpandedStep(isOpen ? null : s.id)}
+                                  >
+                                    <div className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] font-semibold shrink-0">
+                                      {i + 1}
+                                    </div>
+                                    <span className="flex-1 text-xs font-medium truncate">
+                                      {s.title || `Bước ${i + 1}`}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeStep(s.id);
+                                      }}
+                                      className="w-5 h-5 flex items-center justify-center text-muted hover:text-danger"
+                                    >
+                                      <I.Trash size={11} />
+                                    </button>
+                                    <I.ChevronDown
+                                      size={11}
+                                      className={cn(
+                                        "text-muted transition-transform shrink-0",
+                                        isOpen && "rotate-180",
+                                      )}
+                                    />
+                                  </button>
+                                  {isOpen && (
+                                    <div className="p-2 space-y-2 border-t border-border bg-bg-soft">
+                                      <FormField label="Tên bước">
+                                        <Input
+                                          placeholder={`Bước ${i + 1}`}
+                                          value={s.title}
+                                          onChange={(e) =>
+                                            updateStep(s.id, { title: e.target.value })
+                                          }
+                                        />
+                                      </FormField>
+                                      <FormField label="Mô tả (tuỳ chọn)">
+                                        <Input
+                                          placeholder="Hướng dẫn người dùng..."
+                                          value={s.description ?? ""}
+                                          onChange={(e) =>
+                                            updateStep(s.id, {
+                                              description: e.target.value || undefined,
+                                            })
+                                          }
+                                        />
+                                      </FormField>
+                                      <FormField label="Entity (tạo bản ghi)">
+                                        <Select
+                                          value={s.entity ?? ""}
+                                          onChange={(e) =>
+                                            updateStep(s.id, {
+                                              entity: e.target.value || undefined,
+                                              fields: undefined,
+                                            })
+                                          }
+                                        >
+                                          <option value="">— chỉ hiển thị, không lưu —</option>
+                                          {entities.map((en) => (
+                                            <option key={en.id} value={en.id}>
+                                              {en.name}
+                                            </option>
+                                          ))}
+                                        </Select>
+                                      </FormField>
+                                      {stepEnt && entFields.length > 0 && (
+                                        <FormField label="Trường hiển thị">
+                                          <div className="border border-border rounded overflow-hidden max-h-36 overflow-y-auto">
+                                            {entFields.map((f) => {
+                                              const checked =
+                                                allSelected || selectedFieldNames.includes(f.name);
+                                              return (
+                                                <label
+                                                  key={f.name}
+                                                  className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    className="accent-accent"
+                                                    checked={checked}
+                                                    onChange={(ev) => {
+                                                      const base = allSelected
+                                                        ? entFields.map((x) => x.name)
+                                                        : [...selectedFieldNames];
+                                                      const next = ev.target.checked
+                                                        ? base.includes(f.name)
+                                                          ? base
+                                                          : [...base, f.name]
+                                                        : base.filter((n) => n !== f.name);
+                                                      updateStep(s.id, {
+                                                        fields:
+                                                          next.length === entFields.length
+                                                            ? undefined
+                                                            : next,
+                                                      });
+                                                    }}
+                                                  />
+                                                  <span className="flex-1 truncate">{f.label}</span>
+                                                </label>
+                                              );
+                                            })}
+                                          </div>
+                                        </FormField>
+                                      )}
+                                      {s.entity && (
+                                        <FormField label="Lưu ID vào state key">
+                                          <Input
+                                            placeholder="vd: don_hang_id"
+                                            value={s.saveOutputTo ?? ""}
+                                            onChange={(e) =>
+                                              updateStep(s.id, {
+                                                saveOutputTo: e.target.value || undefined,
+                                              })
+                                            }
+                                          />
+                                          <div className="text-[10px] text-muted/70 mt-0.5 px-0.5">
+                                            Bước sau dùng state này để liên kết
+                                          </div>
+                                        </FormField>
+                                      )}
+                                      <div className="pt-1 border-t border-border/60">
+                                        <ActionBarInspector
+                                          items={s.actions ?? []}
+                                          align="left"
+                                          embedded
+                                          onChange={(items) =>
+                                            updateStep(s.id, {
+                                              actions: items.length ? items : undefined,
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <button
+                            type="button"
+                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-xs text-muted hover:border-accent hover:text-accent transition-colors"
+                            onClick={addStep}
+                          >
+                            <I.Plus size={12} /> Thêm bước
+                          </button>
+                        </>
+                      );
+                    })()}
+
                   {/* ── Action Bar ── */}
                   {inspTab === "hanhDong" && sel.kind === "actionbar" && (
                     <ActionBarInspector
@@ -1956,6 +2183,7 @@ function tabsForKind(kind: ComponentKind) {
   if (kind === "split") return [...base, { key: "bocuc", label: "Bố cục" }];
   if (kind === "actionbar") return [...base, { key: "hanhDong", label: "Hành động" }];
   if (kind === "action") return [...base, { key: "cauhinh", label: "Cấu hình" }];
+  if (kind === "step") return [...base, { key: "buoc", label: "Bước" }];
   return base;
 }
 
@@ -2711,6 +2939,46 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             );
           })
         )}
+      </div>
+    );
+  }
+
+  if (comp.kind === "step") {
+    const steps = (comp.config.steps as Array<{ id: string; title?: string }> | undefined) ?? [];
+    return (
+      <div className="flex flex-col h-full overflow-hidden text-[10px]">
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-panel-2/30">
+          {steps.length === 0 ? (
+            <span className="text-muted/60 italic">Chưa có bước nào</span>
+          ) : (
+            steps.slice(0, 5).map((s, i) => (
+              <div key={s.id} className="flex items-center gap-1 shrink-0">
+                <div
+                  className={cn(
+                    "w-4 h-4 rounded-full flex items-center justify-center font-semibold text-[9px] shrink-0",
+                    i === 0 ? "bg-accent/25 text-accent" : "bg-border text-muted",
+                  )}
+                >
+                  {i + 1}
+                </div>
+                <span className="truncate max-w-[60px] text-muted">{s.title || `B${i + 1}`}</span>
+                {i < steps.slice(0, 5).length - 1 && (
+                  <div className="w-3 h-px bg-border shrink-0" />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="flex-1 p-2 space-y-1.5">
+          <div className="h-2 bg-muted/15 rounded w-3/4" />
+          <div className="h-6 border border-border/40 rounded bg-bg-soft" />
+          <div className="h-2 bg-muted/15 rounded w-1/2" />
+          <div className="h-6 border border-border/40 rounded bg-bg-soft" />
+        </div>
+        <div className="shrink-0 px-2 py-1.5 border-t border-border/40 flex justify-between">
+          <div className="h-5 w-12 rounded border border-border/40 bg-panel-2/50" />
+          <div className="h-5 w-14 rounded bg-accent/20 border border-accent/30" />
+        </div>
       </div>
     );
   }

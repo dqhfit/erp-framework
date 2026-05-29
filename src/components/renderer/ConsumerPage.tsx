@@ -19,6 +19,7 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
+import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { I } from "@/components/Icons";
 import { Chart } from "@/components/renderer/Chart";
 import { DataGrid } from "@/components/renderer/DataGrid";
@@ -1154,7 +1155,14 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
                 {f.label}
                 {f.required ? " *" : ""}
               </label>
-              {f.type === "select" && f.options?.length ? (
+              {(f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+                <LookupPicker
+                  refEntityId={f.ref}
+                  value={form[f.name] ?? ""}
+                  onChange={(v) => setForm({ ...form, [f.name]: v })}
+                  multi={f.type === "multi-lookup"}
+                />
+              ) : f.type === "select" && f.options?.length ? (
                 <select
                   className="input w-full"
                   value={form[f.name] ?? ""}
@@ -1167,17 +1175,31 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
                     </option>
                   ))}
                 </select>
+              ) : f.type === "boolean" ? (
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={form[f.name] === "true"}
+                    onChange={(e) =>
+                      setForm({ ...form, [f.name]: e.target.checked ? "true" : "false" })
+                    }
+                  />
+                  {f.label}
+                </label>
               ) : (
                 <input
                   className="input w-full"
                   type={
-                    f.type === "number" || f.type === "currency"
+                    f.type === "number" || f.type === "currency" || f.type === "integer"
                       ? "number"
                       : f.type === "date"
                         ? "date"
-                        : f.type === "email"
-                          ? "email"
-                          : "text"
+                        : f.type === "datetime"
+                          ? "datetime-local"
+                          : f.type === "email"
+                            ? "email"
+                            : "text"
                   }
                   value={form[f.name] ?? ""}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
@@ -1268,6 +1290,240 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Widget "step" — wizard nhập dữ liệu theo nhiều bước tuần tự.
+ *  Mỗi bước gắn 1 entity, submit tạo bản ghi và chuyển bước tiếp. */
+function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  interface StepDef {
+    id: string;
+    title: string;
+    description?: string;
+    entity?: string;
+    fields?: string[];
+    saveOutputTo?: string;
+    actions?: Array<{ id: string } & ActionConfig>;
+  }
+
+  const entities = useUserObjects((s) => s.entities);
+  const pageState = usePageState();
+  const steps = (cfg.steps as StepDef[] | undefined) ?? [];
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [forms, setForms] = useState<Record<string, Record<string, string>>>({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+
+  if (steps.length === 0) {
+    return (
+      <div className="p-3 text-xs text-muted h-full flex items-center justify-center">
+        Wizard chưa cấu hình bước nào. Mở inspector &rarr; tab "Bước" để thêm.
+      </div>
+    );
+  }
+
+  const step = steps[Math.min(activeIdx, steps.length - 1)];
+  if (!step) return null;
+  const ent = step.entity ? entities.find((e) => e.id === step.entity) : undefined;
+  const visibleFields = step.fields?.length
+    ? (ent?.fields ?? []).filter((f) => step.fields!.includes(f.name))
+    : (ent?.fields ?? []);
+  const form = forms[step.id] ?? {};
+  const setField = (k: string, v: string) =>
+    setForms((prev) => ({ ...prev, [step.id]: { ...form, [k]: v } }));
+  const isLast = activeIdx === steps.length - 1;
+
+  const goNext = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      if (step.entity) {
+        const data: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
+        const result = await api.createRecord(step.entity, data);
+        if (step.saveOutputTo) pageState.set(step.saveOutputTo, result.id);
+      }
+      if (isLast) {
+        setDone(true);
+      } else {
+        setActiveIdx((i) => i + 1);
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center h-full gap-3 text-center">
+        <div className="w-12 h-12 rounded-full bg-success/15 flex items-center justify-center">
+          <I.Check size={22} className="text-success" />
+        </div>
+        <div className="text-sm font-semibold">Hoàn tất!</div>
+        <button
+          type="button"
+          className="btn btn-sm btn-default"
+          onClick={() => {
+            setDone(false);
+            setActiveIdx(0);
+            setForms({});
+            setErr("");
+          }}
+        >
+          Làm lại từ đầu
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Step indicator */}
+      <div className="shrink-0 flex items-center gap-0 px-4 py-3 border-b border-border bg-panel overflow-x-auto">
+        {steps.map((s, i) => (
+          <div key={s.id} className="flex items-center shrink-0">
+            <div
+              className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0",
+                i < activeIdx
+                  ? "bg-success text-white"
+                  : i === activeIdx
+                    ? "bg-accent text-white"
+                    : "bg-border text-muted",
+              )}
+            >
+              {i < activeIdx ? <I.Check size={10} /> : i + 1}
+            </div>
+            <span
+              className={cn(
+                "ml-1.5 mr-1 text-xs whitespace-nowrap",
+                i === activeIdx ? "font-semibold text-fg" : "text-muted",
+              )}
+            >
+              {s.title || `Bước ${i + 1}`}
+            </span>
+            {i < steps.length - 1 && <div className="mx-2 h-px w-5 bg-border shrink-0" />}
+          </div>
+        ))}
+      </div>
+
+      {/* Step content */}
+      <div className="flex-1 overflow-auto p-4 space-y-3">
+        {cfg.title ? <div className="text-sm font-semibold">{String(cfg.title)}</div> : null}
+        {step.description ? <div className="text-xs text-muted">{step.description}</div> : null}
+        {ent ? (
+          visibleFields.length > 0 ? (
+            <div className="space-y-2">
+              {visibleFields.map((f) => (
+                <div key={f.id}>
+                  <label className="text-xs text-muted">
+                    {f.label}
+                    {f.required ? " *" : ""}
+                  </label>
+                  {(f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+                    <LookupPicker
+                      refEntityId={f.ref}
+                      value={form[f.name] ?? ""}
+                      onChange={(v) => setField(f.name, v)}
+                      multi={f.type === "multi-lookup"}
+                    />
+                  ) : f.type === "select" && f.options?.length ? (
+                    <select
+                      className="input w-full"
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setField(f.name, e.target.value)}
+                    >
+                      <option value="">— chọn —</option>
+                      {f.options.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : f.type === "boolean" ? (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-accent"
+                        checked={form[f.name] === "true"}
+                        onChange={(e) => setField(f.name, e.target.checked ? "true" : "false")}
+                      />
+                      {f.label}
+                    </label>
+                  ) : (
+                    <input
+                      className="input w-full"
+                      type={
+                        f.type === "number" || f.type === "currency" || f.type === "integer"
+                          ? "number"
+                          : f.type === "date"
+                            ? "date"
+                            : f.type === "datetime"
+                              ? "datetime-local"
+                              : f.type === "email"
+                                ? "email"
+                                : "text"
+                      }
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setField(f.name, e.target.value)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-muted italic">Entity chưa có trường nào.</div>
+          )
+        ) : (
+          <div className="text-xs text-muted italic">
+            Bước này không gắn entity — chỉ giới thiệu thông tin.
+          </div>
+        )}
+        {err && <div className="text-xs text-danger">{err}</div>}
+      </div>
+
+      {/* Hành động của bước */}
+      {(step.actions?.length ?? 0) > 0 && (
+        <div className="shrink-0 px-4 py-2 border-t border-border/50 flex flex-wrap gap-2 bg-panel">
+          {step.actions!.map((a) => (
+            <ActionWidget key={a.id} config={a} pageState={pageState} inline />
+          ))}
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="shrink-0 px-4 py-3 border-t border-border flex items-center justify-between bg-panel">
+        <button
+          type="button"
+          className="btn btn-sm btn-default"
+          disabled={activeIdx === 0}
+          onClick={() => {
+            setErr("");
+            setActiveIdx((i) => i - 1);
+          }}
+        >
+          Quay lại
+        </button>
+        <span className="text-xs text-muted">
+          {activeIdx + 1} / {steps.length}
+        </span>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          disabled={busy}
+          onClick={() => void goNext()}
+        >
+          {busy
+            ? "Đang lưu..."
+            : isLast
+              ? (cfg.submitLabel as string | undefined) || "Hoàn tất"
+              : "Tiếp theo"}
+        </button>
       </div>
     </div>
   );
@@ -2018,6 +2274,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
     return withEmbeddedActions(<DetailWidget cfg={cfg} compId={comp.id} />, embActs, pageState);
   }
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
+  if (comp.kind === "step") return <StepWidget cfg={cfg} />;
   if (comp.kind === "split") return <SplitWidget comp={comp} />;
   if (comp.kind === "search") return <SearchWidget cfg={cfg} />;
   if (comp.kind === "combobox") return <ComboboxWidget cfg={cfg} />;

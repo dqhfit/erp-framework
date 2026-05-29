@@ -248,6 +248,7 @@ const VI: Dict = {
   "page.comp.html": "HTML / Ghi chú",
   "page.comp.action": "Hành động",
   "page.comp.actionbar": "Thanh hành động",
+  "page.comp.step": "Wizard / Theo bước",
   // workflow node palette labels
   "wf.node.trigger": "Trigger",
   "wf.node.trigger.desc": "Khởi đầu workflow",
@@ -850,6 +851,7 @@ const EN: Dict = {
   "page.comp.html": "HTML / Note",
   "page.comp.action": "Action",
   "page.comp.actionbar": "Action Bar",
+  "page.comp.step": "Wizard / Step-by-step",
   // workflow node palette labels
   "wf.node.trigger": "Trigger",
   "wf.node.trigger.desc": "Start of workflow",
