@@ -33,6 +33,7 @@ export function CommandPalette() {
 
   const items: Item[] = useMemo(
     () => [
+      /* ── Điều hướng chính ── */
       {
         id: "home",
         label: t("cmd.workspace"),
@@ -47,6 +48,8 @@ export function CommandPalette() {
         iconName: "Sparkles",
         action: () => setAgentOpen(true),
       },
+
+      /* ── Dynamic objects ── */
       ...entities.map<Item>((e) => ({
         id: `ent-${e.id}`,
         label: e.name,
@@ -75,34 +78,60 @@ export function CommandPalette() {
         iconName: "Bot",
         to: `/agents/${a.id}`,
       })),
+
+      /* ── Entity extras ── */
       {
-        id: "set-llm",
-        label: t("cmd.settings_llm"),
-        hint: t("cmd.settings_llm_hint"),
-        iconName: "Sparkles",
-        to: "/settings/llm",
+        id: "entities-erd",
+        label: "Sơ đồ ERD",
+        hint: "Sơ đồ quan hệ giữa các entity",
+        iconName: "GitBranch",
+        to: "/entities/erd",
+      },
+
+      /* ── Agent extras ── */
+      {
+        id: "agents-library",
+        label: "Thư viện agent",
+        hint: "Template agent dùng sẵn cho nhiều nghiệp vụ",
+        iconName: "Library",
+        to: "/agents/library",
       },
       {
-        id: "set-mcp",
-        label: t("cmd.settings_mcp"),
-        hint: t("cmd.settings_mcp_hint"),
+        id: "org-chart",
+        label: "Sơ đồ phân cấp agent",
+        hint: "Cây tổ chức agent theo cấp trên / quản lý",
+        iconName: "GitBranch",
+        to: "/org-chart",
+      },
+
+      /* ── Ops ── */
+      {
+        id: "activity",
+        label: "Hoạt động",
+        hint: "Nhật ký hoạt động hệ thống",
+        iconName: "Activity",
+        to: "/activity",
+      },
+      {
+        id: "approvals",
+        label: "Phê duyệt",
+        hint: "Quản lý yêu cầu cần phê duyệt",
+        iconName: "CheckSq",
+        to: "/approvals",
+      },
+      {
+        id: "knowledge",
+        label: "Kiến thức",
+        hint: "Kho tri thức dùng cho AI",
+        iconName: "File",
+        to: "/knowledge",
+      },
+      {
+        id: "iot",
+        label: "IoT",
+        hint: "Thiết bị IoT và dữ liệu cảm biến",
         iconName: "Server",
-        to: "/settings/mcp",
-      },
-      /* Các route mới — chưa có i18n key nên dùng label trực tiếp. */
-      {
-        id: "tools",
-        label: "Tools",
-        hint: "Khám phá + chạy tools ngoài (web-app, MCP, CLI)",
-        iconName: "Wand",
-        to: "/tools",
-      },
-      {
-        id: "feedback",
-        label: "Phản hồi",
-        hint: "Gửi bất cập + đề xuất cải thiện hệ thống",
-        iconName: "HelpCircle",
-        to: "/feedback",
+        to: "/iot",
       },
       {
         id: "procedures",
@@ -117,6 +146,120 @@ export function CommandPalette() {
         hint: "Bộ giá trị tái dùng cho field enum/multi-enum",
         iconName: "Tag",
         to: "/enums",
+      },
+      {
+        id: "tools",
+        label: "Tools",
+        hint: "Khám phá + chạy tools ngoài (web-app, MCP, CLI)",
+        iconName: "Wand",
+        to: "/tools",
+      },
+      {
+        id: "feedback",
+        label: "Phản hồi",
+        hint: "Gửi bất cập + đề xuất cải thiện hệ thống",
+        iconName: "HelpCircle",
+        to: "/feedback",
+      },
+
+      /* ── Settings ── */
+      {
+        id: "set-llm",
+        label: t("cmd.settings_llm"),
+        hint: t("cmd.settings_llm_hint"),
+        iconName: "Sparkles",
+        to: "/settings/llm",
+      },
+      {
+        id: "set-mcp",
+        label: t("cmd.settings_mcp"),
+        hint: t("cmd.settings_mcp_hint"),
+        iconName: "Server",
+        to: "/settings/mcp",
+      },
+      {
+        id: "set-agents",
+        label: "Cài đặt Agent",
+        hint: "Cấu hình agent AI của công ty",
+        iconName: "Bot",
+        to: "/settings/agents",
+      },
+      {
+        id: "set-rbac",
+        label: "Phân quyền (RBAC)",
+        hint: "Quản lý vai trò và quyền hạn người dùng",
+        iconName: "Users",
+        to: "/settings/rbac",
+      },
+      {
+        id: "set-companies",
+        label: "Công ty",
+        hint: "Quản lý thông tin công ty trong hệ thống",
+        iconName: "Briefcase",
+        to: "/settings/companies",
+      },
+      {
+        id: "set-embedding",
+        label: "Embedding",
+        hint: "Cấu hình mô hình embedding vector",
+        iconName: "Hash",
+        to: "/settings/embedding",
+      },
+      {
+        id: "set-transfer",
+        label: "Chuyển dữ liệu",
+        hint: "Xuất / nhập dữ liệu giữa môi trường",
+        iconName: "Save",
+        to: "/settings/transfer",
+      },
+      {
+        id: "set-backup",
+        label: "Sao lưu",
+        hint: "Tạo và phục hồi bản sao lưu hệ thống",
+        iconName: "Save",
+        to: "/settings/backup",
+      },
+      {
+        id: "set-migration",
+        label: "Migration MSSQL",
+        hint: "Di chuyển dữ liệu từ MSSQL sang hệ thống",
+        iconName: "Database",
+        to: "/settings/migration",
+      },
+      {
+        id: "set-plugins",
+        label: "Plugins",
+        hint: "Quản lý plugin mở rộng hệ thống",
+        iconName: "Package",
+        to: "/settings/plugins",
+      },
+      {
+        id: "set-tools",
+        label: "Quản lý Tools",
+        hint: "Cấu hình và kích hoạt tools tích hợp",
+        iconName: "Wand",
+        to: "/settings/tools",
+      },
+      {
+        id: "set-embed",
+        label: "Nhúng (Embed)",
+        hint: "Cấu hình nhúng trang vào website khác",
+        iconName: "Link",
+        to: "/settings/embed",
+      },
+      {
+        id: "set-api-keys",
+        label: "API Keys",
+        hint: "Quản lý khoá API truy cập hệ thống",
+        iconName: "Key",
+        to: "/settings/api-keys",
+      },
+      {
+        id: "set-viewer-groups",
+        label: "Nhóm Viewer",
+        hint: "Nhóm người dùng chỉ xem trang công khai",
+        iconName: "Users",
+        to: "/settings/viewer-groups",
       },
     ],
     [t, setAgentOpen, entities, pages, workflows, agents],
