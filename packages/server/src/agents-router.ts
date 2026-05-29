@@ -10,6 +10,7 @@ import { z } from "zod";
 import { logActivity } from "./activity";
 import { assertCanActOnAgent } from "./agent-acl";
 import { allDefaultTemplates } from "./agent-memory";
+import { AGENT_TEMPLATES } from "./agent-templates";
 import { listResourceMembers, removeResourceMember, upsertResourceMember } from "./resource-acl";
 import { agentInput, autoAddOwner } from "./router-helpers";
 import { approvedProcedure, rbacProcedure, router } from "./trpc";
@@ -279,5 +280,44 @@ export const agentsRouter = router({
         actorUserId: ctx.user.id,
       });
       return { ok: true };
+    }),
+
+  /** Danh sach template agent theo phong ban — khong luu DB, la hang so server. */
+  listTemplates: approvedProcedure.query(() => AGENT_TEMPLATES),
+
+  /** Tao agent moi tu template. Copy name + model + config vao company cua user. */
+  instantiateTemplate: rbacProcedure("create", "agent")
+    .input(z.object({ templateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tpl = AGENT_TEMPLATES.find((t) => t.id === input.templateId);
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template khong ton tai" });
+      const [row] = await ctx.db
+        .insert(agents)
+        .values({
+          companyId: ctx.user.companyId,
+          createdBy: ctx.user.id,
+          name: tpl.name,
+          model: tpl.model,
+          config: {
+            systemPrompt: tpl.systemPrompt,
+            tools: tpl.tools,
+            temperature: tpl.temperature,
+            isPrivate: false,
+            memory: {},
+            fallbackModels: [],
+          },
+        })
+        .returning();
+      if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert that bai" });
+      await autoAddOwner(ctx.db, row.id, ctx.user.id);
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "agent.created",
+        objectType: "agent",
+        target: row.id,
+        detail: `Tao agent tu template "${tpl.id}"`,
+        actorUserId: ctx.user.id,
+      });
+      return row;
     }),
 });

@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { AgentLibrary } from "@/components/AgentLibrary";
 import { I } from "@/components/Icons";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
@@ -363,6 +364,8 @@ interface SectionProps {
   sectionKey?: string;
   /** Callback khi user click vào bất kỳ item nào — thu gọn group khác */
   onNavigate?: () => void;
+  /** Nút extra hiện trước + trong section header */
+  extraButtons?: React.ReactNode;
 }
 function SidebarSection({
   title,
@@ -377,6 +380,7 @@ function SidebarSection({
   onRename,
   sectionKey,
   onNavigate,
+  extraButtons,
 }: SectionProps) {
   const t = useT();
   const { gs, nestUnder, unnest, toggleExpanded } = useGroupState(sectionKey);
@@ -530,6 +534,7 @@ function SidebarSection({
             {dragOverHeader && (
               <span className="text-[9px] text-accent/70 mr-1">{t("sidebar.ungroup")}</span>
             )}
+            {extraButtons}
             {onAiAdd && (
               <button
                 type="button"
@@ -696,6 +701,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const favs = useFavs();
 
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
     entities: true,
     pages: true,
@@ -871,6 +877,16 @@ export function Sidebar() {
             onRename={can("edit", "entity") ? handleRenameEntity : undefined}
             sectionKey="entities"
             onNavigate={collapseOpsSettings}
+            extraButtons={
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/entities/erd" })}
+                className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                title="ERD Diagram"
+              >
+                <I.Layers size={11} />
+              </button>
+            }
             items={userEntities.map((e) => ({
               id: e.id,
               name: e.name,
@@ -956,6 +972,18 @@ export function Sidebar() {
             onDelete={can("delete", "agent") ? handleDeleteAgent : undefined}
             onRename={can("edit", "agent") ? handleRenameAgent : undefined}
             onNavigate={collapseOpsSettings}
+            extraButtons={
+              can("create", "agent") && !collapsed ? (
+                <button
+                  type="button"
+                  title={t("sidebar.agent_library")}
+                  onClick={() => setLibraryOpen(true)}
+                  className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-foreground hover:bg-hover transition-colors"
+                >
+                  <I.Library size={13} />
+                </button>
+              ) : undefined
+            }
             items={sortedAgents.map((a) => ({
               id: a.id,
               name: a.name,
@@ -1393,6 +1421,7 @@ export function Sidebar() {
           </div>
         )}
       </div>
+      <AgentLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} />
     </aside>
   );
 }

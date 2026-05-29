@@ -78,6 +78,7 @@ interface Props {
 export function PageDesigner({ pageId }: Props) {
   const t = useT();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
+  const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
   const [components, setComponents, { canUndo, canRedo, undo, redo }] = useUndoable<
     PageComponent[]
@@ -140,6 +141,7 @@ export function PageDesigner({ pageId }: Props) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [paletteVisible, setPaletteVisible] = useState(true);
   const publishRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -380,7 +382,7 @@ export function PageDesigner({ pageId }: Props) {
           <I.Layout size={14} />
         </div>
         <div className="flex flex-col leading-tight">
-          <div className="font-semibold text-base">Page {pageId}</div>
+          <div className="font-semibold text-base">{page?.name ?? pageId}</div>
           <div className="text-[11px] text-muted">{components.length} component(s)</div>
         </div>
         <div className="flex-1" />
@@ -642,6 +644,33 @@ export function PageDesigner({ pageId }: Props) {
             </div>
           )}
         </div>
+        <div className="w-px h-5 bg-border mx-1" />
+        <button
+          type="button"
+          title={paletteVisible ? "Ẩn bảng thành phần" : "Hiện bảng thành phần"}
+          onClick={() => setPaletteVisible((v) => !v)}
+          className={cn(
+            "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+            paletteVisible
+              ? "bg-accent/15 text-accent hover:bg-accent/25"
+              : "text-muted hover:bg-hover/60",
+          )}
+        >
+          <I.PanelLeft size={14} />
+        </button>
+        <button
+          type="button"
+          title={inspectorVisible ? "Ẩn inspector" : "Hiện inspector"}
+          onClick={() => setInspectorVisible(!inspectorVisible)}
+          className={cn(
+            "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+            inspectorVisible
+              ? "bg-accent/15 text-accent hover:bg-accent/25"
+              : "text-muted hover:bg-hover/60",
+          )}
+        >
+          <I.PanelRight size={14} />
+        </button>
       </div>
       <AiAssistDrawer
         open={aiOpen}
@@ -650,7 +679,7 @@ export function PageDesigner({ pageId }: Props) {
         current={
           components.length > 0
             ? {
-                name: `Page ${pageId}`,
+                name: page?.name ?? `Page ${pageId}`,
                 components: components.map((c) => ({
                   type: c.kind,
                   title: String(c.config.title ?? c.config.label ?? c.kind),
@@ -684,50 +713,52 @@ export function PageDesigner({ pageId }: Props) {
           </div>
         )}
         {/* Palette */}
-        <div className="w-[180px] shrink-0 border-r border-border bg-panel flex flex-col">
-          <div className="px-3 py-2.5 border-b border-border">
-            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-              {t("designer.components")}
+        {paletteVisible && (
+          <div className="w-[180px] shrink-0 border-r border-border bg-panel flex flex-col">
+            <div className="px-3 py-2.5 border-b border-border">
+              <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
+                {t("designer.components")}
+              </div>
+              <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
             </div>
-            <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {PALETTE.map((p) => {
+                const IC = I[p.icon];
+                return (
+                  <div
+                    key={p.kind}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragKind(p.kind);
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
+                    onDragEnd={() => {
+                      setDragKind(null);
+                      stopAutoScroll();
+                    }}
+                    onDoubleClick={() => {
+                      const meta2 = PALETTE.find((pp) => pp.kind === p.kind);
+                      const w2 = meta2?.defaultSize.w ?? 4,
+                        h2 = meta2?.defaultSize.h ?? 2;
+                      const maxY = components.length
+                        ? Math.max(...components.map((c) => c.y + c.h))
+                        : 0;
+                      const pos2 = findDropPos(w2, h2, 0, maxY);
+                      addAt(p.kind, pos2.x, pos2.y);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
+                      dragKind === p.kind && "dragging",
+                    )}
+                  >
+                    <IC size={14} className="text-muted shrink-0" />
+                    <span className="font-medium">{t(`page.comp.${p.kind}`)}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-            {PALETTE.map((p) => {
-              const IC = I[p.icon];
-              return (
-                <div
-                  key={p.kind}
-                  draggable
-                  onDragStart={(e) => {
-                    setDragKind(p.kind);
-                    e.dataTransfer.effectAllowed = "copy";
-                  }}
-                  onDragEnd={() => {
-                    setDragKind(null);
-                    stopAutoScroll();
-                  }}
-                  onDoubleClick={() => {
-                    const meta2 = PALETTE.find((pp) => pp.kind === p.kind);
-                    const w2 = meta2?.defaultSize.w ?? 4,
-                      h2 = meta2?.defaultSize.h ?? 2;
-                    const maxY = components.length
-                      ? Math.max(...components.map((c) => c.y + c.h))
-                      : 0;
-                    const pos2 = findDropPos(w2, h2, 0, maxY);
-                    addAt(p.kind, pos2.x, pos2.y);
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
-                    dragKind === p.kind && "dragging",
-                  )}
-                >
-                  <IC size={14} className="text-muted shrink-0" />
-                  <span className="font-medium">{t(`page.comp.${p.kind}`)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        )}
 
         {/* Canvas grid */}
         <div

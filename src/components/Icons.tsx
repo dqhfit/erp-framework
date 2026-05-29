@@ -158,6 +158,13 @@ export const I = {
       <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3L21 13" />
     </Icon>
   ),
+  Download: (p: IP) => (
+    <Icon {...p}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </Icon>
+  ),
   Play: (p: IP) => (
     <Icon {...p}>
       <path d="m6 4 14 8-14 8V4Z" />
@@ -553,6 +560,145 @@ export const I = {
       <rect x="5" y="9" width="4" height="6" rx="1" />
       <rect x="11" y="9" width="4" height="6" rx="1" />
       <rect x="17" y="9" width="2" height="6" rx="1" />
+    </Icon>
+  ),
+  Library: (p: IP) => (
+    <Icon {...p}>
+      <path d="m16 6 4 14" />
+      <path d="M12 6v14" />
+      <path d="M8 8v12" />
+      <path d="M4 4v16" />
+    </Icon>
+  ),
+  SearchX: (p: IP) => (
+    <Icon {...p}>
+      <path d="m13.5 8.5-5 5" />
+      <path d="m8.5 8.5 5 5" />
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </Icon>
+  ),
+  Factory: (p: IP) => (
+    <Icon {...p}>
+      <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M17 18h1" />
+      <path d="M12 18h1" />
+      <path d="M7 18h1" />
+    </Icon>
+  ),
+  PenTool: (p: IP) => (
+    <Icon {...p}>
+      <path d="m12 19 7-7 3 3-7 7-3-3Z" />
+      <path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5Z" />
+      <path d="m2 2 7.586 7.586" />
+      <circle cx="11" cy="11" r="2" />
+    </Icon>
+  ),
+  Wrench: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z" />
+    </Icon>
+  ),
+  BookOpen: (p: IP) => (
+    <Icon {...p}>
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </Icon>
+  ),
+  FileCheck: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="m9 15 2 2 4-4" />
+    </Icon>
+  ),
+  CheckCircle: (p: IP) => (
+    <Icon {...p}>
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <path d="m9 11 3 3L22 4" />
+    </Icon>
+  ),
+  Clock4: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l3 3" />
+    </Icon>
+  ),
+  UserPlus: (p: IP) => (
+    <Icon {...p}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </Icon>
+  ),
+  BookCheck: (p: IP) => (
+    <Icon {...p}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+      <path d="m9 9.5 2 2 4-4" />
+    </Icon>
+  ),
+  ClipboardList: (p: IP) => (
+    <Icon {...p}>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M12 11h4" />
+      <path d="M12 16h4" />
+      <path d="M8 11h.01" />
+      <path d="M8 16h.01" />
+    </Icon>
+  ),
+  AlertOctagon: (p: IP) => (
+    <Icon {...p}>
+      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </Icon>
+  ),
+  ThumbsUp: (p: IP) => (
+    <Icon {...p}>
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
+    </Icon>
+  ),
+  FileSearch: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <circle cx="11.5" cy="14.5" r="2.5" />
+      <path d="M13.25 16.25 15 18" />
+    </Icon>
+  ),
+  Timer: (p: IP) => (
+    <Icon {...p}>
+      <line x1="10" x2="14" y1="2" y2="2" />
+      <line x1="12" x2="15" y1="14" y2="11" />
+      <circle cx="12" cy="14" r="8" />
+    </Icon>
+  ),
+  Receipt: (p: IP) => (
+    <Icon {...p}>
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+      <path d="M16 8H8M16 12H8M12 16H8" />
+    </Icon>
+  ),
+  BarChart2: (p: IP) => (
+    <Icon {...p}>
+      <line x1="18" x2="18" y1="20" y2="10" />
+      <line x1="12" x2="12" y1="20" y2="4" />
+      <line x1="6" x2="6" y1="20" y2="14" />
+    </Icon>
+  ),
+  ShoppingCart: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="8" cy="21" r="1" />
+      <circle cx="19" cy="21" r="1" />
+      <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+    </Icon>
+  ),
+  MessageSquare: (p: IP) => (
+    <Icon {...p}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </Icon>
   ),
 };

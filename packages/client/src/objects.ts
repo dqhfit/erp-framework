@@ -138,6 +138,11 @@ export function createObjectsClient(baseUrl: string) {
       /** Gỡ 1 thành viên. */
       removeMember: (input: { agentId: string; userId: string }) =>
         trpc.agents.removeMember.mutate(input),
+      /** Danh sách 38 template agent theo phòng ban (dữ liệu tĩnh server). */
+      listTemplates: () => trpc.agents.listTemplates.query(),
+      /** Tạo agent mới từ template vào company của user. */
+      instantiateTemplate: (templateId: string) =>
+        trpc.agents.instantiateTemplate.mutate({ templateId }),
     },
     schedules: {
       list: () => trpc.schedules.list.query(),
