@@ -4,9 +4,9 @@ import { createOrgClient } from "@erp-framework/client";
    cấp trên (managerId); trang dựng cây từ quan hệ đó.
 
    Hai chế độ xem:
-   - Danh sách: cây thụt lề, có Select đổi cấp trên (chỉnh sửa).
+   - Danh sách: cây thụt lề, có Select đổi cấp trên ngay mỗi hàng.
    - Sơ đồ: gia phả / sơ đồ tổ chức trực quan, hộp nối bằng đường
-     kẻ, từ trên xuống (chỉ xem).
+     kẻ, từ trên xuống. Bấm vào hộp để đổi cấp trên inline.
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
@@ -30,6 +30,7 @@ function OrgChartRoute() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [view, setView] = useState<ViewMode>("chart");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = () => {
     org
@@ -105,15 +106,62 @@ function OrgChartRoute() {
     if (seen.has(a.id)) return null;
     seen.add(a.id);
     const kids = childrenOf(a.id).filter((k) => !seen.has(k.id));
+    const isSelected = selectedId === a.id;
+    const managerName = a.managerId
+      ? (agents.find((x) => x.id === a.managerId)?.name ?? null)
+      : null;
     return (
       <div key={a.id} className="flex flex-col items-center">
-        {/* Hộp agent */}
-        <div className="rounded-lg border border-border bg-panel px-3 py-2 shadow-xs flex flex-col items-center gap-1 min-w-[150px]">
-          <div className="flex items-center gap-1.5">
+        {/* Hộp agent — click để chỉnh cấp trên */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setSelectedId(isSelected ? null : a.id)}
+          onKeyDown={(e) => e.key === "Enter" && setSelectedId(isSelected ? null : a.id)}
+          className={cn(
+            "rounded-lg border bg-panel px-3 py-2 shadow-xs flex flex-col items-center gap-1 min-w-[160px] cursor-pointer transition-colors select-none",
+            isSelected ? "border-accent bg-accent/10" : "border-border hover:border-accent/50",
+          )}
+        >
+          <div className="flex items-center gap-1.5 w-full justify-center">
             <I.Bot size={15} className="text-accent shrink-0" />
             <span className="font-medium text-sm">{a.name}</span>
+            <I.ChevronDown
+              size={11}
+              className={cn("text-muted ml-auto transition-transform", isSelected && "rotate-180")}
+            />
           </div>
           <Chip className="text-[10px]!">{a.model}</Chip>
+          {!isSelected && managerName && (
+            <div className="text-[10px] text-muted/70">↑ {managerName}</div>
+          )}
+          {isSelected && (
+            <div
+              className="w-full mt-1 border-t border-border/60 pt-2 space-y-1"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <div className="text-[10px] text-muted font-medium">Cấp trên:</div>
+              <Select
+                value={a.managerId ?? ""}
+                disabled={busy}
+                onChange={(e) => {
+                  void setManager(a, e.target.value || null);
+                  setSelectedId(null);
+                }}
+                className="h-7! text-xs! w-full"
+              >
+                <option value="">— (cấp cao nhất) —</option>
+                {agents
+                  .filter((o) => o.id !== a.id)
+                  .map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+              </Select>
+            </div>
+          )}
         </div>
 
         {kids.length > 0 && (
@@ -173,8 +221,7 @@ function OrgChartRoute() {
         </div>
         <div className="text-sm text-muted mb-6">
           Gán agent cấp trên để dựng cây tổ chức — agent quản lý có thể điều phối agent cấp dưới.
-          Đổi cấp trên ở chế độ <b>Danh sách</b>; chế độ
-          <b> Sơ đồ</b> hiển thị trực quan như sơ đồ tổ chức.
+          Bấm vào hộp agent để đổi cấp trên (ở cả hai chế độ xem).
         </div>
 
         {agents.length === 0 ? (

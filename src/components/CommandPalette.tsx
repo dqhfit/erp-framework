@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Kbd } from "@/components/ui";
 import { useT } from "@/hooks/useT";
@@ -25,6 +25,7 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const entities = useUserObjects((s) => s.entities);
   const pages = useUserObjects((s) => s.pages);
   const workflows = useUserObjects((s) => s.workflows);
@@ -130,8 +131,12 @@ export function CommandPalette() {
   }, [items, q]);
 
   useEffect(() => {
-    setIdx(0);
-  }, []);
+    if (open) {
+      setQ("");
+      setIdx(0);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open]);
 
   const run = (item: Item) => {
     setOpen(false);
@@ -178,6 +183,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-2 px-3 h-12 border-b border-border shrink-0">
           <I.Search size={16} className="text-muted shrink-0" />
           <input
+            ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("cmd.placeholder")}
