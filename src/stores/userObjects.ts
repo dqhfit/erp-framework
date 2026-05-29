@@ -70,6 +70,7 @@ function rowToEntity(r: Row): MockEntity {
     })),
     mcpBindings: meta.mcpBindings as MockEntity["mcpBindings"],
     procBindings,
+    primaryKey: (meta.primaryKey as string) || undefined,
   };
 }
 function entityToInput(e: MockEntity) {
@@ -90,6 +91,7 @@ function entityToInput(e: MockEntity) {
     meta: {
       mcp: e.mcp,
       mcpBindings: e.mcpBindings ?? null,
+      ...(e.primaryKey ? { primaryKey: e.primaryKey } : {}),
       ...(Object.keys(bindings).length ? { bindings } : {}),
     },
   };
@@ -127,6 +129,7 @@ function rowToAgent(r: Row): MockAgent {
     name: (r.name as string) || "",
     model: (r.model as string) || "claude-sonnet-4-6",
     tools,
+    templateId: typeof cfg.templateId === "string" ? cfg.templateId : undefined,
   };
 }
 
@@ -150,6 +153,7 @@ interface UserObjectsState {
   upsertEntity: (e: MockEntity) => void;
   deleteEntity: (id: string) => void;
   renameEntity: (id: string, name: string) => void;
+  flushEntities: () => Promise<void>;
 
   addPage: (p: MockPage) => void;
   upsertPage: (p: MockPage) => void;
@@ -259,6 +263,10 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     }));
     const e = get().entities.find((x) => x.id === id);
     if (e) bg(api.entities.save(entityToInput(e)), "đổi tên entity");
+  },
+  flushEntities: async () => {
+    const entities = get().entities;
+    await Promise.all(entities.map((e) => api.entities.save(entityToInput(e))));
   },
 
   /* ── Page ── */

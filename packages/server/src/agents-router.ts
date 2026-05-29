@@ -285,7 +285,7 @@ export const agentsRouter = router({
   /** Danh sach template agent theo phong ban — khong luu DB, la hang so server. */
   listTemplates: approvedProcedure.query(() => AGENT_TEMPLATES),
 
-  /** Tao agent moi tu template. Copy name + model + config vao company cua user. */
+  /** Tao agent moi tu template. Luu templateId vao config de UI biet nguon goc. */
   instantiateTemplate: rbacProcedure("create", "agent")
     .input(z.object({ templateId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -299,6 +299,7 @@ export const agentsRouter = router({
           name: tpl.name,
           model: tpl.model,
           config: {
+            templateId: tpl.id,
             systemPrompt: tpl.systemPrompt,
             tools: tpl.tools,
             temperature: tpl.temperature,
@@ -316,6 +317,45 @@ export const agentsRouter = router({
         objectType: "agent",
         target: row.id,
         detail: `Tao agent tu template "${tpl.id}"`,
+        actorUserId: ctx.user.id,
+      });
+      return row;
+    }),
+
+  /** Cap nhat config agent hien tai theo template moi nhat (giu memory, ghi de systemPrompt/tools/temperature/model). */
+  applyTemplate: rbacProcedure("edit", "agent")
+    .input(z.object({ agentId: z.string().uuid(), templateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tpl = AGENT_TEMPLATES.find((t) => t.id === input.templateId);
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template khong ton tai" });
+      await assertCanActOnAgent(ctx, input.agentId, "edit");
+      const [existing] = await ctx.db
+        .select({ config: agents.config })
+        .from(agents)
+        .where(and(eq(agents.id, input.agentId), eq(agents.companyId, ctx.user.companyId)));
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const prevCfg = (existing.config ?? {}) as Record<string, unknown>;
+      const [row] = await ctx.db
+        .update(agents)
+        .set({
+          model: tpl.model,
+          config: {
+            ...prevCfg,
+            templateId: tpl.id,
+            systemPrompt: tpl.systemPrompt,
+            tools: tpl.tools,
+            temperature: tpl.temperature,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(agents.id, input.agentId))
+        .returning();
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "agent.updated",
+        objectType: "agent",
+        target: input.agentId,
+        detail: `Cap nhat agent tu template "${tpl.id}"`,
         actorUserId: ctx.user.id,
       });
       return row;

@@ -74,6 +74,8 @@ export interface MockEntity {
   icon: IconName;
   mcp: string;
   fields: EntityField[];
+  /** ID của field dùng làm khoá chính (PK). Dùng để hiển thị ERD và tạo FK mặc định. */
+  primaryKey?: string;
   /** Mapping 5 op (list/get/create/update/delete) → MCP tool + args */
   mcpBindings?: import("@/components/designer/McpBindingsEditor").McpBindings;
   /** Override per-op sang native procedure: { list?: "proc_name", ... }.
@@ -113,4 +115,6 @@ export interface MockAgent {
   name: string;
   model: string;
   tools: number;
+  /** ID của template đã dùng để tạo agent (nếu có). */
+  templateId?: string;
 }

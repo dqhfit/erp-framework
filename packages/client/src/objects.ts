@@ -143,6 +143,9 @@ export function createObjectsClient(baseUrl: string) {
       /** Tạo agent mới từ template vào company của user. */
       instantiateTemplate: (templateId: string) =>
         trpc.agents.instantiateTemplate.mutate({ templateId }),
+      /** Ghi đè systemPrompt/tools/temperature/model của agent theo template mới nhất (giữ memory). */
+      applyTemplate: (agentId: string, templateId: string) =>
+        trpc.agents.applyTemplate.mutate({ agentId, templateId }),
     },
     schedules: {
       list: () => trpc.schedules.list.query(),
