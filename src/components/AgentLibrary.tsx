@@ -1,14 +1,14 @@
 /* ==========================================================
-   AgentLibrary — Modal chon template agent theo phong ban.
+   AgentLibrary — Trang thu vien agent (full page, khong popup).
    - Kich hoat: tao agent moi tu template
    - Cap nhat: ap dung template moi nhat len agent da ton tai
    - Xem truoc: drawer hien thi system prompt + tools + config
    ========================================================== */
 import { createObjectsClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Chip, Drawer, Modal } from "@/components/ui";
+import { Button, Chip, Drawer } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { useUserObjects } from "@/stores/userObjects";
@@ -53,12 +53,7 @@ const DEPT_ICON: Record<string, keyof typeof I> = {
   phap_che: "FileCheck",
 } as const;
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-}
-
-export function AgentLibrary({ open, onClose }: Props) {
+export function AgentLibraryPage() {
   const t = useT();
   const navigate = useNavigate();
   const userAgents = useUserObjects((s) => s.agents);
@@ -70,22 +65,16 @@ export function AgentLibrary({ open, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState<Template | null>(null);
 
-  const handleOpen = async () => {
-    if (templates !== null) return;
+  useEffect(() => {
     setLoading(true);
-    try {
-      const list = await api.agents.listTemplates();
-      setTemplates(list as Template[]);
-    } catch {
-      setTemplates([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    api.agents
+      .listTemplates()
+      .then((list) => setTemplates(list as Template[]))
+      .catch(() => setTemplates([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  if (open && templates === null && !loading) void handleOpen();
-
-  /* Map templateId → agent[] da kich hoat trong cong ty */
+  /* Map templateId → agents da kich hoat */
   const installedMap = new Map<string, { id: string; name: string }[]>();
   for (const a of userAgents) {
     if (a.templateId) {
@@ -97,18 +86,17 @@ export function AgentLibrary({ open, onClose }: Props) {
 
   const departments = Object.keys(DEPT_KEY_TO_I18N);
 
-  const filtered = (templates ?? []).filter((t) => {
-    const matchDept = activeTab === "all" || t.departmentKey === activeTab;
+  const filtered = (templates ?? []).filter((tpl) => {
+    const matchDept = activeTab === "all" || tpl.departmentKey === activeTab;
     const q = search.trim().toLowerCase();
     const matchSearch =
       !q ||
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.departmentKey.includes(q);
+      tpl.name.toLowerCase().includes(q) ||
+      tpl.description.toLowerCase().includes(q) ||
+      tpl.departmentKey.includes(q);
     return matchDept && matchSearch;
   });
 
-  /* Kich hoat: tao agent moi */
   const handleActivate = async (tpl: Template) => {
     setBusy(tpl.id);
     try {
@@ -122,22 +110,19 @@ export function AgentLibrary({ open, onClose }: Props) {
       };
       addAgent(agent);
       navigate({ to: "/agents/$id", params: { id: agent.id } });
-      onClose();
     } catch {
-      /* loi hien o console, khong pop-up */
+      /* no-op */
     } finally {
       setBusy(null);
     }
   };
 
-  /* Cap nhat: ghi de config agent hien tai */
   const handleUpdate = async (tpl: Template, agentId: string) => {
     const ok = await dialog.confirm(t("agent_lib.update_confirm"));
     if (!ok) return;
     setBusy(`${tpl.id}:${agentId}`);
     try {
       await api.agents.applyTemplate(agentId, tpl.id);
-      /* Reload agent content (store khong co applyTemplate action, chi cap nhat sidebar qua rename) */
     } catch {
       /* no-op */
     } finally {
@@ -160,80 +145,85 @@ export function AgentLibrary({ open, onClose }: Props) {
     model.includes("haiku") ? "Haiku" : model.includes("opus") ? "Opus" : "Sonnet";
 
   return (
-    <>
-      <Modal open={open} onClose={onClose} title={t("agent_lib.title")} width={780}>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 px-6 py-4 border-b border-border flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+          <I.Library size={16} />
+        </div>
+        <div>
+          <h1 className="text-base font-semibold leading-tight">{t("agent_lib.title")}</h1>
+          <p className="text-xs text-muted">{(templates ?? []).length} template</p>
+        </div>
+        <div className="flex-1" />
         {/* Search */}
-        <div className="mb-3">
-          <div className="relative">
-            <I.Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              type="search"
-              placeholder={t("agent_lib.search_placeholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm bg-input border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+        <div className="relative w-64">
+          <I.Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            placeholder={t("agent_lib.search_placeholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-input border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+      </div>
+
+      {/* Department tabs */}
+      <div className="shrink-0 px-6 py-2 border-b border-border flex gap-1 flex-wrap">
+        <TabBtn active={activeTab === "all"} onClick={() => setActiveTab("all")}>
+          {t("agent_lib.all")} ({(templates ?? []).length})
+        </TabBtn>
+        {departments.map((dk) => {
+          const count = (templates ?? []).filter((tpl) => tpl.departmentKey === dk).length;
+          if (count === 0) return null;
+          const DIcon = I[DEPT_ICON[dk] ?? "Bot"];
+          return (
+            <TabBtn key={dk} active={activeTab === dk} onClick={() => setActiveTab(dk)}>
+              <DIcon size={11} />
+              {deptLabel(dk)} ({count})
+            </TabBtn>
+          );
+        })}
+      </div>
+
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        {loading && (
+          <div className="flex items-center justify-center h-48 text-muted text-sm">
+            <I.Loader size={18} className="animate-spin mr-2" />
+            {t("agent_lib.loading")}
           </div>
-        </div>
-
-        {/* Department tabs */}
-        <div className="flex gap-1 flex-wrap mb-4">
-          <TabBtn active={activeTab === "all"} onClick={() => setActiveTab("all")}>
-            {t("agent_lib.all")} ({(templates ?? []).length})
-          </TabBtn>
-          {departments.map((dk) => {
-            const count = (templates ?? []).filter((t) => t.departmentKey === dk).length;
-            if (count === 0) return null;
-            const DIcon = I[DEPT_ICON[dk] ?? "Bot"];
-            return (
-              <TabBtn key={dk} active={activeTab === dk} onClick={() => setActiveTab(dk)}>
-                <DIcon size={11} />
-                {deptLabel(dk)} ({count})
-              </TabBtn>
-            );
-          })}
-        </div>
-
-        {/* Template grid */}
-        <div className="max-h-[440px] overflow-y-auto pr-1">
-          {loading && (
-            <div className="flex items-center justify-center h-32 text-muted text-sm">
-              <I.Loader size={16} className="animate-spin mr-2" />
-              {t("agent_lib.loading")}
-            </div>
-          )}
-          {!loading && filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-32 text-muted text-sm gap-2">
-              <I.SearchX size={24} />
-              {t("agent_lib.empty")}
-            </div>
-          )}
-          {!loading && filtered.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {filtered.map((tpl) => {
-                const installed = installedMap.get(tpl.id) ?? [];
-                const isInstalled = installed.length > 0;
-                return (
-                  <TemplateCard
-                    key={tpl.id}
-                    tpl={tpl}
-                    installed={installed}
-                    busy={busy}
-                    modelLabel={modelLabel(tpl.model)}
-                    deptLabel={deptLabel(tpl.departmentKey)}
-                    iconFor={iconFor}
-                    onActivate={handleActivate}
-                    onUpdate={handleUpdate}
-                    onPreview={setPreview}
-                    t={t}
-                    isInstalled={isInstalled}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Modal>
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-48 text-muted text-sm gap-2">
+            <I.SearchX size={28} />
+            {t("agent_lib.empty")}
+          </div>
+        )}
+        {!loading && filtered.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((tpl) => {
+              const installed = installedMap.get(tpl.id) ?? [];
+              return (
+                <TemplateCard
+                  key={tpl.id}
+                  tpl={tpl}
+                  installed={installed}
+                  busy={busy}
+                  modelLabel={modelLabel(tpl.model)}
+                  deptLabel={deptLabel(tpl.departmentKey)}
+                  iconFor={iconFor}
+                  onActivate={handleActivate}
+                  onUpdate={handleUpdate}
+                  onPreview={setPreview}
+                  t={t}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Preview Drawer */}
       <PreviewDrawer
@@ -243,7 +233,7 @@ export function AgentLibrary({ open, onClose }: Props) {
         modelLabel={modelLabel}
         t={t}
       />
-    </>
+    </div>
   );
 }
 
@@ -282,7 +272,6 @@ function TemplateCard({
   onUpdate,
   onPreview,
   t,
-  isInstalled,
 }: {
   tpl: Template;
   installed: { id: string; name: string }[];
@@ -294,9 +283,9 @@ function TemplateCard({
   onUpdate: (tpl: Template, agentId: string) => void;
   onPreview: (tpl: Template) => void;
   t: ReturnType<typeof useT>;
-  isInstalled: boolean;
 }) {
   const isActivating = busy === tpl.id;
+  const isInstalled = installed.length > 0;
 
   return (
     <div className="flex flex-col gap-2 p-3 border border-border rounded-lg bg-panel hover:border-accent/30 transition-colors group">
@@ -309,7 +298,6 @@ function TemplateCard({
           <div className="font-medium text-sm leading-tight">{tpl.name}</div>
           <Chip className="mt-0.5 opacity-70 text-[10px] py-0">{deptLabel}</Chip>
         </div>
-        {/* Preview button */}
         <button
           type="button"
           title={t("agent_lib.preview")}
@@ -320,10 +308,9 @@ function TemplateCard({
         </button>
       </div>
 
-      {/* Description */}
-      <p className="text-xs text-muted leading-relaxed">{tpl.description}</p>
+      <p className="text-xs text-muted leading-relaxed flex-1">{tpl.description}</p>
 
-      {/* Installed agents list */}
+      {/* Installed agents */}
       {isInstalled && (
         <div className="flex flex-wrap gap-1">
           {installed.map((a) => (
@@ -339,7 +326,7 @@ function TemplateCard({
       )}
 
       {/* Footer */}
-      <div className="flex items-center gap-1 mt-auto">
+      <div className="flex items-center gap-1 flex-wrap">
         <span className="text-[10px] text-muted bg-muted/10 rounded px-1.5 py-0.5">
           {modelLabel}
         </span>
@@ -348,29 +335,26 @@ function TemplateCard({
         </span>
         <div className="flex-1" />
 
-        {/* Update buttons for already-installed agents */}
-        {isInstalled &&
-          installed.map((a) => (
-            <Button
-              key={a.id}
-              size="sm"
-              variant="ghost"
-              disabled={busy === `${tpl.id}:${a.id}`}
-              onClick={() => onUpdate(tpl, a.id)}
-              title={a.name}
-              icon={
-                busy === `${tpl.id}:${a.id}` ? (
-                  <I.Loader size={12} className="animate-spin" />
-                ) : (
-                  <I.RefreshCw size={12} />
-                )
-              }
-            >
-              {busy === `${tpl.id}:${a.id}` ? t("agent_lib.updating") : t("agent_lib.update")}
-            </Button>
-          ))}
+        {installed.map((a) => (
+          <Button
+            key={a.id}
+            size="sm"
+            variant="ghost"
+            disabled={busy === `${tpl.id}:${a.id}`}
+            onClick={() => onUpdate(tpl, a.id)}
+            title={a.name}
+            icon={
+              busy === `${tpl.id}:${a.id}` ? (
+                <I.Loader size={12} className="animate-spin" />
+              ) : (
+                <I.RefreshCw size={12} />
+              )
+            }
+          >
+            {busy === `${tpl.id}:${a.id}` ? t("agent_lib.updating") : t("agent_lib.update")}
+          </Button>
+        ))}
 
-        {/* Activate button */}
         <Button
           size="sm"
           variant="default"
@@ -409,14 +393,12 @@ function PreviewDrawer({
       width={480}
     >
       <div className="flex flex-col gap-4 p-4 text-sm overflow-y-auto h-full pb-8">
-        {/* Meta */}
         <div className="flex flex-wrap gap-2">
           <InfoBadge label={t("agent_lib.model")} value={modelLabel(tpl.model)} />
           <InfoBadge label={t("agent_lib.temperature")} value={String(tpl.temperature)} />
-          <InfoBadge label="Phòng ban" value={deptLabel(tpl.departmentKey)} />
+          <InfoBadge label="Phong ban" value={deptLabel(tpl.departmentKey)} />
         </div>
 
-        {/* Tools */}
         <div>
           <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t("agent_lib.tools")} ({tpl.tools.length})
@@ -437,7 +419,6 @@ function PreviewDrawer({
           </div>
         </div>
 
-        {/* Tags */}
         {tpl.tags.length > 0 && (
           <div>
             <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
@@ -453,7 +434,6 @@ function PreviewDrawer({
           </div>
         )}
 
-        {/* System Prompt */}
         <div className="flex-1">
           <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t("agent_lib.system_prompt")}

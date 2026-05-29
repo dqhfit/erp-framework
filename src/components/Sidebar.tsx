@@ -1,6 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { AgentLibrary } from "@/components/AgentLibrary";
 import { I } from "@/components/Icons";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
@@ -701,7 +700,6 @@ export function Sidebar() {
   const navigate = useNavigate();
   const favs = useFavs();
 
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState({
     entities: true,
     pages: true,
@@ -977,7 +975,7 @@ export function Sidebar() {
                 <button
                   type="button"
                   title={t("sidebar.agent_library")}
-                  onClick={() => setLibraryOpen(true)}
+                  onClick={() => navigate({ to: "/agents/library" })}
                   className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-foreground hover:bg-hover transition-colors"
                 >
                   <I.Library size={13} />
@@ -1421,7 +1419,6 @@ export function Sidebar() {
           </div>
         )}
       </div>
-      <AgentLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} />
     </aside>
   );
 }
