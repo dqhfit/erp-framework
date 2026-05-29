@@ -39,6 +39,7 @@ const DEPT_KEY_TO_I18N: Record<string, string> = {
   marketing: "agent_lib.dept_marketing",
   cham_soc_kh: "agent_lib.dept_cham_soc_kh",
   phap_che: "agent_lib.dept_phap_che",
+  he_thong: "agent_lib.dept_he_thong",
 };
 
 const DEPT_ICON: Record<string, keyof typeof I> = {
@@ -51,6 +52,7 @@ const DEPT_ICON: Record<string, keyof typeof I> = {
   marketing: "PenTool",
   cham_soc_kh: "MessageSquare",
   phap_che: "FileCheck",
+  he_thong: "Server",
 } as const;
 
 export function AgentLibraryPage() {
