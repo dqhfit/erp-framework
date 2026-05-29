@@ -57,7 +57,7 @@ export function AgentLibraryPage() {
   const t = useT();
   const navigate = useNavigate();
   const userAgents = useUserObjects((s) => s.agents);
-  const addAgent = useUserObjects((s) => s.addAgent);
+  const hydrate = useUserObjects((s) => s.hydrate);
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -101,15 +101,13 @@ export function AgentLibraryPage() {
     setBusy(tpl.id);
     try {
       const row = await api.agents.instantiateTemplate(tpl.id);
-      const agent = {
-        id: (row as { id: string }).id,
-        name: tpl.name,
-        model: tpl.model,
-        tools: tpl.tools.length,
-        templateId: tpl.id,
-      };
-      addAgent(agent);
-      navigate({ to: "/agents/$id", params: { id: agent.id } });
+      const id = (row as { id: string }).id;
+      // hydrate() thay vi addAgent(): addAgent fire-and-forget save voi config:{}
+      // se ghi de template config (systemPrompt/tools/temperature) vua duoc
+      // instantiateTemplate ghi vao DB. hydrate() dong bo dung tu backend,
+      // dong thoi populate agentContent[id] de trang chi tiet hien dung config.
+      await hydrate();
+      navigate({ to: "/agents/$id", params: { id } });
     } catch {
       /* no-op */
     } finally {
@@ -123,6 +121,9 @@ export function AgentLibraryPage() {
     setBusy(`${tpl.id}:${agentId}`);
     try {
       await api.agents.applyTemplate(agentId, tpl.id);
+      // Dong bo store sau khi server cap nhat config — khong co dong nay trang
+      // chi tiet van hien config cu cho den khi reload tay.
+      await hydrate();
     } catch {
       /* no-op */
     } finally {

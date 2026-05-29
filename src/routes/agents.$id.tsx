@@ -8,6 +8,7 @@ import { HeartbeatPanel } from "@/components/HeartbeatPanel";
 import { I } from "@/components/Icons";
 import { ModelCombobox } from "@/components/ModelCombobox";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
 import type { MockAgent } from "@/lib/object-types";
@@ -91,6 +92,7 @@ function AgentRoute() {
   };
   const [state, setState] = useState<AgentState>(initialState);
   const [lastSaved, setLastSaved] = useState<AgentState>(initialState);
+  useDocumentTitle(state.name);
   const [templates, setTemplates] = useState<Record<MemoryFile, string> | null>(null);
   const api = useMemo(() => createObjectsClient(""), []);
   const [aiOpen, setAiOpen] = useState(false);
@@ -104,10 +106,18 @@ function AgentRoute() {
   useEffect(() => {
     const stored = useUserObjects.getState().agentContent[id] as Partial<AgentState> | undefined;
     if (stored) {
-      // Agent cũ chưa có memory/fallbackModels → điền giá trị mặc định
-      // để UI không crash khi đọc.
+      // name/model đứng trước spread: template-instantiated agents lưu
+      // name+model ở cột agents chứ không trong config JSONB, nên stored
+      // có thể thiếu 2 trường này. Đặt fallback từ agent row trước rồi
+      // override bằng stored để không bị undefined.
+      const s = stored as AgentState;
       const next: AgentState = {
-        ...(stored as AgentState),
+        ...s,
+        // Template-instantiated agents store name+model in the agents table
+        // column, not in config JSONB, so s.name/s.model may be undefined.
+        // Fall back to the agent row values so the header never shows blank.
+        name: s.name || agent.name,
+        model: s.model || agent.model || "claude-sonnet-4-6",
         memory: { ...emptyMemory(), ...(stored.memory ?? {}) },
         fallbackModels: stored.fallbackModels ?? [],
         isPrivate: stored.isPrivate === true,
@@ -115,7 +125,7 @@ function AgentRoute() {
       setState(next);
       setLastSaved(next);
     }
-  }, [id]);
+  }, [id, agent.name, agent.model]);
 
   // Lấy 7 template mặc định (server đã chèn tên agent vào).
   useEffect(() => {
