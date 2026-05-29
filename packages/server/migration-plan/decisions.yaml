@@ -217,3 +217,11 @@
     jobId: 019e6ba7-ca61-74bd-a840-db168350f13a
     mode: sync
   by: 1dd8ec83-dff8-4f54-b42c-066573f74724
+- at: 2026-05-29T08:11:11.557Z
+  module: sales
+  action:
+    type: codegenProcApply
+    tier: D
+    procName: dbo.tr_capphat_vattu_govan_getlistbysp
+    fileName: lay_cap_phat_vat_tu_govan_theo_sp.ts
+  by: 1dd8ec83-dff8-4f54-b42c-066573f74724

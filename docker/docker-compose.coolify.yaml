@@ -78,6 +78,9 @@ services:
       UPLOAD_DIR: /data/uploads
       # MQTT bridge — server subscribe topic IoT (nội bộ, mosquitto:1883).
       MQTT_URL: mqtt://mosquitto:1883
+      # Claude Code CLI bridge — server-side gọi adapter=claude-cli qua tên
+      # service "bridge" (browser dùng /bridge proxy; server không parse được).
+      BRIDGE_URL: http://bridge:8909
     depends_on:
       db:
         condition: service_healthy

@@ -73,6 +73,15 @@ Output JSON object DUY NHẤT theo schema:
    - `MERGE` → `INSERT ... ON CONFLICT (...) DO UPDATE`
    - `RAISERROR` → `throw new Error(...)`
 
+6b. **Lọc theo MẢNG giá trị** (vd `fn_Split(@list,',')` → `IN (...)` / `ANY`):
+   TUYỆT ĐỐI KHÔNG viết `ANY(${arr}::text[])` — drizzle splat mảng JS thành
+   danh sách param `($1,$2)` (record) → Postgres lỗi "cannot cast record to
+   text[]". Dựng ARRAY tường minh bằng `sql.join`:
+   ```ts
+   sql`AND col = ANY(ARRAY[${sql.join(arr.map((x) => sql`${x}`), sql`, `)}]::text[])`
+   ```
+   (Nếu mảng rỗng → trả `sql\`\`` để bỏ điều kiện.)
+
 7. **Return type**: object hoặc array. Nếu T-SQL trả nhiều rows → `Array<{...}>`.
 
 8. **Validate input** ở đầu function: `if (!args.from_date) throw new Error("Thiếu from_date");`

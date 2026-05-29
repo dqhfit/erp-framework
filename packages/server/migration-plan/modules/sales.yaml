@@ -9648,6 +9648,7 @@ procs:
     flags:
       - dynamic-sql
     suggestedTier: D
+    targetFile: packages/plugins/module-sales/lay_cap_phat_vat_tu_govan_theo_sp.ts
   - name: dbo.tr_capphat_vattu_govan_getlistorder
     reads:
       - dbo.tr_capphat_vattu_govan

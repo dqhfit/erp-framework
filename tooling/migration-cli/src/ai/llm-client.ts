@@ -67,12 +67,23 @@ export async function resolveCompanyId(override?: string): Promise<string> {
 /** Đọc style guide MỖI lần — KHÔNG cache. File ~3KB. Cache khiến edit
  *  STYLE.md không có hiệu lực cho đến khi restart server (bug đã gặp). */
 export function loadStyleGuide(): string {
-  const p = resolve(process.cwd(), "migration-plan", "STYLE.md");
-  if (!existsSync(p)) {
-    console.warn(`! STYLE.md không tồn tại (${p}) — AI sẽ thiếu context naming Việt.`);
-    return "";
+  // STYLE.md là single-source ở migration-plan/ gốc repo. Nhưng cwd của tiến
+  // trình đọc nó khác nhau: repo root, packages/server (pnpm dev — modules
+  // data nằm ở packages/server/migration-plan/ NHƯNG không có STYLE.md), hay
+  // /app (Docker). Đi NGƯỢC lên từ cwd, lấy thư mục cha ĐẦU TIÊN có
+  // migration-plan/STYLE.md — nhờ vậy 1 bản STYLE.md duy nhất dùng được mọi nơi.
+  let dir = process.cwd();
+  for (;;) {
+    const p = resolve(dir, "migration-plan", "STYLE.md");
+    if (existsSync(p)) return readFileSync(p, "utf8");
+    const parent = dirname(dir);
+    if (parent === dir) break; // chạm root filesystem
+    dir = parent;
   }
-  return readFileSync(p, "utf8");
+  console.warn(
+    `! STYLE.md không tìm thấy (dò từ ${process.cwd()} ngược lên gốc) — AI sẽ thiếu context naming Việt.`,
+  );
+  return "";
 }
 
 /** Đọc system prompt từ file ai/prompts/<name>.md. */

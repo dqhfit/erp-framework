@@ -14,6 +14,7 @@ import {
   entities,
   entityRecords,
   enums,
+  llmProfiles,
   migrationFullJobs,
   migrationFullJobTables,
   mssqlConnections,
@@ -47,6 +48,13 @@ import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
 import { buildCombinedMigratedSet } from "./migration-migrated-set";
 import { enqueueMigrationJob, getMigrationJobStatus } from "./migration-worker";
+import { logActivity } from "./activity";
+import {
+  getModuleProc,
+  listModuleProcs as listModuleProcsRegistry,
+  refreshModuleProcs,
+} from "./module-procs";
+import { pluginModuleDir, pluginsRoot, repoRoot } from "./repo-paths";
 import { rbacProcedure, router } from "./trpc";
 
 const MIGRATION_ROOT = () => resolve(process.cwd(), "migration-plan");
@@ -165,7 +173,7 @@ function shapeProcRow(
   } else if (tier === "C" && proc.targetWorkflowId) {
     codegenApplied = true;
   } else if (tier === "D" && proc.targetFile) {
-    codegenApplied = existsSync(resolve(process.cwd(), proc.targetFile as string));
+    codegenApplied = existsSync(resolve(repoRoot(), proc.targetFile as string));
   }
 
   return {
@@ -638,10 +646,10 @@ export const migrationRouter = router({
       // Chỉ cho phép đọc file nằm trong pluginDir để chặn path traversal.
       const procs = (manifest.procs as Array<{ targetFile?: string }> | undefined) ?? [];
       const plugins: Array<{ fileName: string; code: string }> = [];
-      const allowedPluginBase = resolve(process.cwd(), "packages", "plugins");
+      const allowedPluginBase = pluginsRoot();
       for (const proc of procs) {
         if (!proc.targetFile) continue;
-        const fullPath = resolve(process.cwd(), proc.targetFile);
+        const fullPath = resolve(repoRoot(), proc.targetFile);
         if (!fullPath.startsWith(allowedPluginBase + sep)) continue;
         if (existsSync(fullPath)) {
           try {
@@ -838,7 +846,7 @@ export const migrationRouter = router({
             codegenTarget = procId;
           }
         } else if (tier === "D" && proc.targetFile) {
-          const filePath = resolve(process.cwd(), proc.targetFile);
+          const filePath = resolve(repoRoot(), proc.targetFile);
           if (existsSync(filePath)) {
             codegenApplied = true;
             codegenTarget = proc.targetFile;
@@ -1496,7 +1504,7 @@ export const migrationRouter = router({
           message: "fileName phải là basename *.ts không có /.",
         });
       }
-      const pluginDir = resolve(process.cwd(), "packages", "plugins", `module-${input.module}`);
+      const pluginDir = pluginModuleDir(input.module);
       mkdirSync(pluginDir, { recursive: true });
       const target = resolve(pluginDir, input.fileName);
       // Safety: target phải nằm trong pluginDir (+ sep tránh prefix-match partial dir).
@@ -1514,7 +1522,7 @@ export const migrationRouter = router({
       }
       writeFileSync(target, input.code, "utf8");
       // Lưu relative path (slash-separated) để cross-platform safe.
-      const relPath = target.replace(process.cwd() + sep, "").replace(/\\/g, "/");
+      const relPath = target.replace(repoRoot() + sep, "").replace(/\\/g, "/");
       updateManifestTarget("targetFile", relPath);
       appendDecision({
         module: input.module,
@@ -1526,6 +1534,9 @@ export const migrationRouter = router({
         },
         by: ctx.user.id,
       });
+      // Nạp lại registry để file vừa ghi gọi được ngay qua invokeModuleProc
+      // (không cần restart). Lỗi refresh không nên làm hỏng apply → bỏ qua.
+      await refreshModuleProcs().catch(() => {});
       return {
         tier: "D" as const,
         filePath: target,
@@ -4829,6 +4840,73 @@ export const migrationRouter = router({
           ),
         ],
       };
+    }),
+
+  /** Kiểm tra công ty có LLM profile kind=chat chưa — dùng để pre-flight check
+   *  trước khi chạy classify/codegen, tránh flood log với lỗi no_profile. */
+  checkLlmProfile: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: llmProfiles.id,
+        name: llmProfiles.name,
+        adapter: llmProfiles.adapter,
+        kind: llmProfiles.kind,
+      })
+      .from(llmProfiles)
+      .where(eq(llmProfiles.companyId, ctx.user.companyId));
+    const p = rows.find((r) => r.kind === "chat");
+    return {
+      ok: !!p,
+      profileName: p?.name ?? null,
+      adapter: p?.adapter ?? null,
+      companyId: ctx.user.companyId,
+      totalProfiles: rows.length,
+    };
+  }),
+
+  /** Liệt kê Tier D module-proc đã sinh (registry auto-load packages/plugins/module-*). */
+  listModuleProcs: rbacProcedure("view", "procedure").query(() => listModuleProcsRegistry()),
+
+  /** Nạp lại registry sau khi codegen sinh/ghi đè thêm file Tier D — tránh phải restart. */
+  refreshModuleProcs: rbacProcedure("edit", "settings").mutation(async () => {
+    const count = await refreshModuleProcs();
+    return { count };
+  }),
+
+  /** Gọi 1 Tier D module-proc generic. Gác run/procedure giống procedures.invoke.
+   *  Args pass-through — hàm codegen sinh tự validate + cô lập tenant qua company_id. */
+  invokeModuleProc: rbacProcedure("run", "procedure")
+    .input(
+      z.object({
+        module: z.string().min(1),
+        name: z.string().min(1),
+        args: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const entry = await getModuleProc(input.module, input.name);
+      if (!entry) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Module-proc "${input.module}/${input.name}" không có trong registry. Đã codegen + apply file chưa? Thử refreshModuleProcs.`,
+        });
+      }
+      const t0 = Date.now();
+      try {
+        const result = await entry.fn(ctx.db, ctx.user.companyId, input.args ?? {});
+        const durationMs = Date.now() - t0;
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "run_module_proc",
+          objectType: "procedure",
+          target: `${input.module}/${input.name}`,
+          detail: `Tier D chạy ${durationMs}ms`,
+          actorUserId: ctx.user.id,
+        });
+        return { result, durationMs };
+      } catch (e) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
+      }
     }),
 });
 

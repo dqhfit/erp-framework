@@ -66,6 +66,11 @@ services:
       UPLOAD_DIR: /data/uploads
       # MQTT bridge cho IoT — server subscribe iot/+/telemetry/+ + ack/+.
       MQTT_URL: mqtt://mosquitto:1883
+      # Claude Code CLI bridge — server-side gọi LLM adapter=claude-cli.
+      # Bắt buộc tên service "bridge" (không phải localhost) vì server ở
+      # trong Docker. Override profile.endpoint phía browser. Local dev
+      # (server chạy ngoài Docker) không set biến này → fallback localhost.
+      BRIDGE_URL: http://bridge:8909
     depends_on:
       db:
         condition: service_healthy
@@ -96,7 +101,9 @@ services:
   # Đăng nhập MỘT LẦN sau khi container chạy (credentials lưu vào volume
   # claude-auth, không mất khi restart):
   #   docker compose -f docker/docker-compose.yml exec -it bridge claude
-  # Trong app → Cài đặt LLM → Bridge URL để  http://localhost:8909
+  # Trong app (browser) → Cài đặt LLM → Bridge URL = http://localhost:8909
+  # (hoặc "/bridge" qua nginx proxy). Server-side KHÔNG dùng giá trị này —
+  # nó đọc env BRIDGE_URL=http://bridge:8909 (xem service server).
   bridge:
     build:
       context: ..

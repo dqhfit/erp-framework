@@ -15,6 +15,7 @@ import { codegenProc, type CodegenProcResult } from "@erp-framework/migration-cl
 import type { MssqlClient } from "@erp-framework/mssql-client";
 import type { DB } from "./db";
 import { buildCombinedMigratedTableSet } from "./migration-migrated-set";
+import { pluginModuleDir } from "./repo-paths";
 
 const MODULES_DIR = (): string => resolve(process.cwd(), "migration-plan", "modules");
 
@@ -237,7 +238,7 @@ export async function runGenerateModule(args: {
         if (fileName.includes("/") || fileName.includes("\\") || !fileName.endsWith(".ts")) {
           throw new Error(`fileName "${fileName}" không hợp lệ (phải basename *.ts).`);
         }
-        const pluginDir = resolve(process.cwd(), "packages", "plugins", `module-${args.module}`);
+        const pluginDir = pluginModuleDir(args.module);
         mkdirSync(pluginDir, { recursive: true });
         const target = resolve(pluginDir, fileName);
         if (!target.startsWith(pluginDir + sep)) {

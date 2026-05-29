@@ -10,7 +10,8 @@
   "scripts": { "typecheck": "tsc" },
   "dependencies": {
     "@erp-framework/core": "workspace:*",
-    "@erp-framework/mssql-client": "workspace:*"
+    "@erp-framework/mssql-client": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

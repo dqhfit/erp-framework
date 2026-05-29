@@ -21,6 +21,9 @@ export interface CallLlmJsonOpts {
   temperature?: number;
   /** Profile name; mặc định lấy profile chat đầu tiên của công ty. */
   profileName?: string;
+  /** Override timeout (ms). Mặc định 180s cho claude-cli (CLI subprocess
+   *  chậm), 45s cho adapter API trực tiếp. */
+  timeoutMs?: number;
 }
 
 /** Gọi LLM 1 shot. Trả object đã parse, hoặc null nếu lỗi/không hợp lệ.
@@ -42,6 +45,12 @@ export async function callLlmJson<T = unknown>(
   const user = opts.user.slice(0, 8000);
   const maxTokens = opts.maxTokens ?? 1024;
   const temperature = opts.temperature ?? 0.2;
+  // Bridge (claude-cli) chạy CLI subprocess — ~2k token đã ~38s, sinh nhiều
+  // token dễ vượt 45s. Cho claude-cli timeout rộng (mặc định 180s, chỉnh qua
+  // BRIDGE_TIMEOUT_MS); adapter API trực tiếp giữ 45s. opts.timeoutMs ưu tiên.
+  const timeoutMs =
+    opts.timeoutMs ??
+    (p.adapter === "claude-cli" ? Number(process.env.BRIDGE_TIMEOUT_MS) || 180_000 : 45_000);
 
   // claude-cli dùng local bridge (localhost:8909/v1/messages) — Anthropic format, không cần API key.
   const isAnthropic = ["claude", "claude-pro", "anthropic", "claude-cli"].includes(p.adapter);
@@ -51,10 +60,27 @@ export async function callLlmJson<T = unknown>(
     "";
   if (!key && p.adapter !== "ollama" && p.adapter !== "claude-cli") return null;
 
+  // Endpoint phải là URL tuyệt đối — relative path (vd "/bridge/") hoạt động trên
+  // browser nhưng Node.js fetch sẽ throw "Failed to parse URL". Sanitize về default.
+  const safeEndpoint = (v: string | null | undefined, fallback: string) =>
+    v && (v.startsWith("http://") || v.startsWith("https://")) ? v : fallback;
+
   let raw = "";
   try {
     if (isAnthropic) {
-      const endpoint = (p.endpoint ?? "https://api.anthropic.com") + "/v1/messages";
+      // Bridge là infra service — địa chỉ do deployment quyết định, KHÔNG do
+      // profile (profile.endpoint phản ánh góc nhìn browser: "/bridge" proxy
+      // qua nginx, hoặc "http://localhost:8909" của máy dev). Server-side ưu tiên:
+      //   1. BRIDGE_URL env  — Docker compose set "http://bridge:8909"
+      //   2. endpoint absolute đã lưu (nếu không có env — vd self-host khác)
+      //   3. "http://localhost:8909" — local dev: server chạy NGOÀI Docker
+      // Nhờ vậy "/bridge" relative (Node fetch không parse được) hay
+      // "localhost:8909" sai-trong-Docker đều được thay bằng địa chỉ đúng.
+      const endpointBase =
+        p.adapter === "claude-cli"
+          ? process.env.BRIDGE_URL || safeEndpoint(p.endpoint, "http://localhost:8909")
+          : safeEndpoint(p.endpoint, "https://api.anthropic.com");
+      const endpoint = endpointBase + "/v1/messages";
       const headers: Record<string, string> = {
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
@@ -70,13 +96,13 @@ export async function callLlmJson<T = unknown>(
           system: opts.system,
           messages: [{ role: "user", content: user }],
         }),
-        signal: AbortSignal.timeout(45_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!r.ok) return null;
       const j = (await r.json()) as { content?: Array<{ text?: string }> };
       raw = j.content?.[0]?.text ?? "";
     } else {
-      const endpoint = (p.endpoint ?? "https://api.openai.com") + "/v1/chat/completions";
+      const endpoint = safeEndpoint(p.endpoint, "https://api.openai.com") + "/v1/chat/completions";
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (key) headers.authorization = `Bearer ${key}`;
       const r = await fetch(endpoint, {
@@ -92,7 +118,7 @@ export async function callLlmJson<T = unknown>(
           ],
           response_format: { type: "json_object" },
         }),
-        signal: AbortSignal.timeout(45_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!r.ok) return null;
       const j = (await r.json()) as { choices?: Array<{ message?: { content?: string } }> };

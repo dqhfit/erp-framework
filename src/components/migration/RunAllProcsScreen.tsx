@@ -8,7 +8,7 @@
    các endpoint per-module, chạy lại không drift kết quả.
    ========================================================== */
 import { createMigrationClient } from "@erp-framework/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
@@ -60,31 +60,96 @@ const TIER_COLORS: Record<string, string> = {
   D: "bg-danger/15 text-danger border-danger/30",
 };
 
+/* ── Persist trạng thái UI vào localStorage ─────────────────────────────
+   Kết quả migrate thật lưu server-side (manifest/procedures/decisions); ở
+   đây chỉ persist working-set của màn (bộ lọc, proc đã tick, nhật ký) để
+   mở lại / F5 không reset. */
+const LS_KEY = "migrate-proc-screen:v1";
+const RUNLOGS_CAP = 500; // giữ N dòng nhật ký mới nhất, tránh phình localStorage.
+
+interface PersistedFilters {
+  filterMode: "all" | "reads-only";
+  activeDays: number;
+  sortBy: "complexity-asc" | "complexity-desc" | "name";
+  moduleFilter: string;
+  procNameFilter: string;
+  codegenFilter: "all" | "done" | "pending";
+  classifyMode: ClassifyMode;
+}
+
+function loadLS<T>(sub: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(`${LS_KEY}:${sub}`);
+    return raw == null ? fallback : (JSON.parse(raw) as T);
+  } catch {
+    return fallback;
+  }
+}
+function saveLS(sub: string, val: unknown): void {
+  try {
+    localStorage.setItem(`${LS_KEY}:${sub}`, JSON.stringify(val));
+  } catch {
+    /* quota đầy / localStorage tắt — bỏ qua, không vỡ UI */
+  }
+}
+
 interface Props {
   onClose: () => void;
 }
 
 export function RunAllProcsScreen({ onClose }: Props) {
-  const [filterMode, setFilterMode] = useState<"all" | "reads-only">("all");
-  const [activeDays, setActiveDays] = useState(0);
-  const [sortBy, setSortBy] = useState<"complexity-asc" | "complexity-desc" | "name">(
-    "complexity-asc",
+  // Đọc trạng thái đã lưu MỘT lần khi mount (ref ổn định qua re-render).
+  const restoredRef = useRef<{
+    filters: Partial<PersistedFilters>;
+    selected: string[];
+    runLogs: RunLogEntry[];
+  } | null>(null);
+  if (!restoredRef.current) {
+    restoredRef.current = {
+      filters: loadLS<Partial<PersistedFilters>>("filters", {}),
+      selected: loadLS<string[]>("selected", []),
+      runLogs: loadLS<RunLogEntry[]>("runLogs", []),
+    };
+  }
+  const restored = restoredRef.current;
+
+  const [filterMode, setFilterMode] = useState<"all" | "reads-only">(
+    restored.filters.filterMode ?? "all",
   );
-  const [moduleFilter, setModuleFilter] = useState("");
-  const [procNameFilter, setProcNameFilter] = useState("");
-  const [codegenFilter, setCodegenFilter] = useState<"all" | "done" | "pending">("all");
-  const [classifyMode, setClassifyMode] = useState<ClassifyMode>("skip-existing");
+  const [activeDays, setActiveDays] = useState(restored.filters.activeDays ?? 0);
+  const [sortBy, setSortBy] = useState<"complexity-asc" | "complexity-desc" | "name">(
+    restored.filters.sortBy ?? "complexity-asc",
+  );
+  const [moduleFilter, setModuleFilter] = useState(restored.filters.moduleFilter ?? "");
+  const [procNameFilter, setProcNameFilter] = useState(restored.filters.procNameFilter ?? "");
+  const [codegenFilter, setCodegenFilter] = useState<"all" | "done" | "pending">(
+    restored.filters.codegenFilter ?? "all",
+  );
+  const [classifyMode, setClassifyMode] = useState<ClassifyMode>(
+    restored.filters.classifyMode ?? "skip-existing",
+  );
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   /** key = "module::procName" */
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(restored.selected));
   const [runStatus, setRunStatus] = useState<{
     busy: boolean;
     label: string;
     current: number;
     total: number;
   }>({ busy: false, label: "", current: 0, total: 0 });
+  /** Cờ dừng — set true khi user nhấn "Dừng", check trong mỗi vòng lặp. */
+  const stopRef = useRef(false);
+  const [stopRequested, setStopRequested] = useState(false);
+  const requestStop = () => {
+    stopRef.current = true;
+    setStopRequested(true);
+  };
+  const resetStop = () => {
+    stopRef.current = false;
+    setStopRequested(false);
+  };
 
   /** Modal xem nội dung proc. */
   const [viewProc, setViewProc] = useState<{ module: string; name: string } | null>(null);
@@ -203,7 +268,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
   /** Nhật ký chạy — append-only trong session, giữ lại sau khi runMigrateAll
    *  hoàn thành để user review từng bước (ngược với progress bar chỉ hiện
    *  bước CURRENT). */
-  const [runLogs, setRunLogs] = useState<RunLogEntry[]>([]);
+  const [runLogs, setRunLogs] = useState<RunLogEntry[]>(restored.runLogs);
   const appendLog = (entry: Omit<RunLogEntry, "id" | "at">) => {
     setRunLogs((cur) => [
       ...cur,
@@ -245,6 +310,28 @@ export function RunAllProcsScreen({ onClose }: Props) {
   useEffect(() => {
     reload();
   }, [filterMode, activeDays, sortBy, moduleFilter]);
+
+  // ── Persist working-set vào localStorage ──
+  useEffect(() => {
+    saveLS("filters", {
+      filterMode,
+      activeDays,
+      sortBy,
+      moduleFilter,
+      procNameFilter,
+      codegenFilter,
+      classifyMode,
+    } satisfies PersistedFilters);
+  }, [filterMode, activeDays, sortBy, moduleFilter, procNameFilter, codegenFilter, classifyMode]);
+
+  useEffect(() => {
+    saveLS("selected", [...selected]);
+  }, [selected]);
+
+  useEffect(() => {
+    // Cap N dòng mới nhất — nhật ký dài không nên ngốn hết quota localStorage.
+    saveLS("runLogs", runLogs.slice(-RUNLOGS_CAP));
+  }, [runLogs]);
 
   const allRows = useMemo<Array<{ module: string; row: ProcRow }>>(() => {
     if (!data) return [];
@@ -310,6 +397,28 @@ export function RunAllProcsScreen({ onClose }: Props) {
     });
   };
 
+  /** Pre-flight: kiểm tra LLM profile tồn tại. Nếu API báo chắc chắn không có → confirm trước. */
+  const requireLlmProfile = async (): Promise<boolean> => {
+    try {
+      const r = await migration.checkLlmProfile();
+      if (!r.ok) {
+        const hint =
+          r.totalProfiles > 0
+            ? `Company này có ${r.totalProfiles} LLM profile nhưng không có loại "chat". Vào Settings → LLM và đảm bảo có profile loại chat.`
+            : `Company ${r.companyId.slice(0, 13)}... chưa có LLM profile nào. Vào Settings → LLM và thêm profile chat (Anthropic / OpenAI / Ollama…).`;
+        const proceed = await dialog.confirm(
+          `${hint}\n\nVẫn tiếp tục? (Mọi proc AI sẽ báo lỗi no_profile)`,
+          { title: "LLM chưa cấu hình" },
+        );
+        return proceed;
+      }
+      return true;
+    } catch {
+      // Lỗi check → không block, để operation tự báo lỗi nếu cần
+      return true;
+    }
+  };
+
   /** Group selected procs theo module để gọi classifyProcsAi per-module. */
   const selectedByModule = (): Record<string, string[]> => {
     const out: Record<string, string[]> = {};
@@ -323,6 +432,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
   };
 
   const runClassifyAll = async () => {
+    if (!(await requireLlmProfile())) return;
     const groups = selectedByModule();
     const totalProcs = Object.values(groups).flat().length;
     const totalModules = Object.keys(groups).length;
@@ -342,6 +452,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
     );
     if (!ok) return;
 
+    resetStop();
     let succ = 0;
     let skipped = 0;
     let cached = 0;
@@ -351,6 +462,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
 
     let i = 0;
     for (const m of moduleNames) {
+      if (stopRef.current) break;
       const names = groups[m] ?? [];
       i++;
       setRunStatus((s) => ({ ...s, current: i, label: `Classify ${m}` }));
@@ -369,6 +481,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       }
     }
     setRunStatus({ busy: false, label: "", current: 0, total: 0 });
+    resetStop();
 
     const parts: string[] = [];
     if (succ > 0) parts.push(`${succ} mới`);
@@ -380,6 +493,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
   };
 
   const runWorkflowAll = async () => {
+    if (!(await requireLlmProfile())) return;
     const groups = selectedByModule();
     const tierCprocs: Array<{ module: string; procName: string }> = [];
     for (const m of Object.keys(groups)) {
@@ -403,6 +517,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
     );
     if (!ok) return;
 
+    resetStop();
     let succ = 0;
     let reused = 0;
     let failed = 0;
@@ -410,6 +525,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
 
     let i = 0;
     for (const t of tierCprocs) {
+      if (stopRef.current) break;
       i++;
       setRunStatus((s) => ({ ...s, current: i, label: `Workflow ${t.procName}` }));
       try {
@@ -434,6 +550,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       }
     }
     setRunStatus({ busy: false, label: "", current: 0, total: 0 });
+    resetStop();
 
     const parts: string[] = [];
     if (succ > 0) parts.push(`${succ} mới tạo`);
@@ -447,6 +564,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
    *  Chỉ chạy proc chưa codegenApplied. Idempotent: proc đã apply bị skip.
    *  Tier C (workflow) KHÔNG được xử lý ở đây — dùng runWorkflowAll. */
   const runCodegenTierBD = async () => {
+    if (!(await requireLlmProfile())) return;
     const tierBDprocs = filteredRows
       .filter(
         ({ module, row }) =>
@@ -470,11 +588,13 @@ export function RunAllProcsScreen({ onClose }: Props) {
     );
     if (!ok) return;
 
+    resetStop();
     let succ = 0;
     let failed = 0;
     setRunStatus({ busy: true, label: "Codegen Tier B/D", current: 0, total: tierBDprocs.length });
     let i = 0;
     for (const { module, procName, tier } of tierBDprocs) {
+      if (stopRef.current) break;
       i++;
       setRunStatus((s) => ({ ...s, current: i, label: `Codegen ${procName}` }));
       try {
@@ -548,6 +668,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       }
     }
     setRunStatus({ busy: false, label: "", current: 0, total: 0 });
+    resetStop();
     toast.success(`Codegen Tier B/D: ${succ} thành công · ${failed} lỗi`);
     reload();
   };
@@ -558,6 +679,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
    *  - Bước 3/3: apply FK hint từ proc joinPairs vào entities.fields[].ref.
    *  Tất cả idempotent — re-run không phá kết quả. */
   const runMigrateAll = async () => {
+    if (!(await requireLlmProfile())) return;
     const groups = selectedByModule();
     const totalProcs = Object.values(groups).flat().length;
     const totalModules = Object.keys(groups).length;
@@ -577,6 +699,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
     );
     if (!ok) return;
 
+    resetStop();
     appendLog({
       step: "info",
       action: "info",
@@ -599,6 +722,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
     });
     let i = 0;
     for (const m of moduleNames) {
+      if (stopRef.current) break;
       const names = groups[m] ?? [];
       i++;
       setRunStatus((s) => ({ ...s, current: i, label: `Bước 1/3: Classify ${m}` }));
@@ -672,6 +796,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       });
       let jj = 0;
       for (const { module, procName, tier } of tierBDForRun) {
+        if (stopRef.current) break;
         jj++;
         setRunStatus((s) => ({ ...s, current: jj, label: `Bước 2b/3: Codegen ${procName}` }));
         try {
@@ -777,6 +902,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       });
       let j = 0;
       for (const t of tierCprocs) {
+        if (stopRef.current) break;
         j++;
         setRunStatus((s) => ({ ...s, current: j, label: `Bước 2/3: Workflow ${t.procName}` }));
         try {
@@ -861,6 +987,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
         });
         let k = 0;
         for (const h of pending) {
+          if (stopRef.current) break;
           k++;
           setRunStatus((s) => ({
             ...s,
@@ -917,8 +1044,11 @@ export function RunAllProcsScreen({ onClose }: Props) {
     }
 
     setRunStatus({ busy: false, label: "", current: 0, total: 0 });
+    const wasStopped = stopRef.current;
+    resetStop();
 
     const lines: string[] = [];
+    if (wasStopped) lines.push("⚠ Đã dừng giữa chừng theo yêu cầu.");
     lines.push(
       `Classify: ${cSucc} mới · ${cSkipped} bỏ qua · ${cCached} cache${cFailed > 0 ? ` · ${cFailed} lỗi` : ""}`,
     );
@@ -1129,14 +1259,27 @@ export function RunAllProcsScreen({ onClose }: Props) {
       {runStatus.busy && (
         <div className="card p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span>{runStatus.label}</span>
-            <span className="font-mono">
-              {runStatus.current}/{runStatus.total}
+            <span className={stopRequested ? "text-warning" : undefined}>
+              {stopRequested ? "Đang dừng…" : runStatus.label}
             </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono">
+                {runStatus.current}/{runStatus.total}
+              </span>
+              <button
+                type="button"
+                onClick={requestStop}
+                disabled={stopRequested}
+                className="px-2 py-0.5 rounded text-[10px] border border-danger/50 text-danger hover:bg-danger/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Dừng sau proc hiện tại"
+              >
+                ■ Dừng
+              </button>
+            </div>
           </div>
           <div className="h-2 bg-bg-soft rounded overflow-hidden">
             <div
-              className="h-full bg-accent transition-all"
+              className={`h-full transition-all ${stopRequested ? "bg-warning" : "bg-accent"}`}
               style={{
                 width: `${runStatus.total > 0 ? (runStatus.current / runStatus.total) * 100 : 0}%`,
               }}

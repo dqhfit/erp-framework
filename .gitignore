@@ -46,7 +46,10 @@ src/**/*.js
 src/**/*.js.map
 
 # migration-cli AI runtime logs (prompt/response per LLM call)
+# Pattern có slash giữa → git anchor vào root; thêm **/ để bắt cả
+# packages/server/migration-plan/ai-log/ (nơi server thực ghi log).
 migration-plan/ai-log/
+**/migration-plan/ai-log/
 # AI-generated artifacts (kept in repo by default; uncomment to gitignore)
 # migration-plan/samples/
 # migration-plan/audit/

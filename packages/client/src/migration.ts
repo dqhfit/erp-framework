@@ -72,6 +72,14 @@ export function createMigrationClient(baseUrl: string) {
     getAiLogEntry: (module: string, file: string) =>
       trpc.migration.getAiLogEntry.query({ module, file }),
     envCheck: () => trpc.migration.envCheck.query() as Promise<MigrationEnvCheck>,
+    checkLlmProfile: () =>
+      trpc.migration.checkLlmProfile.query() as Promise<{
+        ok: boolean;
+        profileName: string | null;
+        adapter: string | null;
+        companyId: string;
+        totalProfiles: number;
+      }>,
     previewTable: (tableName: string, samples: number = 5) =>
       trpc.migration.previewTable.query({ tableName, samples }),
     previewProc: (procName: string) => trpc.migration.previewProc.query({ procName }),

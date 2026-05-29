@@ -193,9 +193,18 @@ async function fetchGeminiModels(apiKey: string | undefined): Promise<string[]> 
 }
 
 async function fetchOllamaModels(endpoint: string | undefined): Promise<string[]> {
-  const base = (endpoint || "http://localhost:11434").replace(/\/$/, "");
-  const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) });
-  if (!res.ok) throw new Error(`Ollama ${res.status}`);
-  const data = (await res.json()) as { models?: Array<{ name: string }> };
-  return (data.models ?? []).map((m) => m.name);
+  // Proxy qua server tránh CORS khi app deploy trên domain remote mà Ollama chạy localhost.
+  const inputObj = endpoint ? { endpoint } : {};
+  const input = encodeURIComponent(JSON.stringify(inputObj));
+  const res = await fetch(`/trpc/llm.listOllamaModels?input=${input}`, {
+    credentials: "include",
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) throw new Error(`Ollama proxy ${res.status}`);
+  const json = (await res.json()) as {
+    result?: { data?: { models?: string[]; error?: string | null } };
+  };
+  const data = json.result?.data;
+  if (data?.error) throw new Error(data.error);
+  return data?.models ?? [];
 }

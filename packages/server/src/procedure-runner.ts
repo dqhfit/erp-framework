@@ -22,6 +22,7 @@ import { entities, entityRecords, procedures } from "@erp-framework/db";
 import { validateRecord, type EntityFieldDef } from "@erp-framework/core";
 import type { DB } from "./db";
 import { logActivity } from "./activity";
+import { getModuleProcByName } from "./module-procs";
 
 const MAX_DEPTH = 8;
 const MEM_MB = Number(process.env.CODE_NODE_MEM_MB ?? 128);
@@ -76,7 +77,22 @@ export function makeInvokeProcedure(deps: MakeInvokeProcedureDeps) {
           eq(procedures.enabled, true),
         ),
       );
-    if (!row) throw new Error(`Procedure không tồn tại hoặc đã tắt: ${name}`);
+    if (!row) {
+      // Fallback Tier D: proc migrate thành plugin TS (packages/plugins/module-*)
+      // KHÔNG nằm trong bảng `procedures`. Tra module-procs registry để
+      // workflow node "procedure" / records binding "proc:" / proc-to-proc gọi
+      // được đồng nhất. Tier D chạy IN-PROCESS (full Node, raw SQL), KHÔNG qua
+      // sandbox isolated-vm.
+      // Lưu ý: chạy trên deps.db (auto-commit), KHÔNG join transaction của proc
+      // gọi nó — Tier D hiện chủ yếu là getter; cần tx thì gọi trong tx riêng.
+      const td = await getModuleProcByName(name);
+      if (td) {
+        const t0 = performance.now();
+        const output = await td.fn(deps.db, deps.companyId, args);
+        return { output, logs: [], durationMs: performance.now() - t0 };
+      }
+      throw new Error(`Procedure không tồn tại hoặc đã tắt: ${name}`);
+    }
     return runCode(row.code, args, depth);
   };
 
