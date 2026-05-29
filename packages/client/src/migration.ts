@@ -329,6 +329,7 @@ export function createMigrationClient(baseUrl: string) {
       module: string;
       tier: "B" | "D";
       code: string;
+      procName?: string;
       name?: string;
       label?: string;
       description?: string;
@@ -445,6 +446,8 @@ export function createMigrationClient(baseUrl: string) {
         failed: number;
         totalRowsRead: number;
         totalRowsUpserted: number;
+        totalRowsUpdated: number;
+        truncatedTables: string[];
         results: Array<{
           tableName: string;
           entityName?: string;
@@ -452,7 +455,10 @@ export function createMigrationClient(baseUrl: string) {
           skipped?: string;
           rowsRead: number;
           rowsUpserted: number;
+          rowsUpdated: number;
           rowsDeleted: number;
+          truncated: boolean;
+          unmappedColumns: string[];
           error?: string;
           durationMs: number;
         }>;
@@ -543,6 +549,7 @@ export function createMigrationClient(baseUrl: string) {
           rowsUpserted: number;
           rowsUpdated: number;
           rowsDeleted: number;
+          truncated: boolean;
           error?: string;
           durationMs: number;
         }>;

@@ -3524,13 +3524,19 @@ function QuickMigrateScreen({
   );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  type SyncFilter = "all" | "not-migrated" | "synced" | "incomplete";
+  const [syncFilter, setSyncFilter] = useState<SyncFilter>("all");
   // Map mssqlTable (lowercase) → entityName của entity đã migrate cho conn này.
-  const [migratedMap, setMigratedMap] = useState<Map<string, string>>(new Map());
+  const [migratedMap, setMigratedMap] = useState<
+    Map<string, { name: string; recordCount: number; rowsLastImported: number }>
+  >(new Map());
   const [migratedReloadKey, setMigratedReloadKey] = useState(0);
   const reloadMigrated = () => setMigratedReloadKey((k) => k + 1);
   // Snapshot tableNames khi migrate xong để giữ right pane + result hiển thị
   // trong khi left pane đã sẵn sàng chọn bảng mới.
   const [lockedTableNames, setLockedTableNames] = useState<string[] | null>(null);
+  // Bảng đang được migrate (gạch + spinner) — user có thể chọn batch mới trong lúc chờ.
+  const [pendingTables, setPendingTables] = useState<Set<string>>(new Set());
 
   // Load connections + validate connId đã lưu; fallback về default nếu không còn.
   useEffect(() => {
@@ -3565,6 +3571,8 @@ function QuickMigrateScreen({
     prevConnIdRef.current = pickedConnId;
     setSelected(readQmSel(pickedConnId));
     setLockedTableNames(null);
+    setPendingTables(new Set());
+    setSyncFilter("all");
   }, [pickedConnId]);
 
   // Persist selection mỗi khi thay đổi (debounce không cần vì ghi nhanh).
@@ -3618,9 +3626,17 @@ function QuickMigrateScreen({
     migration
       .listMigratedEntities({ connectionId: pickedConnId })
       .then((rows) => {
-        const m = new Map<string, string>();
+        const m = new Map<
+          string,
+          { name: string; recordCount: number; rowsLastImported: number }
+        >();
         for (const r of rows) {
-          if (r.mssqlTable) m.set(r.mssqlTable.toLowerCase(), r.name);
+          if (r.mssqlTable)
+            m.set(r.mssqlTable.toLowerCase(), {
+              name: r.name,
+              recordCount: r.recordCount,
+              rowsLastImported: r.rowsLastImported,
+            });
         }
         setMigratedMap(m);
       })
@@ -3629,24 +3645,43 @@ function QuickMigrateScreen({
 
   // Helper: 1 bảng đã migrate khi mssqlTable (case-insensitive) có trong migratedMap.
   const isMigrated = (fullName: string) => migratedMap.has(fullName.toLowerCase());
-  // Chỉ hiện bảng chưa migrate — bảng đã migrate ẩn khỏi list.
-  const migratedHiddenCount = tables.filter(
-    (t) =>
-      (!filter || t.fullName.toLowerCase().includes(filter.toLowerCase())) &&
-      isMigrated(t.fullName),
-  ).length;
-  const filtered = tables.filter(
-    (t) =>
-      (!filter || t.fullName.toLowerCase().includes(filter.toLowerCase())) &&
-      !isMigrated(t.fullName),
+  // Hiện tất cả bảng — bảng đã migrate hiển thị disabled + strikethrough bên dưới.
+  // Sắp xếp: row count giảm dần (bảng lớn lên trên), chưa migrate trước.
+  const sorted = [...tables].sort((a, b) => {
+    const aMig = isMigrated(a.fullName) ? 1 : 0;
+    const bMig = isMigrated(b.fullName) ? 1 : 0;
+    if (aMig !== bMig) return aMig - bMig;
+    return (b.rowCount ?? -1) - (a.rowCount ?? -1);
+  });
+  const filtered = sorted.filter((t) => {
+    if (filter && !t.fullName.toLowerCase().includes(filter.toLowerCase())) return false;
+    if (syncFilter === "all") return true;
+    const info = migratedMap.get(t.fullName.toLowerCase());
+    const mssql = t.rowCount ?? null;
+    const pg = info?.recordCount ?? null;
+    if (syncFilter === "not-migrated") return !info;
+    if (syncFilter === "synced") return info != null && mssql != null && pg != null && pg >= mssql;
+    if (syncFilter === "incomplete")
+      return info != null && (mssql == null || pg == null || pg < mssql);
+    return true;
+  });
+  // Chỉ tính bảng chưa migrate + chưa pending cho "Chọn tất cả".
+  const selectableFiltered = filtered.filter(
+    (t) => !isMigrated(t.fullName) && !pendingTables.has(t.fullName),
   );
-  const selectableFiltered = filtered;
+  const migratedFiltered = filtered.filter(
+    (t) => isMigrated(t.fullName) && !pendingTables.has(t.fullName),
+  );
+  const migratedCount = migratedFiltered.length;
+  const pendingCount = filtered.filter((t) => pendingTables.has(t.fullName)).length;
   const selectedNames = Object.keys(selected).filter((k) => selected[k]);
   const selectedCount = selectedNames.length;
-  // Khi user chọn bảng mới, xoá lock để pane reset về preview bảng mới.
+  // Khi user chọn bảng mới VÀ không còn batch pending, xoá lock để pane reset.
   useEffect(() => {
-    if (lockedTableNames !== null && selectedCount > 0) setLockedTableNames(null);
-  }, [selectedCount, lockedTableNames]);
+    if (lockedTableNames !== null && selectedCount > 0 && pendingTables.size === 0) {
+      setLockedTableNames(null);
+    }
+  }, [selectedCount, lockedTableNames, pendingTables.size]);
   // tableNames thực sự truyền xuống pane: locked snapshot hoặc selection hiện tại.
   const activePaneTableNames = lockedTableNames ?? selectedNames;
   const allSelected =
@@ -3654,6 +3689,11 @@ function QuickMigrateScreen({
   const toggleAll = () => {
     const next = { ...selected };
     for (const t of selectableFiltered) next[t.fullName] = !allSelected;
+    setSelected(next);
+  };
+  const selectAllMigrated = () => {
+    const next = { ...selected };
+    for (const t of migratedFiltered) next[t.fullName] = true;
     setSelected(next);
   };
 
@@ -3710,9 +3750,9 @@ function QuickMigrateScreen({
               <div className="flex items-center justify-between text-xs">
                 <div className="font-medium">
                   Bảng MSSQL ({tables.length})
-                  {migratedHiddenCount > 0 && (
-                    <span className="ml-1.5 text-[10px] text-success">
-                      · {migratedHiddenCount} đã migrate (ẩn)
+                  {pendingCount > 0 && (
+                    <span className="ml-1.5 text-[10px] text-warning animate-pulse">
+                      · {pendingCount} đang migrate
                     </span>
                   )}
                 </div>
@@ -3721,17 +3761,58 @@ function QuickMigrateScreen({
                   onClick={toggleAll}
                   disabled={selectableFiltered.length === 0}
                   className="text-accent hover:underline disabled:text-muted disabled:no-underline"
-                  title="Chỉ chọn bảng chưa migrate"
+                  title="Chọn bảng chưa migrate"
                 >
-                  {allSelected ? "Bỏ chọn" : "Chọn"} {selectableFiltered.length}
+                  {allSelected ? "Bỏ chọn" : "Chọn mới"} ({selectableFiltered.length})
                 </button>
               </div>
+              {migratedCount > 0 && (
+                <div className="flex items-center justify-between text-[11px] bg-success/8 border border-success/20 rounded px-2 py-1">
+                  <span className="text-success font-medium">{migratedCount} bảng đã migrate</span>
+                  <button
+                    type="button"
+                    onClick={selectAllMigrated}
+                    className="text-accent hover:underline font-medium"
+                    title="Chọn tất cả bảng đã migrate để sync lại"
+                  >
+                    Sync lại tất cả →
+                  </button>
+                </div>
+              )}
               <Input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="🔍 Lọc tên bảng..."
+                placeholder="Lọc tên bảng..."
                 className="h-8 text-xs"
               />
+              <div className="flex gap-1 flex-wrap">
+                {(
+                  [
+                    { key: "all", label: "Tất cả" },
+                    { key: "not-migrated", label: "Chưa migrate" },
+                    { key: "incomplete", label: "Thiếu dòng" },
+                    { key: "synced", label: "Đủ dòng" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSyncFilter(key)}
+                    className={[
+                      "px-2 h-5 rounded text-[10px] font-medium border transition-colors",
+                      syncFilter === key
+                        ? key === "incomplete"
+                          ? "bg-warning/20 border-warning/40 text-warning"
+                          : key === "synced"
+                            ? "bg-success/20 border-success/40 text-success"
+                            : "bg-accent/20 border-accent/40 text-accent"
+                        : "bg-transparent border-border text-muted hover:border-accent/40 hover:text-text",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               {err && <div className="text-danger text-xs">{err}</div>}
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -3744,72 +3825,106 @@ function QuickMigrateScreen({
               ) : (
                 <ul>
                   {filtered.map((t) => {
-                    const checked = selected[t.fullName] ?? false;
                     const migrated = isMigrated(t.fullName);
-                    const migratedEntityName = migrated
+                    const pending = pendingTables.has(t.fullName);
+                    const checked = pending ? true : (selected[t.fullName] ?? false);
+                    const migratedInfo = migrated
                       ? migratedMap.get(t.fullName.toLowerCase())
                       : undefined;
+                    const mssqlCount = t.rowCount ?? null;
+                    const pgCount = migratedInfo?.recordCount ?? null;
+                    // Tỉ lệ PG/MSSQL: null nếu thiếu dữ liệu
+                    const ratio =
+                      mssqlCount != null && mssqlCount > 0 && pgCount != null
+                        ? pgCount / mssqlCount
+                        : null;
+                    const ratioColor =
+                      ratio === null
+                        ? "text-muted"
+                        : ratio >= 1
+                          ? "text-success"
+                          : ratio >= 0.9
+                            ? "text-warning"
+                            : "text-danger";
                     return (
                       <li
                         key={t.fullName}
                         className={[
-                          "text-xs border-b border-border last:border-0 transition-colors",
+                          "text-xs border-b border-border last:border-0 transition-colors group/row",
                           migrated
-                            ? "opacity-60 bg-surface/40"
-                            : checked
-                              ? "bg-accent/10 cursor-pointer"
-                              : "hover:bg-hover/20 cursor-pointer",
+                            ? "bg-success/3"
+                            : pending
+                              ? "opacity-70 bg-warning/5"
+                              : checked
+                                ? "bg-accent/10"
+                                : "hover:bg-hover/20",
                         ].join(" ")}
-                        onClick={
-                          migrated
-                            ? undefined
-                            : () => setSelected((s) => ({ ...s, [t.fullName]: !s[t.fullName] }))
-                        }
-                        title={
-                          migrated
-                            ? `Đã migrate sang entity "${migratedEntityName}". Re-import qua sidebar "Bảng đã migrate".`
-                            : undefined
-                        }
                       >
                         <label
                           className={[
                             "flex items-center gap-2 px-3 py-1.5",
-                            migrated ? "cursor-not-allowed" : "cursor-pointer",
+                            pending ? "cursor-not-allowed" : "cursor-pointer",
                           ].join(" ")}
                         >
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={migrated}
+                            disabled={pending}
                             onChange={(e) =>
                               setSelected((s) => ({
                                 ...s,
                                 [t.fullName]: e.target.checked,
                               }))
                             }
-                            onClick={(e) => e.stopPropagation()}
                           />
                           <span
                             className={[
-                              "font-mono flex-1 truncate",
-                              migrated ? "text-muted line-through" : "",
+                              "font-mono flex-1 truncate min-w-0",
+                              pending ? "text-muted" : migrated ? "text-muted" : "",
                             ].join(" ")}
                             title={t.fullName}
                           >
                             {t.fullName}
                           </span>
-                          {migrated && (
-                            <Chip
-                              variant="success"
-                              className="text-[9px]!"
-                              title={`Entity: ${migratedEntityName}`}
-                            >
-                              ✓ đã migrate
+                          {pending && (
+                            <Chip variant="warning" className="text-[9px]! animate-pulse shrink-0">
+                              đang migrate
                             </Chip>
                           )}
-                          <span className="text-muted text-[10px] tabular-nums">
-                            {t.rowCount !== null ? `${t.rowCount.toLocaleString("vi-VN")}r` : "?"}
-                          </span>
+                          {migrated && !pending && (
+                            <>
+                              <span className="text-success text-[10px] shrink-0 font-mono">
+                                {migratedInfo?.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setSelected((s) => ({ ...s, [t.fullName]: true }));
+                                }}
+                                className="opacity-0 group-hover/row:opacity-100 text-[9px] text-accent hover:underline transition-opacity px-0.5 shrink-0"
+                                title="Chọn để re-sync"
+                              >
+                                re-sync
+                              </button>
+                            </>
+                          )}
+                          {/* So sánh số dòng MSSQL vs PG */}
+                          {migrated && pgCount !== null ? (
+                            <span
+                              className={`text-[10px] tabular-nums shrink-0 ${ratioColor}`}
+                              title={`MSSQL: ${mssqlCount?.toLocaleString("vi-VN") ?? "?"} / PG: ${pgCount.toLocaleString("vi-VN")}${ratio !== null ? ` (${Math.round(ratio * 100)}%)` : ""}`}
+                            >
+                              {pgCount.toLocaleString("vi-VN")}
+                              <span className="text-muted">
+                                /{mssqlCount?.toLocaleString("vi-VN") ?? "?"}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted text-[10px] tabular-nums shrink-0">
+                              {mssqlCount !== null ? mssqlCount.toLocaleString("vi-VN") : "?"}
+                            </span>
+                          )}
                         </label>
                       </li>
                     );
@@ -3847,6 +3962,9 @@ function QuickMigrateScreen({
               <QuickMigratePreviewPane
                 connectionId={pickedConnId}
                 tableNames={activePaneTableNames}
+                migratedTableNames={
+                  new Set(activePaneTableNames.filter((n) => migratedMap.has(n.toLowerCase())))
+                }
                 onDone={() => {
                   setLockedTableNames(null);
                   setSelected({});
@@ -3856,7 +3974,19 @@ function QuickMigrateScreen({
                   reloadMigrated();
                   onChanged();
                 }}
+                onMigrateStarted={(tNames) => {
+                  setPendingTables(new Set(tNames));
+                  setLockedTableNames(tNames);
+                  setSelected({});
+                }}
+                onMigrateFailed={(tNames) => {
+                  setPendingTables(new Set());
+                  // Khôi phục selection để user có thể retry.
+                  setSelected(Object.fromEntries(tNames.map((n) => [n, true])));
+                  setLockedTableNames(null);
+                }}
                 onMigrateCompleted={(tNames) => {
+                  setPendingTables(new Set());
                   setLockedTableNames(tNames);
                   setSelected({});
                   reloadMigrated();
@@ -3876,17 +4006,25 @@ function QuickMigrateScreen({
 function QuickMigratePreviewPane({
   connectionId,
   tableNames,
+  migratedTableNames,
   onDone,
   onTablesChanged,
+  onMigrateStarted,
+  onMigrateFailed,
   onMigrateCompleted,
 }: {
   connectionId: string;
   tableNames: string[];
+  /** Tập bảng đã migrate trong selection hiện tại — hiện banner nhắc force/upsert. */
+  migratedTableNames: Set<string>;
   onDone: () => void;
   /** Gọi khi entity được tạo/cập nhật trong DB (full-mode job create). */
   onTablesChanged: () => void;
-  /** Gọi sau quick migrate thực (non-dryRun) thành công. Parent snapshot
-   *  tableNames, clear selection, reload list — pane giữ result hiển thị. */
+  /** Gọi ngay khi bắt đầu migrate thực (non-dryRun) — parent mark pending. */
+  onMigrateStarted: (tableNames: string[]) => void;
+  /** Gọi khi migrate thực thất bại — parent restore selection để user retry. */
+  onMigrateFailed: (tableNames: string[]) => void;
+  /** Gọi sau quick migrate thực (non-dryRun) thành công. */
   onMigrateCompleted: (tableNames: string[]) => void;
 }) {
   const [previews, setPreviews] = useState<QuickPreview[]>([]);
@@ -4069,6 +4207,7 @@ function QuickMigratePreviewPane({
     setErr("");
     setResult(null);
     setFullJobResult(null);
+    const willMigrate = fullMode || !dryRun;
     try {
       const items = previews
         .filter((p) => !p.loading && !p.error && p.entityName && p.fields.length > 0)
@@ -4083,6 +4222,8 @@ function QuickMigratePreviewPane({
         setErr("Không có bảng nào hợp lệ để migrate.");
         return;
       }
+      // Thông báo parent ngay trước khi gọi API — left pane gạch + user chọn tiếp.
+      if (willMigrate) onMigrateStarted(tableNames);
       if (fullMode) {
         const r = await migration.startFullImport({
           connectionId,
@@ -4091,8 +4232,7 @@ function QuickMigratePreviewPane({
           writeManifest,
         });
         setFullJobResult(r);
-        // Full mode: entity được prep ngay khi job tạo → reload migratedMap
-        // để disable bảng tương ứng trong list.
+        // Full mode: entity được prep ngay khi job tạo → reload migratedMap.
         onTablesChanged();
       } else {
         const r = await migration.quickMigrateTables({
@@ -4104,13 +4244,12 @@ function QuickMigratePreviewPane({
         });
         setResult(r);
         if (!dryRun) {
-          // Snapshot tableNames + clear selection trong parent để left pane sẵn
-          // sàng ngay. Pane giữ nguyên (tableNames không đổi → result không bị reset).
           onMigrateCompleted(tableNames);
         }
       }
     } catch (e) {
       setErr((e as Error).message);
+      if (willMigrate) onMigrateFailed(tableNames);
     } finally {
       setBusy(false);
     }
@@ -4120,27 +4259,32 @@ function QuickMigratePreviewPane({
 
   return (
     <>
-      {/* Step 2: Preview */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold flex items-center gap-1.5">
-            <Chip variant="accent" className="text-[9px]!">
-              Bước 1
-            </Chip>
-            Preview entity + fields ({tableNames.length} bảng)
-          </div>
-          {!allReady && <span className="text-xs text-muted">Đang tải preview...</span>}
+      {/* Preview cards */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-muted">{tableNames.length} bảng được chọn</span>
+          {!allReady && (
+            <span className="text-[10px] text-muted animate-pulse">Đang tải preview...</span>
+          )}
         </div>
 
-        {previews.map((p) => (
-          <details key={p.tableName} className="border border-border rounded bg-bg" open={false}>
-            <summary className="px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-hover/20">
+        {previews.map((p, cardIdx) => (
+          <details
+            key={p.tableName}
+            className="border border-border rounded bg-bg"
+            open={tableNames.length <= 3 || cardIdx === 0}
+          >
+            <summary className="px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-hover/20 list-none">
+              <I.ChevronRight
+                size={12}
+                className="text-muted shrink-0 transition-transform [[open]_&]:rotate-90"
+              />
               <span className="font-mono text-xs flex-1 truncate">{p.tableName}</span>
               {p.loading ? (
-                <span className="text-muted text-[10px]">Đang tải...</span>
+                <span className="text-muted text-[10px] animate-pulse">Đang tải...</span>
               ) : p.error ? (
                 <>
-                  <Chip variant="warning" className="text-[9px]!">
+                  <Chip variant="danger" className="text-[9px]!">
                     {p.error.slice(0, 40)}
                   </Chip>
                   <button
@@ -4150,15 +4294,18 @@ function QuickMigratePreviewPane({
                       retryPreview(p.tableName);
                     }}
                     className="text-[10px] text-accent hover:underline px-1"
-                    title="Tải lại"
                   >
                     ↺ Thử lại
                   </button>
                 </>
               ) : (
                 <>
-                  <I.ChevronRight size={12} className="text-muted" />
                   <span className="text-accent text-xs font-mono">{p.entityName}</span>
+                  {p.pkField && (
+                    <Chip variant="warning" className="text-[9px]!" title={`PK: ${p.pkField}`}>
+                      PK: {p.pkField}
+                    </Chip>
+                  )}
                   <Chip variant="default" className="text-[9px]!">
                     {p.fields.length} fields
                   </Chip>
@@ -4185,60 +4332,84 @@ function QuickMigratePreviewPane({
                   <table className="w-full text-[10px]">
                     <thead className="bg-surface text-muted">
                       <tr>
-                        <th className="text-left px-2 py-1 w-1/3">Field name</th>
-                        <th className="text-left px-2 py-1 w-1/3">Label</th>
-                        <th className="text-left px-2 py-1 w-1/3">Type</th>
+                        <th className="text-left px-2 py-1 w-6" title="Khoá chính">
+                          PK
+                        </th>
+                        <th className="text-left px-2 py-1">Field name</th>
+                        <th className="text-left px-2 py-1">Label</th>
+                        <th className="text-left px-2 py-1 w-24">Type</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {p.fields.map((f, idx) => (
-                        <tr
-                          key={`${p.tableName}:${f.name}:${idx}`}
-                          className="border-t border-border"
-                        >
-                          <td className="px-1 py-0.5">
-                            <Input
-                              value={f.name}
-                              onChange={(e) =>
-                                updateField(p.tableName, idx, { name: e.target.value })
-                              }
-                              className="h-6 text-[10px] font-mono"
-                            />
-                          </td>
-                          <td className="px-1 py-0.5">
-                            <Input
-                              value={f.label}
-                              onChange={(e) =>
-                                updateField(p.tableName, idx, { label: e.target.value })
-                              }
-                              className="h-6 text-[10px]"
-                            />
-                          </td>
-                          <td className="px-1 py-0.5">
-                            <select
-                              value={f.type}
-                              onChange={(e) =>
-                                updateField(p.tableName, idx, { type: e.target.value })
-                              }
-                              className="h-6 text-[10px] w-full px-1 border border-border rounded bg-bg"
-                            >
-                              {[
-                                "text",
-                                "number",
-                                "boolean",
-                                "date",
-                                "datetime",
-                                "json",
-                                "select",
-                              ].map((t) => (
-                                <option key={t} value={t}>
-                                  {t}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
+                      {p.fields.map((f, idx) => {
+                        const isPk = p.pkField === f.name;
+                        return (
+                          <tr
+                            key={`${p.tableName}:${f.name}:${idx}`}
+                            className={["border-t border-border", isPk ? "bg-warning/5" : ""].join(
+                              " ",
+                            )}
+                          >
+                            <td className="px-2 py-0.5 text-center">
+                              {isPk ? (
+                                <span className="text-warning" title="Khoá chính (PK)">
+                                  <I.Key size={10} />
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => updatePreview(p.tableName, { pkField: f.name })}
+                                  className="opacity-20 hover:opacity-70 text-muted transition-opacity"
+                                  title="Đặt làm khoá chính"
+                                >
+                                  <I.Key size={10} />
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-1 py-0.5">
+                              <Input
+                                value={f.name}
+                                onChange={(e) =>
+                                  updateField(p.tableName, idx, { name: e.target.value })
+                                }
+                                className="h-6 text-[10px] font-mono"
+                              />
+                            </td>
+                            <td className="px-1 py-0.5">
+                              <Input
+                                value={f.label}
+                                onChange={(e) =>
+                                  updateField(p.tableName, idx, { label: e.target.value })
+                                }
+                                className="h-6 text-[10px]"
+                              />
+                            </td>
+                            <td className="px-1 py-0.5">
+                              <select
+                                value={f.type}
+                                onChange={(e) =>
+                                  updateField(p.tableName, idx, { type: e.target.value })
+                                }
+                                className="h-6 text-[10px] w-full px-1 border border-border rounded bg-bg"
+                              >
+                                {[
+                                  "text",
+                                  "number",
+                                  "boolean",
+                                  "date",
+                                  "datetime",
+                                  "json",
+                                  "select",
+                                ].map((t) => (
+                                  <option key={t} value={t}>
+                                    {t}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -4275,48 +4446,66 @@ function QuickMigratePreviewPane({
         {result && (
           <div
             className={[
-              "p-3 rounded border",
+              "p-3 rounded border space-y-1.5",
               result.failed === 0
                 ? "border-success/40 bg-success/5"
                 : "border-warning/40 bg-warning/5",
             ].join(" ")}
           >
             <div className="font-medium text-sm">
-              {result.dryRun ? "🔍 Dry-run kết quả" : "✓ Đã migrate"}:{" "}
+              {result.dryRun ? "Dry-run — không ghi DB" : "Đã migrate"}:{" "}
               <span className="text-success">{result.succeeded}</span>
               {result.failed > 0 && (
-                <span className="text-warning ml-1">/ {result.failed} fail</span>
+                <span className="text-warning ml-1">/ {result.failed} lỗi</span>
               )}
-              / {result.total} bảng — đọc {result.totalRowsRead.toLocaleString("vi-VN")} row,{" "}
+              {" / "}
+              {result.total} bảng — {result.totalRowsRead.toLocaleString("vi-VN")} row đọc,{" "}
               <span className="text-success">
-                {result.totalRowsUpserted.toLocaleString("vi-VN")} mới
+                +{result.totalRowsUpserted.toLocaleString("vi-VN")} mới
               </span>
               {result.totalRowsUpdated > 0 && (
-                <>
-                  ,{" "}
-                  <span className="text-accent">
-                    {result.totalRowsUpdated.toLocaleString("vi-VN")} cập nhật
-                  </span>
-                </>
+                <span className="text-accent ml-1">
+                  ↻{result.totalRowsUpdated.toLocaleString("vi-VN")} cập nhật
+                </span>
               )}
-              .
             </div>
-            <div className="mt-2 max-h-[150px] overflow-y-auto text-[10px] font-mono space-y-0.5">
+            {result.dryRun && result.failed === 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Preview OK —</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDryRun(false);
+                    setResult(null);
+                  }}
+                  className="text-xs text-accent font-medium hover:underline"
+                >
+                  Apply migrate ngay →
+                </button>
+              </div>
+            )}
+            <div className="max-h-[120px] overflow-y-auto text-[10px] font-mono space-y-0.5">
               {result.results.map((r) => (
                 <div
                   key={r.tableName}
                   className={r.ok ? "text-muted" : "text-warning"}
                   title={r.error}
                 >
-                  {r.ok ? "✓" : "✗"} {r.tableName} → {r.entityName}: {r.rowsRead}r → +
-                  {r.rowsUpserted} mới
-                  {r.rowsUpdated > 0 && `, ↻${r.rowsUpdated} cập nhật`}
-                  {r.error && ` — ${r.error.slice(0, 80)}`}
+                  {r.ok ? "✓" : "✗"} {r.tableName} → {r.entityName ?? "?"}: {r.rowsRead}r
+                  {r.ok && (
+                    <>
+                      {" "}
+                      +{r.rowsUpserted}
+                      {r.rowsUpdated > 0 && ` ↻${r.rowsUpdated}`}
+                    </>
+                  )}
+                  {r.truncated && <span className="text-warning ml-1">[giới hạn!]</span>}
+                  {r.error && <span className="ml-1">— {r.error.slice(0, 80)}</span>}
                 </div>
               ))}
             </div>
             {!result.dryRun && (
-              <div className="mt-2 flex justify-end">
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={onDone}
@@ -4330,54 +4519,51 @@ function QuickMigratePreviewPane({
         )}
       </div>
 
-      {/* Step 3: Options + Start */}
-      <div className="border-t border-border bg-surface/40 p-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <Chip variant="accent" className="text-[9px]!">
-            Bước 2
-          </Chip>
-          <label className="flex items-center gap-1.5 cursor-pointer flex-1">
-            <input
-              type="checkbox"
-              checked={fullMode}
-              onChange={(e) => setFullMode(e.target.checked)}
-            />
-            <span className="text-sm font-medium">Full mode</span>
-            <span className="text-xs text-muted">(chạy nền + resume tự, không giới hạn rows)</span>
-          </label>
+      {/* Options + Run */}
+      <div className="border-t border-border bg-surface/40 p-3 space-y-2.5">
+        {/* Banner khi có bảng đã migrate trong selection */}
+        {migratedTableNames.size > 0 && !result && (
+          <div className="flex items-center gap-2 text-[11px] bg-warning/8 border border-warning/25 rounded px-2.5 py-1.5">
+            <I.RefreshCw size={11} className="text-warning shrink-0" />
+            <span className="text-warning font-medium">
+              {migratedTableNames.size} bảng đã migrate.
+            </span>
+            <span className="text-muted">
+              Dữ liệu cũ sẽ được upsert theo PK (nếu có) hoặc bật "Xoá cũ + import lại" để reset
+              hoàn toàn.
+            </span>
+          </div>
+        )}
+        {/* Mode tabs */}
+        <div className="flex gap-1 p-0.5 bg-bg-soft rounded-lg border border-border w-fit">
+          <button
+            type="button"
+            onClick={() => setFullMode(false)}
+            className={[
+              "px-3 h-7 rounded-md text-xs font-medium transition-colors",
+              !fullMode ? "bg-panel shadow text-text" : "text-muted hover:text-text",
+            ].join(" ")}
+          >
+            Sync ngay
+          </button>
+          <button
+            type="button"
+            onClick={() => setFullMode(true)}
+            className={[
+              "px-3 h-7 rounded-md text-xs font-medium transition-colors",
+              fullMode ? "bg-panel shadow text-text" : "text-muted hover:text-text",
+            ].join(" ")}
+          >
+            Full job (nền)
+          </button>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap text-xs pl-12">
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={dryRun}
-              disabled={fullMode}
-              onChange={(e) => setDryRun(e.target.checked)}
-            />
-            <span>Dry-run</span>
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={force}
-              disabled={dryRun || fullMode}
-              onChange={(e) => setForce(e.target.checked)}
-            />
-            <span>Force xoá rec cũ</span>
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={writeManifest}
-              disabled={dryRun}
-              onChange={(e) => setWriteManifest(e.target.checked)}
-            />
-            <span>Ghi manifest _quick</span>
-          </label>
-          {fullMode ? (
+        {/* Per-mode options */}
+        {fullMode ? (
+          <div className="flex items-center gap-3 text-xs flex-wrap">
+            <span className="text-muted">Tự resume nếu lỗi, không giới hạn rows.</span>
             <label className="flex items-center gap-1.5">
-              <span>Batch:</span>
+              <span className="text-muted">Batch size:</span>
               <input
                 type="number"
                 min={100}
@@ -4388,41 +4574,89 @@ function QuickMigratePreviewPane({
                     Math.max(100, Math.min(50_000, Number.parseInt(e.target.value, 10) || 100)),
                   )
                 }
-                className="w-20 px-1 py-0.5 border border-border rounded bg-bg"
+                className="w-20 px-1 py-0.5 border border-border rounded bg-bg text-xs"
               />
             </label>
-          ) : (
             <label className="flex items-center gap-1.5">
-              <span>Limit/bảng:</span>
+              <input
+                type="checkbox"
+                checked={writeManifest}
+                onChange={(e) => setWriteManifest(e.target.checked)}
+              />
+              <span>Lưu manifest</span>
+            </label>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-xs flex-wrap">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={dryRun}
+                onChange={(e) => {
+                  setDryRun(e.target.checked);
+                  if (e.target.checked) setForce(false);
+                }}
+              />
+              <span>Dry-run (không ghi DB)</span>
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={force}
+                disabled={dryRun}
+                onChange={(e) => setForce(e.target.checked)}
+              />
+              <span className={dryRun ? "text-muted" : ""}>Xoá cũ + import lại</span>
+            </label>
+            <label className="flex items-center gap-1.5">
+              <span className="text-muted">Limit/bảng:</span>
               <input
                 type="number"
                 min={1}
                 max={100_000}
                 value={limit}
+                disabled={dryRun}
                 onChange={(e) =>
                   setLimit(Math.max(1, Math.min(100_000, Number.parseInt(e.target.value, 10) || 1)))
                 }
-                className="w-24 px-1 py-0.5 border border-border rounded bg-bg"
+                className="w-20 px-1 py-0.5 border border-border rounded bg-bg text-xs disabled:opacity-50"
               />
             </label>
-          )}
-        </div>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={writeManifest}
+                disabled={dryRun}
+                onChange={(e) => setWriteManifest(e.target.checked)}
+              />
+              <span className={dryRun ? "text-muted" : ""}>Lưu manifest</span>
+            </label>
+          </div>
+        )}
 
         <div className="flex justify-end">
           <Button
-            variant="primary"
+            variant={dryRun && !fullMode ? "default" : "primary"}
             size="md"
             disabled={busy || !allReady}
             onClick={run}
-            icon={busy ? <I.Loader size={14} /> : <I.Database size={14} />}
+            icon={
+              busy ? (
+                <I.Loader size={14} />
+              ) : fullMode ? (
+                <I.Server size={14} />
+              ) : (
+                <I.Database size={14} />
+              )
+            }
           >
             {busy
               ? "Đang xử lý..."
               : fullMode
-                ? "🚀 Tạo full-import job"
+                ? `Tạo job (${tableNames.length} bảng)`
                 : dryRun
-                  ? "Dry-run preview"
-                  : "🚀 Migrate ngay"}
+                  ? `Preview dry-run (${tableNames.length} bảng)`
+                  : `Migrate ngay (${tableNames.length} bảng)`}
           </Button>
         </div>
       </div>
@@ -7256,13 +7490,20 @@ function BulkMigrateDialog({
           ].join(" ")}
         >
           <div className="font-medium">
-            {result.dryRun ? "🔍 Dry-run kết quả" : "✓ Đã migrate"}:{" "}
+            {result.dryRun ? "Dry-run kết quả" : "Đã migrate"}:{" "}
             <span className="text-success">{result.succeeded} thành công</span>
             {result.failed > 0 && <span className="text-warning ml-2">/ {result.failed} fail</span>}
             {" — "}
             đọc {result.totalRowsRead.toLocaleString("vi-VN")} row, upsert{" "}
-            {result.totalRowsUpserted.toLocaleString("vi-VN")} row.
+            {(result.totalRowsUpserted + (result.totalRowsUpdated ?? 0)).toLocaleString("vi-VN")}{" "}
+            row.
           </div>
+          {result.truncatedTables && result.truncatedTables.length > 0 && (
+            <div className="mt-1 text-warning text-[10px]">
+              Cảnh báo: {result.truncatedTables.length} bảng đạt giới hạn limit, có thể thiếu dữ
+              liệu: {result.truncatedTables.join(", ")}
+            </div>
+          )}
           <div className="mt-1 max-h-[150px] overflow-y-auto text-[10px] font-mono">
             {result.results.map((r) => (
               <div
@@ -7271,7 +7512,10 @@ function BulkMigrateDialog({
                 title={r.error}
               >
                 {r.ok ? "✓" : "✗"} {r.tableName} → {r.entityName ?? "?"} : {r.rowsRead}r /{" "}
-                {r.rowsUpserted}↑{r.error && ` — ${r.error.slice(0, 80)}`}
+                {r.rowsUpserted}↑{r.rowsUpdated ? ` ${r.rowsUpdated}~` : ""}
+                {r.truncated ? " [TRUNCATED]" : ""}
+                {r.unmappedColumns?.length ? ` [unmapped: ${r.unmappedColumns.join(",")}]` : ""}
+                {r.error && ` — ${r.error.slice(0, 80)}`}
               </div>
             ))}
           </div>

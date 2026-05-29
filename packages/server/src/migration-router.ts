@@ -132,11 +132,13 @@ const moduleNameSchema = z.string().regex(/^[a-z][a-z0-9_]*$/, "Module name ph�
 
 /** Shape 1 proc-row chung — dùng bởi cả listProcsToMigrate (per-module)
  *  và listAllProcsToMigrate (cross-module). filterMode ảnh hưởng đến
- *  filterStatus đầu ra (reads-only chấp nhận partial). */
+ *  filterStatus đầu ra (reads-only chấp nhận partial).
+ *  dbProcMap: Map<procName.lower → id> để tính codegenApplied tier B. */
 function shapeProcRow(
   proc: Record<string, unknown>,
   migrated: Set<string>,
   filterMode: "all" | "reads-only" = "all",
+  dbProcMap: Map<string, string> = new Map(),
 ) {
   const reads = (proc.reads as string[]) ?? [];
   const writes = (proc.writes as string[]) ?? [];
@@ -156,6 +158,16 @@ function shapeProcRow(
     ((proc.callsProcs as string[] | undefined)?.length ?? 0) * 3 +
     flags.length * 5;
 
+  const tier = (proc.suggestedTier as "B" | "C" | "D" | undefined) ?? "D";
+  let codegenApplied = false;
+  if (tier === "B" && proc.targetProcName) {
+    codegenApplied = dbProcMap.has((proc.targetProcName as string).toLowerCase());
+  } else if (tier === "C" && proc.targetWorkflowId) {
+    codegenApplied = true;
+  } else if (tier === "D" && proc.targetFile) {
+    codegenApplied = existsSync(resolve(process.cwd(), proc.targetFile as string));
+  }
+
   return {
     name: proc.name as string,
     reads,
@@ -166,7 +178,7 @@ function shapeProcRow(
     lastExecAt: (proc.lastExecAt as string | null) ?? null,
     execCount: (proc.execCount as number | undefined) ?? 0,
     complexity,
-    suggestedTier: (proc.suggestedTier as "B" | "C" | "D" | undefined) ?? "D",
+    suggestedTier: tier,
     businessCategory:
       (proc.userOverrideCategory as string | undefined) ??
       (proc.businessCategory as string | undefined) ??
@@ -179,6 +191,7 @@ function shapeProcRow(
     label: (proc.label as string | undefined) ?? null,
     description: (proc.description as string | undefined) ?? null,
     flags,
+    codegenApplied,
   };
 }
 
@@ -1355,12 +1368,16 @@ export const migrationRouter = router({
    *    của procedures.save.
    *  - tier D: ghi file TS vào `packages/plugins/module-<module>/<file>.ts`
    *    (tạo thư mục nếu chưa có). Caller có thể `overwrite: true` để đè.
+   *  procName (optional): nếu cung cấp → update manifest YAML targetProcName/targetFile
+   *    sau khi apply thành công (nhất quán với Tier C workflow apply).
    */
   codegenProcApply: rbacProcedure("edit", "settings")
     .input(
       z.object({
         module: moduleNameSchema,
         tier: z.enum(["B", "D"]),
+        /** Tên proc trong manifest (schema.name). Nếu có → update manifest YAML sau apply. */
+        procName: z.string().optional(),
         // Tier B fields:
         name: z
           .string()
@@ -1376,6 +1393,27 @@ export const migrationRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      /** Helper: update targetProcName hoặc targetFile trong manifest YAML. */
+      function updateManifestTarget(field: "targetProcName" | "targetFile", value: string) {
+        if (!input.procName) return;
+        const manifestPath = resolve(MODULES_DIR(), `${input.module}.yaml`);
+        if (!existsSync(manifestPath)) return;
+        try {
+          const m = YAML.parse(readFileSync(manifestPath, "utf8")) as {
+            procs?: Array<Record<string, unknown>>;
+          };
+          const proc = (m.procs ?? []).find(
+            (p) => String(p.name).toLowerCase() === input.procName!.toLowerCase(),
+          );
+          if (proc) {
+            proc[field] = value;
+            writeFileSync(manifestPath, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+          }
+        } catch {
+          /* skip nếu manifest parse fail */
+        }
+      }
+
       if (input.tier === "B") {
         if (!input.name || !input.label) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Tier B cần name + label" });
@@ -1395,6 +1433,17 @@ export const migrationRouter = router({
         };
         if (existing) {
           await ctx.db.update(procedures).set(values).where(eq(procedures.id, existing.id));
+          updateManifestTarget("targetProcName", input.name);
+          appendDecision({
+            module: input.module,
+            action: {
+              type: "codegenProcApply",
+              tier: "B",
+              procName: input.procName,
+              name: input.name,
+            },
+            by: ctx.user.id,
+          });
           return {
             tier: "B" as const,
             procedureId: existing.id,
@@ -1413,6 +1462,17 @@ export const migrationRouter = router({
           .returning({ id: procedures.id });
         if (!row)
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert procedure fail." });
+        updateManifestTarget("targetProcName", input.name);
+        appendDecision({
+          module: input.module,
+          action: {
+            type: "codegenProcApply",
+            tier: "B",
+            procName: input.procName,
+            name: input.name,
+          },
+          by: ctx.user.id,
+        });
         return {
           tier: "B" as const,
           procedureId: row.id,
@@ -1453,6 +1513,19 @@ export const migrationRouter = router({
         };
       }
       writeFileSync(target, input.code, "utf8");
+      // Lưu relative path (slash-separated) để cross-platform safe.
+      const relPath = target.replace(process.cwd() + sep, "").replace(/\\/g, "/");
+      updateManifestTarget("targetFile", relPath);
+      appendDecision({
+        module: input.module,
+        action: {
+          type: "codegenProcApply",
+          tier: "D",
+          procName: input.procName,
+          fileName: input.fileName,
+        },
+        by: ctx.user.id,
+      });
       return {
         tier: "D" as const,
         filePath: target,
@@ -1775,6 +1848,7 @@ export const migrationRouter = router({
         entityName: string;
         label?: string;
         columns: Array<{ name: string; mapTo?: { field: string; entityType?: string } }>;
+        pkField?: string; // resolved mapped-field name for the primary key column
       }
       const tableMap = new Map<string, TableMeta>();
       if (existsSync(dir)) {
@@ -1793,6 +1867,7 @@ export const migrationRouter = router({
                 suggestedEntityName?: string;
                 suggestedKind?: "entity" | "enum";
                 label?: string;
+                primaryKey?: string[];
                 columns?: Array<{ name: string; mapTo?: { field: string; entityType?: string } }>;
               }>;
             };
@@ -1801,6 +1876,15 @@ export const migrationRouter = router({
               // Bỏ enum: Q3 chỉ migrate data entity, enum dùng materializeEnum.
               if (t.suggestedKind === "enum") continue;
               if (!t.suggestedEntityName) continue;
+              // Derive pkField: resolve MSSQL column name → mapped field name.
+              const rawPkCol = Array.isArray(t.primaryKey) ? t.primaryKey[0] : undefined;
+              let pkField: string | undefined;
+              if (rawPkCol) {
+                const pkColDef = (t.columns ?? []).find(
+                  (c) => c.name.toLowerCase() === rawPkCol.toLowerCase(),
+                );
+                pkField = pkColDef?.mapTo?.field ?? rawPkCol.toLowerCase();
+              }
               tableMap.set(t.name.toLowerCase(), {
                 moduleName,
                 modulePath: full,
@@ -1808,10 +1892,14 @@ export const migrationRouter = router({
                 entityName: t.suggestedEntityName,
                 label: t.label,
                 columns: t.columns ?? [],
+                pkField,
               });
             }
-          } catch {
-            /* skip */
+          } catch (e) {
+            console.error(
+              `[bulkMigrateLiveTables] Cannot parse manifest ${full}:`,
+              (e as Error).message,
+            );
           }
         }
       }
@@ -1824,7 +1912,10 @@ export const migrationRouter = router({
         skipped?: string;
         rowsRead: number;
         rowsUpserted: number;
+        rowsUpdated: number;
         rowsDeleted: number;
+        truncated: boolean;
+        unmappedColumns: string[];
         error?: string;
         durationMs: number;
       }> = [];
@@ -1847,7 +1938,18 @@ export const migrationRouter = router({
         // Group bảng theo manifest để batch update YAML 1 lần / module.
         const manifestUpdates = new Map<
           string,
-          { path: string; stats: Map<string, { rowsRead: number; rowsUpserted: number }> }
+          {
+            path: string;
+            stats: Map<
+              string,
+              {
+                rowsRead: number;
+                rowsUpserted: number;
+                truncated: boolean;
+                unmappedColumns: string[];
+              }
+            >;
+          }
         >();
 
         for (const tn of input.tableNames) {
@@ -1860,7 +1962,10 @@ export const migrationRouter = router({
               skipped: "not-in-manifest",
               rowsRead: 0,
               rowsUpserted: 0,
+              rowsUpdated: 0,
               rowsDeleted: 0,
+              truncated: false,
+              unmappedColumns: [],
               error: "Bảng không có trong manifest entity nào (có thể là enum hoặc external).",
               durationMs: Date.now() - t0,
             });
@@ -1894,7 +1999,10 @@ export const migrationRouter = router({
                     skipped: "manual-entity",
                     rowsRead: 0,
                     rowsUpserted: 0,
+                    rowsUpdated: 0,
                     rowsDeleted: 0,
+                    truncated: false,
+                    unmappedColumns: [],
                     error: `Entity "${meta.entityName}" đã có (kind=${sourceKind}) — không đè entity do user tạo tay/seed.`,
                     durationMs: Date.now() - t0,
                   });
@@ -1944,22 +2052,32 @@ export const migrationRouter = router({
             const rows = await client.bulkRead<Record<string, unknown>>(meta.tableName, {
               limit: input.limitPerTable,
             });
+            const truncated = rows.length >= input.limitPerTable;
 
             // Map row MSSQL → entity record data (theo mapTo.field).
             const colMap = new Map<string, string>();
             for (const c of meta.columns) {
               if (c.mapTo?.field) colMap.set(c.name.toLowerCase(), c.mapTo.field);
             }
+            const unmappedColSet = new Set<string>();
             const mapped = rows.map((r) => {
               const data: Record<string, unknown> = {};
               for (const [k, v] of Object.entries(r)) {
-                const field = colMap.get(k.toLowerCase()) ?? k.toLowerCase();
-                data[field] = v;
+                const lk = k.toLowerCase();
+                const field = colMap.get(lk);
+                if (field) {
+                  data[field] = v;
+                } else {
+                  unmappedColSet.add(k);
+                  data[lk] = v; // fallback: lowercase column name
+                }
               }
               return data;
             });
+            const unmappedColumns = [...unmappedColSet];
 
             let rowsUpserted = 0;
+            let rowsUpdated = 0;
             let rowsDeleted = 0;
             if (!input.dryRun && entityId) {
               const eid = entityId;
@@ -1974,9 +2092,80 @@ export const migrationRouter = router({
                   )
                   .returning({ id: entityRecords.id });
                 rowsDeleted = del.length;
-              }
-              if (mapped.length > 0) {
-                // Batch insert — Drizzle hỗ trợ array values.
+                if (mapped.length > 0) {
+                  const inserted = await ctx.db
+                    .insert(entityRecords)
+                    .values(
+                      mapped.map((d) => ({
+                        companyId: ctx.user.companyId,
+                        entityId: eid,
+                        data: d,
+                        createdBy: ctx.user.id,
+                      })),
+                    )
+                    .returning({ id: entityRecords.id });
+                  rowsUpserted = inserted.length;
+                }
+              } else if (meta.pkField && mapped.length > 0) {
+                // UPSERT theo PK: query existing records, split insert vs update.
+                const pkField = meta.pkField;
+                const pkValues = mapped.map((d) => d[pkField]).filter((v) => v != null);
+                const pkValuesText = pkValues.map((v) => String(v));
+                const existingRows =
+                  pkValuesText.length > 0
+                    ? await ctx.db
+                        .select({ id: entityRecords.id, data: entityRecords.data })
+                        .from(entityRecords)
+                        .where(
+                          and(
+                            eq(entityRecords.companyId, ctx.user.companyId),
+                            eq(entityRecords.entityId, eid),
+                            sql`${entityRecords.data}->>${pkField} = ANY(${pkValuesText}::text[])`,
+                          ),
+                        )
+                    : [];
+                const existingMap = new Map<string, string>(); // pkValue → record.id
+                for (const r of existingRows) {
+                  const pkVal = (r.data as Record<string, unknown>)[pkField];
+                  if (pkVal != null) existingMap.set(String(pkVal), r.id);
+                }
+
+                const toInsert: typeof mapped = [];
+                const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
+                for (const d of mapped) {
+                  const pkVal = d[pkField];
+                  if (pkVal == null) {
+                    toInsert.push(d);
+                    continue;
+                  }
+                  const existingId = existingMap.get(String(pkVal));
+                  if (existingId) toUpdate.push({ id: existingId, data: d });
+                  else toInsert.push(d);
+                }
+
+                if (toInsert.length > 0) {
+                  const inserted = await ctx.db
+                    .insert(entityRecords)
+                    .values(
+                      toInsert.map((d) => ({
+                        companyId: ctx.user.companyId,
+                        entityId: eid,
+                        data: d,
+                        createdBy: ctx.user.id,
+                      })),
+                    )
+                    .returning({ id: entityRecords.id });
+                  rowsUpserted = inserted.length;
+                }
+                for (const u of toUpdate) {
+                  await ctx.db
+                    .update(entityRecords)
+                    .set({ data: u.data, updatedAt: new Date() })
+                    .where(eq(entityRecords.id, u.id));
+                }
+                rowsUpdated = toUpdate.length;
+              } else if (mapped.length > 0) {
+                // Không có pkField + không force → INSERT thẳng (có thể tạo duplicate).
                 const inserted = await ctx.db
                   .insert(entityRecords)
                   .values(
@@ -2004,7 +2193,7 @@ export const migrationRouter = router({
                       mssqlTable: meta.tableName,
                       importedAt: new Date().toISOString(),
                       importedBy: ctx.user.id,
-                      rowsLastImported: rowsUpserted,
+                      rowsLastImported: rowsUpserted + rowsUpdated,
                     },
                   },
                   updatedAt: new Date(),
@@ -2019,7 +2208,9 @@ export const migrationRouter = router({
               }
               bucket.stats.set(meta.tableName.toLowerCase(), {
                 rowsRead: rows.length,
-                rowsUpserted,
+                rowsUpserted: rowsUpserted + rowsUpdated,
+                truncated,
+                unmappedColumns,
               });
             }
 
@@ -2029,7 +2220,10 @@ export const migrationRouter = router({
               ok: true,
               rowsRead: rows.length,
               rowsUpserted,
+              rowsUpdated,
               rowsDeleted,
+              truncated,
+              unmappedColumns,
               durationMs: Date.now() - t0,
             });
           } catch (e) {
@@ -2039,7 +2233,10 @@ export const migrationRouter = router({
               ok: false,
               rowsRead: 0,
               rowsUpserted: 0,
+              rowsUpdated: 0,
               rowsDeleted: 0,
+              truncated: false,
+              unmappedColumns: [],
               error: (e as Error).message,
               durationMs: Date.now() - t0,
             });
@@ -2055,18 +2252,31 @@ export const migrationRouter = router({
                 tables?: Array<{
                   name: string;
                   migratedAt?: string;
-                  migrateStats?: { rowsRead: number; rowsUpserted: number; errors: number };
+                  migrateStats?: {
+                    rowsRead: number;
+                    rowsUpserted: number;
+                    truncated: boolean;
+                    unmappedColumns: string[];
+                  };
                 }>;
               };
               for (const t of m.tables ?? []) {
                 const s = bucket.stats.get(t.name.toLowerCase());
                 if (!s) continue;
                 t.migratedAt = now;
-                t.migrateStats = { rowsRead: s.rowsRead, rowsUpserted: s.rowsUpserted, errors: 0 };
+                t.migrateStats = {
+                  rowsRead: s.rowsRead,
+                  rowsUpserted: s.rowsUpserted,
+                  truncated: s.truncated,
+                  unmappedColumns: s.unmappedColumns,
+                };
               }
               writeFileSync(path, YAML.stringify(m, { lineWidth: 0 }), "utf8");
-            } catch {
-              /* skip path hỏng */
+            } catch (e) {
+              console.error(
+                `[bulkMigrateLiveTables] Cannot write manifest ${path}:`,
+                (e as Error).message,
+              );
             }
           }
         }
@@ -2097,6 +2307,8 @@ export const migrationRouter = router({
         failed: results.filter((r) => !r.ok).length,
         totalRowsRead: results.reduce((s, r) => s + r.rowsRead, 0),
         totalRowsUpserted: results.reduce((s, r) => s + r.rowsUpserted, 0),
+        totalRowsUpdated: results.reduce((s, r) => s + r.rowsUpdated, 0),
+        truncatedTables: results.filter((r) => r.ok && r.truncated).map((r) => r.tableName),
         results,
       };
     }),
@@ -2332,6 +2544,7 @@ export const migrationRouter = router({
         rowsUpserted: number;
         rowsUpdated: number;
         rowsDeleted: number;
+        truncated: boolean;
         error?: string;
         durationMs: number;
       }> = [];
@@ -2362,6 +2575,7 @@ export const migrationRouter = router({
                     rowsUpserted: 0,
                     rowsUpdated: 0,
                     rowsDeleted: 0,
+                    truncated: false,
                     error: `Entity "${it.entityName}" đã có (kind=${sourceKind}) — không đè entity tay/seed.`,
                     durationMs: Date.now() - t0,
                   });
@@ -2399,6 +2613,7 @@ export const migrationRouter = router({
             const rows = await client.bulkRead<Record<string, unknown>>(it.tableName, {
               limit: input.limitPerTable,
             });
+            const truncated = rows.length >= input.limitPerTable;
 
             const fieldNames = new Set(it.fields.map((f) => f.name.toLowerCase()));
             const mapped = rows.map((r) => {
@@ -2548,6 +2763,7 @@ export const migrationRouter = router({
               rowsUpserted,
               rowsUpdated,
               rowsDeleted,
+              truncated,
               durationMs: Date.now() - t0,
             });
           } catch (e) {
@@ -2559,6 +2775,7 @@ export const migrationRouter = router({
               rowsUpserted: 0,
               rowsUpdated: 0,
               rowsDeleted: 0,
+              truncated: false,
               error: (e as Error).message,
               durationMs: Date.now() - t0,
             });
@@ -3821,6 +4038,14 @@ export const migrationRouter = router({
       // Combined: YAML + DB entities. Phải lấy ra trước cả check existsSync(dir)
       // để cover trường hợp chỉ migrate bằng Migrate nhanh (không có YAML).
       const migrated = (await buildCombinedMigratedSet(ctx.db, ctx.user.companyId)).tables;
+
+      // Tải procedure names từ DB một lần để tính codegenApplied tier B.
+      const dbProcs = await ctx.db
+        .select({ name: procedures.name })
+        .from(procedures)
+        .where(eq(procedures.companyId, ctx.user.companyId));
+      const dbProcMap = new Map(dbProcs.map((r) => [r.name.toLowerCase(), r.name]));
+
       if (!existsSync(dir)) {
         return {
           rowsByModule: {} as Record<string, ReturnType<typeof shapeProcRow>[]>,
@@ -3857,7 +4082,7 @@ export const migrationRouter = router({
         }
 
         const allRows = (manifest.procs ?? []).map((p) =>
-          shapeProcRow(p, migrated, input.filterMode),
+          shapeProcRow(p, migrated, input.filterMode, dbProcMap),
         );
 
         const filtered = allRows.filter((r) => {
