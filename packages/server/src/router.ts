@@ -627,7 +627,13 @@ export const appRouter = router({
           name: z.string().min(1),
           adapter: z.string(),
           model: z.string(),
-          endpoint: z.string().optional(),
+          endpoint: z
+            .string()
+            .optional()
+            .refine(
+              (v) => !v || v.startsWith("http://") || v.startsWith("https://"),
+              "Endpoint phải là URL tuyệt đối (bắt đầu bằng http:// hoặc https://)",
+            ),
           apiKeyEnc: z.string().optional(),
           temperature: z.number().optional(),
           maxTokens: z.number().int().optional(),
@@ -673,6 +679,38 @@ export const appRouter = router({
               eq(llmProfiles.kind, "chat"),
             ),
           );
+      }),
+    /** Proxy liệt kê model Ollama — tránh CORS khi browser gọi localhost từ domain remote. */
+    listOllamaModels: rbacProcedure("view", "settings")
+      .input(z.object({ endpoint: z.string().nullish() }))
+      .query(async ({ input }) => {
+        // Validate endpoint để chặn SSRF
+        const rawEndpoint = (input.endpoint || "http://localhost:11434").replace(/\/$/, "");
+        let base: string;
+        try {
+          const u = new URL(rawEndpoint);
+          if (u.protocol !== "http:" && u.protocol !== "https:") {
+            return { models: [] as string[], error: "Endpoint không hợp lệ" };
+          }
+          // Chặn link-local (AWS/GCP metadata 169.254.x.x)
+          if (/^169\.254\./i.test(u.hostname)) {
+            return { models: [] as string[], error: "Endpoint không hợp lệ" };
+          }
+          base = u.origin; // chỉ dùng scheme+host+port, bỏ path/query thừa
+        } catch {
+          return { models: [] as string[], error: "Endpoint không hợp lệ" };
+        }
+        try {
+          const res = await fetch(`${base}/api/tags`, {
+            signal: AbortSignal.timeout(5000),
+            redirect: "manual", // không follow redirect để tránh SSRF qua redirect
+          });
+          if (!res.ok) return { models: [] as string[], error: `Ollama ${res.status}` };
+          const data = (await res.json()) as { models?: Array<{ name: string }> };
+          return { models: (data.models ?? []).map((m) => m.name), error: null as string | null };
+        } catch {
+          return { models: [] as string[], error: "Không kết nối được tới Ollama" };
+        }
       }),
   }),
 });

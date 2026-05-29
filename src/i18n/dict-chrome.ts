@@ -91,6 +91,8 @@ export const chromeVi: Dict = {
   "sidebar.tools_mgmt": "Quản lý Tools",
   "sidebar.collapse_all": "Thu gọn tất cả",
   "sidebar.expand_all": "Mở rộng tất cả",
+  "sidebar.search": "Tìm kiếm...",
+  "sidebar.search_empty": "Không tìm thấy kết quả",
 
   // oauth callback
   "oauth.verifying": "Đang xác thực với Anthropic...",
@@ -188,6 +190,8 @@ export const chromeEn: Dict = {
   "sidebar.tools_mgmt": "Manage Tools",
   "sidebar.collapse_all": "Collapse all",
   "sidebar.expand_all": "Expand all",
+  "sidebar.search": "Search...",
+  "sidebar.search_empty": "No results found",
 
   // oauth callback
   "oauth.verifying": "Authenticating with Anthropic...",

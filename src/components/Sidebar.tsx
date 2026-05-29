@@ -723,6 +723,31 @@ export function Sidebar() {
   const toggle = (key: keyof typeof sectionsOpen) => () =>
     setSectionsOpen((s) => ({ ...s, [key]: !s[key] }));
 
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearch("");
+  };
+
+  useEffect(() => {
+    if (collapsed) closeSearch();
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  const filterBySearch = <T extends { name: string }>(arr: T[]): T[] =>
+    search.trim()
+      ? arr.filter((i) => i.name.toLowerCase().includes(search.trim().toLowerCase()))
+      : arr;
+  const effectiveSectionsOpen = search.trim()
+    ? { ...sectionsOpen, entities: true, pages: true, workflows: true, agents: true }
+    : sectionsOpen;
+
   // RBAC — chặn nút theo role. Lấy role+enforce để component re-render khi đổi.
   const role = useRbac((s) => s.role);
   const enforce = useRbac((s) => s.enforce);
@@ -831,26 +856,72 @@ export function Sidebar() {
       {/* Home — shrink-0 nên luôn hiển thị, NavGroups dù cao đến đâu cũng không che được */}
       <div className="shrink-0 pt-1">
         <div className="relative group">
-          <Link
-            to="/"
-            className={cn("sidebar-item", pathname === "/" && "active", !collapsed && "pr-8")}
-            title={t("sidebar.workspace")}
-            onClick={() => setSectionsOpen((s) => ({ ...s, ops: false, settings: false }))}
-          >
-            <span className="icon text-muted shrink-0">
-              <I.Home size={14} />
-            </span>
-            {!collapsed && <span className="truncate flex-1">{t("sidebar.workspace")}</span>}
-          </Link>
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={toggleAll}
-              title={allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-sm flex items-center justify-center text-muted/50 hover:text-text hover:bg-hover/60 transition-colors"
+          {/* Search mode: thay thế link Home bằng ô nhập tìm kiếm inline */}
+          {!collapsed && searchOpen ? (
+            <div className={cn("sidebar-item cursor-default pr-[52px]")}>
+              <span className="icon text-muted shrink-0">
+                <I.Search size={14} />
+              </span>
+              <input
+                ref={searchRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") closeSearch();
+                }}
+                placeholder={t("sidebar.search")}
+                className="flex-1 bg-transparent outline-none text-[12px] text-text placeholder:text-muted/50 min-w-0"
+              />
+            </div>
+          ) : (
+            <Link
+              to="/"
+              className={cn(
+                "sidebar-item",
+                pathname === "/" && "active",
+                !collapsed && "pr-[52px]",
+              )}
+              title={t("sidebar.workspace")}
+              onClick={() => setSectionsOpen((s) => ({ ...s, ops: false, settings: false }))}
             >
-              <I.ChevronsUpDown size={11} />
-            </button>
+              <span className="icon text-muted shrink-0">
+                <I.Home size={14} />
+              </span>
+              {!collapsed && <span className="truncate flex-1">{t("sidebar.workspace")}</span>}
+            </Link>
+          )}
+
+          {!collapsed && (
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              {searchOpen ? (
+                <button
+                  type="button"
+                  onClick={closeSearch}
+                  className="w-6 h-6 rounded-sm flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 transition-colors"
+                  title="Đóng tìm kiếm"
+                >
+                  <I.X size={11} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  title={t("sidebar.search")}
+                  className="w-6 h-6 rounded-sm flex items-center justify-center text-muted/40 hover:text-text hover:bg-hover/60 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <I.Search size={11} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleAll}
+                title={allOpen ? t("sidebar.collapse_all") : t("sidebar.expand_all")}
+                className="w-6 h-6 rounded-sm flex items-center justify-center text-muted/50 hover:text-text hover:bg-hover/60 transition-colors"
+              >
+                <I.ChevronsUpDown size={11} />
+              </button>
+            </div>
           )}
         </div>
         <FavoritesSection
@@ -862,12 +933,12 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-1">
-        {!isViewer && (
+        {!isViewer && (!search.trim() || filterBySearch(userEntities).length > 0) && (
           <SidebarSection
             title={t("sidebar.entities")}
             collapsed={collapsed}
             pathname={pathname}
-            open={sectionsOpen.entities}
+            open={effectiveSectionsOpen.entities}
             onToggle={toggle("entities")}
             onAdd={can("create", "entity") ? handleAddEntity : undefined}
             onAiAdd={can("create", "entity") ? () => setAiCreateTarget("entity") : undefined}
@@ -885,7 +956,7 @@ export function Sidebar() {
                 <I.Layers size={11} />
               </button>
             }
-            items={userEntities.map((e) => ({
+            items={filterBySearch(userEntities).map((e) => ({
               id: e.id,
               name: e.name,
               iconName: e.icon,
@@ -897,50 +968,56 @@ export function Sidebar() {
             }))}
           />
         )}
-        <SidebarSection
-          title={t("sidebar.pages")}
-          collapsed={collapsed}
-          pathname={pathname}
-          open={sectionsOpen.pages}
-          onToggle={toggle("pages")}
-          onAdd={can("create", "page") ? handleAddPage : undefined}
-          onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
-          onDelete={can("delete", "page") ? handleDeletePage : undefined}
-          onRename={can("edit", "page") ? handleRenamePage : undefined}
-          sectionKey="pages"
-          onNavigate={collapseOpsSettings}
-          items={(isViewer
+        {(() => {
+          const pagesBase = isViewer
             ? userPages.filter(
                 (p) =>
                   p.isPublished &&
                   (!p.viewerGroupIds?.length ||
                     p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
               )
-            : userPages
-          ).map((p) => ({
-            id: p.id,
-            name: p.name,
-            iconName: p.icon,
-            to: `/pages/${p.id}`,
-            userOwned: true,
-            isFav: favs.isFav(p.id),
-            onFavorite: () =>
-              favs.toggle({ id: p.id, to: `/pages/${p.id}`, label: p.name, iconName: p.icon }),
-          }))}
-        />
-        {!isViewer && (
+            : userPages;
+          const pagesFiltered = filterBySearch(pagesBase);
+          if (search.trim() && pagesFiltered.length === 0) return null;
+          return (
+            <SidebarSection
+              title={t("sidebar.pages")}
+              collapsed={collapsed}
+              pathname={pathname}
+              open={effectiveSectionsOpen.pages}
+              onToggle={toggle("pages")}
+              onAdd={can("create", "page") ? handleAddPage : undefined}
+              onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
+              onDelete={can("delete", "page") ? handleDeletePage : undefined}
+              onRename={can("edit", "page") ? handleRenamePage : undefined}
+              sectionKey="pages"
+              onNavigate={collapseOpsSettings}
+              items={pagesFiltered.map((p) => ({
+                id: p.id,
+                name: p.name,
+                iconName: p.icon,
+                to: `/pages/${p.id}`,
+                userOwned: true,
+                isFav: favs.isFav(p.id),
+                onFavorite: () =>
+                  favs.toggle({ id: p.id, to: `/pages/${p.id}`, label: p.name, iconName: p.icon }),
+              }))}
+            />
+          );
+        })()}
+        {!isViewer && (!search.trim() || filterBySearch(userWorkflows).length > 0) && (
           <SidebarSection
             title={t("sidebar.workflows")}
             collapsed={collapsed}
             pathname={pathname}
-            open={sectionsOpen.workflows}
+            open={effectiveSectionsOpen.workflows}
             onToggle={toggle("workflows")}
             onAdd={can("create", "workflow") ? handleAddWorkflow : undefined}
             onAiAdd={can("create", "workflow") ? () => setAiCreateTarget("workflow") : undefined}
             onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
             onRename={can("edit", "workflow") ? handleRenameWorkflow : undefined}
             onNavigate={collapseOpsSettings}
-            items={userWorkflows.map((w) => ({
+            items={filterBySearch(userWorkflows).map((w) => ({
               id: w.id,
               name: w.name,
               iconName: w.icon,
@@ -958,12 +1035,12 @@ export function Sidebar() {
             }))}
           />
         )}
-        {!isViewer && (
+        {!isViewer && (!search.trim() || filterBySearch(sortedAgents).length > 0) && (
           <SidebarSection
             title={t("sidebar.agents")}
             collapsed={collapsed}
             pathname={pathname}
-            open={sectionsOpen.agents}
+            open={effectiveSectionsOpen.agents}
             onToggle={toggle("agents")}
             onAdd={can("create", "agent") ? handleAddAgent : undefined}
             onAiAdd={can("create", "agent") ? () => setAiCreateTarget("agent") : undefined}
@@ -982,7 +1059,7 @@ export function Sidebar() {
                 </button>
               ) : undefined
             }
-            items={sortedAgents.map((a) => ({
+            items={filterBySearch(sortedAgents).map((a) => ({
               id: a.id,
               name: a.name,
               iconName: "Bot" as const,
