@@ -9,12 +9,12 @@ import { I } from "@/components/Icons";
 import { FALLBACK_FIELD_TYPE, getFieldTypes } from "@/lib/field-types";
 import type { MockEntity } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
+import { useUserObjects } from "@/stores/userObjects";
 
 const REF_TYPES = new Set(["lookup", "multi-lookup", "collection"]);
 
 export interface EntityERDNodeData extends Record<string, unknown> {
   entity: MockEntity;
-  entities?: MockEntity[];
   onEntityClick?: (id: string) => void;
   onHide?: (id: string) => void;
   onSetPrimaryKey?: (entityId: string, fieldId: string) => void;
@@ -24,7 +24,7 @@ export type EntityERDNodeType = Node<EntityERDNodeData>;
 
 export function EntityERDNode({ data, selected }: NodeProps<EntityERDNodeType>) {
   const entity = data.entity as MockEntity;
-  const allEntities = (data.entities ?? []) as MockEntity[];
+  const allEntities = useUserObjects((s) => s.entities);
   const onEntityClick = data.onEntityClick as ((id: string) => void) | undefined;
   const onHide = data.onHide as ((id: string) => void) | undefined;
   const onSetPK = data.onSetPrimaryKey as ((entityId: string, fieldId: string) => void) | undefined;
@@ -58,7 +58,7 @@ export function EntityERDNode({ data, selected }: NodeProps<EntityERDNodeType>) 
           type="target"
           id="incoming"
           position={Position.Right}
-          className="!w-3 !h-3 !bg-panel !border-2 !border-muted"
+          className="!w-2 !h-2 !bg-panel !border !border-muted"
         />
       )}
 
@@ -136,7 +136,7 @@ export function EntityERDNode({ data, selected }: NodeProps<EntityERDNodeType>) 
                   type="source"
                   id={`field-${f.id}`}
                   position={Position.Left}
-                  className="!w-2.5 !h-2.5 !bg-accent !border-0 !left-[-5px]"
+                  className="!w-2 !h-2 !bg-accent !border-0 !left-[-4px]"
                 />
               )}
 
@@ -146,7 +146,7 @@ export function EntityERDNode({ data, selected }: NodeProps<EntityERDNodeType>) 
                   type="target"
                   id={`pk-${f.id}`}
                   position={Position.Right}
-                  className="!w-2.5 !h-2.5 !bg-warning !border-0 !right-[-5px]"
+                  className="!w-2 !h-2 !bg-warning !border-0 !right-[-4px]"
                 />
               )}
 
@@ -225,7 +225,7 @@ export function EntityERDNode({ data, selected }: NodeProps<EntityERDNodeType>) 
           type="source"
           id="add-rel"
           position={Position.Left}
-          className="!w-3 !h-3 !bg-muted !border-2 !border-panel !left-2"
+          className="!w-2 !h-2 !bg-muted !border !border-panel !left-2"
         />
         <span className="text-[10px] text-muted ml-4">Kéo để thêm relationship</span>
       </div>

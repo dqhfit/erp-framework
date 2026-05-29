@@ -25,9 +25,9 @@ interface RunLogEntry {
   id: string;
   at: string;
   /** Bước trong flow runMigrateAll. "info" cho header/footer phụ. */
-  step: "1/3" | "2/3" | "3/3" | "info";
-  /** Hành động: classify proc, codegen workflow, apply FK, hoặc info. */
-  action: "classify" | "workflow" | "fk" | "info";
+  step: "1/3" | "2/3" | "2b/3" | "3/3" | "info";
+  /** Hành động: classify proc, codegen workflow/B/D, apply FK, hoặc info. */
+  action: "classify" | "workflow" | "codegen" | "fk" | "info";
   /** Target text: tên module, tên proc, hoặc entity.field. */
   target: string;
   /** Kết quả: started/success/skipped/cached/noop/failed. */
@@ -72,6 +72,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
   );
   const [moduleFilter, setModuleFilter] = useState("");
   const [procNameFilter, setProcNameFilter] = useState("");
+  const [codegenFilter, setCodegenFilter] = useState<"all" | "done" | "pending">("all");
   const [classifyMode, setClassifyMode] = useState<ClassifyMode>("skip-existing");
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -258,12 +259,15 @@ export function RunAllProcsScreen({ onClose }: Props) {
 
   const keyOf = (module: string, name: string) => `${module}::${name}`;
 
-  /** allRows sau khi lọc thêm theo tên proc (client-side). */
+  /** allRows sau khi lọc thêm theo tên proc + trạng thái codegen (client-side). */
   const filteredRows = useMemo(() => {
+    let rows = allRows;
     const term = procNameFilter.trim().toLowerCase();
-    if (!term) return allRows;
-    return allRows.filter(({ row }) => row.name.toLowerCase().includes(term));
-  }, [allRows, procNameFilter]);
+    if (term) rows = rows.filter(({ row }) => row.name.toLowerCase().includes(term));
+    if (codegenFilter === "done") rows = rows.filter(({ row }) => row.codegenApplied);
+    else if (codegenFilter === "pending") rows = rows.filter(({ row }) => !row.codegenApplied);
+    return rows;
+  }, [allRows, procNameFilter, codegenFilter]);
 
   /** Các keys hiển thị hiện tại (đã lọc). */
   const filteredKeys = useMemo(
@@ -439,6 +443,115 @@ export function RunAllProcsScreen({ onClose }: Props) {
     reload();
   };
 
+  /** Bulk codegen Tier B/D cho proc đã chọn — gọi dry-run → apply tự động.
+   *  Chỉ chạy proc chưa codegenApplied. Idempotent: proc đã apply bị skip.
+   *  Tier C (workflow) KHÔNG được xử lý ở đây — dùng runWorkflowAll. */
+  const runCodegenTierBD = async () => {
+    const tierBDprocs = filteredRows
+      .filter(
+        ({ module, row }) =>
+          selected.has(keyOf(module, row.name)) &&
+          (row.suggestedTier === "B" || row.suggestedTier === "D") &&
+          !row.codegenApplied,
+      )
+      .map(({ module, row }) => ({
+        module,
+        procName: row.name,
+        tier: row.suggestedTier as "B" | "D",
+      }));
+
+    if (tierBDprocs.length === 0) {
+      toast.info("Không có proc Tier B/D chưa codegen trong số đã chọn.");
+      return;
+    }
+    const ok = await dialog.confirm(
+      `Codegen ${tierBDprocs.length} proc Tier B/D? Code được AI sinh và apply tự động — có thể review/edit lại trong module view sau.`,
+      { title: "Codegen Tier B/D" },
+    );
+    if (!ok) return;
+
+    let succ = 0;
+    let failed = 0;
+    setRunStatus({ busy: true, label: "Codegen Tier B/D", current: 0, total: tierBDprocs.length });
+    let i = 0;
+    for (const { module, procName, tier } of tierBDprocs) {
+      i++;
+      setRunStatus((s) => ({ ...s, current: i, label: `Codegen ${procName}` }));
+      try {
+        const dry = await migration.codegenProcDryRun(module, procName);
+        if (!dry.output || dry.error) {
+          failed++;
+          appendLog({
+            step: "2b/3",
+            action: "codegen",
+            target: `${module}/${procName}`,
+            result: "failed",
+            detail: dry.error ?? "no output",
+          });
+          continue;
+        }
+        const out = dry.output;
+        if (tier === "B" && out.tier === "B") {
+          await migration.codegenProcApply({
+            module,
+            tier: "B",
+            procName,
+            name: out.name,
+            label: out.label ?? procName,
+            description: out.description ?? "",
+            paramsSchema: out.paramsSchema,
+            code: out.code,
+          });
+          succ++;
+          appendLog({
+            step: "2b/3",
+            action: "codegen",
+            target: `${module}/${procName}`,
+            result: "success",
+            detail: `procedure "${out.name}"`,
+          });
+        } else if (tier === "D" && out.tier === "D") {
+          await migration.codegenProcApply({
+            module,
+            tier: "D",
+            procName,
+            fileName: out.fileName,
+            code: out.code,
+          });
+          succ++;
+          appendLog({
+            step: "2b/3",
+            action: "codegen",
+            target: `${module}/${procName}`,
+            result: "success",
+            detail: `file "${out.fileName}"`,
+          });
+        } else {
+          failed++;
+          appendLog({
+            step: "2b/3",
+            action: "codegen",
+            target: `${module}/${procName}`,
+            result: "failed",
+            detail: `tier mismatch (manifest=${tier}, dry=${out.tier})`,
+          });
+        }
+      } catch (e) {
+        failed++;
+        appendLog({
+          step: "2b/3",
+          action: "codegen",
+          target: `${module}/${procName}`,
+          result: "failed",
+          detail: (e as Error).message,
+        });
+      }
+    }
+    setRunStatus({ busy: false, label: "", current: 0, total: 0 });
+    toast.success(`Codegen Tier B/D: ${succ} thành công · ${failed} lỗi`);
+    reload();
+  };
+
   /** All-in-one: classify → codegen workflow → apply FK relations trong 1 click.
    *  - Bước 1/3: classify proc đã chọn (skip-existing/if-stale/force theo mode).
    *  - Bước 2/3: codegen workflow cho proc tier C trong selection.
@@ -459,7 +572,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
           ? "(chỉ chạy nếu body MSSQL đổi)"
           : "(force — chạy lại tất cả)";
     const ok = await dialog.confirm(
-      `Chạy migrate ${totalProcs} proc thuộc ${totalModules} module:\n  1) AI phân loại nghiệp vụ ${modeLabel}\n  2) Codegen Workflow (Tier C) cho proc phù hợp\n  3) Áp dụng quan hệ FK suy ra từ joinPairs proc lên entity\n\nMọi bước đều idempotent — workflow đã có không bị ghi đè, FK đã đúng được bỏ qua.`,
+      `Chạy migrate ${totalProcs} proc thuộc ${totalModules} module:\n  1) AI phân loại nghiệp vụ ${modeLabel}\n  2b) Codegen Tier B (procedure JS) và Tier D (plugin TS) chưa apply\n  2) Codegen Workflow (Tier C) cho proc phù hợp\n  3) Áp dụng quan hệ FK suy ra từ joinPairs proc lên entity\n\nMọi bước đều idempotent — proc/workflow đã có không bị ghi đè, FK đã đúng được bỏ qua.`,
       { title: "Chạy migrate đã chọn" },
     );
     if (!ok) return;
@@ -534,6 +647,112 @@ export function RunAllProcsScreen({ onClose }: Props) {
       setData(fresh);
     } catch {
       /* fall back to current data */
+    }
+
+    // ── Bước 2b/3: codegen Tier B/D ──
+    const tierBDForRun: Array<{ module: string; procName: string; tier: "B" | "D" }> = [];
+    for (const m of moduleNames) {
+      const rows = (fresh ?? data)?.rowsByModule[m] ?? [];
+      for (const procName of groups[m] ?? []) {
+        const row = rows.find((r) => r.name === procName);
+        if (!row) continue;
+        if ((row.suggestedTier === "B" || row.suggestedTier === "D") && !row.codegenApplied) {
+          tierBDForRun.push({ module: m, procName, tier: row.suggestedTier as "B" | "D" });
+        }
+      }
+    }
+    let bdSucc = 0;
+    let bdFailed = 0;
+    if (tierBDForRun.length > 0) {
+      setRunStatus({
+        busy: true,
+        label: "Bước 2b/3: Codegen B/D",
+        current: 0,
+        total: tierBDForRun.length,
+      });
+      let jj = 0;
+      for (const { module, procName, tier } of tierBDForRun) {
+        jj++;
+        setRunStatus((s) => ({ ...s, current: jj, label: `Bước 2b/3: Codegen ${procName}` }));
+        try {
+          const dry = await migration.codegenProcDryRun(module, procName);
+          if (!dry.output || dry.error) {
+            bdFailed++;
+            appendLog({
+              step: "2b/3",
+              action: "codegen",
+              target: `${module}/${procName}`,
+              result: "failed",
+              detail: dry.error ?? "no output",
+            });
+            continue;
+          }
+          const out = dry.output;
+          if (tier === "B" && out.tier === "B") {
+            await migration.codegenProcApply({
+              module,
+              tier: "B",
+              procName,
+              name: out.name,
+              label: out.label ?? procName,
+              description: out.description ?? "",
+              paramsSchema: out.paramsSchema,
+              code: out.code,
+            });
+            bdSucc++;
+            appendLog({
+              step: "2b/3",
+              action: "codegen",
+              target: `${module}/${procName}`,
+              result: "success",
+              detail: `procedure "${out.name}"`,
+            });
+          } else if (tier === "D" && out.tier === "D") {
+            await migration.codegenProcApply({
+              module,
+              tier: "D",
+              procName,
+              fileName: out.fileName,
+              code: out.code,
+            });
+            bdSucc++;
+            appendLog({
+              step: "2b/3",
+              action: "codegen",
+              target: `${module}/${procName}`,
+              result: "success",
+              detail: `file "${out.fileName}"`,
+            });
+          } else {
+            bdFailed++;
+            appendLog({
+              step: "2b/3",
+              action: "codegen",
+              target: `${module}/${procName}`,
+              result: "failed",
+              detail: `tier mismatch (manifest=${tier}, dry=${out.tier})`,
+            });
+          }
+        } catch (e) {
+          bdFailed++;
+          const msg = (e as Error).message;
+          console.warn(`Codegen B/D ${procName} fail:`, msg);
+          appendLog({
+            step: "2b/3",
+            action: "codegen",
+            target: `${module}/${procName}`,
+            result: "failed",
+            detail: msg,
+          });
+        }
+      }
+    } else {
+      appendLog({
+        step: "2b/3",
+        action: "codegen",
+        target: "(không có proc Tier B/D chưa codegen)",
+        result: "skipped",
+      });
     }
 
     // ── Bước 2/3: codegen workflow tier C ──
@@ -704,6 +923,9 @@ export function RunAllProcsScreen({ onClose }: Props) {
       `Classify: ${cSucc} mới · ${cSkipped} bỏ qua · ${cCached} cache${cFailed > 0 ? ` · ${cFailed} lỗi` : ""}`,
     );
     lines.push(
+      `Codegen B/D: ${bdSucc} mới${bdFailed > 0 ? ` · ${bdFailed} lỗi` : ""} (${tierBDForRun.length} proc)`,
+    );
+    lines.push(
       `Workflow: ${wSucc} mới · ${wReused} đã tồn tại${wFailed > 0 ? ` · ${wFailed} lỗi` : ""} (Tier C: ${tierCprocs.length})`,
     );
     if (rTotalPending > 0 || rChanged > 0 || rNoop > 0 || rFailed > 0) {
@@ -717,7 +939,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       step: "info",
       action: "info",
       target: "Hoàn tất",
-      result: cFailed + wFailed + rFailed > 0 ? "failed" : "success",
+      result: cFailed + bdFailed + wFailed + rFailed > 0 ? "failed" : "success",
       detail: lines.join(" | "),
     });
     toast.success(lines.join(" | "));
@@ -756,7 +978,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       {/* Filter bar */}
       <div className="card p-3 space-y-2">
         <div className="text-[11px] uppercase text-muted tracking-wider font-semibold">Bộ lọc</div>
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-2 text-sm">
           <label className="space-y-1">
             <div className="text-xs text-muted">Module</div>
             <Input
@@ -813,6 +1035,17 @@ export function RunAllProcsScreen({ onClose }: Props) {
               <option value="force">Force chạy lại</option>
             </Select>
           </label>
+          <label className="space-y-1">
+            <div className="text-xs text-muted">Codegen</div>
+            <Select
+              value={codegenFilter}
+              onChange={(e) => setCodegenFilter(e.target.value as typeof codegenFilter)}
+            >
+              <option value="all">Tất cả</option>
+              <option value="pending">Chưa migrate</option>
+              <option value="done">Đã migrate</option>
+            </Select>
+          </label>
         </div>
         {data && (
           <div className="text-[11px] text-muted flex items-center gap-3 flex-wrap pt-1 border-t border-border">
@@ -820,9 +1053,12 @@ export function RunAllProcsScreen({ onClose }: Props) {
             <span className="text-success">Ready: {data.counts.ready}</span>
             <span className="text-warning">Partial: {data.counts.partial}</span>
             <span className="text-danger">Blocked: {data.counts.blocked}</span>
-            <span>Hiển thị: {data.counts.shown}</span>
+            <span>Hiển thị: {filteredRows.length}</span>
             <span>Module: {data.modules.length}</span>
             <span>Bảng đã migrate: {data.migratedTableCount}</span>
+            <span className="text-success">
+              Codegen: {allRows.filter(({ row }) => row.codegenApplied).length}/{allRows.length}
+            </span>
           </div>
         )}
       </div>
@@ -875,6 +1111,16 @@ export function RunAllProcsScreen({ onClose }: Props) {
             title="Chỉ chạy bước Codegen Workflow (Tier C)"
           >
             Chỉ Workflow
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            icon={<I.Terminal size={12} />}
+            onClick={runCodegenTierBD}
+            disabled={selected.size === 0 || runStatus.busy}
+            title="Codegen Tier B (procedure JS) và Tier D (plugin TS) cho proc đã chọn"
+          >
+            Chỉ Codegen B/D
           </Button>
         </div>
       )}
@@ -1239,6 +1485,11 @@ export function RunAllProcsScreen({ onClose }: Props) {
                             >
                               {r.filterStatus}
                             </span>
+                            {r.codegenApplied && (
+                              <span className="ml-1 inline-block px-1.5 py-0.5 rounded border text-[10px] bg-success/10 text-success border-success/30">
+                                ✓ codegen
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );

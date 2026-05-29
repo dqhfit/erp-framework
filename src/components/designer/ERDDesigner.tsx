@@ -60,22 +60,22 @@ function buildEdges(entities: MockEntity[]): Edge[] {
         targetHandle,
         label: f.label,
         labelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fill: "hsl(var(--text))",
           fontFamily: "ui-monospace, monospace",
         },
         labelBgStyle: { fill: "hsl(var(--panel))", fillOpacity: 0.95 },
-        labelBgPadding: [5, 3] as [number, number],
-        labelBgBorderRadius: 4,
+        labelBgPadding: [3, 2] as [number, number],
+        labelBgBorderRadius: 3,
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          width: 18,
-          height: 18,
+          width: 10,
+          height: 10,
           color: isCollection ? "hsl(var(--accent-2))" : "hsl(var(--accent))",
         },
         style: isCollection
-          ? { strokeDasharray: "6,3", stroke: "hsl(var(--accent-2))", strokeWidth: 2 }
-          : { stroke: "hsl(var(--accent))", strokeWidth: 2 },
+          ? { strokeDasharray: "5,3", stroke: "hsl(var(--accent-2))", strokeWidth: 1 }
+          : { stroke: "hsl(var(--accent))", strokeWidth: 1 },
         type: "smoothstep",
       });
     }
@@ -223,15 +223,20 @@ function ERDCanvas() {
   }, []);
 
   /* ── Build nodes ────────────────────────────────────────── */
+  /* Dùng ref để callback có thể đọc entities mới nhất mà không cần deps,
+   * tránh makeNode bị recreate mỗi lần entities thay đổi. */
+  const entitiesRef = useRef(entities);
+  entitiesRef.current = entities;
+
   const handleSetPrimaryKey = useCallback(
     (entityId: string, fieldId: string) => {
-      const ent = entities.find((e) => e.id === entityId);
+      const ent = entitiesRef.current.find((e) => e.id === entityId);
       if (!ent) return;
       updateEntityStore(entityId, {
         primaryKey: ent.primaryKey === fieldId ? undefined : fieldId,
       });
     },
-    [entities, updateEntityStore],
+    [updateEntityStore],
   );
 
   const makeNode = useCallback(
@@ -243,13 +248,14 @@ function ERDCanvas() {
         savedLayout[e.id] ?? { x: (i % 3) * 320, y: Math.floor(i / 3) * 300 },
       data: {
         entity: e,
-        entities,
+        /* entities KHÔNG đưa vào data — EntityERDNode đọc thẳng từ Zustand.
+         * Tránh tất cả nodes bị rebuild khi bất kỳ entity nào thay đổi. */
         onEntityClick: handleEntityClick,
         onHide: toggleHidden,
         onSetPrimaryKey: handleSetPrimaryKey,
       } as EntityERDNodeData,
     }),
-    [savedLayout, handleEntityClick, toggleHidden, entities, handleSetPrimaryKey],
+    [savedLayout, handleEntityClick, toggleHidden, handleSetPrimaryKey],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(entities.map((e, i) => makeNode(e, i)));
@@ -291,7 +297,10 @@ function ERDCanvas() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
-      onNodesChange(changes);
+      /* Bỏ "select" changes — ReactFlow tự quản lý nội bộ.
+       * Sync ra ngoài gây setNodes → re-render toàn canvas → nhấp nháy. */
+      const structural = changes.filter((c) => c.type !== "select");
+      if (structural.length) onNodesChange(structural);
       const hasPosition = changes.some((c) => c.type === "position" && !c.dragging);
       if (!hasPosition) return;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
