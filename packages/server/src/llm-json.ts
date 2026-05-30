@@ -5,7 +5,7 @@
    của công ty; hỗ trợ Anthropic + OpenAI/Ollama-compat.
    Fail-safe: trả null khi profile thiếu/LLM fail/JSON không parse được.
    ========================================================== */
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
@@ -24,6 +24,35 @@ export interface CallLlmJsonOpts {
   /** Override timeout (ms). Mặc định 180s cho claude-cli (CLI subprocess
    *  chậm), 45s cho adapter API trực tiếp. */
   timeoutMs?: number;
+  /** User hiện tại — nếu có, ưu tiên profile CÁ NHÂN (runtime="server") của
+   *  user, fallback profile công ty. Bỏ qua → chỉ dùng profile công ty. */
+  userId?: string;
+}
+
+/** Resolve profile chat: ưu tiên CÁ NHÂN của user (runtime="server" — server
+ *  gọi được; "browser" là model local máy user nên server bỏ qua), fallback
+ *  CÔNG TY (user_id NULL). */
+export async function resolveChatProfile(
+  db: DB,
+  companyId: string,
+  opts: { profileName?: string; userId?: string },
+): Promise<typeof llmProfiles.$inferSelect | null> {
+  const base = [eq(llmProfiles.companyId, companyId), eq(llmProfiles.kind, "chat")];
+  if (opts.profileName) base.push(eq(llmProfiles.name, opts.profileName));
+  if (opts.userId) {
+    const [personal] = await db
+      .select()
+      .from(llmProfiles)
+      .where(and(...base, eq(llmProfiles.userId, opts.userId), eq(llmProfiles.runtime, "server")))
+      .limit(1);
+    if (personal) return personal;
+  }
+  const [company] = await db
+    .select()
+    .from(llmProfiles)
+    .where(and(...base, isNull(llmProfiles.userId)))
+    .limit(1);
+  return company ?? null;
 }
 
 /** Gọi LLM 1 shot. Trả object đã parse, hoặc null nếu lỗi/không hợp lệ.
@@ -33,13 +62,7 @@ export async function callLlmJson<T = unknown>(
   companyId: string,
   opts: CallLlmJsonOpts,
 ): Promise<T | null> {
-  const conds = [eq(llmProfiles.companyId, companyId), eq(llmProfiles.kind, "chat")];
-  if (opts.profileName) conds.push(eq(llmProfiles.name, opts.profileName));
-  const [p] = await db
-    .select()
-    .from(llmProfiles)
-    .where(and(...conds))
-    .limit(1);
+  const p = await resolveChatProfile(db, companyId, opts);
   if (!p) return null;
 
   const user = opts.user.slice(0, 8000);

@@ -358,6 +358,20 @@
       "when": 1783700700000,
       "tag": "0050_migration_full_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1783700800000,
+      "tag": "0051_llm_profiles_user_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1783700900000,
+      "tag": "0052_entities_name_ci_unique",
+      "breakpoints": true
     }
   ]
 }

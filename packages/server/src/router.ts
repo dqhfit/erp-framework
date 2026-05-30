@@ -6,7 +6,7 @@
    - workflows.*  : trigger workflow             (RBAC)
    ========================================================== */
 import { z } from "zod";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   users,
@@ -19,7 +19,14 @@ import {
   userInvites,
   inviteLinks,
 } from "@erp-framework/db";
-import { router, publicProcedure, protectedProcedure, rbacProcedure, rateLimit } from "./trpc";
+import {
+  router,
+  publicProcedure,
+  protectedProcedure,
+  approvedProcedure,
+  rbacProcedure,
+  rateLimit,
+} from "./trpc";
 import { logActivity } from "./activity";
 import { companiesRouter } from "./companies-router";
 import { heartbeatsRouter } from "./heartbeats-router";
@@ -612,7 +619,14 @@ export const appRouter = router({
       const rows = await ctx.db
         .select()
         .from(llmProfiles)
-        .where(and(eq(llmProfiles.companyId, ctx.user.companyId), eq(llmProfiles.kind, "chat")));
+        // Chỉ profile CÔNG TY (user_id NULL) — profile cá nhân quản lý ở llm.*Mine.
+        .where(
+          and(
+            eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.kind, "chat"),
+            isNull(llmProfiles.userId),
+          ),
+        );
       // Trả masked key để client biết profile có key hay không,
       // không trả plaintext tránh leak qua API.
       return rows.map((r) => ({
@@ -648,6 +662,7 @@ export const appRouter = router({
               eq(llmProfiles.name, input.name),
               eq(llmProfiles.companyId, ctx.user.companyId),
               eq(llmProfiles.kind, "chat"),
+              isNull(llmProfiles.userId),
             ),
           );
         const values = {
@@ -677,9 +692,97 @@ export const appRouter = router({
               eq(llmProfiles.name, input),
               eq(llmProfiles.companyId, ctx.user.companyId),
               eq(llmProfiles.kind, "chat"),
+              isNull(llmProfiles.userId),
             ),
           );
       }),
+    // ── Profile CÁ NHÂN (mọi user approved tự cấu hình model riêng) ──
+    /** Liệt kê profile chat cá nhân của user hiện tại (key masked). */
+    listMine: approvedProcedure.query(async ({ ctx }) => {
+      const rows = await ctx.db
+        .select()
+        .from(llmProfiles)
+        .where(
+          and(
+            eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.userId, ctx.user.id),
+            eq(llmProfiles.kind, "chat"),
+          ),
+        );
+      return rows.map((r) => ({
+        ...r,
+        apiKeyEnc: r.apiKeyEnc ? "••••configured••••" : null,
+        hasApiKey: r.apiKeyEnc !== null,
+      }));
+    }),
+    /** Tạo/sửa profile cá nhân. runtime: "server" (server gọi được) |
+     *  "browser" (model local trên máy user — chỉ client-side dùng). */
+    saveMine: approvedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1),
+          adapter: z.string(),
+          model: z.string(),
+          runtime: z.enum(["server", "browser"]).default("server"),
+          endpoint: z
+            .string()
+            .optional()
+            .refine(
+              (v) => !v || v.startsWith("http://") || v.startsWith("https://"),
+              "Endpoint phải là URL tuyệt đối (http:// hoặc https://)",
+            ),
+          apiKeyEnc: z.string().optional(),
+          temperature: z.number().optional(),
+          maxTokens: z.number().int().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const [ex] = await ctx.db
+          .select({ id: llmProfiles.id })
+          .from(llmProfiles)
+          .where(
+            and(
+              eq(llmProfiles.name, input.name),
+              eq(llmProfiles.companyId, ctx.user.companyId),
+              eq(llmProfiles.userId, ctx.user.id),
+              eq(llmProfiles.kind, "chat"),
+            ),
+          );
+        const values = {
+          adapter: input.adapter,
+          model: input.model,
+          runtime: input.runtime,
+          endpoint: input.endpoint ?? null,
+          apiKeyEnc: input.apiKeyEnc ? encryptSecret(input.apiKeyEnc) : null,
+          temperature: input.temperature ?? 0.7,
+          maxTokens: input.maxTokens ?? 4096,
+        };
+        if (ex) {
+          await ctx.db.update(llmProfiles).set(values).where(eq(llmProfiles.id, ex.id));
+        } else {
+          await ctx.db.insert(llmProfiles).values({
+            companyId: ctx.user.companyId,
+            userId: ctx.user.id,
+            name: input.name,
+            kind: "chat",
+            ...values,
+          });
+        }
+        return { ok: true };
+      }),
+    /** Xoá profile cá nhân của chính user (không đụng profile công ty). */
+    deleteMine: approvedProcedure.input(z.string().min(1)).mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(llmProfiles)
+        .where(
+          and(
+            eq(llmProfiles.name, input),
+            eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.userId, ctx.user.id),
+            eq(llmProfiles.kind, "chat"),
+          ),
+        );
+    }),
     /** Proxy liệt kê model Ollama — tránh CORS khi browser gọi localhost từ domain remote. */
     listOllamaModels: rbacProcedure("view", "settings")
       .input(z.object({ endpoint: z.string().nullish() }))

@@ -9,7 +9,7 @@
    Mọi truy vấn lọc theo công ty đang chọn (đa công ty).
    ========================================================== */
 import { z } from "zod";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { knowledgeSources, entities, llmProfiles } from "@erp-framework/db";
 import { router, rbacProcedure } from "./trpc";
@@ -20,17 +20,23 @@ import { encryptSecret, decryptSecret } from "./crypto";
 export const knowledgeRouter = router({
   /* ── Quản lý nguồn tri thức ── */
   sources: router({
-    list: rbacProcedure("view", "knowledge")
-      .query(({ ctx }) => ctx.db.select().from(knowledgeSources)
+    list: rbacProcedure("view", "knowledge").query(({ ctx }) =>
+      ctx.db
+        .select()
+        .from(knowledgeSources)
         .where(eq(knowledgeSources.companyId, ctx.user.companyId))
-        .orderBy(desc(knowledgeSources.createdAt))),
+        .orderBy(desc(knowledgeSources.createdAt)),
+    ),
 
     get: rbacProcedure("view", "knowledge")
       .input(z.string().uuid())
       .query(async ({ ctx, input }) => {
-        const [row] = await ctx.db.select().from(knowledgeSources)
-          .where(and(eq(knowledgeSources.id, input),
-            eq(knowledgeSources.companyId, ctx.user.companyId)));
+        const [row] = await ctx.db
+          .select()
+          .from(knowledgeSources)
+          .where(
+            and(eq(knowledgeSources.id, input), eq(knowledgeSources.companyId, ctx.user.companyId)),
+          );
         return row ?? null;
       }),
 
@@ -38,25 +44,35 @@ export const knowledgeRouter = router({
       .input(z.string().uuid())
       .mutation(async ({ ctx, input }) => {
         // Xoá nguồn → cascade xoá knowledge_chunks (FK on delete cascade).
-        await ctx.db.delete(knowledgeSources).where(and(
-          eq(knowledgeSources.id, input),
-          eq(knowledgeSources.companyId, ctx.user.companyId)));
+        await ctx.db
+          .delete(knowledgeSources)
+          .where(
+            and(eq(knowledgeSources.id, input), eq(knowledgeSources.companyId, ctx.user.companyId)),
+          );
       }),
 
     /* Sửa nguồn: tiêu đề (mọi loại), nội dung (chỉ kind=text),
        lịch tự nạp lại reindexCron (chỉ kind=entity). Sửa nội dung
        → đặt lại status=pending và nạp lại. */
     update: rbacProcedure("edit", "knowledge")
-      .input(z.object({
-        id: z.string().uuid(),
-        title: z.string().min(1).optional(),
-        text: z.string().optional(),
-        reindexCron: z.string().nullable().optional(),
-      }))
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          title: z.string().min(1).optional(),
+          text: z.string().optional(),
+          reindexCron: z.string().nullable().optional(),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
-        const [src] = await ctx.db.select().from(knowledgeSources)
-          .where(and(eq(knowledgeSources.id, input.id),
-            eq(knowledgeSources.companyId, ctx.user.companyId)));
+        const [src] = await ctx.db
+          .select()
+          .from(knowledgeSources)
+          .where(
+            and(
+              eq(knowledgeSources.id, input.id),
+              eq(knowledgeSources.companyId, ctx.user.companyId),
+            ),
+          );
         if (!src) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Nguồn không tồn tại" });
         }
@@ -84,12 +100,15 @@ export const knowledgeRouter = router({
             }
           : {};
 
-        await ctx.db.update(knowledgeSources).set({
-          updatedAt: new Date(),
-          ...(input.title !== undefined ? { title: input.title } : {}),
-          ...textPatch,
-          ...(input.reindexCron !== undefined ? { reindexCron: input.reindexCron } : {}),
-        }).where(eq(knowledgeSources.id, input.id));
+        await ctx.db
+          .update(knowledgeSources)
+          .set({
+            updatedAt: new Date(),
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            ...textPatch,
+            ...(input.reindexCron !== undefined ? { reindexCron: input.reindexCron } : {}),
+          })
+          .where(eq(knowledgeSources.id, input.id));
         if (reindex) await enqueueKbIngest(input.id);
         return { ok: true };
       }),
@@ -97,19 +116,24 @@ export const knowledgeRouter = router({
 
   /* ── Thêm nguồn: văn bản dán tay ── */
   addText: rbacProcedure("create", "knowledge")
-    .input(z.object({
-      title: z.string().min(1),
-      text: z.string().min(1),
-    }))
+    .input(
+      z.object({
+        title: z.string().min(1),
+        text: z.string().min(1),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.insert(knowledgeSources).values({
-        companyId: ctx.user.companyId,
-        kind: "text",
-        title: input.title,
-        status: "pending",
-        meta: { text: input.text },
-        createdBy: ctx.user.id,
-      }).returning();
+      const [row] = await ctx.db
+        .insert(knowledgeSources)
+        .values({
+          companyId: ctx.user.companyId,
+          kind: "text",
+          title: input.title,
+          status: "pending",
+          meta: { text: input.text },
+          createdBy: ctx.user.id,
+        })
+        .returning();
       if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await enqueueKbIngest(row.id);
       return row;
@@ -117,25 +141,31 @@ export const knowledgeRouter = router({
 
   /* ── Thêm nguồn: dữ liệu một entity ── */
   addEntity: rbacProcedure("create", "knowledge")
-    .input(z.object({
-      entityId: z.string().uuid(),
-      title: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        entityId: z.string().uuid(),
+        title: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [ent] = await ctx.db.select().from(entities)
-        .where(and(eq(entities.id, input.entityId),
-          eq(entities.companyId, ctx.user.companyId)));
+      const [ent] = await ctx.db
+        .select()
+        .from(entities)
+        .where(and(eq(entities.id, input.entityId), eq(entities.companyId, ctx.user.companyId)));
       if (!ent) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại" });
       }
-      const [row] = await ctx.db.insert(knowledgeSources).values({
-        companyId: ctx.user.companyId,
-        kind: "entity",
-        title: input.title?.trim() || `Dữ liệu: ${ent.label}`,
-        status: "pending",
-        meta: { entityId: input.entityId },
-        createdBy: ctx.user.id,
-      }).returning();
+      const [row] = await ctx.db
+        .insert(knowledgeSources)
+        .values({
+          companyId: ctx.user.companyId,
+          kind: "entity",
+          title: input.title?.trim() || `Dữ liệu: ${ent.label}`,
+          status: "pending",
+          meta: { entityId: input.entityId },
+          createdBy: ctx.user.id,
+        })
+        .returning();
       if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await enqueueKbIngest(row.id);
       return row;
@@ -145,14 +175,17 @@ export const knowledgeRouter = router({
   reindex: rbacProcedure("edit", "knowledge")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db.select({ id: knowledgeSources.id })
-        .from(knowledgeSources).where(and(
-          eq(knowledgeSources.id, input),
-          eq(knowledgeSources.companyId, ctx.user.companyId)));
+      const [row] = await ctx.db
+        .select({ id: knowledgeSources.id })
+        .from(knowledgeSources)
+        .where(
+          and(eq(knowledgeSources.id, input), eq(knowledgeSources.companyId, ctx.user.companyId)),
+        );
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Nguồn không tồn tại" });
       }
-      await ctx.db.update(knowledgeSources)
+      await ctx.db
+        .update(knowledgeSources)
         .set({ status: "pending", error: null, updatedAt: new Date() })
         .where(eq(knowledgeSources.id, input));
       await enqueueKbIngest(input);
@@ -161,36 +194,47 @@ export const knowledgeRouter = router({
 
   /* ── Tra cứu ── */
   search: rbacProcedure("view", "knowledge")
-    .input(z.object({
-      query: z.string().min(1),
-      limit: z.number().int().positive().max(20).optional(),
-    }))
+    .input(
+      z.object({
+        query: z.string().min(1),
+        limit: z.number().int().positive().max(20).optional(),
+      }),
+    )
     .query(({ ctx, input }) =>
-      knowledgeSearch(ctx.db, ctx.user.companyId, input.query, input.limit ?? 5)),
+      knowledgeSearch(ctx.db, ctx.user.companyId, input.query, input.limit ?? 5),
+    ),
 
   /* ── Cấu hình profile embedding (một bản / công ty) ── */
   embeddingProfile: router({
-    get: rbacProcedure("view", "settings")
-      .query(async ({ ctx }) => {
-        const [row] = await ctx.db.select().from(llmProfiles)
-          .where(and(eq(llmProfiles.companyId, ctx.user.companyId),
-            eq(llmProfiles.kind, "embedding")));
-        if (!row) return null;
-        return {
-          adapter: row.adapter,
-          model: row.model,
-          endpoint: row.endpoint,
-          apiKeyEnc: row.apiKeyEnc ? decryptSecret(row.apiKeyEnc) : null,
-        };
-      }),
+    get: rbacProcedure("view", "settings").query(async ({ ctx }) => {
+      const [row] = await ctx.db
+        .select()
+        .from(llmProfiles)
+        .where(
+          and(
+            eq(llmProfiles.companyId, ctx.user.companyId),
+            eq(llmProfiles.kind, "embedding"),
+            isNull(llmProfiles.userId),
+          ),
+        );
+      if (!row) return null;
+      return {
+        adapter: row.adapter,
+        model: row.model,
+        endpoint: row.endpoint,
+        apiKeyEnc: row.apiKeyEnc ? decryptSecret(row.apiKeyEnc) : null,
+      };
+    }),
 
     save: rbacProcedure("edit", "settings")
-      .input(z.object({
-        adapter: z.enum(["ollama", "openai"]),
-        model: z.string().min(1),
-        endpoint: z.string().optional(),
-        apiKeyEnc: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          adapter: z.enum(["ollama", "openai"]),
+          model: z.string().min(1),
+          endpoint: z.string().optional(),
+          apiKeyEnc: z.string().optional(),
+        }),
+      )
       .mutation(async ({ ctx, input }) => {
         const values = {
           adapter: input.adapter,
@@ -199,16 +243,23 @@ export const knowledgeRouter = router({
           endpoint: input.endpoint?.trim() || null,
           apiKeyEnc: input.apiKeyEnc ? encryptSecret(input.apiKeyEnc) : null,
         };
-        const [ex] = await ctx.db.select({ id: llmProfiles.id })
-          .from(llmProfiles).where(and(
-            eq(llmProfiles.companyId, ctx.user.companyId),
-            eq(llmProfiles.kind, "embedding")));
+        const [ex] = await ctx.db
+          .select({ id: llmProfiles.id })
+          .from(llmProfiles)
+          .where(
+            and(
+              eq(llmProfiles.companyId, ctx.user.companyId),
+              eq(llmProfiles.kind, "embedding"),
+              isNull(llmProfiles.userId),
+            ),
+          );
         if (ex) {
-          await ctx.db.update(llmProfiles).set(values)
-            .where(eq(llmProfiles.id, ex.id));
+          await ctx.db.update(llmProfiles).set(values).where(eq(llmProfiles.id, ex.id));
         } else {
           await ctx.db.insert(llmProfiles).values({
-            companyId: ctx.user.companyId, name: "embedding", ...values,
+            companyId: ctx.user.companyId,
+            name: "embedding",
+            ...values,
           });
         }
         return { ok: true };

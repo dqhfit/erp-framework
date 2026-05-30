@@ -26,7 +26,11 @@ export {
   type CompanyRole,
   createCompaniesClient,
 } from "./companies";
-export { createConfigClient, type LlmProfileInput } from "./config";
+export {
+  createConfigClient,
+  type LlmProfileInput,
+  type LlmProfileMineInput,
+} from "./config";
 export {
   createEmbedClient,
   type EmbedClient,

@@ -11,7 +11,7 @@
    isolation (company A vô tình dùng key của ENV chung).
    Ollama không cần key (local) nên fallback luôn cho phép.
    ========================================================== */
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import type { RunWorkflowOptions } from "@erp-framework/core";
@@ -44,7 +44,10 @@ interface OpenAiResp {
 }
 
 async function callAnthropic(
-  p: ProfileRow, key: string, system: string, prompt: string,
+  p: ProfileRow,
+  key: string,
+  system: string,
+  prompt: string,
 ): Promise<AgentResult> {
   const base = (p.endpoint || "https://api.anthropic.com").replace(/\/$/, "");
   const res = await fetch(base + "/v1/messages", {
@@ -78,7 +81,10 @@ async function callAnthropic(
 }
 
 async function callOpenAiCompat(
-  p: ProfileRow, key: string, system: string, prompt: string,
+  p: ProfileRow,
+  key: string,
+  system: string,
+  prompt: string,
 ): Promise<AgentResult> {
   const base = (p.endpoint || "https://api.openai.com").replace(/\/$/, "");
   const res = await fetch(base + "/v1/chat/completions", {
@@ -113,18 +119,24 @@ async function callOpenAiCompat(
 export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent"]> {
   return async (cfg, vars) => {
     const wanted = typeof cfg.profile === "string" ? cfg.profile : undefined;
-    const rows = await db.select().from(llmProfiles)
-      .where(wanted ? eq(llmProfiles.name, wanted) : undefined)
+    // Workflow agent node chạy server-side (thường theo lịch, không user) →
+    // chỉ dùng profile CÔNG TY (user_id NULL), không vớ profile cá nhân.
+    const rows = await db
+      .select()
+      .from(llmProfiles)
+      .where(and(isNull(llmProfiles.userId), wanted ? eq(llmProfiles.name, wanted) : undefined))
       .limit(1);
     const p = rows[0];
     if (!p) throw new Error("Chưa có LLM profile — không chạy được node agent");
 
-    const system = typeof cfg.system === "string"
-      ? cfg.system
-      : "Bạn là một agent trong workflow ERP. Trả lời ngắn gọn.";
-    const prompt = typeof cfg.prompt === "string"
-      ? cfg.prompt
-      : `Dữ liệu workflow hiện tại:\n${JSON.stringify(vars, null, 2)}`;
+    const system =
+      typeof cfg.system === "string"
+        ? cfg.system
+        : "Bạn là một agent trong workflow ERP. Trả lời ngắn gọn.";
+    const prompt =
+      typeof cfg.prompt === "string"
+        ? cfg.prompt
+        : `Dữ liệu workflow hiện tại:\n${JSON.stringify(vars, null, 2)}`;
 
     const profileKey = p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "";
     const allowEnvFallback = process.env.ERP_ALLOW_ENV_LLM_KEY === "1";
@@ -136,9 +148,9 @@ export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent
       if (adapter === "ollama") return ""; // local, không cần key
       if (allowEnvFallback) return process.env[envVar] || "";
       throw new Error(
-        `LLM profile "${p.adapter}" thiếu API key. Vào Cài đặt → LLM `
-        + "để khai báo, hoặc set ERP_ALLOW_ENV_LLM_KEY=1 để cho phép "
-        + `dùng env var ${envVar} (không khuyến nghị production).`,
+        `LLM profile "${p.adapter}" thiếu API key. Vào Cài đặt → LLM ` +
+          "để khai báo, hoặc set ERP_ALLOW_ENV_LLM_KEY=1 để cho phép " +
+          `dùng env var ${envVar} (không khuyến nghị production).`,
       );
     };
     if (p.adapter === "claude" || p.adapter === "claude-pro") {

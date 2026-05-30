@@ -6,7 +6,7 @@
    Hỗ trợ Anthropic (content-block tools) và OpenAI-compatible
    (function-calling — gồm cả ollama qua endpoint OpenAI-compat).
    ========================================================== */
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import { inferAdapterFromModel, adapterFamily } from "@erp-framework/core";
 import type { DB } from "./db";
@@ -37,6 +37,9 @@ export interface AgentChatOpts {
   db: DB;
   /** Công ty đang chọn — chọn LLM profile trong phạm vi công ty này. */
   companyId: string;
+  /** User hiện tại — ưu tiên profile CÁ NHÂN (runtime="server") của user,
+   *  fallback profile công ty. Bỏ qua → chỉ profile công ty. */
+  userId?: string;
   profileName?: string;
   /** Override model — chọn profile theo adapter suy ra từ model thay
      vì theo profileName. Dùng cho agent có model + fallback list. */
@@ -64,8 +67,11 @@ const trim = (s: string) => (s.length > TRIM ? s.slice(0, TRIM) + "\n…[cắt b
 /* ─── Anthropic (content-block tools) ─────────────────────── */
 interface AnthropicResp {
   content?: Array<{
-    type: string; text?: string;
-    id?: string; name?: string; input?: Record<string, unknown>;
+    type: string;
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: Record<string, unknown>;
   }>;
   stop_reason?: string;
   usage?: { input_tokens?: number; output_tokens?: number };
@@ -75,7 +81,9 @@ async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Pr
   const base = (p.endpoint || "https://api.anthropic.com").replace(/\/$/, "");
   const messages: AnthMsg[] = opt.messages.map((m) => ({ role: m.role, content: m.content }));
   const tools = opt.tools.map((t) => ({
-    name: t.name, description: t.description ?? "", input_schema: t.schema,
+    name: t.name,
+    description: t.description ?? "",
+    input_schema: t.schema,
   }));
   const total = { input: 0, output: 0 };
 
@@ -97,14 +105,20 @@ async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Pr
       }),
     });
     if (!res.ok) {
-      opt.onEvent({ type: "error", message: `Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}` });
+      opt.onEvent({
+        type: "error",
+        message: `Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`,
+      });
       return;
     }
     const j = (await res.json()) as AnthropicResp;
     total.input += j.usage?.input_tokens ?? 0;
     total.output += j.usage?.output_tokens ?? 0;
     const blocks = j.content ?? [];
-    const text = blocks.filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+    const text = blocks
+      .filter((b) => b.type === "text")
+      .map((b) => b.text ?? "")
+      .join("");
     const toolUses = blocks.filter((b) => b.type === "tool_use");
     if (text) opt.onEvent({ type: "text", text });
 
@@ -126,7 +140,12 @@ async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Pr
       } catch (e) {
         const msg = (e as Error).message;
         opt.onEvent({ type: "tool_result", name, error: msg });
-        resultBlocks.push({ type: "tool_result", tool_use_id: tu.id ?? "", content: "ERROR: " + msg, is_error: true });
+        resultBlocks.push({
+          type: "tool_result",
+          tool_use_id: tu.id ?? "",
+          content: "ERROR: " + msg,
+          is_error: true,
+        });
       }
     }
     messages.push({ role: "user", content: resultBlocks });
@@ -174,7 +193,10 @@ async function openaiLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promi
       }),
     });
     if (!res.ok) {
-      opt.onEvent({ type: "error", message: `OpenAI-compat ${res.status}: ${(await res.text()).slice(0, 300)}` });
+      opt.onEvent({
+        type: "error",
+        message: `OpenAI-compat ${res.status}: ${(await res.text()).slice(0, 300)}`,
+      });
       return;
     }
     const j = (await res.json()) as OpenAiResp;
@@ -194,8 +216,11 @@ async function openaiLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promi
     for (const tc of toolCalls) {
       const name = tc.function?.name ?? "";
       let args: Record<string, unknown> = {};
-      try { args = JSON.parse(tc.function?.arguments ?? "{}") as Record<string, unknown>; }
-      catch { /* arguments không phải JSON hợp lệ */ }
+      try {
+        args = JSON.parse(tc.function?.arguments ?? "{}") as Record<string, unknown>;
+      } catch {
+        /* arguments không phải JSON hợp lệ */
+      }
       opt.onEvent({ type: "tool_call", name, args });
       try {
         const out = await opt.callTool(name, args);
@@ -219,42 +244,76 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
   //   có model riêng + fallback).
   // - profileName: chọn theo tên (luồng AgentPanel cũ).
   let p:
-    | { adapter: string; model: string; endpoint: string | null;
-        apiKeyEnc: string | null; temperature: number | null; maxTokens: number | null }
+    | {
+        adapter: string;
+        model: string;
+        endpoint: string | null;
+        apiKeyEnc: string | null;
+        temperature: number | null;
+        maxTokens: number | null;
+      }
     | undefined;
+  // Scope profile: ưu tiên CÁ NHÂN của user (runtime="server" — server gọi
+  // được; "browser" là model local máy user nên server bỏ qua), fallback CÔNG
+  // TY (user_id NULL); KHÔNG vớ profile cá nhân của user khác.
+  const scope = opt.userId
+    ? or(
+        and(eq(llmProfiles.userId, opt.userId), eq(llmProfiles.runtime, "server")),
+        isNull(llmProfiles.userId),
+      )
+    : isNull(llmProfiles.userId);
+  const preferPersonal = sql`${llmProfiles.userId} IS NULL`; // personal (false) xếp trước
   if (opt.modelOverride) {
     const family = adapterFamily(inferAdapterFromModel(opt.modelOverride));
-    const rows = await opt.db.select().from(llmProfiles)
-      .where(and(
-        eq(llmProfiles.companyId, opt.companyId),
-        eq(llmProfiles.kind, "chat"),
-        inArray(llmProfiles.adapter, family),
-      ))
+    const rows = await opt.db
+      .select()
+      .from(llmProfiles)
+      .where(
+        and(
+          eq(llmProfiles.companyId, opt.companyId),
+          eq(llmProfiles.kind, "chat"),
+          inArray(llmProfiles.adapter, family),
+          scope,
+        ),
+      )
+      .orderBy(preferPersonal)
       .limit(1);
     if (rows[0]) p = { ...rows[0], model: opt.modelOverride };
   } else {
-    const rows = await opt.db.select().from(llmProfiles)
-      .where(and(
-        eq(llmProfiles.companyId, opt.companyId),
-        opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined,
-      ))
+    const rows = await opt.db
+      .select()
+      .from(llmProfiles)
+      .where(
+        and(
+          eq(llmProfiles.companyId, opt.companyId),
+          opt.profileName ? eq(llmProfiles.name, opt.profileName) : undefined,
+          scope,
+        ),
+      )
+      .orderBy(preferPersonal)
       .limit(1);
     p = rows[0];
   }
   if (!p) {
-    opt.onEvent({ type: "error", message: opt.modelOverride
-      ? `Không tìm thấy LLM profile cho model "${opt.modelOverride}" — thêm profile cùng adapter ở Cài đặt → LLM.`
-      : "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key)." });
+    opt.onEvent({
+      type: "error",
+      message: opt.modelOverride
+        ? `Không tìm thấy LLM profile cho model "${opt.modelOverride}" — thêm profile cùng adapter ở Cài đặt → LLM.`
+        : "Chưa có LLM profile trên server — vào Cấu hình LLM lưu một profile (cần API key).",
+    });
     return;
   }
-  const isAnthropic = p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "anthropic";
+  const isAnthropic =
+    p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "anthropic";
   const isOpenAi = p.adapter === "openai" || p.adapter === "ollama";
   if (!isAnthropic && !isOpenAi) {
     opt.onEvent({ type: "error", message: `Adapter "${p.adapter}" chưa hỗ trợ ở agent backend.` });
     return;
   }
-  const key = (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "")
-    || process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] || "";
+  const key =
+    (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "") ||
+    process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] ||
+    "";
   // ollama (local, OpenAI-compat) thường không cần key.
   if (!key && p.adapter !== "ollama") {
     opt.onEvent({ type: "error", message: "LLM profile thiếu API key." });

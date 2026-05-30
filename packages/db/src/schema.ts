@@ -182,7 +182,9 @@ export const entities = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
-    companyNameIdx: uniqueIndex("entities_company_name_idx").on(t.companyId, t.name),
+    // Unique tên CASE-INSENSITIVE trong công ty (lower(name)) — chống trùng
+    // "Order" vs "order" + race. Xem migration 0052.
+    companyNameIdx: uniqueIndex("entities_company_name_idx").on(t.companyId, sql`lower(${t.name})`),
   }),
 );
 
@@ -728,12 +730,20 @@ export const llmProfiles = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
+    // userId: NULL = profile CHUNG công ty (admin quản lý, vào RBAC settings);
+    // có giá trị = profile CÁ NHÂN của user đó (mỗi tài khoản tự cấu hình model
+    // riêng). Resolve: ưu tiên cá nhân → fallback công ty.
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     adapter: text("adapter").notNull(),
     model: text("model").notNull(),
     // kind: "chat" (mặc định) | "embedding" — phân biệt profile sinh
     // chat completion với profile sinh embedding cho Knowledge Base.
     kind: text("kind").notNull().default("chat"),
+    // runtime: "server" = server tự gọi (API/bridge server với tới được);
+    // "browser" = model LOCAL trên máy user — chỉ client-side gọi được, server
+    // bỏ qua (fallback công ty). Profile công ty luôn "server".
+    runtime: text("runtime").notNull().default("server"),
     endpoint: text("endpoint"),
     apiKeyEnc: text("api_key_enc"), // mã hoá ở tầng app, không plaintext
     temperature: doublePrecision("temperature").default(0.7),
@@ -741,7 +751,14 @@ export const llmProfiles = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
-    companyNameIdx: uniqueIndex("llm_profiles_company_name_idx").on(t.companyId, t.name),
+    // Profile công ty (user_id NULL): unique theo (company, name).
+    companyNameIdx: uniqueIndex("llm_profiles_company_name_idx")
+      .on(t.companyId, t.name)
+      .where(sql`${t.userId} IS NULL`),
+    // Profile cá nhân: unique theo (company, user, name).
+    companyUserNameIdx: uniqueIndex("llm_profiles_company_user_name_idx")
+      .on(t.companyId, t.userId, t.name)
+      .where(sql`${t.userId} IS NOT NULL`),
   }),
 );
 

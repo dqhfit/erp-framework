@@ -7,7 +7,7 @@
    Anthropic + OpenAI/Ollama adapter, fail-safe trả null.
    ========================================================== */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db.js";
 import { decryptSecret } from "./crypto.js";
@@ -50,7 +50,12 @@ export async function callLlmJsonWithUsage<T = unknown>(
 ): Promise<CallLlmJsonResult<T>> {
   let p: typeof llmProfiles.$inferSelect | undefined;
   try {
-    const conds = [eq(llmProfiles.companyId, companyId), eq(llmProfiles.kind, "chat")];
+    // Codegen migration dùng profile CÔNG TY (server-side) → bỏ profile cá nhân.
+    const conds = [
+      eq(llmProfiles.companyId, companyId),
+      eq(llmProfiles.kind, "chat"),
+      isNull(llmProfiles.userId),
+    ];
     if (opts.profileName) conds.push(eq(llmProfiles.name, opts.profileName));
     [p] = await db
       .select()

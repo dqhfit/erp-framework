@@ -417,6 +417,7 @@ async function main(): Promise<void> {
           await runAgentChat({
             db,
             companyId: active.companyId,
+            userId: s.userId,
             modelOverride: m,
             system: finalSystem,
             messages: body.messages ?? [],
@@ -442,6 +443,7 @@ async function main(): Promise<void> {
         await runAgentChat({
           db,
           companyId: active.companyId,
+          userId: s.userId,
           profileName: body.profileName,
           system: finalSystem,
           messages: body.messages ?? [],

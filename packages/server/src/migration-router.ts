@@ -33,7 +33,7 @@ import {
 } from "@erp-framework/migration-cli/enrich";
 import { MssqlClient, analyzeProc } from "@erp-framework/mssql-client";
 import { TRPCError } from "@trpc/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import YAML from "yaml";
 import { z } from "zod";
 import { decryptSecret } from "./crypto";
@@ -4853,7 +4853,8 @@ export const migrationRouter = router({
         kind: llmProfiles.kind,
       })
       .from(llmProfiles)
-      .where(eq(llmProfiles.companyId, ctx.user.companyId));
+      // Pre-flight codegen dùng profile CÔNG TY (server-side) → bỏ profile cá nhân.
+      .where(and(eq(llmProfiles.companyId, ctx.user.companyId), isNull(llmProfiles.userId)));
     const p = rows.find((r) => r.kind === "chat");
     return {
       ok: !!p,

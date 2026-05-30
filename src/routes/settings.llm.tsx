@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { LlmProfileCard } from "@/components/settings/LlmProfileCard";
+import { MyLlmProfiles } from "@/components/settings/MyLlmProfiles";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
 import { ClaudeCliAdapter } from "@/core/llm/claude-cli";
 import { getTokens, isLoggedIn, logout, startLogin } from "@/core/llm/oauth";
@@ -134,6 +135,13 @@ function LlmSettings() {
       <div className="max-w-[900px] mx-auto p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.llm.title")}</h1>
         <div className="text-sm text-muted mb-6">{t("settings.llm.subtitle")}</div>
+
+        {/* === Mô hình cá nhân (mọi user approved tự cấu hình) === */}
+        <div className="mb-6">
+          <MyLlmProfiles />
+        </div>
+
+        {/* === Phần dưới: cấu hình LLM CHUNG của công ty (admin) === */}
 
         {/* === Claude Pro/Max OAuth === */}
         <Card className="mb-4 border-accent/40">
