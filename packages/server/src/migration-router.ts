@@ -1356,9 +1356,17 @@ export const migrationRouter = router({
    *  (tier D). Trả CODE PREVIEW, KHÔNG save. UI confirm xong gọi
    *  codegenProcApply. */
   codegenProcDryRun: rbacProcedure("edit", "settings")
-    .input(z.object({ module: moduleNameSchema, procName: z.string().min(1) }))
+    .input(
+      z.object({
+        module: moduleNameSchema,
+        procName: z.string().min(1),
+        connectionId: z.string().uuid().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      const client = input.connectionId
+        ? await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId)
+        : await openDefaultMssql(ctx.db, ctx.user.companyId);
       try {
         return await codegenProc({
           module: input.module,
@@ -1570,9 +1578,11 @@ export const migrationRouter = router({
 
   /** Preview body T-SQL của 1 stored procedure. */
   previewProc: rbacProcedure("edit", "settings")
-    .input(z.object({ procName: z.string().min(1) }))
+    .input(z.object({ procName: z.string().min(1), connectionId: z.string().uuid().optional() }))
     .query(async ({ ctx, input }) => {
-      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      const client = input.connectionId
+        ? await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId)
+        : await openDefaultMssql(ctx.db, ctx.user.companyId);
       try {
         const [schema, name] = input.procName.includes(".")
           ? input.procName.split(".")
@@ -1589,9 +1599,13 @@ export const migrationRouter = router({
    *  ở màn Migrate proc — bắt cả tên cột alias, EXEC proc khác, biến… mà lọc
    *  theo tên không thấy. */
   searchProcsByBody: rbacProcedure("edit", "settings")
-    .input(z.object({ keyword: z.string().min(2).max(200) }))
+    .input(
+      z.object({ keyword: z.string().min(2).max(200), connectionId: z.string().uuid().optional() }),
+    )
     .query(async ({ ctx, input }) => {
-      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      const client = input.connectionId
+        ? await openMssqlById(ctx.db, ctx.user.companyId, input.connectionId)
+        : await openDefaultMssql(ctx.db, ctx.user.companyId);
       try {
         // Escape ký tự wildcard LIKE (\ % _ [) để khớp literal từ khoá.
         const kw = input.keyword.replace(/[\\%_[]/g, (c) => `\\${c}`);

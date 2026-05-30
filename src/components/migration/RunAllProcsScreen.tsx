@@ -7,7 +7,11 @@
    Idempotent: tận dụng classifyMode + overwriteIfExists của
    các endpoint per-module, chạy lại không drift kết quả.
    ========================================================== */
-import { createMigrationClient } from "@erp-framework/client";
+import {
+  createMigrationClient,
+  createMssqlConnectionsClient,
+  type MssqlConnectionView,
+} from "@erp-framework/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
@@ -15,6 +19,9 @@ import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
 
 const migration = createMigrationClient("");
+const connectionsApi = createMssqlConnectionsClient("");
+/** Key localStorage nhớ connection đã chọn ở màn Migrate proc (giống QuickMigrate). */
+const CONN_LS_KEY = "migrate-proc-conn-id";
 
 type ListData = Awaited<ReturnType<typeof migration.listAllProcsToMigrate>>;
 type ProcRow = ListData["rowsByModule"][string][number];
@@ -137,6 +144,16 @@ export function RunAllProcsScreen({ onClose }: Props) {
   const [classifyMode, setClassifyMode] = useState<ClassifyMode>(
     restored.filters.classifyMode ?? "skip-existing",
   );
+  // Connection MSSQL đang dùng để đọc proc (codegen/classify/preview/search).
+  // Giống QuickMigrate: nhớ qua localStorage; rỗng = dùng default connection.
+  const [connId, setConnId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(CONN_LS_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const [connections, setConnections] = useState<MssqlConnectionView[]>([]);
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -173,7 +190,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
     setViewProc({ module, name });
     setViewProcData({ loading: true, body: null, params: null, error: null });
     migration
-      .previewProc(name)
+      .previewProc(name, connId || undefined)
       .then((res) => {
         if (!res.proc) {
           setViewProcData({
@@ -342,6 +359,29 @@ export function RunAllProcsScreen({ onClose }: Props) {
     saveLS("runLogs", runLogs.slice(-RUNLOGS_CAP));
   }, [runLogs]);
 
+  // Nạp danh sách connection MSSQL + chọn mặc định nếu chưa lưu.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần
+  useEffect(() => {
+    connectionsApi
+      .list()
+      .then((cs) => {
+        setConnections(cs);
+        setConnId((cur) =>
+          cur && cs.some((c) => c.id === cur)
+            ? cur
+            : ((cs.find((c) => c.isDefault) ?? cs[0])?.id ?? ""),
+        );
+      })
+      .catch(() => setConnections([]));
+  }, []);
+  useEffect(() => {
+    try {
+      if (connId) localStorage.setItem(CONN_LS_KEY, connId);
+    } catch {
+      /* quota */
+    }
+  }, [connId]);
+
   const allRows = useMemo<Array<{ module: string; row: ProcRow }>>(() => {
     if (!data) return [];
     const out: Array<{ module: string; row: ProcRow }> = [];
@@ -385,7 +425,10 @@ export function RunAllProcsScreen({ onClose }: Props) {
     }
     setBodySearching(true);
     try {
-      const res = await migration.searchProcsByBody({ keyword: kw });
+      const res = await migration.searchProcsByBody({
+        keyword: kw,
+        connectionId: connId || undefined,
+      });
       setBodyMatches(new Set(res.matches.map((n) => n.toLowerCase())));
       toast.success(`Tìm thấy ${res.matches.length} proc có "${kw}" trong body.`);
     } catch (e) {
@@ -510,6 +553,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
         const res = await migration.classifyProcsAi({
           module: m,
           names,
+          connectionId: connId || undefined,
           mode: classifyMode,
         });
         succ += res.classified;
@@ -572,6 +616,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
         const dry = await migration.codegenProcWorkflowDryRun({
           module: t.module,
           procName: t.procName,
+          connectionId: connId || undefined,
         });
         if (!dry.ok || !dry.graph) {
           failed++;
@@ -638,7 +683,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
       i++;
       setRunStatus((s) => ({ ...s, current: i, label: `Codegen ${procName}` }));
       try {
-        const dry = await migration.codegenProcDryRun(module, procName);
+        const dry = await migration.codegenProcDryRun(module, procName, connId || undefined);
         if (!dry.output || dry.error) {
           failed++;
           appendLog({
@@ -770,6 +815,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
         const res = await migration.classifyProcsAi({
           module: m,
           names,
+          connectionId: connId || undefined,
           mode: classifyMode,
         });
         cSucc += res.classified;
@@ -840,7 +886,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
         jj++;
         setRunStatus((s) => ({ ...s, current: jj, label: `Bước 2b/3: Codegen ${procName}` }));
         try {
-          const dry = await migration.codegenProcDryRun(module, procName);
+          const dry = await migration.codegenProcDryRun(module, procName, connId || undefined);
           if (!dry.output || dry.error) {
             bdFailed++;
             appendLog({
@@ -949,6 +995,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
           const dry = await migration.codegenProcWorkflowDryRun({
             module: t.module,
             procName: t.procName,
+            connectionId: connId || undefined,
           });
           if (!dry.ok || !dry.graph) {
             wFailed++;
@@ -1145,27 +1192,50 @@ export function RunAllProcsScreen({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="card p-3 space-y-2">
-        <div className="text-[11px] uppercase text-muted tracking-wider font-semibold">Bộ lọc</div>
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-2 text-sm">
+      {/* Filter bar — thu gọn được cho gọn giao diện; counts hiện ở summary. */}
+      <details className="card p-3 space-y-2">
+        <summary className="text-[11px] uppercase text-muted tracking-wider font-semibold cursor-pointer select-none flex items-center gap-2 flex-wrap">
+          <I.Filter size={11} className="text-accent" />
+          Bộ lọc & thiết lập
+          {data && (
+            <span className="ml-auto normal-case font-normal text-muted flex items-center gap-2 flex-wrap">
+              <span className="text-success">Ready {data.counts.ready}</span>
+              <span className="text-warning">Partial {data.counts.partial}</span>
+              <span>Hiển thị {filteredRows.length}</span>
+              <span className="text-success">
+                Codegen {allRows.filter(({ row }) => row.codegenApplied).length}/{allRows.length}
+              </span>
+            </span>
+          )}
+        </summary>
+        {/* Kết nối MSSQL nguồn đọc proc — nhớ qua localStorage (giống QuickMigrate) */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-xs text-muted shrink-0">Kết nối MSSQL:</span>
+          <Select
+            value={connId}
+            onChange={(e) => setConnId(e.target.value)}
+            disabled={runStatus.busy}
+            className="max-w-sm"
+          >
+            {connections.length === 0 ? (
+              <option value="">(mặc định)</option>
+            ) : (
+              connections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.isDefault ? " (mặc định)" : ""} — {c.database}
+                </option>
+              ))
+            )}
+          </Select>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
           <label className="space-y-1">
             <div className="text-xs text-muted">Module</div>
             <Input
               placeholder="Lọc tên module…"
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-            />
-          </label>
-          <label className="space-y-1">
-            <div className="text-xs text-muted">Tìm proc (tên/nhãn/nghiệp vụ)</div>
-            <Input
-              placeholder="Tìm tên / nhãn / nghiệp vụ…"
-              value={procNameFilter}
-              onChange={(e) => setProcNameFilter(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void runBodySearch();
-              }}
             />
           </label>
           <label className="space-y-1">
@@ -1220,33 +1290,6 @@ export function RunAllProcsScreen({ onClose }: Props) {
             </Select>
           </label>
         </div>
-        {/* Tìm sâu trong nội dung body T-SQL (server quét sys.sql_modules) */}
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          <Button
-            size="sm"
-            variant="default"
-            icon={<I.Search size={12} />}
-            onClick={() => void runBodySearch()}
-            disabled={bodySearching || runStatus.busy || procNameFilter.trim().length < 2}
-            title="Tìm từ khoá đang gõ trong nội dung T-SQL của proc (cả cột alias, EXEC, biến…)"
-          >
-            {bodySearching ? "Đang tìm body…" : "Tìm trong body T-SQL"}
-          </Button>
-          {bodyMatches && (
-            <span className="text-[11px] flex items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
-                Body: {bodyMatches.size} proc khớp
-              </span>
-              <button
-                type="button"
-                onClick={clearBodySearch}
-                className="text-muted hover:text-danger underline"
-              >
-                Xoá lọc body
-              </button>
-            </span>
-          )}
-        </div>
         {data && (
           <div className="text-[11px] text-muted flex items-center gap-3 flex-wrap pt-1 border-t border-border">
             <span>Tổng: {data.counts.total}</span>
@@ -1261,7 +1304,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
             </span>
           </div>
         )}
-      </div>
+      </details>
 
       {err && <div className="card p-3 text-xs text-danger border-danger/40">{err}</div>}
 
@@ -1567,6 +1610,47 @@ export function RunAllProcsScreen({ onClose }: Props) {
         )}
       </details>
 
+      {/* Tìm proc — đặt ngay trên danh sách proc cho tiện thao tác. Sticky để
+          giữ khi cuộn. Enter: tìm sâu trong body T-SQL. */}
+      {data && data.modules.length > 0 && (
+        <div className="card p-2 flex items-center gap-2 flex-wrap sticky top-0 z-10">
+          <I.Search size={14} className="text-muted shrink-0 ml-1" />
+          <Input
+            placeholder="Tìm proc theo tên / nhãn / nghiệp vụ… (Enter: tìm trong body T-SQL)"
+            value={procNameFilter}
+            onChange={(e) => setProcNameFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void runBodySearch();
+            }}
+            className="flex-1 min-w-[200px]"
+          />
+          <Button
+            size="sm"
+            variant="default"
+            icon={<I.Search size={12} />}
+            onClick={() => void runBodySearch()}
+            disabled={bodySearching || runStatus.busy || procNameFilter.trim().length < 2}
+            title="Tìm từ khoá trong nội dung T-SQL của proc (cả cột alias, EXEC, biến…)"
+          >
+            {bodySearching ? "Đang tìm…" : "Tìm body"}
+          </Button>
+          {bodyMatches && (
+            <span className="text-[11px] flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
+                Body: {bodyMatches.size} khớp
+              </span>
+              <button
+                type="button"
+                onClick={clearBodySearch}
+                className="text-muted hover:text-danger underline"
+              >
+                Xoá
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Group by module */}
       {data && data.modules.length === 0 && (
         <div className="card p-6 text-center text-sm text-muted">
@@ -1648,7 +1732,14 @@ export function RunAllProcsScreen({ onClose }: Props) {
                               disabled={runStatus.busy}
                             />
                           </td>
-                          <td className="px-2 py-1 font-mono text-[11px]">
+                          {/* Bấm tên proc cũng chọn/bỏ chọn như tích checkbox. */}
+                          <td
+                            className="px-2 py-1 font-mono text-[11px] cursor-pointer select-none"
+                            title="Bấm để chọn / bỏ chọn"
+                            onClick={() => {
+                              if (!runStatus.busy) toggle(m, r.name);
+                            }}
+                          >
                             {r.name}
                             {r.label && (
                               <div className="text-[10px] text-muted mt-0.5">{r.label}</div>

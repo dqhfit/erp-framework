@@ -82,9 +82,10 @@ export function createMigrationClient(baseUrl: string) {
       }>,
     previewTable: (tableName: string, samples: number = 5) =>
       trpc.migration.previewTable.query({ tableName, samples }),
-    previewProc: (procName: string) => trpc.migration.previewProc.query({ procName }),
+    previewProc: (procName: string, connectionId?: string) =>
+      trpc.migration.previewProc.query({ procName, connectionId }),
     /** Tìm proc theo nội dung body T-SQL (sys.sql_modules.definition LIKE). */
-    searchProcsByBody: (input: { keyword: string }) =>
+    searchProcsByBody: (input: { keyword: string; connectionId?: string }) =>
       trpc.migration.searchProcsByBody.query(input),
     normalizeNamesAi: (module: string) =>
       trpc.migration.normalizeNamesAi.mutate({ module }) as Promise<{
@@ -315,8 +316,8 @@ export function createMigrationClient(baseUrl: string) {
           durationMs: number;
         }>;
       }>,
-    codegenProcDryRun: (module: string, procName: string) =>
-      trpc.migration.codegenProcDryRun.mutate({ module, procName }) as Promise<{
+    codegenProcDryRun: (module: string, procName: string, connectionId?: string) =>
+      trpc.migration.codegenProcDryRun.mutate({ module, procName, connectionId }) as Promise<{
         procName: string;
         manifestTier: "B" | "C" | "D";
         output:
