@@ -71,10 +71,12 @@ services:
       # trong Docker. Override profile.endpoint phía browser. Local dev
       # (server chạy ngoài Docker) không set biến này → fallback localhost.
       BRIDGE_URL: http://bridge:8909
-      # Ollama embedding — ghi đè endpoint profile embedding cho server trong
-      # Docker (tên service, không localhost). Local-dev không set → dùng
-      # profile.endpoint (vd http://127.0.0.1:11434).
-      OLLAMA_EMBED_URL: http://ollama:11434
+      # Ollama embedding endpoint cho server. Mặc định service nội bộ
+      # (ollama:11434). Đặt OLLAMA_EMBED_URL trong docker/.env để trỏ sang
+      # MÁY KHÁC mạnh hơn/có GPU khi server không kham nổi embedding CPU —
+      # vd OLLAMA_EMBED_URL=http://192.168.1.50:11434 (máy đó cần
+      # OLLAMA_HOST=0.0.0.0 + đã pull nomic-embed-text).
+      OLLAMA_EMBED_URL: ${OLLAMA_EMBED_URL:-http://ollama:11434}
     depends_on:
       db:
         condition: service_healthy
