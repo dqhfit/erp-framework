@@ -21,7 +21,7 @@ export interface CallLlmJsonOpts {
   temperature?: number;
   /** Profile name; mặc định lấy profile chat đầu tiên của công ty. */
   profileName?: string;
-  /** Override timeout (ms). Mặc định 180s cho claude-cli (CLI subprocess
+  /** Override timeout (ms). Mặc định 540s cho claude-cli (CLI subprocess
    *  chậm), 45s cho adapter API trực tiếp. */
   timeoutMs?: number;
   /** User hiện tại — nếu có, ưu tiên profile CÁ NHÂN (runtime="server") của
@@ -69,11 +69,11 @@ export async function callLlmJson<T = unknown>(
   const maxTokens = opts.maxTokens ?? 1024;
   const temperature = opts.temperature ?? 0.2;
   // Bridge (claude-cli) chạy CLI subprocess — ~2k token đã ~38s, sinh nhiều
-  // token dễ vượt 45s. Cho claude-cli timeout rộng (mặc định 180s, chỉnh qua
+  // token dễ vượt 45s. Cho claude-cli timeout rộng (mặc định 540s, chỉnh qua
   // BRIDGE_TIMEOUT_MS); adapter API trực tiếp giữ 45s. opts.timeoutMs ưu tiên.
   const timeoutMs =
     opts.timeoutMs ??
-    (p.adapter === "claude-cli" ? Number(process.env.BRIDGE_TIMEOUT_MS) || 180_000 : 45_000);
+    (p.adapter === "claude-cli" ? Number(process.env.BRIDGE_TIMEOUT_MS) || 540_000 : 45_000);
 
   // claude-cli dùng local bridge (localhost:8909/v1/messages) — Anthropic format, không cần API key.
   const isAnthropic = ["claude", "claude-pro", "anthropic", "claude-cli"].includes(p.adapter);
