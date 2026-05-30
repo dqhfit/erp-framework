@@ -35,6 +35,17 @@ async function loadEmbeddingProfile(db: DB, companyId: string): Promise<EmbedPro
     )
     .limit(1);
   if (!p) {
+    // Chưa cấu hình profile, NHƯNG deploy đã có Ollama (OLLAMA_EMBED_URL env,
+    // vd Docker/Coolify trỏ http://ollama:11434) → dùng profile MẶC ĐỊNH
+    // ollama/nomic-embed-text, không bắt user vào Cài đặt. Endpoint để env lo.
+    if (process.env.OLLAMA_EMBED_URL) {
+      return {
+        adapter: "ollama",
+        model: process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text",
+        endpoint: null,
+        apiKeyEnc: null,
+      };
+    }
     throw new Error(
       "Chưa có embedding profile — vào Cài đặt → Embedding để cấu hình " +
         "(Ollama nomic-embed-text hoặc OpenAI text-embedding-3-small).",
