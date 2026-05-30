@@ -113,6 +113,76 @@ function safeKey(key) {
   return key;
 }
 
+/* ─── Tool-calling qua prompt (claude CLI không có protocol tool_use) ───
+   Bridge nhúng mô tả tool vào prompt, model xuất 1 khối ```tool_call JSON,
+   bridge parse → trả về Anthropic tool_use block. Nhờ vậy agent-chat /
+   workflow dùng claude-cli gọi được tool (knowledge_search, record_*, MCP…). */
+
+/** Render content 1 message thành text — xử lý cả string lẫn mảng block
+ *  (text / tool_use / tool_result) mà agent-chat gửi ở các vòng sau. */
+function renderContent(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((b) => {
+        if (b.type === "text") return b.text || "";
+        if (b.type === "tool_use")
+          return `[Đã gọi công cụ ${b.name} với input: ${JSON.stringify(b.input ?? {})}]`;
+        if (b.type === "tool_result") {
+          const c = typeof b.content === "string" ? b.content : JSON.stringify(b.content);
+          return `[Kết quả công cụ:\n${c}]`;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return String(content ?? "");
+}
+
+/** Hướng dẫn + danh sách tool để nhúng vào system prompt. */
+function buildToolInstructions(tools) {
+  if (!Array.isArray(tools) || !tools.length) return "";
+  const list = tools
+    .map(
+      (t) =>
+        `- ${t.name}: ${t.description || ""}\n  input schema: ${JSON.stringify(t.input_schema || {})}`,
+    )
+    .join("\n");
+  // Framing TÍCH CỰC, đơn giản — quan trọng: phủ định danh tính ("bạn không phải
+  // Claude Code") khiến model phòng thủ ngược và từ chối. Cứ khẳng định tool có thật.
+  return (
+    "\n\nBạn có các CÔNG CỤ sau (do hệ thống ERP cung cấp, CÓ THẬT):\n" +
+    list +
+    "\nKhi cần dùng công cụ để lấy dữ liệu nội bộ / thực hiện hành động, CHỈ xuất MỘT " +
+    "khối duy nhất, KHÔNG kèm văn bản khác:\n" +
+    "```tool_call\n{\"name\":\"<tên>\",\"input\":{...}}\n```\n" +
+    "Hệ thống sẽ chạy và gửi lại [Kết quả công cụ]; tiếp tục gọi tool nếu cần, hoặc " +
+    "trả lời người dùng bằng văn bản thường. Nếu không cần công cụ, trả lời bình thường."
+  );
+}
+
+/** Parse khối ```tool_call (hoặc JSON {name,input}) từ text model. */
+function parseToolCall(text) {
+  let jsonStr = null;
+  const fenced = text.match(/```(?:tool_call|json)?\s*(\{[\s\S]*?\})\s*```/);
+  if (fenced) jsonStr = fenced[1];
+  else {
+    const m = text.match(/\{[\s\S]*?"name"[\s\S]*?"input"[\s\S]*?\}/);
+    if (m) jsonStr = m[0];
+  }
+  if (!jsonStr) return null;
+  try {
+    const obj = JSON.parse(jsonStr);
+    if (obj && typeof obj.name === "string" && obj.input && typeof obj.input === "object") {
+      return obj;
+    }
+  } catch {
+    /* không phải JSON hợp lệ */
+  }
+  return null;
+}
+
 function runClaude(args, stdin) {
   return new Promise((resolve, reject) => {
     const child = spawn(CLAUDE_CMD, args, { stdio: ["pipe", "pipe", "pipe"] });
@@ -236,35 +306,47 @@ const server = createServer(async (req, res) => {
     try {
       const body = await readBody(req);
       const messages = body.messages || [];
-      const last = messages[messages.length - 1];
-      if (!last) throw new Error("No messages");
+      if (!messages.length) throw new Error("No messages");
 
-      let prompt = "";
-      if (messages.length > 1) {
-        prompt = messages.map((m) => `[${m.role}] ${m.content}`).join("\n\n");
-      } else {
-        prompt = last.content;
-      }
-      if (body.system) prompt = `[system] ${body.system}\n\n${prompt}`;
+      // Render lịch sử (gồm cả tool_use / tool_result block) thành text prompt.
+      let prompt = messages.map((m) => `[${m.role}] ${renderContent(m.content)}`).join("\n\n");
+      const sys = (body.system || "") + buildToolInstructions(body.tools);
+      if (sys.trim()) prompt = `[system] ${sys}\n\n${prompt}`;
 
       const args = ["-p", "--output-format=json"];
       if (body.model) args.push("--model", body.model);
       args.push(prompt);
 
-      console.log(`[bridge] /v1/messages: spawn ${CLAUDE_CMD} (model=${body.model || "default"})`);
+      const hasTools = Array.isArray(body.tools) && body.tools.length > 0;
+      console.log(
+        `[bridge] /v1/messages: spawn ${CLAUDE_CMD} (model=${body.model || "default"}, tools=${hasTools ? body.tools.length : 0})`,
+      );
       const { stdout: out } = await runClaude(args);
       let parsed;
       try { parsed = JSON.parse(out); } catch { parsed = { result: out }; }
       const text = parsed.result || parsed.text || out;
+
+      // Có tools + model xuất tool_call → trả Anthropic tool_use block.
+      const toolCall = hasTools ? parseToolCall(text) : null;
+      const content = toolCall
+        ? [
+            {
+              type: "tool_use",
+              id: "toolu_" + Date.now().toString(36) + Math.floor(performance.now()).toString(36),
+              name: toolCall.name,
+              input: toolCall.input,
+            },
+          ]
+        : [{ type: "text", text }];
 
       res.writeHead(200, { ...corsHeaders, "Content-Type": "application/json" });
       return res.end(JSON.stringify({
         id: "msg_" + Date.now(),
         type: "message",
         role: "assistant",
-        content: [{ type: "text", text }],
+        content,
         model: body.model || "claude-cli",
-        stop_reason: "end_turn",
+        stop_reason: toolCall ? "tool_use" : "end_turn",
         usage: parsed.usage || { input_tokens: 0, output_tokens: 0 },
       }));
     } catch (e) {

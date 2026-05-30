@@ -347,7 +347,29 @@ async function main(): Promise<void> {
           }
         }
       }
-      const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.");
+      // Auto-RAG: tra Knowledge Base bằng câu hỏi mới nhất rồi CHÈN đoạn liên
+      // quan vào system prompt. Cần thiết vì claude-cli (bridge) KHÔNG hỗ trợ
+      // tool-calling → agent không tự gọi được knowledge_search. knowledgeSearch
+      // đã lọc theo MIN_SCORE (chỉ đoạn liên quan). Fail-safe: lỗi không vỡ chat.
+      let kbContext = "";
+      try {
+        const lastUser = [...(body.messages ?? [])]
+          .reverse()
+          .find((m) => m.role === "user")
+          ?.content?.trim();
+        if (lastUser) {
+          const hits = await knowledgeSearch(db, active.companyId, lastUser, 5);
+          if (hits.length) {
+            kbContext =
+              "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
+              "Ưu tiên dùng các trích đoạn sau để trả lời nếu phù hợp; nếu không liên quan thì bỏ qua.\n\n" +
+              hits.map((h, i) => `[${i + 1}] Nguồn: ${h.sourceTitle}\n${h.content}`).join("\n\n");
+          }
+        }
+      } catch (e) {
+        console.warn("[agent] auto-RAG KB lỗi:", (e as Error).message);
+      }
+      const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.") + kbContext;
 
       const tools = [
         ...(body.tools ?? []),
