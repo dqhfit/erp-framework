@@ -7,9 +7,7 @@
    ========================================================== */
 import { readFile } from "node:fs/promises";
 import { and, eq } from "drizzle-orm";
-import {
-  knowledgeSources, knowledgeChunks, entities, entityRecords,
-} from "@erp-framework/db";
+import { knowledgeSources, knowledgeChunks, entities, entityRecords } from "@erp-framework/db";
 import type { DB } from "./db";
 import { chunkText } from "./chunk";
 import { embedTexts } from "./embeddings";
@@ -20,17 +18,18 @@ type SourceRow = typeof knowledgeSources.$inferSelect;
 
 /* Render toàn bộ entity_records của một entity thành văn bản —
    mỗi bản ghi một khối "Nhãn: giá trị". */
-async function renderEntity(
-  db: DB, companyId: string, entityId: string,
-): Promise<string> {
-  const [entity] = await db.select().from(entities)
+async function renderEntity(db: DB, companyId: string, entityId: string): Promise<string> {
+  const [entity] = await db
+    .select()
+    .from(entities)
     .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
   if (!entity) throw new Error("Entity không tồn tại hoặc khác công ty.");
 
   const fields = (entity.fields ?? []) as Array<{ name: string; label?: string }>;
-  const recs = await db.select().from(entityRecords)
-    .where(and(eq(entityRecords.entityId, entityId),
-      eq(entityRecords.companyId, companyId)));
+  const recs = await db
+    .select()
+    .from(entityRecords)
+    .where(and(eq(entityRecords.entityId, entityId), eq(entityRecords.companyId, companyId)));
 
   const blocks: string[] = [];
   for (const r of recs) {
@@ -69,13 +68,21 @@ async function loadText(db: DB, src: SourceRow): Promise<string> {
 /** Nạp MỘT nguồn tri thức theo id. Cập nhật status của nguồn dù
    thành công hay lỗi; ném lại lỗi để worker pg-boss ghi log. */
 export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
-  const [src] = await db.select().from(knowledgeSources)
-    .where(eq(knowledgeSources.id, sourceId));
+  const [src] = await db.select().from(knowledgeSources).where(eq(knowledgeSources.id, sourceId));
   if (!src) throw new Error(`Knowledge source không tồn tại: ${sourceId}`);
 
-  await db.update(knowledgeSources)
-    .set({ status: "processing", error: null, updatedAt: new Date() })
-    .where(eq(knowledgeSources.id, sourceId));
+  // Đo thời gian + tiến độ embedding, lưu vào meta.ingest (giữ nguyên config
+  // gốc trong meta — text/entityId/path). UI poll đọc để hiện X/Y đoạn + đoạn/s.
+  const t0 = Date.now();
+  const baseMeta = (src.meta ?? {}) as Record<string, unknown>;
+  const startedAt = new Date(t0).toISOString();
+  const setIngest = (ingest: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    db
+      .update(knowledgeSources)
+      .set({ meta: { ...baseMeta, ingest }, updatedAt: new Date(), ...extra })
+      .where(eq(knowledgeSources.id, sourceId));
+
+  await setIngest({ total: 0, embedded: 0, startedAt }, { status: "processing", error: null });
 
   try {
     const text = await loadText(db, src);
@@ -83,48 +90,85 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
     if (chunks.length === 0) {
       throw new Error("Không trích được nội dung nào từ nguồn.");
     }
+    // Đã biết tổng số đoạn → UI hiện 0/total ngay.
+    await setIngest({ total: chunks.length, embedded: 0, startedAt });
 
-    // Sinh embedding theo lô để tránh payload quá lớn.
-    const BATCH = 64;
+    // Sinh embedding theo lô; cập nhật tiến độ mỗi lô. Lô nhỏ (16) → progress
+    // nhích thường xuyên hơn (embed CPU chậm ~0.5 đoạn/s, lô 64 = ~2 phút mới
+    // cập nhật → nhìn như treo). Ollama embed gần như tuần tự nên lô nhỏ không
+    // làm chậm tổng đáng kể.
+    const BATCH = 16;
     const vectors: number[][] = [];
     for (let i = 0; i < chunks.length; i += BATCH) {
       const batch = chunks.slice(i, i + BATCH).map((c) => c.content);
-      vectors.push(...await embedTexts(db, src.companyId, batch));
+      vectors.push(...(await embedTexts(db, src.companyId, batch)));
+      const embedded = Math.min(i + BATCH, chunks.length);
+      const elapsed = (Date.now() - t0) / 1000;
+      await setIngest({
+        total: chunks.length,
+        embedded,
+        startedAt,
+        perSec: elapsed > 0 ? Math.round((embedded / elapsed) * 10) / 10 : 0,
+      });
     }
 
     // Thay toàn bộ chunk cũ của nguồn này.
-    await db.delete(knowledgeChunks)
-      .where(eq(knowledgeChunks.sourceId, sourceId));
-    await db.insert(knowledgeChunks).values(chunks.map((c, i) => ({
-      companyId: src.companyId,
-      sourceId,
-      seq: c.seq,
-      content: c.content,
-      tokens: c.tokens,
-      embedding: vectors[i] ?? null,
-    })));
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, sourceId));
+    await db.insert(knowledgeChunks).values(
+      chunks.map((c, i) => ({
+        companyId: src.companyId,
+        sourceId,
+        seq: c.seq,
+        content: c.content,
+        tokens: c.tokens,
+        embedding: vectors[i] ?? null,
+      })),
+    );
 
-    await db.update(knowledgeSources).set({
-      status: "ready",
-      chunkCount: chunks.length,
-      error: null,
-      updatedAt: new Date(),
-    }).where(eq(knowledgeSources.id, sourceId));
+    const durationMs = Date.now() - t0;
+    const perSec = durationMs > 0 ? Math.round((chunks.length / (durationMs / 1000)) * 10) / 10 : 0;
+    await db
+      .update(knowledgeSources)
+      .set({
+        status: "ready",
+        chunkCount: chunks.length,
+        error: null,
+        meta: {
+          ...baseMeta,
+          ingest: {
+            total: chunks.length,
+            embedded: chunks.length,
+            ms: durationMs,
+            perSec,
+            startedAt,
+            finishedAt: new Date().toISOString(),
+          },
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(knowledgeSources.id, sourceId));
 
     await logActivity(db, {
       companyId: src.companyId,
       kind: "kb-ingest",
       objectType: "knowledge",
       target: sourceId,
-      detail: `Nạp tri thức "${src.title}" — ${chunks.length} đoạn.`.slice(0, 480),
+      detail:
+        `Nạp tri thức "${src.title}" — ${chunks.length} đoạn trong ${(durationMs / 1000).toFixed(1)}s (${perSec} đoạn/s).`.slice(
+          0,
+          480,
+        ),
     });
   } catch (e) {
     const msg = (e as Error).message;
-    await db.update(knowledgeSources).set({
-      status: "error",
-      error: msg.slice(0, 2000),
-      updatedAt: new Date(),
-    }).where(eq(knowledgeSources.id, sourceId));
+    await db
+      .update(knowledgeSources)
+      .set({
+        status: "error",
+        error: msg.slice(0, 2000),
+        updatedAt: new Date(),
+      })
+      .where(eq(knowledgeSources.id, sourceId));
     await logActivity(db, {
       companyId: src.companyId,
       kind: "kb-ingest",

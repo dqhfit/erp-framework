@@ -43,6 +43,30 @@ function StatusChip({ s }: { s: KnowledgeSource }) {
   return <Chip>{STATUS_LABEL[s.status] ?? s.status}</Chip>;
 }
 
+/* Tiến độ + tốc độ embedding (đọc meta.ingest worker ghi). Đang xử lý: X/Y
+   đoạn + %; sẵn sàng: tổng đoạn + thời gian + đoạn/giây. */
+function IngestInfo({ s }: { s: KnowledgeSource }) {
+  const ing = s.meta?.ingest;
+  if (s.status === "processing") {
+    if (!ing?.total) return <span className="text-xs text-muted">Đang nhúng…</span>;
+    const pct = Math.round(((ing.embedded ?? 0) / ing.total) * 100);
+    return (
+      <span className="text-xs text-muted whitespace-nowrap tabular-nums">
+        {ing.embedded ?? 0}/{ing.total} đoạn · {pct}%{ing.perSec ? ` · ${ing.perSec}/s` : ""}
+      </span>
+    );
+  }
+  if (s.status === "ready") {
+    return (
+      <span className="text-xs text-muted whitespace-nowrap tabular-nums">
+        {s.chunkCount} đoạn
+        {ing?.ms != null ? ` · ${(ing.ms / 1000).toFixed(1)}s · ${ing.perSec ?? "?"} đoạn/s` : ""}
+      </span>
+    );
+  }
+  return null;
+}
+
 function KnowledgePage() {
   const entities = useUserObjects((s) => s.entities);
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
@@ -335,9 +359,7 @@ function KnowledgePage() {
                   </Chip>
                 )}
                 <StatusChip s={s} />
-                {s.status === "ready" && (
-                  <span className="text-xs text-muted">{s.chunkCount} đoạn</span>
-                )}
+                <IngestInfo s={s} />
                 <Button
                   size="sm"
                   variant="default"

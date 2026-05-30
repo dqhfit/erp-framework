@@ -81,6 +81,8 @@ services:
       # Claude Code CLI bridge — server-side gọi adapter=claude-cli qua tên
       # service "bridge" (browser dùng /bridge proxy; server không parse được).
       BRIDGE_URL: http://bridge:8909
+      # Ollama embedding — ghi đè endpoint profile cho server trong Docker.
+      OLLAMA_EMBED_URL: http://ollama:11434
     depends_on:
       db:
         condition: service_healthy

@@ -54,7 +54,15 @@ interface OllamaEmbedResp {
 }
 
 async function embedOllama(p: EmbedProfile, texts: string[]): Promise<number[][]> {
-  const base = (p.endpoint || "http://localhost:11434").replace(/\/$/, "");
+  // Ollama là infra service — địa chỉ tùy server xử lý job: Docker server tới
+  // qua tên service (ollama:11434), local-dev (host) tới 127.0.0.1:11434. Vì
+  // profile.endpoint dùng chung cho mọi server, cho env OLLAMA_EMBED_URL ghi đè
+  // theo từng deployment (compose set http://ollama:11434). Mặc định 127.0.0.1
+  // thay vì localhost để né bug Node fetch resolve IPv6 ::1.
+  const base = (process.env.OLLAMA_EMBED_URL || p.endpoint || "http://127.0.0.1:11434").replace(
+    /\/$/,
+    "",
+  );
   const res = await fetch(base + "/api/embed", {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -15,8 +15,18 @@ export interface KnowledgeSource {
   error: string | null;
   /** Biểu thức cron tự nạp lại (chỉ nguồn entity); null = tắt. */
   reindexCron: string | null;
-  /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. */
-  meta?: Record<string, unknown>;
+  /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. ingest =
+   *  thống kê tiến độ/tốc độ embedding lần nạp gần nhất (worker ghi). */
+  meta?: Record<string, unknown> & {
+    ingest?: {
+      total?: number;
+      embedded?: number;
+      ms?: number;
+      perSec?: number;
+      startedAt?: string;
+      finishedAt?: string;
+    };
+  };
   createdAt: string;
 }
 
@@ -41,10 +51,12 @@ export interface EmbeddingProfileInput {
 export function createKnowledgeClient(baseUrl: string) {
   const base = baseUrl.replace(/\/$/, "");
   const trpc = createTRPCClient<AppRouter>({
-    links: [httpBatchLink({
-      url: base + "/trpc",
-      fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
-    })],
+    links: [
+      httpBatchLink({
+        url: base + "/trpc",
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
   });
   return {
     /** Tất cả nguồn tri thức của công ty. */
@@ -54,8 +66,7 @@ export function createKnowledgeClient(baseUrl: string) {
     /** Xoá nguồn (cascade xoá các đoạn). */
     remove: (id: string) => trpc.knowledge.sources.delete.mutate(id),
     /** Thêm nguồn từ văn bản dán tay. */
-    addText: (title: string, text: string) =>
-      trpc.knowledge.addText.mutate({ title, text }),
+    addText: (title: string, text: string) => trpc.knowledge.addText.mutate({ title, text }),
     /** Thêm nguồn từ dữ liệu một entity. */
     addEntity: (entityId: string, title?: string) =>
       trpc.knowledge.addEntity.mutate({ entityId, title }),
@@ -63,14 +74,16 @@ export function createKnowledgeClient(baseUrl: string) {
     reindex: (id: string) => trpc.knowledge.reindex.mutate(id),
     /** Sửa nguồn: tiêu đề / nội dung văn bản / lịch tự nạp lại
        (reindexCron: chuỗi cron, hoặc null để tắt). */
-    update: (id: string, patch: {
-      title?: string;
-      text?: string;
-      reindexCron?: string | null;
-    }) => trpc.knowledge.sources.update.mutate({ id, ...patch }),
+    update: (
+      id: string,
+      patch: {
+        title?: string;
+        text?: string;
+        reindexCron?: string | null;
+      },
+    ) => trpc.knowledge.sources.update.mutate({ id, ...patch }),
     /** Tra cứu ANN cosine. */
-    search: (query: string, limit?: number) =>
-      trpc.knowledge.search.query({ query, limit }),
+    search: (query: string, limit?: number) => trpc.knowledge.search.query({ query, limit }),
     /** Cấu hình embedding hiện tại (null nếu chưa có). */
     getEmbeddingProfile: () => trpc.knowledge.embeddingProfile.get.query(),
     /** Lưu cấu hình embedding. */
@@ -81,14 +94,18 @@ export function createKnowledgeClient(baseUrl: string) {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch(base + "/upload", {
-        method: "POST", body: fd, credentials: "include",
+        method: "POST",
+        body: fd,
+        credentials: "include",
       });
       if (!res.ok) {
         let msg = `Tải lên lỗi ${res.status}`;
         try {
-          const j = await res.json() as { error?: string };
+          const j = (await res.json()) as { error?: string };
           if (j.error) msg = j.error;
-        } catch { /* body không phải JSON */ }
+        } catch {
+          /* body không phải JSON */
+        }
         throw new Error(msg);
       }
       return res.json() as Promise<{ id: string; title: string; status: string }>;
