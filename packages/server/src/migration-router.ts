@@ -1584,6 +1584,33 @@ export const migrationRouter = router({
       }
     }),
 
+  /** Tìm proc theo NỘI DUNG body T-SQL (sys.sql_modules.definition LIKE).
+   *  Trả danh sách "schema.name" khớp (cap 1000). Dùng cho ô "Tìm trong body"
+   *  ở màn Migrate proc — bắt cả tên cột alias, EXEC proc khác, biến… mà lọc
+   *  theo tên không thấy. */
+  searchProcsByBody: rbacProcedure("edit", "settings")
+    .input(z.object({ keyword: z.string().min(2).max(200) }))
+    .query(async ({ ctx, input }) => {
+      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      try {
+        // Escape ký tự wildcard LIKE (\ % _ [) để khớp literal từ khoá.
+        const kw = input.keyword.replace(/[\\%_[]/g, (c) => `\\${c}`);
+        const rows = await client.query<{ proc: string }>(
+          `SELECT TOP 1000 (s.name + '.' + o.name) AS proc
+             FROM sys.sql_modules m
+             JOIN sys.objects o ON o.object_id = m.object_id
+             JOIN sys.schemas s ON s.schema_id = o.schema_id
+            WHERE o.type = 'P'
+              AND m.definition LIKE '%' + @kw + '%' ESCAPE '\\'
+            ORDER BY s.name, o.name`,
+          { kw },
+        );
+        return { keyword: input.keyword, matches: rows.map((r) => r.proc) };
+      } finally {
+        await client.close();
+      }
+    }),
+
   /* ── Phase Q — Pre-import live tables + defer dirty proc ─────── */
 
   /** Q1: Đọc sys.dm_exec_procedure_stats từ MSSQL → trả thống kê hoạt

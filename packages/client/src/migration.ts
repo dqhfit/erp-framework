@@ -83,6 +83,9 @@ export function createMigrationClient(baseUrl: string) {
     previewTable: (tableName: string, samples: number = 5) =>
       trpc.migration.previewTable.query({ tableName, samples }),
     previewProc: (procName: string) => trpc.migration.previewProc.query({ procName }),
+    /** Tìm proc theo nội dung body T-SQL (sys.sql_modules.definition LIKE). */
+    searchProcsByBody: (input: { keyword: string }) =>
+      trpc.migration.searchProcsByBody.query(input),
     normalizeNamesAi: (module: string) =>
       trpc.migration.normalizeNamesAi.mutate({ module }) as Promise<{
         renames: Array<{

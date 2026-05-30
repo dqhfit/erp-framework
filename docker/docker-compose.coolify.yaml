@@ -81,9 +81,12 @@ services:
       # Claude Code CLI bridge — server-side gọi adapter=claude-cli qua tên
       # service "bridge" (browser dùng /bridge proxy; server không parse được).
       BRIDGE_URL: http://bridge:8909
-      # Ollama embedding endpoint. Đặt OLLAMA_EMBED_URL để trỏ sang máy khác
-      # (mạnh hơn/GPU) khi server yếu — vd http://192.168.1.50:11434.
-      OLLAMA_EMBED_URL: ${OLLAMA_EMBED_URL:-http://ollama:11434}
+      # Ollama embedding endpoint. Mặc định service nội bộ. Trỏ sang MÁY KHÁC
+      # (mạnh hơn/GPU) khi server yếu: đặt biến OLLAMA_EMBED_URL trong Coolify
+      # (Environment Variables) = http://192.168.1.50:11434 — sẽ đè giá trị này.
+      # Lưu y: hardcode (KHONG dung interpolation default) vi Coolify pre-process
+      # compose hay vuong form do -> build loi "load local bake definitions".
+      OLLAMA_EMBED_URL: http://ollama:11434
     depends_on:
       db:
         condition: service_healthy

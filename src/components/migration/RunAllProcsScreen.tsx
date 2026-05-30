@@ -93,6 +93,15 @@ function saveLS(sub: string, val: unknown): void {
   }
 }
 
+/** Khớp từ khoá với proc theo TÊN máy + NHÃN + NGHIỆP VỤ (client-side). */
+function procTextMatch(row: ProcRow, term: string): boolean {
+  return (
+    row.name.toLowerCase().includes(term) ||
+    (row.label?.toLowerCase().includes(term) ?? false) ||
+    (row.businessCategory?.toLowerCase().includes(term) ?? false)
+  );
+}
+
 interface Props {
   onClose: () => void;
 }
@@ -346,15 +355,46 @@ export function RunAllProcsScreen({ onClose }: Props) {
 
   const keyOf = (module: string, name: string) => `${module}::${name}`;
 
-  /** allRows sau khi lọc thêm theo tên proc + trạng thái codegen (client-side). */
+  /** Kết quả "tìm trong body T-SQL" — Set tên proc (lowercase). null = chưa
+   *  tìm body (chỉ lọc client theo tên/nhãn/nghiệp vụ). */
+  const [bodyMatches, setBodyMatches] = useState<Set<string> | null>(null);
+  const [bodySearching, setBodySearching] = useState(false);
+
+  /** allRows sau khi lọc theo tên/nhãn/nghiệp vụ + body + trạng thái codegen.
+   *  Khi đang lọc body: hiện proc khớp BODY HOẶC khớp tên/nhãn (cùng từ khoá) —
+   *  union, không thu hẹp quá mức. */
   const filteredRows = useMemo(() => {
-    let rows = allRows;
     const term = procNameFilter.trim().toLowerCase();
-    if (term) rows = rows.filter(({ row }) => row.name.toLowerCase().includes(term));
+    let rows = allRows.filter(({ row }) =>
+      bodyMatches
+        ? bodyMatches.has(row.name.toLowerCase()) || (!!term && procTextMatch(row, term))
+        : !term || procTextMatch(row, term),
+    );
     if (codegenFilter === "done") rows = rows.filter(({ row }) => row.codegenApplied);
     else if (codegenFilter === "pending") rows = rows.filter(({ row }) => !row.codegenApplied);
     return rows;
-  }, [allRows, procNameFilter, codegenFilter]);
+  }, [allRows, procNameFilter, codegenFilter, bodyMatches]);
+
+  /** Tìm proc theo nội dung body T-SQL (server quét sys.sql_modules). Dùng
+   *  chính từ khoá đang gõ ở ô "Tìm tên proc". */
+  const runBodySearch = async () => {
+    const kw = procNameFilter.trim();
+    if (kw.length < 2) {
+      toast.info("Nhập ≥ 2 ký tự để tìm trong body.");
+      return;
+    }
+    setBodySearching(true);
+    try {
+      const res = await migration.searchProcsByBody({ keyword: kw });
+      setBodyMatches(new Set(res.matches.map((n) => n.toLowerCase())));
+      toast.success(`Tìm thấy ${res.matches.length} proc có "${kw}" trong body.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBodySearching(false);
+    }
+  };
+  const clearBodySearch = () => setBodyMatches(null);
 
   /** Các keys hiển thị hiện tại (đã lọc). */
   const filteredKeys = useMemo(
@@ -1118,11 +1158,14 @@ export function RunAllProcsScreen({ onClose }: Props) {
             />
           </label>
           <label className="space-y-1">
-            <div className="text-xs text-muted">Tên proc</div>
+            <div className="text-xs text-muted">Tìm proc (tên/nhãn/nghiệp vụ)</div>
             <Input
-              placeholder="Tìm tên proc…"
+              placeholder="Tìm tên / nhãn / nghiệp vụ…"
               value={procNameFilter}
               onChange={(e) => setProcNameFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void runBodySearch();
+              }}
             />
           </label>
           <label className="space-y-1">
@@ -1176,6 +1219,33 @@ export function RunAllProcsScreen({ onClose }: Props) {
               <option value="done">Đã migrate</option>
             </Select>
           </label>
+        </div>
+        {/* Tìm sâu trong nội dung body T-SQL (server quét sys.sql_modules) */}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <Button
+            size="sm"
+            variant="default"
+            icon={<I.Search size={12} />}
+            onClick={() => void runBodySearch()}
+            disabled={bodySearching || runStatus.busy || procNameFilter.trim().length < 2}
+            title="Tìm từ khoá đang gõ trong nội dung T-SQL của proc (cả cột alias, EXEC, biến…)"
+          >
+            {bodySearching ? "Đang tìm body…" : "Tìm trong body T-SQL"}
+          </Button>
+          {bodyMatches && (
+            <span className="text-[11px] flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
+                Body: {bodyMatches.size} proc khớp
+              </span>
+              <button
+                type="button"
+                onClick={clearBodySearch}
+                className="text-muted hover:text-danger underline"
+              >
+                Xoá lọc body
+              </button>
+            </span>
+          )}
         </div>
         {data && (
           <div className="text-[11px] text-muted flex items-center gap-3 flex-wrap pt-1 border-t border-border">
@@ -1508,11 +1578,12 @@ export function RunAllProcsScreen({ onClose }: Props) {
           {data.modules.map((m) => {
             const allModuleRows = data.rowsByModule[m] ?? [];
             // Chỉ hiện các proc khớp filter tên proc (nếu có).
-            const rows = procNameFilter.trim()
-              ? allModuleRows.filter((r) =>
-                  r.name.toLowerCase().includes(procNameFilter.trim().toLowerCase()),
-                )
-              : allModuleRows;
+            const term = procNameFilter.trim().toLowerCase();
+            const rows = allModuleRows.filter((r) =>
+              bodyMatches
+                ? bodyMatches.has(r.name.toLowerCase()) || (!!term && procTextMatch(r, term))
+                : !term || procTextMatch(r, term),
+            );
             if (rows.length === 0) return null;
             const allModuleSel = rows.every((r) => selected.has(keyOf(m, r.name)));
             const someModuleSel = !allModuleSel && rows.some((r) => selected.has(keyOf(m, r.name)));

@@ -48,6 +48,11 @@ Output JSON object DUY NHẤT theo schema (KHỚP với `procedures.save`):
 
 **Quy tắc dịch T-SQL → JS:**
 
+0. **ALIAS cột — suy NGƯỢC về cột gốc**: `<col> AS <alias>` (hoặc `<col> <alias>`
+   không có AS) thì `<alias>` chỉ là tên cột KẾT QUẢ, không phải field entity. Đọc
+   dữ liệu theo cột GỐC, tra `entities` (input) map field theo TÊN GỐC. Vd
+   `B.tensp AS name` → đọc field `tensp` của entity ứng với B, không bịa field `name`.
+
 1. **Tham số T-SQL** `@param` → JS `args.param` (snake_case không dấu).
    - `@CustomerId` → `args.khach_id` (nếu entity là khach_hang) hoặc `args.customer_id`.
    - Type T-SQL → type paramsSchema: INT/DECIMAL/MONEY → "number"; NVARCHAR/VARCHAR → "string"; BIT → "boolean"; DATE/DATETIME → "date".

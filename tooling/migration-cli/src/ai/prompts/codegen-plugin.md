@@ -38,6 +38,18 @@ Output JSON object DUY NHẤT theo schema:
 
 **Quy tắc dịch T-SQL → TS:**
 
+0. **ALIAS cột — suy NGƯỢC về cột gốc khi map entity field**: trong SELECT, dạng
+   `<biểu thức> AS <alias>` (hoặc `<col> <alias>` không có chữ AS) thì `<alias>`
+   CHỈ là tên hiển thị của cột kết quả, KHÔNG phải tên field trong entity. Để
+   đọc dữ liệu, dùng cột/bảng GỐC của biểu thức rồi mới đặt alias đầu ra.
+   - `B.tensp AS name` → nguồn là field `tensp` của bảng B (entity tương ứng):
+     `er_b.data->>'tensp' AS name` — KHÔNG dùng `data->>'name'`.
+   - `A.MaSP MaSanPham` (alias không AS) → nguồn là `ma_sp`, không phải `ma_san_pham`.
+   - Biểu thức tính (`CAST(0 AS DECIMAL) AS so_khoi`, `SUM(x) AS tong`) → giữ biểu
+     thức, alias chỉ là tên cột trả về.
+   Khi không chắc cột gốc map field nào, tra trong `entities` (input) theo TÊN GỐC,
+   tuyệt đối không bịa field theo alias.
+
 1. **Đặt tên function** = camelCase từ `targetFile` basename. Vd `report_doanh_thu.ts` → `exportName = reportDoanhThu`.
 
 2. **Function signature**:
