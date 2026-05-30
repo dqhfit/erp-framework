@@ -14,7 +14,7 @@
 
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { mssqlConnections } from "@erp-framework/db";
+import { migrationJobs, mssqlConnections } from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { runDiscover } from "@erp-framework/migration-cli/discover";
 import { runEnrich } from "@erp-framework/migration-cli/enrich";
@@ -50,7 +50,7 @@ interface JobState {
   jobId: string;
   action: MigrationAction;
   module: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "canceled";
   startedAt: string;
   completedAt?: string;
   durationMs?: number;
@@ -86,7 +86,27 @@ export async function enqueueMigrationJob(data: Omit<MigrationJobData, "jobId">)
   if (!bossSend) {
     throw new Error("Migration worker chưa khởi tạo — server boot chưa xong?");
   }
-  const jobId = randomUUID();
+  // full-import có bảng durable riêng (migration_full_jobs) + jobId nằm ở
+  // field module. Action job khác → tạo row migration_jobs để state sống
+  // sót restart + resume được. jobId = migration_jobs.id.
+  let jobId: string;
+  if (data.action === "full-import") {
+    jobId = randomUUID();
+  } else {
+    const [row] = await db
+      .insert(migrationJobs)
+      .values({
+        companyId: data.companyId,
+        userId: data.userId,
+        action: data.action,
+        module: data.module,
+        args: data.args,
+        status: "queued",
+      })
+      .returning({ id: migrationJobs.id });
+    if (!row) throw new Error("Insert migration job fail.");
+    jobId = row.id;
+  }
   const full: MigrationJobData = { ...data, jobId };
 
   const state: JobState = {
@@ -103,17 +123,105 @@ export async function enqueueMigrationJob(data: Omit<MigrationJobData, "jobId">)
   return jobId;
 }
 
-export function getMigrationJobStatus(jobId: string): JobState | null {
-  return jobStates.get(jobId) ?? null;
+/** Resume 1 action job đã lưu DB — re-enqueue cùng args (KHÔNG tạo row mới).
+ *  Action idempotent (skipExisting/skipEnriched/merge) nên re-run = bỏ qua
+ *  phần đã xong. Caller (router) phải kiểm tra quyền sở hữu trước. */
+export async function resumeMigrationJob(jobId: string): Promise<void> {
+  if (!bossSend) {
+    throw new Error("Migration worker chưa khởi tạo — server boot chưa xong?");
+  }
+  const [row] = await db.select().from(migrationJobs).where(eq(migrationJobs.id, jobId));
+  if (!row) throw new Error("Job không tồn tại.");
+  await db
+    .update(migrationJobs)
+    .set({ status: "queued", error: null, lastHeartbeat: new Date(), updatedAt: new Date() })
+    .where(eq(migrationJobs.id, jobId));
+  const state: JobState = {
+    jobId,
+    action: row.action as MigrationAction,
+    module: row.module,
+    status: "queued",
+    startedAt: new Date().toISOString(),
+  };
+  jobStates.set(jobId, state);
+  const userId = row.userId ?? "";
+  publishWs(`migration:${userId}`, { kind: "queued", state });
+  await bossSend({
+    jobId,
+    action: row.action as MigrationAction,
+    module: row.module,
+    args: (row.args ?? {}) as Record<string, unknown>,
+    userId,
+    companyId: row.companyId,
+  });
+}
+
+/** Trạng thái job: ưu tiên in-memory (realtime), fallback DB (sau restart
+ *  hoặc job cũ). full-import không có row migration_jobs → chỉ in-memory. */
+export async function getMigrationJobStatus(jobId: string): Promise<JobState | null> {
+  const mem = jobStates.get(jobId);
+  if (mem) return mem;
+  const [row] = await db.select().from(migrationJobs).where(eq(migrationJobs.id, jobId));
+  if (!row) return null;
+  return {
+    jobId: row.id,
+    action: row.action as MigrationAction,
+    module: row.module,
+    status: row.status as JobState["status"],
+    startedAt: (row.startedAt ?? row.createdAt).toISOString(),
+    completedAt: row.completedAt?.toISOString(),
+    durationMs: row.durationMs ?? undefined,
+    message: row.message ?? undefined,
+    error: row.error ?? undefined,
+  };
 }
 
 async function handleMigrationJob(data: MigrationJobData): Promise<void> {
   const t0 = Date.now();
-  const state = jobStates.get(data.jobId);
+  const isFullImport = data.action === "full-import";
+  // In-memory state có thể mất sau restart (pg-boss giao lại job) — dựng lại
+  // từ data thay vì skip như trước (bug: job re-deliver bị bỏ im lặng).
+  let state = jobStates.get(data.jobId);
   if (!state) {
-    console.warn(`[migration-worker] Job ${data.jobId} không có state — skip`);
-    return;
+    state = {
+      jobId: data.jobId,
+      action: data.action,
+      module: data.module,
+      status: "queued",
+      startedAt: new Date().toISOString(),
+    };
+    jobStates.set(data.jobId, state);
   }
+
+  // Action job durable: đọc row DB để (a) bỏ nếu đã cancel, (b) ++attempts,
+  // (c) đánh dấu running. full-import có bảng riêng nên skip phần này.
+  if (!isFullImport) {
+    const [row] = await db
+      .select({ status: migrationJobs.status, attempts: migrationJobs.attempts })
+      .from(migrationJobs)
+      .where(eq(migrationJobs.id, data.jobId));
+    if (!row) {
+      console.warn(`[migration-worker] Job ${data.jobId} không có DB row — skip`);
+      return;
+    }
+    if (row.status === "canceled") {
+      state.status = "canceled";
+      console.warn(`[migration-worker] Job ${data.jobId} đã canceled — skip`);
+      return;
+    }
+    await db
+      .update(migrationJobs)
+      .set({
+        status: "running",
+        attempts: (row.attempts ?? 0) + 1,
+        startedAt: new Date(),
+        error: null,
+        lastHeartbeat: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(migrationJobs.id, data.jobId));
+  }
+
   state.status = "running";
   publishWs(`migration:${data.userId}`, { kind: "started", state });
 
@@ -204,12 +312,40 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
     state.status = "completed";
     state.completedAt = new Date().toISOString();
     state.durationMs = Date.now() - t0;
+    if (!isFullImport) {
+      await db
+        .update(migrationJobs)
+        .set({
+          status: "completed",
+          message: state.message ?? null,
+          completedAt: new Date(),
+          durationMs: state.durationMs,
+          lastHeartbeat: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(migrationJobs.id, data.jobId));
+    }
     publishWs(`migration:${data.userId}`, { kind: "completed", state });
   } catch (e) {
     state.status = "failed";
     state.completedAt = new Date().toISOString();
     state.durationMs = Date.now() - t0;
     state.error = (e as Error).message;
+    if (!isFullImport) {
+      // Ghi lỗi vào DB để UI hiện + cho phép resume (re-enqueue cùng args).
+      await db
+        .update(migrationJobs)
+        .set({
+          status: "failed",
+          error: state.error,
+          completedAt: new Date(),
+          durationMs: state.durationMs,
+          lastHeartbeat: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(migrationJobs.id, data.jobId))
+        .catch(() => undefined);
+    }
     publishWs(`migration:${data.userId}`, { kind: "failed", state });
     console.error(`[migration-worker] Job ${data.jobId} failed:`, e);
   } finally {

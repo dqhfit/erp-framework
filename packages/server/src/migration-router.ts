@@ -17,6 +17,7 @@ import {
   llmProfiles,
   migrationFullJobs,
   migrationFullJobTables,
+  migrationJobs,
   mssqlConnections,
   pages,
   procedures,
@@ -33,7 +34,7 @@ import {
 } from "@erp-framework/migration-cli/enrich";
 import { MssqlClient, analyzeProc } from "@erp-framework/mssql-client";
 import { TRPCError } from "@trpc/server";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import YAML from "yaml";
 import { z } from "zod";
 import { decryptSecret } from "./crypto";
@@ -47,7 +48,7 @@ import {
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
 import { buildCombinedMigratedSet } from "./migration-migrated-set";
-import { enqueueMigrationJob, getMigrationJobStatus } from "./migration-worker";
+import { enqueueMigrationJob, getMigrationJobStatus, resumeMigrationJob } from "./migration-worker";
 import { logActivity } from "./activity";
 import {
   getModuleProc,
@@ -296,6 +297,96 @@ export const migrationRouter = router({
     .input(z.object({ jobId: z.string() }))
     .query(async ({ input }) => {
       return getMigrationJobStatus(input.jobId);
+    }),
+
+  /** Liệt kê action job durable của company (discover/enrich/generate/data).
+   *  Dùng cho panel "Tác vụ nền": xem trạng thái + resume job lỗi. */
+  listJobs: rbacProcedure("edit", "settings")
+    .input(
+      z
+        .object({
+          module: z.string().optional(),
+          statuses: z
+            .array(z.enum(["queued", "running", "completed", "failed", "canceled"]))
+            .optional(),
+          limit: z.number().int().min(1).max(200).default(50),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          id: migrationJobs.id,
+          action: migrationJobs.action,
+          module: migrationJobs.module,
+          status: migrationJobs.status,
+          attempts: migrationJobs.attempts,
+          message: migrationJobs.message,
+          error: migrationJobs.error,
+          startedAt: migrationJobs.startedAt,
+          completedAt: migrationJobs.completedAt,
+          durationMs: migrationJobs.durationMs,
+          createdAt: migrationJobs.createdAt,
+          updatedAt: migrationJobs.updatedAt,
+        })
+        .from(migrationJobs)
+        .where(
+          and(
+            eq(migrationJobs.companyId, ctx.user.companyId),
+            input?.module ? eq(migrationJobs.module, input.module) : undefined,
+          ),
+        )
+        .orderBy(desc(migrationJobs.createdAt))
+        .limit(input?.limit ?? 50);
+      return input?.statuses?.length
+        ? rows.filter((r) => input.statuses!.includes(r.status as (typeof input.statuses)[number]))
+        : rows;
+    }),
+
+  /** Resume 1 action job lỗi/queued — re-enqueue cùng args (idempotent:
+   *  skipExisting/skipEnriched/merge bỏ qua phần đã xong). */
+  resumeJob: rbacProcedure("edit", "settings")
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({ id: migrationJobs.id, status: migrationJobs.status })
+        .from(migrationJobs)
+        .where(
+          and(eq(migrationJobs.id, input.jobId), eq(migrationJobs.companyId, ctx.user.companyId)),
+        );
+      if (!job) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job không tồn tại." });
+      }
+      if (job.status === "running") {
+        throw new TRPCError({ code: "CONFLICT", message: "Job đang chạy — không resume được." });
+      }
+      await resumeMigrationJob(job.id);
+      return { jobId: job.id, status: "queued" as const };
+    }),
+
+  /** Huỷ 1 action job đang chờ/lỗi. Job đang queued sẽ bị worker bỏ qua
+   *  khi tới lượt (check status=canceled). Không abort job đang chạy. */
+  cancelJob: rbacProcedure("edit", "settings")
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .update(migrationJobs)
+        .set({ status: "canceled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(migrationJobs.id, input.jobId),
+            eq(migrationJobs.companyId, ctx.user.companyId),
+            sql`${migrationJobs.status} in ('queued','failed')`,
+          ),
+        )
+        .returning({ id: migrationJobs.id });
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Job không tồn tại hoặc đang chạy/đã xong — không huỷ được.",
+        });
+      }
+      return { jobId: job.id, status: "canceled" as const };
     }),
 
   /** Liệt kê ai-log entry của module. */
@@ -1435,7 +1526,7 @@ export const migrationRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Tier B cần name + label" });
         }
         const [existing] = await ctx.db
-          .select({ id: procedures.id })
+          .select({ id: procedures.id, meta: procedures.meta })
           .from(procedures)
           .where(
             and(eq(procedures.companyId, ctx.user.companyId), eq(procedures.name, input.name)),
@@ -1447,8 +1538,29 @@ export const migrationRouter = router({
           code: input.code,
           updatedAt: new Date(),
         };
+        // Nguồn gốc migrate: ghi meta.source để truy ngược proc mới → proc
+        // MSSQL cũ. Chỉ lưu khi biết procName gốc (manifest schema.name).
+        const sourceMeta = input.procName
+          ? {
+              kind: "migration" as const,
+              sourceProc: input.procName,
+              module: input.module,
+              tier: "B" as const,
+              migratedAt: new Date().toISOString(),
+              migratedBy: ctx.user.id,
+            }
+          : null;
         if (existing) {
-          await ctx.db.update(procedures).set(values).where(eq(procedures.id, existing.id));
+          const updateValues = sourceMeta
+            ? {
+                ...values,
+                meta: {
+                  ...((existing.meta as Record<string, unknown> | null) ?? {}),
+                  source: sourceMeta,
+                },
+              }
+            : values;
+          await ctx.db.update(procedures).set(updateValues).where(eq(procedures.id, existing.id));
           updateManifestTarget("targetProcName", input.name);
           appendDecision({
             module: input.module,
@@ -1474,6 +1586,7 @@ export const migrationRouter = router({
             name: input.name,
             createdBy: ctx.user.id,
             ...values,
+            ...(sourceMeta ? { meta: { source: sourceMeta } } : {}),
           })
           .returning({ id: procedures.id });
         if (!row)
@@ -1528,7 +1641,17 @@ export const migrationRouter = router({
           message: "File đã tồn tại. Truyền overwrite=true để đè.",
         };
       }
-      writeFileSync(target, input.code, "utf8");
+      // Nhúng header truy nguồn vào đầu file plugin để truy ngược file TS →
+      // proc MSSQL cũ ngay trong code. Marker @migrated-from cũng chống nhân
+      // đôi header khi overwrite (code mới từ LLM không chứa marker này).
+      const body =
+        input.procName && !input.code.startsWith("// @migrated-from:")
+          ? `// @migrated-from: ${input.procName}\n` +
+            `// @module: ${input.module} | @tier: D | @migratedAt: ${new Date().toISOString()}\n` +
+            "// Sinh tự động từ stored procedure MSSQL — chạy lại codegen để cập nhật.\n\n" +
+            input.code
+          : input.code;
+      writeFileSync(target, body, "utf8");
       // Lưu relative path (slash-separated) để cross-platform safe.
       const relPath = target.replace(repoRoot() + sep, "").replace(/\\/g, "/");
       updateManifestTarget("targetFile", relPath);

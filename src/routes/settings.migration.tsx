@@ -35,6 +35,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { I } from "@/components/Icons";
 import { ProceduresTab } from "@/components/migration/ProceduresTab";
 import { RelationsTab } from "@/components/migration/RelationsTab";
+import { ActionJobsPanel } from "@/components/migration/ActionJobsPanel";
 import { RunAllProcsScreen } from "@/components/migration/RunAllProcsScreen";
 import { SqlBlock } from "@/components/SqlHighlight";
 import {
@@ -4939,6 +4940,7 @@ function FullJobsScreen({ onClose }: { onClose: () => void }) {
       </header>
       <div className="flex-1 overflow-y-auto">
         <FullImportJobsPanel />
+        <ActionJobsPanel />
       </div>
     </div>
   );

@@ -35,6 +35,22 @@ export interface MigrationJobState {
   error?: string;
 }
 
+/** Row durable của action job (bảng migration_jobs) — cho panel tác vụ nền. */
+export interface MigrationJobRow {
+  id: string;
+  action: string;
+  module: string;
+  status: "queued" | "running" | "completed" | "failed" | "canceled";
+  attempts: number;
+  message: string | null;
+  error: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MigrationAiLogEntry {
   file: string;
   phase: string;
@@ -67,6 +83,20 @@ export function createMigrationClient(baseUrl: string) {
       trpc.migration.startJob.mutate({ action, module, args }) as Promise<{ jobId: string }>,
     jobStatus: (jobId: string) =>
       trpc.migration.jobStatus.query({ jobId }) as Promise<MigrationJobState | null>,
+    /** Liệt kê action job durable (xem trạng thái + resume job lỗi). */
+    listJobs: (
+      input: {
+        module?: string;
+        statuses?: Array<"queued" | "running" | "completed" | "failed" | "canceled">;
+        limit?: number;
+      } = {},
+    ) => trpc.migration.listJobs.query(input) as Promise<MigrationJobRow[]>,
+    /** Resume 1 action job lỗi/queued — re-enqueue cùng args. */
+    resumeJob: (jobId: string) =>
+      trpc.migration.resumeJob.mutate({ jobId }) as Promise<{ jobId: string; status: "queued" }>,
+    /** Huỷ 1 action job đang chờ/lỗi. */
+    cancelJob: (jobId: string) =>
+      trpc.migration.cancelJob.mutate({ jobId }) as Promise<{ jobId: string; status: "canceled" }>,
     aiLog: (module: string) =>
       trpc.migration.aiLog.query({ module }) as Promise<MigrationAiLogEntry[]>,
     getAiLogEntry: (module: string, file: string) =>

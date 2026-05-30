@@ -379,6 +379,20 @@
       "when": 1783701000000,
       "tag": "0053_agent_conversations",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1783701100000,
+      "tag": "0054_procedures_source_meta",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1783701200000,
+      "tag": "0055_migration_jobs",
+      "breakpoints": true
     }
   ]
 }

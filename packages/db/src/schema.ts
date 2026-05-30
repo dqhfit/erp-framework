@@ -723,6 +723,39 @@ export const migrationFullJobTables = pgTable(
   }),
 );
 
+/** Action job durable — discover/enrich/generate/data chạy qua pg-boss
+ *  queue "migration-run". State lưu DB (KHÔNG chỉ in-memory) để:
+ *   - Sống sót server restart (pg-boss giao lại job → worker đọc row này).
+ *   - Resume khi lỗi: re-enqueue cùng args (action idempotent: skipExisting/
+ *     skipEnriched/merge → bỏ qua phần đã xong).
+ *  full-import KHÔNG dùng bảng này (đã có migration_full_jobs riêng). */
+export const migrationJobs = pgTable(
+  "migration_jobs",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(), // discover|enrich|capture-golden|generate|data
+    module: text("module").notNull(),
+    args: jsonb("args").notNull().default(sql`'{}'::jsonb`),
+    status: text("status").notNull().default("queued"), // queued|running|completed|failed|canceled
+    attempts: integer("attempts").notNull().default(0),
+    message: text("message"),
+    error: text("error"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    durationMs: integer("duration_ms"),
+    lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyStatusIdx: index("migration_jobs_company_status_idx").on(t.companyId, t.status),
+  }),
+);
+
 export const llmProfiles = pgTable(
   "llm_profiles",
   {
@@ -1377,6 +1410,11 @@ export const procedures = pgTable(
     returnSchema: jsonb("return_schema"),
     code: text("code").notNull(),
     enabled: boolean("enabled").notNull().default(true),
+    // meta: nguồn gốc + dữ liệu phụ. Khi proc sinh ra từ migrate stored
+    // proc MSSQL → meta.source = { kind:'migration', sourceProc, module,
+    // tier, migratedAt, migratedBy } — cho phép truy ngược proc mới về
+    // proc MSSQL cũ (đối xứng với entities.meta.source).
+    meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
