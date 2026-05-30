@@ -324,7 +324,9 @@ export function AgentPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            // Enter gửi; Shift+Enter xuống dòng. Bỏ qua khi đang gõ IME (tiếng
+            // Việt) — Enter lúc đó là xác nhận ký tự, không phải gửi.
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               send(input);
             }

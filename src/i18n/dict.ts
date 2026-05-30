@@ -173,7 +173,7 @@ const VI: Dict = {
   "agent.usable": "✓",
   "agent.not_usable": "⚠ chưa khả dụng",
   "agent.thinking": "Đang suy nghĩ…",
-  "agent.input_placeholder": "Nhập câu hỏi… (⌘+Enter để gửi)",
+  "agent.input_placeholder": "Nhập câu hỏi… (Enter gửi · Shift+Enter xuống dòng)",
   "agent.send": "Gửi",
   "agent.no_llm_msg": "⚠ Chưa có LLM profile. Mở Cài đặt LLM để thêm.",
   "agent.profile_not_usable":
@@ -776,7 +776,7 @@ const EN: Dict = {
   "agent.usable": "✓",
   "agent.not_usable": "⚠ not ready",
   "agent.thinking": "Thinking…",
-  "agent.input_placeholder": "Type your question… (⌘+Enter to send)",
+  "agent.input_placeholder": "Type your question… (Enter to send · Shift+Enter for newline)",
   "agent.send": "Send",
   "agent.no_llm_msg": "⚠ No LLM profile. Open LLM Settings to add one.",
   "agent.profile_not_usable":
