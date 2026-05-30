@@ -372,6 +372,13 @@
       "when": 1783700900000,
       "tag": "0052_entities_name_ci_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1783701000000,
+      "tag": "0053_agent_conversations",
+      "breakpoints": true
     }
   ]
 }

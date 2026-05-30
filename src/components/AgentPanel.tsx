@@ -1,4 +1,4 @@
-import { createKnowledgeClient } from "@erp-framework/client";
+import { createAgentChatClient, createKnowledgeClient } from "@erp-framework/client";
 import { useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
@@ -7,7 +7,9 @@ import { mcpToolsToToolDefs } from "@/core/agent-runner";
 import { llmRegistry } from "@/core/llm";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
 import { roleCan } from "@/lib/permissions";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { useRbac } from "@/stores/rbac";
@@ -17,6 +19,15 @@ import { useUserObjects } from "@/stores/userObjects";
 
 /* Client Knowledge Base — dùng cho nút "Lưu vào tri thức" trên tin nhắn. */
 const kb = createKnowledgeClient("");
+/* Client lịch sử trò chuyện (lưu / liệt kê / xoá). */
+const chatHistory = createAgentChatClient("");
+
+interface ConversationItem {
+  id: string;
+  title: string;
+  agentId: string | null;
+  updatedAt: string | Date;
+}
 
 interface Message {
   id: string;
@@ -77,6 +88,66 @@ export function AgentPanel() {
   const [messages, setMessages] = useState<Message[]>(SEED);
   const [input, setInput] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
+  // Lịch sử trò chuyện (lưu server, per-user). conversationId = cuộc đang mở
+  // (null = cuộc mới chưa lưu). bodyRef vẫn dùng cho auto-scroll.
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const loadConversations = () => {
+    chatHistory
+      .list()
+      .then((rows) => setConversations(rows as ConversationItem[]))
+      .catch(() => {
+        /* chưa đăng nhập / lỗi mạng — bỏ qua, lịch sử trống */
+      });
+  };
+  // Nạp danh sách khi mở panel.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phụ thuộc open
+  useEffect(() => {
+    if (open) loadConversations();
+  }, [open]);
+
+  /** Mở 1 cuộc trò chuyện cũ: nạp tin nhắn từ server vào khung chat. */
+  const openConversation = async (id: string) => {
+    try {
+      const msgs = await chatHistory.messages(id);
+      setMessages(
+        msgs.map((m, i) => ({
+          id: `h${i}`,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      );
+      setConversationId(id);
+      setShowHistory(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  /** Bắt đầu cuộc trò chuyện mới (chưa lưu tới khi gửi tin đầu). */
+  const newChat = () => {
+    setMessages(SEED);
+    setConversationId(null);
+    setShowHistory(false);
+  };
+
+  const deleteConversation = async (id: string, title: string) => {
+    const ok = await dialog.confirm(`Xoá cuộc trò chuyện "${title}"?`, {
+      title: "Xoá lịch sử",
+      danger: true,
+      confirmText: "Xoá",
+    });
+    if (!ok) return;
+    try {
+      await chatHistory.delete(id);
+      if (conversationId === id) newChat();
+      loadConversations();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
 
   // Auto-pick first profile khả dụng (có key HOẶC adapter no-key như claude-cli/claude-pro/ollama)
   useEffect(() => {
@@ -230,6 +301,27 @@ export function AgentPanel() {
             : msg,
         ),
       );
+
+      // Lưu lượt trao đổi vào lịch sử (tạo cuộc mới nếu chưa có). Fail-safe:
+      // lỗi lưu KHÔNG làm vỡ chat.
+      if (finalText) {
+        chatHistory
+          .saveExchange({
+            conversationId,
+            agentId: boundAgentId,
+            userText: text,
+            assistantText: finalText,
+          })
+          .then((r) => {
+            if (!conversationId) {
+              setConversationId(r.conversationId);
+              loadConversations();
+            }
+          })
+          .catch(() => {
+            /* lưu lịch sử lỗi — bỏ qua */
+          });
+      }
     } catch (err) {
       setMessages((m) =>
         m.map((msg) =>
@@ -275,8 +367,86 @@ export function AgentPanel() {
             {profileName ? (llmProfiles[profileName]?.model ?? profileName) : t("agent.no_profile")}
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<I.Plus size={14} />}
+          title="Cuộc trò chuyện mới"
+          onClick={newChat}
+        />
+        <Button
+          variant={showHistory ? "default" : "ghost"}
+          size="sm"
+          icon={<I.Clock size={14} />}
+          title="Lịch sử trò chuyện"
+          onClick={() => {
+            if (!showHistory) loadConversations();
+            setShowHistory((v) => !v);
+          }}
+        />
         <Button variant="ghost" size="sm" icon={<I.X size={14} />} onClick={() => setOpen(false)} />
       </div>
+
+      {/* Panel lịch sử trò chuyện */}
+      {showHistory && (
+        <div className="shrink-0 max-h-[45%] overflow-y-auto border-b border-border bg-bg-soft/40">
+          <div className="px-3 py-2 flex items-center justify-between sticky top-0 bg-panel border-b border-border">
+            <span className="text-xs font-semibold">Lịch sử ({conversations.length})</span>
+            {conversations.length > 0 && (
+              <button
+                type="button"
+                className="text-[11px] text-muted hover:text-danger underline"
+                onClick={async () => {
+                  const ok = await dialog.confirm("Xoá TẤT CẢ lịch sử trò chuyện?", {
+                    title: "Xoá toàn bộ",
+                    danger: true,
+                    confirmText: "Xoá hết",
+                  });
+                  if (!ok) return;
+                  await chatHistory.deleteAll().catch(() => {});
+                  newChat();
+                  loadConversations();
+                }}
+              >
+                Xoá hết
+              </button>
+            )}
+          </div>
+          {conversations.length === 0 ? (
+            <div className="px-3 py-4 text-xs text-muted">Chưa có cuộc trò chuyện nào.</div>
+          ) : (
+            conversations.map((c) => (
+              <div
+                key={c.id}
+                className={cn(
+                  "px-3 py-2 flex items-center gap-2 border-b border-border/40 hover:bg-bg-soft cursor-pointer",
+                  conversationId === c.id && "bg-accent/10",
+                )}
+                onClick={() => openConversation(c.id)}
+              >
+                <I.MessageSquare size={12} className="text-muted shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs truncate">{c.title}</div>
+                  <div className="text-[10px] text-muted">
+                    {new Date(c.updatedAt).toLocaleString("vi-VN", { hour12: false })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="text-muted hover:text-danger p-1 rounded hover:bg-danger/10 shrink-0"
+                  title="Xoá"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteConversation(c.id, c.title);
+                  }}
+                >
+                  <I.Trash size={12} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Profile selector — group theo adapter (combobox xổ xuống). */}
       {profileNames.length > 0 && (

@@ -32,6 +32,11 @@ export {
   type LlmProfileMineInput,
 } from "./config";
 export {
+  createAgentChatClient,
+  type AgentChatClient,
+  type SaveExchangeInput,
+} from "./agent-chats";
+export {
   createEmbedClient,
   type EmbedClient,
   type EmbedScope,

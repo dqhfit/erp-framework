@@ -39,6 +39,7 @@ import { workflowsRouter } from "./workflows-router";
 import { schedulesRouter } from "./schedules-router";
 import { pagesRouter } from "./pages-router";
 import { agentsRouter } from "./agents-router";
+import { agentConversationsRouter } from "./agent-conversations-router";
 import { toolsRouter } from "./tools-router";
 import { proceduresRouter } from "./procedures-router";
 import { enumsRouter } from "./enums-router";
@@ -454,6 +455,7 @@ export const appRouter = router({
 
   /* ── Agent CRUD + membership + memory templates ── */
   agents: agentsRouter,
+  agentChats: agentConversationsRouter,
 
   /* ── Đa công ty ── */
   companies: companiesRouter,

@@ -1535,3 +1535,42 @@ export const feedbackComments = pgTable(
     feedbackIdx: index("feedback_comments_feedback_idx").on(t.feedbackId),
   }),
 );
+
+/* ─── Lịch sử trò chuyện với Agent (per-user, có thể xoá) ─────────── */
+export const agentConversations = pgTable(
+  "agent_conversations",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    // userId: chủ cuộc trò chuyện — riêng tư từng tài khoản.
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // agentId: agent đang gắn (null nếu chat tự do). Agent bị xoá → giữ lịch sử.
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    title: text("title").notNull().default("Cuộc trò chuyện"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index("agent_conversations_user_idx").on(t.companyId, t.userId, t.updatedAt),
+  }),
+);
+
+export const agentMessages = pgTable(
+  "agent_messages",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => agentConversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // "user" | "assistant"
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    convIdx: index("agent_messages_conv_idx").on(t.conversationId, t.createdAt),
+  }),
+);
