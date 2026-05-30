@@ -49,12 +49,19 @@ async function callAnthropic(
   system: string,
   prompt: string,
 ): Promise<AgentResult> {
-  const base = (p.endpoint || "https://api.anthropic.com").replace(/\/$/, "");
+  // claude-cli → bridge cục bộ (BRIDGE_URL/bridge:8909), không cần key.
+  const safeUrl = (v: string | null, fb: string) =>
+    v && (v.startsWith("http://") || v.startsWith("https://")) ? v : fb;
+  const base = (
+    p.adapter === "claude-cli"
+      ? process.env.BRIDGE_URL || safeUrl(p.endpoint, "http://localhost:8909")
+      : p.endpoint || "https://api.anthropic.com"
+  ).replace(/\/$/, "");
   const res = await fetch(base + "/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": key,
+      ...(key ? { "x-api-key": key } : {}),
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
@@ -145,7 +152,7 @@ export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent
        sang tenant chưa setup. Throw lỗi rõ ràng nếu thiếu key. */
     const resolveKey = (adapter: string, envVar: string): string => {
       if (profileKey) return profileKey;
-      if (adapter === "ollama") return ""; // local, không cần key
+      if (adapter === "ollama" || adapter === "claude-cli") return ""; // local/bridge, không cần key
       if (allowEnvFallback) return process.env[envVar] || "";
       throw new Error(
         `LLM profile "${p.adapter}" thiếu API key. Vào Cài đặt → LLM ` +
@@ -153,7 +160,7 @@ export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent
           `dùng env var ${envVar} (không khuyến nghị production).`,
       );
     };
-    if (p.adapter === "claude" || p.adapter === "claude-pro") {
+    if (p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "claude-cli") {
       return callAnthropic(p, resolveKey(p.adapter, "ANTHROPIC_API_KEY"), system, prompt);
     }
     if (p.adapter === "openai" || p.adapter === "ollama") {

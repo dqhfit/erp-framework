@@ -78,7 +78,15 @@ interface AnthropicResp {
 }
 
 async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Promise<void> {
-  const base = (p.endpoint || "https://api.anthropic.com").replace(/\/$/, "");
+  // claude-cli gọi bridge cục bộ (BRIDGE_URL env hoặc bridge:8909), KHÔNG phải
+  // api.anthropic.com; endpoint "/bridge" (góc nhìn browser) server không parse được.
+  const safeUrl = (v: string | null, fb: string) =>
+    v && (v.startsWith("http://") || v.startsWith("https://")) ? v : fb;
+  const base = (
+    p.adapter === "claude-cli"
+      ? process.env.BRIDGE_URL || safeUrl(p.endpoint, "http://localhost:8909")
+      : p.endpoint || "https://api.anthropic.com"
+  ).replace(/\/$/, "");
   const messages: AnthMsg[] = opt.messages.map((m) => ({ role: m.role, content: m.content }));
   const tools = opt.tools.map((t) => ({
     name: t.name,
@@ -92,7 +100,7 @@ async function anthropicLoop(opt: AgentChatOpts, p: ProfileRow, key: string): Pr
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": key,
+        ...(key ? { "x-api-key": key } : {}),
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
@@ -303,8 +311,13 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
     });
     return;
   }
+  // claude-cli: format Anthropic nhưng gọi qua bridge cục bộ (BRIDGE_URL /
+  // bridge:8909), KHÔNG cần API key — gom vào nhánh Anthropic.
   const isAnthropic =
-    p.adapter === "claude" || p.adapter === "claude-pro" || p.adapter === "anthropic";
+    p.adapter === "claude" ||
+    p.adapter === "claude-pro" ||
+    p.adapter === "anthropic" ||
+    p.adapter === "claude-cli";
   const isOpenAi = p.adapter === "openai" || p.adapter === "ollama";
   if (!isAnthropic && !isOpenAi) {
     opt.onEvent({ type: "error", message: `Adapter "${p.adapter}" chưa hỗ trợ ở agent backend.` });
@@ -314,8 +327,8 @@ export async function runAgentChat(opt: AgentChatOpts): Promise<void> {
     (p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "") ||
     process.env[isAnthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"] ||
     "";
-  // ollama (local, OpenAI-compat) thường không cần key.
-  if (!key && p.adapter !== "ollama") {
+  // ollama (local) + claude-cli (bridge) không cần key.
+  if (!key && p.adapter !== "ollama" && p.adapter !== "claude-cli") {
     opt.onEvent({ type: "error", message: "LLM profile thiếu API key." });
     return;
   }
