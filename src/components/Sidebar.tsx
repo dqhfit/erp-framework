@@ -1407,6 +1407,22 @@ export function Sidebar() {
               }
             />
             <SidebarItem
+              to="/settings/mes-migrate"
+              active={pathname === "/settings/mes-migrate"}
+              icon={<I.ArrowRight size={14} />}
+              collapsed={collapsed}
+              label="Migrate MES → ERP"
+              isFavorited={favs.isFav("/settings/mes-migrate")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/settings/mes-migrate",
+                  to: "/settings/mes-migrate",
+                  label: "Migrate MES → ERP",
+                  iconName: "ArrowRight",
+                })
+              }
+            />
+            <SidebarItem
               to="/settings/cockpit"
               active={pathname === "/settings/cockpit"}
               icon={<I.Layers size={14} />}

@@ -60,6 +60,7 @@ import { backupRouter } from "./backup-router";
 import { migrationRouter } from "./migration-router";
 import { legacyMenuRouter } from "./legacy-menu-router";
 import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
+import { mesMucTieuMigrateRouter } from "./mes-muctieu-migrate-router";
 import { printTemplatesRouter } from "./print-templates-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
 import { preferencesRouter } from "./preferences-router";
@@ -540,6 +541,7 @@ export const appRouter = router({
 
   /* ── MES: Mục tiêu sản xuất ── */
   mesMucTieuSanXuat: mesMucTieuSanXuatRouter,
+  mesMucTieuMigrate: mesMucTieuMigrateRouter,
 
   /* ── Engine in PDF — template HTML cho báo cáo/chứng từ ── */
   printTemplates: printTemplatesRouter,

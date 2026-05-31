@@ -176,3 +176,11 @@ export {
   type MucTieuChitietRow,
   type MucTieuThangRow,
 } from "./mes-muctieu-sanxuat";
+export {
+  createMesMucTieuMigrateClient,
+  type MesMucTieuMigrateClient,
+  type MigratePreview,
+  type MigrateResult,
+  type MssqlMonthItem,
+  type RelatedForm,
+} from "./mes-muctieu-migrate";
