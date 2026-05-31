@@ -75,6 +75,7 @@ export function buildCSharpIndex(dqhfRoot: string): CSharpIndex {
 export interface ResolveFormResult {
   procs: string[];
   controls: string[];
+  reports: string[]; // class báo cáo (rpt*/Report_*) form mở/nhúng
   repos: string[];
   filesScanned: number;
   note?: string;
@@ -87,9 +88,11 @@ const PROP_RE = /\.([A-Za-z_][A-Za-z0-9_]*)/g;
 const NEW_RE = /new\s+([A-Za-z_]\w*)\s*\(/g;
 /** Tên proc hợp lệ = 1 identifier (loại MyQuery chứa SQL thô như "SELECT ..."). */
 const PROC_ID = /^[A-Za-z_][A-Za-z0-9_]*$/;
-// Chỉ đệ quy vào lớp UI-control / data-layer (tránh nổ sang form khác).
+// Chỉ đệ quy vào UI-control / báo cáo / data-layer (tránh nổ sang form khác).
 const RECURSE_PATH =
-  /[\\/](UserCtrl|CommonClass[\\/](BOL|DAL|MODELS))[\\/]|[\\/]DQHF\.Repository[\\/]/i;
+  /[\\/](UserCtrl|FormReport|CommonClass[\\/](BOL|DAL|MODELS))[\\/]|[\\/]DQHF\.Repository[\\/]/i;
+/** Class báo cáo XtraReports: rpt_*, Report_*. */
+const REPORT_ID = /^(rpt|report)/i;
 
 /** Đệ quy form → control → BOL/repo, gom procs. */
 export function resolveFormProcs(
@@ -99,12 +102,20 @@ export function resolveFormProcs(
 ): ResolveFormResult {
   const start = idx.fileByClass.get(winId.toLowerCase());
   if (!start) {
-    return { procs: [], controls: [], repos: [], filesScanned: 0, note: `Không thấy ${winId}.cs` };
+    return {
+      procs: [],
+      controls: [],
+      reports: [],
+      repos: [],
+      filesScanned: 0,
+      note: `Không thấy ${winId}.cs`,
+    };
   }
   const visited = new Set<string>();
   const procs = new Set<string>();
   const repos = new Set<string>();
   const controls = new Set<string>();
+  const reports = new Set<string>();
   const queue: string[] = [start];
 
   const enqueueClass = (id: string): void => {
@@ -146,7 +157,9 @@ export function resolveFormProcs(
     NEW_RE.lastIndex = 0;
     while ((m = NEW_RE.exec(newScanText))) {
       const id = m[1]!;
-      if (/^(xuc|uc|usc|xfm)/i.test(id) && idx.fileByClass.has(id.toLowerCase())) controls.add(id);
+      const known = idx.fileByClass.has(id.toLowerCase());
+      if (known && REPORT_ID.test(id)) reports.add(id);
+      else if (known && /^(xuc|uc|usc|xfm)/i.test(id)) controls.add(id);
       enqueueClass(id);
     }
   }
@@ -154,6 +167,7 @@ export function resolveFormProcs(
   return {
     procs: [...procs].sort(),
     controls: [...controls].sort(),
+    reports: [...reports].sort(),
     repos: [...repos].sort(),
     filesScanned: visited.size,
   };
@@ -241,6 +255,7 @@ export async function resolveAllMenuNodes(
         resolved: {
           procs: r.procs,
           controls: r.controls,
+          reports: r.reports,
           repos: r.repos,
           filesScanned: r.filesScanned,
           ...(r.note ? { note: r.note } : {}),

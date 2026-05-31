@@ -11,6 +11,7 @@ import {
   type LegacyMenuNode,
   type LegacyMenuNodeDetail,
   type LegacyMenuStats,
+  type LegacyReport,
 } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -104,6 +105,7 @@ function CockpitPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<LegacyMenuNode | null>(null);
   const [detail, setDetail] = useState<LegacyMenuNodeDetail | null>(null);
+  const [reportMap, setReportMap] = useState<Record<string, LegacyReport>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -112,10 +114,11 @@ function CockpitPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.listTree(), api.stats()])
-      .then(([t, s]) => {
+    Promise.all([api.listTree(), api.stats(), api.listReports()])
+      .then(([t, s, reps]) => {
         setTree(t);
         setStats(s);
+        setReportMap(Object.fromEntries(reps.map((r) => [r.reportClass, r])));
       })
       .catch((e) => dialog.alert(`Lỗi tải menu: ${e?.message ?? e}`))
       .finally(() => setLoading(false));
@@ -164,6 +167,21 @@ function CockpitPage() {
       reload();
     } catch (e) {
       await dialog.alert(`Lỗi resolve: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setBusy(null);
+    }
+  }, [reload]);
+
+  const doParseReports = useCallback(async () => {
+    setBusy("reports");
+    try {
+      const r = await api.parseReports();
+      await dialog.alert(
+        `Phân tích báo cáo xong: ${r.parsed} report (${r.table} dạng bảng, ${r.document} chứng từ in).`,
+      );
+      reload();
+    } catch (e) {
+      await dialog.alert(`Lỗi phân tích báo cáo: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
@@ -225,6 +243,9 @@ function CockpitPage() {
           </Button>
           <Button variant="default" size="sm" onClick={doResolve} disabled={busy != null}>
             <I.RefreshCw size={14} /> {busy === "resolve" ? "Đang resolve…" : "Resolve form→proc"}
+          </Button>
+          <Button variant="default" size="sm" onClick={doParseReports} disabled={busy != null}>
+            <I.File size={14} /> {busy === "reports" ? "Đang phân tích…" : "Phân tích báo cáo"}
           </Button>
         </div>
       </div>
@@ -301,6 +322,54 @@ function CockpitPage() {
                   {detail.resolved.controls.length > 0 && (
                     <div className="text-xs text-slate-500">
                       Control: {detail.resolved.controls.join(", ")}
+                    </div>
+                  )}
+                  {(detail.resolved.reports?.length ?? 0) > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-violet-700">
+                        Báo cáo ({detail.resolved.reports!.length}) — port DỮ LIỆU; in pixel-perfect
+                        làm template riêng:
+                      </span>
+                      {detail.resolved.reports!.map((rc) => {
+                        const bp = reportMap[rc];
+                        return (
+                          <div
+                            key={rc}
+                            className="rounded border border-violet-100 bg-violet-50/50 p-1.5 text-[11px]"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono">{rc}</span>
+                              {bp && (
+                                <span
+                                  className={`rounded px-1 ${bp.kind === "table" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+                                >
+                                  {bp.kind === "table"
+                                    ? "bảng (auto được)"
+                                    : "chứng từ in (template tay)"}
+                                </span>
+                              )}
+                            </div>
+                            {bp ? (
+                              <div className="mt-0.5 text-slate-600">
+                                {bp.title && <div>Tiêu đề: {bp.title}</div>}
+                                {bp.dataProcs.length > 0 && (
+                                  <div>Proc: {bp.dataProcs.join(", ")}</div>
+                                )}
+                                {bp.columns.length > 0 && (
+                                  <div>
+                                    Cột ({bp.columns.length}): {bp.columns.join(" · ")}
+                                  </div>
+                                )}
+                                {bp.groups.length > 0 && <div>Group: {bp.groups.join(", ")}</div>}
+                              </div>
+                            ) : (
+                              <div className="mt-0.5 text-slate-400">
+                                Chưa phân tích — bấm "Phân tích báo cáo".
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {detail.resolved.repos.length > 0 && (

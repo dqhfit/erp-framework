@@ -9,12 +9,13 @@
    ========================================================== */
 
 import { existsSync } from "node:fs";
-import { legacyMenuMap } from "@erp-framework/db";
+import { legacyMenuMap, legacyReports } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { importLegacyMenu, legacyMenuStats, listLegacyMenuTree } from "./legacy-menu";
 import { resolveAllMenuNodes, resolveTablesForProcs, slugifyModule } from "./legacy-menu-resolve";
+import { parseAllReports } from "./legacy-report-parse";
 import { openDefaultMssql } from "./migration-router";
 import { enqueueMigrationJob } from "./migration-worker";
 import { logActivity } from "./activity";
@@ -67,6 +68,43 @@ export const legacyMenuRouter = router({
       });
     }
     return await resolveAllMenuNodes(ctx.db, ctx.user.companyId, root);
+  }),
+
+  /** Parse blueprint mọi report (rpt_*) menu tham chiếu → legacy_reports.
+   *  Cần env DQHF_SOURCE_DIR (đọc rpt*.Designer.cs). Chạy sau resolveFromSource. */
+  parseReports: rbacProcedure("edit", "settings").mutation(async ({ ctx }) => {
+    const root = process.env.DQHF_SOURCE_DIR;
+    if (!root) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Chưa đặt env DQHF_SOURCE_DIR — parser report cần đọc rpt*.Designer.cs.",
+      });
+    }
+    if (!existsSync(root)) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `DQHF_SOURCE_DIR không tồn tại: ${root}`,
+      });
+    }
+    return await parseAllReports(ctx.db, ctx.user.companyId, root);
+  }),
+
+  /** Liệt kê blueprint report đã parse (cho cockpit hiển thị). */
+  listReports: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
+    return await ctx.db
+      .select({
+        reportClass: legacyReports.reportClass,
+        title: legacyReports.title,
+        kind: legacyReports.kind,
+        dataProcs: legacyReports.dataProcs,
+        columns: legacyReports.columns,
+        groups: legacyReports.groups,
+        summaries: legacyReports.summaries,
+        hasBeforePrint: legacyReports.hasBeforePrint,
+        pageId: legacyReports.pageId,
+      })
+      .from(legacyReports)
+      .where(eq(legacyReports.companyId, ctx.user.companyId));
   }),
 
   /** Lấy kết quả resolve (procs/controls/repos) của 1 node — cho panel chi tiết. */

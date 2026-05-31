@@ -700,6 +700,33 @@ export const legacyMenuMap = pgTable(
   }),
 );
 
+/** Cockpit — blueprint báo cáo XtraReports (class rpt_*) trích từ source C#.
+ *  Mỗi row = 1 report: tiêu đề + data proc + cột + group + summary. Dùng để
+ *  dựng lại report dạng bảng (list page) hoặc làm spec cho template in. */
+export const legacyReports = pgTable(
+  "legacy_reports",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    reportClass: text("report_class").notNull(), // rpt_bangke_govan
+    namespace: text("namespace"),
+    title: text("title"),
+    kind: text("kind").default("table").notNull(), // table | document
+    dataProcs: jsonb("data_procs").default(sql`'[]'::jsonb`).notNull(), // string[]
+    columns: jsonb("columns").default(sql`'[]'::jsonb`).notNull(), // string[] header cột
+    groups: jsonb("groups").default(sql`'[]'::jsonb`).notNull(), // string[]
+    summaries: jsonb("summaries").default(sql`'[]'::jsonb`).notNull(), // string[] (Sum/Count…)
+    hasBeforePrint: integer("has_before_print").default(0).notNull(),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
+    parsedAt: timestamp("parsed_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyClassIdx: uniqueIndex("legacy_reports_company_class_idx").on(t.companyId, t.reportClass),
+  }),
+);
+
 /** Phase U — Background full import job từ MSSQL.
  *  1 job = 1 lần user bấm "Full import"; chứa N table riêng.
  *  status: queued | running | paused | completed | failed | canceled

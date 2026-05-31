@@ -120,6 +120,7 @@ export {
   type LegacyMenuNodeDetail,
   type LegacyMenuResolved,
   type LegacyMenuStats,
+  type LegacyReport,
 } from "./legacy-menu";
 export {
   createMssqlConnectionsClient,

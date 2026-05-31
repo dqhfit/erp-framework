@@ -31,9 +31,22 @@ export interface LegacyMenuStats {
 export interface LegacyMenuResolved {
   procs: string[];
   controls: string[];
+  reports?: string[];
   repos: string[];
   filesScanned?: number;
   note?: string;
+}
+
+export interface LegacyReport {
+  reportClass: string;
+  title: string | null;
+  kind: "table" | "document" | string;
+  dataProcs: string[];
+  columns: string[];
+  groups: string[];
+  summaries: string[];
+  hasBeforePrint: number;
+  pageId: string | null;
 }
 
 export interface LegacyMenuNodeDetail {
@@ -76,6 +89,16 @@ export function createLegacyMenuClient(baseUrl: string) {
         withProcs: number;
         noForm: number;
       }>,
+    /** Parse blueprint report (rpt_*) → legacy_reports. */
+    parseReports: () =>
+      trpc.legacyMenu.parseReports.mutate() as Promise<{
+        totalReports: number;
+        parsed: number;
+        table: number;
+        document: number;
+      }>,
+    /** Liệt kê blueprint report đã parse. */
+    listReports: () => trpc.legacyMenu.listReports.query() as Promise<LegacyReport[]>,
     /** Chi tiết resolve 1 node. */
     getResolved: (sourceCode: string) =>
       trpc.legacyMenu.getResolved.query({ sourceCode }) as Promise<LegacyMenuNodeDetail | null>,
