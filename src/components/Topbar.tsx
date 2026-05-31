@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
@@ -14,7 +14,6 @@ import { useUserObjects } from "@/stores/userObjects";
 export function Topbar() {
   const t = useT();
   const navigate = useNavigate();
-  const matches = useRouterState({ select: (s) => s.location.pathname });
   const {
     theme,
     setTheme,

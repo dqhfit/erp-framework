@@ -43,7 +43,7 @@ export function useUndoable<T>(
   const undo = useCallback(() => {
     setHist((h) => {
       if (h.past.length === 0) return h;
-      const prev = h.past[h.past.length - 1];
+      const prev = h.past[h.past.length - 1]!;
       return {
         past: h.past.slice(0, -1),
         present: prev,
@@ -55,7 +55,7 @@ export function useUndoable<T>(
   const redo = useCallback(() => {
     setHist((h) => {
       if (h.future.length === 0) return h;
-      const next = h.future[0];
+      const next = h.future[0]!;
       return {
         past: [...h.past, h.present],
         present: next,
