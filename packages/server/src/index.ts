@@ -33,6 +33,7 @@ import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
 import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
 import { registerOAuth } from "./oauth";
+import { registerPrintRoutes } from "./print-routes";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
 import { isChannelAllowed } from "./ws-channels";
@@ -197,6 +198,9 @@ async function main(): Promise<void> {
   // (auth header X-API-Key, scopes per entity). Mobile/external/3rd-party
   // dùng được thẳng, không cần codegen tRPC.
   registerRestApi(app, db);
+
+  // Engine in PDF — GET /print/:id?format=html|pdf — render template + data.
+  registerPrintRoutes(app, db);
 
   // GraphQL endpoint song song REST — /graphql với schema tự sinh từ
   // entity meta. Auth X-API-Key. v1 minimal: entity/records query +

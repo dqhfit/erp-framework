@@ -8,6 +8,7 @@
 
 import {
   createLegacyMenuClient,
+  createPrintTemplatesClient,
   type LegacyMenuNode,
   type LegacyMenuNodeDetail,
   type LegacyMenuStats,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 
 const api = createLegacyMenuClient("");
+const printApi = createPrintTemplatesClient("");
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   chua: { label: "Chưa port", cls: "bg-slate-100 text-slate-600" },
@@ -187,6 +189,20 @@ function CockpitPage() {
     }
   }, [reload]);
 
+  const doScaffoldReport = useCallback(async (reportClass: string) => {
+    setBusy(`tpl:${reportClass}`);
+    try {
+      const t = await printApi.scaffoldFromReport(reportClass);
+      const { html } = await printApi.renderPreview(t.id);
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      window.open(url, "_blank");
+    } catch (e) {
+      await dialog.alert(`Lỗi tạo template in: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
   const doPort = useCallback(async () => {
     if (!selected) return;
     const ok = await dialog.confirm(
@@ -347,6 +363,16 @@ function CockpitPage() {
                                     ? "bảng (auto được)"
                                     : "chứng từ in (template tay)"}
                                 </span>
+                              )}
+                              {bp && (
+                                <button
+                                  type="button"
+                                  className="ml-auto rounded bg-violet-600 px-1.5 py-0.5 text-white disabled:opacity-50"
+                                  disabled={busy != null}
+                                  onClick={() => doScaffoldReport(rc)}
+                                >
+                                  {busy === `tpl:${rc}` ? "Đang tạo…" : "Tạo template in"}
+                                </button>
                               )}
                             </div>
                             {bp ? (

@@ -706,6 +706,7 @@ export function Sidebar() {
     workflows: true,
     agents: true,
     ops: true,
+    mes: false,
     settings: false,
   });
   const allOpen = Object.values(sectionsOpen).some(Boolean);
@@ -717,6 +718,7 @@ export function Sidebar() {
       workflows: next,
       agents: next,
       ops: next,
+      mes: next,
       settings: next,
     });
   };
@@ -1226,6 +1228,29 @@ export function Sidebar() {
                 to: "/feedback",
                 label: t("sidebar.feedback"),
                 iconName: "HelpCircle",
+              })
+            }
+          />
+        </NavGroup>
+        <NavGroup
+          title="MES Sản xuất"
+          collapsed={collapsed}
+          open={sectionsOpen.mes}
+          onToggle={toggle("mes")}
+        >
+          <SidebarItem
+            to="/mes/muctieu-sanxuat"
+            active={pathname === "/mes/muctieu-sanxuat"}
+            icon={<I.Calculator size={14} />}
+            collapsed={collapsed}
+            label="Mục tiêu sản xuất"
+            isFavorited={favs.isFav("/mes/muctieu-sanxuat")}
+            onToggleFavorite={() =>
+              favs.toggle({
+                id: "/mes/muctieu-sanxuat",
+                to: "/mes/muctieu-sanxuat",
+                label: "Mục tiêu sản xuất",
+                iconName: "Calculator",
               })
             }
           />

@@ -59,6 +59,8 @@ import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
 import { migrationRouter } from "./migration-router";
 import { legacyMenuRouter } from "./legacy-menu-router";
+import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
+import { printTemplatesRouter } from "./print-templates-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
 import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
@@ -535,6 +537,12 @@ export const appRouter = router({
 
   /* ── Cockpit menu-driven — bản đồ menu app cũ (SYS_MENU_NEW) ── */
   legacyMenu: legacyMenuRouter,
+
+  /* ── MES: Mục tiêu sản xuất ── */
+  mesMucTieuSanXuat: mesMucTieuSanXuatRouter,
+
+  /* ── Engine in PDF — template HTML cho báo cáo/chứng từ ── */
+  printTemplates: printTemplatesRouter,
 
   /* -- Nhom nguoi xem (viewer groups) -- phan quyen portal theo nhom -- */
   viewerGroups: viewerGroupsRouter,
