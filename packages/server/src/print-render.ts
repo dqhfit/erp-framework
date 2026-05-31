@@ -23,7 +23,8 @@ function getPath(obj: unknown, path: string): unknown {
 
 /** Render template với data. Hỗ trợ:
  *  - {{#each key}} ... {{field}} / {{this}} / {{@index}} ... {{/each}}
- *  - {{var}} (escape), {{{var}}} (raw) ở cấp ngoài. */
+ *  - {{var}} — LUÔN HTML-escape. KHÔNG hỗ trợ raw ({{{var}}} cũng escape) để
+ *    chặn XSS khi data lẫn input không tin (vd query params route /print). */
 export function renderTemplate(tpl: string, data: Record<string, unknown>): string {
   // 1) Khối {{#each key}}...{{/each}}
   let out = tpl.replace(
@@ -33,23 +34,22 @@ export function renderTemplate(tpl: string, data: Record<string, unknown>): stri
       const rows = Array.isArray(arr) ? arr : [];
       return rows
         .map((item, i) =>
-          body.replace(/\{\{(\{?)\s*([\w.@]+)\s*\}?\}\}/g, (_mm, raw: string, p: string) => {
+          // {{{ }}} vẫn match (để consume, không để lại brace thừa) nhưng vẫn escape.
+          body.replace(/\{\{\{?\s*([\w.@]+)\s*\}?\}\}/g, (_mm, p: string) => {
             let v: unknown;
             if (p === "@index") v = i + 1;
             else if (p === "this") v = item;
             else v = getPath(item, p) ?? getPath(data, p) ?? "";
-            const s = v == null ? "" : String(v);
-            return raw ? s : escapeHtml(s);
+            return escapeHtml(v == null ? "" : String(v));
           }),
         )
         .join("");
     },
   );
-  // 2) Biến cấp ngoài
-  out = out.replace(/\{\{(\{?)\s*([\w.@]+)\s*\}?\}\}/g, (_m, raw: string, p: string) => {
+  // 2) Biến cấp ngoài — luôn escape.
+  out = out.replace(/\{\{\{?\s*([\w.@]+)\s*\}?\}\}/g, (_m, p: string) => {
     const v = getPath(data, p);
-    const s = v == null ? "" : String(v);
-    return raw ? s : escapeHtml(s);
+    return escapeHtml(v == null ? "" : String(v));
   });
   return out;
 }

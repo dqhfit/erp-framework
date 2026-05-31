@@ -69,6 +69,12 @@ export function registerPrintRoutes(app: FastifyInstance, db: DB): void {
 
     const html = renderTemplate(tpl.html, { rows, ...q });
 
+    // CSP defense-in-depth: chặn tài nguyên ngoài (SSRF/exfil). Cho phép inline
+    // style + script (nút In window.print()) vì data đã escape toàn bộ (không
+    // còn vector inject HTML từ rows/query). img chỉ data: (không tải URL ngoài).
+    const CSP =
+      "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'";
+
     if (q.format === "pdf") {
       try {
         const buf = await htmlToPdf(html, {
@@ -85,6 +91,7 @@ export function registerPrintRoutes(app: FastifyInstance, db: DB): void {
           // Fallback: trả HTML để in từ trình duyệt; báo qua header.
           reply
             .header("x-print-fallback", "html-no-chromium")
+            .header("content-security-policy", CSP)
             .type("text/html; charset=utf-8")
             .send(html);
           return;
@@ -93,6 +100,6 @@ export function registerPrintRoutes(app: FastifyInstance, db: DB): void {
       }
     }
 
-    reply.type("text/html; charset=utf-8").send(html);
+    reply.header("content-security-policy", CSP).type("text/html; charset=utf-8").send(html);
   });
 }
