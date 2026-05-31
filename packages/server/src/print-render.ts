@@ -103,7 +103,13 @@ export async function htmlToPdf(html: string, opts: PdfOptions = {}): Promise<Bu
   }
   let browser: PuppeteerBrowser | null = null;
   try {
-    browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    // executablePath: dùng Chromium hệ thống (Docker cài qua apt) nếu set env;
+    // nếu thiếu, Puppeteer tự tìm Chromium bundled (dev cài đầy đủ).
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      ...(executablePath ? { executablePath } : {}),
+    });
     const page = await browser.newPage();
     // Chặn mọi request outbound — chỉ cho phép data: URL và about:blank.
     // Ngăn SSRF nếu template HTML chứa <img>/<script> trỏ vào internal host.
