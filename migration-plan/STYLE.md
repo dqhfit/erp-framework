@@ -47,6 +47,34 @@ Cột bảng MSSQL legacy thường viết tắt. Khi suy tên field/entity, **b
 | `GHI_CHU` | `ghi_chu` | Ghi chú — giữ nguyên |
 | `CT_*` (`CT_DH`) | `chi_tiet_*` (`chi_tiet_don_hang`) | Chi tiết \* — item / line |
 
+### 2b. Thuật ngữ domain DQHF (nội thất / sản xuất gỗ — MES)
+
+Ứng dụng nguồn DQHF là ERP sản xuất nội thất gỗ. Các từ ghép không dấu sau là
+nghiệp vụ chuẩn của team — dùng đúng, KHÔNG dịch theo âm (vd `govan` = "gỗ ván",
+TUYỆT ĐỐI không phải "gò vặn").
+
+| Viết tắt | Full (snake_case không dấu) | Nghĩa (có dấu) |
+|---|---|---|
+| `GOVAN`, `GVA` | `go_van` | Gỗ ván |
+| `DINHMUC`, `DM` | `dinh_muc` | Định mức (norm/BOM) |
+| `HOSO` | `ho_so` | Hồ sơ |
+| `SANXUAT`, `SX` | `san_xuat` | Sản xuất |
+| `QUYTRINH`, `QT` | `quy_trinh` | Quy trình |
+| `BANVE` | `ban_ve` | Bản vẽ |
+| `BAOGIA`, `BG` | `bao_gia` | Báo giá |
+| `NGUYENLIEU`, `NL` | `nguyen_lieu` | Nguyên liệu |
+| `PHATHANH` | `phat_hanh` | Phát hành (ban hành định mức) |
+| `DONGGOI` | `dong_goi` | Đóng gói |
+| `SON` | `son` | Sơn |
+| `VENEER` | `veneer` | Veneer (giữ nguyên) |
+| `NGUKIM`, `NKI` | `ngu_kim` | Ngũ kim (phụ kiện kim loại) |
+| `MASP` | `ma_san_pham` | Mã sản phẩm |
+| `MACT` | `ma_chi_tiet` | Mã chi tiết (cấu kiện) |
+
+**Hậu tố kích thước** (bảng định mức có 2 bộ dày/rộng/dài/khối cho cùng chi tiết):
+- `*_tc` → `*_tinh_che` — kích thước **tinh chế** (thành phẩm, đã gia công). Vd `dayy_tc` → `day_tinh_che`.
+- `*_sc` → `*_so_che` — kích thước **sơ chế** (phôi thô trước gia công).
+
 Khi gặp viết tắt ngoài bảng này, đoán theo ngữ cảnh; nếu không chắc, giữ nguyên lowercase và đánh dấu trong description: `(unknown abbrev: <X>)`.
 
 ## 3. Verb prefix cho procedure tier B

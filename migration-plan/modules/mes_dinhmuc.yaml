@@ -1,0 +1,1255 @@
+module: mes_dinhmuc
+tables:
+  - name: dbo.mes_dinhmuc_govan
+    suggestedEntityName: dinh_muc_go_van
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: int
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: number
+          label: ID
+          description: Khóa chính tự tăng.
+          required: false
+      - name: masp
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_san_pham
+          entityType: relation
+          relationEntity: san_pham
+          label: Mã sản phẩm
+          description: Mã sản phẩm nhà máy, liên kết tới entity sản phẩm.
+          required: false
+      - name: mact
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_chi_tiet
+          entityType: text
+          label: Mã chi tiết
+          description: Mã cấu kiện (chi tiết) trong bộ sản phẩm.
+          required: false
+      - name: stt
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: stt
+          entityType: text
+          label: Số thứ tự
+          description: Mã vị trí/số thứ tự cấu kiện trong bộ sản phẩm (vd A00, A01, A02).
+          required: false
+      - name: chitiet
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: chi_tiet
+          entityType: text
+          label: Chi tiết
+          description: Tên mô tả cấu kiện (vd Chân, Thanh ngang trên, Khung tựa).
+          required: false
+      - name: nguyenlieu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguyen_lieu
+          entityType: text
+          label: Nguyên liệu
+          description: Tên loại nguyên liệu gỗ dùng cho cấu kiện (vd THÔNG, SỒI).
+          required: false
+      - name: dayy_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: day_tinh_che
+          entityType: number
+          label: Dày tinh chế (mm)
+          description: Chiều dày kích thước tinh chế — thành phẩm sau gia công, đơn vị mm.
+          required: false
+      - name: rong_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: rong_tinh_che
+          entityType: number
+          label: Rộng tinh chế (mm)
+          description: Chiều rộng kích thước tinh chế, đơn vị mm.
+          required: false
+      - name: dai_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: dai_tinh_che
+          entityType: number
+          label: Dài tinh chế (mm)
+          description: Chiều dài kích thước tinh chế, đơn vị mm.
+          required: false
+      - name: soluong_tc
+        type: int
+        isNullable: true
+        mapTo:
+          field: so_luong_tinh_che
+          entityType: number
+          label: Số lượng tinh chế
+          description: Số lượng cấu kiện tinh chế cần cho 1 bộ sản phẩm.
+          required: false
+      - name: m3_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: m3_tinh_che
+          entityType: number
+          label: M³ tinh chế
+          description: Thể tích gỗ tinh chế (m³), tính từ dày × rộng × dài × số lượng.
+          required: false
+      - name: m2_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: m2_tinh_che
+          entityType: number
+          label: M² tinh chế
+          description: Diện tích bề mặt tinh chế (m²).
+          required: false
+      - name: dayy_sc
+        type: float
+        isNullable: true
+        mapTo:
+          field: day_so_che
+          entityType: number
+          label: Dày sơ chế (mm)
+          description: Chiều dày kích thước sơ chế — phôi thô trước gia công, đơn vị mm.
+          required: false
+      - name: rong_sc
+        type: float
+        isNullable: true
+        mapTo:
+          field: rong_so_che
+          entityType: number
+          label: Rộng sơ chế (mm)
+          description: Chiều rộng kích thước sơ chế, đơn vị mm.
+          required: false
+      - name: dai_sc
+        type: float
+        isNullable: true
+        mapTo:
+          field: dai_so_che
+          entityType: number
+          label: Dài sơ chế (mm)
+          description: Chiều dài kích thước sơ chế, đơn vị mm.
+          required: false
+      - name: soluong_sc
+        type: int
+        isNullable: true
+        mapTo:
+          field: so_luong_so_che
+          entityType: number
+          label: Số lượng sơ chế
+          description: Số lượng phôi sơ chế cần cắt để đủ số lượng tinh chế sau hao hụt.
+          required: false
+      - name: m3_sc
+        type: float
+        isNullable: true
+        mapTo:
+          field: m3_so_che
+          entityType: number
+          label: M³ sơ chế
+          description: Thể tích gỗ sơ chế (m³), tính từ kích thước phôi × số lượng phôi.
+          required: false
+      - name: ghichu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ghi_chu
+          entityType: text
+          label: Ghi chú
+          description: Ghi chú gia công, mộng, xử lý đặc biệt của cấu kiện (vd Mộng 2 đầu, mỗi đầu 20mm).
+          required: false
+      - name: ngaytao
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: thoi_gian_tao
+          entityType: datetime
+          label: Thời gian tạo
+          description: Thời gian tạo bản ghi, hệ thống tự điền.
+          required: false
+      - name: nguoitao
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguoi_tao
+          entityType: text
+          label: Người tạo
+          description: Tên người nhập định mức.
+          required: false
+      - name: ngaysua
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: thoi_gian_sua
+          entityType: datetime
+          label: Thời gian sửa
+          description: Thời gian cập nhật gần nhất, hệ thống tự điền.
+          required: false
+      - name: nguoisua
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguoi_sua
+          entityType: text
+          label: Người sửa
+          description: Tên người cập nhật định mức gần nhất.
+          required: false
+      - name: hoanthanh
+        type: bit
+        isNullable: true
+        mapTo:
+          field: hoan_thanh
+          entityType: boolean
+          label: Hoàn thành
+          description: Đánh dấu định mức cấu kiện đã được hoàn thiện và sẵn sàng phát hành sản xuất.
+          required: false
+      - name: mong1
+        type: float
+        isNullable: true
+        mapTo:
+          field: mong_1
+          entityType: number
+          label: Mộng đầu 1 (mm)
+          description: Chiều dài mộng đầu thứ nhất của cấu kiện, đơn vị mm.
+          required: false
+      - name: mong2
+        type: float
+        isNullable: true
+        mapTo:
+          field: mong_2
+          entityType: number
+          label: Mộng đầu 2 (mm)
+          description: Chiều dài mộng đầu thứ hai của cấu kiện, đơn vị mm.
+          required: false
+      - name: veneer_matchinh
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: veneer_mat_chinh
+          entityType: text
+          label: Veneer mặt chính
+          description: Loại hoặc mã veneer dán mặt chính của tấm gỗ.
+          required: false
+      - name: veneer_matphu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: veneer_mat_phu
+          entityType: text
+          label: Veneer mặt phụ
+          description: Loại hoặc mã veneer dán mặt phụ (mặt sau) của tấm gỗ.
+          required: false
+      - name: veneer_dan_canh
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: veneer_dan_canh
+          entityType: text
+          label: Veneer dán cạnh
+          description: Loại hoặc mã veneer dán cạnh của tấm gỗ.
+          required: false
+      - name: uv_matchinh
+        type: bit
+        isNullable: true
+        mapTo:
+          field: uv_mat_chinh
+          entityType: boolean
+          label: UV mặt chính
+          description: Có phủ UV trên mặt chính hay không.
+          required: false
+      - name: uv_matphu
+        type: bit
+        isNullable: true
+        mapTo:
+          field: uv_mat_phu
+          entityType: boolean
+          label: UV mặt phụ
+          description: Có phủ UV trên mặt phụ hay không.
+          required: false
+      - name: uv_canhdai
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_canh_dai
+          entityType: number
+          label: UV cạnh dài
+          description: Số lớp hoặc lần phủ UV trên cạnh dài.
+          required: false
+      - name: uv_canhngan
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_canh_ngan
+          entityType: number
+          label: UV cạnh ngắn
+          description: Số lớp hoặc lần phủ UV trên cạnh ngắn.
+          required: false
+      - name: veneer_canhdai
+        type: int
+        isNullable: true
+        mapTo:
+          field: veneer_canh_dai
+          entityType: number
+          label: Veneer cạnh dài
+          description: Số lớp hoặc quy cách veneer dán cạnh dài.
+          required: false
+      - name: veneer_canhngan
+        type: int
+        isNullable: true
+        mapTo:
+          field: veneer_canh_ngan
+          entityType: number
+          label: Veneer cạnh ngắn
+          description: Số lớp hoặc quy cách veneer dán cạnh ngắn.
+          required: false
+      - name: id_nguyenlieu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: id_nguyen_lieu
+          entityType: text
+          label: Mã nguyên liệu
+          description: Mã tra cứu nguyên liệu trong hệ thống (vd THONG, SOI).
+          required: false
+      - name: banve
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ban_ve
+          entityType: text
+          label: Bản vẽ
+          description: Tên hoặc đường dẫn file bản vẽ kỹ thuật của cấu kiện.
+          required: false
+      - name: fsc_100
+        type: bit
+        isNullable: true
+        mapTo:
+          field: fsc_100
+          entityType: boolean
+          label: FSC 100%
+          description: Nguyên liệu đạt chứng nhận FSC 100% (toàn bộ từ rừng được quản lý).
+          required: false
+      - name: fsc_mix
+        type: bit
+        isNullable: true
+        mapTo:
+          field: fsc_mix
+          entityType: boolean
+          label: FSC Mix
+          description: Nguyên liệu đạt chứng nhận FSC Mix (pha trộn nguồn được chứng nhận và kiểm soát).
+          required: false
+      - name: fsc_cw
+        type: bit
+        isNullable: true
+        mapTo:
+          field: fsc_cw
+          entityType: boolean
+          label: FSC Controlled Wood
+          description: Nguyên liệu đạt chứng nhận FSC Controlled Wood (gỗ nguồn kiểm soát).
+          required: false
+      - name: uv_matchinh1
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_mat_chinh_so_lan
+          entityType: number
+          label: UV mặt chính (số lần)
+          description: Số lần phủ UV mặt chính (dạng số nguyên, bổ sung cho trường boolean uv_mat_chinh).
+          required: false
+      - name: uv_matphu1
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_mat_phu_so_lan
+          entityType: number
+          label: UV mặt phụ (số lần)
+          description: Số lần phủ UV mặt phụ (dạng số nguyên).
+          required: false
+      - name: uv_canhngan1
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_canh_ngan_so_lan
+          entityType: number
+          label: UV cạnh ngắn (số lần)
+          description: Số lần phủ UV cạnh ngắn (dạng số nguyên, bổ sung cho uv_canh_ngan).
+          required: false
+      - name: uv_canhdai1
+        type: int
+        isNullable: true
+        mapTo:
+          field: uv_canh_dai_so_lan
+          entityType: number
+          label: UV cạnh dài (số lần)
+          description: Số lần phủ UV cạnh dài (dạng số nguyên, bổ sung cho uv_canh_dai).
+          required: false
+      - name: fsc_recycled
+        type: bit
+        isNullable: true
+        mapTo:
+          field: fsc_recycled
+          entityType: boolean
+          label: FSC Recycled
+          description: Nguyên liệu đạt chứng nhận FSC Recycled (gỗ tái chế có chứng nhận).
+          required: false
+      - name: non_fsc
+        type: bit
+        isNullable: true
+        mapTo:
+          field: non_fsc
+          entityType: boolean
+          label: Non-FSC
+          description: Nguyên liệu không có bất kỳ chứng nhận FSC nào.
+          required: false
+      - name: fsc_id
+        type: int
+        isNullable: true
+        mapTo:
+          field: fsc_id
+          entityType: number
+          label: ID chứng nhận FSC
+          description: Mã số chứng nhận FSC liên kết với lô nguyên liệu.
+          required: false
+      - name: uv_code
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: uv_code
+          entityType: text
+          label: Mã UV
+          description: Mã quy trình phủ UV áp dụng cho cấu kiện.
+          required: false
+      - name: cnc_file
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: cnc_file
+          entityType: text
+          label: File CNC
+          description: Tên hoặc đường dẫn file chương trình CNC gia công cấu kiện.
+          required: false
+      - name: dim_file
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: dim_file
+          entityType: text
+          label: File kích thước
+          description: Tên hoặc đường dẫn file kích thước chi tiết (dimension file).
+          required: false
+      - name: pcode
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: pcode
+          entityType: text
+          label: Mã phôi
+          description: Mã phôi (panel code) liên kết với quy hoạch cắt phôi.
+          required: false
+      - name: phoi_tructiep
+        type: bit
+        isNullable: true
+        mapTo:
+          field: phoi_truc_tiep
+          entityType: boolean
+          label: Phôi trực tiếp
+          description: Đánh dấu cấu kiện được cắt trực tiếp từ phôi, không qua bước sơ chế riêng.
+          required: false
+    inferredRelations:
+      - column: masp
+        refTable: b
+        refColumn: masp_nhamay
+        sourceProc: dbo.mes_dinhmuc_govan_create
+      - column: masp
+        refTable: dbo.tr_baogia3_govan
+        refColumn: masp
+        sourceProc: dbo.tr_baogia3_govan_create
+    label: Định mức gỗ ván
+    description: Định mức (BOM) chi tiết cấu kiện gỗ ván cho từng sản phẩm. Mỗi dòng là 1 cấu kiện với kích thước tinh chế, sơ chế và thông tin veneer/UV/FSC.
+    suggestedKind: entity
+  - name: dbo.mes_dinhmuc_govan_ghichu
+    suggestedEntityName: dinh_muc_go_van_ghi_chu
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: uniqueidentifier
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: text
+      - name: masp_nhamay
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: ma_san_pham_nha_may
+          entityType: text
+          label: Mã sản phẩm nhà máy
+          description: Mã sản phẩm theo hệ thống nhà máy.
+          required: true
+      - name: masp_mausac
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_san_pham_mau_sac
+          entityType: text
+          label: Mã màu sắc sản phẩm
+          description: Mã màu sắc hoặc mã vật liệu bề mặt áp dụng cho sản phẩm.
+          required: false
+      - name: mact
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_chi_tiet
+          entityType: text
+          label: Mã chi tiết
+          description: Mã cấu kiện chi tiết trong định mức gỗ ván.
+          required: false
+      - name: ghichu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ghi_chu
+          entityType: text
+          label: Ghi chú
+          description: Ghi chú kỹ thuật cho chi tiết định mức, ví dụ yêu cầu dán veneer, viền cạnh hoặc gia công mộng.
+          required: false
+    label: Ghi chú định mức gỗ ván
+    description: Ghi chú bổ sung cho định mức gỗ ván theo từng chi tiết và mã sản phẩm. Mỗi bản ghi tương ứng với một chi tiết cấu kiện trong định mức.
+    suggestedKind: entity
+  - name: dbo.mes_hoso_dinhmuc_govan
+    suggestedEntityName: ho_so_dinh_muc_go_van
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: uniqueidentifier
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: text
+      - name: mahoso
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_ho_so
+          entityType: relation
+          relationEntity: ho_so_san_xuat
+          label: Mã hồ sơ
+          description: Liên kết tới hồ sơ sản xuất chứa định mức này.
+          required: false
+      - name: madonhang
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_don_hang
+          entityType: text
+          label: Mã đơn hàng
+          description: Mã đơn hàng mà định mức này thuộc về.
+          required: false
+      - name: masp
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_san_pham
+          entityType: text
+          label: Mã sản phẩm
+          description: Mã sản phẩm cần sản xuất.
+          required: false
+      - name: mact
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ma_chi_tiet
+          entityType: text
+          label: Mã chi tiết
+          description: Mã cấu kiện / chi tiết trong sản phẩm.
+          required: false
+      - name: stt
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: so_thu_tu
+          entityType: text
+          label: Số thứ tự
+          description: Số thứ tự của chi tiết trong danh sách định mức.
+          required: false
+      - name: tenct
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ten_chi_tiet
+          entityType: text
+          label: Tên chi tiết
+          description: Tên cấu kiện / chi tiết cần gia công.
+          required: false
+      - name: nguyenlieu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguyen_lieu
+          entityType: text
+          label: Nguyên liệu
+          description: Loại nguyên liệu gỗ ván sử dụng cho chi tiết này.
+          required: false
+      - name: dayy_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: day_tinh_che
+          entityType: number
+          label: Dày tinh chế (mm)
+          description: Chiều dày kích thước tinh chế của chi tiết sau gia công.
+          required: false
+      - name: rong_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: rong_tinh_che
+          entityType: number
+          label: Rộng tinh chế (mm)
+          description: Chiều rộng kích thước tinh chế của chi tiết sau gia công.
+          required: false
+      - name: dai_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: dai_tinh_che
+          entityType: number
+          label: Dài tinh chế (mm)
+          description: Chiều dài kích thước tinh chế của chi tiết sau gia công.
+          required: false
+      - name: soluong_tc
+        type: int
+        isNullable: true
+        mapTo:
+          field: so_luong_tinh_che
+          entityType: number
+          label: Số lượng tinh chế
+          description: Số lượng chi tiết tinh chế cần sản xuất cho 1 sản phẩm.
+          required: false
+      - name: m3_tc
+        type: float
+        isNullable: true
+        mapTo:
+          field: khoi_luong_m3_tinh_che
+          entityType: number
+          label: Khối lượng m³ tinh chế
+          description: Thể tích gỗ tinh chế (m³) tính cho 1 chi tiết.
+          required: false
+      - name: soluong_donhang
+        type: int
+        isNullable: true
+        mapTo:
+          field: so_luong_don_hang
+          entityType: number
+          label: Số lượng đơn hàng
+          description: Số lượng sản phẩm cần sản xuất theo đơn hàng.
+          required: false
+      - name: ghichu
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: ghi_chu
+          entityType: text
+          label: Ghi chú
+          description: Ghi chú thêm cho dòng định mức này.
+          required: false
+      - name: ngaytao
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: thoi_gian_tao
+          entityType: datetime
+          label: Thời gian tạo
+          description: Thời điểm tạo bản ghi, hệ thống tự ghi.
+          required: false
+      - name: nguoitao
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguoi_tao
+          entityType: text
+          label: Người tạo
+          description: Tài khoản tạo bản ghi định mức.
+          required: false
+      - name: ngaysua
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: thoi_gian_sua
+          entityType: datetime
+          label: Thời gian sửa
+          description: Thời điểm cập nhật gần nhất, hệ thống tự ghi.
+          required: false
+      - name: nguoisua
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: nguoi_sua
+          entityType: text
+          label: Người sửa
+          description: Tài khoản thực hiện cập nhật gần nhất.
+          required: false
+    inferredRelations:
+      - column: mahoso
+        refTable: dbo.mes_hoso_sanxuat
+        refColumn: mahoso
+        sourceProc: dbo.mes_hoso_dinhmuc_govan_getbysanpham
+    label: Hồ sơ định mức gỗ ván
+    description: Định mức vật liệu gỗ ván cho từng chi tiết sản phẩm trong hồ sơ sản xuất. Mỗi dòng chứa kích thước tinh chế và số lượng cần dùng theo đơn hàng.
+    suggestedKind: entity
+procs:
+  - name: dbo.mes_dinhmuc_copy
+    reads: []
+    writes: []
+    flags:
+      - calls-other-proc
+    suggestedTier: B
+    callsProcs:
+      - dbo.mes_dinhmuc_donggoi_copy
+      - dbo.mes_dinhmuc_govan_copy
+      - dbo.mes_dinhmuc_ngukim_copy
+      - dbo.mes_dinhmuc_veneer_copy
+    targetProcName: sao_chep_dinh_muc
+    label: Sao chép định mức
+    description: Sao chép định mức BOM từ một sản phẩm nguồn sang sản phẩm đích theo loại BOM (gỗ ván, ngũ kim, đóng gói, veneer). Điều phối sang proc con tương ứng với từng loại BOM.
+    tierReason: Proc ngắn, chỉ dispatch sang proc con theo loại BOM bằng IF/ELSE, không có SQL trực tiếp hay aggregate phức tạp.
+  - name: dbo.mes_dinhmuc_govan_copy
+    reads:
+      - dbo.cur
+      - dbo.cur_ghichu
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_dinhmuc_govan_ghichu
+      - dbo.tr_sanpham
+    writes:
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_dinhmuc_govan_ghichu
+      - dbo.mes_quytrinh_sanpham
+    flags:
+      - has-transaction
+      - has-try-catch
+      - has-cursor
+      - has-while
+      - writes-multi-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/sao_chep_dinh_muc_go_van.ts
+    label: Sao chép định mức gỗ ván
+    description: Sao chép toàn bộ định mức gỗ ván (bao gồm kích thước tinh chế, sơ chế, veneer, UV, bản vẽ) từ một mã sản phẩm nguồn sang mã sản phẩm đích. Ghi chú định mức được nhân bản theo từng màu sắc của sản phẩm đích.
+    tierReason: Sử dụng CURSOR lồng nhau (CUR và CUR_GHICHU) để duyệt và nhân bản ghi chú theo màu sắc, kết hợp xóa và ghi nhiều bảng trong một transaction — logic phức tạp, không thể thực hiện trong sandbox tier B.
+  - name: dbo.mes_dinhmuc_govan_create
+    reads:
+      - dbo.cur
+      - dbo.fn_split
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_dinhmuc_govan_ghichu
+      - dbo.tr_sanpham
+    writes: []
+    flags:
+      - has-cursor
+      - has-while
+      - has-temp-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/lay_dinh_muc_go_van_theo_san_pham.ts
+    label: Lấy định mức gỗ ván theo sản phẩm và màu sắc
+    description: Lấy danh sách định mức gỗ ván của một sản phẩm nhà máy theo các màu sắc được chọn, kết hợp ghi chú tùy chỉnh nếu có. Kết quả trả về đầy đủ thông tin kích thước tinh chế, sơ chế, veneer, UV và phôi trực tiếp.
+    tierReason: "Sử dụng CURSOR duyệt nhiều màu sắc, bảng tạm #DINHMUC, hàm split tùy chỉnh và LEFT JOIN phức tạp — vượt quá khả năng của Tier B sandbox."
+  - name: dbo.mes_dinhmuc_govan_deleteall
+    reads: []
+    writes:
+      - dbo.mes_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: xoa_tat_ca_dinh_muc_go_van_theo_san_pham
+    label: Xóa toàn bộ định mức gỗ ván theo sản phẩm
+    description: Xóa tất cả định mức gỗ ván của một sản phẩm theo mã sản phẩm. Thao tác xóa hàng loạt, không thể hoàn tác.
+    tierReason: "Câu lệnh đơn giản: xóa nhiều dòng trên 1 bảng theo điều kiện mã sản phẩm, không có JOIN hay logic phức tạp."
+  - name: dbo.mes_dinhmuc_govan_deletebyid
+    reads:
+      - dbo.mes_dinhmuc_govan
+    writes:
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+    flags:
+      - writes-multi-table
+    suggestedTier: B
+    targetProcName: xoa_dinh_muc_go_van
+    label: Xóa định mức gỗ ván
+    description: Xóa một bản ghi định mức gỗ ván theo id. Trước khi xóa, vô hiệu hóa (active = 0) tất cả quy trình sản phẩm liên quan cùng mã sản phẩm và mã chi tiết.
+    tierReason: Parser báo D vì ghi nhiều bảng, nhưng logic chỉ gồm 1 SELECT lấy khóa, 1 UPDATE soft-delete và 1 DELETE — dưới 30 dòng, không có CTE/WINDOW/aggregate, phù hợp tier B với db.tx ngắn.
+  - name: dbo.mes_dinhmuc_govan_getall
+    reads:
+      - dbo.mes_dinhmuc_govan
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_dinh_muc_go_van_theo_san_pham
+    label: Lấy định mức gỗ ván theo sản phẩm
+    description: Lấy danh sách định mức gỗ ván của một sản phẩm theo mã sản phẩm, bỏ qua các chi tiết có mã '000'. Kết quả được sắp xếp theo số thứ tự.
+    tierReason: Truy vấn đơn giản trên một bảng, không có aggregate hay CTE phức tạp, phù hợp chạy trong JS sandbox.
+  - name: dbo.mes_dinhmuc_govan_getall2
+    reads:
+      - dbo.mes_dinhmuc_govan
+    writes: []
+    flags:
+      - has-temp-table
+    suggestedTier: B
+    targetProcName: lay_dinh_muc_go_van_theo_ma_san_pham
+    label: Lấy định mức gỗ ván theo sản phẩm
+    description: Lấy toàn bộ dòng định mức gỗ ván của một sản phẩm theo mã sản phẩm, bao gồm kích thước tinh chế, sơ chế, thông tin veneer, UV và FSC. Loại trừ các chi tiết có mã '000' và sắp xếp theo số thứ tự.
+    tierReason: Chỉ đọc một bảng duy nhất (mes_dinhmuc_govan), bảng tạm chỉ để lọc/sắp xếp trung gian, không có aggregate phức tạp hay CTE/WINDOW. Logic đơn giản, phù hợp tier B.
+  - name: dbo.mes_dinhmuc_govan_getbyct
+    reads:
+      - dbo.mes_dinhmuc_govan
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_dinh_muc_go_van_theo_chi_tiet
+    label: Lấy định mức gỗ ván theo chi tiết
+    description: Lấy bản ghi định mức gỗ ván theo mã sản phẩm và mã chi tiết. Trả về toàn bộ thông tin định mức của cấu kiện trong sản phẩm chỉ định.
+    tierReason: Proc đơn giản, chỉ SELECT 1 bảng với 2 điều kiện WHERE, không có JOIN hay aggregate, phù hợp chạy trong JS sandbox.
+  - name: dbo.mes_dinhmuc_govan_getbyid
+    reads:
+      - dbo.mes_dinhmuc_govan
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_dinh_muc_go_van_theo_id
+    label: Lấy định mức gỗ ván theo ID
+    description: Lấy thông tin chi tiết một bản ghi định mức gỗ ván theo ID. Dùng để tra cứu định mức trong quy trình sản xuất nội thất.
+    tierReason: Truy vấn đơn giản một bảng theo khóa chính, không có JOIN hay aggregate, phù hợp tier B.
+  - name: dbo.mes_dinhmuc_govan_ghichu_create
+    reads:
+      - dbo.mes_dinhmuc_govan_ghichu
+    writes:
+      - dbo.mes_dinhmuc_govan_ghichu
+    flags: []
+    suggestedTier: B
+    targetProcName: tao_hoac_cap_nhat_ghi_chu_dinh_muc_go_van
+    label: Tạo hoặc cập nhật ghi chú định mức gỗ ván
+    description: Lưu ghi chú cho một chi tiết trong định mức gỗ ván theo mã sản phẩm nhà máy, mã màu sắc và mã chi tiết. Nếu bản ghi đã tồn tại thì cập nhật ghi chú, ngược lại tạo mới.
+    tierReason: Thao tác upsert đơn giản trên 1 bảng, không có CTE hay aggregate, dưới 50 dòng T-SQL.
+  - name: dbo.mes_dinhmuc_govan_ghichu_delete
+    reads: []
+    writes:
+      - dbo.mes_dinhmuc_govan_ghichu
+    flags: []
+    suggestedTier: B
+    targetProcName: xoa_ghi_chu_dinh_muc_go_van
+    label: Xóa ghi chú định mức gỗ ván
+    description: Xóa ghi chú định mức gỗ ván theo mã sản phẩm nhà máy và mã chi tiết. Xóa toàn bộ bản ghi khớp cả hai điều kiện.
+    tierReason: Xóa đơn giản trên 1 bảng với 2 điều kiện WHERE, không có CTE hay aggregate, phù hợp Tier B.
+  - name: dbo.mes_dinhmuc_govan_ghichu_get
+    reads:
+      - dbo.mes_dinhmuc_govan_ghichu
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ghi_chu_dinh_muc_go_van
+    label: Lấy ghi chú định mức gỗ ván
+    description: Lấy danh sách ghi chú trong định mức gỗ ván theo mã sản phẩm nhà máy, mã màu sắc và mã chi tiết.
+    tierReason: Truy vấn đơn giản single-table, không có aggregate hay CTE, phù hợp tier B.
+  - name: dbo.mes_dinhmuc_govan_ghichu_getall
+    reads:
+      - dbo.mes_dinhmuc_govan_ghichu
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ghi_chu_dinh_muc_go_van_theo_ma_san_pham
+    label: Lấy ghi chú định mức gỗ ván theo mã sản phẩm
+    description: Lấy toàn bộ ghi chú của định mức gỗ ván theo mã sản phẩm nhà máy. Dùng để hiển thị chú thích kèm theo định mức trong hồ sơ sản xuất.
+    tierReason: Truy vấn đơn giản single-table SELECT với 1 điều kiện lọc, không có aggregate hay CTE, phù hợp chạy trong JS sandbox.
+  - name: dbo.mes_dinhmuc_govan_ghichu_getall2
+    reads:
+      - dbo.mes_dinhmuc_govan_ghichu
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ghi_chu_dinh_muc_go_van_theo_san_pham
+    label: Lấy ghi chú định mức gỗ ván theo sản phẩm
+    description: Lấy toàn bộ ghi chú định mức gỗ ván của một sản phẩm theo mã nhà máy và mã màu sắc.
+    tierReason: Truy vấn đơn giản SELECT trên một bảng với 2 điều kiện lọc, không có aggregate hay CTE.
+  - name: dbo.mes_dinhmuc_govan_insert
+    reads:
+      - dbo.tr_nguyenlieu_gva
+    writes:
+      - dbo.mes_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: tao_dinh_muc_go_van
+    label: Tạo định mức gỗ ván
+    description: Tạo mới một dòng định mức gỗ ván cho chi tiết sản phẩm, bao gồm kích thước tinh chế và sơ chế, thông tin veneer, UV, chứng chỉ FSC. Nếu truyền id_nguyenlieu thì tự tra tên nguyên liệu từ bảng danh mục trước khi insert.
+    tierReason: Chỉ có một lần lookup đơn giản rồi insert vào một bảng duy nhất, không có CTE hay aggregate phức tạp, dưới 100 dòng T-SQL.
+  - name: dbo.mes_dinhmuc_govan_phathanh
+    reads:
+      - dbo.cur
+      - dbo.fn_split
+      - dbo.mes_dinhmuc_govan
+      - dbo.tr_sanpham
+    writes:
+      - dbo.tr_dinhmuc_govan
+    flags:
+      - has-cursor
+      - has-while
+      - has-temp-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/phat_hanh_dinh_muc_go_van.ts
+    label: Phát hành định mức gỗ ván
+    description: Sao chép định mức gỗ ván từ sản phẩm nhà máy sang danh sách sản phẩm theo mã màu, đánh dấu hoàn thành và ghi vào bảng thực tế. Thao tác xóa toàn bộ định mức cũ của sản phẩm trước khi chèn mới, đảm bảo đồng bộ định mức tinh chế và sơ chế.
+    tierReason: Có CURSOR lặp qua nhiều sản phẩm, dùng bảng tạm, DELETE rồi INSERT hàng loạt — logic phức tạp, nhiều bước ghi không thể thực hiện trong sandbox Tier B.
+  - name: dbo.mes_dinhmuc_govan_update
+    reads:
+      - dbo.mes_quytrinh_sanpham
+      - dbo.tr_nguyenlieu_gva
+    writes:
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+    flags:
+      - writes-multi-table
+    suggestedTier: B
+    targetProcName: cap_nhat_dinh_muc_go_van
+    label: Cập nhật định mức gỗ ván
+    description: Cập nhật thông tin định mức gỗ ván cho một chi tiết sản phẩm, bao gồm kích thước tinh chế, sơ chế, nguyên liệu, veneer, UV và chứng chỉ FSC. Đồng thời đồng bộ kích thước tinh chế sang bảng quy trình sản phẩm nếu bản ghi tương ứng đã tồn tại.
+    tierReason: "Ghi 2 bảng nhưng logic đơn giản: 1 UPDATE chính + 1 UPDATE có điều kiện EXISTS, không có CTE hay aggregate phức tạp, dưới 100 dòng T-SQL thực thi."
+  - name: dbo.mes_dinhmuc_govan_update_cnc
+    reads: []
+    writes:
+      - dbo.mes_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: cap_nhat_file_cnc_dinh_muc_go_van
+    label: Cập nhật file CNC định mức gỗ ván
+    description: Cập nhật đường dẫn file CNC cho một chi tiết trong định mức gỗ ván theo mã sản phẩm và mã chi tiết.
+    tierReason: Proc đơn giản, chỉ UPDATE 1 bảng với điều kiện WHERE trực tiếp, không có logic phức tạp.
+  - name: dbo.mes_dinhmuc_govan_update_dim
+    reads: []
+    writes:
+      - dbo.mes_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: cap_nhat_kich_thuoc_dinh_muc_go_van
+    label: Cập nhật kích thước định mức gỗ ván
+    description: Cập nhật trường kích thước (dim_file) của một chi tiết trong định mức gỗ ván theo mã sản phẩm và mã chi tiết.
+    tierReason: Thao tác UPDATE đơn giản trên một bảng, không có CTE hay aggregate, dưới 20 dòng T-SQL.
+  - name: dbo.mes_dinhmuc_govan_update_status
+    reads: []
+    writes:
+      - dbo.mes_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: cap_nhat_trang_thai_dinh_muc_go_van
+    label: Cập nhật trạng thái định mức gỗ ván
+    description: Đánh dấu hoàn thành cho một dòng định mức gỗ ván theo mã sản phẩm và mã chi tiết.
+    tierReason: Cập nhật đơn giản một trường trên một bảng, không có CTE hay aggregate, dưới 20 dòng T-SQL.
+  - name: dbo.mes_hoso_dinhmuc_govan_create
+    reads:
+      - dbo.cur
+      - dbo.mes_hoso_dinhmuc_govan
+      - dbo.tr_dinhmuc_govan
+    writes:
+      - dbo.mes_hoso_dinhmuc_govan
+      - dbo.set
+    flags:
+      - has-cursor
+      - has-while
+      - has-merge
+      - writes-multi-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/tao_ho_so_dinh_muc_go_van.ts
+    label: Tạo hồ sơ định mức gỗ ván
+    description: Tạo hoặc cập nhật hồ sơ định mức gỗ ván cho một sản phẩm trong đơn hàng bằng cách đồng bộ dữ liệu từ bảng định mức gốc. Các chi tiết không còn tồn tại trong định mức gốc sẽ bị xóa khỏi hồ sơ.
+    tierReason: Proc sử dụng MERGE kết hợp CURSOR với vòng lặp WHILE để xóa các chi tiết lỗi thời — logic đa bước phức tạp, không phù hợp với isolated-vm tier B. Cần Drizzle transaction toàn phần trong plugin TS.
+  - name: dbo.mes_hoso_dinhmuc_govan_getbydonhang
+    reads:
+      - dbo.mes_hoso_dinhmuc_govan
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ho_so_dinh_muc_go_van_theo_don_hang
+    label: Lấy định mức gỗ ván theo đơn hàng
+    description: Lấy danh sách định mức gỗ ván trong hồ sơ định mức theo mã hồ sơ và mã đơn hàng. Kết quả được sắp xếp theo đơn hàng, mã sản phẩm và số thứ tự.
+    tierReason: Truy vấn đơn giản một bảng, không có JOIN hay aggregate, chỉ SELECT với WHERE và ORDER BY.
+  - name: dbo.mes_hoso_dinhmuc_govan_getbyhoso
+    reads:
+      - dbo.mes_hoso_dinhmuc_govan
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ho_so_dinh_muc_go_van_theo_ho_so
+    label: Lấy định mức gỗ ván theo hồ sơ
+    description: Lấy danh sách định mức gỗ ván thuộc một hồ sơ định mức theo mã hồ sơ. Kết quả được sắp xếp theo đơn hàng, sản phẩm và số thứ tự cấu kiện.
+    tierReason: Truy vấn đơn giản single-table, không có CTE hay aggregate phức tạp, dưới 10 dòng T-SQL.
+  - name: dbo.mes_hoso_dinhmuc_govan_getbysanpham
+    reads:
+      - dbo.mes_hoso_dinhmuc_govan
+      - dbo.mes_hoso_sanxuat
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_ho_so_dinh_muc_go_van_theo_san_pham
+    label: Lấy định mức gỗ ván theo sản phẩm
+    description: Lấy danh sách định mức gỗ ván trong hồ sơ sản xuất theo mã hồ sơ, mã đơn hàng và mã sản phẩm. Kết quả kèm ngày phát hành từ hồ sơ sản xuất, sắp xếp theo số thứ tự.
+    tierReason: Truy vấn đơn giản JOIN 2 bảng với điều kiện lọc, không có CTE hay GROUP BY phức tạp, phù hợp tier B.
+  - name: dbo.mes_hoso_dinhmuc_govan_insert
+    reads: []
+    writes:
+      - dbo.mes_hoso_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: tao_ho_so_dinh_muc_go_van
+    label: Tạo định mức gỗ ván
+    description: Thêm mới một dòng định mức gỗ ván (kích thước tinh chế) vào hồ sơ định mức của đơn hàng. Mỗi dòng gắn với một chi tiết sản phẩm cụ thể trong đơn hàng.
+    tierReason: Single-table INSERT đơn giản, không có CTE hay aggregate, dưới 100 dòng T-SQL — phù hợp chạy trong isolated-vm.
+  - name: dbo.mes_hoso_dinhmuc_govan_update
+    reads: []
+    writes:
+      - dbo.mes_hoso_dinhmuc_govan
+    flags: []
+    suggestedTier: B
+    targetProcName: cap_nhat_ho_so_dinh_muc_go_van
+    label: Cập nhật hồ sơ định mức gỗ ván
+    description: Cập nhật thông tin chi tiết cấu kiện trong hồ sơ định mức gỗ ván theo id. Bao gồm kích thước tinh chế, số lượng, nguyên liệu và người sửa.
+    tierReason: Single-table UPDATE đơn giản, không có CTE hay aggregate, body dưới 50 dòng T-SQL.
+  - name: dbo.mes_quytrinh_sanpham_copy
+    reads:
+      - dbo.cur
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+    writes:
+      - dbo.mes_quytrinh_sanpham
+    flags:
+      - has-transaction
+      - has-try-catch
+      - has-cursor
+      - has-while
+      - has-temp-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/sao_chep_quy_trinh_san_pham.ts
+    label: Sao chép quy trình sản phẩm
+    description: Sao chép toàn bộ quy trình sản xuất từ một sản phẩm nguồn sang sản phẩm đích, xóa quy trình cũ và upsert từng bước dựa trên định mức gỗ ván. Dùng cursor để duyệt từng bước quy trình trong transaction.
+    tierReason: Dùng CURSOR lặp qua nhiều bản ghi với logic upsert phức tạp (DELETE + INSERT + UPDATE theo nhiều điều kiện lồng nhau), có temp table và transaction — vượt quá giới hạn Tier B.
+  - name: dbo.mes_quytrinh_sanpham_demo
+    reads:
+      - dbo.fn_split
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.tr_sanpham_nhamay
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+    targetProcName: lay_quy_trinh_san_pham_theo_chi_tiet
+    label: Lấy quy trình sản xuất theo chi tiết sản phẩm
+    description: "Trả về định mức gỗ ván và quy trình sản xuất của một hoặc nhiều chi tiết (mã chi tiết phân cách dấu phẩy) cho một sản phẩm. Kết quả gồm hai tập: thông tin định mức kích thước tinh chế/sơ chế và danh sách bước quy trình kèm tên khu vực sản xuất."
+    tierReason: Chỉ đọc dữ liệu từ nhiều bảng với JOIN đơn giản, không có CTE hay WINDOW function, dưới 100 dòng T-SQL. Parser heuristic đề xuất B là đúng.
+  - name: dbo.mes_quytrinh_sanpham_demo2
+    reads:
+      - dbo.fn_split
+      - dbo.mes_danhsach_maymoc
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.tr_sanpham_nhamay
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/lay_quy_trinh_san_pham_theo_ma.ts
+    label: Lấy quy trình sản phẩm theo mã
+    description: "Lấy thông tin định mức gỗ ván và quy trình sản xuất của các chi tiết sản phẩm theo mã sản phẩm và danh sách mã chi tiết. Trả về 2 tập dữ liệu: thông tin phôi (kích thước tinh chế/sơ chế) và các bước quy trình kèm yêu cầu chất lượng, kỹ thuật, máy móc."
+    tierReason: Proc trả về 2 result set độc lập với nhiều JOIN phức tạp (5 bảng trong query thứ hai), dùng hàm tách chuỗi fn_Split, tính toán chuỗi quy cách tinh chế/sơ chế bằng CASE+CONCAT+FORMAT — vượt quá khả năng tier B sandbox.
+  - name: dbo.mes_quytrinh_sanpham_getbysp
+    reads:
+      - dbo.mes_dinhmuc_govan
+      - dbo.mes_quytrinh_sanpham
+    writes: []
+    flags:
+      - has-group-by
+      - has-temp-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/lay_quy_trinh_san_pham_theo_ma.ts
+    label: Lấy quy trình sản phẩm theo mã
+    description: Lấy danh sách quy trình sản xuất của từng chi tiết (cấu kiện) thuộc một sản phẩm, xoay pivot tối đa 20 bước quy trình thành cột ngang. Kết quả kết hợp từ định mức gỗ ván và bảng quy trình sản phẩm, chỉ lấy các bản ghi còn active.
+    tierReason: Dùng GROUP BY kết hợp pivot động (MAX/CASE WHEN buoc = 1..20), temp table, và RIGHT JOIN hai bảng — đây là aggregate phức tạp phù hợp plugin TS với Drizzle raw SQL.
+  - name: dbo.tr_baogia3_govan_create
+    reads:
+      - dbo.mes_dinhmuc_govan
+      - dbo.tr_baogia3_govan
+    writes: []
+    flags:
+      - has-temp-table
+    suggestedTier: B
+    targetProcName: lay_bao_gia_dinh_muc_go_van_theo_san_pham
+    label: Lấy dữ liệu báo giá gỗ ván theo sản phẩm
+    description: Lấy danh sách chi tiết định mức gỗ ván của một sản phẩm, kết hợp với thông tin giá phôi và đơn giá nguyên liệu từ báo giá gỗ ván (nếu đã có). Dùng để khởi tạo dữ liệu hiển thị trên màn hình báo giá gỗ ván lần 3.
+    tierReason: Chỉ đọc dữ liệu từ 2 bảng với LEFT JOIN đơn giản, không ghi dữ liệu, không có logic tính toán phức tạp hay CTE. Bảng tạm chỉ dùng để tạo cấu trúc rỗng cho LEFT JOIN — logic đơn giản, phù hợp tier B.
+  - name: dbo.tr_dinhmuc_govan_clean
+    reads:
+      - dbo.cur
+      - dbo.cur1
+      - dbo.fn_split
+      - dbo.mes_dinhmuc_govan
+      - dbo.tr_dinhmuc_govan
+      - dbo.tr_sanpham
+    writes:
+      - dbo.tr_dinhmuc_govan
+    flags:
+      - has-cursor
+      - has-while
+      - has-temp-table
+    suggestedTier: D
+    targetFile: packages/plugins/module-mes_dinhmuc/xoa_dinh_muc_go_van_thua.ts
+    label: Dọn dẹp định mức gỗ ván thừa
+    description: Xóa các chi tiết định mức gỗ ván trong bảng thực tế không còn tồn tại trong định mức chuẩn (mes_dinhmuc_govan) của sản phẩm nhà máy. Áp dụng cho danh sách sản phẩm lọc theo mã nhà máy và màu sắc được truyền vào.
+    tierReason: Proc dùng 2 CURSOR lồng nhau với temp table, xử lý DELETE từng dòng theo logic diff giữa định mức chuẩn và định mức thực tế — logic phức tạp, không thể map sang tier B sandbox.
+crossModuleEdges:
+  - proc: dbo.mes_dinhmuc_govan_copy
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.mes_dinhmuc_govan_copy
+    externalTable: dbo.tr_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_dinhmuc_govan_create
+    externalTable: dbo.tr_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_dinhmuc_govan_deletebyid
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.mes_dinhmuc_govan_insert
+    externalTable: dbo.tr_nguyenlieu_gva
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_dinhmuc_govan_phathanh
+    externalTable: dbo.tr_dinhmuc_govan
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.mes_dinhmuc_govan_phathanh
+    externalTable: dbo.tr_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_dinhmuc_govan_update
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.mes_dinhmuc_govan_update
+    externalTable: dbo.tr_nguyenlieu_gva
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_hoso_dinhmuc_govan_create
+    externalTable: dbo.tr_dinhmuc_govan
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_hoso_dinhmuc_govan_getbysanpham
+    externalTable: dbo.mes_hoso_sanxuat
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_copy
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.mes_quytrinh_sanpham_demo
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo
+    externalTable: dbo.tr_khuvuc_sanxuat
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo
+    externalTable: dbo.tr_sanpham_nhamay
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo
+    externalTable: dbo.trtb_m_op
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo2
+    externalTable: dbo.mes_danhsach_maymoc
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo2
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo2
+    externalTable: dbo.tr_khuvuc_sanxuat
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo2
+    externalTable: dbo.tr_sanpham_nhamay
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_demo2
+    externalTable: dbo.trtb_m_op
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.mes_quytrinh_sanpham_getbysp
+    externalTable: dbo.mes_quytrinh_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.tr_baogia3_govan_create
+    externalTable: dbo.tr_baogia3_govan
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+  - proc: dbo.tr_dinhmuc_govan_clean
+    externalTable: dbo.tr_dinhmuc_govan
+    kind: write
+    suggestedContract: tRPC <module>.<action>({ ... })  // contract gọi module sở hữu
+  - proc: dbo.tr_dinhmuc_govan_clean
+    externalTable: dbo.tr_sanpham
+    kind: read
+    suggestedContract: query qua plugin mssql-bridge trong giai đoạn quá độ
+status:
+  phase: discovered
+  capturedGoldenAt: null
+  scaffoldedAt: null
+  cutoverAt: null
+  retiredAt: null
+discoverParams:
+  seedTables:
+    - MES_DINHMUC_GOVAN
+    - MES_HOSO_DINHMUC_GOVAN
+    - MES_DINHMUC_GOVAN_GHICHU
+  excludeTables:
+    - dqt_pallet_chitiet
+    - dqt_thongke_phoi
+    - mes_danhsach_maymoc
+    - mes_hoso_sanxuat
+    - mes_quytrinh_sanpham
+    - tr_banve
+    - tr_banve_ai
+    - tr_baogia3_govan
+    - tr_dinhmuc_donggoi
+    - tr_dinhmuc_govan
+    - tr_dondathang
+    - tr_dondathang_chitiet
+    - tr_khuvuc_sanxuat
+    - tr_nguyenlieu_gva
+    - tr_order
+    - tr_order_detail
+    - tr_sanpham
+    - tr_sanpham_nhamay
+    - tr_tinhtrang_fsc
+    - trtb_m_op
+    - tr_material
+    - tr_trangthai_sanxuat
+    - tr_dinhmuc_ngukim
+    - tr_dinhmuc_son
+    - tr_pallet
+  maxTables: 6
+  lastRunAt: 2026-05-31T02:17:18.530Z
