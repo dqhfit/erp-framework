@@ -19,12 +19,6 @@ import { rbacProcedure, router } from "./trpc";
 
 /* ── Helpers ── */
 
-const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function getDayName(date: Date): string {
-  return DOW_NAMES[date.getDay()] ?? "Mon";
-}
-
 function daysInMonth(nam: number, thang: number): Date[] {
   const days: Date[] = [];
   const d = new Date(nam, thang - 1, 1);
@@ -194,10 +188,11 @@ export const mesMucTieuSanXuatRouter = router({
     }),
 
   /** Lấy chi tiết hàng ngày, tạo hàng còn thiếu (tương đương CHITIET_CREATE).
+   *  Mutation vì có side-effect INSERT cho ngày còn thiếu.
    *  Trả về mảng 28–31 hàng đã sắp theo ngày. */
-  getOrCreateChitiet: rbacProcedure("view", "entity")
+  getOrCreateChitiet: rbacProcedure("edit", "entity")
     .input(ThangInput)
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { nam, thang, maBoPhan } = input;
       const cid = ctx.user.companyId;
 
@@ -228,7 +223,7 @@ export const mesMucTieuSanXuatRouter = router({
             companyId: cid,
             maCongDoan: maBoPhan,
             ngaythang: d,
-            dayName: getDayName(d),
+            // dayName: GENERATED ALWAYS AS trong DB — không cần set
           })),
         );
       }

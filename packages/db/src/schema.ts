@@ -1795,7 +1795,10 @@ export const mesMucTieuSanXuatChitiet = pgTable(
       .references(() => companies.id, { onDelete: "cascade" }),
     maCongDoan: text("ma_cong_doan").notNull(),
     ngaythang: timestamp("ngaythang", { mode: "date" }).notNull(),
-    dayName: text("day_name"),
+    // day_name: GENERATED ALWAYS AS — luôn đúng, không cần set trong code
+    dayName: text("day_name").generatedAlwaysAs(
+      sql`CASE EXTRACT(DOW FROM ngaythang)::int WHEN 0 THEN 'Sun' WHEN 1 THEN 'Mon' WHEN 2 THEN 'Tue' WHEN 3 THEN 'Wed' WHEN 4 THEN 'Thu' WHEN 5 THEN 'Fri' ELSE 'Sat' END`,
+    ),
     mucTieuSoGio: doublePrecision("muc_tieu_so_gio").notNull().default(0),
     mucTieuSoNguoi: integer("muc_tieu_so_nguoi").notNull().default(0),
     mucTieuTongGioHc: doublePrecision("muc_tieu_tonggio_hc").notNull().default(0),

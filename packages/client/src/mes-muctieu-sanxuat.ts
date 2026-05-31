@@ -105,7 +105,7 @@ export function createMesMucTieuSanXuatClient(baseUrl: string) {
     }) => trpc.mesMucTieuSanXuat.saveThang.mutate(input),
 
     getOrCreateChitiet: (nam: number, thang: number, maBoPhan: string) =>
-      trpc.mesMucTieuSanXuat.getOrCreateChitiet.query({ nam, thang, maBoPhan }) as Promise<
+      trpc.mesMucTieuSanXuat.getOrCreateChitiet.mutate({ nam, thang, maBoPhan }) as Promise<
         MucTieuChitietRow[]
       >,
 
