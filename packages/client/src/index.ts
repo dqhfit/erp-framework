@@ -114,6 +114,14 @@ export {
   type MigrationModuleSummary,
 } from "./migration";
 export {
+  createLegacyMenuClient,
+  type LegacyMenuClient,
+  type LegacyMenuNode,
+  type LegacyMenuNodeDetail,
+  type LegacyMenuResolved,
+  type LegacyMenuStats,
+} from "./legacy-menu";
+export {
   createMssqlConnectionsClient,
   type MssqlConnectionSaveInput,
   type MssqlConnectionView,

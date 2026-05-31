@@ -5275,7 +5275,7 @@ async function openMssqlById(
 }
 
 /** Mở MssqlClient từ default connection của company. Caller PHẢI close. */
-async function openDefaultMssql(db: DB, companyId: string): Promise<MssqlClient> {
+export async function openDefaultMssql(db: DB, companyId: string): Promise<MssqlClient> {
   const [row] = await db
     .select()
     .from(mssqlConnections)

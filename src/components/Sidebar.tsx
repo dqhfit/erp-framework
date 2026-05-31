@@ -1382,6 +1382,22 @@ export function Sidebar() {
               }
             />
             <SidebarItem
+              to="/settings/cockpit"
+              active={pathname === "/settings/cockpit"}
+              icon={<I.Layers size={14} />}
+              collapsed={collapsed}
+              label="Cockpit (menu cũ)"
+              isFavorited={favs.isFav("/settings/cockpit")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/settings/cockpit",
+                  to: "/settings/cockpit",
+                  label: "Cockpit (menu cũ)",
+                  iconName: "Layers",
+                })
+              }
+            />
+            <SidebarItem
               to="/settings/plugins"
               active={pathname === "/settings/plugins"}
               icon={<I.Package size={14} />}

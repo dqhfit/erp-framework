@@ -1,0 +1,102 @@
+/* ==========================================================
+   legacy-menu.ts — Client wrapper cho tRPC legacyMenu.*.
+   Dùng từ UI Cockpit (Settings/Cockpit) để import cây menu app cũ
+   (SYS_MENU_NEW), resolve form→proc/bảng, và port từng mục.
+   ========================================================== */
+
+import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
+export interface LegacyMenuNode {
+  sourceCode: string;
+  name: string | null;
+  level: number | null;
+  winId: string | null;
+  namespace: string | null;
+  active: boolean;
+  isShowDialog: boolean;
+  portStatus: string; // chua | dang | xong
+  module: string | null;
+  pageId: string | null;
+  sort: number;
+  children: LegacyMenuNode[];
+}
+
+export interface LegacyMenuStats {
+  total: number;
+  byStatus: Record<string, number>;
+  forms: number;
+}
+
+export interface LegacyMenuResolved {
+  procs: string[];
+  controls: string[];
+  repos: string[];
+  filesScanned?: number;
+  note?: string;
+}
+
+export interface LegacyMenuNodeDetail {
+  name: string | null;
+  winId: string | null;
+  namespace: string | null;
+  portStatus: string;
+  module: string | null;
+  pageId: string | null;
+  resolved: LegacyMenuResolved | null;
+  resolvedAt: string | null;
+}
+
+export function createLegacyMenuClient(baseUrl: string) {
+  const trpc = createTRPCClient<AppRouter>({
+    links: [
+      httpBatchLink({
+        url: baseUrl.replace(/\/$/, "") + "/trpc",
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
+  });
+  return {
+    /** Import (upsert) toàn bộ SYS_MENU_NEW từ connection MSSQL mặc định. */
+    importFromMssql: () =>
+      trpc.legacyMenu.importFromMssql.mutate() as Promise<{
+        total: number;
+        imported: number;
+        updated: number;
+      }>,
+    /** Cây menu legacy lồng. */
+    listTree: () => trpc.legacyMenu.listTree.query() as Promise<LegacyMenuNode[]>,
+    /** Thống kê tiến độ port. */
+    stats: () => trpc.legacyMenu.stats.query() as Promise<LegacyMenuStats>,
+    /** Resolve source C# (env DQHF_SOURCE_DIR) → procs/controls/repos mỗi node. */
+    resolveFromSource: () =>
+      trpc.legacyMenu.resolveFromSource.mutate() as Promise<{
+        totalForms: number;
+        resolved: number;
+        withProcs: number;
+        noForm: number;
+      }>,
+    /** Chi tiết resolve 1 node. */
+    getResolved: (sourceCode: string) =>
+      trpc.legacyMenu.getResolved.query({ sourceCode }) as Promise<LegacyMenuNodeDetail | null>,
+    /** Port 1 mục: procs → bảng → discover scoped → portStatus=dang. */
+    portNode: (sourceCode: string, opts: { module?: string; maxTables?: number } = {}) =>
+      trpc.legacyMenu.portNode.mutate({ sourceCode, ...opts }) as Promise<{
+        module: string;
+        jobId: string;
+        seedTables: string[];
+      }>,
+    /** Đổi trạng thái port thủ công. */
+    setPortStatus: (
+      sourceCode: string,
+      status: "chua" | "dang" | "xong",
+      opts: { module?: string; pageId?: string } = {},
+    ) =>
+      trpc.legacyMenu.setPortStatus.mutate({ sourceCode, status, ...opts }) as Promise<{
+        ok: true;
+        status: string;
+      }>,
+  };
+}
+
+export type LegacyMenuClient = ReturnType<typeof createLegacyMenuClient>;

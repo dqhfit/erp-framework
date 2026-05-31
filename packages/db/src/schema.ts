@@ -664,6 +664,42 @@ export const mssqlConnections = pgTable(
   }),
 );
 
+/** Cockpit menu-driven — bản đồ menu app cũ DQHF (bảng SYS_MENU_NEW) import
+ *  vào để port dần theo menu. Mỗi row = 1 node menu legacy (mã/tên/cấp/cha/
+ *  form/namespace) + portStatus (chua|dang|xong) + pageId (page mới sau khi
+ *  port). Re-import chỉ cập nhật metadata, GIỮ portStatus/module/pageId. */
+export const legacyMenuMap = pgTable(
+  "legacy_menu_map",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    sourceId: integer("source_id").notNull(), // SYS_MENU_NEW.id
+    sourceCode: text("source_code").notNull(), // C_MENU
+    name: text("name"), // N_MENU
+    level: integer("level"), // C_LEVEL (1=cha,2=nhóm,3=mục/form,4=thao tác)
+    parentCode: text("parent_code"), // C_MENU_UPPER
+    sort: integer("sort").default(0).notNull(), // T_SORT
+    winId: text("win_id"), // C_WIN_ID (form class mở bằng reflection)
+    namespace: text("namespace"), // NAMESPACE
+    system: text("system"), // C_SYSTEM
+    isShowDialog: boolean("is_show_dialog").default(false).notNull(),
+    active: boolean("active").default(true).notNull(), // F_USE
+    portStatus: text("port_status").default("chua").notNull(), // chua|dang|xong
+    module: text("module"), // tên migration module sau khi port
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
+    // Kết quả resolver: {procs[], controls[], repos[], tables[], filesScanned, note}.
+    resolved: jsonb("resolved"),
+    resolvedAt: timestamp("resolved_at"),
+    importedAt: timestamp("imported_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyCodeIdx: uniqueIndex("legacy_menu_map_company_code_idx").on(t.companyId, t.sourceCode),
+  }),
+);
+
 /** Phase U — Background full import job từ MSSQL.
  *  1 job = 1 lần user bấm "Full import"; chứa N table riêng.
  *  status: queued | running | paused | completed | failed | canceled

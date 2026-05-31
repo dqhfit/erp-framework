@@ -58,6 +58,7 @@ import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
 import { migrationRouter } from "./migration-router";
+import { legacyMenuRouter } from "./legacy-menu-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
 import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
@@ -531,6 +532,9 @@ export const appRouter = router({
   /* ── Migration MSSQL → framework (admin tooling) ── */
   migration: migrationRouter,
   mssqlConnections: mssqlConnectionsRouter,
+
+  /* ── Cockpit menu-driven — bản đồ menu app cũ (SYS_MENU_NEW) ── */
+  legacyMenu: legacyMenuRouter,
 
   /* -- Nhom nguoi xem (viewer groups) -- phan quyen portal theo nhom -- */
   viewerGroups: viewerGroupsRouter,
