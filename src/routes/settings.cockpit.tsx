@@ -130,49 +130,16 @@ function CockpitPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [setup, setSetup] = useState<SetupStatus>(null);
-  const [dirInput, setDirInput] = useState("");
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const browseDirRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  const refreshSetup = useCallback(() => {
-    api
-      .checkSetup()
-      .then(setSetup)
-      .catch(() => setSetup(null));
-  }, []);
-
-  const doSetSourceDir = useCallback(async () => {
-    const dir = dirInput.trim();
-    if (!dir) return;
-    setBusy("setdir");
-    try {
-      await api.setSourceDir(dir);
-      refreshSetup();
-    } catch (e) {
-      await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
-    } finally {
-      setBusy(null);
-    }
-  }, [dirInput, refreshSetup]);
-
-  const doClearSourceDir = useCallback(async () => {
-    await api.clearSourceDir();
-    setDirInput("");
-    refreshSetup();
-  }, [refreshSetup]);
-
-  // Kiểm tra config 1 lần khi mount
-  // Chỉ pre-fill nếu path thực sự tồn tại trên server (tránh nhầm path máy khác)
+  // Kiểm tra MSSQL 1 lần khi mount
   useEffect(() => {
     api
       .checkSetup()
-      .then((s) => {
-        setSetup(s);
-        if (s.dqhfDir && s.dqhfDirExists) setDirInput(s.dqhfDir);
-      })
+      .then(setSetup)
       .catch(() => setSetup(null));
   }, []); // mount-only
 
@@ -387,14 +354,8 @@ function CockpitPage() {
             variant="default"
             size="sm"
             onClick={doResolve}
-            disabled={busy != null || !setup?.dqhfDirSet}
-            title={
-              !setup?.dqhfDirSet
-                ? "Cần đặt env DQHF_SOURCE_DIR trỏ vào thư mục source C# DQHF"
-                : !setup?.dqhfDirExists
-                  ? `Thư mục không tồn tại: ${setup.dqhfDir}`
-                  : undefined
-            }
+            disabled={busy != null || !setup?.dqhfDirSet || !setup?.dqhfDirExists}
+            title="Cần DQHF_SOURCE_DIR trên server — dùng Resolve local nếu source ở máy dev"
           >
             <I.RefreshCw size={14} /> {busy === "resolve" ? "Đang resolve…" : "Resolve form→proc"}
           </Button>
@@ -403,7 +364,7 @@ function CockpitPage() {
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={busy != null}
-            title="Chọn thư mục source C# DQHF trên máy local để phân tích"
+            title="Chọn thư mục source C# DQHF trên máy local"
           >
             <I.FolderOpen size={14} />
             {busy === "local-resolve" ? (localResolveProgress ?? "Đang resolve…") : "Resolve local"}
@@ -411,7 +372,6 @@ function CockpitPage() {
           <Button variant="default" size="sm" onClick={doParseReports} disabled={busy != null}>
             <I.File size={14} /> {busy === "reports" ? "Đang phân tích…" : "Phân tích báo cáo"}
           </Button>
-          {/* Hidden folder picker — chỉ nhận .cs files */}
           <input
             ref={fileInputRef}
             type="file"
@@ -424,97 +384,14 @@ function CockpitPage() {
         </div>
       </div>
 
-      {/* Banner cảnh báo cấu hình */}
-      {setup && (!setup.dqhfDirSet || !setup.dqhfDirExists || !setup.mssqlOk) && (
-        <div className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          <div className="font-medium flex items-center gap-1.5">
-            <I.AlertCircle size={14} className="shrink-0" />
-            Cấu hình chưa đủ — một số chức năng bị vô hiệu:
-          </div>
-          <ul className="ml-5 list-disc space-y-1.5 text-xs">
-            {!setup.mssqlOk && (
-              <li>
-                <b>MSSQL chưa kết nối</b> — nút "Import menu" bị tắt. Kiểm tra connection ở{" "}
-                <span className="font-mono">Settings → Migration</span>.
-              </li>
-            )}
-            {(!setup.dqhfDirSet || !setup.dqhfDirExists) && (
-              <li className="list-none -ml-4">
-                <div className="mb-1.5">
-                  {!setup.dqhfDirSet ? (
-                    <b>Nút "Resolve form→proc" bị tắt</b>
-                  ) : (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span>
-                        <b>Nút "Resolve form→proc" bị tắt</b> — thư mục server không tồn tại:{" "}
-                        <span className="font-mono">{setup.dqhfDir}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={doClearSourceDir}
-                        className="rounded border border-amber-400 px-2 py-0.5 text-[11px] text-amber-700 hover:bg-amber-100"
-                      >
-                        Xóa cấu hình này
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="rounded bg-amber-100 px-2 py-1.5 text-[11px] text-amber-700 mb-2">
-                  💡 <b>Nếu source C# nằm trên máy local</b>: dùng nút <b>"Resolve local"</b> trên
-                  thanh công cụ — chọn thư mục DQHF trực tiếp từ browser, không cần cấu hình server.
-                </div>
-                <div className="text-[11px] text-amber-600 mb-1">
-                  Hoặc nếu server có quyền truy cập thư mục source (Docker mount):
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={dirInput}
-                    onChange={(e) => setDirInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && doSetSourceDir()}
-                    placeholder="Đường dẫn trên server (vd: /mnt/dqhf-src)"
-                    className="flex-1 rounded border border-amber-300 bg-white px-2 py-1 font-mono text-xs text-slate-700 focus:border-sky-400 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    title="Chọn thư mục để lấy tên gợi ý (chỉ hỗ trợ local dev)"
-                    onClick={() => browseDirRef.current?.click()}
-                    className="rounded border border-amber-300 bg-white px-2 py-1 text-amber-700 hover:bg-amber-50"
-                  >
-                    <I.FolderOpen size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={doSetSourceDir}
-                    disabled={busy === "setdir" || !dirInput.trim()}
-                    className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-                  >
-                    {busy === "setdir" ? "Đang đặt…" : "Đặt"}
-                  </button>
-                  {/* Folder picker chỉ để lấy tên thư mục gợi ý */}
-                  <input
-                    ref={browseDirRef}
-                    type="file"
-                    className="hidden"
-                    // @ts-expect-error webkitdirectory không có trong types chuẩn
-                    webkitdirectory=""
-                    onChange={(e) => {
-                      const first = e.target.files?.[0];
-                      if (!first) return;
-                      const root = first.webkitRelativePath.split("/")[0] ?? first.name;
-                      setDirInput((prev) => (prev ? prev : root));
-                      if (browseDirRef.current) browseDirRef.current.value = "";
-                    }}
-                  />
-                </div>
-                <div className="mt-1 text-[11px] text-amber-500">
-                  Session-only — restart server cần đặt lại hoặc thêm{" "}
-                  <span className="font-mono">DQHF_SOURCE_DIR</span> vào{" "}
-                  <span className="font-mono">.env</span>.
-                </div>
-              </li>
-            )}
-          </ul>
+      {/* Banner cảnh báo — chỉ hiện khi MSSQL không kết nối được */}
+      {setup && !setup.mssqlOk && (
+        <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <I.AlertCircle size={13} className="shrink-0" />
+          <span>
+            <b>MSSQL chưa kết nối</b> — nút "Import menu" bị tắt. Kiểm tra connection ở{" "}
+            <span className="font-mono">Settings → Migration</span>.
+          </span>
         </div>
       )}
 
