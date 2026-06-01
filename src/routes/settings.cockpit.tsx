@@ -158,13 +158,20 @@ function CockpitPage() {
     }
   }, [dirInput, refreshSetup]);
 
-  // Kiểm tra config 1 lần khi mount + pre-fill dirInput nếu đã có
+  const doClearSourceDir = useCallback(async () => {
+    await api.clearSourceDir();
+    setDirInput("");
+    refreshSetup();
+  }, [refreshSetup]);
+
+  // Kiểm tra config 1 lần khi mount
+  // Chỉ pre-fill nếu path thực sự tồn tại trên server (tránh nhầm path máy khác)
   useEffect(() => {
     api
       .checkSetup()
       .then((s) => {
         setSetup(s);
-        if (s.dqhfDir) setDirInput(s.dqhfDir);
+        if (s.dqhfDir && s.dqhfDirExists) setDirInput(s.dqhfDir);
       })
       .catch(() => setSetup(null));
   }, []); // mount-only
@@ -437,10 +444,19 @@ function CockpitPage() {
                   {!setup.dqhfDirSet ? (
                     <b>Nút "Resolve form→proc" bị tắt</b>
                   ) : (
-                    <>
-                      <b>Nút "Resolve form→proc" bị tắt</b> — thư mục server không tồn tại:{" "}
-                      <span className="font-mono">{setup.dqhfDir}</span>
-                    </>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>
+                        <b>Nút "Resolve form→proc" bị tắt</b> — thư mục server không tồn tại:{" "}
+                        <span className="font-mono">{setup.dqhfDir}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={doClearSourceDir}
+                        className="rounded border border-amber-400 px-2 py-0.5 text-[11px] text-amber-700 hover:bg-amber-100"
+                      >
+                        Xóa cấu hình này
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="rounded bg-amber-100 px-2 py-1.5 text-[11px] text-amber-700 mb-2">

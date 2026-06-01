@@ -98,6 +98,8 @@ export function createLegacyMenuClient(baseUrl: string) {
         withProcs: number;
         noForm: number;
       }>,
+    /** Xóa DQHF_SOURCE_DIR khỏi process.env server (session-only). */
+    clearSourceDir: () => trpc.legacyMenu.clearSourceDir.mutate() as Promise<{ ok: true }>,
     /** Đặt DQHF_SOURCE_DIR tại runtime (session-only). Validate thư mục tồn tại. */
     setSourceDir: (dir: string) =>
       trpc.legacyMenu.setSourceDir.mutate({ dir }) as Promise<{ ok: true; dir: string }>,

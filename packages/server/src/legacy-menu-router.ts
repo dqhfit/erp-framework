@@ -92,6 +92,12 @@ export const legacyMenuRouter = router({
       return { totalForms: input.length, resolved, withProcs, noForm };
     }),
 
+  /** Xóa DQHF_SOURCE_DIR khỏi process.env (session-only). */
+  clearSourceDir: rbacProcedure("edit", "settings").mutation(() => {
+    delete process.env.DQHF_SOURCE_DIR;
+    return { ok: true };
+  }),
+
   /** Đặt DQHF_SOURCE_DIR tại runtime (session-only, mất khi restart server).
    *  Validate thư mục tồn tại trước khi set. */
   setSourceDir: rbacProcedure("edit", "settings")
