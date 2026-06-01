@@ -19,7 +19,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Modal } from "@/components/ui";
+import { Button, Modal, SplitPane } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { buildDqhfIndex, resolveFormProcs as resolveFormProcsBrowser } from "@/lib/dqhf-resolver";
 
@@ -648,288 +648,293 @@ function CockpitPage() {
         </details>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_360px] gap-3">
-        {/* Cây menu */}
-        <div className="flex min-h-0 flex-col gap-1.5">
-          {/* Search */}
-          <div className="relative">
-            <I.Search
-              size={13}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm tên, mã, form…"
-              className="w-full rounded border border-border bg-panel pl-7 pr-7 py-1.5 text-sm focus:border-accent focus:outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
-              >
-                <I.X size={13} />
-              </button>
-            )}
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto rounded border border-border p-1.5">
-            {loading ? (
-              <div className="p-4 text-sm text-muted">Đang tải…</div>
-            ) : tree.length === 0 ? (
-              <div className="p-4 text-sm text-muted">
-                Chưa có dữ liệu — bấm "Import menu" để nạp SYS_MENU_NEW.
-              </div>
-            ) : searchResults !== null ? (
-              searchResults.length === 0 ? (
-                <div className="p-4 text-sm text-muted">Không tìm thấy kết quả.</div>
+      <SplitPane
+        defaultLeftWidth={460}
+        minLeft={260}
+        minRight={280}
+        storageKey="cockpit-split"
+        left={
+          <div className="flex min-h-0 h-full flex-col gap-1.5 pr-1.5">
+            {/* Search */}
+            <div className="relative">
+              <I.Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm tên, mã, form…"
+                className="w-full rounded border border-border bg-panel pl-7 pr-7 py-1.5 text-sm focus:border-accent focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+                >
+                  <I.X size={13} />
+                </button>
+              )}
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto rounded border border-border p-1.5">
+              {loading ? (
+                <div className="p-4 text-sm text-muted">Đang tải…</div>
+              ) : tree.length === 0 ? (
+                <div className="p-4 text-sm text-muted">
+                  Chưa có dữ liệu — bấm "Import menu" để nạp SYS_MENU_NEW.
+                </div>
+              ) : searchResults !== null ? (
+                searchResults.length === 0 ? (
+                  <div className="p-4 text-sm text-muted">Không tìm thấy kết quả.</div>
+                ) : (
+                  <>
+                    <div className="mb-1 px-1 text-[11px] text-muted">
+                      {searchResults.length} kết quả
+                    </div>
+                    {searchResults.map(({ node, path }) => (
+                      <SearchRow
+                        key={node.sourceCode}
+                        item={{ node, path }}
+                        selected={selected?.sourceCode ?? null}
+                        onSelect={onSelect}
+                      />
+                    ))}
+                  </>
+                )
               ) : (
-                <>
-                  <div className="mb-1 px-1 text-[11px] text-muted">
-                    {searchResults.length} kết quả
-                  </div>
-                  {searchResults.map(({ node, path }) => (
-                    <SearchRow
-                      key={node.sourceCode}
-                      item={{ node, path }}
-                      selected={selected?.sourceCode ?? null}
-                      onSelect={onSelect}
-                    />
-                  ))}
-                </>
-              )
-            ) : (
-              navTree.map((n) => (
-                <TreeRow
-                  key={n.sourceCode}
-                  node={n}
-                  depth={0}
-                  selected={selected?.sourceCode ?? null}
-                  expanded={expanded}
-                  onToggle={onToggle}
-                  onSelect={onSelect}
-                />
-              ))
-            )}
+                navTree.map((n) => (
+                  <TreeRow
+                    key={n.sourceCode}
+                    node={n}
+                    depth={0}
+                    selected={selected?.sourceCode ?? null}
+                    expanded={expanded}
+                    onToggle={onToggle}
+                    onSelect={onSelect}
+                  />
+                ))
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* Chi tiết node */}
-        <div className="min-h-0 overflow-auto rounded border border-border p-3">
-          {!selected ? (
-            <div className="text-sm text-muted">Chọn 1 mục menu có form để xem chi tiết.</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold">{selected.name}</h2>
-                  <StatusBadge status={selected.portStatus} />
+        }
+        right={
+          <div className="min-h-0 h-full overflow-auto rounded border border-border p-3">
+            {!selected ? (
+              <div className="text-sm text-muted">Chọn 1 mục menu có form để xem chi tiết.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold">{selected.name}</h2>
+                    <StatusBadge status={selected.portStatus} />
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">
+                    [{selected.sourceCode}] {selected.winId ?? "(không có form)"}
+                    {selected.namespace ? ` · ${selected.namespace}` : ""}
+                  </div>
+                  {selected.module && (
+                    <div className="mt-0.5 text-xs text-muted">module: {selected.module}</div>
+                  )}
                 </div>
-                <div className="mt-0.5 text-xs text-muted">
-                  [{selected.sourceCode}] {selected.winId ?? "(không có form)"}
-                  {selected.namespace ? ` · ${selected.namespace}` : ""}
-                </div>
-                {selected.module && (
-                  <div className="mt-0.5 text-xs text-muted">module: {selected.module}</div>
-                )}
-              </div>
 
-              {/* Pipeline tiến trình port (chỉ hiện khi đã có module) */}
-              {selected.module &&
-                (() => {
-                  const modJobs = jobs
-                    .filter((j) => j.module === selected.module)
-                    .sort(
-                      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-                    );
-                  const lastOf = (action: string) => modJobs.find((j) => j.action === action);
-                  const STEPS = ["discover", "enrich", "generate"] as const;
-                  const stepStatus = (a: string) => {
-                    const j = lastOf(a);
-                    if (!j) return "pending";
-                    if (j.status === "running" || j.status === "queued") return "active";
-                    if (j.status === "completed") return "done";
-                    if (j.status === "failed") return "error";
-                    return "pending";
-                  };
-                  const canRun = (s: string): s is "enrich" | "generate" =>
-                    (s === "enrich" || s === "generate") &&
-                    (stepStatus(s) === "pending" || stepStatus(s) === "error") &&
-                    busy == null;
-                  return (
-                    <div className="rounded border border-border bg-bg-soft px-3 py-2">
-                      <div className="mb-1.5 text-[11px] font-medium text-muted uppercase tracking-wide">
-                        Tiến trình port
+                {/* Pipeline tiến trình port (chỉ hiện khi đã có module) */}
+                {selected.module &&
+                  (() => {
+                    const modJobs = jobs
+                      .filter((j) => j.module === selected.module)
+                      .sort(
+                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+                      );
+                    const lastOf = (action: string) => modJobs.find((j) => j.action === action);
+                    const STEPS = ["discover", "enrich", "generate"] as const;
+                    const stepStatus = (a: string) => {
+                      const j = lastOf(a);
+                      if (!j) return "pending";
+                      if (j.status === "running" || j.status === "queued") return "active";
+                      if (j.status === "completed") return "done";
+                      if (j.status === "failed") return "error";
+                      return "pending";
+                    };
+                    const canRun = (s: string): s is "enrich" | "generate" =>
+                      (s === "enrich" || s === "generate") &&
+                      (stepStatus(s) === "pending" || stepStatus(s) === "error") &&
+                      busy == null;
+                    return (
+                      <div className="rounded border border-border bg-bg-soft px-3 py-2">
+                        <div className="mb-1.5 text-[11px] font-medium text-muted uppercase tracking-wide">
+                          Tiến trình port
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {STEPS.map((step, i) => {
+                            const st = stepStatus(step);
+                            const j = lastOf(step);
+                            const isRunning = busy === `step:${step}:${selected.module}`;
+                            const runnable = canRun(step);
+                            const cls = `flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-opacity ${
+                              st === "done"
+                                ? "bg-success/20 text-success"
+                                : st === "active" || isRunning
+                                  ? "bg-accent/20 text-accent"
+                                  : st === "error"
+                                    ? "bg-danger/20 text-danger"
+                                    : "bg-panel-2 text-muted"
+                            } ${runnable ? "cursor-pointer hover:opacity-80 ring-1 ring-border hover:ring-accent" : ""}`;
+                            return (
+                              <div key={step} className="flex items-center gap-1">
+                                {i > 0 && <div className="h-px w-4 bg-border" />}
+                                {runnable ? (
+                                  <button
+                                    type="button"
+                                    title={`Chạy ${step} ngay`}
+                                    className={cls}
+                                    onClick={() => doRunStep(step, selected.module!)}
+                                  >
+                                    <I.Play size={9} className="shrink-0" />
+                                    {step}
+                                  </button>
+                                ) : (
+                                  <div title={j?.error ?? j?.message ?? step} className={cls}>
+                                    {st === "active" || isRunning ? (
+                                      <I.Loader size={10} className="animate-spin shrink-0" />
+                                    ) : st === "done" ? (
+                                      <I.Check size={10} className="shrink-0" />
+                                    ) : st === "error" ? (
+                                      <I.X size={10} className="shrink-0" />
+                                    ) : null}
+                                    {step}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-1.5 text-[11px] text-muted">
+                          Nhấn vào bước chưa chạy để thực hiện ngay.
+                          {" · "}discover chỉ chạy qua nút "Port mục này".
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {STEPS.map((step, i) => {
-                          const st = stepStatus(step);
-                          const j = lastOf(step);
-                          const isRunning = busy === `step:${step}:${selected.module}`;
-                          const runnable = canRun(step);
-                          const cls = `flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-opacity ${
-                            st === "done"
-                              ? "bg-success/20 text-success"
-                              : st === "active" || isRunning
-                                ? "bg-accent/20 text-accent"
-                                : st === "error"
-                                  ? "bg-danger/20 text-danger"
-                                  : "bg-panel-2 text-muted"
-                          } ${runnable ? "cursor-pointer hover:opacity-80 ring-1 ring-border hover:ring-accent" : ""}`;
+                    );
+                  })()}
+
+                {detail?.resolved ? (
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div>
+                      <span className="text-muted">Proc ({detail.resolved.procs.length}):</span>
+                      <div className="mt-1 max-h-40 overflow-auto rounded bg-bg-soft p-2 font-mono text-[11px] leading-relaxed">
+                        {detail.resolved.procs.length
+                          ? detail.resolved.procs.join(", ")
+                          : "(không có — form dùng pattern khác; seed bảng thủ công ở Migration)"}
+                      </div>
+                    </div>
+                    {detail.resolved.controls.length > 0 && (
+                      <div className="text-xs text-muted">
+                        Control: {detail.resolved.controls.join(", ")}
+                      </div>
+                    )}
+                    {(detail.resolved.reports?.length ?? 0) > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-violet-700">
+                          Báo cáo ({detail.resolved.reports?.length}) — port DỮ LIỆU; in
+                          pixel-perfect làm template riêng:
+                        </span>
+                        {detail.resolved.reports?.map((rc) => {
+                          const bp = reportMap[rc];
                           return (
-                            <div key={step} className="flex items-center gap-1">
-                              {i > 0 && <div className="h-px w-4 bg-border" />}
-                              {runnable ? (
-                                <button
-                                  type="button"
-                                  title={`Chạy ${step} ngay`}
-                                  className={cls}
-                                  onClick={() => doRunStep(step, selected.module!)}
-                                >
-                                  <I.Play size={9} className="shrink-0" />
-                                  {step}
-                                </button>
+                            <div
+                              key={rc}
+                              className="rounded border border-violet-100 bg-violet-50/50 p-1.5 text-[11px]"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono">{rc}</span>
+                                {bp && (
+                                  <span
+                                    className={`rounded px-1 ${bp.kind === "table" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+                                  >
+                                    {bp.kind === "table"
+                                      ? "bảng (auto được)"
+                                      : "chứng từ in (template tay)"}
+                                  </span>
+                                )}
+                                {bp && (
+                                  <button
+                                    type="button"
+                                    className="ml-auto rounded bg-violet-600 px-1.5 py-0.5 text-white disabled:opacity-50"
+                                    disabled={busy != null}
+                                    onClick={() => doScaffoldReport(rc)}
+                                  >
+                                    {busy === `tpl:${rc}` ? "Đang tạo…" : "Tạo template in"}
+                                  </button>
+                                )}
+                              </div>
+                              {bp ? (
+                                <div className="mt-0.5 text-muted">
+                                  {bp.title && <div>Tiêu đề: {bp.title}</div>}
+                                  {bp.dataProcs.length > 0 && (
+                                    <div>Proc: {bp.dataProcs.join(", ")}</div>
+                                  )}
+                                  {bp.columns.length > 0 && (
+                                    <div>
+                                      Cột ({bp.columns.length}): {bp.columns.join(" · ")}
+                                    </div>
+                                  )}
+                                  {bp.groups.length > 0 && <div>Group: {bp.groups.join(", ")}</div>}
+                                </div>
                               ) : (
-                                <div title={j?.error ?? j?.message ?? step} className={cls}>
-                                  {st === "active" || isRunning ? (
-                                    <I.Loader size={10} className="animate-spin shrink-0" />
-                                  ) : st === "done" ? (
-                                    <I.Check size={10} className="shrink-0" />
-                                  ) : st === "error" ? (
-                                    <I.X size={10} className="shrink-0" />
-                                  ) : null}
-                                  {step}
+                                <div className="mt-0.5 text-muted">
+                                  Chưa phân tích — bấm "Phân tích báo cáo".
                                 </div>
                               )}
                             </div>
                           );
                         })}
                       </div>
-                      <div className="mt-1.5 text-[11px] text-muted">
-                        Nhấn vào bước chưa chạy để thực hiện ngay.
-                        {" · "}discover chỉ chạy qua nút "Port mục này".
+                    )}
+                    {detail.resolved.repos.length > 0 && (
+                      <div className="text-xs text-muted">
+                        Repo: {detail.resolved.repos.join(", ")}
                       </div>
-                    </div>
-                  );
-                })()}
-
-              {detail?.resolved ? (
-                <div className="flex flex-col gap-2 text-sm">
-                  <div>
-                    <span className="text-muted">Proc ({detail.resolved.procs.length}):</span>
-                    <div className="mt-1 max-h-40 overflow-auto rounded bg-bg-soft p-2 font-mono text-[11px] leading-relaxed">
-                      {detail.resolved.procs.length
-                        ? detail.resolved.procs.join(", ")
-                        : "(không có — form dùng pattern khác; seed bảng thủ công ở Migration)"}
-                    </div>
+                    )}
                   </div>
-                  {detail.resolved.controls.length > 0 && (
-                    <div className="text-xs text-muted">
-                      Control: {detail.resolved.controls.join(", ")}
-                    </div>
-                  )}
-                  {(detail.resolved.reports?.length ?? 0) > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-violet-700">
-                        Báo cáo ({detail.resolved.reports?.length}) — port DỮ LIỆU; in pixel-perfect
-                        làm template riêng:
-                      </span>
-                      {detail.resolved.reports?.map((rc) => {
-                        const bp = reportMap[rc];
-                        return (
-                          <div
-                            key={rc}
-                            className="rounded border border-violet-100 bg-violet-50/50 p-1.5 text-[11px]"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono">{rc}</span>
-                              {bp && (
-                                <span
-                                  className={`rounded px-1 ${bp.kind === "table" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
-                                >
-                                  {bp.kind === "table"
-                                    ? "bảng (auto được)"
-                                    : "chứng từ in (template tay)"}
-                                </span>
-                              )}
-                              {bp && (
-                                <button
-                                  type="button"
-                                  className="ml-auto rounded bg-violet-600 px-1.5 py-0.5 text-white disabled:opacity-50"
-                                  disabled={busy != null}
-                                  onClick={() => doScaffoldReport(rc)}
-                                >
-                                  {busy === `tpl:${rc}` ? "Đang tạo…" : "Tạo template in"}
-                                </button>
-                              )}
-                            </div>
-                            {bp ? (
-                              <div className="mt-0.5 text-muted">
-                                {bp.title && <div>Tiêu đề: {bp.title}</div>}
-                                {bp.dataProcs.length > 0 && (
-                                  <div>Proc: {bp.dataProcs.join(", ")}</div>
-                                )}
-                                {bp.columns.length > 0 && (
-                                  <div>
-                                    Cột ({bp.columns.length}): {bp.columns.join(" · ")}
-                                  </div>
-                                )}
-                                {bp.groups.length > 0 && <div>Group: {bp.groups.join(", ")}</div>}
-                              </div>
-                            ) : (
-                              <div className="mt-0.5 text-muted">
-                                Chưa phân tích — bấm "Phân tích báo cáo".
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {detail.resolved.repos.length > 0 && (
-                    <div className="text-xs text-muted">
-                      Repo: {detail.resolved.repos.join(", ")}
-                    </div>
-                  )}
-                </div>
-              ) : selected.winId ? (
-                <div className="flex items-center gap-1.5 text-sm text-muted">
-                  {busy === "resolve" ? (
-                    <>
-                      <I.Loader size={14} className="animate-spin shrink-0" />
-                      Đang resolve…
-                    </>
-                  ) : detail === null ? (
-                    "Đang tải…"
-                  ) : (
-                    "Chưa resolve — bấm Resolve form→proc."
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-muted">Mục này không mở form (nhóm menu).</div>
-              )}
+                ) : selected.winId ? (
+                  <div className="flex items-center gap-1.5 text-sm text-muted">
+                    {busy === "resolve" ? (
+                      <>
+                        <I.Loader size={14} className="animate-spin shrink-0" />
+                        Đang resolve…
+                      </>
+                    ) : detail === null ? (
+                      "Đang tải…"
+                    ) : (
+                      "Chưa resolve — bấm Resolve form→proc."
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted">Mục này không mở form (nhóm menu).</div>
+                )}
 
-              <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={doPort}
-                  disabled={busy != null || !detail?.resolved?.procs.length}
-                >
-                  <I.Play size={14} /> {busy === "port" ? "Đang port…" : "Port mục này"}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setStatus("xong")}>
-                  <I.Check size={14} /> Đánh dấu đã port
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setStatus("chua")}>
-                  Đặt lại
-                </Button>
+                <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={doPort}
+                    disabled={busy != null || !detail?.resolved?.procs.length}
+                  >
+                    <I.Play size={14} /> {busy === "port" ? "Đang port…" : "Port mục này"}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setStatus("xong")}>
+                    <I.Check size={14} /> Đánh dấu đã port
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setStatus("chua")}>
+                    Đặt lại
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        }
+      />
       <Modal
         open={alertMsg !== null}
         onClose={closeAlert}
