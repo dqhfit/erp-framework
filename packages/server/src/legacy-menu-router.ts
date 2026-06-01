@@ -45,6 +45,53 @@ export const legacyMenuRouter = router({
     };
   }),
 
+  /** Lưu hàng loạt kết quả resolve đã phân tích sẵn từ client (browser-side).
+   *  Dùng khi source C# nằm trên máy dev, không mount được vào server. */
+  bulkResolve: rbacProcedure("edit", "settings")
+    .input(
+      z.array(
+        z.object({
+          sourceCode: z.string().min(1),
+          procs: z.array(z.string()),
+          controls: z.array(z.string()),
+          repos: z.array(z.string()),
+          reports: z.array(z.string()),
+          filesScanned: z.number().int().min(0),
+          note: z.string().optional(),
+        }),
+      ),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let resolved = 0;
+      let withProcs = 0;
+      let noForm = 0;
+      for (const r of input) {
+        await ctx.db
+          .update(legacyMenuMap)
+          .set({
+            resolved: {
+              procs: r.procs,
+              controls: r.controls,
+              repos: r.repos,
+              reports: r.reports,
+              filesScanned: r.filesScanned,
+              ...(r.note ? { note: r.note } : {}),
+            },
+            resolvedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(legacyMenuMap.companyId, ctx.user.companyId),
+              eq(legacyMenuMap.sourceCode, r.sourceCode),
+            ),
+          );
+        resolved++;
+        if (r.procs.length) withProcs++;
+        if (r.note) noForm++;
+      }
+      return { totalForms: input.length, resolved, withProcs, noForm };
+    }),
+
   /** Đặt DQHF_SOURCE_DIR tại runtime (session-only, mất khi restart server).
    *  Validate thư mục tồn tại trước khi set. */
   setSourceDir: rbacProcedure("edit", "settings")

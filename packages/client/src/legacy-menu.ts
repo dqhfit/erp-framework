@@ -80,6 +80,24 @@ export function createLegacyMenuClient(baseUrl: string) {
         dqhfDirExists: boolean;
         mssqlOk: boolean;
       }>,
+    /** Lưu hàng loạt kết quả resolve phân tích từ browser (client-side analysis). */
+    bulkResolve: (
+      items: Array<{
+        sourceCode: string;
+        procs: string[];
+        controls: string[];
+        repos: string[];
+        reports: string[];
+        filesScanned: number;
+        note?: string;
+      }>,
+    ) =>
+      trpc.legacyMenu.bulkResolve.mutate(items) as Promise<{
+        totalForms: number;
+        resolved: number;
+        withProcs: number;
+        noForm: number;
+      }>,
     /** Đặt DQHF_SOURCE_DIR tại runtime (session-only). Validate thư mục tồn tại. */
     setSourceDir: (dir: string) =>
       trpc.legacyMenu.setSourceDir.mutate({ dir }) as Promise<{ ok: true; dir: string }>,

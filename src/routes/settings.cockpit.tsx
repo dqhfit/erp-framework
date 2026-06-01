@@ -15,10 +15,11 @@ import {
   type LegacyReport,
 } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { buildDqhfIndex, resolveFormProcs as resolveFormProcsBrowser } from "@/lib/dqhf-resolver";
 
 const api = createLegacyMenuClient("");
 const printApi = createPrintTemplatesClient("");
@@ -130,6 +131,8 @@ function CockpitPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [setup, setSetup] = useState<SetupStatus>(null);
   const [dirInput, setDirInput] = useState("");
+  const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -195,6 +198,56 @@ function CockpitPage() {
       .then(setDetail)
       .catch((e) => dialog.alert(`Lỗi tải chi tiết: ${e?.message ?? e}`));
   }, []);
+
+  /** Phân tích source C# từ thư mục user chọn trên máy local, gửi kết quả lên server. */
+  const doLocalResolve = useCallback(
+    async (files: FileList) => {
+      if (!files.length) return;
+      setBusy("local-resolve");
+      setLocalResolveProgress("Đang đọc file…");
+      try {
+        setLocalResolveProgress(`Đang lập chỉ mục ${files.length} file…`);
+        const idx = await buildDqhfIndex(files);
+
+        const forms: Array<{ sourceCode: string; winId: string }> = [];
+        const walk = (nodes: typeof tree): void => {
+          for (const n of nodes) {
+            if (n.winId) forms.push({ sourceCode: n.sourceCode, winId: n.winId });
+            walk(n.children);
+          }
+        };
+        walk(tree);
+
+        if (!forms.length) {
+          await dialog.alert("Chưa có dữ liệu menu — hãy Import menu trước.");
+          return;
+        }
+
+        const results = [];
+        for (let i = 0; i < forms.length; i++) {
+          const f = forms[i];
+          if (!f) continue;
+          results.push({ sourceCode: f.sourceCode, ...resolveFormProcsBrowser(idx, f.winId) });
+          if (i % 5 === 0) setLocalResolveProgress(`Đang phân tích ${i + 1}/${forms.length} form…`);
+        }
+
+        setLocalResolveProgress(`Đang lưu ${results.length} kết quả…`);
+        const summary = await api.bulkResolve(results);
+        await dialog.alert(
+          `Resolve xong: ${summary.withProcs}/${summary.totalForms} form có proc, ${summary.noForm} không thấy file. (${idx.fileCount} .cs đã đọc)`,
+        );
+        reload();
+        if (selected) onSelect(selected);
+      } catch (e) {
+        await dialog.alert(`Lỗi resolve local: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+        setLocalResolveProgress(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [tree, selected, onSelect, reload],
+  );
 
   const doImport = useCallback(async () => {
     setBusy("import");
@@ -337,9 +390,29 @@ function CockpitPage() {
           >
             <I.RefreshCw size={14} /> {busy === "resolve" ? "Đang resolve…" : "Resolve form→proc"}
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy != null}
+            title="Chọn thư mục source C# DQHF trên máy local để phân tích"
+          >
+            <I.FolderOpen size={14} />
+            {busy === "local-resolve" ? (localResolveProgress ?? "Đang resolve…") : "Resolve local"}
+          </Button>
           <Button variant="default" size="sm" onClick={doParseReports} disabled={busy != null}>
             <I.File size={14} /> {busy === "reports" ? "Đang phân tích…" : "Phân tích báo cáo"}
           </Button>
+          {/* Hidden folder picker — chỉ nhận .cs files */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            // @ts-expect-error webkitdirectory không có trong types chuẩn
+            webkitdirectory=""
+            accept=".cs"
+            onChange={(e) => e.target.files && doLocalResolve(e.target.files)}
+          />
         </div>
       </div>
 
