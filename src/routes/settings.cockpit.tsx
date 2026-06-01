@@ -90,7 +90,7 @@ function TreeRow({
         ) : (
           <I.File size={14} className="shrink-0 text-sky-500" />
         )}
-        <span className={`flex-1 truncate ${node.active ? "" : "text-slate-400 line-through"}`}>
+        <span className={`flex-1 truncate ${node.active ? "" : "text-muted line-through"}`}>
           {node.name ?? node.sourceCode}
         </span>
         {node.winId && <StatusBadge status={node.portStatus} />}
@@ -119,6 +119,55 @@ type SetupStatus = {
   mssqlOk: boolean;
 } | null;
 
+/** Node phẳng cho kết quả tìm kiếm — kèm đường dẫn tên cha. */
+type FlatNode = { node: LegacyMenuNode; path: string[] };
+
+function flattenTree(nodes: LegacyMenuNode[], path: string[] = []): FlatNode[] {
+  const out: FlatNode[] = [];
+  for (const n of nodes) {
+    out.push({ node: n, path });
+    if (n.children.length) out.push(...flattenTree(n.children, [...path, n.name ?? n.sourceCode]));
+  }
+  return out;
+}
+
+/** 1 dòng kết quả tìm kiếm (phẳng, có breadcrumb). */
+function SearchRow({
+  item,
+  selected,
+  onSelect,
+}: {
+  item: FlatNode;
+  selected: string | null;
+  onSelect: (n: LegacyMenuNode) => void;
+}) {
+  const { node, path } = item;
+  const isSel = selected === node.sourceCode;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(node)}
+      className={`flex w-full flex-col gap-0.5 rounded px-2 py-1.5 text-left text-sm hover:bg-hover/50 ${
+        isSel ? "bg-accent/10 ring-1 ring-accent/30" : ""
+      }`}
+    >
+      {path.length > 0 && <div className="text-[10px] text-muted truncate">{path.join(" › ")}</div>}
+      <div className="flex items-center gap-1.5">
+        {node.children.length > 0 ? (
+          <I.Folder size={12} className="shrink-0 text-amber-500" />
+        ) : (
+          <I.File size={12} className="shrink-0 text-accent" />
+        )}
+        <span className={`flex-1 truncate ${node.active ? "" : "text-muted line-through"}`}>
+          {node.name ?? node.sourceCode}
+        </span>
+        <span className="text-[10px] text-muted font-mono shrink-0">{node.sourceCode}</span>
+        {node.winId && <StatusBadge status={node.portStatus} />}
+      </div>
+    </button>
+  );
+}
+
 function CockpitPage() {
   const [tree, setTree] = useState<LegacyMenuNode[]>([]);
   const [stats, setStats] = useState<LegacyMenuStats | null>(null);
@@ -130,6 +179,7 @@ function CockpitPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [setup, setSetup] = useState<SetupStatus>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
@@ -340,6 +390,17 @@ function CockpitPage() {
 
   const navTree = useMemo(() => pruneNavTree(tree), [tree]);
 
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null; // null = không search
+    return flattenTree(tree).filter(
+      ({ node }) =>
+        (node.name ?? "").toLowerCase().includes(q) ||
+        node.sourceCode.toLowerCase().includes(q) ||
+        (node.winId ?? "").toLowerCase().includes(q),
+    );
+  }, [searchQuery, tree]);
+
   const pct = useMemo(() => {
     if (!stats) return 0;
     const xong = stats.byStatus.xong ?? 0;
@@ -351,7 +412,7 @@ function CockpitPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Cockpit — Port theo menu app cũ</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Cây menu DQHF (SYS_MENU_NEW). Bấm mục có form để xem proc/bảng và port.
           </p>
         </div>
@@ -430,38 +491,81 @@ function CockpitPage() {
               +{stats.rbacNodes} thao tác RBAC (cấp &gt;3, ẩn trên menu)
             </span>
           )}
-          <span className="ml-auto text-slate-500">Tiến độ: {pct}%</span>
+          <span className="ml-auto text-muted">Tiến độ: {pct}%</span>
         </div>
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_360px] gap-3">
         {/* Cây menu */}
-        <div className="min-h-0 overflow-auto rounded border border-border p-1.5">
-          {loading ? (
-            <div className="p-4 text-sm text-slate-400">Đang tải…</div>
-          ) : tree.length === 0 ? (
-            <div className="p-4 text-sm text-slate-400">
-              Chưa có dữ liệu — bấm "Import menu" để nạp SYS_MENU_NEW.
-            </div>
-          ) : (
-            navTree.map((n) => (
-              <TreeRow
-                key={n.sourceCode}
-                node={n}
-                depth={0}
-                selected={selected?.sourceCode ?? null}
-                expanded={expanded}
-                onToggle={onToggle}
-                onSelect={onSelect}
-              />
-            ))
-          )}
+        <div className="flex min-h-0 flex-col gap-1.5">
+          {/* Search */}
+          <div className="relative">
+            <I.Search
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm tên, mã, form…"
+              className="w-full rounded border border-border bg-panel pl-7 pr-7 py-1.5 text-sm focus:border-accent focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+              >
+                <I.X size={13} />
+              </button>
+            )}
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto rounded border border-border p-1.5">
+            {loading ? (
+              <div className="p-4 text-sm text-muted">Đang tải…</div>
+            ) : tree.length === 0 ? (
+              <div className="p-4 text-sm text-muted">
+                Chưa có dữ liệu — bấm "Import menu" để nạp SYS_MENU_NEW.
+              </div>
+            ) : searchResults !== null ? (
+              searchResults.length === 0 ? (
+                <div className="p-4 text-sm text-muted">Không tìm thấy kết quả.</div>
+              ) : (
+                <>
+                  <div className="mb-1 px-1 text-[11px] text-muted">
+                    {searchResults.length} kết quả
+                  </div>
+                  {searchResults.map(({ node, path }) => (
+                    <SearchRow
+                      key={node.sourceCode}
+                      item={{ node, path }}
+                      selected={selected?.sourceCode ?? null}
+                      onSelect={onSelect}
+                    />
+                  ))}
+                </>
+              )
+            ) : (
+              navTree.map((n) => (
+                <TreeRow
+                  key={n.sourceCode}
+                  node={n}
+                  depth={0}
+                  selected={selected?.sourceCode ?? null}
+                  expanded={expanded}
+                  onToggle={onToggle}
+                  onSelect={onSelect}
+                />
+              ))
+            )}
+          </div>
         </div>
 
         {/* Chi tiết node */}
         <div className="min-h-0 overflow-auto rounded border border-border p-3">
           {!selected ? (
-            <div className="text-sm text-slate-400">Chọn 1 mục menu có form để xem chi tiết.</div>
+            <div className="text-sm text-muted">Chọn 1 mục menu có form để xem chi tiết.</div>
           ) : (
             <div className="flex flex-col gap-3">
               <div>
@@ -469,19 +573,19 @@ function CockpitPage() {
                   <h2 className="font-semibold">{selected.name}</h2>
                   <StatusBadge status={selected.portStatus} />
                 </div>
-                <div className="mt-0.5 text-xs text-slate-500">
+                <div className="mt-0.5 text-xs text-muted">
                   [{selected.sourceCode}] {selected.winId ?? "(không có form)"}
                   {selected.namespace ? ` · ${selected.namespace}` : ""}
                 </div>
                 {selected.module && (
-                  <div className="mt-0.5 text-xs text-slate-500">module: {selected.module}</div>
+                  <div className="mt-0.5 text-xs text-muted">module: {selected.module}</div>
                 )}
               </div>
 
               {detail?.resolved ? (
                 <div className="flex flex-col gap-2 text-sm">
                   <div>
-                    <span className="text-slate-500">Proc ({detail.resolved.procs.length}):</span>
+                    <span className="text-muted">Proc ({detail.resolved.procs.length}):</span>
                     <div className="mt-1 max-h-40 overflow-auto rounded bg-bg-soft p-2 font-mono text-[11px] leading-relaxed">
                       {detail.resolved.procs.length
                         ? detail.resolved.procs.join(", ")
@@ -489,7 +593,7 @@ function CockpitPage() {
                     </div>
                   </div>
                   {detail.resolved.controls.length > 0 && (
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted">
                       Control: {detail.resolved.controls.join(", ")}
                     </div>
                   )}
@@ -529,7 +633,7 @@ function CockpitPage() {
                               )}
                             </div>
                             {bp ? (
-                              <div className="mt-0.5 text-slate-600">
+                              <div className="mt-0.5 text-muted">
                                 {bp.title && <div>Tiêu đề: {bp.title}</div>}
                                 {bp.dataProcs.length > 0 && (
                                   <div>Proc: {bp.dataProcs.join(", ")}</div>
@@ -542,7 +646,7 @@ function CockpitPage() {
                                 {bp.groups.length > 0 && <div>Group: {bp.groups.join(", ")}</div>}
                               </div>
                             ) : (
-                              <div className="mt-0.5 text-slate-400">
+                              <div className="mt-0.5 text-muted">
                                 Chưa phân tích — bấm "Phân tích báo cáo".
                               </div>
                             )}
@@ -552,13 +656,13 @@ function CockpitPage() {
                     </div>
                   )}
                   {detail.resolved.repos.length > 0 && (
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted">
                       Repo: {detail.resolved.repos.join(", ")}
                     </div>
                   )}
                 </div>
               ) : selected.winId ? (
-                <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                <div className="flex items-center gap-1.5 text-sm text-muted">
                   {busy === "resolve" ? (
                     <>
                       <I.Loader size={14} className="animate-spin shrink-0" />
@@ -571,7 +675,7 @@ function CockpitPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-slate-400">Mục này không mở form (nhóm menu).</div>
+                <div className="text-sm text-muted">Mục này không mở form (nhóm menu).</div>
               )}
 
               <div className="flex flex-wrap gap-2 border-t border-border pt-3">
