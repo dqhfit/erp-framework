@@ -8,11 +8,13 @@
 
 import {
   createLegacyMenuClient,
+  createMigrationClient,
   createPrintTemplatesClient,
   type LegacyMenuNode,
   type LegacyMenuNodeDetail,
   type LegacyMenuStats,
   type LegacyReport,
+  type MigrationJobRow,
 } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +25,7 @@ import { buildDqhfIndex, resolveFormProcs as resolveFormProcsBrowser } from "@/l
 
 const api = createLegacyMenuClient("");
 const printApi = createPrintTemplatesClient("");
+const migApi = createMigrationClient("");
 
 /** Cấp tối đa hiển thị trên menu giao diện. Cấp > NAV_MAX_LEVEL dùng cho RBAC. */
 const NAV_MAX_LEVEL = 3;
@@ -119,6 +122,21 @@ type SetupStatus = {
   mssqlOk: boolean;
 } | null;
 
+const JOB_STATUS: Record<string, { label: string; cls: string }> = {
+  queued: { label: "Chờ", cls: "bg-panel-2 text-muted" },
+  running: { label: "Đang chạy", cls: "bg-accent/20 text-accent" },
+  completed: { label: "Xong", cls: "bg-success/20 text-success" },
+  failed: { label: "Lỗi", cls: "bg-danger/20 text-danger" },
+  canceled: { label: "Huỷ", cls: "bg-panel-2 text-muted" },
+};
+
+function formatDur(ms: number | null): string {
+  if (!ms) return "";
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms / 60_000)}m`;
+}
+
 /** Node phẳng cho kết quả tìm kiếm — kèm đường dẫn tên cha. */
 type FlatNode = { node: LegacyMenuNode; path: string[] };
 
@@ -180,6 +198,7 @@ function CockpitPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [setup, setSetup] = useState<SetupStatus>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [jobs, setJobs] = useState<MigrationJobRow[]>([]);
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
@@ -219,6 +238,25 @@ function CockpitPage() {
       })
       .catch((e) => showAlert(`Lỗi tải menu: ${e?.message ?? e}`))
       .finally(() => setLoading(false));
+  }, [reloadKey]);
+
+  // Tải jobs, tự refresh 4s khi có job đang queued/running
+  // biome-ignore lint/correctness/useExhaustiveDependencies: migApi là module singleton
+  useEffect(() => {
+    const fetch = () =>
+      migApi
+        .listJobs({ limit: 20 })
+        .then(setJobs)
+        .catch(() => undefined);
+    fetch();
+    const id = setInterval(() => {
+      setJobs((prev) => {
+        const hasActive = prev.some((j) => j.status === "queued" || j.status === "running");
+        if (hasActive) fetch();
+        return prev;
+      });
+    }, 4_000);
+    return () => clearInterval(id);
   }, [reloadKey]);
 
   const onToggle = useCallback((code: string) => {
@@ -491,8 +529,79 @@ function CockpitPage() {
               +{stats.rbacNodes} thao tác RBAC (cấp &gt;3, ẩn trên menu)
             </span>
           )}
-          <span className="ml-auto text-muted">Tiến độ: {pct}%</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="w-32 rounded-full bg-panel-2 h-2 overflow-hidden">
+              <div
+                className="h-2 rounded-full bg-success transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-muted text-xs tabular-nums">{pct}%</span>
+          </div>
         </div>
+      )}
+
+      {/* Panel tác vụ */}
+      {jobs.length > 0 && (
+        <details className="rounded border border-border">
+          <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-xs text-muted hover:bg-hover/30">
+            <I.Clock size={13} />
+            <span className="font-medium">Tác vụ nền</span>
+            {jobs.some((j) => j.status === "running") && (
+              <I.Loader size={12} className="animate-spin text-accent" />
+            )}
+            {jobs.some((j) => j.status === "queued") && (
+              <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning">
+                {jobs.filter((j) => j.status === "queued").length} chờ
+              </span>
+            )}
+            {jobs.some((j) => j.status === "failed") && (
+              <span className="rounded bg-danger/20 px-1.5 py-0.5 text-[10px] text-danger">
+                {jobs.filter((j) => j.status === "failed").length} lỗi
+              </span>
+            )}
+            <span className="ml-auto">{jobs.length} tác vụ gần đây ▾</span>
+          </summary>
+          <div className="max-h-52 overflow-auto border-t border-border">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-bg-soft text-muted">
+                  <th className="px-3 py-1.5 text-left font-medium">Module</th>
+                  <th className="px-2 py-1.5 text-left font-medium">Tác vụ</th>
+                  <th className="px-2 py-1.5 text-left font-medium">Trạng thái</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Thời gian</th>
+                  <th className="px-3 py-1.5 text-left font-medium">Thông tin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map((j) => {
+                  const sm = JOB_STATUS[j.status] ?? JOB_STATUS.canceled!;
+                  return (
+                    <tr key={j.id} className="border-t border-border/50 hover:bg-hover/20">
+                      <td className="px-3 py-1 font-mono">{j.module}</td>
+                      <td className="px-2 py-1 text-muted">{j.action}</td>
+                      <td className="px-2 py-1">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${sm.cls}`}>
+                          {sm.label}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums text-muted">
+                        {j.status === "running" ? (
+                          <I.Loader size={11} className="animate-spin inline text-accent" />
+                        ) : (
+                          formatDur(j.durationMs)
+                        )}
+                      </td>
+                      <td className="px-3 py-1 max-w-[240px] truncate text-muted">
+                        {j.error ? <span className="text-danger">{j.error}</span> : j.message}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_360px] gap-3">

@@ -1,6 +1,11 @@
 /* @erp-framework/client — DataSource + client xác thực + client
    cấu hình cho frontend. App chọn rồi inject vào core/ui. */
 
+export {
+  type AgentChatClient,
+  createAgentChatClient,
+  type SaveExchangeInput,
+} from "./agent-chats";
 export { ApiDataSource, createApiDataSource } from "./api";
 export {
   type ApiKeyCreateResult,
@@ -31,11 +36,6 @@ export {
   type LlmProfileInput,
   type LlmProfileMineInput,
 } from "./config";
-export {
-  createAgentChatClient,
-  type AgentChatClient,
-  type SaveExchangeInput,
-} from "./agent-chats";
 export {
   createEmbedClient,
   type EmbedClient,
@@ -91,7 +91,47 @@ export {
   type KnowledgeHit,
   type KnowledgeSource,
 } from "./knowledge";
+export {
+  createLegacyMenuClient,
+  type LegacyMenuClient,
+  type LegacyMenuNode,
+  type LegacyMenuNodeDetail,
+  type LegacyMenuResolved,
+  type LegacyMenuStats,
+  type LegacyReport,
+} from "./legacy-menu";
 export { LocalStorageDataSource } from "./local-storage";
+export {
+  createMesMucTieuMigrateClient,
+  type MesMucTieuMigrateClient,
+  type MigratePreview,
+  type MigrateResult,
+  type MssqlMonthItem,
+  type RelatedForm,
+} from "./mes-muctieu-migrate";
+export {
+  createMesMucTieuSanXuatClient,
+  type MesMucTieuSanXuatClient,
+  type MucTieuChitietRow,
+  type MucTieuThangRow,
+} from "./mes-muctieu-sanxuat";
+export {
+  createMigrationClient,
+  type MigrationAction,
+  type MigrationAiLogEntry,
+  type MigrationClient,
+  type MigrationEnvCheck,
+  type MigrationJobRow,
+  type MigrationJobState,
+  type MigrationModuleSummary,
+} from "./migration";
+export {
+  createMssqlConnectionsClient,
+  type MssqlConnectionSaveInput,
+  type MssqlConnectionsClient,
+  type MssqlConnectionView,
+  type MssqlTestResult,
+} from "./mssql-connections";
 export {
   type AgentMemberRole,
   type AgentMemberRow,
@@ -104,42 +144,17 @@ export {
   type ScheduleSaveInput,
   type WorkflowSaveInput,
 } from "./objects";
-export {
-  createMigrationClient,
-  type MigrationAction,
-  type MigrationAiLogEntry,
-  type MigrationClient,
-  type MigrationEnvCheck,
-  type MigrationJobState,
-  type MigrationModuleSummary,
-} from "./migration";
-export {
-  createLegacyMenuClient,
-  type LegacyMenuClient,
-  type LegacyMenuNode,
-  type LegacyMenuNodeDetail,
-  type LegacyMenuResolved,
-  type LegacyMenuStats,
-  type LegacyReport,
-} from "./legacy-menu";
-export {
-  createPrintTemplatesClient,
-  type PrintTemplatesClient,
-  type PrintTemplateSummary,
-} from "./print-templates";
-export {
-  createMssqlConnectionsClient,
-  type MssqlConnectionSaveInput,
-  type MssqlConnectionView,
-  type MssqlConnectionsClient,
-  type MssqlTestResult,
-} from "./mssql-connections";
 export { createOrgClient, type OrgClient } from "./org";
 export {
   createPluginsClient,
   type PluginSaveInput,
   type PluginsClient,
 } from "./plugins";
+export {
+  createPrintTemplatesClient,
+  type PrintTemplateSummary,
+  type PrintTemplatesClient,
+} from "./print-templates";
 export {
   createProceduresClient,
   type ProcedureAiDraft,
@@ -170,17 +185,3 @@ export {
   type ToolStatus,
   type ToolsClient,
 } from "./tools";
-export {
-  createMesMucTieuSanXuatClient,
-  type MesMucTieuSanXuatClient,
-  type MucTieuChitietRow,
-  type MucTieuThangRow,
-} from "./mes-muctieu-sanxuat";
-export {
-  createMesMucTieuMigrateClient,
-  type MesMucTieuMigrateClient,
-  type MigratePreview,
-  type MigrateResult,
-  type MssqlMonthItem,
-  type RelatedForm,
-} from "./mes-muctieu-migrate";
