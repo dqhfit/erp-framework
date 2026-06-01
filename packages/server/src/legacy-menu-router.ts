@@ -22,6 +22,45 @@ import { logActivity } from "./activity";
 import { rbacProcedure, router } from "./trpc";
 
 export const legacyMenuRouter = router({
+  /** Kiểm tra trạng thái cấu hình cần thiết cho cockpit (DQHF_SOURCE_DIR, MSSQL). */
+  checkSetup: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
+    const dqhfDir = process.env.DQHF_SOURCE_DIR ?? null;
+    const dqhfExists = dqhfDir ? existsSync(dqhfDir) : false;
+
+    // Kiểm tra connection MSSQL mặc định (không throw — chỉ trả flag)
+    let mssqlOk = false;
+    try {
+      const client = await openDefaultMssql(ctx.db, ctx.user.companyId);
+      await client.close();
+      mssqlOk = true;
+    } catch {
+      mssqlOk = false;
+    }
+
+    return {
+      dqhfDir,
+      dqhfDirSet: dqhfDir !== null,
+      dqhfDirExists: dqhfExists,
+      mssqlOk,
+    };
+  }),
+
+  /** Đặt DQHF_SOURCE_DIR tại runtime (session-only, mất khi restart server).
+   *  Validate thư mục tồn tại trước khi set. */
+  setSourceDir: rbacProcedure("edit", "settings")
+    .input(z.object({ dir: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const dir = input.dir.trim();
+      if (!existsSync(dir)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Thư mục không tồn tại: ${dir}`,
+        });
+      }
+      process.env.DQHF_SOURCE_DIR = dir;
+      return { ok: true, dir };
+    }),
+
   /** Import (upsert) toàn bộ SYS_MENU_NEW từ DB nguồn mặc định. */
   importFromMssql: rbacProcedure("edit", "settings").mutation(async ({ ctx }) => {
     const client = await openDefaultMssql(ctx.db, ctx.user.companyId);

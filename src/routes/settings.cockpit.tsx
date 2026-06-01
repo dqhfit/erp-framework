@@ -111,6 +111,13 @@ function TreeRow({
   );
 }
 
+type SetupStatus = {
+  dqhfDir: string | null;
+  dqhfDirSet: boolean;
+  dqhfDirExists: boolean;
+  mssqlOk: boolean;
+} | null;
+
 function CockpitPage() {
   const [tree, setTree] = useState<LegacyMenuNode[]>([]);
   const [stats, setStats] = useState<LegacyMenuStats | null>(null);
@@ -121,8 +128,42 @@ function CockpitPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [setup, setSetup] = useState<SetupStatus>(null);
+  const [dirInput, setDirInput] = useState("");
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+
+  const refreshSetup = useCallback(() => {
+    api
+      .checkSetup()
+      .then(setSetup)
+      .catch(() => setSetup(null));
+  }, []);
+
+  const doSetSourceDir = useCallback(async () => {
+    const dir = dirInput.trim();
+    if (!dir) return;
+    setBusy("setdir");
+    try {
+      await api.setSourceDir(dir);
+      refreshSetup();
+    } catch (e) {
+      await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setBusy(null);
+    }
+  }, [dirInput, refreshSetup]);
+
+  // Kiểm tra config 1 lần khi mount + pre-fill dirInput nếu đã có
+  useEffect(() => {
+    api
+      .checkSetup()
+      .then((s) => {
+        setSetup(s);
+        if (s.dqhfDir) setDirInput(s.dqhfDir);
+      })
+      .catch(() => setSetup(null));
+  }, []); // mount-only
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: api + dialog là module singleton, không thay đổi
   useEffect(() => {
@@ -268,10 +309,32 @@ function CockpitPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="default" size="sm" onClick={doImport} disabled={busy != null}>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={doImport}
+            disabled={busy != null || setup?.mssqlOk === false}
+            title={
+              setup?.mssqlOk === false
+                ? "MSSQL chưa kết nối được — kiểm tra Settings → Migration"
+                : undefined
+            }
+          >
             <I.Download size={14} /> {busy === "import" ? "Đang import…" : "Import menu"}
           </Button>
-          <Button variant="default" size="sm" onClick={doResolve} disabled={busy != null}>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={doResolve}
+            disabled={busy != null || !setup?.dqhfDirSet}
+            title={
+              !setup?.dqhfDirSet
+                ? "Cần đặt env DQHF_SOURCE_DIR trỏ vào thư mục source C# DQHF"
+                : !setup?.dqhfDirExists
+                  ? `Thư mục không tồn tại: ${setup.dqhfDir}`
+                  : undefined
+            }
+          >
             <I.RefreshCw size={14} /> {busy === "resolve" ? "Đang resolve…" : "Resolve form→proc"}
           </Button>
           <Button variant="default" size="sm" onClick={doParseReports} disabled={busy != null}>
@@ -279,6 +342,62 @@ function CockpitPage() {
           </Button>
         </div>
       </div>
+
+      {/* Banner cảnh báo cấu hình */}
+      {setup && (!setup.dqhfDirSet || !setup.dqhfDirExists || !setup.mssqlOk) && (
+        <div className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          <div className="font-medium flex items-center gap-1.5">
+            <I.AlertCircle size={14} className="shrink-0" />
+            Cấu hình chưa đủ — một số chức năng bị vô hiệu:
+          </div>
+          <ul className="ml-5 list-disc space-y-1.5 text-xs">
+            {!setup.mssqlOk && (
+              <li>
+                <b>MSSQL chưa kết nối</b> — nút "Import menu" bị tắt. Kiểm tra connection ở{" "}
+                <span className="font-mono">Settings → Migration</span>.
+              </li>
+            )}
+            {(!setup.dqhfDirSet || !setup.dqhfDirExists) && (
+              <li className="list-none -ml-4">
+                <div className="mb-1">
+                  {!setup.dqhfDirSet ? (
+                    <>
+                      <b>Thư mục source C# DQHF chưa đặt</b> — nút "Resolve form→proc" bị tắt.
+                    </>
+                  ) : (
+                    <>
+                      <b>Thư mục không tồn tại:</b>{" "}
+                      <span className="font-mono">{setup.dqhfDir}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={dirInput}
+                    onChange={(e) => setDirInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && doSetSourceDir()}
+                    placeholder="VD: D:\code\DotNET\DQHF"
+                    className="flex-1 rounded border border-amber-300 bg-white px-2 py-1 font-mono text-xs text-slate-700 focus:border-sky-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={doSetSourceDir}
+                    disabled={busy === "setdir" || !dirInput.trim()}
+                    className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {busy === "setdir" ? "Đang đặt…" : "Đặt thư mục"}
+                  </button>
+                </div>
+                <div className="mt-1 text-[11px] text-amber-600">
+                  Chỉ lưu trong session hiện tại — restart server cần đặt lại hoặc thêm vào{" "}
+                  <span className="font-mono">.env</span>.
+                </div>
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {stats && (
         <div className="flex flex-wrap items-center gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">

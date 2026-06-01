@@ -72,6 +72,17 @@ export function createLegacyMenuClient(baseUrl: string) {
     ],
   });
   return {
+    /** Kiểm tra cấu hình cockpit: DQHF_SOURCE_DIR + MSSQL connection. */
+    checkSetup: () =>
+      trpc.legacyMenu.checkSetup.query() as Promise<{
+        dqhfDir: string | null;
+        dqhfDirSet: boolean;
+        dqhfDirExists: boolean;
+        mssqlOk: boolean;
+      }>,
+    /** Đặt DQHF_SOURCE_DIR tại runtime (session-only). Validate thư mục tồn tại. */
+    setSourceDir: (dir: string) =>
+      trpc.legacyMenu.setSourceDir.mutate({ dir }) as Promise<{ ok: true; dir: string }>,
     /** Import (upsert) toàn bộ SYS_MENU_NEW từ connection MSSQL mặc định. */
     importFromMssql: () =>
       trpc.legacyMenu.importFromMssql.mutate() as Promise<{
