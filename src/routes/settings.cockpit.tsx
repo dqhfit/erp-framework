@@ -35,9 +35,9 @@ function pruneNavTree(nodes: LegacyMenuNode[]): LegacyMenuNode[] {
 }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  chua: { label: "Chưa port", cls: "bg-slate-100 text-slate-600" },
-  dang: { label: "Đang port", cls: "bg-amber-100 text-amber-700" },
-  xong: { label: "Đã port", cls: "bg-emerald-100 text-emerald-700" },
+  chua: { label: "Chưa port", cls: "bg-panel-2 text-muted" },
+  dang: { label: "Đang port", cls: "bg-warning/20 text-warning" },
+  xong: { label: "Đã port", cls: "bg-success/20 text-success" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -71,16 +71,16 @@ function TreeRow({
       <button
         type="button"
         onClick={() => (hasChildren ? onToggle(node.sourceCode) : onSelect(node))}
-        className={`flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-sm hover:bg-slate-50 ${
-          isSel ? "bg-sky-50 ring-1 ring-sky-200" : ""
+        className={`flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-sm hover:bg-hover/50 ${
+          isSel ? "bg-accent/10 ring-1 ring-accent/30" : ""
         }`}
         style={{ paddingLeft: depth * 14 + 6 }}
       >
         {hasChildren ? (
           isOpen ? (
-            <I.ChevronDown size={14} className="shrink-0 text-slate-400" />
+            <I.ChevronDown size={14} className="shrink-0 text-muted" />
           ) : (
-            <I.ChevronRight size={14} className="shrink-0 text-slate-400" />
+            <I.ChevronRight size={14} className="shrink-0 text-muted" />
           )
         ) : (
           <span className="inline-block w-[14px]" />
@@ -415,7 +415,7 @@ function CockpitPage() {
       )}
 
       {stats && (
-        <div className="flex flex-wrap items-center gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-bg-soft px-3 py-2 text-sm">
           <span>
             <b>{stats.total - stats.rbacNodes}</b> mục menu (cấp 1–3)
           </span>
@@ -426,7 +426,7 @@ function CockpitPage() {
           <StatusBadge status="dang" /> <b>{stats.byStatus.dang ?? 0}</b>
           <StatusBadge status="xong" /> <b>{stats.byStatus.xong ?? 0}</b>
           {stats.rbacNodes > 0 && (
-            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] text-slate-500">
+            <span className="rounded bg-panel-2 px-1.5 py-0.5 text-[11px] text-muted">
               +{stats.rbacNodes} thao tác RBAC (cấp &gt;3, ẩn trên menu)
             </span>
           )}
@@ -436,7 +436,7 @@ function CockpitPage() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_360px] gap-3">
         {/* Cây menu */}
-        <div className="min-h-0 overflow-auto rounded border border-slate-200 p-1.5">
+        <div className="min-h-0 overflow-auto rounded border border-border p-1.5">
           {loading ? (
             <div className="p-4 text-sm text-slate-400">Đang tải…</div>
           ) : tree.length === 0 ? (
@@ -459,7 +459,7 @@ function CockpitPage() {
         </div>
 
         {/* Chi tiết node */}
-        <div className="min-h-0 overflow-auto rounded border border-slate-200 p-3">
+        <div className="min-h-0 overflow-auto rounded border border-border p-3">
           {!selected ? (
             <div className="text-sm text-slate-400">Chọn 1 mục menu có form để xem chi tiết.</div>
           ) : (
@@ -482,7 +482,7 @@ function CockpitPage() {
                 <div className="flex flex-col gap-2 text-sm">
                   <div>
                     <span className="text-slate-500">Proc ({detail.resolved.procs.length}):</span>
-                    <div className="mt-1 max-h-40 overflow-auto rounded bg-slate-50 p-2 font-mono text-[11px] leading-relaxed">
+                    <div className="mt-1 max-h-40 overflow-auto rounded bg-bg-soft p-2 font-mono text-[11px] leading-relaxed">
                       {detail.resolved.procs.length
                         ? detail.resolved.procs.join(", ")
                         : "(không có — form dùng pattern khác; seed bảng thủ công ở Migration)"}
@@ -574,7 +574,7 @@ function CockpitPage() {
                 <div className="text-sm text-slate-400">Mục này không mở form (nhóm menu).</div>
               )}
 
-              <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              <div className="flex flex-wrap gap-2 border-t border-border pt-3">
                 <Button
                   variant="primary"
                   size="sm"

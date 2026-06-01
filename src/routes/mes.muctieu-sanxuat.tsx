@@ -63,18 +63,18 @@ const HEADER_COLS: Array<{ key: keyof MucTieuThangRow; label: string; title: str
 
 function HeaderGrid({ rows }: { rows: MucTieuThangRow[] }) {
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-400 italic">Chưa có dữ liệu header tháng.</p>;
+    return <p className="text-sm text-muted italic">Chưa có dữ liệu header tháng.</p>;
   }
   return (
-    <div className="overflow-x-auto rounded border border-slate-200">
+    <div className="overflow-x-auto rounded border border-border">
       <table className="w-full text-xs">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
+          <tr className="bg-bg-soft border-b border-border">
             {HEADER_COLS.map((c) => (
               <th
                 key={c.key}
                 title={c.title}
-                className="px-2 py-1.5 text-right font-medium text-slate-600 whitespace-nowrap first:text-center"
+                className="px-2 py-1.5 text-right font-medium text-muted whitespace-nowrap first:text-center"
               >
                 {c.label}
               </th>
@@ -83,13 +83,13 @@ function HeaderGrid({ rows }: { rows: MucTieuThangRow[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-sky-50/40">
+            <tr key={row.id} className="border-b border-border/50 last:border-0 hover:bg-hover/30">
               {HEADER_COLS.map((c) => {
                 const v = row[c.key];
                 return (
                   <td
                     key={c.key}
-                    className={`px-2 py-1 text-right ${c.key === "mucThuong" ? "text-center font-bold text-sky-700" : ""} ${c.key === "col18" ? (v === "Dat" ? "text-emerald-600 font-semibold text-center" : "text-slate-400 text-center") : ""}`}
+                    className={`px-2 py-1 text-right ${c.key === "mucThuong" ? "text-center font-bold text-sky-700" : ""} ${c.key === "col18" ? (v === "Dat" ? "text-emerald-600 font-semibold text-center" : "text-muted text-center") : ""}`}
                   >
                     {c.key === "col18"
                       ? v === "Dat"
@@ -152,18 +152,16 @@ function ChitietGrid({
   onCellChange: (id: string, field: EditableField, value: number) => void;
 }) {
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-400 italic">Chưa có dữ liệu chi tiết.</p>;
+    return <p className="text-sm text-muted italic">Chưa có dữ liệu chi tiết.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-200">
+    <div className="overflow-x-auto rounded border border-border">
       <table className="w-full text-xs">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
-            <th className="px-2 py-1.5 text-left font-medium text-slate-600 whitespace-nowrap">
-              Ngày
-            </th>
-            <th className="px-2 py-1.5 text-center font-medium text-slate-600">Thứ</th>
+          <tr className="bg-bg-soft border-b border-border">
+            <th className="px-2 py-1.5 text-left font-medium text-muted whitespace-nowrap">Ngày</th>
+            <th className="px-2 py-1.5 text-center font-medium text-muted">Thứ</th>
             {EDITABLE_FIELDS.map((c) => (
               <th
                 key={c.key}
@@ -177,7 +175,7 @@ function ChitietGrid({
               <th
                 key={String(c.key)}
                 title={c.title}
-                className="px-1.5 py-1.5 text-right font-medium text-slate-500 whitespace-nowrap"
+                className="px-1.5 py-1.5 text-right font-medium text-muted whitespace-nowrap"
               >
                 {c.label}
               </th>
@@ -194,19 +192,19 @@ function ChitietGrid({
               <tr
                 key={row.id}
                 className={[
-                  "border-b border-slate-100 last:border-0",
-                  isSun ? "bg-orange-50" : "hover:bg-sky-50/30",
+                  "border-b border-border/50 last:border-0",
+                  isSun ? "bg-orange-50" : "hover:bg-hover/20",
                   isDirty ? "ring-1 ring-inset ring-amber-300" : "",
                 ].join(" ")}
               >
-                <td className="px-2 py-1 whitespace-nowrap text-slate-700">
+                <td className="px-2 py-1 whitespace-nowrap text-text">
                   {/* ngaythang lưu UTC-midnight (cột PG `date`) — đọc UTC để
                       khớp dayName và không lệch ngày ở trình duyệt tz âm. */}
                   {date.getUTCDate().toString().padStart(2, "0")}/
                   {(date.getUTCMonth() + 1).toString().padStart(2, "0")}
                 </td>
                 <td
-                  className={`px-2 py-1 text-center ${isSun ? "font-semibold text-orange-600" : "text-slate-500"}`}
+                  className={`px-2 py-1 text-center ${isSun ? "font-semibold text-orange-600" : "text-muted"}`}
                 >
                   {dayLabel}
                 </td>
@@ -217,7 +215,7 @@ function ChitietGrid({
                       step="any"
                       value={(row[c.key] as number) || ""}
                       onChange={(e) => onCellChange(row.id, c.key, parseFloat(e.target.value) || 0)}
-                      className="w-16 rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs focus:border-sky-400 focus:outline-none bg-white"
+                      className="w-16 rounded border border-border px-1.5 py-0.5 text-right text-xs focus:border-accent focus:outline-none bg-panel"
                     />
                   </td>
                 ))}
@@ -227,7 +225,7 @@ function ChitietGrid({
                   return (
                     <td
                       key={String(c.key)}
-                      className={`px-2 py-1 text-right tabular-nums ${neg ? "text-red-500" : "text-slate-600"}`}
+                      className={`px-2 py-1 text-right tabular-nums ${neg ? "text-red-500" : "text-muted"}`}
                     >
                       {fmt(v)}
                     </td>
@@ -363,11 +361,11 @@ function MucTieuSanXuatPage() {
       {/* Tiêu đề + bộ lọc */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <p className="mb-1 text-xs font-medium text-slate-500">Tháng</p>
+          <p className="mb-1 text-xs font-medium text-muted">Tháng</p>
           <select
             value={thang}
             onChange={(e) => setThang(Number(e.target.value))}
-            className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+            className="rounded border border-border px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
@@ -377,11 +375,11 @@ function MucTieuSanXuatPage() {
           </select>
         </div>
         <div>
-          <p className="mb-1 text-xs font-medium text-slate-500">Năm</p>
+          <p className="mb-1 text-xs font-medium text-muted">Năm</p>
           <select
             value={nam}
             onChange={(e) => setNam(Number(e.target.value))}
-            className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+            className="rounded border border-border px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
           >
             {namList.map((y) => (
               <option key={y} value={y}>
@@ -391,12 +389,12 @@ function MucTieuSanXuatPage() {
           </select>
         </div>
         <div>
-          <p className="mb-1 text-xs font-medium text-slate-500">Bộ phận / Công đoạn</p>
+          <p className="mb-1 text-xs font-medium text-muted">Bộ phận / Công đoạn</p>
           {boPhanList.length > 0 ? (
             <select
               value={maBoPhan}
               onChange={(e) => setMaBoPhan(e.target.value)}
-              className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+              className="rounded border border-border px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
             >
               {boPhanList.map((bp) => (
                 <option key={bp} value={bp}>
@@ -405,7 +403,7 @@ function MucTieuSanXuatPage() {
               ))}
             </select>
           ) : (
-            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-400">
+            <div className="rounded border border-border bg-bg-soft px-2 py-1.5 text-sm text-muted">
               Chưa có dữ liệu — hãy migrate trước
             </div>
           )}
@@ -453,9 +451,9 @@ function MucTieuSanXuatPage() {
       {/* Grid header 4 mức thưởng */}
       {headerRows.length > 0 && (
         <section>
-          <h2 className="mb-1.5 text-sm font-semibold text-slate-700">
+          <h2 className="mb-1.5 text-sm font-semibold text-text">
             Tổng hợp tháng {thang}/{nam}
-            <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-600">
+            <span className="ml-2 rounded bg-panel-2 px-1.5 py-0.5 text-xs font-normal text-muted">
               Bộ phận: {maBoPhan}
             </span>
           </h2>
@@ -466,7 +464,7 @@ function MucTieuSanXuatPage() {
       {/* Grid chi tiết hàng ngày */}
       {chitietRows.length > 0 && (
         <section>
-          <h2 className="mb-1.5 text-sm font-semibold text-slate-700">
+          <h2 className="mb-1.5 text-sm font-semibold text-text">
             Chi tiết từng ngày
             {dirty.size > 0 && (
               <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
@@ -479,7 +477,7 @@ function MucTieuSanXuatPage() {
       )}
 
       {chitietRows.length === 0 && !loading && maBoPhan && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slate-400">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted">
           <I.Table size={36} className="opacity-30" />
           <p className="text-sm">
             Chọn bộ phận và nhấn <strong>Tải</strong> để bắt đầu.
