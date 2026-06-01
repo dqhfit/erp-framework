@@ -2,6 +2,7 @@ import { createApiDataSource, createMigrationClient } from "@erp-framework/clien
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useUndoable } from "@/hooks/useUndoable";
+import { AgentSearchableToggle } from "@/components/designer/AgentSearchableToggle";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { EntityFormPreview } from "@/components/designer/entity-preview";
 import { FieldInspector } from "@/components/designer/field-inspector";
@@ -800,6 +801,7 @@ export function EntityDesigner({ entityId }: Props) {
                 {/* ── MCP bindings ─────────────────────────────────── */}
                 {schemaTab === "mcp" && (
                   <div className="p-4">
+                    <AgentSearchableToggle entityId={entity.id} />
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted">{t("entity.mcp_desc")}</p>
                       <span className="text-[11px] text-muted font-mono">

@@ -11,32 +11,52 @@ export const PASSWORD = "e2e-password-123";
 export const STUB_URL = "http://127.0.0.1:9100";
 
 /** Vào app: đăng nhập nếu đã có tài khoản, ngược lại đăng ký admin đầu.
-   Idempotent — chạy lại được trên DB dùng chung. */
+   Idempotent — chạy lại được trên DB dùng chung.
+
+   storageState-aware: nếu context đã có session (auth.setup.ts đã lưu),
+   chỉ goto rồi return — KHÔNG submit login (mỗi login tốn quota
+   auth.login 5/15min/IP). Chỉ thực sự login khi chưa đăng nhập (tức
+   trong auth.setup hoặc khi chạy lẻ chưa có state). */
 export async function ensureLoggedIn(page: Page): Promise<void> {
   await page.goto("/");
-  await page.getByPlaceholder("ban@congty.com").fill(EMAIL);
+  const inApp = page.getByRole("link", { name: "Khách hàng", exact: true });
+  const emailField = page.getByPlaceholder("ban@congty.com");
+
+  // Chờ MỘT trong hai trạng thái ổn định: form đăng nhập HOẶC app đã vào.
+  // Timeout rộng vì lần chạy đầu dev server cold-start biên dịch route —
+  // 4s từng quá ngắn, app chậm hiện → rớt nhầm xuống nhánh điền form.
+  await expect(emailField.or(inApp).first()).toBeVisible({ timeout: 30_000 });
+
+  // Đã ở trong app (không có form) → đã đăng nhập qua storageState → xong.
+  // KHÔNG điền form (sẽ treo vì không có input + tốn quota auth.login).
+  if (!(await emailField.isVisible().catch(() => false))) {
+    await inApp.waitFor({ state: "visible", timeout: 15_000 });
+    return;
+  }
+
+  // Còn form đăng nhập → flow login, fallback đăng ký admin đầu.
+  await emailField.fill(EMAIL);
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
-
-  const inApp = page.getByRole("link", { name: "Khách hàng", exact: true });
   try {
-    await inApp.waitFor({ state: "visible", timeout: 6000 });
+    await inApp.waitFor({ state: "visible", timeout: 10_000 });
     return;
   } catch {
     // chưa có tài khoản → đăng ký admin đầu tiên
   }
   await page.getByRole("button", { name: /Tạo tài khoản quản trị/ }).click();
-  await page.getByPlaceholder("ban@congty.com").fill(EMAIL);
+  await emailField.fill(EMAIL);
   await page.getByPlaceholder("Nguyễn Văn A").fill("E2E Admin");
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
   await page.getByRole("button", { name: "Đăng ký & vào app" }).click();
   await inApp.waitFor({ state: "visible", timeout: 15_000 });
 }
 
-/** Chuyển sang chế độ Người dùng — nút thứ 2 của .mode-toggle (Preview).
-   Chỉ có trên route entities/pages/workflows. */
+/** Chuyển sang chế độ Người dùng — nút "Xem trước" (designer.preview),
+   dùng chung EntityDesigner (→ localView "data") lẫn PageDesigner
+   (→ previewMode). Chỉ có trên route entities/pages. */
 export async function switchToConsumer(page: Page): Promise<void> {
-  await page.locator(".mode-toggle button").nth(1).click();
+  await page.getByRole("button", { name: "Xem trước", exact: true }).click();
 }
 
 /** Mở một mục ở sidebar theo tên hiển thị. */
@@ -55,8 +75,7 @@ export async function configureEmbeddingStub(page: Page): Promise<void> {
   await page.goto("/settings/embedding");
   // Select "Nhà cung cấp" — lọc theo option "Ollama" để không trúng
   // LanguagePicker (cũng là <select>) ở Topbar.
-  await page.locator("select").filter({ hasText: "Ollama" })
-    .selectOption("openai");
+  await page.locator("select").filter({ hasText: "Ollama" }).selectOption("openai");
   await page.getByPlaceholder("nomic-embed-text").fill("stub-embed");
   await page.getByPlaceholder("https://api.openai.com").fill(STUB_URL);
   await page.getByPlaceholder("sk-...").fill("stub-key");

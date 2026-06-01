@@ -5,7 +5,7 @@ import { ensureLoggedIn } from "./helpers";
 
 async function openFirstAgent(page: Page): Promise<boolean> {
   const a = page.locator('a[href^="/agents/"]').first();
-  if (await a.count() === 0) return false;
+  if ((await a.count()) === 0) return false;
   await a.click();
   await expect(page).toHaveURL(/\/agents\//);
   return true;
@@ -23,7 +23,9 @@ test("sửa tên agent + lưu", async ({ page }) => {
   const name = "Agent E2E " + Date.now().toString(36);
   await page.getByRole("textbox").first().fill(name);
   await expect(page.getByRole("heading", { name })).toBeVisible();
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
+  // Sau khi sửa (dirty) nút lưu = "Lưu thay đổi"; lưu xong → "✓ Đã lưu".
+  await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+  await expect(page.getByRole("button", { name: /Đã lưu/ })).toBeVisible();
 });
 
 test("mở khung chat Trợ lý từ trang chủ", async ({ page }) => {

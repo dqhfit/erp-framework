@@ -7,6 +7,12 @@ export type Density = "comfortable" | "compact";
 export type Mode = "designer" | "consumer";
 export type AiCreateTarget = "entity" | "page" | "workflow" | "agent" | null;
 
+export interface AgentObjectContext {
+  type: "entity" | "workflow" | "page" | "agent";
+  id: string;
+  label: string;
+}
+
 interface UIState {
   theme: Theme;
   accent: AccentColor;
@@ -18,6 +24,8 @@ interface UIState {
   cmdOpen: boolean;
   tweaksOpen: boolean;
   aiCreateTarget: AiCreateTarget;
+  /** Context đối tượng đang được xem — route set, AgentPanel đọc. Không persist. */
+  agentContext: AgentObjectContext | null;
   setTheme: (t: Theme) => void;
   setAccent: (a: AccentColor) => void;
   setDensity: (d: Density) => void;
@@ -28,6 +36,18 @@ interface UIState {
   setCmdOpen: (v: boolean) => void;
   setTweaksOpen: (v: boolean) => void;
   setAiCreateTarget: (t: AiCreateTarget) => void;
+  setAgentContext: (ctx: AgentObjectContext | null) => void;
+}
+
+const TYPE_LABEL: Record<AgentObjectContext["type"], string> = {
+  entity: "Entity",
+  workflow: "Workflow",
+  page: "Trang",
+  agent: "Agent",
+};
+
+export function formatAgentContext(ctx: AgentObjectContext): string {
+  return `${TYPE_LABEL[ctx.type]} "${ctx.label}"`;
 }
 
 export const useUI = create<UIState>()(
@@ -43,6 +63,7 @@ export const useUI = create<UIState>()(
       cmdOpen: false,
       tweaksOpen: false,
       aiCreateTarget: null,
+      agentContext: null,
       setTheme: (theme) => set({ theme }),
       setAccent: (accent) => set({ accent }),
       setDensity: (density) => set({ density }),
@@ -53,7 +74,23 @@ export const useUI = create<UIState>()(
       setCmdOpen: (cmdOpen) => set({ cmdOpen }),
       setTweaksOpen: (tweaksOpen) => set({ tweaksOpen }),
       setAiCreateTarget: (aiCreateTarget) => set({ aiCreateTarget }),
+      setAgentContext: (agentContext) => set({ agentContext }),
     }),
-    { name: "erp-ui" },
+    {
+      name: "erp-ui",
+      partialize: (s) => ({
+        theme: s.theme,
+        accent: s.accent,
+        density: s.density,
+        sidebarCollapsed: s.sidebarCollapsed,
+        inspectorVisible: s.inspectorVisible,
+        mode: s.mode,
+        agentOpen: s.agentOpen,
+        cmdOpen: s.cmdOpen,
+        tweaksOpen: s.tweaksOpen,
+        aiCreateTarget: s.aiCreateTarget,
+        // agentContext: session-only, không persist
+      }),
+    },
   ),
 );

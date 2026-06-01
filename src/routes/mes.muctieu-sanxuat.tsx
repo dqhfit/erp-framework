@@ -17,7 +17,7 @@ import {
   type MucTieuThangRow,
 } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
@@ -37,7 +37,7 @@ const DAY_VI: Record<string, string> = {
 };
 
 function fmt(v: number | null | undefined, dp = 1): string {
-  if (v == null || isNaN(v)) return "";
+  if (v == null || Number.isNaN(v)) return "";
   return v === 0 ? "0" : v.toFixed(dp).replace(/\.?0+$/, "");
 }
 
@@ -200,8 +200,10 @@ function ChitietGrid({
                 ].join(" ")}
               >
                 <td className="px-2 py-1 whitespace-nowrap text-slate-700">
-                  {date.getDate().toString().padStart(2, "0")}/
-                  {(date.getMonth() + 1).toString().padStart(2, "0")}
+                  {/* ngaythang lưu UTC-midnight (cột PG `date`) — đọc UTC để
+                      khớp dayName và không lệch ngày ở trình duyệt tz âm. */}
+                  {date.getUTCDate().toString().padStart(2, "0")}/
+                  {(date.getUTCMonth() + 1).toString().padStart(2, "0")}
                 </td>
                 <td
                   className={`px-2 py-1 text-center ${isSun ? "font-semibold text-orange-600" : "text-slate-500"}`}
@@ -242,11 +244,20 @@ function ChitietGrid({
 
 /* ── Main page ── */
 
+const CURRENT_YEAR = new Date().getFullYear();
+
+/** Dải năm fallback khi DB chưa có dữ liệu. */
+function fallbackYears(): number[] {
+  return Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 3 + i);
+}
+
 function MucTieuSanXuatPage() {
-  const today = new Date();
-  const [nam, setNam] = useState(today.getFullYear());
-  const [thang, setThang] = useState(today.getMonth() + 1);
+  const [nam, setNam] = useState(CURRENT_YEAR);
+  const [thang, setThang] = useState(new Date().getMonth() + 1);
   const [maBoPhan, setMaBoPhan] = useState("");
+
+  const [boPhanList, setBoPhanList] = useState<string[]>([]);
+  const [namList, setNamList] = useState<number[]>([]);
 
   const [headerRows, setHeaderRows] = useState<MucTieuThangRow[]>([]);
   const [chitietRows, setChitietRows] = useState<MucTieuChitietRow[]>([]);
@@ -255,6 +266,20 @@ function MucTieuSanXuatPage() {
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  /* Load danh sách bộ phận + năm khi mount — chạy 1 lần */
+  useEffect(() => {
+    Promise.all([api.listBoPhan(), api.listNam()])
+      .then(([bp, nm]) => {
+        setBoPhanList(bp);
+        setNamList(nm.length ? nm : fallbackYears());
+        // Tự chọn bộ phận đầu tiên nếu user chưa chọn
+        if (bp.length) setMaBoPhan((prev) => (prev || bp[0]) ?? "");
+      })
+      .catch(() => {
+        setNamList(fallbackYears());
+      });
+  }, []); // mount-only — api là module singleton, không thay đổi
 
   /* Merge edits vào rows để hiển thị */
   const mergedRows = chitietRows.map((r) => ({
@@ -338,40 +363,56 @@ function MucTieuSanXuatPage() {
       {/* Tiêu đề + bộ lọc */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <p className="mb-1 text-xs font-medium text-slate-500">Tháng / Năm</p>
-          <div className="flex gap-1">
+          <p className="mb-1 text-xs font-medium text-slate-500">Tháng</p>
+          <select
+            value={thang}
+            onChange={(e) => setThang(Number(e.target.value))}
+            className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                Tháng {m}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <p className="mb-1 text-xs font-medium text-slate-500">Năm</p>
+          <select
+            value={nam}
+            onChange={(e) => setNam(Number(e.target.value))}
+            className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+          >
+            {namList.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <p className="mb-1 text-xs font-medium text-slate-500">Bộ phận / Công đoạn</p>
+          {boPhanList.length > 0 ? (
             <select
-              value={thang}
-              onChange={(e) => setThang(Number(e.target.value))}
+              value={maBoPhan}
+              onChange={(e) => setMaBoPhan(e.target.value)}
               className="rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  Tháng {m}
+              {boPhanList.map((bp) => (
+                <option key={bp} value={bp}>
+                  {bp}
                 </option>
               ))}
             </select>
-            <input
-              type="number"
-              value={nam}
-              onChange={(e) => setNam(Number(e.target.value))}
-              className="w-20 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
-            />
-          </div>
-        </div>
-        <div>
-          <p className="mb-1 text-xs font-medium text-slate-500">Mã bộ phận</p>
-          <input
-            type="text"
-            value={maBoPhan}
-            onChange={(e) => setMaBoPhan(e.target.value.toUpperCase())}
-            placeholder="VD: DP09"
-            className="rounded border border-slate-200 px-2 py-1.5 text-sm uppercase focus:border-sky-400 focus:outline-none"
-          />
+          ) : (
+            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-400">
+              Chưa có dữ liệu — hãy migrate trước
+            </div>
+          )}
         </div>
         <Button
           onClick={reload}
-          disabled={!maBoPhan.trim() || loading}
+          disabled={!maBoPhan || loading}
           className="flex items-center gap-1.5"
         >
           {loading ? <I.Loader size={14} className="animate-spin" /> : <I.Download size={14} />}
@@ -413,7 +454,10 @@ function MucTieuSanXuatPage() {
       {headerRows.length > 0 && (
         <section>
           <h2 className="mb-1.5 text-sm font-semibold text-slate-700">
-            Tổng hợp tháng {thang}/{nam} — {maBoPhan}
+            Tổng hợp tháng {thang}/{nam}
+            <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-600">
+              Bộ phận: {maBoPhan}
+            </span>
           </h2>
           <HeaderGrid rows={headerRows} />
         </section>
@@ -438,7 +482,7 @@ function MucTieuSanXuatPage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slate-400">
           <I.Table size={36} className="opacity-30" />
           <p className="text-sm">
-            Nhập mã bộ phận và nhấn <strong>Tải</strong> để bắt đầu.
+            Chọn bộ phận và nhấn <strong>Tải</strong> để bắt đầu.
           </p>
         </div>
       )}

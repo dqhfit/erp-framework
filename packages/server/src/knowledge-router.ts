@@ -198,10 +198,14 @@ export const knowledgeRouter = router({
       z.object({
         query: z.string().min(1),
         limit: z.number().int().positive().max(20).optional(),
+        sourceKind: z.enum(["file", "entity", "text"]).optional(),
       }),
     )
     .query(({ ctx, input }) =>
-      knowledgeSearch(ctx.db, ctx.user.companyId, input.query, input.limit ?? 5),
+      knowledgeSearch(ctx.db, ctx.user.companyId, input.query, {
+        limit: input.limit ?? 5,
+        sourceKind: input.sourceKind,
+      }),
     ),
 
   /* ── Cấu hình profile embedding (một bản / công ty) ── */

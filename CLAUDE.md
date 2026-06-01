@@ -178,3 +178,9 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
 8. **Bundle 1.6MB main → 490KB qua `manualChunks`** vite — tách
    react-vendor/router/query/designer/viz/icons. Viz vẫn 577KB nhưng
    lazy load theo route nên LCP không impact main.
+9. **Cột PG `date` PHẢI khai báo Drizzle là `date(...)`, KHÔNG `timestamp`**
+   — `timestamp` parser làm `new Date(value + "+0000")`; chuỗi date-only
+   "2026-05-01" → `new Date("2026-05-01+0000")` = **Invalid Date** →
+   `.toISOString()` throw **"Invalid time value"** lúc đọc. Cột `date`
+   round-trip qua UTC (mapToDriverValue = `toISOString`), nên dựng/đọc
+   ngày bằng `Date.UTC` + `getUTC*` để khỏi lệch ±1 ngày ở server tz≠0.

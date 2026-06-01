@@ -13,18 +13,22 @@
 
 import { mesMucTieuSanXuatChitiet, mesMucTieuSanXuatThang } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { rbacProcedure, router } from "./trpc";
 
 /* ── Helpers ── */
 
+// Dựng ngày theo UTC-midnight để khớp cách cột `date` round-trip qua
+// Drizzle (mapToDriverValue dùng toISOString → phần ngày UTC). Nếu dựng
+// bằng giờ địa phương, server tz dương (VN+7) sẽ lệch -1 ngày khi ghi và
+// khi so khoá ISO → sinh trùng/khuyết ngày. Xem CLAUDE.md bài học #9.
 function daysInMonth(nam: number, thang: number): Date[] {
   const days: Date[] = [];
-  const d = new Date(nam, thang - 1, 1);
-  while (d.getMonth() === thang - 1) {
+  const d = new Date(Date.UTC(nam, thang - 1, 1));
+  while (d.getUTCMonth() === thang - 1) {
     days.push(new Date(d));
-    d.setDate(d.getDate() + 1);
+    d.setUTCDate(d.getUTCDate() + 1);
   }
   return days;
 }
@@ -61,6 +65,26 @@ const SaveChitietInput = z.object({
 /* ── Router ── */
 
 export const mesMucTieuSanXuatRouter = router({
+  /** Danh sách mã bộ phận/công đoạn có dữ liệu (cho combobox chọn). */
+  listBoPhan: rbacProcedure("view", "entity").query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .selectDistinct({ maBoPhan: mesMucTieuSanXuatThang.maBoPhan })
+      .from(mesMucTieuSanXuatThang)
+      .where(eq(mesMucTieuSanXuatThang.companyId, ctx.user.companyId))
+      .orderBy(asc(mesMucTieuSanXuatThang.maBoPhan));
+    return rows.map((r) => r.maBoPhan);
+  }),
+
+  /** Danh sách năm có dữ liệu (cho combobox chọn, giảm dần). */
+  listNam: rbacProcedure("view", "entity").query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .selectDistinct({ nam: mesMucTieuSanXuatThang.nam })
+      .from(mesMucTieuSanXuatThang)
+      .where(eq(mesMucTieuSanXuatThang.companyId, ctx.user.companyId))
+      .orderBy(desc(mesMucTieuSanXuatThang.nam));
+    return rows.map((r) => r.nam);
+  }),
+
   /** Danh sách 4 hàng mức thưởng cho 1 tháng / bộ phận. */
   listThang: rbacProcedure("view", "entity")
     .input(ThangInput)
@@ -256,10 +280,12 @@ export const mesMucTieuSanXuatRouter = router({
       });
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
 
+      // ngaythang là cột `date` → Drizzle parse thành Date UTC-midnight;
+      // đọc bằng getUTC* để không lệch ngày/thứ ở server tz âm.
       const ngay = row.ngaythang as Date;
-      const nam = ngay.getFullYear();
-      const thang = ngay.getMonth() + 1;
-      const isSun = ngay.getDay() === 0;
+      const nam = ngay.getUTCFullYear();
+      const thang = ngay.getUTCMonth() + 1;
+      const isSun = ngay.getUTCDay() === 0;
 
       // Lấy songuoi và tile (col6) từ header muc_thuong=1
       const header = await ctx.db.query.mesMucTieuSanXuatThang.findFirst({

@@ -23,6 +23,16 @@ import { dialog } from "@/lib/dialog";
 const api = createLegacyMenuClient("");
 const printApi = createPrintTemplatesClient("");
 
+/** Cấp tối đa hiển thị trên menu giao diện. Cấp > NAV_MAX_LEVEL dùng cho RBAC. */
+const NAV_MAX_LEVEL = 3;
+
+/** Loại bỏ node cấp > NAV_MAX_LEVEL khỏi cây (chỉ dùng cho display). */
+function pruneNavTree(nodes: LegacyMenuNode[]): LegacyMenuNode[] {
+  return nodes
+    .filter((n) => n.level === null || n.level <= NAV_MAX_LEVEL)
+    .map((n) => ({ ...n, children: pruneNavTree(n.children) }));
+}
+
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   chua: { label: "Chưa port", cls: "bg-slate-100 text-slate-600" },
   dang: { label: "Đang port", cls: "bg-amber-100 text-amber-700" },
@@ -114,6 +124,7 @@ function CockpitPage() {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: api + dialog là module singleton, không thay đổi
   useEffect(() => {
     setLoading(true);
     Promise.all([api.listTree(), api.stats(), api.listReports()])
@@ -167,12 +178,13 @@ function CockpitPage() {
         `Resolve xong: ${r.withProcs}/${r.totalForms} form có proc, ${r.noForm} không thấy file.`,
       );
       reload();
+      if (selected) onSelect(selected);
     } catch (e) {
       await dialog.alert(`Lỗi resolve: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
-  }, [reload]);
+  }, [reload, selected, onSelect]);
 
   const doParseReports = useCallback(async () => {
     setBusy("reports");
@@ -238,6 +250,8 @@ function CockpitPage() {
     [selected, reload, onSelect],
   );
 
+  const navTree = useMemo(() => pruneNavTree(tree), [tree]);
+
   const pct = useMemo(() => {
     if (!stats) return 0;
     const xong = stats.byStatus.xong ?? 0;
@@ -269,7 +283,7 @@ function CockpitPage() {
       {stats && (
         <div className="flex flex-wrap items-center gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
           <span>
-            <b>{stats.total}</b> node
+            <b>{stats.total - stats.rbacNodes}</b> mục menu (cấp 1–3)
           </span>
           <span>
             <b>{stats.forms}</b> mục có form
@@ -277,6 +291,11 @@ function CockpitPage() {
           <StatusBadge status="chua" /> <b>{stats.byStatus.chua ?? 0}</b>
           <StatusBadge status="dang" /> <b>{stats.byStatus.dang ?? 0}</b>
           <StatusBadge status="xong" /> <b>{stats.byStatus.xong ?? 0}</b>
+          {stats.rbacNodes > 0 && (
+            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] text-slate-500">
+              +{stats.rbacNodes} thao tác RBAC (cấp &gt;3, ẩn trên menu)
+            </span>
+          )}
           <span className="ml-auto text-slate-500">Tiến độ: {pct}%</span>
         </div>
       )}
@@ -291,7 +310,7 @@ function CockpitPage() {
               Chưa có dữ liệu — bấm "Import menu" để nạp SYS_MENU_NEW.
             </div>
           ) : (
-            tree.map((n) => (
+            navTree.map((n) => (
               <TreeRow
                 key={n.sourceCode}
                 node={n}
@@ -405,8 +424,17 @@ function CockpitPage() {
                   )}
                 </div>
               ) : selected.winId ? (
-                <div className="text-sm text-slate-400">
-                  {detail === null ? "Đang tải resolve…" : "Chưa resolve — bấm Resolve form→proc."}
+                <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                  {busy === "resolve" ? (
+                    <>
+                      <I.Loader size={14} className="animate-spin shrink-0" />
+                      Đang resolve…
+                    </>
+                  ) : detail === null ? (
+                    "Đang tải…"
+                  ) : (
+                    "Chưa resolve — bấm Resolve form→proc."
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-slate-400">Mục này không mở form (nhóm menu).</div>

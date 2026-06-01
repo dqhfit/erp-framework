@@ -26,6 +26,8 @@ export interface LegacyMenuStats {
   total: number;
   byStatus: Record<string, number>;
   forms: number;
+  byLevel: Record<number, number>;
+  rbacNodes: number;
 }
 
 export interface LegacyMenuResolved {

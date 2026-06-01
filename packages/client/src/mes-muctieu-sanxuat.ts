@@ -81,6 +81,10 @@ export function createMesMucTieuSanXuatClient(baseUrl: string) {
   });
 
   return {
+    listBoPhan: () => trpc.mesMucTieuSanXuat.listBoPhan.query() as Promise<string[]>,
+
+    listNam: () => trpc.mesMucTieuSanXuat.listNam.query() as Promise<number[]>,
+
     listThang: (nam: number, thang: number, maBoPhan: string) =>
       trpc.mesMucTieuSanXuat.listThang.query({ nam, thang, maBoPhan }) as Promise<
         MucTieuThangRow[]

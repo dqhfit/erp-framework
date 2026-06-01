@@ -4,7 +4,14 @@ import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts 
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { roleCan } from "@erp-framework/core";
-import { agents, apiKeys, knowledgeSources, sessions } from "@erp-framework/db";
+import {
+  agents,
+  apiKeys,
+  entities,
+  entityRecords,
+  knowledgeSources,
+  sessions,
+} from "@erp-framework/db";
 import { runMigrations } from "@erp-framework/db/migrate";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -31,7 +38,15 @@ import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
 import { knowledgeSearch } from "./knowledge-search";
+import { agenticRetrieve } from "./knowledge-agentic";
 import { makeCallTool } from "./mcp-client";
+import {
+  buildRecordWhere,
+  decryptDataOut,
+  loadEntityFields,
+  queryParams,
+  stripUnreadableFields,
+} from "./router-helpers";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
 import { registerRestApi } from "./rest-api";
@@ -51,11 +66,23 @@ const KB_SEARCH_TOOL: ToolDef = {
   name: "knowledge_search",
   description:
     "Tra cứu Knowledge Base nội bộ của công ty (tài liệu đã tải lên, dữ liệu " +
-    "ERP, ghi chú). Dùng khi cần thông tin nội bộ để trả lời.",
+    "ERP, ghi chú). Trả các đoạn liên quan kèm nguồn + score. Gọi nhiều lần " +
+    "với truy vấn cụ thể khác nhau nếu câu hỏi nhiều khía cạnh. Lọc sourceKind " +
+    "khi biết loại nguồn; tăng k khi cần rộng hơn.",
   schema: {
     type: "object",
     properties: {
-      query: { type: "string", description: "Câu hỏi hoặc từ khoá cần tra cứu" },
+      query: {
+        type: "string",
+        description: "Câu hỏi hoặc từ khoá cần tra cứu (nên cụ thể, 1 ý/lần)",
+      },
+      k: { type: "integer", minimum: 1, maximum: 20, description: "Số đoạn trả về (mặc định 5)" },
+      sourceKind: {
+        type: "string",
+        enum: ["file", "entity", "text"],
+        description:
+          "Lọc theo loại nguồn: file (tài liệu), entity (dữ liệu ERP), text (ghi chú). Bỏ trống = tất cả.",
+      },
     },
     required: ["query"],
   },
@@ -100,6 +127,32 @@ const KB_ADD_TOOL: ToolDef = {
       content: { type: "string", description: "Nội dung cần lưu vào tri thức" },
     },
     required: ["title", "content"],
+  },
+};
+
+/* Tool tra cứu DỮ LIỆU CÓ CẤU TRÚC (entity_records) — source routing của
+   Agentic RAG. Chỉ cấp khi role có "view:entity". Deny-by-default: chỉ
+   entity bật meta.agentSearchable=true mới truy được. Field-level RBAC
+   strip áp lên kết quả. Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §5. */
+const RECORDS_SEARCH_TOOL: ToolDef = {
+  name: "records_search",
+  description:
+    "Tìm bản ghi dữ liệu CÓ CẤU TRÚC của một entity (vd đơn hàng, khách " +
+    "hàng, sản phẩm). Dùng khi câu hỏi về SỐ LIỆU/BẢN GHI cụ thể, không " +
+    "phải văn bản tài liệu (dùng knowledge_search cho tài liệu).",
+  schema: {
+    type: "object",
+    properties: {
+      entity: { type: "string", description: "Tên kỹ thuật của entity (vd 'don_hang')." },
+      q: { type: "string", description: "Từ khoá full-text trên các field searchable." },
+      filters: {
+        type: "object",
+        description:
+          'Lọc theo field: { "<field>": { "op": "=|!=|contains|>|>=|<|<=|in", "value": ... } }.',
+      },
+      limit: { type: "integer", minimum: 1, maximum: 50, description: "Số bản ghi (mặc định 10)." },
+    },
+    required: ["entity"],
   },
 };
 
@@ -296,6 +349,9 @@ async function main(): Promise<void> {
       // Khi chat được "gắn" với một agent cụ thể (vd đang ở /agents/$id):
       // load memory files của agent vào preamble + cấp tool memory_remember.
       agentId?: string;
+      // "Tìm sâu" (deep search): bật query-rewrite + CRAG grading trong
+      // auto-RAG orchestrated. Mặc định false (Fast — rẻ). Xem design §1.5.
+      deepSearch?: boolean;
     };
     reply.hijack();
     const raw = reply.raw;
@@ -311,6 +367,7 @@ async function main(): Promise<void> {
       // các tool khác rơi về MCP. knowledge_add chỉ cấp khi đủ quyền.
       const mcpCallTool = makeCallTool(db, active.companyId);
       const canAddKb = roleCan(active.role, "create", "knowledge");
+      const canViewRecords = roleCan(active.role, "view", "entity");
 
       // Nếu request gắn với một agent cụ thể (cùng công ty): nạp 7 file
       // memory thành preamble + cấp tool memory_remember + dùng model
@@ -351,10 +408,13 @@ async function main(): Promise<void> {
           }
         }
       }
-      // Auto-RAG: tra Knowledge Base bằng câu hỏi mới nhất rồi CHÈN đoạn liên
-      // quan vào system prompt. Cần thiết vì claude-cli (bridge) KHÔNG hỗ trợ
-      // tool-calling → agent không tự gọi được knowledge_search. knowledgeSearch
-      // đã lọc theo MIN_SCORE (chỉ đoạn liên quan). Fail-safe: lỗi không vỡ chat.
+      // Auto-RAG orchestrated: tra Knowledge Base bằng câu hỏi mới nhất rồi
+      // CHÈN đoạn liên quan + chỉ thị trích nguồn vào system prompt. Đường
+      // dùng chung mọi adapter (gồm claude-cli — bridge tool-call emulation
+      // dễ vỡ nên ưu tiên đường này). Fail-safe: lỗi không vỡ chat.
+      //  - deepSearch=false (Fast, mặc định): tìm thẳng, KHÔNG tốn LLM thêm.
+      //  - deepSearch=true (Tìm sâu): plan (rewrite) + CRAG grading.
+      // Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §1.5.
       let kbContext = "";
       try {
         const lastUser = [...(body.messages ?? [])]
@@ -362,12 +422,29 @@ async function main(): Promise<void> {
           .find((m) => m.role === "user")
           ?.content?.trim();
         if (lastUser) {
-          const hits = await knowledgeSearch(db, active.companyId, lastUser, 5);
-          if (hits.length) {
+          const { hits, gradedOut } = await agenticRetrieve(db, active.companyId, lastUser, {
+            limit: 5,
+            userId: s.userId,
+            plan: body.deepSearch === true,
+            grade: body.deepSearch === true,
+          });
+          if (hits.length && !gradedOut) {
             kbContext =
               "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
-              "Ưu tiên dùng các trích đoạn sau để trả lời nếu phù hợp; nếu không liên quan thì bỏ qua.\n\n" +
-              hits.map((h, i) => `[${i + 1}] Nguồn: ${h.sourceTitle}\n${h.content}`).join("\n\n");
+              "Khi dùng thông tin từ các trích đoạn dưới, TRÍCH NGUỒN dạng " +
+              "[#tên nguồn]. CHỈ trả lời dựa trên nội dung đã truy hồi; nếu " +
+              'không đủ thông tin, nói rõ "Không tìm thấy trong tri thức nội ' +
+              'bộ" — TUYỆT ĐỐI không bịa.\n\n' +
+              hits
+                .map((h, i) => `[${i + 1}] Nguồn: [#${h.sourceTitle}]\n${h.content}`)
+                .join("\n\n");
+          } else if (gradedOut) {
+            // CRAG kết luận lạc đề → KHÔNG chèn rác, nhắc model nói thẳng.
+            kbContext =
+              "\n\n## Tri thức nội bộ\n" +
+              "Không tìm thấy nội dung liên quan trong Knowledge Base. Nếu câu " +
+              'hỏi cần dữ liệu nội bộ, hãy nói rõ "Không tìm thấy trong tri ' +
+              'thức nội bộ" thay vì suy đoán.';
           }
         }
       } catch (e) {
@@ -378,6 +455,7 @@ async function main(): Promise<void> {
       const tools = [
         ...(body.tools ?? []),
         KB_SEARCH_TOOL,
+        ...(canViewRecords ? [RECORDS_SEARCH_TOOL] : []),
         ...(canAddKb ? [KB_ADD_TOOL] : []),
         ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
       ];
@@ -394,7 +472,13 @@ async function main(): Promise<void> {
           return { ok: true, file: f };
         }
         if (name === "knowledge_search") {
-          const hits = await knowledgeSearch(db, active.companyId, String(args.query ?? ""), 5);
+          const k = Number(args.k);
+          const sk = String(args.sourceKind ?? "");
+          const sourceKind = (["file", "entity", "text"] as const).find((v) => v === sk);
+          const hits = await knowledgeSearch(db, active.companyId, String(args.query ?? ""), {
+            limit: Number.isFinite(k) ? k : 5,
+            sourceKind,
+          });
           return hits.map((h) => ({
             source: h.sourceTitle,
             content: h.content,
@@ -420,6 +504,58 @@ async function main(): Promise<void> {
           if (!row) throw new Error("Không tạo được nguồn tri thức.");
           await enqueueKbIngest(row.id);
           return { ok: true, sourceId: row.id, title };
+        }
+        if (name === "records_search") {
+          // RBAC: kiểm lại tại thời điểm chạy (fail-closed, không tin vào
+          // việc tool đã/ chưa được liệt kê).
+          if (!canViewRecords) throw new Error('Không có quyền "view:entity".');
+          const entityName = String(args.entity ?? "").trim();
+          if (!entityName) throw new Error("Thiếu tên entity.");
+          // Resolve entity theo tên CASE-INSENSITIVE trong phạm vi công ty.
+          const [ent] = await db
+            .select()
+            .from(entities)
+            .where(
+              and(
+                eq(entities.companyId, active.companyId),
+                sql`lower(${entities.name}) = lower(${entityName})`,
+              ),
+            )
+            .limit(1);
+          if (!ent) throw new Error(`Không tìm thấy entity "${entityName}".`);
+          // Deny-by-default: chỉ entity được bật cờ opt-in mới cho agent tra.
+          const meta = (ent.meta ?? {}) as { agentSearchable?: boolean };
+          if (meta.agentSearchable !== true) {
+            throw new Error(
+              `Entity "${entityName}" chưa bật cho agent tra cứu (meta.agentSearchable).`,
+            );
+          }
+          // Validate query của LLM qua zod (queryParams) — bỏ field rác.
+          const parsed = queryParams.safeParse({
+            q: typeof args.q === "string" ? args.q : undefined,
+            filters:
+              args.filters && typeof args.filters === "object"
+                ? (args.filters as Record<string, unknown>)
+                : undefined,
+            limit: Math.min(50, Math.max(1, Number(args.limit) || 10)),
+          });
+          const query = parsed.success ? parsed.data : { limit: 10 };
+          const where = buildRecordWhere(active.companyId, ent.id, query, false);
+          const rows = await db
+            .select()
+            .from(entityRecords)
+            .where(where)
+            .limit(query?.limit ?? 10);
+          // Decrypt + field-level RBAC strip (đồng nhất records.get).
+          const fields = await loadEntityFields(db, active.companyId, ent.id);
+          return rows.map((r) => ({
+            id: r.id,
+            data: stripUnreadableFields(
+              fields,
+              decryptDataOut(fields, r.data as Record<string, unknown>),
+              active.role,
+            ),
+          }));
         }
         return mcpCallTool(name, args);
       };

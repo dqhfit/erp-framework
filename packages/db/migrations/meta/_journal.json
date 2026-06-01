@@ -435,6 +435,13 @@
       "when": 1783701800000,
       "tag": "0061_mes_muctieu_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1783701900000,
+      "tag": "0062_knowledge_chunks_fts",
+      "breakpoints": true
     }
   ]
 }

@@ -171,7 +171,13 @@ export async function listLegacyMenuTree(db: DB, companyId: string): Promise<Men
 export async function legacyMenuStats(
   db: DB,
   companyId: string,
-): Promise<{ total: number; byStatus: Record<string, number>; forms: number }> {
+): Promise<{
+  total: number;
+  byStatus: Record<string, number>;
+  forms: number;
+  byLevel: Record<number, number>;
+  rbacNodes: number; // node cấp > 3 (thao tác RBAC, không hiện trên menu)
+}> {
   const rows = await db
     .select({
       portStatus: legacyMenuMap.portStatus,
@@ -182,10 +188,15 @@ export async function legacyMenuStats(
     .where(eq(legacyMenuMap.companyId, companyId));
 
   const byStatus: Record<string, number> = {};
+  const byLevel: Record<number, number> = {};
   let forms = 0;
   for (const r of rows) {
     byStatus[r.portStatus] = (byStatus[r.portStatus] ?? 0) + 1;
-    if (r.winId) forms++; // node có form (mở được) — đơn vị port thực
+    if (r.winId) forms++;
+    if (r.level != null) byLevel[r.level] = (byLevel[r.level] ?? 0) + 1;
   }
-  return { total: rows.length, byStatus, forms };
+  const rbacNodes = Object.entries(byLevel)
+    .filter(([l]) => Number(l) > 3)
+    .reduce((sum, [, c]) => sum + c, 0);
+  return { total: rows.length, byStatus, forms, byLevel, rbacNodes };
 }

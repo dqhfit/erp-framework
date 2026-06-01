@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { useRbac } from "@/stores/rbac";
 import { useSettings } from "@/stores/settings";
-import { useUI } from "@/stores/ui";
+import { formatAgentContext, useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
 /* Client Knowledge Base — dùng cho nút "Lưu vào tri thức" trên tin nhắn. */
@@ -81,12 +81,16 @@ export function AgentPanel() {
   const canAddKb = !rbacEnforce || roleCan(rbacRole, "create", "knowledge");
   const open = useUI((s) => s.agentOpen);
   const setOpen = useUI((s) => s.setAgentOpen);
+  const agentContext = useUI((s) => s.agentContext);
   const llmProfiles = useSettings((s) => s.llmProfiles);
   const profileNames = useMemo(() => Object.keys(llmProfiles), [llmProfiles]);
   const { tools: mcpTools } = useMcpClient();
   const [profileName, setProfileName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>(SEED);
   const [input, setInput] = useState("");
+  // "Tìm sâu": bật query-rewrite + CRAG grading phía server (orchestrated
+  // Agentic RAG). Mặc định tắt cho nhanh/rẻ. Xem AGENTIC-RAG-DESIGN §1.5.
+  const [deepSearch, setDeepSearch] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   // Lịch sử trò chuyện (lưu server, per-user). conversationId = cuộc đang mở
   // (null = cuộc mới chưa lưu). bodyRef vẫn dùng cho auto-scroll.
@@ -219,6 +223,9 @@ export function AgentPanel() {
           profileName: profile.name,
           system:
             SYSTEM_PROMPT +
+            (agentContext
+              ? `\n\nNgười dùng đang xem ${formatAgentContext(agentContext)} (id: ${agentContext.id}). Ưu tiên trả lời câu hỏi liên quan đến đối tượng này.`
+              : "") +
             (toolDefs.length
               ? `\n\nBạn có ${toolDefs.length} MCP tool — gọi khi cần truy vấn dữ liệu thật.`
               : ""),
@@ -227,6 +234,8 @@ export function AgentPanel() {
           // Đang ở /agents/$id → bind với agent đó: server dùng model
           // (+ fallback) và memory files của agent thay cho profileName.
           ...(boundAgentId ? { agentId: boundAgentId } : {}),
+          // "Tìm sâu" → server bật plan + grade trong auto-RAG.
+          deepSearch,
         }),
       });
       if (!res.ok || !res.body) throw new Error(`Server ${res.status}`);
@@ -480,6 +489,17 @@ export function AgentPanel() {
         </div>
       )}
 
+      {/* Badge đối tượng đang xem */}
+      {agentContext && (
+        <div className="px-3 py-1.5 border-b border-border shrink-0 flex items-center gap-1.5 bg-accent/5">
+          <I.Sparkles size={11} className="text-accent shrink-0" />
+          <span className="text-[11px] text-muted truncate">
+            Đang xem:{" "}
+            <span className="text-accent font-medium">{formatAgentContext(agentContext)}</span>
+          </span>
+        </div>
+      )}
+
       {/* Messages */}
       <div ref={bodyRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((m) => (
@@ -507,6 +527,16 @@ export function AgentPanel() {
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" icon={<I.Mic size={13} />} title="Voice" />
+            <Button
+              variant={deepSearch ? "primary" : "ghost"}
+              size="sm"
+              icon={<I.Sparkles size={13} />}
+              onClick={() => setDeepSearch((v) => !v)}
+              title="Tìm sâu — viết lại truy vấn + chấm điểm tri thức (chậm hơn, chính xác hơn)"
+              aria-pressed={deepSearch}
+            >
+              Tìm sâu
+            </Button>
           </div>
           <Button
             variant="primary"

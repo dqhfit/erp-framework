@@ -15,6 +15,7 @@ import {
   type AnyPgColumn,
   bigint,
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -1155,6 +1156,10 @@ export const knowledgeChunks = pgTable(
     content: text("content").notNull(),
     tokens: integer("tokens").notNull().default(0),
     embedding: vector("embedding", { dimensions: 768 }),
+    // search_tsv là GENERATED column (migration 0062) sinh tự động từ
+    // content — phục vụ FTS keyword trong hybrid retrieval. Drizzle chỉ
+    // khai báo để TS biết; KHÔNG insert/update trực tiếp (generated).
+    searchTsv: text("search_tsv"),
   },
   (t) => ({
     companyIdIdx: index("knowledge_chunks_company_id_idx").on(t.companyId),
@@ -1711,7 +1716,7 @@ export const mesMucTieuSanXuat = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    ngaythang: timestamp("ngaythang", { mode: "date" }).notNull(),
+    ngaythang: date("ngaythang", { mode: "date" }).notNull(),
     maCongDoan: text("ma_cong_doan").notNull(),
     donHang: text("don_hang").notNull().default(""),
     heHang: text("he_hang").notNull().default(""),
@@ -1794,7 +1799,7 @@ export const mesMucTieuSanXuatChitiet = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
     maCongDoan: text("ma_cong_doan").notNull(),
-    ngaythang: timestamp("ngaythang", { mode: "date" }).notNull(),
+    ngaythang: date("ngaythang", { mode: "date" }).notNull(),
     // day_name: GENERATED ALWAYS AS — luôn đúng, không cần set trong code
     dayName: text("day_name").generatedAlwaysAs(
       sql`CASE EXTRACT(DOW FROM ngaythang)::int WHEN 0 THEN 'Sun' WHEN 1 THEN 'Mon' WHEN 2 THEN 'Tue' WHEN 3 THEN 'Wed' WHEN 4 THEN 'Thu' WHEN 5 THEN 'Fri' ELSE 'Sat' END`,
@@ -1834,7 +1839,7 @@ export const mesBaoCaoHienDien = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
     maCongDoan: text("ma_cong_doan").notNull(),
-    ngaythang: timestamp("ngaythang", { mode: "date" }).notNull(),
+    ngaythang: date("ngaythang", { mode: "date" }).notNull(),
     soNguoiHc: integer("so_nguoi_hc").notNull().default(0),
     soNguoiTc: integer("so_nguoi_tc").notNull().default(0),
     nguoiTao: text("nguoi_tao").notNull().default(""),

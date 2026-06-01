@@ -10,6 +10,7 @@ import { ModelCombobox } from "@/components/ModelCombobox";
 import { Button, Card, Chip, FormField, Input } from "@/components/ui";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useMcpClient } from "@/hooks/useMcpClient";
+import { useSetAgentContext } from "@/hooks/useSetAgentContext";
 import type { AgentDesign } from "@/lib/ai-design-prompts";
 import type { MockAgent } from "@/lib/object-types";
 import { useAuth } from "@/stores/auth";
@@ -93,6 +94,7 @@ function AgentRoute() {
   const [state, setState] = useState<AgentState>(initialState);
   const [lastSaved, setLastSaved] = useState<AgentState>(initialState);
   useDocumentTitle(state.name);
+  useSetAgentContext({ type: "agent", id, label: state.name });
   const [templates, setTemplates] = useState<Record<MemoryFile, string> | null>(null);
   const api = useMemo(() => createObjectsClient(""), []);
   const [aiOpen, setAiOpen] = useState(false);

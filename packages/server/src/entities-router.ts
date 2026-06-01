@@ -98,6 +98,28 @@ export const entitiesRouter = router({
         .where(and(eq(entities.id, input), eq(entities.companyId, ctx.user.companyId)));
     }),
 
+  /* Bật/tắt cho phép agent tra cứu entity này qua tool records_search
+     (Agentic RAG P3). Lưu cờ vào meta.agentSearchable — deny-by-default:
+     tắt = agent KHÔNG truy được. Merge meta (không ghi đè key khác). */
+  setAgentSearchable: rbacProcedure("edit", "entity")
+    .input(z.object({ entityId: z.string().uuid(), enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({ meta: entities.meta })
+        .from(entities)
+        .where(and(eq(entities.id, input.entityId), eq(entities.companyId, ctx.user.companyId)));
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy entity." });
+      const meta = {
+        ...((row.meta ?? {}) as Record<string, unknown>),
+        agentSearchable: input.enabled,
+      };
+      await ctx.db
+        .update(entities)
+        .set({ meta, updatedAt: new Date() })
+        .where(and(eq(entities.id, input.entityId), eq(entities.companyId, ctx.user.companyId)));
+      return { ok: true, agentSearchable: input.enabled };
+    }),
+
   /* Safe field rename — cập nhật entities.fields[].name + di trú
        data: jsonb_set new key từ old key + xoá old key. Atomic per-row,
        không transaction lớn (giữ unblocked). */

@@ -6,7 +6,9 @@ import { ensureLoggedIn } from "./helpers";
 test("trang chủ hiển thị thống kê đối tượng", async ({ page }) => {
   await ensureLoggedIn(page);
   await page.goto("/");
-  await expect(page.getByText("Workflows", { exact: true })).toBeVisible();
+  // Thẻ thống kê dùng nhãn i18n sidebar.workflows = "Workflow" (VI, số ít).
+  // .first() vì cũng có link "Workflow" ở sidebar.
+  await expect(page.getByText("Workflow", { exact: true }).first()).toBeVisible();
 });
 
 test("Command Palette điều hướng được", async ({ page }) => {
@@ -22,7 +24,5 @@ test("Command Palette điều hướng được", async ({ page }) => {
 test("mở trang Nhật ký & Chi phí", async ({ page }) => {
   await ensureLoggedIn(page);
   await page.goto("/activity");
-  await expect(
-    page.getByRole("heading", { name: "Nhật ký & Chi phí" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nhật ký & Chi phí" })).toBeVisible();
 });

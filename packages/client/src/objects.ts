@@ -95,6 +95,9 @@ export function createObjectsClient(baseUrl: string) {
       get: (id: string) => trpc.entities.get.query(id),
       save: (input: EntitySaveInput) => trpc.entities.save.mutate(input),
       delete: (id: string) => trpc.entities.delete.mutate(id),
+      /** Bật/tắt cho agent tra cứu entity qua records_search (Agentic RAG). */
+      setAgentSearchable: (entityId: string, enabled: boolean) =>
+        trpc.entities.setAgentSearchable.mutate({ entityId, enabled }),
     },
     pages: {
       list: () => trpc.pages.list.query(),
