@@ -432,17 +432,22 @@ function CockpitPage() {
             )}
             {(!setup.dqhfDirSet || !setup.dqhfDirExists) && (
               <li className="list-none -ml-4">
-                <div className="mb-1">
+                <div className="mb-1.5">
                   {!setup.dqhfDirSet ? (
-                    <>
-                      <b>Thư mục source C# DQHF chưa đặt</b> — nút "Resolve form→proc" bị tắt.
-                    </>
+                    <b>Nút "Resolve form→proc" bị tắt</b>
                   ) : (
                     <>
-                      <b>Thư mục không tồn tại:</b>{" "}
+                      <b>Nút "Resolve form→proc" bị tắt</b> — thư mục server không tồn tại:{" "}
                       <span className="font-mono">{setup.dqhfDir}</span>
                     </>
                   )}
+                </div>
+                <div className="rounded bg-amber-100 px-2 py-1.5 text-[11px] text-amber-700 mb-2">
+                  💡 <b>Nếu source C# nằm trên máy local</b>: dùng nút <b>"Resolve local"</b> trên
+                  thanh công cụ — chọn thư mục DQHF trực tiếp từ browser, không cần cấu hình server.
+                </div>
+                <div className="text-[11px] text-amber-600 mb-1">
+                  Hoặc nếu server có quyền truy cập thư mục source (Docker mount):
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -450,7 +455,7 @@ function CockpitPage() {
                     value={dirInput}
                     onChange={(e) => setDirInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && doSetSourceDir()}
-                    placeholder="VD: D:\code\DotNET\DQHF"
+                    placeholder="Đường dẫn trên server (vd: /mnt/dqhf-src)"
                     className="flex-1 rounded border border-amber-300 bg-white px-2 py-1 font-mono text-xs text-slate-700 focus:border-sky-400 focus:outline-none"
                   />
                   <button
@@ -459,11 +464,12 @@ function CockpitPage() {
                     disabled={busy === "setdir" || !dirInput.trim()}
                     className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                   >
-                    {busy === "setdir" ? "Đang đặt…" : "Đặt thư mục"}
+                    {busy === "setdir" ? "Đang đặt…" : "Đặt thư mục server"}
                   </button>
                 </div>
-                <div className="mt-1 text-[11px] text-amber-600">
-                  Chỉ lưu trong session hiện tại — restart server cần đặt lại hoặc thêm vào{" "}
+                <div className="mt-1 text-[11px] text-amber-500">
+                  Session-only — restart server cần đặt lại hoặc thêm{" "}
+                  <span className="font-mono">DQHF_SOURCE_DIR</span> vào{" "}
                   <span className="font-mono">.env</span>.
                 </div>
               </li>
