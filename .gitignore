@@ -42,6 +42,9 @@ e2e/.auth/
 backups/
 .claude/
 
+# Báo cáo HTML xuất tạm từ module MES (artifact, không versioned)
+/bao-cao-*.html
+
 # compiled output (TS project — .js belongs in dist/ only)
 src/**/*.js
 src/**/*.js.map
