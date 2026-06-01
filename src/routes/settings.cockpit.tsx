@@ -240,24 +240,45 @@ function CockpitPage() {
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
-  // Tải jobs, tự refresh 4s khi có job đang queued/running
+  // Tải jobs, tự refresh 4s khi có job đang active.
+  // Khi phát hiện job running/queued → completed/failed: reload() để cây/stats cập nhật.
   // biome-ignore lint/correctness/useExhaustiveDependencies: migApi là module singleton
   useEffect(() => {
-    const fetch = () =>
-      migApi
-        .listJobs({ limit: 20 })
-        .then(setJobs)
-        .catch(() => undefined);
-    fetch();
+    const prevStatus = new Map<string, string>(); // jobId → status cũ
+
+    const fetchJobs = async () => {
+      let newJobs: MigrationJobRow[];
+      try {
+        newJobs = await migApi.listJobs({ limit: 20 });
+      } catch {
+        return;
+      }
+
+      // Phát hiện job vừa chuyển xong (running/queued → completed/failed)
+      const justDone = newJobs.some((j) => {
+        const prev = prevStatus.get(j.id);
+        return (
+          (prev === "running" || prev === "queued") &&
+          (j.status === "completed" || j.status === "failed")
+        );
+      });
+
+      for (const j of newJobs) prevStatus.set(j.id, j.status);
+      setJobs(newJobs);
+      if (justDone) reload(); // cập nhật cây + stats + portStatus
+      return newJobs;
+    };
+
+    fetchJobs();
     const id = setInterval(() => {
       setJobs((prev) => {
         const hasActive = prev.some((j) => j.status === "queued" || j.status === "running");
-        if (hasActive) fetch();
+        if (hasActive) fetchJobs();
         return prev;
       });
     }, 4_000);
     return () => clearInterval(id);
-  }, [reloadKey]);
+  }, [reloadKey, reload]);
 
   const onToggle = useCallback((code: string) => {
     setExpanded((prev) => {
@@ -690,6 +711,76 @@ function CockpitPage() {
                   <div className="mt-0.5 text-xs text-muted">module: {selected.module}</div>
                 )}
               </div>
+
+              {/* Pipeline tiến trình port (chỉ hiện khi đã có module) */}
+              {selected.module &&
+                (() => {
+                  const modJobs = jobs
+                    .filter((j) => j.module === selected.module)
+                    .sort(
+                      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+                    );
+                  const lastOf = (action: string) => modJobs.find((j) => j.action === action);
+                  const STEPS = ["discover", "enrich", "generate"] as const;
+                  const stepStatus = (a: string) => {
+                    const j = lastOf(a);
+                    if (!j) return "pending";
+                    if (j.status === "running" || j.status === "queued") return "active";
+                    if (j.status === "completed") return "done";
+                    if (j.status === "failed") return "error";
+                    return "pending";
+                  };
+                  const nextStep = STEPS.find((s) => stepStatus(s) !== "done");
+                  return (
+                    <div className="rounded border border-border bg-bg-soft px-3 py-2">
+                      <div className="mb-1.5 text-[11px] font-medium text-muted uppercase tracking-wide">
+                        Tiến trình port
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {STEPS.map((step, i) => {
+                          const st = stepStatus(step);
+                          const j = lastOf(step);
+                          return (
+                            <div key={step} className="flex items-center gap-1">
+                              {i > 0 && <div className="h-px w-4 bg-border" />}
+                              <div
+                                title={j?.error ?? j?.message ?? step}
+                                className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${
+                                  st === "done"
+                                    ? "bg-success/20 text-success"
+                                    : st === "active"
+                                      ? "bg-accent/20 text-accent"
+                                      : st === "error"
+                                        ? "bg-danger/20 text-danger"
+                                        : "bg-panel-2 text-muted"
+                                }`}
+                              >
+                                {st === "active" && (
+                                  <I.Loader size={10} className="animate-spin shrink-0" />
+                                )}
+                                {st === "done" && <I.Check size={10} className="shrink-0" />}
+                                {st === "error" && <I.X size={10} className="shrink-0" />}
+                                {step}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {nextStep && (
+                        <div className="mt-2 text-[11px] text-muted">
+                          Bước tiếp:{" "}
+                          <span className="font-medium text-text">
+                            chạy <span className="font-mono">{nextStep}</span>
+                          </span>{" "}
+                          ở{" "}
+                          <span className="font-mono">
+                            Settings → Migration → {selected.module}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
               {detail?.resolved ? (
                 <div className="flex flex-col gap-2 text-sm">
