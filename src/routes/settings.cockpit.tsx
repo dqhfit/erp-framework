@@ -395,6 +395,29 @@ function CockpitPage() {
     }
   }, [reload, showAlert]);
 
+  /** Chạy bước tiếp theo trong pipeline (enrich hoặc generate) cho module đang chọn. */
+  const doRunStep = useCallback(
+    async (action: "enrich" | "generate", module: string) => {
+      const defaultArgs: Record<string, unknown> =
+        action === "enrich" ? { apply: true, skipEnriched: true } : { skipExisting: true };
+      setBusy(`step:${action}:${module}`);
+      try {
+        const { jobId } = await migApi.startJob(action, module, defaultArgs);
+        // Refresh jobs ngay để hiện job mới trong panel
+        const newJobs = await migApi.listJobs({ limit: 20 });
+        setJobs(newJobs);
+        await showAlert(
+          `Đã tạo job ${action} cho module "${module}" (${jobId.slice(0, 8)}…). Theo dõi ở panel "Tác vụ nền".`,
+        );
+      } catch (e) {
+        await showAlert(`Lỗi khởi chạy ${action}: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [showAlert],
+  );
+
   const doScaffoldReport = useCallback(
     async (reportClass: string) => {
       setBusy(`tpl:${reportClass}`);
@@ -730,7 +753,10 @@ function CockpitPage() {
                     if (j.status === "failed") return "error";
                     return "pending";
                   };
-                  const nextStep = STEPS.find((s) => stepStatus(s) !== "done");
+                  const canRun = (s: string): s is "enrich" | "generate" =>
+                    (s === "enrich" || s === "generate") &&
+                    (stepStatus(s) === "pending" || stepStatus(s) === "error") &&
+                    busy == null;
                   return (
                     <div className="rounded border border-border bg-bg-soft px-3 py-2">
                       <div className="mb-1.5 text-[11px] font-medium text-muted uppercase tracking-wide">
@@ -740,44 +766,50 @@ function CockpitPage() {
                         {STEPS.map((step, i) => {
                           const st = stepStatus(step);
                           const j = lastOf(step);
+                          const isRunning = busy === `step:${step}:${selected.module}`;
+                          const runnable = canRun(step);
+                          const cls = `flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-opacity ${
+                            st === "done"
+                              ? "bg-success/20 text-success"
+                              : st === "active" || isRunning
+                                ? "bg-accent/20 text-accent"
+                                : st === "error"
+                                  ? "bg-danger/20 text-danger"
+                                  : "bg-panel-2 text-muted"
+                          } ${runnable ? "cursor-pointer hover:opacity-80 ring-1 ring-border hover:ring-accent" : ""}`;
                           return (
                             <div key={step} className="flex items-center gap-1">
                               {i > 0 && <div className="h-px w-4 bg-border" />}
-                              <div
-                                title={j?.error ?? j?.message ?? step}
-                                className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${
-                                  st === "done"
-                                    ? "bg-success/20 text-success"
-                                    : st === "active"
-                                      ? "bg-accent/20 text-accent"
-                                      : st === "error"
-                                        ? "bg-danger/20 text-danger"
-                                        : "bg-panel-2 text-muted"
-                                }`}
-                              >
-                                {st === "active" && (
-                                  <I.Loader size={10} className="animate-spin shrink-0" />
-                                )}
-                                {st === "done" && <I.Check size={10} className="shrink-0" />}
-                                {st === "error" && <I.X size={10} className="shrink-0" />}
-                                {step}
-                              </div>
+                              {runnable ? (
+                                <button
+                                  type="button"
+                                  title={`Chạy ${step} ngay`}
+                                  className={cls}
+                                  onClick={() => doRunStep(step, selected.module!)}
+                                >
+                                  <I.Play size={9} className="shrink-0" />
+                                  {step}
+                                </button>
+                              ) : (
+                                <div title={j?.error ?? j?.message ?? step} className={cls}>
+                                  {st === "active" || isRunning ? (
+                                    <I.Loader size={10} className="animate-spin shrink-0" />
+                                  ) : st === "done" ? (
+                                    <I.Check size={10} className="shrink-0" />
+                                  ) : st === "error" ? (
+                                    <I.X size={10} className="shrink-0" />
+                                  ) : null}
+                                  {step}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                      {nextStep && (
-                        <div className="mt-2 text-[11px] text-muted">
-                          Bước tiếp:{" "}
-                          <span className="font-medium text-text">
-                            chạy <span className="font-mono">{nextStep}</span>
-                          </span>{" "}
-                          ở{" "}
-                          <span className="font-mono">
-                            Settings → Migration → {selected.module}
-                          </span>
-                        </div>
-                      )}
+                      <div className="mt-1.5 text-[11px] text-muted">
+                        Nhấn vào bước chưa chạy để thực hiện ngay.
+                        {" · "}discover chỉ chạy qua nút "Port mục này".
+                      </div>
                     </div>
                   );
                 })()}
