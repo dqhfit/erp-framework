@@ -133,6 +133,7 @@ function CockpitPage() {
   const [dirInput, setDirInput] = useState("");
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const browseDirRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -449,7 +450,7 @@ function CockpitPage() {
                 <div className="text-[11px] text-amber-600 mb-1">
                   Hoặc nếu server có quyền truy cập thư mục source (Docker mount):
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <input
                     type="text"
                     value={dirInput}
@@ -460,12 +461,35 @@ function CockpitPage() {
                   />
                   <button
                     type="button"
+                    title="Chọn thư mục để lấy tên gợi ý (chỉ hỗ trợ local dev)"
+                    onClick={() => browseDirRef.current?.click()}
+                    className="rounded border border-amber-300 bg-white px-2 py-1 text-amber-700 hover:bg-amber-50"
+                  >
+                    <I.FolderOpen size={13} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={doSetSourceDir}
                     disabled={busy === "setdir" || !dirInput.trim()}
                     className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                   >
-                    {busy === "setdir" ? "Đang đặt…" : "Đặt thư mục server"}
+                    {busy === "setdir" ? "Đang đặt…" : "Đặt"}
                   </button>
+                  {/* Folder picker chỉ để lấy tên thư mục gợi ý */}
+                  <input
+                    ref={browseDirRef}
+                    type="file"
+                    className="hidden"
+                    // @ts-expect-error webkitdirectory không có trong types chuẩn
+                    webkitdirectory=""
+                    onChange={(e) => {
+                      const first = e.target.files?.[0];
+                      if (!first) return;
+                      const root = first.webkitRelativePath.split("/")[0] ?? first.name;
+                      setDirInput((prev) => (prev ? prev : root));
+                      if (browseDirRef.current) browseDirRef.current.value = "";
+                    }}
+                  />
                 </div>
                 <div className="mt-1 text-[11px] text-amber-500">
                   Session-only — restart server cần đặt lại hoặc thêm{" "}
