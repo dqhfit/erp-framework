@@ -17,7 +17,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { buildDqhfIndex, resolveFormProcs as resolveFormProcsBrowser } from "@/lib/dqhf-resolver";
 
@@ -132,6 +132,21 @@ function CockpitPage() {
   const [setup, setSetup] = useState<SetupStatus>(null);
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
+  const alertResolveRef = useRef<(() => void) | null>(null);
+
+  const showAlert = useCallback((msg: string): Promise<void> => {
+    return new Promise((resolve) => {
+      alertResolveRef.current = resolve;
+      setAlertMsg(msg);
+    });
+  }, []);
+
+  const closeAlert = useCallback(() => {
+    alertResolveRef.current?.();
+    alertResolveRef.current = null;
+    setAlertMsg(null);
+  }, []);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -152,7 +167,7 @@ function CockpitPage() {
         setStats(s);
         setReportMap(Object.fromEntries(reps.map((r) => [r.reportClass, r])));
       })
-      .catch((e) => dialog.alert(`Lỗi tải menu: ${e?.message ?? e}`))
+      .catch((e) => showAlert(`Lỗi tải menu: ${e?.message ?? e}`))
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
@@ -165,14 +180,17 @@ function CockpitPage() {
     });
   }, []);
 
-  const onSelect = useCallback((node: LegacyMenuNode) => {
-    setSelected(node);
-    setDetail(null);
-    api
-      .getResolved(node.sourceCode)
-      .then(setDetail)
-      .catch((e) => dialog.alert(`Lỗi tải chi tiết: ${e?.message ?? e}`));
-  }, []);
+  const onSelect = useCallback(
+    (node: LegacyMenuNode) => {
+      setSelected(node);
+      setDetail(null);
+      api
+        .getResolved(node.sourceCode)
+        .then(setDetail)
+        .catch((e) => showAlert(`Lỗi tải chi tiết: ${e?.message ?? e}`));
+    },
+    [showAlert],
+  );
 
   /** Phân tích source C# từ thư mục user chọn trên máy local, gửi kết quả lên server. */
   const doLocalResolve = useCallback(
@@ -194,7 +212,7 @@ function CockpitPage() {
         walk(tree);
 
         if (!forms.length) {
-          await dialog.alert("Chưa có dữ liệu menu — hãy Import menu trước.");
+          await showAlert("Chưa có dữ liệu menu — hãy Import menu trước.");
           return;
         }
 
@@ -208,81 +226,82 @@ function CockpitPage() {
 
         setLocalResolveProgress(`Đang lưu ${results.length} kết quả…`);
         const summary = await api.bulkResolve(results);
-        await dialog.alert(
+        await showAlert(
           `Resolve xong: ${summary.withProcs}/${summary.totalForms} form có proc, ${summary.noForm} không thấy file. (${idx.fileCount} .cs đã đọc)`,
         );
         reload();
         if (selected) onSelect(selected);
       } catch (e) {
-        await dialog.alert(`Lỗi resolve local: ${(e as Error)?.message ?? e}`);
+        await showAlert(`Lỗi resolve local: ${(e as Error)?.message ?? e}`);
       } finally {
         setBusy(null);
         setLocalResolveProgress(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [tree, selected, onSelect, reload],
+    [tree, selected, onSelect, reload, showAlert],
   );
 
   const doImport = useCallback(async () => {
     setBusy("import");
     try {
       const r = await api.importFromMssql();
-      await dialog.alert(
-        `Import xong: ${r.imported} mới, ${r.updated} cập nhật (tổng ${r.total}).`,
-      );
+      await showAlert(`Import xong: ${r.imported} mới, ${r.updated} cập nhật (tổng ${r.total}).`);
       reload();
     } catch (e) {
-      await dialog.alert(`Lỗi import: ${(e as Error)?.message ?? e}`);
+      await showAlert(`Lỗi import: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
-  }, [reload]);
+  }, [reload, showAlert]);
 
   const doResolve = useCallback(async () => {
     setBusy("resolve");
     try {
       const r = await api.resolveFromSource();
-      await dialog.alert(
+      await showAlert(
         `Resolve xong: ${r.withProcs}/${r.totalForms} form có proc, ${r.noForm} không thấy file.`,
       );
       reload();
       if (selected) onSelect(selected);
     } catch (e) {
-      await dialog.alert(`Lỗi resolve: ${(e as Error)?.message ?? e}`);
+      await showAlert(`Lỗi resolve: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
-  }, [reload, selected, onSelect]);
+  }, [reload, selected, onSelect, showAlert]);
 
   const doParseReports = useCallback(async () => {
     setBusy("reports");
     try {
       const r = await api.parseReports();
-      await dialog.alert(
+      await showAlert(
         `Phân tích báo cáo xong: ${r.parsed} report (${r.table} dạng bảng, ${r.document} chứng từ in).`,
       );
       reload();
     } catch (e) {
-      await dialog.alert(`Lỗi phân tích báo cáo: ${(e as Error)?.message ?? e}`);
+      await showAlert(`Lỗi phân tích báo cáo: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
-  }, [reload]);
+  }, [reload, showAlert]);
 
-  const doScaffoldReport = useCallback(async (reportClass: string) => {
-    setBusy(`tpl:${reportClass}`);
-    try {
-      const t = await printApi.scaffoldFromReport(reportClass);
-      const { html } = await printApi.renderPreview(t.id);
-      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-      window.open(url, "_blank");
-    } catch (e) {
-      await dialog.alert(`Lỗi tạo template in: ${(e as Error)?.message ?? e}`);
-    } finally {
-      setBusy(null);
-    }
-  }, []);
+  const doScaffoldReport = useCallback(
+    async (reportClass: string) => {
+      setBusy(`tpl:${reportClass}`);
+      try {
+        const t = await printApi.scaffoldFromReport(reportClass);
+        const { html } = await printApi.renderPreview(t.id);
+        const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+        window.open(url, "_blank");
+      } catch (e) {
+        await showAlert(`Lỗi tạo template in: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [showAlert],
+  );
 
   const doPort = useCallback(async () => {
     if (!selected) return;
@@ -293,17 +312,17 @@ function CockpitPage() {
     setBusy("port");
     try {
       const r = await api.portNode(selected.sourceCode);
-      await dialog.alert(
+      await showAlert(
         `Đã tạo module "${r.module}" + discover ${r.seedTables.length} bảng (job ${r.jobId.slice(0, 8)}). Tiếp tục enrich/generate ở Settings → Migration.`,
       );
       reload();
       onSelect(selected);
     } catch (e) {
-      await dialog.alert(`Lỗi port: ${(e as Error)?.message ?? e}`);
+      await showAlert(`Lỗi port: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusy(null);
     }
-  }, [selected, reload, onSelect]);
+  }, [selected, reload, onSelect, showAlert]);
 
   const setStatus = useCallback(
     async (status: "chua" | "dang" | "xong") => {
@@ -313,10 +332,10 @@ function CockpitPage() {
         reload();
         onSelect(selected);
       } catch (e) {
-        await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+        await showAlert(`Lỗi: ${(e as Error)?.message ?? e}`);
       }
     },
-    [selected, reload, onSelect],
+    [selected, reload, onSelect, showAlert],
   );
 
   const navTree = useMemo(() => pruneNavTree(tree), [tree]);
@@ -477,10 +496,10 @@ function CockpitPage() {
                   {(detail.resolved.reports?.length ?? 0) > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs font-medium text-violet-700">
-                        Báo cáo ({detail.resolved.reports!.length}) — port DỮ LIỆU; in pixel-perfect
+                        Báo cáo ({detail.resolved.reports?.length}) — port DỮ LIỆU; in pixel-perfect
                         làm template riêng:
                       </span>
-                      {detail.resolved.reports!.map((rc) => {
+                      {detail.resolved.reports?.map((rc) => {
                         const bp = reportMap[rc];
                         return (
                           <div
@@ -575,6 +594,18 @@ function CockpitPage() {
           )}
         </div>
       </div>
+      <Modal
+        open={alertMsg !== null}
+        onClose={closeAlert}
+        title="Thông báo"
+        footer={
+          <Button variant="primary" onClick={closeAlert}>
+            OK
+          </Button>
+        }
+      >
+        <p className="text-sm whitespace-pre-wrap">{alertMsg}</p>
+      </Modal>
     </div>
   );
 }
