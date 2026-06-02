@@ -432,6 +432,27 @@ export function CockpitPage() {
     [showAlert],
   );
 
+  /** Dừng (huỷ) 1 job nền đang chạy/chờ — cooperative stop: dừng sau bước
+   *  hiện tại, giữ tiến độ (resume được). */
+  const doCancelJob = useCallback(
+    async (jobId: string) => {
+      const ok = await dialog.confirm(
+        "Dừng tác vụ đang chạy? Sẽ dừng sau bước hiện tại — giữ tiến độ, resume được.",
+      );
+      if (!ok) return;
+      setBusy(`cancel:${jobId}`);
+      try {
+        await migApi.cancelJob(jobId);
+        setJobs(await migApi.listJobs({ limit: 20 }));
+      } catch (e) {
+        await showAlert(`Lỗi dừng: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [showAlert],
+  );
+
   /** Phase A — verify mọi proc active của module so với golden baseline.
    *  Sync (không qua queue) — trả pass/fail ngay để hiện. */
   const doVerify = useCallback(
@@ -856,6 +877,10 @@ export function CockpitPage() {
                         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
                       );
                     const lastOf = (action: string) => modJobs.find((j) => j.action === action);
+                    // Job đang chạy/chờ của module này → để hiện nút Dừng.
+                    const activeJob = modJobs.find(
+                      (j) => j.status === "running" || j.status === "queued",
+                    );
                     const STEPS = ["discover", "enrich", "generate"] as const;
                     const stepStatus = (a: string) => {
                       const j = lastOf(a);
@@ -922,15 +947,28 @@ export function CockpitPage() {
                           <span className="text-[11px] text-muted">
                             Nhấn bước chưa chạy để thực hiện. discover qua "Port mục này".
                           </span>
-                          <button
-                            type="button"
-                            disabled={busy != null}
-                            title="Sinh lại proc/file ĐÃ có (ghi đè) — để sửa proc sinh sai"
-                            onClick={() => doRunStep("generate", selected.module!, true)}
-                            className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-                          >
-                            ↻ Sinh lại (ghi đè)
-                          </button>
+                          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                            {activeJob && (
+                              <button
+                                type="button"
+                                disabled={busy != null}
+                                title="Dừng tác vụ đang chạy (sau bước hiện tại — giữ tiến độ, resume được)"
+                                onClick={() => doCancelJob(activeJob.id)}
+                                className="rounded border border-danger/40 px-1.5 py-0.5 text-[10px] text-danger hover:bg-danger/10 disabled:opacity-50"
+                              >
+                                ⏹ Dừng {activeJob.action}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={busy != null}
+                              title="Sinh lại proc/file ĐÃ có (ghi đè) — để sửa proc sinh sai"
+                              onClick={() => doRunStep("generate", selected.module!, true)}
+                              className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                            >
+                              ↻ Sinh lại (ghi đè)
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
