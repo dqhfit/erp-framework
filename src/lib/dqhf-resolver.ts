@@ -7,6 +7,7 @@
  */
 
 import {
+  buildFieldTypeMap,
   collectDirectProcs,
   collectScopedProcs,
   extractCallsInMethods,
@@ -14,6 +15,12 @@ import {
   lastTypeSegment,
   SHARED_DATA_RE,
 } from "@erp-framework/core";
+
+/** File đã quét: text + map field→repo class (để lần lời gọi uỷ quyền BOL→DAL). */
+interface ScannedFile {
+  text: string;
+  fields: Map<string, string>;
+}
 
 export interface DqhfIndex {
   /** lowerClassName → nội dung file (đã merge Designer nếu có) */
@@ -118,8 +125,8 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
   const repos = new Set<string>();
   const controls = new Set<string>();
   const reports = new Set<string>();
-  const directTexts: string[] = []; // form/control: lấy mọi MyQuery
-  const sharedFiles = new Map<string, string>(); // lowerClass → text (scope theo method)
+  const directFiles: ScannedFile[] = []; // form/control: lấy mọi MyQuery
+  const sharedFiles = new Map<string, ScannedFile>(); // lowerClass → file (scope theo method)
   const queue: string[] = [lc];
 
   const enqueue = (id: string): void => {
@@ -137,8 +144,9 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
     if (!txt) continue;
 
     const path = idx.pathByClass.get(cls) ?? "";
-    if (SHARED_DATA_RE.test(path)) sharedFiles.set(cls, txt);
-    else directTexts.push(txt);
+    const scanned: ScannedFile = { text: txt, fields: buildFieldTypeMap(txt) };
+    if (SHARED_DATA_RE.test(path)) sharedFiles.set(cls, scanned);
+    else directFiles.push(scanned);
 
     for (const m of txt.matchAll(PROP_RE)) {
       if (!m[1]) continue;
@@ -158,7 +166,7 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
     }
   }
 
-  const procs = collectScopedProcsForForm(idx.uowMap, directTexts, sharedFiles);
+  const procs = collectScopedProcsForForm(idx.uowMap, directFiles, sharedFiles);
 
   return {
     procs: [...procs].sort(),
@@ -170,11 +178,11 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
 }
 
 /** Tính tập proc: MyQuery trực tiếp của form/control + MyQuery scope theo method
- *  được gọi trong các file data-layer dùng chung (lan truyền repo→repo). */
+ *  được gọi trong các file data-layer dùng chung (lần cả uỷ quyền BOL→DAL qua field). */
 function collectScopedProcsForForm(
   uowMap: Map<string, string>,
-  directTexts: string[],
-  sharedFiles: Map<string, string>,
+  directFiles: ScannedFile[],
+  sharedFiles: Map<string, ScannedFile>,
 ): Set<string> {
   const called = new Map<string, Set<string>>();
   const addCall = (cls: string, method: string): boolean => {
@@ -188,16 +196,16 @@ function collectScopedProcsForForm(
     return true;
   };
 
-  for (const t of directTexts) {
-    for (const c of extractRepoMethodCalls(t, uowMap)) addCall(c.cls, c.method);
+  for (const f of directFiles) {
+    for (const c of extractRepoMethodCalls(f.text, uowMap, f.fields)) addCall(c.cls, c.method);
   }
 
   for (let guard = 0; guard < 50; guard++) {
     let changed = false;
-    for (const [cls, text] of sharedFiles) {
+    for (const [cls, file] of sharedFiles) {
       const methods = called.get(cls);
       if (!methods) continue;
-      for (const c of extractCallsInMethods(text, [...methods], uowMap)) {
+      for (const c of extractCallsInMethods(file.text, [...methods], uowMap, file.fields)) {
         if (addCall(c.cls, c.method)) changed = true;
       }
     }
@@ -205,11 +213,11 @@ function collectScopedProcsForForm(
   }
 
   const procs = new Set<string>();
-  for (const t of directTexts) {
-    for (const p of collectDirectProcs(t)) procs.add(p);
+  for (const f of directFiles) {
+    for (const p of collectDirectProcs(f.text)) procs.add(p);
   }
-  for (const [cls, text] of sharedFiles) {
-    for (const p of collectScopedProcs(text, called.get(cls))) procs.add(p);
+  for (const [cls, file] of sharedFiles) {
+    for (const p of collectScopedProcs(file.text, called.get(cls))) procs.add(p);
   }
   return procs;
 }

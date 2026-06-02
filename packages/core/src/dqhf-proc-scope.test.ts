@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type UowMap,
+  buildFieldTypeMap,
   collectDirectProcs,
   collectScopedProcs,
   extractCallsInMethods,
@@ -22,6 +23,14 @@ public class TR_FOO {
   public DataTable Search3(string kw) {
     MyQuery qr = new MyQuery("FOO_SEARCH3", CommandType.StoredProcedure);
     return DBConnect.getTable(qr);
+  }
+  public bool Save(int id) {
+    MyQuery qr = new MyQuery("FOO_SAVE_BYID", CommandType.StoredProcedure);
+    return DBConnect.ExecuteTrans(qr);
+  }
+  public bool Save(string code) {
+    MyQuery qr = new MyQuery("FOO_SAVE_BYCODE", CommandType.StoredProcedure);
+    return DBConnect.ExecuteTrans(qr);
   }
 }`;
 
@@ -59,15 +68,47 @@ describe("collectScopedProcs", () => {
     expect(procs.has("FOO_SEARCH3")).toBe(false);
   });
 
-  it("fallback: không rõ method nào → lấy mọi MyQuery (giữ hành vi cũ)", () => {
-    const procs = collectScopedProcs(REPO, undefined);
-    expect([...procs].sort()).toEqual(["FOO_GETALL", "FOO_INSERT", "FOO_SEARCH3"]);
+  it("KHÔNG fallback: không rõ method nào → 0 proc (tránh dương tính giả .Location)", () => {
+    expect(collectScopedProcs(REPO, undefined).size).toBe(0);
+    expect(collectScopedProcs(REPO, new Set()).size).toBe(0);
+  });
+
+  it("gộp MỌI overload cùng tên (mỗi overload 1 proc)", () => {
+    const procs = collectScopedProcs(REPO, new Set(["Save"]));
+    expect([...procs].sort()).toEqual(["FOO_SAVE_BYCODE", "FOO_SAVE_BYID"]);
   });
 });
 
 describe("collectDirectProcs", () => {
   it("lấy mọi MyQuery trực tiếp (form/control)", () => {
     expect([...collectDirectProcs(FORM)]).toEqual(["FORM_DIRECT"]);
+  });
+});
+
+describe("buildFieldTypeMap + field-call (uỷ quyền BOL→DAL)", () => {
+  const BOL = `
+public class TR_FOO_BOL {
+  TR_FOO_DAL _dal;
+  public TR_FOO_BOL() { _dal = new TR_FOO_DAL(); }
+  public DataTable GetTableBySP(string masp) {
+    return _dal.GetTableBySP(masp);
+  }
+}`;
+
+  it("map field → repo class từ '<field> = new <Class>('", () => {
+    const fields = buildFieldTypeMap(BOL);
+    expect(fields.get("_dal")).toBe("tr_foo_dal");
+  });
+
+  it("bắt lời gọi field-call '_dal.Method(' khi có fieldTypes", () => {
+    const fields = buildFieldTypeMap(BOL);
+    const calls = extractCallsInMethods(BOL, ["GetTableBySP"], uow, fields);
+    expect(calls).toContainEqual({ cls: "tr_foo_dal", method: "GetTableBySP" });
+  });
+
+  it("KHÔNG bắt field-call khi thiếu fieldTypes (tránh nhiễu mọi .Method()", () => {
+    const calls = extractRepoMethodCalls("var x = a.B(1); y.C(2);", uow);
+    expect(calls.length).toBe(0);
   });
 });
 

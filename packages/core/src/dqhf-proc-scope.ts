@@ -30,6 +30,12 @@ export const SHARED_DATA_RE = /[\\/](CommonClass[\\/](BOL|DAL|MODELS)|DQHF\.Repo
 const CALL_VIA_PROP = /\.([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*\(/g;
 /** Lời gọi qua khởi tạo trực tiếp: `new <Class>(...).<Method>(`. */
 const CALL_VIA_NEW = /new\s+([A-Za-z_][\w.]*)\s*\([^;(){}]*\)\s*\.([A-Za-z_]\w*)\s*\(/g;
+/** Lời gọi qua field/biến: `<recv>.<Method>(` — chỉ nhận khi recv ∈ fieldTypes.
+ *  DQHF uỷ quyền nhiều tầng: BOL.Method → `_GOVAN.Method()` → DAL.Method →
+ *  MyQuery. `_GOVAN = new TR_..._DAL()` nên field _GOVAN có type DAL. */
+const CALL_VIA_RECV = /\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*\(/g;
+/** Gán field/biến từ khởi tạo: `<field> = new <Class>(`. */
+const FIELD_NEW = /\b([A-Za-z_]\w*)\s*=\s*new\s+([A-Za-z_][\w.]*)\s*\(/g;
 
 /** Một lời gọi method repo: class (lower, segment cuối) + tên method. */
 export interface RepoMethodCall {
@@ -57,10 +63,27 @@ function collectProcsIn(text: string, into: Set<string>): void {
   }
 }
 
-/** Trích các cặp (repoClass, method) mà 1 file gọi.
- *  - `.<Prop>.<Method>(`  → repoClass = uowMap[Prop]
- *  - `new <Class>(...).<Method>(` → repoClass = <Class> */
-export function extractRepoMethodCalls(text: string, uowMap: UowMap): RepoMethodCall[] {
+/** Map field/biến → repo class (lower, segment cuối) từ `<field> = new <Class>(`.
+ *  Cần để lần lời gọi uỷ quyền `<field>.<Method>(` tới đúng repo (BOL→DAL). */
+export function buildFieldTypeMap(text: string): Map<string, string> {
+  const map = new Map<string, string>();
+  FIELD_NEW.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FIELD_NEW.exec(text))) {
+    map.set(m[1]!.toLowerCase(), lastTypeSegment(m[2]!).toLowerCase());
+  }
+  return map;
+}
+
+/** Trích các cặp (repoClass, method) mà 1 đoạn text gọi.
+ *  - `.<Prop>.<Method>(`        → repoClass = uowMap[Prop]
+ *  - `new <Class>(...).<Method>(` → repoClass = <Class>
+ *  - `<field>.<Method>(`        → repoClass = fieldTypes[field] (uỷ quyền BOL→DAL) */
+export function extractRepoMethodCalls(
+  text: string,
+  uowMap: UowMap,
+  fieldTypes?: Map<string, string>,
+): RepoMethodCall[] {
   const out: RepoMethodCall[] = [];
   let m: RegExpExecArray | null;
 
@@ -75,18 +98,30 @@ export function extractRepoMethodCalls(text: string, uowMap: UowMap): RepoMethod
     out.push({ cls: lastTypeSegment(m[1]!).toLowerCase(), method: m[2]! });
   }
 
+  if (fieldTypes && fieldTypes.size > 0) {
+    CALL_VIA_RECV.lastIndex = 0;
+    while ((m = CALL_VIA_RECV.exec(text))) {
+      const cls = fieldTypes.get(m[1]!.toLowerCase());
+      if (cls) out.push({ cls, method: m[2]! });
+    }
+  }
+
   return out;
 }
 
-/** Tìm THÂN method tên `name` trong class text → trả chuỗi body (gồm `{...}`),
- *  hoặc null nếu không thấy ĐỊNH NGHĨA (phân biệt với lời gọi cùng tên).
+/** Tìm THÂN của MỌI overload method tên `name` trong class text → chuỗi gộp các
+ *  body (`{...}`), hoặc null nếu không thấy ĐỊNH NGHĨA nào. Phải gộp tất cả
+ *  overload: form có thể gọi cả `AutoUpdatePCode(id,pcode)` lẫn `(masp)` —
+ *  mỗi overload 1 proc khác nhau; chỉ lấy overload đầu sẽ SÓT proc.
  *
- *  Heuristic: `name(` mà (a) phía trước (bỏ khoảng trắng) là ký tự kết-thúc-type
- *  [\w>\]] (tức có return type → là định nghĩa, KHÔNG phải `.name(` hay `(name(`),
- *  và (b) sau `)` (đã match ngoặc) là `{` (cho phép `where T: ...` chen giữa). */
+ *  Heuristic phân biệt định nghĩa với lời gọi cùng tên: `name(` mà (a) phía
+ *  trước (bỏ khoảng trắng) là ký tự kết-thúc-type [\w>\]] (có return type →
+ *  định nghĩa, KHÔNG phải `.name(` hay `(name(`), và (b) sau `)` (đã khớp
+ *  ngoặc) là `{` (cho phép `where T: ...` chen giữa). */
 function findMethodBody(text: string, name: string): string | null {
   const nameRe = new RegExp(`\\b${escapeRe(name)}\\s*\\(`, "g");
   let m: RegExpExecArray | null;
+  let acc = "";
   while ((m = nameRe.exec(text))) {
     // (a) ký tự không-trắng ngay trước tên phải là cuối-type (loại lời gọi).
     let b = m.index - 1;
@@ -122,33 +157,36 @@ function findMethodBody(text: string, name: string): string | null {
     }
     if (bodyStart < 0) continue;
 
-    // Khớp ngoặc nhọn lấy trọn body.
+    // Khớp ngoặc nhọn lấy trọn body, gộp lại (cộng dồn mọi overload).
     let d = 0;
     for (let p = bodyStart; p < text.length; p++) {
       const c = text[p]!;
       if (c === "{") d++;
       else if (c === "}") {
         d--;
-        if (d === 0) return text.slice(bodyStart, p + 1);
+        if (d === 0) {
+          acc += `${text.slice(bodyStart, p + 1)}\n`;
+          break;
+        }
       }
     }
   }
-  return null;
+  return acc || null;
 }
 
-/** Gom proc của 1 file data-layer DÙNG CHUNG, scope theo method được gọi.
- *  - `calledMethods` rỗng/undefined (file được tham chiếu nhưng không rõ
- *    method nào) → fallback lấy MỌI MyQuery (giữ hành vi cũ, tránh sót).
- *  - Có method → chỉ gom MyQuery trong thân các method đó. */
+/** Gom proc của 1 file data-layer DÙNG CHUNG, CHỈ trong thân method được gọi.
+ *
+ *  KHÔNG fallback "lấy mọi MyQuery" khi không rõ method: repo DQHF được tham
+ *  chiếu qua `.Prop` rất dễ DƯƠNG TÍNH GIẢ — uow prop `LOCATION` đụng thuộc
+ *  tính WinForms `control.Location` ⇒ mọi form kéo nguyên repo TRTB_M_LOCATION.
+ *  Vậy repo chỉ đóng góp proc qua method có lời gọi thật (`.Prop.Method(` hoặc
+ *  `new Repo().Method(`); không có lời gọi nào → 0 proc. */
 export function collectScopedProcs(
   text: string,
   calledMethods: Set<string> | undefined,
 ): Set<string> {
   const procs = new Set<string>();
-  if (!calledMethods || calledMethods.size === 0) {
-    collectProcsIn(text, procs);
-    return procs;
-  }
+  if (!calledMethods || calledMethods.size === 0) return procs;
   for (const method of calledMethods) {
     const body = findMethodBody(text, method);
     if (body) collectProcsIn(body, procs);
@@ -170,11 +208,12 @@ export function extractCallsInMethods(
   text: string,
   methods: Iterable<string>,
   uowMap: UowMap,
+  fieldTypes?: Map<string, string>,
 ): RepoMethodCall[] {
   const out: RepoMethodCall[] = [];
   for (const method of methods) {
     const body = findMethodBody(text, method);
-    if (body) out.push(...extractRepoMethodCalls(body, uowMap));
+    if (body) out.push(...extractRepoMethodCalls(body, uowMap, fieldTypes));
   }
   return out;
 }
