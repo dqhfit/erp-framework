@@ -3,890 +3,594 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hướng dẫn vận hành Migration MSSQL</title>
+  <title>Hướng dẫn vận hành — Migrate DQHF</title>
   <style>
-    /* ── Reset & tokens ─────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #f8f9fb;
-      --surface:   #ffffff;
-      --border:    #e2e5ea;
-      --muted:     #6b7280;
-      --text:      #111827;
-      --text-sub:  #374151;
-      --accent:    #2563eb;
-      --accent-bg: #eff6ff;
-      --danger:    #dc2626;
-      --success:   #16a34a;
-      --warn:      #d97706;
-      --code-bg:   #f3f4f6;
-      --nav-w:     260px;
-      --header-h:  52px;
-      font-size: 15px;
+      --bg:#f7f8fa; --surface:#ffffff; --surface2:#f1f3f7; --border:#e3e6ec;
+      --muted:#6b7280; --text:#111827; --text-sub:#374151;
+      --accent:#2563eb; --accent-bg:#eff6ff;
+      --danger:#dc2626; --danger-bg:#fef2f2;
+      --success:#16a34a; --success-bg:#f0fdf4;
+      --warn:#d97706; --warn-bg:#fffbeb;
+      --code-bg:#f3f4f6; --nav-w:280px; --header-h:54px; font-size:15px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg:        #0f1117;
-        --surface:   #1a1d27;
-        --border:    #2d3147;
-        --muted:     #9ca3af;
-        --text:      #f1f5f9;
-        --text-sub:  #cbd5e1;
-        --accent:    #60a5fa;
-        --accent-bg: #1e3a5f30;
-        --code-bg:   #1e2030;
+        --bg:#0f1117; --surface:#1a1d27; --surface2:#13151d; --border:#2d3147;
+        --muted:#9ca3af; --text:#f1f5f9; --text-sub:#cbd5e1;
+        --accent:#60a5fa; --accent-bg:#1e3a5f30;
+        --danger:#f87171; --danger-bg:#3a1d1d40;
+        --success:#4ade80; --success-bg:#16361f40;
+        --warn:#fbbf24; --warn-bg:#3a2e1340;
+        --code-bg:#1e2030;
       }
     }
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:var(--bg); color:var(--text); line-height:1.7; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
-    }
+    header { position:fixed; top:0; left:0; right:0; z-index:100; height:var(--header-h);
+      background:var(--surface); border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:12px; padding:0 20px; }
+    header .logo { width:30px; height:30px; border-radius:7px; background:var(--accent);
+      display:grid; place-items:center; color:#fff; font-size:15px; font-weight:700; }
+    header h1 { font-size:16px; font-weight:650; }
+    header .tag { margin-left:auto; font-size:12px; color:var(--muted); }
 
-    /* ── Header ─────────────────────────────────────────────────── */
-    header {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      height: var(--header-h);
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 12px; padding: 0 20px;
-    }
-    header .logo {
-      width: 28px; height: 28px; border-radius: 6px;
-      background: var(--accent); display: grid; place-items: center;
-      color: #fff; font-size: 14px; font-weight: 700; flex-shrink: 0;
-    }
-    header h1 { font-size: 15px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    header .badge {
-      font-size: 11px; padding: 2px 8px; border-radius: 20px;
-      background: var(--accent-bg); color: var(--accent);
-      border: 1px solid var(--accent); white-space: nowrap;
-    }
-    header .btn-print {
-      font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer;
-      background: transparent; border: 1px solid var(--border); color: var(--text-sub);
-      display: flex; align-items: center; gap-6px; gap: 5px;
-    }
-    header .btn-print:hover { background: var(--code-bg); }
+    nav { position:fixed; top:var(--header-h); left:0; bottom:0; width:var(--nav-w);
+      background:var(--surface); border-right:1px solid var(--border);
+      overflow-y:auto; padding:18px 12px 40px; }
+    nav .grp { font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--muted); font-weight:650; margin:16px 10px 6px; }
+    nav a { display:block; padding:5px 10px; border-radius:6px; font-size:13.5px;
+      color:var(--text-sub); text-decoration:none; }
+    nav a:hover { background:var(--surface2); color:var(--text); }
+    nav a.active { background:var(--accent-bg); color:var(--accent); font-weight:600; }
 
-    /* ── Layout ──────────────────────────────────────────────────── */
-    .layout {
-      display: flex;
-      padding-top: var(--header-h);
-      min-height: 100vh;
-    }
+    main { margin-left:var(--nav-w); margin-top:var(--header-h); padding:40px 48px 120px;
+      max-width:920px; }
+    section { margin-bottom:48px; scroll-margin-top:70px; }
+    h2 { font-size:24px; font-weight:700; margin-bottom:6px; padding-bottom:8px;
+      border-bottom:2px solid var(--border); }
+    h2 .num { color:var(--accent); margin-right:8px; }
+    h3 { font-size:18px; font-weight:650; margin:26px 0 8px; }
+    h4 { font-size:15px; font-weight:650; margin:18px 0 6px; color:var(--text-sub); }
+    p { margin:8px 0; color:var(--text-sub); }
+    ul, ol { margin:8px 0 8px 22px; color:var(--text-sub); }
+    li { margin:5px 0; }
+    a { color:var(--accent); }
+    code { background:var(--code-bg); padding:2px 6px; border-radius:4px;
+      font-family:"SF Mono",Consolas,monospace; font-size:13px; }
+    strong { color:var(--text); }
 
-    /* ── Left nav ────────────────────────────────────────────────── */
-    nav {
-      position: fixed; top: var(--header-h); left: 0; bottom: 0;
-      width: var(--nav-w); overflow-y: auto; overflow-x: hidden;
-      background: var(--surface); border-right: 1px solid var(--border);
-      padding: 12px 0 40px;
-    }
-    nav .nav-group-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--muted);
-      padding: 10px 16px 4px;
-    }
-    nav a {
-      display: flex; align-items: baseline; gap: 7px;
-      padding: 5px 16px; font-size: 13px; color: var(--text-sub);
-      text-decoration: none; border-left: 2px solid transparent;
-      transition: background .12s, color .12s, border-color .12s;
-    }
-    nav a:hover { background: var(--code-bg); color: var(--text); }
-    nav a.active { border-left-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600; }
-    nav a .num { font-size: 10px; color: var(--muted); min-width: 14px; }
-    nav a .sub { font-size: 11px; }
-    nav a.sub-link { padding-left: 30px; font-size: 12px; }
+    .lead { font-size:16.5px; color:var(--text-sub); margin:10px 0 18px; }
 
-    /* ── Main content ────────────────────────────────────────────── */
-    main {
-      margin-left: var(--nav-w);
-      flex: 1;
-      padding: 32px 40px 80px;
-      max-width: calc(var(--nav-w) + 800px);
-    }
+    .box { border-radius:9px; padding:14px 16px; margin:16px 0; border:1px solid var(--border);
+      font-size:14.5px; }
+    .box .bt { font-weight:650; display:flex; align-items:center; gap:7px; margin-bottom:3px; }
+    .box p, .box ul { color:inherit; }
+    .tip { background:var(--accent-bg); border-color:transparent; color:var(--text-sub); }
+    .tip .bt { color:var(--accent); }
+    .warn { background:var(--warn-bg); border-color:transparent; }
+    .warn .bt { color:var(--warn); }
+    .danger { background:var(--danger-bg); border-color:transparent; }
+    .danger .bt { color:var(--danger); }
+    .ok { background:var(--success-bg); border-color:transparent; }
+    .ok .bt { color:var(--success); }
 
-    /* ── Typography ──────────────────────────────────────────────── */
-    section { margin-bottom: 56px; }
-    section + section { border-top: 1px solid var(--border); padding-top: 48px; }
+    .steps { counter-reset:step; margin:16px 0; }
+    .step { position:relative; padding:14px 16px 14px 56px; border:1px solid var(--border);
+      border-radius:10px; background:var(--surface); margin-bottom:12px; }
+    .step::before { counter-increment:step; content:counter(step);
+      position:absolute; left:14px; top:14px; width:28px; height:28px; border-radius:50%;
+      background:var(--accent); color:#fff; font-weight:700; display:grid; place-items:center;
+      font-size:14px; }
+    .step h4 { margin:0 0 4px; color:var(--text); font-size:15.5px; }
+    .step p { margin:4px 0; }
 
-    h2 {
-      font-size: 22px; font-weight: 700; margin-bottom: 16px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    h2 .sec-num {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
-      flex-shrink: 0;
-    }
-    h3 {
-      font-size: 16px; font-weight: 600; margin: 24px 0 10px;
-      padding-left: 10px; border-left: 3px solid var(--accent);
-      color: var(--text);
-    }
-    h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: var(--text-sub); }
-    p { margin-bottom: 12px; color: var(--text-sub); }
-    li { color: var(--text-sub); margin-bottom: 5px; }
-    ul { padding-left: 20px; margin-bottom: 12px; }
-    ol { padding-left: 20px; margin-bottom: 12px; }
-    ol li { margin-bottom: 8px; }
-    strong { color: var(--text); font-weight: 600; }
+    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+    th, td { text-align:left; padding:8px 11px; border:1px solid var(--border);
+      vertical-align:top; }
+    th { background:var(--surface2); font-weight:650; color:var(--text); }
+    td { color:var(--text-sub); }
 
-    /* ── Code ────────────────────────────────────────────────────── */
-    code {
-      font-family: "Fira Code", "JetBrains Mono", "Consolas", monospace;
-      font-size: 13px; background: var(--code-bg); padding: 1px 5px;
-      border-radius: 4px; color: var(--text);
-    }
-    pre {
-      background: var(--code-bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px 16px; overflow-x: auto;
-      margin: 12px 0 16px; font-size: 12.5px; line-height: 1.6;
-    }
-    pre code { background: none; padding: 0; font-size: inherit; }
+    .btn { display:inline-block; padding:2px 9px; border-radius:6px; font-size:12.5px;
+      font-weight:600; border:1px solid var(--border); background:var(--surface2);
+      color:var(--text); white-space:nowrap; }
+    .btn.pri { background:var(--accent); color:#fff; border-color:transparent; }
+    .chip { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11.5px;
+      font-weight:600; }
+    .c-grey { background:var(--surface2); color:var(--muted); }
+    .c-blue { background:var(--accent-bg); color:var(--accent); }
+    .c-green{ background:var(--success-bg); color:var(--success); }
+    .c-red  { background:var(--danger-bg); color:var(--danger); }
+    .c-amber{ background:var(--warn-bg); color:var(--warn); }
 
-    /* ── Tables ──────────────────────────────────────────────────── */
-    .tbl-wrap { overflow-x: auto; margin: 12px 0 16px; border-radius: 8px; border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      background: var(--code-bg); text-align: left;
-      padding: 8px 12px; font-weight: 600; font-size: 12px;
-      text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
-      border-bottom: 1px solid var(--border);
-    }
-    td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--code-bg); }
+    .flow { background:var(--surface); border:1px solid var(--border); border-radius:10px;
+      padding:16px 18px; font-family:"SF Mono",Consolas,monospace; font-size:13px;
+      color:var(--text-sub); white-space:pre; overflow-x:auto; line-height:1.8; margin:14px 0; }
 
-    /* ── Callouts ────────────────────────────────────────────────── */
-    .callout {
-      border-radius: 8px; padding: 12px 14px; margin: 14px 0;
-      border-left: 4px solid; display: flex; gap: 10px; align-items: flex-start;
-    }
-    .callout-icon { font-size: 16px; flex-shrink: 0; line-height: 1.4; }
-    .callout-body { flex: 1; }
-    .callout-body p { margin: 0; }
-    .callout.warn  { border-color: var(--warn);    background: #fef3c720; }
-    .callout.info  { border-color: var(--accent);  background: var(--accent-bg); }
-    .callout.ok    { border-color: var(--success);  background: #f0fdf420; }
-    .callout.danger{ border-color: var(--danger);   background: #fef2f220; }
-
-    /* ── Step cards ──────────────────────────────────────────────── */
-    .steps { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
-    .step {
-      display: flex; gap: 12px; padding: 12px 14px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; align-items: flex-start;
-    }
-    .step-num {
-      min-width: 24px; height: 24px; border-radius: 50%;
-      background: var(--accent); color: #fff;
-      display: grid; place-items: center; font-size: 12px; font-weight: 700;
-      flex-shrink: 0; margin-top: 1px;
-    }
-    .step-body { flex: 1; }
-    .step-body strong { display: block; margin-bottom: 3px; }
-    .step-body p, .step-body ul { margin: 0; }
-
-    /* ── Phase pipeline ──────────────────────────────────────────── */
-    .pipeline {
-      display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0;
-      align-items: center;
-    }
-    .pill {
-      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-      background: var(--code-bg); border: 1px solid var(--border); color: var(--text-sub);
-    }
-    .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .arr { color: var(--muted); font-size: 14px; }
-
-    /* ── Tier badges ─────────────────────────────────────────────── */
-    .tier { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 12px; font-weight: 700; }
-    .tier-a { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
-    .tier-b { background: #eff6ff; color: var(--accent); border: 1px solid #bfdbfe; }
-    .tier-c { background: #fefce8; color: var(--warn);   border: 1px solid #fde68a; }
-    .tier-d { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
-    @media (prefers-color-scheme: dark) {
-      .tier-a { background: #3b0a0a; color: #fca5a5; border-color: #7f1d1d; }
-      .tier-b { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
-      .tier-c { background: #3b2a00; color: #fcd34d; border-color: #78350f; }
-      .tier-d { background: #063710; color: #6ee7b7; border-color: #064e3b; }
-    }
-
-    /* ── Status badges ───────────────────────────────────────────── */
-    .status {
-      display: inline-block; padding: 1px 8px; border-radius: 10px;
-      font-size: 12px; font-weight: 600;
-    }
-    .s-run  { background: #dbeafe; color: #1d4ed8; }
-    .s-done { background: #dcfce7; color: #15803d; }
-    .s-fail { background: #fee2e2; color: #b91c1c; }
-    .s-pause{ background: #fef9c3; color: #a16207; }
-    @media (prefers-color-scheme: dark) {
-      .s-run  { background: #1e3a5f; color: #93c5fd; }
-      .s-done { background: #063710; color: #6ee7b7; }
-      .s-fail { background: #3b0a0a; color: #fca5a5; }
-      .s-pause{ background: #3b2a00; color: #fcd34d; }
-    }
-
-    /* ── Print ───────────────────────────────────────────────────── */
-    @media print {
-      nav, header .btn-print { display: none; }
-      main { margin-left: 0; padding: 20px; }
-      section + section { page-break-before: always; }
-      h2, h3 { page-break-after: avoid; }
-      pre, .tbl-wrap { page-break-inside: avoid; }
-    }
-
-    /* ── Mobile ──────────────────────────────────────────────────── */
-    @media (max-width: 720px) {
-      :root { --nav-w: 0px; }
-      nav { display: none; }
-      main { padding: 20px 16px 60px; }
-    }
-
-    /* ── Scroll offset for fixed header + nav ────────────────────── */
-    :target { scroll-margin-top: calc(var(--header-h) + 20px); }
-    html { scroll-behavior: smooth; }
+    .path { font-family:"SF Mono",Consolas,monospace; background:var(--code-bg);
+      padding:2px 7px; border-radius:5px; font-size:13px; }
+    hr { border:0; border-top:1px solid var(--border); margin:28px 0; }
+    .small { font-size:13px; color:var(--muted); }
   </style>
 </head>
 <body>
+  <header>
+    <div class="logo">DQ</div>
+    <h1>Hướng dẫn vận hành — Migrate DQHF</h1>
+    <span class="tag">Dành cho người vận hành · không cần biết lập trình</span>
+  </header>
 
-<!-- ═══ HEADER ════════════════════════════════════════════════════ -->
-<header>
-  <div class="logo">M</div>
-  <h1>Hướng dẫn vận hành Migration MSSQL</h1>
-  <span class="badge">v1.0 · 2026-05</span>
-  <button class="btn-print" onclick="window.print()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-    In PDF
-  </button>
-</header>
+  <nav id="toc">
+    <div class="grp">Bắt đầu</div>
+    <a href="#gioi-thieu">1. Migrate DQHF là gì</a>
+    <a href="#chuan-bi">2. Chuẩn bị trước khi làm</a>
+    <a href="#man-hinh">3. Mở màn hình &amp; bố cục</a>
+    <div class="grp">Làm một chức năng</div>
+    <a href="#luong">4. Luồng chuẩn 7 bước</a>
+    <a href="#b-menu">&nbsp;&nbsp;B1. Mở Menu cũ DQHF</a>
+    <a href="#b-port">&nbsp;&nbsp;B2. Port mục này</a>
+    <a href="#b-enrich">&nbsp;&nbsp;B3. Đặt tên (Enrich)</a>
+    <a href="#b-generate">&nbsp;&nbsp;B4. Sinh code (Generate)</a>
+    <a href="#b-data">&nbsp;&nbsp;B5. Nạp dữ liệu</a>
+    <a href="#b-verify">&nbsp;&nbsp;B6. Kiểm chứng &amp; sửa</a>
+    <a href="#b-finalize">&nbsp;&nbsp;B7. Chốt (Finalize)</a>
+    <div class="grp">Các màn phụ</div>
+    <a href="#man-phu">5. Migrate nhanh / Jobs / Cleanup</a>
+    <div class="grp">Hiểu để vận hành</div>
+    <a href="#khai-niem">6. Khái niệm quan trọng</a>
+    <a href="#tra-cuu">7. Bảng tra màu &amp; nút</a>
+    <a href="#su-co">8. Xử lý sự cố</a>
+    <a href="#faq">9. Câu hỏi thường gặp</a>
+  </nav>
 
-<div class="layout">
+  <main>
 
-<!-- ═══ NAV ═══════════════════════════════════════════════════════ -->
-<nav id="sidebar">
-  <div class="nav-group-label">Bắt đầu</div>
-  <a href="#s1">Tổng quan hệ thống</a>
-  <a href="#s2">Yêu cầu chuẩn bị</a>
-  <a href="#s3">Cấu hình kết nối MSSQL</a>
+  <section id="gioi-thieu">
+    <h2><span class="num">1</span>Migrate DQHF là gì</h2>
+    <p class="lead">Công cụ giúp bạn chuyển từng chức năng của phần mềm cũ DQHF (chạy trên
+      SQL Server) sang hệ thống ERP mới — <strong>từng mục một</strong>, theo đúng tiến độ,
+      không cần chuyển tất cả cùng lúc.</p>
 
-  <div class="nav-group-label">Quy trình 8 bước</div>
-  <a href="#step1">① Discover — Khám phá</a>
-  <a href="#step2">② Diagram — Sơ đồ</a>
-  <a href="#step3">③ Enrich — Làm giàu</a>
-  <a href="#step4">④ Capture Golden</a>
-  <a href="#step5">⑤ Generate — Sinh code</a>
-  <a href="#step6">⑥ Data — Import</a>
-  <a href="#step7">⑦ Review — Kiểm tra</a>
-  <a href="#step8">⑧ Audit + Cutover</a>
+    <p>Mỗi chức năng cũ gồm 3 thứ, và công cụ chuyển chúng sang dạng mới:</p>
+    <div class="flow">PHẦN MỀM CŨ (DQHF + SQL Server)        HỆ THỐNG MỚI (ERP)
+─────────────────────────────        ──────────────────────────────
+Bảng dữ liệu          ──nạp──▶        Bảng dữ liệu trong ERP
+Câu lệnh xử lý (proc) ──AI dịch─▶     Hàm xử lý chạy được trong ERP
+Màn hình / Form       ──tạo──▶        Trang giao diện mới</div>
 
-  <div class="nav-group-label">Tham chiếu</div>
-  <a href="#tier">Phân loại Stored Proc (Tier)</a>
-  <a href="#fullimport">Full Import — Auto-resume</a>
-  <a href="#trouble">Xử lý sự cố</a>
-  <a href="#postlive">Vận hành sau Cutover</a>
-</nav>
+    <div class="box tip">
+      <div class="bt">💡 Ý tưởng cốt lõi</div>
+      <p>Bạn <strong>không phải gõ code</strong>. Bạn chỉ: chọn chức năng → bấm các nút theo
+      thứ tự → kiểm tra kết quả → sửa nếu sai. AI làm phần dịch code, hệ thống tự kiểm tra
+      lại để báo bạn chỗ nào chưa đúng.</p>
+    </div>
 
-<!-- ═══ MAIN ═══════════════════════════════════════════════════════ -->
-<main>
+    <p>Mỗi chức năng được xử lý độc lập thành một <strong>“module”</strong>. Bạn lặp lại
+      cùng một quy trình cho từng module cho tới khi xong cả phần mềm.</p>
+  </section>
 
-<!-- ─── S1: Tổng quan ─────────────────────────────────────────── -->
-<section id="s1">
-  <h2><span class="sec-num">1</span>Tổng quan hệ thống</h2>
+  <section id="chuan-bi">
+    <h2><span class="num">2</span>Chuẩn bị trước khi làm</h2>
 
-  <p>Migration MSSQL chuyển đổi từng <strong>module nghiệp vụ</strong> (sales, inventory, HR…)
-  từ ứng dụng legacy SQL Server sang ERP Framework. Mỗi module được xử lý độc lập —
-  không cần chuyển tất cả cùng lúc.</p>
+    <h3>2.1 Bạn cần có</h3>
+    <ul>
+      <li>Tài khoản ERP với quyền <strong>admin</strong> của công ty.</li>
+      <li>Thông tin kết nối tới SQL Server cũ: <em>địa chỉ máy chủ, cổng, tên database,
+        tài khoản, mật khẩu</em> (tài khoản chỉ cần quyền <strong>đọc</strong>).</li>
+    </ul>
 
-  <div class="tbl-wrap">
+    <h3>2.2 Tạo kết nối tới SQL Server cũ</h3>
+    <p>Vào <span class="path">Cài đặt → Kết nối MSSQL</span>, bấm <span class="btn">+ Thêm kết nối</span>
+      và điền:</p>
     <table>
-      <thead><tr><th>Thành phần</th><th>Vai trò</th></tr></thead>
-      <tbody>
-        <tr><td><code>settings/migration</code></td><td>Giao diện điều khiển toàn bộ quy trình</td></tr>
-        <tr><td><code>migration-router</code></td><td>80+ tRPC endpoints quản lý manifest + job</td></tr>
-        <tr><td><code>migration-worker</code></td><td>pg-boss worker xử lý job nền</td></tr>
-        <tr><td><code>migration-full-import</code></td><td>Engine streaming ETL với auto-resume</td></tr>
-        <tr><td><code>mssql-connections</code></td><td>CRUD kết nối MSSQL (mật khẩu AES-256-GCM)</td></tr>
-        <tr><td><code>migration-plan/modules/*.yaml</code></td><td>Single source of truth mỗi module (Git-tracked)</td></tr>
-      </tbody>
+      <tr><th>Ô</th><th>Điền gì</th></tr>
+      <tr><td>Tên</td><td>Tên gợi nhớ, ví dụ <em>DQHF Production</em></td></tr>
+      <tr><td>Host / Port</td><td>IP hoặc tên máy chủ SQL Server · cổng thường là <code>1433</code></td></tr>
+      <tr><td>Database</td><td>Tên CSDL nguồn</td></tr>
+      <tr><td>Username / Password</td><td>Tài khoản chỉ-đọc. Mật khẩu được <strong>mã hóa</strong>, không lưu thô.</td></tr>
+      <tr><td>Trust Server Cert</td><td>Bật ✓ nếu mạng nội bộ / chứng chỉ tự ký.</td></tr>
+      <tr><td>Đặt làm mặc định</td><td>Bật ✓ — mọi thao tác migrate dùng kết nối này.</td></tr>
     </table>
-  </div>
+    <p>Bấm <span class="btn">Test</span> sau khi lưu. Nếu báo số bảng đọc được là OK.</p>
+    <div class="box warn">
+      <div class="bt">⚠️ Nếu Test lỗi</div>
+      <p>Kiểm tra: tường lửa giữa máy chủ ERP và SQL Server (cổng 1433), bật
+      <em>Trust Server Cert</em>, và tài khoản có quyền <code>SELECT</code>.</p>
+    </div>
+  </section>
 
-  <h3>Luồng dữ liệu</h3>
-  <pre>MSSQL Legacy                    ERP Framework
-──────────────────              ─────────────────────────────
-Tables          ──ETL──────▶    entity_records (PostgreSQL)
-Stored Procs    ──AI codegen──▶ Procedures JS/TS (Tier B/D)
-Enum Tables     ──materialize─▶ Bảng enums
-Schema/FK       ──codegen──────▶ Entity definitions, Page mẫu</pre>
+  <section id="man-hinh">
+    <h2><span class="num">3</span>Mở màn hình &amp; bố cục</h2>
+    <p>Vào <span class="path">Cài đặt → Migrate DQHF</span> ở thanh menu bên trái.</p>
+    <p>Màn hình chia 2 phần:</p>
+    <ul>
+      <li><strong>Cột trái</strong> — danh sách module + các nút mở màn phụ:
+        <span class="btn">Migrate nhanh</span> <span class="btn">Jobs import</span>
+        <span class="btn">Bảng đã migrate</span> <span class="btn">Migrate proc</span>
+        <span class="btn">Menu cũ DQHF</span></li>
+      <li><strong>Vùng phải</strong> — nội dung của mục đang chọn.</li>
+    </ul>
+    <div class="box tip">
+      <div class="bt">💡 “Menu cũ DQHF” là nơi bắt đầu</div>
+      <p>Đây là màn hiển thị <strong>đúng cây menu của phần mềm cũ</strong>. Bạn port theo
+      menu cũ nên không sợ bỏ sót chức năng nào.</p>
+    </div>
+  </section>
 
-  <h3>Pipeline tổng thể</h3>
-  <div class="pipeline">
-    <span class="pill">Discover</span><span class="arr">→</span>
-    <span class="pill">Diagram</span><span class="arr">→</span>
-    <span class="pill">Enrich</span><span class="arr">→</span>
-    <span class="pill">Capture</span><span class="arr">→</span>
-    <span class="pill">Generate</span><span class="arr">→</span>
-    <span class="pill">Data</span><span class="arr">→</span>
-    <span class="pill">Review</span><span class="arr">→</span>
-    <span class="pill active">Audit / Cutover</span>
-  </div>
-</section>
+  <section id="luong">
+    <h2><span class="num">4</span>Luồng chuẩn 7 bước cho 1 chức năng</h2>
+    <p class="lead">Đây là quy trình lặp cho <strong>từng mục menu</strong>. Làm tuần tự từ
+      trên xuống.</p>
+    <div class="flow">B1 Mở Menu cũ DQHF ─▶ B2 Port mục này ─▶ B3 Enrich ─▶ B4 Generate
+                                                              │
+   B7 Finalize ◀─ B6 Verify &amp; sửa ◀─ B5 Nạp dữ liệu ◀────────┘</div>
+  </section>
 
-<!-- ─── S2: Yêu cầu ───────────────────────────────────────────── -->
-<section id="s2">
-  <h2><span class="sec-num">2</span>Yêu cầu trước khi bắt đầu</h2>
+  <section id="b-menu">
+    <h3>B1 · Mở “Menu cũ DQHF” và nạp menu</h3>
+    <div class="steps">
+      <div class="step">
+        <h4>Mở màn</h4>
+        <p>Bấm <span class="btn">Menu cũ DQHF</span> ở cột trái.</p>
+      </div>
+      <div class="step">
+        <h4>Nạp cây menu (lần đầu)</h4>
+        <p>Bấm <span class="btn">Import menu</span> để đưa cây menu phần mềm cũ vào. Sau đó
+        bấm <span class="btn">Resolve</span> để hệ thống dò xem mỗi mục menu dùng những
+        bảng / câu lệnh nào.</p>
+      </div>
+      <div class="step">
+        <h4>Chọn 1 mục để làm</h4>
+        <p>Bấm vào một mục (lá) trong cây. Vùng phải hiện chi tiết: các proc/bảng liên quan
+        và trạng thái port.</p>
+      </div>
+    </div>
+    <p>Mỗi mục có nhãn trạng thái: <span class="chip c-grey">Chưa port</span>
+      <span class="chip c-amber">Đang port</span> <span class="chip c-green">Đã port</span>.</p>
+  </section>
 
-  <h3>Phía server ERP</h3>
-  <ul>
-    <li>Server đang chạy (<code>pnpm dev</code> hoặc production build)</li>
-    <li><code>ENCRYPTION_KEY</code> đã đặt (mã hóa mật khẩu MSSQL)</li>
-    <li>Biến môi trường LLM: <code>ANTHROPIC_API_KEY</code> hoặc LLM profile trong <strong>Settings → AI</strong></li>
-    <li>Thư mục <code>migration-plan/modules/</code> tồn tại ở gốc repo</li>
-  </ul>
+  <section id="b-port">
+    <h3>B2 · “Port mục này”</h3>
+    <p>Với mục đã chọn, bấm <span class="btn pri">Port mục này</span>.</p>
+    <p>Hệ thống sẽ: tạo một <strong>module riêng</strong> cho mục đó và tự chạy bước
+      <strong>Khám phá (discover)</strong> — quét các bảng liên quan. Trạng thái mục chuyển
+      sang <span class="chip c-amber">Đang port</span>.</p>
+    <div class="box tip">
+      <div class="bt">💡 Sau khi port</div>
+      <p>Khu “Tiến trình port” xuất hiện với 3 bước bấm được:
+      <span class="btn">discover</span> → <span class="btn">enrich</span> →
+      <span class="btn">generate</span>. Bước nào <span class="chip c-green">xanh lá</span>
+      là xong, <span class="chip c-blue">xanh dương</span> là đang chạy,
+      <span class="chip c-red">đỏ</span> là lỗi.</p>
+    </div>
+  </section>
 
-  <h3>Phía MSSQL Legacy</h3>
-  <ul>
-    <li>Tài khoản DB <strong>read-only</strong> (SELECT trên tất cả bảng cần migrate)</li>
-    <li>Nếu cần Capture Golden: quyền EXECUTE stored proc, bật <code>allowWrite</code> trên kết nối (tạm thời)</li>
-    <li>Kết nối từ server ERP tới SQL Server phải thông (test qua tab Connections)</li>
-    <li>SQL Server 2012+ (cần <code>sys.dm_exec_procedure_stats</code>)</li>
-  </ul>
+  <section id="b-enrich">
+    <h3>B3 · Enrich — đặt tên tiếng Việt &amp; phân loại</h3>
+    <p>Bấm vào bước <span class="btn">enrich</span>. AI sẽ đặt tên tiếng Việt cho bảng/cột,
+      viết mô tả, và đề xuất “bậc” (tier) cho từng câu lệnh xử lý.</p>
+    <p>Đây là tác vụ chạy nền — theo dõi ở panel <strong>“Tác vụ nền”</strong>. Khi xong,
+      xem lại tên/nhãn; sửa tay nếu chưa ưng.</p>
+    <div class="box ok">
+      <div class="bt">✓ Chạy lại an toàn</div>
+      <p>Enrich <strong>tự bỏ qua</strong> phần đã làm (chỉ làm phần mới/lỗi). Bấm lại
+      nhiều lần không sao, không tốn chi phí AI thừa.</p>
+    </div>
+    <div class="box tip">
+      <div class="bt">💡 Bậc (Tier) của câu lệnh xử lý</div>
+      <table style="margin-top:6px">
+        <tr><th>Bậc</th><th>Nghĩa (cho người vận hành)</th></tr>
+        <tr><td><strong>B</strong></td><td>Logic đơn giản → AI dịch, lưu thẳng, chạy ngay.</td></tr>
+        <tr><td><strong>D</strong></td><td>Logic phức tạp → AI tạo file, cần triển khai lại.</td></tr>
+        <tr><td><strong>A / C</strong></td><td>Quá phức tạp → để lập trình viên làm tay.</td></tr>
+      </table>
+    </div>
+  </section>
 
-  <h3>Quyền trong ERP</h3>
-  <div class="callout info">
-    <span class="callout-icon">ℹ️</span>
-    <div class="callout-body"><p>Cần role <strong>admin</strong> trên công ty. Tất cả migration endpoint yêu cầu
-    <code>rbacProcedure("edit", "settings")</code>.</p></div>
-  </div>
-</section>
+  <section id="b-generate">
+    <h3>B4 · Generate — sinh code xử lý</h3>
+    <p>Bấm bước <span class="btn">generate</span>. AI dịch các câu lệnh SQL cũ sang code chạy
+      được trong ERP (bậc B vào hệ thống, bậc D thành file).</p>
+    <div class="box warn">
+      <div class="bt">⚠️ Cần nạp dữ liệu bảng trước nếu dùng chung</div>
+      <p>Một proc chỉ sinh được khi các bảng nó dùng đã có trong ERP. Nếu một mục dùng bảng
+      của mục khác, hãy nạp dữ liệu (B5) cho bảng đó trước.</p>
+    </div>
+    <div class="box tip">
+      <div class="bt">💡 Sửa proc đã sinh sai</div>
+      <p>Mặc định generate <strong>bỏ qua</strong> proc đã sinh. Muốn <strong>sinh lại đè</strong>
+      (vì AI dịch sai), bấm nút <span class="btn">↻ Sinh lại (ghi đè)</span> ở cuối khu tiến
+      trình. Hoặc dùng nút <strong>Tự sửa</strong> ở B6 (khuyên dùng — có kiểm chứng).</p>
+    </div>
+  </section>
 
-<!-- ─── S3: Kết nối MSSQL ─────────────────────────────────────── -->
-<section id="s3">
-  <h2><span class="sec-num">3</span>Cấu hình kết nối MSSQL</h2>
-
-  <p>Vào <strong>Settings → Migrations → Connections</strong>.</p>
-
-  <h3>Tạo kết nối mới</h3>
-  <div class="tbl-wrap">
+  <section id="b-data">
+    <h3>B5 · Nạp dữ liệu từ SQL Server</h3>
+    <p>Có 2 cách, chọn theo kích thước:</p>
     <table>
-      <thead><tr><th>Trường</th><th>Ví dụ</th><th>Ghi chú</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Tên</strong></td><td>ERP Legacy Production</td><td>Hiển thị trong UI</td></tr>
-        <tr><td><strong>Host</strong></td><td><code>192.168.1.100</code></td><td>IP hoặc hostname SQL Server</td></tr>
-        <tr><td><strong>Port</strong></td><td><code>1433</code></td><td>Mặc định SQL Server</td></tr>
-        <tr><td><strong>Database</strong></td><td><code>ErpLegacyDB</code></td><td>Tên database nguồn</td></tr>
-        <tr><td><strong>Username</strong></td><td><code>erp_readonly</code></td><td>Service account</td></tr>
-        <tr><td><strong>Password</strong></td><td>••••</td><td>Mã hóa AES-256-GCM, không lưu plain text</td></tr>
-        <tr><td><strong>Encrypt</strong></td><td>✓</td><td>Bật nếu SQL Server dùng TLS</td></tr>
-        <tr><td><strong>Trust Server Cert</strong></td><td>✓ (dev)</td><td>Bật cho self-signed cert; tắt ở production có CA hợp lệ</td></tr>
-        <tr><td><strong>Allow Write</strong></td><td>✗</td><td>Chỉ bật khi Capture Golden, tắt ngay sau đó</td></tr>
-        <tr><td><strong>Mặc định</strong></td><td>✓</td><td>Kết nối mặc định cho mọi thao tác migrate</td></tr>
-      </tbody>
+      <tr><th>Cách</th><th>Khi nào dùng</th><th>Thao tác</th></tr>
+      <tr>
+        <td><span class="btn">Migrate nhanh</span></td>
+        <td>Bảng nhỏ, hoặc nạp thử vài trăm dòng</td>
+        <td>Chọn bảng → đặt giới hạn (Limit) → bấm Migrate. Kết quả hiện ngay.</td>
+      </tr>
+      <tr>
+        <td><span class="btn">Jobs import</span> (Full Import)</td>
+        <td>Bảng lớn (hàng triệu dòng)</td>
+        <td>Chọn bảng → Bắt đầu Import. Chạy nền, <strong>tự tiếp tục</strong> nếu máy chủ
+          khởi động lại.</td>
+      </tr>
     </table>
-  </div>
+    <div class="box ok">
+      <div class="bt">✓ Hệ thống tự đối chiếu số lượng (reconcile)</div>
+      <p>Sau khi nạp xong mỗi bảng, hệ thống <strong>tự đếm</strong> số dòng nguồn (SQL Server)
+      và đích (ERP). Khớp → <span class="chip c-green">✓ reconcile</span>. Lệch →
+      <span class="chip c-amber">drift 100≠98</span> (nguồn 100, đích 98). <strong>Lệch thì
+      job KHÔNG được coi là xong</strong> — bạn biết ngay là mất dữ liệu, không bị âm thầm.</p>
+    </div>
+    <div class="box tip">
+      <div class="bt">💡 Nạp lại an toàn &amp; không trùng</div>
+      <p>Nạp dữ liệu dùng cơ chế “ghi đè theo khóa” — chạy lại sẽ <strong>cập nhật</strong>
+      dòng cũ, không tạo trùng. Bảng dùng chung giữa nhiều mục cũng <strong>không bị nạp 2
+      lần</strong> (hệ thống nhận ra theo bảng nguồn, tự dùng lại bảng đã có).</p>
+    </div>
+  </section>
 
-  <p>Nhấn <strong>"Test kết nối"</strong> sau khi lưu. Kết quả trả về số bảng đọc được.</p>
+  <section id="b-verify">
+    <h3>B6 · Verify — kiểm chứng đúng/sai &amp; tự sửa</h3>
+    <p class="lead">Đây là bước quan trọng nhất để chắc “code mới chạy ra kết quả giống phần
+      mềm cũ”.</p>
 
-  <h3>Khi test thất bại</h3>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Firewall</strong>
-        <p>Kiểm tra từ server ERP: <code>Test-NetConnection -ComputerName &lt;host&gt; -Port 1433</code></p>
+    <h4>Trước tiên: chụp “chuẩn vàng” (golden)</h4>
+    <p>Ở tab xử lý proc, chạy <strong>Capture Golden</strong>: hệ thống chạy proc trên SQL
+      Server thật với vài bộ dữ liệu mẫu và <strong>lưu lại kết quả đúng</strong> làm chuẩn
+      so sánh. (Cần bật quyền ghi tạm trên kết nối.)</p>
+
+    <h4>Verify</h4>
+    <div class="steps">
+      <div class="step">
+        <h4>Bấm “Verify proc”</h4>
+        <p>Trong khu <strong>Verify golden</strong> (vùng phải khi chọn mục), bấm
+        <span class="btn">Verify proc</span>. Hệ thống chạy code mới với <em>cùng dữ liệu
+        mẫu</em> rồi so kết quả với chuẩn vàng.</p>
+      </div>
+      <div class="step">
+        <h4>Đọc kết quả</h4>
+        <p>Hiện dạng: <span class="chip c-green">3 ✓</span> · <span class="chip c-red">1 ✗</span>
+        · <span class="chip c-grey">2 thiếu golden</span> / 6 proc. Proc đỏ là sai, kèm
+        <code>tên: 2/3</code> (đúng 2 trên 3 trường hợp).</p>
+      </div>
+      <div class="step">
+        <h4>Nếu có proc sai → bấm “Tự sửa”</h4>
+        <p>Bấm <span class="btn pri">Tự sửa (1)</span>. Hệ thống lấy đúng chỗ lệch, đưa lại
+        cho AI sửa, ghi đè, rồi <strong>kiểm chứng lại</strong>. Cuối cùng báo
+        <em>“X pass, Y vẫn lỗi”</em>.</p>
+      </div>
+      <div class="step">
+        <h4>Proc nào vẫn lỗi</h4>
+        <p>Bấm “Tự sửa” thêm 1–2 lần. Nếu vẫn đỏ → logic quá khó cho AI, nhờ lập trình viên
+        xử lý tay (bậc A).</p>
       </div>
     </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>SQL Server Browser</strong>
-        <p>Với named instance: Services.msc → SQL Server Browser → Start</p>
-      </div>
+    <div class="box tip">
+      <div class="bt">💡 “Thiếu golden” nghĩa là gì</div>
+      <p>Proc đó chưa được <em>Capture Golden</em> nên không có chuẩn để so. Hãy chụp golden
+      cho các proc quan trọng (hay được dùng) trước khi verify.</p>
     </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Trust Server Cert</strong>
-        <p>Môi trường dev/self-signed: bật <code>trustServerCert</code>. Production với CA hợp lệ: tắt.</p>
-      </div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- ─── S4: 8 bước ────────────────────────────────────────────── -->
-<section id="s4">
-  <h2><span class="sec-num">4</span>Quy trình 8 bước</h2>
-  <p>Vào <strong>Settings → Migrations</strong>. Thanh bên trái liệt kê module đã tạo.
-  Mỗi module đi qua 8 tab từ trái sang phải.</p>
-
-  <!-- STEP 1 -->
-  <h3 id="step1">① Discover — Khám phá</h3>
-  <p><em>Tự động quét MSSQL, xây dựng sơ đồ bảng + stored proc cho module.</em></p>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Nhấn "Tạo module mới"</strong>
-        <ul>
-          <li><strong>Tên module</strong>: chữ thường, không dấu, không khoảng trắng (vd: <code>sales</code>)</li>
-          <li><strong>Seed tables</strong>: 1–3 bảng trung tâm (vd: <code>dbo.Sales_Order,dbo.Sales_Item</code>)</li>
-          <li><strong>Exclude tables</strong>: bảng log, temp, archive cũ</li>
-          <li><strong>Max tables</strong>: giới hạn tổng (mặc định 30 — tăng cho module lớn)</li>
-        </ul>
-      </div>
+  <section id="b-finalize">
+    <h3>B7 · Finalize — chốt module lên “Live”</h3>
+    <p>Khi mọi proc quan trọng đã <span class="chip c-green">✓</span> và dữ liệu đã
+      <span class="chip c-green">reconcile</span>, vào tab <strong>Audit</strong> bấm
+      <span class="btn pri">Finalize module</span>. Module chuyển sang trạng thái
+      <strong>Live</strong> (đang dùng thật).</p>
+    <div class="box danger">
+      <div class="bt">🔒 Cổng chặn an toàn</div>
+      <p>Nếu còn proc <strong>đã sinh nhưng chưa verify</strong>, hệ thống sẽ
+      <strong>chặn Finalize</strong> và liệt kê tên proc đó. Hãy quay lại B6 verify cho xong.
+      Trường hợp buộc phải chốt (chấp nhận rủi ro), tick <em>force</em> và <strong>bắt buộc
+      ghi lý do</strong> — lý do được lưu lại để truy nguồn.</p>
     </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Nhấn "Chạy Discover"</strong>
-        <p>Job chạy nền. Theo dõi tiến trình qua thanh trạng thái (WebSocket real-time).</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Kết quả</strong>
-        <p>File <code>migration-plan/modules/&lt;module&gt;.yaml</code> được tạo với danh sách bảng + cột + FK + stored proc.</p>
-      </div>
-    </div>
-  </div>
+    <h4>Sau khi Finalize (phía SQL Server cũ)</h4>
+    <ul>
+      <li>Đổi tên proc cũ thành <code>..._DEPRECATED</code> để biết còn ai gọi không.</li>
+      <li>Theo dõi 7 ngày. Có sự cố → bấm <span class="btn">Unfinalize</span> để quay về
+        trạng thái trước, đổi tên proc cũ lại.</li>
+    </ul>
+  </section>
 
-  <div class="callout warn">
-    <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><p>BFS đi theo FK — nếu bỏ sót bảng quan trọng, thêm vào Seed Tables rồi chạy lại.
-    Bảng không liên quan dùng <strong>"Loại trừ bảng"</strong> trong UI để gỡ bỏ sau.</p></div>
-  </div>
+  <section id="man-phu">
+    <h2><span class="num">5</span>Các màn phụ (cột trái)</h2>
 
-  <!-- STEP 2 -->
-  <h3 id="step2">② Diagram — Sơ đồ</h3>
-  <p><em>Visualize quan hệ giữa các bảng, xác nhận scope module.</em></p>
-  <ul>
-    <li>Node xanh = entity, node vàng = enum</li>
-    <li>Edge = FK relation; cross-module edge được tô màu riêng</li>
-    <li>Click node → xem cột + FK chi tiết</li>
-  </ul>
-  <p><strong>Kiểm tra cần làm:</strong></p>
-  <ul>
-    <li>Node "lạ" không thuộc module → thêm vào Exclude</li>
-    <li>Bảng danh sách cố định (trạng thái, loại, loại hình) → đổi Kind thành <code>enum</code></li>
-  </ul>
+    <h3><span class="btn">Migrate nhanh</span></h3>
+    <p>Nạp dữ liệu vài bảng nhỏ ngay lập tức, có đặt giới hạn số dòng để thử.</p>
 
-  <!-- STEP 3 -->
-  <h3 id="step3">③ Enrich — Làm giàu</h3>
-  <p><em>AI đặt tên tiếng Việt, mô tả, gợi ý tier cho từng bảng/stored proc.</em></p>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Enrich tự động (batch)</strong>
-        <p>Nhấn "Enrich toàn bộ". Cấu hình: <code>maxCostUsd</code> (giới hạn chi phí LLM, mặc định $5),
-        <code>skipEnriched</code> (bỏ qua đã xử lý — an toàn chạy lại).</p>
-      </div>
+    <h3><span class="btn">Jobs import</span></h3>
+    <p>Danh sách các lần nạp dữ liệu lớn (Full Import). Tại đây bạn:</p>
+    <ul>
+      <li>Xem tiến độ: số bảng xong / tổng, số dòng, nhịp tim (heartbeat).</li>
+      <li><span class="btn">Tiếp tục</span> job đang tạm dừng · <span class="btn">Huỷ</span> job.</li>
+      <li>Mở chi tiết để xem từng bảng: trạng thái + cờ <span class="chip c-amber">drift</span>
+        nếu số lượng lệch.</li>
+    </ul>
+    <div class="box warn">
+      <div class="bt">⚠️ Bảng bị “drift” (lệch số lượng)</div>
+      <p>Job sẽ ở trạng thái <strong>tạm dừng</strong> chứ không “hoàn thành”. Cách xử: mở
+      job → bấm <strong>Tiếp tục (sync)</strong> để nạp lại, hoặc dùng màn “Bảng đã migrate”
+      → <em>re-migrate</em> để nạp lại từ đầu bảng đó.</p>
     </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Chỉnh sửa thủ công</strong>
-        <ul>
-          <li>Đổi tên entity → cascade tự động sang FK relations</li>
-          <li>Đổi kind <code>entity ↔ enum</code> → cascade <code>entityType</code> trên field FK</li>
-          <li>Đổi tên field → cập nhật <code>mapTo.field</code></li>
-        </ul>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Normalize Names (AI)</strong>
-        <p>AI đề xuất đổi tên hàng loạt cho nhất quán
-        (vd: <code>orderId</code>, <code>orderNo</code>, <code>madon</code> → đồng nhất thành <code>orderId</code>).</p>
-      </div>
-    </div>
-  </div>
-  <div class="callout info">
-    <span class="callout-icon">ℹ️</span>
-    <div class="callout-body"><p>Mọi thay đổi ghi vào <code>decisions.yaml</code> và được tái sử dụng cho module sau.</p></div>
-  </div>
 
-  <!-- STEP 4 -->
-  <h3 id="step4">④ Capture Golden — Chụp chuẩn vàng</h3>
-  <p><em>Chạy stored proc trên MSSQL thật, lưu output làm baseline kiểm tra sau migration.</em></p>
-
-  <div class="callout warn">
-    <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><p>Yêu cầu kết nối MSSQL bật <code>allowWrite = true</code> (tạm thời).
-    <strong>Tắt lại ngay sau khi capture xong.</strong></p></div>
-  </div>
-
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Sinh test cases (AI)</strong>
-        <p>Chọn stored proc → nhấn "Sinh test cases (AI)" → AI tạo 10 case (happy path / boundary / edge).
-        Xem preview và sửa tham số nếu AI sinh sai.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Capture</strong>
-        <p>Nhấn "Capture" → thực thi proc trên MSSQL → lưu output vào
-        <code>e2e/golden/&lt;module&gt;/&lt;proc&gt;.json</code>.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Kiểm tra kết quả</strong>
-        <p>Xem số case thành công / thất bại. Case thất bại = proc cần quyền đặc biệt hoặc dữ liệu không tồn tại.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- STEP 5 -->
-  <h3 id="step5">⑤ Generate — Sinh code</h3>
-  <p><em>AI dịch T-SQL stored proc → JavaScript/TypeScript tương đương.</em></p>
-
-  <div class="tbl-wrap">
+    <h3><span class="btn">Bảng đã migrate</span></h3>
+    <p>Quản lý các bảng đã nạp. Mỗi bảng có thể:</p>
     <table>
-      <thead><tr><th>Tier</th><th>Loại proc</th><th>Output</th><th>Vị trí</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><span class="tier tier-b">B</span></td>
-          <td>Đọc dữ liệu + logic đơn giản</td>
-          <td>JS function</td>
-          <td>Bảng <code>procedures</code></td>
-        </tr>
-        <tr>
-          <td><span class="tier tier-d">D</span></td>
-          <td>Logic phức tạp, external call</td>
-          <td>TS plugin</td>
-          <td><code>packages/plugins/module-&lt;name&gt;/</code></td>
-        </tr>
-        <tr>
-          <td><span class="tier tier-a">A</span> <span class="tier tier-c">C</span></td>
-          <td>Quá phức tạp / domain cụ thể</td>
-          <td>Stub + ghi chú</td>
-          <td>Developer tự viết tay</td>
-        </tr>
-      </tbody>
+      <tr><th>Thao tác</th><th>Tác dụng</th></tr>
+      <tr><td>Xoá records</td><td>Xoá dữ liệu đã nạp, giữ lại định nghĩa bảng.</td></tr>
+      <tr><td>Xoá cả bảng</td><td>Xoá định nghĩa + dữ liệu (chỉ bảng do migrate tạo).</td></tr>
+      <tr><td>Re-migrate</td><td>Xoá rồi nạp lại từ SQL Server — dùng khi nghi dữ liệu sai/lệch.</td></tr>
     </table>
-  </div>
-
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Dry-run trước</strong>
-        <p>Chọn proc → "Xem trước (Dry-run)" → AI sinh code, hiển thị preview. KHÔNG lưu.</p>
-      </div>
+    <div class="box danger">
+      <div class="bt">🛑 Nút “Xoá tất cả”</div>
+      <p>Xoá <strong>mọi</strong> bảng do migrate tạo của công ty (không đụng bảng người
+      dùng tự tạo). Có hộp xác nhận — đọc kỹ trước khi bấm.</p>
     </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Xem T-SQL gốc</strong>
-        <p>Nếu code sinh sai, nhấn "Xem T-SQL" → so sánh logic gốc → sửa trong preview editor.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Áp dụng</strong>
-        <p>Nhấn "Áp dụng": Tier B → upsert bảng <code>procedures</code>;
-        Tier D → ghi file <code>.ts</code> vào <code>packages/plugins/</code>.</p>
-      </div>
-    </div>
-  </div>
 
-  <!-- STEP 6 -->
-  <h3 id="step6">⑥ Data — Import dữ liệu</h3>
-  <p><em>ETL dữ liệu từ bảng MSSQL vào <code>entity_records</code> PostgreSQL.</em></p>
+    <h3><span class="btn">Migrate proc</span></h3>
+    <p>Màn xử lý hàng loạt các câu lệnh proc: phân loại bậc, sinh code, theo dõi từng cái.
+      Dùng khi muốn làm nhiều proc một lượt thay vì từng cái trong cockpit.</p>
+  </section>
 
-  <div class="callout danger">
-    <span class="callout-icon">🚨</span>
-    <div class="callout-body"><p>Đây là bước di chuyển dữ liệu thật. <strong>Thực hiện trên staging trước</strong>,
-    xác nhận ổn rồi mới chạy production.</p></div>
-  </div>
+  <section id="khai-niem">
+    <h2><span class="num">6</span>Khái niệm quan trọng (giải thích dễ hiểu)</h2>
 
-  <h4>Cách 1 — Quick Migrate (bảng nhỏ, đồng bộ)</h4>
-  <p>Tab Data → chọn bảng → chọn Limit (để test với 100 rows) → nhấn "Migrate".</p>
+    <h3>“Chuẩn vàng” (Golden) &amp; Verify — vì sao cần</h3>
+    <p>AI dịch code có thể sai mà nhìn bằng mắt không biết. Golden là <strong>kết quả thật</strong>
+      của phần mềm cũ. Verify chạy code mới rồi so với golden → báo ngay chỗ lệch. Đây là cách
+      <strong>chắc chắn nhất</strong> để biết đã chuyển đúng.</p>
 
-  <h4>Cách 2 — Full Import Job (dataset lớn, có auto-resume)</h4>
-  <p>Nhấn "Full Import" trên thanh trên → chọn bảng + cấu hình → nhấn "Bắt đầu Import".
-  Xem chi tiết tại <a href="#fullimport">Mục 6: Full Import</a>.</p>
+    <h3>Reconcile / Drift — đối chiếu số lượng</h3>
+    <p>Sau khi nạp, hệ thống đếm số dòng nguồn và đích. Lệch (<em>drift</em>) thường là do nạp
+      thiếu. Hệ thống chặn “hoàn thành” khi còn drift để bạn <strong>không vô tình mất dữ liệu</strong>.</p>
 
-  <!-- STEP 7 -->
-  <h3 id="step7">⑦ Review — Kiểm tra tiến độ</h3>
-  <p><em>Tổng hợp tiến độ module trước khi audit.</em></p>
+    <h3>Cổng chốt (Readiness gate)</h3>
+    <p>Không cho “Finalize” khi còn proc chưa verify. Mục đích: tránh đưa lên dùng thật những
+      thứ <strong>chưa được chứng minh là đúng</strong>.</p>
 
-  <div class="tbl-wrap">
+    <h3>Chống trùng (Dedup)</h3>
+    <p>Nhiều mục menu thường dùng chung một bảng/proc. Hệ thống nhận ra theo
+      <strong>bảng/proc gốc</strong> nên dù bạn port ở 2 mục khác nhau, nó vẫn
+      <strong>dùng lại cái đã có</strong>, không tạo 2 bản trùng.</p>
+
+    <h3>Chạy lại được &amp; sửa được</h3>
+    <ul>
+      <li><strong>Enrich / Nạp dữ liệu / Discover</strong>: chạy lại sẽ cập nhật phần lỗi,
+        bỏ qua phần đã xong — an toàn.</li>
+      <li><strong>Generate</strong>: chạy lại thường <em>bỏ qua</em> proc đã có. Muốn sửa
+        proc sai phải dùng <span class="btn">↻ Sinh lại (ghi đè)</span> hoặc
+        <span class="btn">Tự sửa</span>.</li>
+    </ul>
+  </section>
+
+  <section id="tra-cuu">
+    <h2><span class="num">7</span>Bảng tra nhanh — màu &amp; nút</h2>
+
+    <h4>Trạng thái port của mục menu</h4>
+    <p><span class="chip c-grey">Chưa port</span> chưa làm ·
+      <span class="chip c-amber">Đang port</span> đang trong quy trình ·
+      <span class="chip c-green">Đã port</span> đã xong.</p>
+
+    <h4>Trạng thái bảng khi nạp (Full Import)</h4>
+    <p><span class="chip c-grey">pending</span> chờ ·
+      <span class="chip c-blue">running</span> đang nạp ·
+      <span class="chip c-green">done</span> nạp xong ·
+      <span class="chip c-amber">failed</span> lỗi tạm (nạp lại được) ·
+      <span class="chip c-grey">skipped</span> bỏ qua (không có khóa chính) ·
+      <span class="chip c-amber">drift 100≠98</span> lệch số lượng.</p>
+
+    <h4>Kết quả Verify</h4>
+    <p><span class="chip c-green">✓</span> đúng ·
+      <span class="chip c-red">✗</span> sai ·
+      <span class="chip c-grey">thiếu golden</span> chưa có chuẩn so.</p>
+
+    <h4>Các nút hay dùng</h4>
     <table>
-      <thead><tr><th>Chỉ số</th><th>Ý nghĩa</th><th>Mục tiêu</th></tr></thead>
-      <tbody>
-        <tr><td>% Enriched</td><td>Bảng/proc đã có label + mô tả</td><td>≥ 80%</td></tr>
-        <tr><td>% Codegen</td><td>Proc đã sinh code (tier B/D)</td><td>≥ 70% proc active</td></tr>
-        <tr><td>% Golden</td><td>Proc đã capture baseline</td><td>≥ 60% proc active</td></tr>
-        <tr><td>% Enum</td><td>Bảng enum đã materialize</td><td>100%</td></tr>
-        <tr><td>Data migrated</td><td>Bảng đã ETL / tổng</td><td>Tùy yêu cầu</td></tr>
-      </tbody>
+      <tr><th>Nút</th><th>Làm gì</th></tr>
+      <tr><td><span class="btn pri">Port mục này</span></td><td>Bắt đầu chuyển 1 mục menu → tạo module + discover.</td></tr>
+      <tr><td><span class="btn">enrich</span></td><td>Đặt tên Việt + phân loại (chạy lại an toàn).</td></tr>
+      <tr><td><span class="btn">generate</span></td><td>Sinh code proc (bỏ qua cái đã có).</td></tr>
+      <tr><td><span class="btn">↻ Sinh lại (ghi đè)</span></td><td>Sinh lại + ghi đè proc/file đã có.</td></tr>
+      <tr><td><span class="btn">Verify proc</span></td><td>Kiểm chứng code mới so với chuẩn vàng.</td></tr>
+      <tr><td><span class="btn pri">Tự sửa (N)</span></td><td>AI tự sửa N proc đang sai rồi verify lại.</td></tr>
     </table>
-  </div>
+  </section>
 
-  <!-- STEP 8 -->
-  <h3 id="step8">⑧ Audit + Cutover — Kiểm toán & Chuyển giao</h3>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Chạy Audit (Dry-run)</strong>
-        <p>AI đọc manifest + T-SQL + code sinh + golden baselines → sinh markdown checklist:
-        rủi ro, điểm cần kiểm tra, khuyến nghị.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Lưu báo cáo</strong>
-        <p>Xem + chỉnh → "Lưu báo cáo" → <code>migration-plan/audit/&lt;module&gt;.md</code></p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Finalize module</strong>
-        <p>Đảm bảo Review đạt ngưỡng + E2E golden tests pass → nhấn "Finalize module" →
-        phase chuyển sang <code>live</code>, ghi <code>cutoverAt</code>.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">4</div>
-      <div class="step-body"><strong>Thao tác MSSQL</strong>
-        <p>Đổi tên proc cũ: <code>EXEC sp_rename 'dbo.sp_GetOrder', 'dbo.sp_GetOrder_DEPRECATED'</code></p>
-        <p>Theo dõi error log 7 ngày. Nếu có call đến proc cũ → chưa migrate đủ.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── S5: Tier ──────────────────────────────────────────────── -->
-<section id="tier">
-  <h2><span class="sec-num">5</span>Phân loại Stored Procedure (Tier)</h2>
-
-  <div class="tbl-wrap">
+  <section id="su-co">
+    <h2><span class="num">8</span>Xử lý sự cố thường gặp</h2>
     <table>
-      <thead><tr><th>Tier</th><th>Mô tả</th><th>Khi nào dùng</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><span class="tier tier-a">A</span></td>
-          <td>Developer viết từ đầu</td>
-          <td>Logic quá phức tạp, AI không tạo được chính xác</td>
-        </tr>
-        <tr>
-          <td><span class="tier tier-b">B</span></td>
-          <td>AI sinh → bảng <code>procedures</code> (JS)</td>
-          <td>Đọc dữ liệu, filter, join, tính toán cơ bản. Chỉnh sửa không cần deploy.</td>
-        </tr>
-        <tr>
-          <td><span class="tier tier-c">C</span></td>
-          <td>Developer viết, tham khảo AI</td>
-          <td>Logic trung bình, AI sinh đúng ~70% nhưng cần chỉnh tay</td>
-        </tr>
-        <tr>
-          <td><span class="tier tier-d">D</span></td>
-          <td>AI sinh → TypeScript plugin file</td>
-          <td>Gọi external API, xử lý file, workflow phức tạp. Cần deploy sau khi thêm file.</td>
-        </tr>
-      </tbody>
+      <tr><th>Triệu chứng</th><th>Cách xử</th></tr>
+      <tr>
+        <td>Test kết nối lỗi “Login failed / ECONNREFUSED”</td>
+        <td>Kiểm tường lửa cổng 1433, bật <em>Trust Server Cert</em>, tài khoản có quyền SELECT.</td>
+      </tr>
+      <tr>
+        <td>“Port mục này” báo không có proc</td>
+        <td>Mục chưa <em>Resolve</em>, hoặc form dùng kiểu khác. Bấm Resolve lại, hoặc nạp
+          bảng thủ công ở Migrate nhanh.</td>
+      </tr>
+      <tr>
+        <td>Job import “treo” (heartbeat &gt; 5 phút)</td>
+        <td>Khởi động lại máy chủ ERP → job <strong>tự tiếp tục</strong>. Hoặc bấm
+          Tạm dừng → Tiếp tục. Nếu bảng quá lớn, giảm Batch size.</td>
+      </tr>
+      <tr>
+        <td>Bảng báo <span class="chip c-amber">drift</span></td>
+        <td>Số lượng lệch. Mở job → <em>Tiếp tục (sync)</em>, hoặc re-migrate bảng đó ở
+          “Bảng đã migrate”.</td>
+      </tr>
+      <tr>
+        <td>Verify proc báo <span class="chip c-red">✗</span></td>
+        <td>Bấm <strong>Tự sửa</strong> 1–2 lần. Vẫn lỗi → nhờ lập trình viên (bậc A).</td>
+      </tr>
+      <tr>
+        <td>Verify báo “thiếu golden”</td>
+        <td>Chưa Capture Golden cho proc đó. Chụp golden trước rồi verify lại.</td>
+      </tr>
+      <tr>
+        <td>Finalize bị chặn</td>
+        <td>Còn proc chưa verify (hệ thống liệt kê tên). Verify cho xong, hoặc force + ghi lý do.</td>
+      </tr>
+      <tr>
+        <td>Bảng báo “đã có do người dùng tạo tay”</td>
+        <td>Tên bảng trùng với bảng người dùng tự tạo — hệ thống <strong>không đè</strong>.
+          Đổi tên ở Enrich rồi nạp lại.</td>
+      </tr>
     </table>
-  </div>
+  </section>
 
-  <h3>Quy tắc chọn tier nhanh</h3>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>Đặc điểm proc</th><th>Tier</th></tr></thead>
-      <tbody>
-        <tr><td>Chỉ SELECT + JOIN + WHERE</td><td><span class="tier tier-b">B</span></td></tr>
-        <tr><td>Có INSERT/UPDATE nhưng logic đơn giản</td><td><span class="tier tier-b">B</span></td></tr>
-        <tr><td>Gọi stored proc khác (nested exec)</td><td><span class="tier tier-b">B</span> hoặc <span class="tier tier-d">D</span></td></tr>
-        <tr><td>Xử lý cursor, loop phức tạp</td><td><span class="tier tier-d">D</span></td></tr>
-        <tr><td>Gửi email, gọi HTTP, đọc file</td><td><span class="tier tier-d">D</span></td></tr>
-        <tr><td>Transaction phức tạp + rollback</td><td><span class="tier tier-d">D</span> hoặc <span class="tier tier-a">A</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
+  <section id="faq">
+    <h2><span class="num">9</span>Câu hỏi thường gặp</h2>
 
-<!-- ─── S6: Full Import ───────────────────────────────────────── -->
-<section id="fullimport">
-  <h2><span class="sec-num">6</span>Full Import — Import toàn bộ dữ liệu</h2>
-  <p>Cơ chế ETL chính cho dataset lớn (hàng triệu rows), với <strong>auto-resume sau server
-  crash</strong> và streaming theo PK-order.</p>
+    <h4>Mỗi mục menu có phải làm tất cả các bước không?</h4>
+    <p>Đúng — mỗi mục là một module riêng, đi qua discover → enrich → generate → nạp dữ liệu
+      → verify. Nhưng nhờ <strong>chống trùng</strong>, bảng/proc dùng chung với mục đã làm
+      trước sẽ được dùng lại, không phải làm lại từ đầu.</p>
 
-  <h3>Luồng hoạt động</h3>
-  <pre>Tạo job → phát hiện PK từ MSSQL → ghi migrationFullJobTables
-         ↓
-Worker nhận job → với mỗi bảng (status != done):
-         ↓
-    streamReadByPk(lastPk, batchSize=1000)
-         ↓ mỗi batch:
-    UPSERT entity_records (theo PK — không duplicate khi resume)
-    Cập nhật lastPk + rowsImported
-    Phát WebSocket { kind: "full-progress" }
-         ↓
-allDone → completed  |  someDone → paused  |  else → failed</pre>
+    <h4>Lỡ làm sai một phần có sửa lại được không?</h4>
+    <p>Được. Enrich/Nạp dữ liệu chạy lại sẽ cập nhật. Proc sai thì dùng
+      <span class="btn">↻ Sinh lại (ghi đè)</span> hoặc <span class="btn">Tự sửa</span>.</p>
 
-  <h3>Auto-resume sau server restart</h3>
-  <div class="callout ok">
-    <span class="callout-icon">✅</span>
-    <div class="callout-body"><p>Khi server khởi động lại, hệ thống tự tìm jobs có status <code>running/queued/paused</code>
-    và re-enqueue. Worker tiếp tục từ <code>lastPk</code> đã lưu — không bị duplicate, không mất dữ liệu.</p></div>
-  </div>
+    <h4>Có sợ mất dữ liệu khi nạp không?</h4>
+    <p>Nạp dùng cơ chế ghi-đè-theo-khóa (không tạo trùng) và có <strong>đối chiếu số lượng</strong>
+      tự động. Lệch là báo ngay. Nên nạp thử trên môi trường kiểm thử trước khi làm thật.</p>
 
-  <h3>Theo dõi tiến trình</h3>
-  <p>Vào <strong>Settings → Migrations → Jobs import</strong>:</p>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>Status</th><th>Ý nghĩa</th><th>Hành động</th></tr></thead>
-      <tbody>
-        <tr><td><span class="status s-run">running</span></td><td>Đang xử lý</td><td>Theo dõi progress bar</td></tr>
-        <tr><td><span class="status s-pause">paused</span></td><td>Tạm dừng hoặc server restart</td><td>Nhấn "Tiếp tục"</td></tr>
-        <tr><td><span class="status s-done">completed</span></td><td>Xong toàn bộ bảng</td><td>Kiểm tra rowsImported</td></tr>
-        <tr><td><span class="status s-fail">failed</span></td><td>Tất cả bảng đều lỗi</td><td>Xem log lỗi, tạo lại</td></tr>
-      </tbody>
-    </table>
-  </div>
+    <h4>Bao lâu thì xong cả phần mềm?</h4>
+    <p>Tùy số chức năng. Cứ làm tuần tự từng mục; các mục sau thường nhanh hơn vì đã dùng lại
+      bảng/proc/quyết-định đặt tên của mục trước.</p>
 
-  <h3>Bảng không có PK đơn</h3>
-  <ul>
-    <li><strong>Không có PK</strong>: thêm cột <code>id IDENTITY</code> vào MSSQL trước khi import</li>
-    <li><strong>Composite PK</strong>: dùng Quick Migrate (tab Data) với limit nhỏ</li>
-    <li><strong>PK kiểu varchar</strong>: hỗ trợ — streaming theo thứ tự lexicographic</li>
-  </ul>
+    <hr />
+    <p class="small">Tài liệu này dành cho người vận hành. Phần kỹ thuật chi tiết xem
+      <span class="path">docs/MIGRATION-MSSQL.md</span> trong mã nguồn.</p>
+  </section>
 
-  <h3>Pause / Resume / Cancel</h3>
-  <ul>
-    <li><strong>Pause</strong>: nhấn "Dừng" → status = <code>paused</code></li>
-    <li><strong>Resume</strong>: nhấn "Tiếp tục" → re-enqueue, tiếp từ checkpoint</li>
-    <li><strong>Cancel</strong>: nhấn "Hủy" → status = <code>canceled</code> (không thể resume, phải tạo lại)</li>
-  </ul>
-</section>
+  </main>
 
-<!-- ─── S7: Xử lý sự cố ───────────────────────────────────────── -->
-<section id="trouble">
-  <h2><span class="sec-num">7</span>Xử lý sự cố thường gặp</h2>
-
-  <h3>Lỗi kết nối MSSQL</h3>
-  <p><em>Triệu chứng: "Connect ECONNREFUSED" hoặc "Login failed"</em></p>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Kiểm tra firewall</strong>
-        <p><code>Test-NetConnection -ComputerName &lt;host&gt; -Port 1433</code></p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>SQL Server đang lắng nghe?</strong>
-        <p><code>netstat -an | findstr 1433</code> trên máy SQL Server</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Trust Server Cert</strong>
-        <p>Môi trường dev: bật. Production với CA hợp lệ: tắt.</p>
-      </div>
-    </div>
-  </div>
-
-  <h3>Full Import bị treo (heartbeat không cập nhật > 5 phút)</h3>
-  <p><em>Status = running nhưng không có progress mới.</em></p>
-  <ul>
-    <li><strong>Query MSSQL bị lock</strong>: <code>EXEC sp_who2</code> → tìm blocking sessions → kill nếu cần</li>
-    <li><strong>Network timeout</strong>: giảm <code>batchSize</code> xuống 500</li>
-    <li><strong>Server restart</strong>: restart ERP server → auto-resume ngay khi boot</li>
-  </ul>
-  <p>Nếu không tự resume: nhấn "Dừng" → "Tiếp tục" để force re-queue.</p>
-
-  <h3>Discover quét quá nhiều bảng không liên quan</h3>
-  <ul>
-    <li>Giảm <code>maxTables</code> (vd: 20)</li>
-    <li>Thêm bảng cầu nối không liên quan vào <code>excludeTables</code></li>
-    <li>Chọn seed tables chính xác hơn (bảng TRUNG TÂM, không phải bảng lookup)</li>
-    <li>Sau discover: dùng "Loại trừ bảng" trong UI để gỡ bảng thừa</li>
-  </ul>
-
-  <h3>Enrich AI sinh nhãn sai hoặc tier sai</h3>
-  <ul>
-    <li>Sửa label/description thủ công trong tab Enrich</li>
-    <li>Đổi tier: chọn proc → dropdown "Đổi tier"</li>
-    <li>Enrich lại từng proc: "Enrich riêng proc này" → dry-run → apply</li>
-  </ul>
-
-  <h3>Generate sinh code JS lỗi logic</h3>
-  <ul>
-    <li>Xem T-SQL gốc (nút "Xem T-SQL") → so sánh với code sinh ra</li>
-    <li>Dry-run lại → sửa trong preview editor → Apply</li>
-    <li>Đổi sang Tier D hoặc Tier A nếu quá phức tạp</li>
-    <li>Golden test sẽ bắt lỗi logic: <code>pnpm e2e:full --module &lt;module&gt;</code></li>
-  </ul>
-
-  <h3>White screen / reload khi dùng migration UI</h3>
-  <div class="callout ok">
-    <span class="callout-icon">✅</span>
-    <div class="callout-body"><p>Đã sửa trong <code>vite.config.ts</code> với <code>watch.ignored: ["**/migration-plan/**"]</code>.
-    Cần <strong>restart Vite dev server</strong> (<code>Ctrl+C</code> → <code>pnpm dev</code>) để có hiệu lực.</p></div>
-  </div>
-</section>
-
-<!-- ─── S8: Sau Cutover ───────────────────────────────────────── -->
-<section id="postlive">
-  <h2><span class="sec-num">8</span>Vận hành sau Cutover</h2>
-
-  <h3>Monitoring 7 ngày đầu</h3>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>SQL Server error log</strong>
-        <p>Kiểm tra có call đến proc <code>_DEPRECATED</code> không → nếu có, còn code chưa chuyển.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>ERP application log</strong>
-        <p>Lọc <code>level=error</code> liên quan đến module mới.</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>User feedback</strong>
-        <p>Thu thập báo cáo anomaly từ người dùng portal/admin.</p>
-      </div>
-    </div>
-  </div>
-
-  <h3>Rollback nếu cần</h3>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-body"><strong>Unfinalize module</strong>
-        <p>Nút "Hủy finalize" trong tab Audit → phase về <code>filled</code></p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-body"><strong>Khôi phục proc cũ trên MSSQL</strong>
-        <p>Đổi tên <code>_DEPRECATED</code> về tên gốc</p>
-      </div>
-    </div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-body"><strong>Điều tra + sửa → Finalize lại</strong>
-        <p>Sau khi sửa code gen + golden test pass → Finalize lần 2</p>
-      </div>
-    </div>
-  </div>
-
-  <h3>Dọn dẹp sau ≥ 30 ngày ổn định</h3>
-  <ul>
-    <li>Xóa proc <code>_DEPRECATED</code> trên MSSQL (backup DB trước)</li>
-    <li>Tắt kết nối MSSQL (Settings → Connections → Delete) — giữ 1 kết nối read-only nếu cần tra cứu</li>
-    <li>Thư mục <code>migration-plan/</code> giữ trong Git (audit trail)</li>
-  </ul>
-
-  <h3>Thêm module mới sau khi đã live</h3>
-  <p>Hệ thống hỗ trợ thêm module bất kỳ lúc nào — quay lại Bước 1 Discover.
-  Quyết định từ module cũ (<code>decisions.yaml</code>) tự động gợi ý cho module mới.</p>
-</section>
-
-</main><!-- /main -->
-</div><!-- /layout -->
-
-<script>
-  // Active nav link on scroll
-  (function () {
-    const links = document.querySelectorAll('nav a[href^="#"]');
-    const targets = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
-
-    function update() {
-      const scrollY = window.scrollY + 80;
-      let active = null;
-      for (let i = targets.length - 1; i >= 0; i--) {
-        if (targets[i] && targets[i].getBoundingClientRect().top + window.scrollY <= scrollY) {
-          active = links[i];
-          break;
+  <script>
+    const links = [...document.querySelectorAll('nav a')];
+    const map = {};
+    links.forEach(a => { const id = a.getAttribute('href').slice(1); map[id] = a; });
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(l => l.classList.remove('active'));
+          const a = map[e.target.id];
+          if (a) a.classList.add('active');
         }
-      }
-      links.forEach(l => l.classList.remove('active'));
-      if (active) active.classList.add('active');
-    }
-
-    window.addEventListener('scroll', update, { passive: true });
-    update();
-  })();
-</script>
+      });
+    }, { rootMargin: '-60px 0px -75% 0px' });
+    document.querySelectorAll('section[id]').forEach(s => obs.observe(s));
+  </script>
 </body>
 </html>
