@@ -184,3 +184,47 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
    `.toISOString()` throw **"Invalid time value"** lúc đọc. Cột `date`
    round-trip qua UTC (mapToDriverValue = `toISOString`), nên dựng/đọc
    ngày bằng `Date.UTC` + `getUTC*` để khỏi lệch ±1 ngày ở server tz≠0.
+
+### Bài học từ audit Migrate (2026-06-02)
+
+10. **Resume PHẢI đọc/ghi cùng file state.** enrich non-apply ghi progress
+    (`enrichedAt`) vào `<module>.enriched.yaml` nhưng `readManifest` đọc
+    `.yaml` gốc → `skipEnriched` không skip gì → enrich lại từ đầu, đốt
+    token. Khi state lưu ở file phụ, resume phải đọc đúng file phụ đó
+    (`readManifestFrom`).
+11. **Đừng overload status `failed` cho cả lỗi vĩnh viễn + lỗi tạm.**
+    Full-import dùng `failed` cho cả bảng no-PK (vĩnh viễn) lẫn lỗi mạng
+    (tạm); resume query loại `failed` → bảng lỗi tạm KẸT mãi. Tách
+    `skipped` (vĩnh viễn: không retry, KHÔNG chặn job hoàn thành) vs
+    `failed` (tạm: retry từ checkpoint). Cột `status` là `text` thường
+    nên thêm giá trị mới KHÔNG cần migration đổi enum.
+12. **Cost/token cap phải PERSIST mới là trần thật.** enrich tính token từ
+    0 mỗi run → `--max-cost-usd` reset mỗi resume → job stop/resume N lần
+    tiêu 5 USD × N. Lưu token tích lũy vào DB (`migration_jobs.tokens_in/
+    out`), nạp làm baseline khi resume, cap theo `base + run này`.
+13. **Streaming theo PK: bắt buộc PK tiến + checkpoint atomic với data.**
+    (a) `nextLastPk == null` (hoặc không đổi) mà batch đầy → `WHERE pk >
+    null` bỏ mệnh đề → đọc LẠI từ đầu → loop vô hạn; phải abort. (b) Bọc
+    insert/update + ghi `lastPk`/`rowsImported` trong 1 `db.transaction`
+    — crash giữa 2 bước → resume re-đọc batch → over-count.
+14. **Boot auto-resume CHỈ `running`/`queued`, KHÔNG `paused`.** `paused`
+    là user chủ động dừng hoặc partial-fail cần user quyết; auto-resume
+    mỗi lần boot = chạy import ngoài ý muốn lặp lại.
+15. **Path/prefix guard PHẢI dùng `+ sep` + realpath.** `abs.startsWith(
+    dir)` khiến `module-x-evil` khớp prefix `module-x`. Dùng `real ===
+    base || real.startsWith(base + sep)` + `realpathSync` chống symlink
+    escape (đã đúng ở ai-log/codegen, nhưng dễ quên ở code mới).
+16. **Guard Bash cho agent: exact-match, KHÔNG `startsWith(prefix)`.**
+    `cmd.startsWith("pnpm typecheck")` cho `pnpm typecheck; rm -rf` lọt.
+    Yêu cầu `cmd === prefix` hoặc `prefix + " "` + chặn shell-meta
+    (`; & | \` $ > < \n`).
+17. **MỌI lookup-by-id phải scope `companyId` — kể cả polling/in-memory.**
+    `getMigrationJobStatus(jobId)` thiếu companyId → biết UUID là đọc chéo
+    tenant (status/message/error). Áp cho cả endpoint poll lẫn cache
+    in-memory (lưu `companyId` trong JobState để verify).
+18. **React polling effect: state phải sống xuyên re-run + không side-
+    effect trong updater.** `prevStatus` là biến local trong effect +
+    `reloadKey` trong deps → mỗi reload teardown effect → reset lịch sử →
+    job thứ 2+ xong không detect. Dùng `useRef`. Và đừng gọi `fetch()`
+    trong `setState(prev => ...)` (StrictMode chạy 2× = gấp đôi request)
+    — đọc cờ active từ ref.
