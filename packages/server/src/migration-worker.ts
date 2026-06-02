@@ -48,6 +48,8 @@ interface MigrationJobData {
 
 interface JobState {
   jobId: string;
+  /** Chủ sở hữu — dùng để chặn đọc chéo tenant qua getMigrationJobStatus. */
+  companyId: string;
   action: MigrationAction;
   module: string;
   status: "queued" | "running" | "completed" | "failed" | "canceled";
@@ -111,6 +113,7 @@ export async function enqueueMigrationJob(data: Omit<MigrationJobData, "jobId">)
 
   const state: JobState = {
     jobId,
+    companyId: data.companyId,
     action: data.action,
     module: data.module,
     status: "queued",
@@ -138,6 +141,7 @@ export async function resumeMigrationJob(jobId: string): Promise<void> {
     .where(eq(migrationJobs.id, jobId));
   const state: JobState = {
     jobId,
+    companyId: row.companyId,
     action: row.action as MigrationAction,
     module: row.module,
     status: "queued",
@@ -161,13 +165,22 @@ export async function resumeMigrationJob(jobId: string): Promise<void> {
 
 /** Trạng thái job: ưu tiên in-memory (realtime), fallback DB (sau restart
  *  hoặc job cũ). full-import không có row migration_jobs → chỉ in-memory. */
-export async function getMigrationJobStatus(jobId: string): Promise<JobState | null> {
+export async function getMigrationJobStatus(
+  jobId: string,
+  companyId: string,
+): Promise<JobState | null> {
+  // companyId BẮT BUỘC: chặn đọc chéo tenant (trước đây chỉ filter theo jobId
+  // → biết UUID là đọc được status/message/error của company khác).
   const mem = jobStates.get(jobId);
-  if (mem) return mem;
-  const [row] = await db.select().from(migrationJobs).where(eq(migrationJobs.id, jobId));
+  if (mem) return mem.companyId === companyId ? mem : null;
+  const [row] = await db
+    .select()
+    .from(migrationJobs)
+    .where(and(eq(migrationJobs.id, jobId), eq(migrationJobs.companyId, companyId)));
   if (!row) return null;
   return {
     jobId: row.id,
+    companyId: row.companyId,
     action: row.action as MigrationAction,
     module: row.module,
     status: row.status as JobState["status"],
@@ -188,6 +201,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
   if (!state) {
     state = {
       jobId: data.jobId,
+      companyId: data.companyId,
       action: data.action,
       module: data.module,
       status: "queued",
@@ -198,15 +212,26 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
 
   // Action job durable: đọc row DB để (a) bỏ nếu đã cancel, (b) ++attempts,
   // (c) đánh dấu running. full-import có bảng riêng nên skip phần này.
+  // baseTokens*: token đã tiêu các lần trước → enrich dùng làm baseline cho
+  // --max-cost (trần thật, không reset mỗi resume).
+  let baseTokensIn = 0;
+  let baseTokensOut = 0;
   if (!isFullImport) {
     const [row] = await db
-      .select({ status: migrationJobs.status, attempts: migrationJobs.attempts })
+      .select({
+        status: migrationJobs.status,
+        attempts: migrationJobs.attempts,
+        tokensIn: migrationJobs.tokensIn,
+        tokensOut: migrationJobs.tokensOut,
+      })
       .from(migrationJobs)
       .where(eq(migrationJobs.id, data.jobId));
     if (!row) {
       console.warn(`[migration-worker] Job ${data.jobId} không có DB row — skip`);
       return;
     }
+    baseTokensIn = row.tokensIn ?? 0;
+    baseTokensOut = row.tokensOut ?? 0;
     if (row.status === "canceled") {
       state.status = "canceled";
       console.warn(`[migration-worker] Job ${data.jobId} đã canceled — skip`);
@@ -254,12 +279,14 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           mssqlClient: mc(),
         });
         break;
-      case "enrich":
-        await runEnrich({
+      case "enrich": {
+        const enrichResult = await runEnrich({
           module: data.module,
           apply: boolArg(data.args.apply, false),
           maxCostUsd: numArg(data.args.maxCostUsd, 5),
           skipEnriched: boolArg(data.args.skipEnriched, false),
+          baseTokensIn,
+          baseTokensOut,
           onlyProcs: arrayArg(data.args.onlyProcs),
           mssqlClient: mc(),
           companyId: data.companyId,
@@ -283,7 +310,17 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
             });
           },
         });
+        // Persist token tích lũy → baseline cho lần resume tiếp (trần cost thật).
+        await db
+          .update(migrationJobs)
+          .set({
+            tokensIn: enrichResult.tokensIn,
+            tokensOut: enrichResult.tokensOut,
+            updatedAt: new Date(),
+          })
+          .where(eq(migrationJobs.id, data.jobId));
         break;
+      }
       case "capture-golden":
         await runCaptureGolden({
           module: data.module,
@@ -326,7 +363,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
         // không cần MSSQL client ở scope worker — runFullImportJob tự
         // mở connection theo job.connectionId trong DB.
         const r = await runFullImportJob({ jobId: data.module, userId: data.userId });
-        state.message = `Full import: ${r.succeededTables} table done, ${r.failedTables} failed, ${r.totalRows} rows this run`;
+        state.message = `Full import: ${r.succeededTables} table done, ${r.failedTables} failed, ${r.skippedTables} skipped, ${r.totalRows} rows this run`;
         break;
       }
     }

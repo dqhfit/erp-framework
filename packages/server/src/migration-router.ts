@@ -45,6 +45,7 @@ import {
   fetchProcBody,
   type ProcClassifyInput,
 } from "./migration-classify-ai";
+import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
 import { buildCombinedMigratedSet } from "./migration-migrated-set";
@@ -295,8 +296,8 @@ export const migrationRouter = router({
   /** Polling fallback. WS channel migration:<userId> là chính. */
   jobStatus: rbacProcedure("edit", "settings")
     .input(z.object({ jobId: z.string() }))
-    .query(async ({ input }) => {
-      return getMigrationJobStatus(input.jobId);
+    .query(async ({ ctx, input }) => {
+      return getMigrationJobStatus(input.jobId, ctx.user.companyId);
     }),
 
   /** Liệt kê action job durable của company (discover/enrich/generate/data).
@@ -1631,6 +1632,15 @@ export const migrationRouter = router({
       // Safety: target phải nằm trong pluginDir (+ sep tránh prefix-match partial dir).
       if (!target.startsWith(pluginDir + sep)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Path không hợp lệ." });
+      }
+      // Validate cú pháp cơ bản — chặn code LLM hỏng (truncate/markdown/mất cân
+      // bằng {}) ghi vào plugin làm vỡ build cả workspace.
+      const synErr = validateGeneratedTs(input.code);
+      if (synErr) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Code Tier D không hợp lệ (${synErr}) — không ghi file. Sinh lại codegen.`,
+        });
       }
       const fileExists = existsSync(target);
       if (fileExists && !input.overwrite) {

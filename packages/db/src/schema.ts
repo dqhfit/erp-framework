@@ -833,6 +833,11 @@ export const migrationJobs = pgTable(
     attempts: integer("attempts").notNull().default(0),
     message: text("message"),
     error: text("error"),
+    // Token tich luy qua cac lan resume — de --max-cost-usd la tran THAT cho ca
+    // job (truoc day cost reset 0 moi resume → tieu 5 USD x N lan). enrich doc
+    // lam baseline + ghi lai sau moi run.
+    tokensIn: bigint("tokens_in", { mode: "number" }).notNull().default(0),
+    tokensOut: bigint("tokens_out", { mode: "number" }).notNull().default(0),
     startedAt: timestamp("started_at"),
     completedAt: timestamp("completed_at"),
     durationMs: integer("duration_ms"),

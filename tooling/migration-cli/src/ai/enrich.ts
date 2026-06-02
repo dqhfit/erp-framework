@@ -7,9 +7,11 @@
    diff trước khi --apply ghi đè.
    ========================================================== */
 
+import { existsSync } from "node:fs";
 import { MssqlClient } from "@erp-framework/mssql-client";
 import {
   readManifest,
+  readManifestFrom,
   writeManifest,
   manifestPath,
   type ManifestTable,
@@ -32,6 +34,10 @@ export interface EnrichOptions {
   skipEnriched?: boolean;
   /** Cắp chi phí USD. Mặc định 5. */
   maxCostUsd?: number;
+  /** Token đã tiêu ở các lần chạy TRƯỚC (resume) — dùng làm baseline để
+   *  --max-cost-usd là trần thật cho cả job, không reset 0 mỗi resume. */
+  baseTokensIn?: number;
+  baseTokensOut?: number;
   /** Inject client từ worker. Nếu thiếu, dùng fromEnv() (CLI standalone). */
   mssqlClient?: MssqlClient;
   /** Company target cho LLM call. Worker pass từ job; CLI fallback env. */
@@ -76,10 +82,21 @@ interface EnrichedProcOutput {
   schedule?: string;
 }
 
-export async function runEnrich(opts: EnrichOptions): Promise<void> {
-  const m = readManifest(opts.module);
+export async function runEnrich(
+  opts: EnrichOptions,
+): Promise<{ tokensIn: number; tokensOut: number; costUsd: number }> {
   const onlyProcs = opts.onlyProcs && opts.onlyProcs.length > 0 ? opts.onlyProcs : null;
   const isSingleProcMode = onlyProcs != null;
+  // Non-apply tích luỹ progress (enrichedAt) trong <module>.enriched.yaml.
+  // Resume PHẢI đọc lại chính file này — nếu đọc <module>.yaml gốc (không có
+  // enrichedAt) thì skipEnriched không bao giờ skip được gì → enrich lại toàn
+  // bộ, đốt token + vượt max-cost lần nữa. Lần đầu chưa có .enriched.yaml thì
+  // seed từ .yaml gốc. Apply mode + single-proc luôn đọc .yaml gốc.
+  const enrichedPath = manifestPath(opts.module).replace(/\.yaml$/, ".enriched.yaml");
+  const m =
+    !isSingleProcMode && !opts.apply && existsSync(enrichedPath)
+      ? readManifestFrom(enrichedPath)
+      : readManifest(opts.module);
   console.log(
     isSingleProcMode
       ? `▸ Enrich proc riêng (dry-run) module "${opts.module}" — ${onlyProcs!.length} proc`
@@ -96,6 +113,10 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
   const mssql = opts.mssqlClient ?? MssqlClient.fromEnv();
   if (ownedClient) await mssql.connect();
 
+  // baseIn/baseOut: token đã tiêu ở các lần resume trước. totalIn/totalOut: của
+  // RIÊNG run này (cho log). Cap check + giá trị return dùng TỔNG TÍCH LŨY.
+  const baseIn = opts.baseTokensIn ?? 0;
+  const baseOut = opts.baseTokensOut ?? 0;
   let totalIn = 0;
   let totalOut = 0;
   let costStopped = false;
@@ -144,11 +165,13 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
         totalIn += r.tokensInApprox;
         totalOut += r.tokensOutApprox;
 
-        if (r.output) {
+        if (r.output && isValidTableOutput(r.output)) {
           applyTableEnrichment(t, r.output);
           console.log(`  ✓ table ${t.name} → ${t.suggestedEntityName} (${t.columns.length} field)`);
         } else {
-          console.log(`  ! Skip table ${t.name} (LLM fail — giữ auto-generated)`);
+          // LLM fail hoặc output sai shape → giữ auto-generated (fail-safe),
+          // KHÔNG throw làm vỡ cả phase. enrichedAt không set → resume retry.
+          console.log(`  ! Skip table ${t.name} (LLM fail / output không hợp lệ — giữ auto)`);
         }
         tablesDone++;
         opts.onProgress?.({
@@ -158,7 +181,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
           total: m.tables.length,
         });
 
-        const cost = estimateCostUsd(totalIn, totalOut);
+        const cost = estimateCostUsd(baseIn + totalIn, baseOut + totalOut);
         if (cost > maxCost) {
           console.warn(
             `  ! Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng sớm — progress đã lưu, resume bằng skipEnriched.`,
@@ -226,13 +249,13 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
         totalIn += r.tokensInApprox;
         totalOut += r.tokensOutApprox;
 
-        if (r.output) {
+        if (r.output && isValidProcOutput(r.output)) {
           applyProcEnrichment(p, r.output, opts.module);
           console.log(
             `  ✓ proc ${p.name} → ${p.targetProcName ?? p.targetFile} [tier ${p.suggestedTier}]`,
           );
         } else {
-          console.log(`  ! Skip proc ${p.name} (LLM fail)`);
+          console.log(`  ! Skip proc ${p.name} (LLM fail / output không hợp lệ)`);
         }
         procsDone++;
         opts.onProgress?.({
@@ -242,7 +265,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
           total: procsToEnrich.length,
         });
 
-        const cost = estimateCostUsd(totalIn, totalOut);
+        const cost = estimateCostUsd(baseIn + totalIn, baseOut + totalOut);
         if (cost > maxCost) {
           console.warn(
             `  ! Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng sớm — progress đã lưu, resume bằng skipEnriched.`,
@@ -262,27 +285,54 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
   // costStopped=true vẫn ghi để giữ partial progress — resume dùng skipEnriched.
   let outPath = "(không ghi — dry-run 1 proc, xem ai-log)";
   if (!isSingleProcMode) {
-    outPath = opts.apply
-      ? manifestPath(opts.module)
-      : manifestPath(opts.module).replace(/\.yaml$/, ".enriched.yaml");
+    // Ghi đúng file đã đọc: apply → .yaml gốc, non-apply → .enriched.yaml.
+    outPath = opts.apply ? manifestPath(opts.module) : enrichedPath;
     writeManifest(m, outPath);
   }
 
-  const cost = estimateCostUsd(totalIn, totalOut);
+  // Cost + token TÍCH LŨY (baseline các lần trước + run này) — để --max-cost
+  // là trần thật và worker persist lại làm baseline cho lần resume tiếp.
+  const cumIn = baseIn + totalIn;
+  const cumOut = baseOut + totalOut;
+  const cost = estimateCostUsd(cumIn, cumOut);
   if (costStopped) {
     console.log(`\n⚠ Enrich dừng giữa chừng (vượt cost): ${outPath}`);
-    console.log(`  Token ~ in:${totalIn} out:${totalOut}  Cost ~ $${cost.toFixed(3)}`);
+    console.log(
+      `  Token tích lũy ~ in:${cumIn} out:${cumOut} (run này +${totalIn}/+${totalOut})  Cost ~ $${cost.toFixed(3)}`,
+    );
     console.log(
       `  Resume: chạy lại với --skip-enriched (hoặc bấm Resume trong UI) để tiếp tục từ đây.`,
     );
   } else {
     console.log(`\n✓ Enrich xong: ${outPath}`);
-    console.log(`  Token ~ in:${totalIn} out:${totalOut}  Cost ~ $${cost.toFixed(3)}`);
+    console.log(
+      `  Token tích lũy ~ in:${cumIn} out:${cumOut} (run này +${totalIn}/+${totalOut})  Cost ~ $${cost.toFixed(3)}`,
+    );
     if (!opts.apply && !isSingleProcMode) {
       console.log(`\n▸ Diff <module>.yaml vs <module>.enriched.yaml trước khi --apply.`);
       console.log(`  Hoặc chạy lại: pnpm migrate enrich --module ${opts.module} --apply`);
     }
   }
+
+  return { tokensIn: cumIn, tokensOut: cumOut, costUsd: cost };
+}
+
+/** Validate shape output enrich table từ LLM — fail-safe, KHÔNG throw. Thiếu
+ *  field cốt lõi (suggestedEntityName/label) hoặc columns không phải array →
+ *  coi như fail, skip (giữ auto-generated). Tránh TypeError "columns is not
+ *  iterable" làm vỡ cả phase enrich. */
+function isValidTableOutput(e: EnrichedTableOutput): boolean {
+  return (
+    typeof e?.suggestedEntityName === "string" &&
+    e.suggestedEntityName.trim() !== "" &&
+    typeof e.label === "string" &&
+    Array.isArray(e.columns)
+  );
+}
+
+/** Validate shape output enrich proc — tier phải B/C/D. */
+function isValidProcOutput(e: EnrichedProcOutput): boolean {
+  return e?.tier === "B" || e?.tier === "C" || e?.tier === "D";
 }
 
 /** Tier 4: audit module sau khi port — AI đọc snapshot (manifest +
@@ -848,8 +898,9 @@ function applyTableEnrichment(t: ManifestTable, e: EnrichedTableOutput): void {
   } else {
     delete t.enumOptions;
   }
-  // Map column theo originalName.
-  for (const col of e.columns) {
+  // Map column theo originalName. (?? [] phòng output thiếu columns — đã chặn
+  // ở isValidTableOutput nhưng giữ guard cho an toàn.)
+  for (const col of e.columns ?? []) {
     const target = t.columns.find((c) => c.name === col.originalName);
     if (!target) continue;
     target.mapTo = {

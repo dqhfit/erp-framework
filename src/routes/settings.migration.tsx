@@ -4774,9 +4774,10 @@ function FullImportJobsPanel() {
   };
 
   const statusVariant = (st: string): "success" | "warning" | "default" | "accent" => {
-    if (st === "completed") return "success";
+    if (st === "completed" || st === "done") return "success";
     if (st === "running" || st === "queued") return "accent";
     if (st === "paused" || st === "failed") return "warning";
+    // "skipped" (no-PK, lỗi vĩnh viễn) + "pending" → trung tính, không báo động.
     return "default";
   };
 

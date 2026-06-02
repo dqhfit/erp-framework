@@ -39,12 +39,20 @@ export function ActionJobsPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Tải lần đầu + auto-refresh 5s — thấy job nền cập nhật mà không chặn thao tác.
+  // Tải lần đầu.
   useEffect(() => {
     load();
+  }, [load]);
+
+  // Auto-refresh 5s CHỈ khi còn job đang chạy/chờ — tránh poll vô hạn khi mọi
+  // job đã settle. Job mới (từ panel khác) → bấm "Làm mới"; còn resume() ở đây
+  // tự set queued → jobs đổi → effect chạy lại → poll bật lại.
+  useEffect(() => {
+    const active = jobs.some((j) => j.status === "running" || j.status === "queued");
+    if (!active) return;
     const id = setInterval(load, 5000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [jobs, load]);
 
   const resume = async (jobId: string) => {
     setBusy(jobId);

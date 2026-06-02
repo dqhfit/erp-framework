@@ -123,7 +123,9 @@ export async function prepareFullJobTables(
         entityName: it.entityName,
         pkColumn,
         batchSize,
-        status: pkColumn ? "pending" : "failed",
+        // "skipped" = lỗi VĨNH VIỄN (không có PK đơn cột) → không retry khi
+        // resume, KHÔNG chặn job hoàn thành. Khác "failed" (lỗi tạm — retry được).
+        status: pkColumn ? "pending" : "skipped",
         error: pkColumn
           ? null
           : "Không tìm thấy primary key — full stream cần single-column PK. Dùng Quick migrate thường (limit) thay vì Full.",
@@ -148,6 +150,7 @@ export async function prepareFullJobTables(
 export async function runFullImportJob(data: FullJobData): Promise<{
   succeededTables: number;
   failedTables: number;
+  skippedTables: number;
   totalRows: number;
 }> {
   const [job] = await db
@@ -157,7 +160,7 @@ export async function runFullImportJob(data: FullJobData): Promise<{
     .limit(1);
   if (!job) throw new Error(`Job ${data.jobId} không tồn tại.`);
   if (job.status === "canceled" || job.status === "completed") {
-    return { succeededTables: 0, failedTables: 0, totalRows: 0 };
+    return { succeededTables: 0, failedTables: 0, skippedTables: 0, totalRows: 0 };
   }
 
   // Đánh dấu running + startedAt nếu chưa có.
@@ -175,32 +178,37 @@ export async function runFullImportJob(data: FullJobData): Promise<{
   const client = await loadConn(job.companyId, job.connectionId);
   let succeededTables = 0;
   let failedTables = 0;
+  let skippedTables = 0;
   let totalRowsThisRun = 0;
 
   try {
-    // Resume: lấy tất cả table chưa done.
+    // Resume: lấy table còn cần xử lý — pending/running (dở dang) + failed (lỗi
+    // TẠM, retry từ lastPk đã lưu). Loại 'done' (xong) và 'skipped' (lỗi vĩnh
+    // viễn no-PK — retry vô ích). Trước đây loại luôn 'failed' khiến bảng lỗi
+    // mạng giữa chừng KẸT mãi, không bao giờ resume được.
     const tables = await db
       .select()
       .from(migrationFullJobTables)
       .where(
         and(
           eq(migrationFullJobTables.jobId, data.jobId),
-          sql`${migrationFullJobTables.status} <> 'done'`,
-          sql`${migrationFullJobTables.status} <> 'failed'`,
+          sql`${migrationFullJobTables.status} IN ('pending', 'running', 'failed')`,
         ),
       );
 
     for (const t of tables) {
       if (!t.pkColumn || !t.entityId) {
+        // Thiếu PK/entity → lỗi vĩnh viễn: mark skipped (không retry, không
+        // chặn job hoàn thành) thay vì failed.
         await db
           .update(migrationFullJobTables)
           .set({
-            status: "failed",
+            status: "skipped",
             error: t.error ?? "Thiếu pkColumn hoặc entityId.",
             updatedAt: new Date(),
           })
           .where(eq(migrationFullJobTables.id, t.id));
-        failedTables++;
+        skippedTables++;
         continue;
       }
 
@@ -285,34 +293,56 @@ export async function runFullImportJob(data: FullJobData): Promise<{
               else toInsert.push(d);
             }
 
-            if (toInsert.length > 0) {
-              await db.insert(entityRecords).values(
-                toInsert.map((d) => ({
-                  companyId: job.companyId,
-                  entityId: tableEntityId,
-                  data: d,
-                  createdBy: data.userId,
-                })),
+            const prevPk = lastPk;
+            const nextPk = batch.nextLastPk;
+
+            // Chống loop vô hạn: có rows nhưng PK KHÔNG tiến (null hoặc không
+            // đổi). streamReadByPk với lastPk=null sẽ bỏ WHERE → đọc LẠI từ đầu
+            // bảng; nếu batch đầy (isEnd=false) thì lặp mãi. Abort TRƯỚC khi ghi
+            // (batch này không checkpoint được, resume sẽ đọc lại từ prevPk).
+            if (!batch.isEnd && (nextPk == null || nextPk === prevPk)) {
+              throw new Error(
+                `PK "${t.pkColumn}" không tiến (giá trị cuối: ${nextPk ?? "null"}) — ` +
+                  `không stream tiếp an toàn được. Bảng cần single-column PK tăng dần, không null.`,
               );
             }
-            for (const u of toUpdate) {
-              await db
-                .update(entityRecords)
-                .set({ data: u.data, updatedAt: new Date() })
-                .where(eq(entityRecords.id, u.id));
-            }
-            rowsImported += batch.rows.length;
-            lastPk = batch.nextLastPk;
 
-            // Update per-table progress + heartbeat job.
-            await db
-              .update(migrationFullJobTables)
-              .set({
-                lastPk,
-                rowsImported,
-                updatedAt: new Date(),
-              })
-              .where(eq(migrationFullJobTables.id, t.id));
+            rowsImported += batch.rows.length;
+            lastPk = nextPk;
+            const checkpointRows = rowsImported;
+            const checkpointPk = lastPk;
+
+            // ATOMIC: data-write (insert + update) + checkpoint (lastPk +
+            // rowsImported) trong 1 transaction. Crash giữa chừng KHÔNG để
+            // checkpoint lệch với data đã ghi → resume không over-count.
+            await db.transaction(async (tx) => {
+              if (toInsert.length > 0) {
+                await tx.insert(entityRecords).values(
+                  toInsert.map((d) => ({
+                    companyId: job.companyId,
+                    entityId: tableEntityId,
+                    data: d,
+                    createdBy: data.userId,
+                  })),
+                );
+              }
+              for (const u of toUpdate) {
+                await tx
+                  .update(entityRecords)
+                  .set({ data: u.data, updatedAt: new Date() })
+                  .where(eq(entityRecords.id, u.id));
+              }
+              await tx
+                .update(migrationFullJobTables)
+                .set({
+                  lastPk: checkpointPk,
+                  rowsImported: checkpointRows,
+                  updatedAt: new Date(),
+                })
+                .where(eq(migrationFullJobTables.id, t.id));
+            });
+
+            // Heartbeat job (ngoài tx — chỉ là liveness, không cần atomic).
             await db
               .update(migrationFullJobs)
               .set({ lastHeartbeat: new Date(), updatedAt: new Date() })
@@ -371,26 +401,36 @@ export async function runFullImportJob(data: FullJobData): Promise<{
       }
     }
 
-    // Đếm lại số completed_tables cuối loop.
+    // Đếm lại trạng thái cuối loop. Phân biệt:
+    //  - done    : import xong
+    //  - skipped : lỗi vĩnh viễn (no-PK) — KHÔNG chặn hoàn thành
+    //  - failed  : lỗi tạm — còn retry được (resume sẽ pickup)
+    //  - pending : còn dở (vd vượt giới hạn run, chưa tới lượt)
     const [stats] = await db
       .select({
         completed: sql<number>`count(*) FILTER (WHERE status = 'done')::int`,
+        skipped: sql<number>`count(*) FILTER (WHERE status = 'skipped')::int`,
         failed: sql<number>`count(*) FILTER (WHERE status = 'failed')::int`,
+        pending: sql<number>`count(*) FILTER (WHERE status IN ('pending', 'running'))::int`,
         totalRows: sql<number>`COALESCE(sum(rows_imported), 0)::bigint`,
       })
       .from(migrationFullJobTables)
       .where(eq(migrationFullJobTables.jobId, data.jobId));
 
     const totalRowsAll = Number(stats?.totalRows ?? 0);
-    const allDone =
-      (stats?.completed ?? 0) + (stats?.failed ?? 0) >= job.totalTables &&
-      (stats?.failed ?? 0) === 0;
-    const someDone = (stats?.completed ?? 0) > 0 && (stats?.failed ?? 0) > 0;
+    // Còn việc cần làm = failed (retry được) + pending/running. skipped & done
+    // coi như đã giải quyết. Hết việc → completed (kể cả khi có bảng skipped).
+    const unresolved = (stats?.failed ?? 0) + (stats?.pending ?? 0);
+    const allDone = unresolved === 0;
+    // Còn việc nhưng đã có tiến triển → paused để user/boot resume. Chưa làm
+    // được gì (toàn lỗi) → failed.
+    const hasProgress = (stats?.completed ?? 0) > 0 || (stats?.skipped ?? 0) > 0;
+    const finalStatus = allDone ? "completed" : hasProgress ? "paused" : "failed";
 
     await db
       .update(migrationFullJobs)
       .set({
-        status: allDone ? "completed" : someDone ? "paused" : "failed",
+        status: finalStatus,
         completedTables: stats?.completed ?? 0,
         totalRowsImported: totalRowsAll,
         completedAt: allDone ? new Date() : null,
@@ -402,8 +442,9 @@ export async function runFullImportJob(data: FullJobData): Promise<{
     publishWs(`migration:${data.userId}`, {
       kind: "full-job-done",
       jobId: data.jobId,
-      status: allDone ? "completed" : someDone ? "paused" : "failed",
+      status: finalStatus,
       completedTables: stats?.completed ?? 0,
+      skippedTables: stats?.skipped ?? 0,
       failedTables: stats?.failed ?? 0,
       totalRows: totalRowsAll,
     });
@@ -423,20 +464,22 @@ export async function runFullImportJob(data: FullJobData): Promise<{
     await client.close().catch(() => undefined);
   }
 
-  return { succeededTables, failedTables, totalRows: totalRowsThisRun };
+  return { succeededTables, failedTables, skippedTables, totalRows: totalRowsThisRun };
 }
 
 /* ─── Resume on boot ─── */
 
-/** Khi server boot, scan jobs status='running' → re-enqueue.
- *  Khả năng server crash giữa chừng → status sẽ kẹt 'running' → resume. */
+/** Khi server boot, scan jobs kẹt 'running'/'queued' (server crash giữa chừng)
+ *  → re-enqueue. KHÔNG tự resume 'paused' — paused là trạng thái user chủ động
+ *  dừng hoặc partial-fail cần user quyết định; auto-resume mỗi lần boot sẽ chạy
+ *  import ngoài ý muốn. User resume thủ công qua endpoint resumeFullJob. */
 export async function resumeStaleFullJobs(
   enqueue: (jobId: string, userId: string) => Promise<void>,
 ): Promise<{ count: number; jobIds: string[] }> {
   const stale = await db
     .select({ id: migrationFullJobs.id, createdBy: migrationFullJobs.createdBy })
     .from(migrationFullJobs)
-    .where(sql`${migrationFullJobs.status} IN ('running', 'queued', 'paused')`);
+    .where(sql`${migrationFullJobs.status} IN ('running', 'queued')`);
   for (const s of stale) {
     if (!s.createdBy) continue;
     await enqueue(s.id, s.createdBy);

@@ -240,12 +240,18 @@ function CockpitPage() {
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
-  // Tải jobs, tự refresh 4s khi có job đang active.
-  // Khi phát hiện job running/queued → completed/failed: reload() để cây/stats cập nhật.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: migApi là module singleton
-  useEffect(() => {
-    const prevStatus = new Map<string, string>(); // jobId → status cũ
+  // prevStatus + cờ active để TRONG ref — sống sót qua các lần effect re-run.
+  // Trước đây prevStatus là local trong effect và effect phụ thuộc reloadKey;
+  // reload() bump reloadKey → effect teardown → prevStatus reset rỗng → job thứ
+  // 2+ xong KHÔNG được phát hiện (prev=undefined) → cây/stats không reload.
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
+  const jobsActiveRef = useRef(false);
 
+  // Tải jobs, tự refresh 4s khi có job đang active. Phát hiện job running/queued
+  // → completed/failed thì reload() để cây/stats cập nhật. Deps CHỈ [reload]
+  // (stable) — KHÔNG đưa reloadKey vào, nếu không polling bị tái tạo mỗi reload.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: migApi singleton; reload ổn định
+  useEffect(() => {
     const fetchJobs = async () => {
       let newJobs: MigrationJobRow[];
       try {
@@ -254,7 +260,7 @@ function CockpitPage() {
         return;
       }
 
-      // Phát hiện job vừa chuyển xong (running/queued → completed/failed)
+      const prevStatus = prevStatusRef.current;
       const justDone = newJobs.some((j) => {
         const prev = prevStatus.get(j.id);
         return (
@@ -264,21 +270,19 @@ function CockpitPage() {
       });
 
       for (const j of newJobs) prevStatus.set(j.id, j.status);
+      jobsActiveRef.current = newJobs.some((j) => j.status === "queued" || j.status === "running");
       setJobs(newJobs);
       if (justDone) reload(); // cập nhật cây + stats + portStatus
-      return newJobs;
     };
 
     fetchJobs();
+    // Đọc cờ active từ ref — KHÔNG gọi fetchJobs trong updater setJobs (side
+    // effect trong reducer → StrictMode chạy 2× = gấp đôi request).
     const id = setInterval(() => {
-      setJobs((prev) => {
-        const hasActive = prev.some((j) => j.status === "queued" || j.status === "running");
-        if (hasActive) fetchJobs();
-        return prev;
-      });
+      if (jobsActiveRef.current) fetchJobs();
     }, 4_000);
     return () => clearInterval(id);
-  }, [reloadKey, reload]);
+  }, [reload]);
 
   const onToggle = useCallback((code: string) => {
     setExpanded((prev) => {

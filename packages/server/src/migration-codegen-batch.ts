@@ -244,6 +244,13 @@ export async function runGenerateModule(args: {
         if (!target.startsWith(pluginDir + sep)) {
           throw new Error("Path không hợp lệ (escape pluginDir).");
         }
+        // Validate cú pháp cơ bản TRƯỚC khi ghi — code LLM sai (truncate /
+        // wrap markdown / mất cân bằng {}) ghi vào plugin sẽ vỡ build CẢ
+        // workspace, chỉ lộ lúc compile. Reject sớm → mark failed, retry được.
+        const synErr = validateGeneratedTs(out.code);
+        if (synErr) {
+          throw new Error(`Tier D code không hợp lệ (${synErr}) — không ghi file.`);
+        }
         const exists = existsSync(target);
         if (exists && !opts.overwriteFiles) {
           const reason = "file-exists";
@@ -303,4 +310,36 @@ export async function runGenerateModule(args: {
     failed,
     results,
   };
+}
+
+/** Validate cấu trúc cơ bản code TS do LLM sinh (Tier D) trước khi ghi file.
+ *  Heuristic, KHÔNG phải full parse (typescript chỉ là devDep — tránh import
+ *  runtime) — nhưng bắt được các lỗi LLM thực tế: output rỗng, bị wrap markdown
+ *  fence, thiếu export, hoặc truncate (mất cân bằng {} / () / []).
+ *  Trả null nếu OK, hoặc chuỗi lý do nếu lỗi. */
+export function validateGeneratedTs(code: string): string | null {
+  const src = code?.trim() ?? "";
+  if (src.length < 20) return "rỗng hoặc quá ngắn";
+  if (src.includes("```")) return "chứa markdown fence ```";
+  if (!/\bexport\b/.test(src)) return "không có export";
+  // Đếm delimiter — bỏ qua nội dung trong chuỗi/comment để giảm false-positive.
+  const stripped = src
+    .replace(/\/\*[\s\S]*?\*\//g, "") // block comment
+    .replace(/\/\/[^\n]*/g, "") // line comment
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""') // double-quote string
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''") // single-quote string
+    .replace(/`(?:[^`\\]|\\.)*`/g, "``"); // template literal (đơn giản hoá)
+  const pairs: Array<[string, string]> = [
+    ["{", "}"],
+    ["(", ")"],
+    ["[", "]"],
+  ];
+  for (const [open, close] of pairs) {
+    const nOpen = stripped.split(open).length - 1;
+    const nClose = stripped.split(close).length - 1;
+    if (nOpen !== nClose) {
+      return `mất cân bằng '${open}${close}' (${nOpen} vs ${nClose}) — có thể bị truncate`;
+    }
+  }
+  return null;
 }

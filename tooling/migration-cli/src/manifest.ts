@@ -214,6 +214,16 @@ export function readManifest(moduleName: string): Manifest {
   return YAML.parse(readFileSync(p, "utf8")) as Manifest;
 }
 
+/** Đọc manifest từ path tuỳ ý (vd <module>.enriched.yaml). Dùng cho resume
+ *  enrich: progress (enrichedAt) được tích luỹ ở .enriched.yaml chứ không ở
+ *  .yaml gốc, nên resume phải đọc đúng file đã ghi. */
+export function readManifestFrom(path: string): Manifest {
+  if (!existsSync(path)) {
+    throw new Error(`Manifest không tồn tại: ${path}`);
+  }
+  return YAML.parse(readFileSync(path, "utf8")) as Manifest;
+}
+
 export function writeManifest(m: Manifest, outPath?: string): string {
   const p = outPath ?? manifestPath(m.module);
   const dir = dirname(p);

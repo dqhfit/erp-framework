@@ -158,16 +158,17 @@ function MesMigratePage() {
     }
     setBusy("preview");
     try {
-      const months = [...new Set(selectedItems.map((r) => r.thang))].sort((a, b) => a - b);
+      // selectedItems ĐÃ là đúng tập (nam, thang, ma_bo_phan) cần preview — loop
+      // thẳng. Trước đây nhân chéo selectedItems × tất-cả-tháng rồi find(has)
+      // lọc lại → O(items×tháng) lượt gọi preview thừa.
       const all: typeof previews = [];
+      const errors: string[] = [];
       for (const item of selectedItems) {
-        for (const thang of months) {
-          const has = (available ?? []).find(
-            (r) => r.ma_bo_phan === item.ma_bo_phan && r.nam === item.nam && r.thang === thang,
-          );
-          if (!has) continue;
-          const p = await api.preview(item.nam, thang, item.ma_bo_phan);
-          all.push({ nam: item.nam, thang, maBoPhan: item.ma_bo_phan, ...p });
+        try {
+          const p = await api.preview(item.nam, item.thang, item.ma_bo_phan);
+          all.push({ nam: item.nam, thang: item.thang, maBoPhan: item.ma_bo_phan, ...p });
+        } catch (e) {
+          errors.push(`${item.ma_bo_phan} ${item.thang}/${item.nam}: ${(e as Error).message}`);
         }
       }
       // dedupe by (nam, thang, maBoPhan)
@@ -180,12 +181,17 @@ function MesMigratePage() {
       });
       setPreviews(deduped);
       setStep(3);
-    } catch (e: unknown) {
-      dialog.alert(`Lỗi preview: ${(e as Error).message}`);
+      if (errors.length > 0) {
+        dialog.alert(
+          `Preview ${deduped.length} mục OK, ${errors.length} lỗi:\n${errors
+            .slice(0, 5)
+            .join("\n")}${errors.length > 5 ? "\n…" : ""}`,
+        );
+      }
     } finally {
       setBusy(null);
     }
-  }, [available, selectedItems]);
+  }, [selectedItems]);
 
   // ── Step 3 → Step 4: chạy migrate ───────────────────────────────────────
   const runMigrate = useCallback(async () => {
@@ -195,18 +201,34 @@ function MesMigratePage() {
     if (!confirmed) return;
     setBusy("migrate");
     const done: typeof results = [];
+    const errors: string[] = [];
     try {
+      // Per-item try/catch: 1 mục lỗi KHÔNG vứt toàn bộ tiến độ đã migrate
+      // (upsert an toàn re-run nên giữ phần đã chạy là đúng).
       for (const p of previews) {
-        const r = await api.migrateMonth(p.nam, p.thang, p.maBoPhan);
-        done.push({ ...p, ...r });
+        try {
+          const r = await api.migrateMonth(p.nam, p.thang, p.maBoPhan);
+          done.push({ ...p, ...r });
+        } catch (e) {
+          errors.push(`${p.maBoPhan} ${p.thang}/${p.nam}: ${(e as Error).message}`);
+        }
       }
       setResults(done);
       // Load danh sách form liên quan để đánh dấu port
       const f = await api.listRelatedForms();
       setForms(f);
       setStep(4);
+      if (errors.length > 0) {
+        dialog.alert(
+          `Migrate ${done.length}/${previews.length} OK, ${errors.length} lỗi:\n${errors
+            .slice(0, 5)
+            .join("\n")}${errors.length > 5 ? "\n…" : ""}`,
+        );
+      }
     } catch (e: unknown) {
-      dialog.alert(`Lỗi migrate: ${(e as Error).message}`);
+      // Lỗi ngoài vòng (vd listRelatedForms) — vẫn giữ kết quả migrate đã có.
+      setResults(done);
+      dialog.alert(`Lỗi: ${(e as Error).message}`);
     } finally {
       setBusy(null);
     }
