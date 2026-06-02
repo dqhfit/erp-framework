@@ -384,8 +384,18 @@ export function createMigrationClient(baseUrl: string) {
           durationMs: number;
         }>;
       }>,
-    codegenProcDryRun: (module: string, procName: string, connectionId?: string) =>
-      trpc.migration.codegenProcDryRun.mutate({ module, procName, connectionId }) as Promise<{
+    codegenProcDryRun: (
+      module: string,
+      procName: string,
+      connectionId?: string,
+      feedback?: string,
+    ) =>
+      trpc.migration.codegenProcDryRun.mutate({
+        module,
+        procName,
+        connectionId,
+        feedback,
+      }) as Promise<{
         procName: string;
         manifestTier: "B" | "C" | "D";
         output:
@@ -426,6 +436,9 @@ export function createMigrationClient(baseUrl: string) {
             message?: string;
           }
       >,
+    /** Nạp lại registry Tier D sau khi ghi đè file plugin — để verify gọi đúng code mới. */
+    refreshModuleProcs: () =>
+      trpc.migration.refreshModuleProcs.mutate() as Promise<{ count: number }>,
     enrichProcDryRun: (module: string, procName: string) =>
       trpc.migration.enrichProcDryRun.mutate({ module, procName }) as Promise<{
         procName: string;

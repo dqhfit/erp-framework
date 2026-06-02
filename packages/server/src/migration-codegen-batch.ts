@@ -9,7 +9,7 @@
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import YAML from "yaml";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { entities, procedures } from "@erp-framework/db";
 import { codegenProc, type CodegenProcResult } from "@erp-framework/migration-cli/enrich";
 import type { MssqlClient } from "@erp-framework/mssql-client";
@@ -135,22 +135,42 @@ export async function runGenerateModule(args: {
     }
 
     // Tier B: check existing.
-    if (proc.suggestedTier === "B" && opts.skipExisting && proc.targetProcName) {
-      const [existing] = await args.db
-        .select({ id: procedures.id })
+    if (proc.suggestedTier === "B" && opts.skipExisting) {
+      // DEDUP theo PROC NGUỒN: proc MSSQL này đã migrate ở module khác (dù
+      // targetProcName khác) → skip, tránh sinh 2 procedure trùng logic.
+      const [bySource] = await args.db
+        .select({ id: procedures.id, name: procedures.name })
         .from(procedures)
         .where(
-          and(eq(procedures.companyId, args.companyId), eq(procedures.name, proc.targetProcName)),
+          and(
+            eq(procedures.companyId, args.companyId),
+            sql`${procedures.meta}->'source'->>'sourceProc' = ${proc.name}`,
+          ),
         )
         .limit(1);
+      // Hoặc đã có procedure trùng targetProcName (đường cũ).
+      const [existing] = bySource
+        ? [bySource]
+        : proc.targetProcName
+          ? await args.db
+              .select({ id: procedures.id, name: procedures.name })
+              .from(procedures)
+              .where(
+                and(
+                  eq(procedures.companyId, args.companyId),
+                  eq(procedures.name, proc.targetProcName),
+                ),
+              )
+              .limit(1)
+          : [];
       if (existing) {
-        const reason = "already-applied";
+        const reason = bySource ? "already-migrated-elsewhere" : "already-applied";
         results.push({
           procName: proc.name,
           tier: proc.suggestedTier,
           status: "skipped",
           reason,
-          target: proc.targetProcName,
+          target: existing.name,
         });
         skipped++;
         args.publishProgress?.({ procName: proc.name, current, total, status: "skipped", reason });

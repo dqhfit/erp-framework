@@ -25,6 +25,7 @@ import {
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { db } from "./db";
 import { decryptSecret } from "./crypto";
+import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
 import { publish as publishWs } from "./ws-hub";
 
 /* ─── Types ─── */
@@ -70,11 +71,18 @@ export async function prepareFullJobTables(
 
       // Resolve/tạo entity với guard meta.source.kind=migration.
       let entityId: string | null = null;
-      const [existing] = await db
-        .select({ id: entities.id, meta: entities.meta })
-        .from(entities)
-        .where(and(eq(entities.companyId, companyId), eq(entities.name, it.entityName)))
-        .limit(1);
+      let resolvedEntityName = it.entityName;
+      // DEDUP theo BẢNG NGUỒN trước: nếu bảng MSSQL này đã có entity migration
+      // (dù tên khác do module khác enrich) → tái dùng, tránh tạo 2 entity trùng.
+      const bySource = await findMigratedEntityBySourceTable(db, companyId, it.tableName);
+      const [existing] = bySource
+        ? [{ id: bySource.id, meta: { source: { kind: "migration" } } }]
+        : await db
+            .select({ id: entities.id, meta: entities.meta })
+            .from(entities)
+            .where(and(eq(entities.companyId, companyId), eq(entities.name, it.entityName)))
+            .limit(1);
+      if (bySource) resolvedEntityName = bySource.name;
       if (existing) {
         const srcKind = (existing.meta as { source?: { kind?: string } } | null)?.source?.kind;
         if (srcKind && srcKind !== "migration") {
@@ -120,7 +128,7 @@ export async function prepareFullJobTables(
         jobId,
         tableName: it.tableName,
         entityId,
-        entityName: it.entityName,
+        entityName: resolvedEntityName,
         pkColumn,
         batchSize,
         // "skipped" = lỗi VĨNH VIỄN (không có PK đơn cột) → không retry khi

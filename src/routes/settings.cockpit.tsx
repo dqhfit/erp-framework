@@ -404,9 +404,15 @@ export function CockpitPage() {
 
   /** Chạy bước tiếp theo trong pipeline (enrich hoặc generate) cho module đang chọn. */
   const doRunStep = useCallback(
-    async (action: "enrich" | "generate", module: string) => {
+    async (action: "enrich" | "generate", module: string, overwrite = false) => {
+      // overwrite=true (chỉ generate): sinh lại + ghi đè proc/file đã có — để
+      // SỬA proc đã sinh sai. Mặc định skipExisting (idempotent, bỏ đã xong).
       const defaultArgs: Record<string, unknown> =
-        action === "enrich" ? { apply: true, skipEnriched: true } : { skipExisting: true };
+        action === "enrich"
+          ? { apply: true, skipEnriched: true }
+          : overwrite
+            ? { skipExisting: false, overwriteFiles: true }
+            : { skipExisting: true };
       setBusy(`step:${action}:${module}`);
       try {
         const { jobId } = await migApi.startJob(action, module, defaultArgs);
@@ -446,6 +452,75 @@ export function CockpitPage() {
       }
     },
     [showAlert],
+  );
+
+  /** Phase A — Tự sửa proc lỗi: với mỗi proc fail (có golden), lấy diff →
+   *  codegen lại VỚI feedback → apply ghi đè → verify lại. 1 lượt. */
+  const doFixVerifyFails = useCallback(
+    async (module: string) => {
+      const fails = (verifyResult?.procs ?? []).filter(
+        (p) => !p.verified && !p.error, // có golden, đã generate, nhưng output sai
+      );
+      if (fails.length === 0) {
+        await showAlert("Không có proc lỗi (có golden) để sửa. Verify trước hoặc capture golden.");
+        return;
+      }
+      setBusy(`fix:${module}`);
+      let fixed = 0;
+      let still = 0;
+      try {
+        for (const f of fails) {
+          // 1) lấy feedback chi tiết (diff golden vs output)
+          const v = await migApi.verifyProc(module, f.procName);
+          if (v.verified) {
+            fixed++;
+            continue;
+          }
+          // 2) sinh lại với feedback
+          const dry = await migApi.codegenProcDryRun(module, f.procName, undefined, v.feedback);
+          if (!dry.output) {
+            still++;
+            continue;
+          }
+          // 3) apply ghi đè
+          if (dry.output.tier === "B") {
+            await migApi.codegenProcApply({
+              module,
+              tier: "B",
+              procName: f.procName,
+              name: dry.output.name,
+              label: dry.output.label,
+              description: dry.output.description,
+              paramsSchema: dry.output.paramsSchema,
+              code: dry.output.code,
+              overwrite: true,
+            });
+          } else {
+            await migApi.codegenProcApply({
+              module,
+              tier: "D",
+              procName: f.procName,
+              fileName: dry.output.fileName,
+              code: dry.output.code,
+              overwrite: true,
+            });
+            await migApi.refreshModuleProcs(); // reload registry để verify gọi code mới
+          }
+          // 4) verify lại
+          const v2 = await migApi.verifyProc(module, f.procName);
+          if (v2.verified) fixed++;
+          else still++;
+        }
+        const r = await migApi.verifyModuleProcs(module);
+        setVerifyResult(r);
+        await showAlert(`Tự sửa xong: ${fixed} pass, ${still} vẫn lỗi (cần xem tay / Tier A).`);
+      } catch (e) {
+        await showAlert(`Lỗi tự sửa: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [verifyResult, showAlert],
   );
 
   const doScaffoldReport = useCallback(
@@ -840,9 +915,19 @@ export function CockpitPage() {
                             );
                           })}
                         </div>
-                        <div className="mt-1.5 text-[11px] text-muted">
-                          Nhấn vào bước chưa chạy để thực hiện ngay.
-                          {" · "}discover chỉ chạy qua nút "Port mục này".
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <span className="text-[11px] text-muted">
+                            Nhấn bước chưa chạy để thực hiện. discover qua "Port mục này".
+                          </span>
+                          <button
+                            type="button"
+                            disabled={busy != null}
+                            title="Sinh lại proc/file ĐÃ có (ghi đè) — để sửa proc sinh sai"
+                            onClick={() => doRunStep("generate", selected.module!, true)}
+                            className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                          >
+                            ↻ Sinh lại (ghi đè)
+                          </button>
                         </div>
                       </div>
                     );
@@ -855,21 +940,40 @@ export function CockpitPage() {
                       <div className="text-[11px] font-medium text-muted uppercase tracking-wide">
                         Verify golden
                       </div>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        disabled={busy != null}
-                        onClick={() => doVerify(selected.module!)}
-                        icon={
-                          busy === `verify:${selected.module}` ? (
-                            <I.Loader size={11} className="animate-spin" />
-                          ) : (
-                            <I.Check size={11} />
-                          )
-                        }
-                      >
-                        Verify proc
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        {verifyResult && verifyResult.failed > 0 && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={busy != null}
+                            onClick={() => doFixVerifyFails(selected.module!)}
+                            icon={
+                              busy === `fix:${selected.module}` ? (
+                                <I.Loader size={11} className="animate-spin" />
+                              ) : (
+                                <I.Wand size={11} />
+                              )
+                            }
+                          >
+                            Tự sửa ({verifyResult.failed})
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={busy != null}
+                          onClick={() => doVerify(selected.module!)}
+                          icon={
+                            busy === `verify:${selected.module}` ? (
+                              <I.Loader size={11} className="animate-spin" />
+                            ) : (
+                              <I.Check size={11} />
+                            )
+                          }
+                        >
+                          Verify proc
+                        </Button>
+                      </div>
                     </div>
                     {verifyResult && (
                       <div className="mt-1.5 text-[11px]">

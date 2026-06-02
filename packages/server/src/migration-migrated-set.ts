@@ -96,6 +96,30 @@ export async function fetchMigratedTablesFromDb(
   return { tables, source };
 }
 
+/** Tìm entity migration đã tồn tại theo BẢNG NGUỒN MSSQL (meta.source.mssqlTable),
+ *  không theo tên đích. Dùng để DEDUP cross-module: 2 mục menu dùng chung 1 bảng
+ *  có thể enrich ra tên entity KHÁC nhau → nếu chỉ khóa theo tên sẽ tạo 2 entity
+ *  trùng dữ liệu. Khóa theo bảng nguồn → tái dùng entity đã có.
+ *  Per-company isolation. Trả entity đầu tiên khớp (id + tên hiện có). */
+export async function findMigratedEntityBySourceTable(
+  db: DB,
+  companyId: string,
+  mssqlTable: string,
+): Promise<{ id: string; name: string } | null> {
+  const key = mssqlTable.toLowerCase();
+  const rows = await db
+    .select({ id: entities.id, name: entities.name, meta: entities.meta })
+    .from(entities)
+    .where(eq(entities.companyId, companyId));
+  for (const r of rows) {
+    const src = (r.meta as { source?: { kind?: string; mssqlTable?: string } } | null)?.source;
+    if (src?.kind === "migration" && src.mssqlTable?.toLowerCase() === key) {
+      return { id: r.id, name: r.name };
+    }
+  }
+  return null;
+}
+
 /** Combined: YAML manifest + DB entities. Pattern recommend cho mọi caller
  *  cần biết "bảng nào đã migrate" — không miss bảng từ Migrate nhanh. */
 export async function buildCombinedMigratedSet(

@@ -49,7 +49,10 @@ import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { verifyProcAgainstGolden } from "./migration-verify";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
-import { buildCombinedMigratedSet } from "./migration-migrated-set";
+import {
+  buildCombinedMigratedSet,
+  findMigratedEntityBySourceTable,
+} from "./migration-migrated-set";
 import { enqueueMigrationJob, getMigrationJobStatus, resumeMigrationJob } from "./migration-worker";
 import { logActivity } from "./activity";
 import {
@@ -2336,16 +2339,25 @@ export const migrationRouter = router({
             // Resolve entity (tạo nếu chưa có) — chỉ khi !dryRun.
             let entityId: string | null = null;
             if (!input.dryRun) {
-              const [existing] = await ctx.db
-                .select({ id: entities.id, meta: entities.meta })
-                .from(entities)
-                .where(
-                  and(
-                    eq(entities.companyId, ctx.user.companyId),
-                    eq(entities.name, meta.entityName),
-                  ),
-                )
-                .limit(1);
+              // DEDUP theo BẢNG NGUỒN trước (tránh trùng entity khi module khác
+              // đã migrate bảng này dưới tên khác).
+              const bySource = await findMigratedEntityBySourceTable(
+                ctx.db,
+                ctx.user.companyId,
+                meta.tableName,
+              );
+              const [existing] = bySource
+                ? [{ id: bySource.id, meta: { source: { kind: "migration" } } }]
+                : await ctx.db
+                    .select({ id: entities.id, meta: entities.meta })
+                    .from(entities)
+                    .where(
+                      and(
+                        eq(entities.companyId, ctx.user.companyId),
+                        eq(entities.name, meta.entityName),
+                      ),
+                    )
+                    .limit(1);
               if (existing) {
                 // Phase T1 guard: nếu entity tồn tại nhưng KHÔNG phải do migration tạo
                 // → KHÔNG đè meta tay user; skip với cảnh báo.
@@ -2915,13 +2927,25 @@ export const migrationRouter = router({
           try {
             let entityId: string | null = null;
             if (!input.dryRun) {
-              const [existing] = await ctx.db
-                .select({ id: entities.id, meta: entities.meta })
-                .from(entities)
-                .where(
-                  and(eq(entities.companyId, ctx.user.companyId), eq(entities.name, it.entityName)),
-                )
-                .limit(1);
+              // DEDUP theo BẢNG NGUỒN trước: bảng MSSQL này đã có entity
+              // migration (dù tên khác do module khác) → tái dùng, tránh trùng.
+              const bySource = await findMigratedEntityBySourceTable(
+                ctx.db,
+                ctx.user.companyId,
+                it.tableName,
+              );
+              const [existing] = bySource
+                ? [{ id: bySource.id, meta: { source: { kind: "migration" } } }]
+                : await ctx.db
+                    .select({ id: entities.id, meta: entities.meta })
+                    .from(entities)
+                    .where(
+                      and(
+                        eq(entities.companyId, ctx.user.companyId),
+                        eq(entities.name, it.entityName),
+                      ),
+                    )
+                    .limit(1);
               if (existing) {
                 const sourceKind = (existing.meta as { source?: { kind?: string } } | null)?.source
                   ?.kind;
