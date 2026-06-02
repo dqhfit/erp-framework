@@ -13,10 +13,18 @@
    legacy_menu_map.resolved để cockpit dùng làm seed cho discover.
    ========================================================== */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import {
+  collectDirectProcs,
+  collectScopedProcs,
+  extractCallsInMethods,
+  extractRepoMethodCalls,
+  lastTypeSegment,
+  SHARED_DATA_RE,
+} from "@erp-framework/core";
 import { legacyMenuMap } from "@erp-framework/db";
-import { type MssqlClient, analyzeProc } from "@erp-framework/mssql-client";
+import { analyzeProc, type MssqlClient } from "@erp-framework/mssql-client";
 import { and, eq, isNotNull } from "drizzle-orm";
 import type { DB } from "./db";
 
@@ -60,13 +68,17 @@ export function buildCSharpIndex(dqhfRoot: string): CSharpIndex {
   // UnitOfWork.cs: public static <Repo> <Prop> => GetRepository<<Repo>>()
   const uowMap = new Map<string, string>();
   // UnitOfWork (static) + UnitOfWork2 (instance) cùng pattern `=> GetRepository<X>`.
-  const uowRe = /public\s+(?:static\s+)?\w+\s+(\w+)\s*=>\s*GetRepository<\s*(\w+)\s*>/g;
+  // Type/generic cho phép namespace có dấu chấm (CommonClass.BOL.TR_X) — nếu chỉ
+  // `\w+` thì các prop khai báo qua type đầy đủ bị BỎ SÓT khỏi uowMap.
+  const uowRe =
+    /public\s+(?:static\s+)?[\w.]+(?:<[^>]*>)?\s+(\w+)\s*=>\s*GetRepository<\s*([\w.]+)\s*>/g;
   for (const f of files) {
     if (!/^unitofwork\d*\.cs$/i.test(basename(f))) continue;
     const txt = readFileSync(f, "utf8");
     let m: RegExpExecArray | null;
     uowRe.lastIndex = 0;
-    while ((m = uowRe.exec(txt))) uowMap.set(m[1]!.toLowerCase(), m[2]!);
+    // Lưu segment cuối (CommonClass.BOL.TR_X → TR_X) để khớp fileByClass (basename).
+    while ((m = uowRe.exec(txt))) uowMap.set(m[1]!.toLowerCase(), lastTypeSegment(m[2]!));
   }
 
   return { fileByClass, uowMap, fileCount: files.length };
@@ -81,20 +93,22 @@ export interface ResolveFormResult {
   note?: string;
 }
 
-const PROC_RE = /MyQuery\(\s*"([^"]+)"/g;
 // Bắt mọi `.<Prop>` (vd uow.DINHMUC_GOVAN, UnitOfWork.X, UnitOfWork2.X) rồi
 // đối chiếu uowMap — không phụ thuộc tên biến/static.
 const PROP_RE = /\.([A-Za-z_][A-Za-z0-9_]*)/g;
 const NEW_RE = /new\s+([A-Za-z_]\w*)\s*\(/g;
-/** Tên proc hợp lệ = 1 identifier (loại MyQuery chứa SQL thô như "SELECT ..."). */
-const PROC_ID = /^[A-Za-z_][A-Za-z0-9_]*$/;
 // Chỉ đệ quy vào UI-control / báo cáo / data-layer (tránh nổ sang form khác).
 const RECURSE_PATH =
   /[\\/](UserCtrl|FormReport|CommonClass[\\/](BOL|DAL|MODELS))[\\/]|[\\/]DQHF\.Repository[\\/]/i;
 /** Class báo cáo XtraReports: rpt_*, Report_*. */
 const REPORT_ID = /^(rpt|report)/i;
 
-/** Đệ quy form → control → BOL/repo, gom procs. */
+/** Đệ quy form → control → BOL/repo, gom procs THEO MỨC METHOD.
+ *
+ *  Form/control (không phải data-layer dùng chung) → lấy MỌI MyQuery trực tiếp
+ *  (chúng đặc thù 1 chức năng). Lớp data-layer dùng chung (CommonClass/BOL|DAL,
+ *  DQHF.Repository) → CHỈ gom MyQuery trong thân method mà form/control thật sự
+ *  gọi, tránh hốt cả proc của form khác dùng chung repo đó. */
 export function resolveFormProcs(
   idx: CSharpIndex,
   winId: string,
@@ -112,10 +126,12 @@ export function resolveFormProcs(
     };
   }
   const visited = new Set<string>();
-  const procs = new Set<string>();
   const repos = new Set<string>();
   const controls = new Set<string>();
   const reports = new Set<string>();
+  // Văn bản các file form/control (không scope) vs file data-layer (scope theo method).
+  const directTexts: string[] = [];
+  const sharedFiles = new Map<string, string>(); // lowerClassName → text
   const queue: string[] = [start];
 
   const enqueueClass = (id: string): void => {
@@ -134,13 +150,13 @@ export function resolveFormProcs(
       continue;
     }
 
-    let m: RegExpExecArray | null;
-    PROC_RE.lastIndex = 0;
-    while ((m = PROC_RE.exec(txt))) {
-      const name = m[1]!;
-      if (PROC_ID.test(name)) procs.add(name); // bỏ MyQuery chứa SQL thô
+    if (SHARED_DATA_RE.test(f)) {
+      sharedFiles.set(basename(f, ".cs").toLowerCase(), txt); // proc gom sau (scope).
+    } else {
+      directTexts.push(txt); // form/control: lấy mọi MyQuery trực tiếp.
     }
 
+    let m: RegExpExecArray | null;
     PROP_RE.lastIndex = 0;
     while ((m = PROP_RE.exec(txt))) {
       const cls = idx.uowMap.get(m[1]!.toLowerCase());
@@ -164,6 +180,12 @@ export function resolveFormProcs(
     }
   }
 
+  // ── Xác định method của từng repo mà form/control GỌI ──────────────────
+  // Seed từ file form/control, rồi lan truyền qua thân method repo (repo gọi
+  // repo khác) tới điểm bất động — để không sót proc transitive, cũng không
+  // hốt method repo mà form không đụng.
+  const procs = collectScopedProcsForForm(idx, directTexts, sharedFiles);
+
   return {
     procs: [...procs].sort(),
     controls: [...controls].sort(),
@@ -171,6 +193,56 @@ export function resolveFormProcs(
     repos: [...repos].sort(),
     filesScanned: visited.size,
   };
+}
+
+/** Tính tập proc cuối: MyQuery trực tiếp của form/control + MyQuery scope theo
+ *  method được gọi trong các file data-layer dùng chung. */
+function collectScopedProcsForForm(
+  idx: CSharpIndex,
+  directTexts: string[],
+  sharedFiles: Map<string, string>,
+): Set<string> {
+  // called: lowerRepoClass → Set<methodName> mà form/control (và repo gọi repo) đụng.
+  const called = new Map<string, Set<string>>();
+  const addCall = (cls: string, method: string): boolean => {
+    let s = called.get(cls);
+    if (!s) {
+      s = new Set();
+      called.set(cls, s);
+    }
+    if (s.has(method)) return false;
+    s.add(method);
+    return true;
+  };
+
+  // Seed: lời gọi repo trong file form/control.
+  for (const t of directTexts) {
+    for (const c of extractRepoMethodCalls(t, idx.uowMap)) addCall(c.cls, c.method);
+  }
+
+  // Lan truyền tới điểm bất động: thân method repo đang-được-gọi có thể gọi
+  // repo khác (repo→repo). Chỉ quét thân các method đã gọi, KHÔNG cả file.
+  for (let guard = 0; guard < 50; guard++) {
+    let changed = false;
+    for (const [cls, text] of sharedFiles) {
+      const methods = called.get(cls);
+      if (!methods) continue;
+      for (const c of extractCallsInMethods(text, [...methods], idx.uowMap)) {
+        if (addCall(c.cls, c.method)) changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  // Gom proc: form/control lấy hết; data-layer scope theo method được gọi.
+  const procs = new Set<string>();
+  for (const t of directTexts) {
+    for (const p of collectDirectProcs(t)) procs.add(p);
+  }
+  for (const [cls, text] of sharedFiles) {
+    for (const p of collectScopedProcs(text, called.get(cls))) procs.add(p);
+  }
+  return procs;
 }
 
 /** Loại "bảng" giả do analyzeProc bắt nhầm: cursor var, hàm split, temp. */

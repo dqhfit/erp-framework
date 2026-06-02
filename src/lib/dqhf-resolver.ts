@@ -6,6 +6,15 @@
  * Luồng: <input webkitdirectory> → buildDqhfIndex → resolveFormProcs → gửi lên server
  */
 
+import {
+  collectDirectProcs,
+  collectScopedProcs,
+  extractCallsInMethods,
+  extractRepoMethodCalls,
+  lastTypeSegment,
+  SHARED_DATA_RE,
+} from "@erp-framework/core";
+
 export interface DqhfIndex {
   /** lowerClassName → nội dung file (đã merge Designer nếu có) */
   contentByClass: Map<string, string>;
@@ -26,14 +35,16 @@ export interface DqhfResolveResult {
 }
 
 // Giữ nguyên regex từ server-side legacy-menu-resolve.ts
-const PROC_RE = /MyQuery\(\s*"([^"]+)"/g;
 const PROP_RE = /\.([A-Za-z_][A-Za-z0-9_]*)/g;
 const NEW_RE = /new\s+([A-Za-z_]\w*)\s*\(/g;
-const PROC_ID = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RECURSE_PATH =
   /[\\/](UserCtrl|FormReport|CommonClass[\\/](BOL|DAL|MODELS))[\\/]|[\\/]DQHF\.Repository[\\/]/i;
 const REPORT_ID = /^(rpt|report)/i;
-const UOW_RE = /public\s+(?:static\s+)?\w+\s+(\w+)\s*=>\s*GetRepository<\s*(\w+)\s*>/g;
+// Type/generic cho phép namespace có dấu chấm (CommonClass.BOL.TR_X) — khớp
+// server (legacy-menu-resolve.ts), nếu chỉ `\w+` thì prop khai báo qua type
+// đầy đủ bị bỏ sót khỏi uowMap.
+const UOW_RE =
+  /public\s+(?:static\s+)?[\w.]+(?:<[^>]*>)?\s+(\w+)\s*=>\s*GetRepository<\s*([\w.]+)\s*>/g;
 const SKIP_DIRS = /[\\/](obj|bin|node_modules|\.git|\.vs|packages|DQHFDotNet)[\\/]/i;
 
 /** Đọc tất cả .cs từ FileList, dựng index cho phân tích. */
@@ -78,14 +89,18 @@ export async function buildDqhfIndex(files: FileList): Promise<DqhfIndex> {
   for (const [cls, text] of contentByClass) {
     if (!/^unitofwork\d*$/.test(cls)) continue;
     for (const m of text.matchAll(UOW_RE)) {
-      if (m[1] && m[2]) uowMap.set(m[1].toLowerCase(), m[2]);
+      // Segment cuối (CommonClass.BOL.TR_X → TR_X) để khớp contentByClass (basename).
+      if (m[1] && m[2]) uowMap.set(m[1].toLowerCase(), lastTypeSegment(m[2]));
     }
   }
 
   return { contentByClass, pathByClass, uowMap, fileCount: csFiles.length };
 }
 
-/** Đệ quy form → control → BOL/repo, gom procs. Logic giống server. */
+/** Đệ quy form → control → BOL/repo, gom procs THEO MỨC METHOD. Logic giống
+ *  server (legacy-menu-resolve.ts): form/control lấy mọi MyQuery trực tiếp; lớp
+ *  data-layer dùng chung chỉ gom MyQuery trong thân method form/control GỌI —
+ *  tránh hốt proc của form khác cùng dùng repo. */
 export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400): DqhfResolveResult {
   const lc = winId.toLowerCase();
   if (!idx.contentByClass.has(lc)) {
@@ -100,10 +115,11 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
   }
 
   const visited = new Set<string>();
-  const procs = new Set<string>();
   const repos = new Set<string>();
   const controls = new Set<string>();
   const reports = new Set<string>();
+  const directTexts: string[] = []; // form/control: lấy mọi MyQuery
+  const sharedFiles = new Map<string, string>(); // lowerClass → text (scope theo method)
   const queue: string[] = [lc];
 
   const enqueue = (id: string): void => {
@@ -120,9 +136,9 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
     const txt = idx.contentByClass.get(cls);
     if (!txt) continue;
 
-    for (const m of txt.matchAll(PROC_RE)) {
-      if (m[1] && PROC_ID.test(m[1])) procs.add(m[1]);
-    }
+    const path = idx.pathByClass.get(cls) ?? "";
+    if (SHARED_DATA_RE.test(path)) sharedFiles.set(cls, txt);
+    else directTexts.push(txt);
 
     for (const m of txt.matchAll(PROP_RE)) {
       if (!m[1]) continue;
@@ -142,6 +158,8 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
     }
   }
 
+  const procs = collectScopedProcsForForm(idx.uowMap, directTexts, sharedFiles);
+
   return {
     procs: [...procs].sort(),
     controls: [...controls].sort(),
@@ -149,4 +167,49 @@ export function resolveFormProcs(idx: DqhfIndex, winId: string, maxFiles = 400):
     repos: [...repos].sort(),
     filesScanned: visited.size,
   };
+}
+
+/** Tính tập proc: MyQuery trực tiếp của form/control + MyQuery scope theo method
+ *  được gọi trong các file data-layer dùng chung (lan truyền repo→repo). */
+function collectScopedProcsForForm(
+  uowMap: Map<string, string>,
+  directTexts: string[],
+  sharedFiles: Map<string, string>,
+): Set<string> {
+  const called = new Map<string, Set<string>>();
+  const addCall = (cls: string, method: string): boolean => {
+    let s = called.get(cls);
+    if (!s) {
+      s = new Set();
+      called.set(cls, s);
+    }
+    if (s.has(method)) return false;
+    s.add(method);
+    return true;
+  };
+
+  for (const t of directTexts) {
+    for (const c of extractRepoMethodCalls(t, uowMap)) addCall(c.cls, c.method);
+  }
+
+  for (let guard = 0; guard < 50; guard++) {
+    let changed = false;
+    for (const [cls, text] of sharedFiles) {
+      const methods = called.get(cls);
+      if (!methods) continue;
+      for (const c of extractCallsInMethods(text, [...methods], uowMap)) {
+        if (addCall(c.cls, c.method)) changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  const procs = new Set<string>();
+  for (const t of directTexts) {
+    for (const p of collectDirectProcs(t)) procs.add(p);
+  }
+  for (const [cls, text] of sharedFiles) {
+    for (const p of collectScopedProcs(text, called.get(cls))) procs.add(p);
+  }
+  return procs;
 }

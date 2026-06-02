@@ -15,3 +15,4 @@ export * from "./runtime/workflow-runner";
 export * from "./plugin/index";
 export * from "./tool/index";
 export * from "./llm-adapter";
+export * from "./dqhf-proc-scope";
