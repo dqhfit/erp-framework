@@ -131,14 +131,14 @@ export function ActionJobsPanel() {
                     Chạy lại
                   </Button>
                 )}
-                {(j.status === "queued" || j.status === "failed") && (
+                {(j.status === "queued" || j.status === "running" || j.status === "failed") && (
                   <Button
                     size="sm"
                     variant="default"
                     disabled={busy === j.id}
                     onClick={() => void cancel(j.id)}
                   >
-                    Huỷ
+                    {j.status === "running" ? "Dừng" : "Huỷ"}
                   </Button>
                 )}
               </div>
