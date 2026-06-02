@@ -2,7 +2,7 @@
    pages-router.ts — CRUD page metadata (low-code designer).
    Tách khỏi router.ts (Sprint 1 P2.8 step 6).
    ========================================================== */
-import { pages, pageViewerGroups } from "@erp-framework/db";
+import { navItems, pages, pageViewerGroups } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -81,6 +81,16 @@ export const pagesRouter = router({
       await ctx.db
         .delete(pages)
         .where(and(eq(pages.id, input), eq(pages.companyId, ctx.user.companyId)));
+      // Cleanup nav item trỏ tới page vừa xoá (tránh link chết trong menu).
+      await ctx.db
+        .delete(navItems)
+        .where(
+          and(
+            eq(navItems.companyId, ctx.user.companyId),
+            eq(navItems.kind, "page"),
+            eq(navItems.target, input),
+          ),
+        );
     }),
 
   publish: rbacProcedure("publish", "page")

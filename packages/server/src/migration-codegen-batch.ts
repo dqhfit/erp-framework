@@ -44,6 +44,8 @@ export interface RunGenerateResult {
   succeeded: number;
   skipped: number;
   failed: number;
+  /** true nếu dừng giữa chừng do shouldStop (user huỷ) — worker dùng để set canceled. */
+  stopped: boolean;
   results: Array<{
     procName: string;
     tier: "B" | "D" | "C";
@@ -113,8 +115,12 @@ export async function runGenerateModule(args: {
   let skipped = 0;
   let failed = 0;
 
+  let stopped = false;
   for (let i = 0; i < candidates.length; i++) {
-    if (await args.shouldStop?.()) break; // user huỷ → dừng sau proc hiện tại
+    if (await args.shouldStop?.()) {
+      stopped = true;
+      break; // user huỷ → dừng sau proc hiện tại
+    }
     const proc = candidates[i]!;
     const current = i + 1;
     const total = candidates.length;
@@ -331,6 +337,7 @@ export async function runGenerateModule(args: {
     succeeded,
     skipped,
     failed,
+    stopped,
     results,
   };
 }

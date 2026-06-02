@@ -20,6 +20,7 @@ import { resolve } from "node:path";
 import YAML from "yaml";
 import type { DB } from "./db";
 import { makeCallTool } from "./mcp-client";
+import { listModuleProcs } from "./module-procs";
 import { makeInvokeProcedure } from "./procedure-runner";
 
 /* ─── Manifest (đọc đủ field cần) ─── */
@@ -46,13 +47,24 @@ function readManifestLite(module: string): ManifestLite | null {
   return YAML.parse(readFileSync(p, "utf8")) as ManifestLite;
 }
 
-/** Tên để invoke proc đã migrate: Tier B = targetProcName; Tier D = basename
- *  file (không .ts). makeInvokeProcedure tự tra procedures table rồi fallback
- *  module-procs registry nên 1 tên dùng cho cả 2 tier. */
-function resolveInvokeName(proc: ManifestProcLite): string | null {
+/** Tên để invoke proc đã migrate. Tier B = targetProcName (= name trong bảng
+ *  procedures). Tier D = exportName của hàm trong file plugin (registry key)
+ *  — KHÔNG phải basename file. Tra registry theo targetFile để lấy đúng
+ *  exportName; nếu không thấy, fallback basename (best-effort). */
+async function resolveInvokeName(proc: ManifestProcLite, module: string): Promise<string | null> {
   if (proc.targetProcName) return proc.targetProcName;
   if (proc.targetFile) {
-    return proc.targetFile.split(/[\\/]/).pop()?.replace(/\.ts$/, "") ?? null;
+    const baseFile = proc.targetFile.split(/[\\/]/).pop() ?? proc.targetFile;
+    try {
+      const entries = await listModuleProcs();
+      const hit = entries.find(
+        (e) => e.module === module && (e.file.split(/[\\/]/).pop() ?? e.file) === baseFile,
+      );
+      if (hit) return hit.name; // exportName thật từ registry
+    } catch {
+      /* registry chưa nạp → fallback */
+    }
+    return baseFile.replace(/\.ts$/, "");
   }
   return null;
 }
@@ -104,17 +116,20 @@ export function canonScalar(v: unknown): string | number | boolean | null {
   return JSON.stringify(v);
 }
 
-/** Canonical 1 dòng → chuỗi ổn định theo MULTISET GIÁ TRỊ (bỏ tên cột để
- *  miễn nhiễm đổi tên cột→field). Object: sort canon-value; array: recurse. */
+/** Canonical 1 dòng → chuỗi ổn định theo GIÁ TRỊ THEO VỊ TRÍ cột (giữ thứ tự
+ *  key/phần tử, KHÔNG sort). Bỏ TÊN cột nên vẫn miễn nhiễm đổi tên cột→field,
+ *  NHƯNG giữ vị trí nên BẮT được lỗi hoán 2 cột (giá trị giống nhưng sai cột) —
+ *  trước đây sort giá trị làm false-pass. Đổi lại: nếu proc migrate trả cột
+ *  KHÁC THỨ TỰ so với golden sẽ báo lệch (false-fail) — an toàn hơn (người
+ *  duyệt thấy diff) so với false-pass âm thầm. Cross-row vẫn order-insensitive
+ *  (multiset ở compareGolden). */
 export function canonRow(row: unknown): string {
-  if (Array.isArray(row)) return "[" + row.map(canonRow).sort().join(",") + "]";
+  if (Array.isArray(row)) return "[" + row.map(canonRow).join(",") + "]";
   // Date là object trong JS → phải bắt TRƯỚC nhánh object, nếu không Object.values
   // ra [] và mọi Date đều bằng nhau ("{}"). Giao cho canonScalar (→ epoch).
   if (row instanceof Date) return JSON.stringify(canonScalar(row));
   if (row && typeof row === "object") {
-    const vals = Object.values(row as Record<string, unknown>)
-      .map(canonRow)
-      .sort();
+    const vals = Object.values(row as Record<string, unknown>).map(canonRow);
     return "{" + vals.join(",") + "}";
   }
   return JSON.stringify(canonScalar(row));
@@ -195,7 +210,13 @@ export function compareGolden(expected: unknown, actual: unknown): GoldenCompare
 function normalizeArgs(input: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input)) {
-    out[k.replace(/^@/, "").toLowerCase()] = v;
+    const nk = k.replace(/^@/, "").toLowerCase();
+    // Param chỉ khác hoa-thường (vd @Id + @ID) → giữ cái đầu, KHÔNG đè im lặng.
+    if (Object.hasOwn(out, nk)) {
+      console.warn(`[verify] arg trùng sau normalize: "${k}" → "${nk}" (giữ giá trị đầu)`);
+      continue;
+    }
+    out[nk] = v;
   }
   return out;
 }
@@ -249,7 +270,7 @@ export async function verifyProcAgainstGolden(deps: {
   const proc = manifest?.procs?.find((p) => p.name === procName);
   if (!proc) return { ...base, error: `Proc "${procName}" không có trong manifest module.` };
   base.tier = proc.suggestedTier ?? "?";
-  const invokeName = resolveInvokeName(proc);
+  const invokeName = await resolveInvokeName(proc, module);
   base.invokeName = invokeName;
   if (!invokeName) {
     return { ...base, error: "Proc chưa có targetProcName/targetFile — chưa generate?" };

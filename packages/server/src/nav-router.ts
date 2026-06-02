@@ -2,12 +2,23 @@
    - list: moi user da duyet doc duoc (render Sidebar).
    - create/update/move/reorder/delete: chi admin (rbac edit settings).
    Cay dung tu danh sach phang phia client theo parentId + sortOrder. */
-import { navItems } from "@erp-framework/db";
+import { navItems, pages } from "@erp-framework/db";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
+import type { DB } from "./db";
 import { approvedProcedure, rbacProcedure, router } from "./trpc";
 
 const KIND = z.enum(["group", "page", "link"]);
+
+/** Verify target=pageId trỏ tới page CÓ THẬT trong company (chống link chết). */
+async function assertPageExists(db: DB, companyId: string, pageId: string): Promise<void> {
+  const [p] = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(eq(pages.id, pageId), eq(pages.companyId, companyId)))
+    .limit(1);
+  if (!p) throw new Error(`Trang (pageId=${pageId}) không tồn tại.`);
+}
 
 export const navRouter = router({
   /** Danh sach phang toan bo nav item cua company (client dung parentId dung cay). */
@@ -44,6 +55,9 @@ export const navRouter = router({
       if (input.kind !== "group" && !input.target?.trim()) {
         throw new Error(`Item kind=${input.kind} can target (pageId hoac route/url).`);
       }
+      if (input.kind === "page" && input.target) {
+        await assertPageExists(ctx.db, ctx.user.companyId, input.target);
+      }
       const siblings = await ctx.db
         .select({ sortOrder: navItems.sortOrder })
         .from(navItems)
@@ -79,6 +93,17 @@ export const navRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Đổi target sang page → verify page tồn tại (chống link chết).
+      if (input.target) {
+        const [it] = await ctx.db
+          .select({ kind: navItems.kind })
+          .from(navItems)
+          .where(and(eq(navItems.id, input.id), eq(navItems.companyId, ctx.user.companyId)))
+          .limit(1);
+        if (it?.kind === "page") {
+          await assertPageExists(ctx.db, ctx.user.companyId, input.target);
+        }
+      }
       const set: Record<string, unknown> = { updatedAt: new Date() };
       if (input.label !== undefined) set.label = input.label;
       if (input.icon !== undefined) set.icon = input.icon;
@@ -136,6 +161,22 @@ export const navRouter = router({
   reorder: rbacProcedure("edit", "settings")
     .input(z.object({ orderedIds: z.array(z.string().uuid()) }))
     .mutation(async ({ ctx, input }) => {
+      if (input.orderedIds.length === 0) return { ok: true, count: 0 };
+      // Assert tất cả id thuộc company + CÙNG 1 parent (reorder chỉ trong 1 nhóm)
+      // → tránh client lỗi gán sortOrder xuyên nhóm.
+      const rows = await ctx.db
+        .select({ id: navItems.id, parentId: navItems.parentId })
+        .from(navItems)
+        .where(eq(navItems.companyId, ctx.user.companyId));
+      const byId = new Map(rows.map((r) => [r.id, r.parentId]));
+      const parents = new Set<string | null>();
+      for (const id of input.orderedIds) {
+        if (!byId.has(id)) throw new Error(`Item ${id} không thuộc company.`);
+        parents.add(byId.get(id) ?? null);
+      }
+      if (parents.size > 1) {
+        throw new Error("reorder: các item không cùng 1 nhóm.");
+      }
       let i = 0;
       for (const id of input.orderedIds) {
         await ctx.db

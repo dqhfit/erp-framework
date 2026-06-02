@@ -254,6 +254,9 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
   publishWs(`migration:${data.userId}`, { kind: "started", state });
 
   let mssqlClient: MssqlClient | null = null;
+  // Cờ "đã dừng cooperative giữa chừng" do action báo về (enrich/generate) —
+  // dùng để set canceled thay vì đọc lại DB (tránh race completed↔canceled).
+  let actionStopped = false;
   try {
     // full-import KHÔNG cần MSSQL client ở scope worker — runFullImportJob
     // tự mở connection theo job.connectionId trong DB (per-job, per-resume).
@@ -330,6 +333,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
             });
           },
         });
+        actionStopped = enrichResult.stopped;
         // Persist token tích lũy → baseline cho lần resume tiếp (trần cost thật).
         await db
           .update(migrationJobs)
@@ -374,6 +378,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
             publishWs(`migration:${data.userId}`, { kind: "progress", jobId: data.jobId, ...p }),
           shouldStop: jobCanceled,
         });
+        actionStopped = r.stopped;
         state.message = `Codegen: ${r.succeeded} apply / ${r.skipped} skip / ${r.failed} fail (tổng ${r.total})`;
         break;
       }
@@ -389,11 +394,10 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
       }
     }
 
-    // User huỷ giữa chừng (enrich/generate đã dừng cooperative) → set canceled,
-    // KHÔNG ghi đè completed. CHỈ áp cho action có cooperative stop — discover/
-    // data/capture-golden chạy tới hết, đừng bôi "canceled" lên kết quả đã xong.
-    const wasCanceled =
-      (data.action === "enrich" || data.action === "generate") && (await jobCanceled());
+    // Action báo về dừng giữa chừng (enrich/generate qua cờ stopped) → canceled,
+    // KHÔNG ghi đè completed. Không đọc lại DB → không race completed↔canceled.
+    // discover/data/capture-golden không set stopped → luôn completed dù bị huỷ.
+    const wasCanceled = actionStopped;
     state.status = wasCanceled ? "canceled" : "completed";
     state.completedAt = new Date().toISOString();
     state.durationMs = Date.now() - t0;

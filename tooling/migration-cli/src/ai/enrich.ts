@@ -87,7 +87,7 @@ interface EnrichedProcOutput {
 
 export async function runEnrich(
   opts: EnrichOptions,
-): Promise<{ tokensIn: number; tokensOut: number; costUsd: number }> {
+): Promise<{ tokensIn: number; tokensOut: number; costUsd: number; stopped: boolean }> {
   const onlyProcs = opts.onlyProcs && opts.onlyProcs.length > 0 ? opts.onlyProcs : null;
   const isSingleProcMode = onlyProcs != null;
   // Non-apply tích luỹ progress (enrichedAt) trong <module>.enriched.yaml.
@@ -328,7 +328,7 @@ export async function runEnrich(
     }
   }
 
-  return { tokensIn: cumIn, tokensOut: cumOut, costUsd: cost };
+  return { tokensIn: cumIn, tokensOut: cumOut, costUsd: cost, stopped: userStopped };
 }
 
 /** Validate shape output enrich table từ LLM — fail-safe, KHÔNG throw. Thiếu
