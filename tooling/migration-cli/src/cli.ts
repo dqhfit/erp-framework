@@ -14,6 +14,7 @@ import { runCaptureGolden } from "./capture-golden.js";
 import { runGenerate } from "./generate.js";
 import { runData } from "./data.js";
 import { runEnrich } from "./ai/enrich.js";
+import { runCodegenProc } from "./ai/codegen-proc.js";
 
 const HELP = `
 Dùng:
@@ -26,6 +27,11 @@ Subcommand:
   enrich         --module <module> [--apply] [--max-cost-usd 5] [--skip-enriched]
                  AI Tier 1: tên Việt + label + tier override + description.
 
+  codegen-proc   --module <module> --proc <schema.proc> [--max-turns 30] [--model <id>]
+                 PILOT: port 1 stored-proc tier D (MSSQL) sang file TS bằng
+                 Claude Agent SDK. Agent viết packages/plugins/module-<m>/.
+                 Chỉ ghi file để review (git diff), KHÔNG auto-commit.
+
   capture-golden --module <module> [--samples 10]
 
   generate       --module <module> [--dry-run]
@@ -37,11 +43,16 @@ Env cần đặt:
   MSSQL_ALLOW_WRITE=1       Cho phép execProc (chỉ bật khi capture golden)
   DATABASE_URL              Connection string PG của framework
   MIGRATION_COMPANY_ID      Company UUID target (default: company đầu tiên)
+  ANTHROPIC_API_KEY         Key dev local — bắt buộc cho codegen-proc
+  MIGRATION_CODEGEN_MODEL   Model override cho codegen-proc (default claude-opus-4-8)
+  MIGRATION_CODEGEN_TYPECHECK  Prefix lệnh typecheck agent được phép chạy
+                            (trống = chặn Bash, agent chỉ viết file)
 
 Ví dụ:
   pnpm migrate discover --name sales --seed-tables dbo.Orders,dbo.OrderItems
   pnpm migrate enrich --module sales --apply
   pnpm migrate capture-golden --module sales --samples 5
+  pnpm migrate codegen-proc --module sales --proc dbo.Lay_DonHang
 `.trim();
 
 async function main(): Promise<void> {
@@ -112,6 +123,28 @@ async function main(): Promise<void> {
                 .map((s) => s.trim())
                 .filter(Boolean)
             : undefined,
+        });
+        break;
+      }
+      case "codegen-proc": {
+        const { values } = parseArgs({
+          args: argv,
+          strict: true,
+          options: {
+            module: { type: "string" },
+            proc: { type: "string" },
+            "max-turns": { type: "string" },
+            model: { type: "string" },
+          },
+        });
+        if (!values.module || !values.proc) {
+          throw new Error("codegen-proc: thiếu --module hoặc --proc");
+        }
+        await runCodegenProc({
+          module: values.module,
+          proc: values.proc,
+          maxTurns: values["max-turns"] ? parseInt(values["max-turns"], 10) : 30,
+          model: values.model,
         });
         break;
       }
