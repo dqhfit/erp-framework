@@ -188,6 +188,18 @@ export async function runFullImportJob(data: FullJobData): Promise<{
   let failedTables = 0;
   let skippedTables = 0;
   let totalRowsThisRun = 0;
+  let canceledMidRun = false;
+
+  // Cooperative cancel: đọc lại status để dừng GIỮA CHỪNG khi user Huỷ. Gọi ở
+  // ranh giới mỗi bảng + mỗi batch (checkpoint đã lưu nên resume an toàn).
+  const isCanceled = async (): Promise<boolean> => {
+    const [j] = await db
+      .select({ status: migrationFullJobs.status })
+      .from(migrationFullJobs)
+      .where(eq(migrationFullJobs.id, data.jobId))
+      .limit(1);
+    return j?.status === "canceled";
+  };
 
   try {
     // Resume: lấy table còn cần xử lý — pending/running (dở dang) + failed (lỗi
@@ -205,6 +217,10 @@ export async function runFullImportJob(data: FullJobData): Promise<{
       );
 
     for (const t of tables) {
+      if (await isCanceled()) {
+        canceledMidRun = true;
+        break;
+      }
       if (!t.pkColumn || !t.entityId) {
         // Thiếu PK/entity → lỗi vĩnh viễn: mark skipped (không retry, không
         // chặn job hoàn thành) thay vì failed.
@@ -368,7 +384,14 @@ export async function runFullImportJob(data: FullJobData): Promise<{
             totalRowsThisRun += batch.rows.length;
           }
           if (batch.isEnd) break;
+          // Cooperative cancel giữa batch — checkpoint (lastPk/rowsImported) đã
+          // lưu trong transaction nên dừng đây resume tiếp được.
+          if (await isCanceled()) {
+            canceledMidRun = true;
+            break;
+          }
         }
+        if (canceledMidRun) break;
 
         // Cập nhật meta.source.importedAt + rowsLastImported.
         await db
@@ -430,6 +453,27 @@ export async function runFullImportJob(data: FullJobData): Promise<{
           .where(eq(migrationFullJobTables.id, t.id));
         failedTables++;
       }
+    }
+
+    // User Huỷ giữa chừng → giữ nguyên status='canceled', KHÔNG ghi đè
+    // completed/paused. Bảng dở đã có checkpoint (resume/sync chạy tiếp được nếu
+    // user đổi ý — nhưng job canceled sẽ không tự resume).
+    if (canceledMidRun) {
+      const [c] = await db
+        .select({ rows: sql<number>`COALESCE(sum(rows_imported), 0)::bigint` })
+        .from(migrationFullJobTables)
+        .where(eq(migrationFullJobTables.jobId, data.jobId));
+      await db
+        .update(migrationFullJobs)
+        .set({ lastHeartbeat: new Date(), updatedAt: new Date() })
+        .where(eq(migrationFullJobs.id, data.jobId));
+      publishWs(`migration:${data.userId}`, {
+        kind: "full-job-done",
+        jobId: data.jobId,
+        status: "canceled",
+        totalRows: Number(c?.rows ?? 0),
+      });
+      return { succeededTables, failedTables, skippedTables, totalRows: totalRowsThisRun };
     }
 
     // Đếm lại trạng thái cuối loop. Phân biệt:

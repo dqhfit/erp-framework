@@ -10,6 +10,7 @@ export { Kbd } from "./kbd";
 export { Label } from "./label";
 export { Modal } from "./modal";
 export { Select } from "./select";
+export { SearchableSelect, type SearchableSelectOption } from "./searchable-select";
 export { SplitPane } from "./split-pane";
 export { Switch } from "./switch";
 export { Tabs } from "./tabs";

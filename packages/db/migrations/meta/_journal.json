@@ -456,6 +456,13 @@
       "when": 1783702100000,
       "tag": "0064_full_job_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1783702200000,
+      "tag": "0065_nav_items",
+      "breakpoints": true
     }
   ]
 }

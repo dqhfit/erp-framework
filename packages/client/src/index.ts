@@ -144,6 +144,7 @@ export {
   type ScheduleSaveInput,
   type WorkflowSaveInput,
 } from "./objects";
+export { createNavClient, type NavClient, type NavItem, type NavKind } from "./nav";
 export { createOrgClient, type OrgClient } from "./org";
 export {
   createPluginsClient,

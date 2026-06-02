@@ -284,7 +284,10 @@ export const legacyMenuRouter = router({
       const jobId = await enqueueMigrationJob({
         action: "discover",
         module,
-        args: { seedTables, maxTables: input.maxTables },
+        // PROC-CENTRIC: truyền đúng proc form gọi → discover chỉ migrate các
+        // proc này + bảng chúng dùng, KHÔNG gom proc lạ theo bảng. seedTables
+        // vẫn truyền làm bảng nền.
+        args: { seedTables, seedProcs: procs, maxTables: input.maxTables },
         userId: ctx.user.id,
         companyId: ctx.user.companyId,
       });

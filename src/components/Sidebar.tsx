@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { NavMenuSection } from "@/components/NavMenuSection";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import type { IconName } from "@/lib/object-types";
@@ -933,6 +934,8 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-1">
+        {/* Menu tự dựng (nav_items) — ẩn nếu rỗng. Cấu hình ở /settings/navigation. */}
+        <NavMenuSection collapsed={collapsed} />
         {!isViewer && (!search.trim() || filterBySearch(userEntities).length > 0) && (
           <SidebarSection
             title={t("sidebar.entities")}
@@ -1399,6 +1402,22 @@ export function Sidebar() {
                   to: "/settings/migration",
                   label: "Migrate DQHF",
                   iconName: "Database",
+                })
+              }
+            />
+            <SidebarItem
+              to="/settings/navigation"
+              active={pathname === "/settings/navigation"}
+              icon={<I.List size={14} />}
+              collapsed={collapsed}
+              label="Trình dựng menu"
+              isFavorited={favs.isFav("/settings/navigation")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/settings/navigation",
+                  to: "/settings/navigation",
+                  label: "Trình dựng menu",
+                  iconName: "List",
                 })
               }
             />

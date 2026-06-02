@@ -374,6 +374,9 @@ export const migrationRouter = router({
   cancelJob: rbacProcedure("edit", "settings")
     .input(z.object({ jobId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      // Cho phép huỷ cả job ĐANG CHẠY: worker check status='canceled' ở ranh
+      // giới mỗi item (cooperative stop) → dừng giữa chừng, không ghi đè
+      // completed. queued thì worker bỏ khi tới lượt.
       const [job] = await ctx.db
         .update(migrationJobs)
         .set({ status: "canceled", updatedAt: new Date() })
@@ -381,14 +384,14 @@ export const migrationRouter = router({
           and(
             eq(migrationJobs.id, input.jobId),
             eq(migrationJobs.companyId, ctx.user.companyId),
-            sql`${migrationJobs.status} in ('queued','failed')`,
+            sql`${migrationJobs.status} in ('queued','running','failed')`,
           ),
         )
         .returning({ id: migrationJobs.id });
       if (!job) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Job không tồn tại hoặc đang chạy/đã xong — không huỷ được.",
+          message: "Job không tồn tại hoặc đã xong — không huỷ được.",
         });
       }
       return { jobId: job.id, status: "canceled" as const };
@@ -482,7 +485,12 @@ export const migrationRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
       }
       const current = YAML.parse(readFileSync(p, "utf8")) as {
-        discoverParams?: { seedTables: string[]; excludeTables: string[]; maxTables: number };
+        discoverParams?: {
+          seedTables: string[];
+          excludeTables: string[];
+          maxTables: number;
+          seedProcs?: string[];
+        };
       };
       const params = current.discoverParams;
       if (!params) {
@@ -499,6 +507,8 @@ export const migrationRouter = router({
           seedTables: params.seedTables,
           excludeTables: params.excludeTables,
           maxTables: params.maxTables,
+          // Giữ proc-centric khi refresh module cockpit.
+          seedProcs: params.seedProcs,
           mssqlClient: client,
           merge: true,
         });

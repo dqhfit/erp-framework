@@ -269,16 +269,31 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
       return mssqlClient;
     };
 
+    // Cooperative stop: đọc lại status='canceled' để dừng giữa chừng (enrich/
+    // generate check ở ranh giới mỗi item).
+    const jobCanceled = async (): Promise<boolean> => {
+      const [r] = await db
+        .select({ status: migrationJobs.status })
+        .from(migrationJobs)
+        .where(eq(migrationJobs.id, data.jobId))
+        .limit(1);
+      return r?.status === "canceled";
+    };
+
     switch (data.action) {
-      case "discover":
+      case "discover": {
+        const seedProcs = arrayArg(data.args.seedProcs);
         await runDiscover({
           name: data.module,
           seedTables: arrayArg(data.args.seedTables),
           excludeTables: arrayArg(data.args.excludeTables),
           maxTables: numArg(data.args.maxTables, 30),
+          // Proc-centric khi cockpit truyền seedProcs (port theo form).
+          seedProcs: seedProcs.length > 0 ? seedProcs : undefined,
           mssqlClient: mc(),
         });
         break;
+      }
       case "enrich": {
         const enrichResult = await runEnrich({
           module: data.module,
@@ -290,6 +305,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           onlyProcs: arrayArg(data.args.onlyProcs),
           mssqlClient: mc(),
           companyId: data.companyId,
+          shouldStop: jobCanceled,
           onProgress: ({ phase, name, index, total }) => {
             const label = phase === "table" ? "Table" : "Proc";
             const msg = `${label} ${index}/${total}: ${name}`;
@@ -352,6 +368,7 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           },
           publishProgress: (p) =>
             publishWs(`migration:${data.userId}`, { kind: "progress", jobId: data.jobId, ...p }),
+          shouldStop: jobCanceled,
         });
         state.message = `Codegen: ${r.succeeded} apply / ${r.skipped} skip / ${r.failed} fail (tổng ${r.total})`;
         break;
@@ -368,14 +385,17 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
       }
     }
 
-    state.status = "completed";
+    // User huỷ giữa chừng (enrich/generate đã dừng cooperative) → set canceled,
+    // KHÔNG ghi đè completed. full-import tự xử lý canceled bên trong.
+    const wasCanceled = !isFullImport && (await jobCanceled());
+    state.status = wasCanceled ? "canceled" : "completed";
     state.completedAt = new Date().toISOString();
     state.durationMs = Date.now() - t0;
     if (!isFullImport) {
       await db
         .update(migrationJobs)
         .set({
-          status: "completed",
+          status: wasCanceled ? "canceled" : "completed",
           message: state.message ?? null,
           completedAt: new Date(),
           durationMs: state.durationMs,
@@ -384,7 +404,10 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
         })
         .where(eq(migrationJobs.id, data.jobId));
     }
-    publishWs(`migration:${data.userId}`, { kind: "completed", state });
+    publishWs(`migration:${data.userId}`, {
+      kind: wasCanceled ? "canceled" : "completed",
+      state,
+    });
   } catch (e) {
     state.status = "failed";
     state.completedAt = new Date().toISOString();

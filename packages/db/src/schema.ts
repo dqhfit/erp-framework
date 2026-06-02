@@ -492,6 +492,33 @@ export const pages = pgTable(
   }),
 );
 
+/* nav_items — cau hinh menu/dieu huong per-company dang CAY. Admin dung trinh
+   dung menu (Settings -> Navigation) de tu sap xep: nhom (group) chua page/link,
+   keo-tha doi thu tu + cap cha. Render o Sidebar section "Menu".
+   kind: group (thu muc, khong target) | page (target=pageId) | link (target=route/url).
+   parentId self-ref (FK + cascade khai o migration 0065). */
+export const navItems = pgTable(
+  "nav_items",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id"),
+    kind: text("kind").notNull().default("group"),
+    label: text("label").notNull(),
+    icon: text("icon"),
+    target: text("target"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyIdx: index("nav_items_company_idx").on(t.companyId),
+    parentIdx: index("nav_items_parent_idx").on(t.parentId),
+  }),
+);
+
 export const viewerGroups = pgTable("viewer_groups", {
   id: uuid("id").primaryKey().defaultRandom(),
   companyId: uuid("company_id")

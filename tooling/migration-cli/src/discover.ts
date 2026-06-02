@@ -36,6 +36,10 @@ export interface DiscoverOptions {
    *  Đồng thời compute diff (table/proc/column added/removed) và lưu
    *  vào manifest.lastRefresh. */
   merge?: boolean;
+  /** PROC-CENTRIC mode (cockpit "Port mục này"): module = ĐÚNG các proc form
+   *  gọi + bảng chúng đọc/ghi (+ FK lookup 1-hop). KHÔNG gom mọi proc tham
+   *  chiếu bảng (table-BFS). Khi set, seedTables chỉ là bảng nền (vẫn nạp). */
+  seedProcs?: string[];
 }
 
 export async function runDiscover(opts: DiscoverOptions): Promise<void> {
@@ -65,8 +69,67 @@ export async function runDiscover(opts: DiscoverOptions): Promise<void> {
       queue.push(q);
     }
 
-    // BFS.
-    while (queue.length > 0) {
+    const procCentric = !!(opts.seedProcs && opts.seedProcs.length > 0);
+
+    // ── PROC-CENTRIC (cockpit): module = đúng proc form gọi + bảng chúng
+    // đọc/ghi (+ FK lookup 1-hop). KHÔNG findProcsReferencing → không kéo proc
+    // của chức năng khác chỉ vì dùng chung bảng. Bảng thiếu chỉ cần migrate bảng.
+    if (procCentric) {
+      console.log(
+        `  Mode: proc-centric — ${opts.seedProcs!.length} proc theo form (không gom proc theo bảng)`,
+      );
+      for (const rawProc of opts.seedProcs!) {
+        const procFull = qualifyName(rawProc);
+        if (procsSeen.has(procFull)) continue;
+        procsSeen.add(procFull);
+        const [sch, nm] = procFull.split(".");
+        const proc = sch && nm ? await client.getProc(sch, nm) : null;
+        if (!proc) {
+          console.warn(`! Proc không tồn tại: ${procFull} (bỏ qua)`);
+          continue;
+        }
+        const analysis = analyzeProc(proc.body);
+        // Bảng proc đọc/ghi → vào module (excluded → cross-edge).
+        for (const t of [...analysis.readsTables, ...analysis.writesTables]) {
+          const qt = qualifyName(t);
+          if (excluded.has(qt)) {
+            crossEdges.push({
+              proc: procFull,
+              externalTable: qt,
+              kind: analysis.writesTables.includes(t) ? "write" : "read",
+              suggestedContract: analysis.writesTables.includes(t)
+                ? `tRPC <module>.<action>({ ... })  // contract gọi module sở hữu`
+                : `query qua plugin mssql-bridge trong giai đoạn quá độ`,
+            });
+            continue;
+          }
+          if (!moduleTables.has(qt) && moduleTables.size < opts.maxTables) {
+            moduleTables.add(qt);
+          }
+        }
+        manifestProcs.push(toManifestProc(procFull, analysis));
+        (
+          manifestProcs[manifestProcs.length - 1] as ManifestProc & {
+            _joinPairs?: typeof analysis.joinPairs;
+          }
+        )._joinPairs = analysis.joinPairs;
+      }
+      // FK lookup 1-hop: thêm bảng được FK trỏ tới (để entity có relationEntity),
+      // KHÔNG kéo thêm proc.
+      for (const tname of [...moduleTables]) {
+        if (moduleTables.size >= opts.maxTables) break;
+        const info = await getTableCached(client, tname, tableInfoCache);
+        for (const fk of info?.foreignKeys ?? []) {
+          const qt = qualifyName(fk.refTable);
+          if (!excluded.has(qt) && !moduleTables.has(qt) && moduleTables.size < opts.maxTables) {
+            moduleTables.add(qt);
+          }
+        }
+      }
+    }
+
+    // BFS (table-centric) — chỉ dùng cho CLI seed-tables, KHÔNG cho proc-centric.
+    while (!procCentric && queue.length > 0) {
       if (moduleTables.size > opts.maxTables) {
         console.warn(
           `! Đã đạt max-tables=${opts.maxTables}; dừng BFS sớm. ` +
@@ -154,6 +217,8 @@ export async function runDiscover(opts: DiscoverOptions): Promise<void> {
         seedTables: opts.seedTables,
         excludeTables: opts.excludeTables,
         maxTables: opts.maxTables,
+        // Lưu seedProcs để refresh giữ đúng chế độ proc-centric.
+        ...(opts.seedProcs && opts.seedProcs.length > 0 ? { seedProcs: opts.seedProcs } : {}),
         lastRunAt: new Date().toISOString(),
       },
     };

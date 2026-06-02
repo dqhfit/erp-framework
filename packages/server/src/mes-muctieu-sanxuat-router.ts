@@ -51,6 +51,22 @@ const SaveThangInput = ThangInput.extend({
   soKhoiCongTru: z.number().nullable(), // col24
 });
 
+/** Khoảng ngày (xem read-only nhiều kỳ). */
+const ChitietRangeInput = z.object({
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  maBoPhan: z.string().min(1),
+});
+
+/** Khoảng tháng (header tổng hợp nhiều tháng). */
+const ThangRangeInput = z.object({
+  namFrom: z.number().int().min(2000).max(2100),
+  thangFrom: z.number().int().min(1).max(12),
+  namTo: z.number().int().min(2000).max(2100),
+  thangTo: z.number().int().min(1).max(12),
+  maBoPhan: z.string().min(1),
+});
+
 const SaveChitietInput = z.object({
   id: z.string().uuid(),
   mucTieuSoGio: z.number().min(0),
@@ -101,6 +117,57 @@ export const mesMucTieuSanXuatRouter = router({
           ),
         )
         .orderBy(asc(mesMucTieuSanXuatThang.mucThuong));
+    }),
+
+  /** Header tổng hợp 4 mức thưởng cho NHIỀU tháng trong khoảng [from, to].
+   *  Đọc thuần (read-only) — KHÔNG tạo hàng. Dùng cho chế độ xem khoảng. */
+  listThangRange: rbacProcedure("view", "entity")
+    .input(ThangRangeInput)
+    .query(async ({ ctx, input }) => {
+      // Khóa so sánh nam*100+thang để bao trọn các tháng giữa 2 mốc.
+      const a = input.namFrom * 100 + input.thangFrom;
+      const b = input.namTo * 100 + input.thangTo;
+      const fromKey = Math.min(a, b);
+      const toKey = Math.max(a, b);
+      return ctx.db
+        .select()
+        .from(mesMucTieuSanXuatThang)
+        .where(
+          and(
+            eq(mesMucTieuSanXuatThang.companyId, ctx.user.companyId),
+            eq(mesMucTieuSanXuatThang.maBoPhan, input.maBoPhan),
+            sql`(${mesMucTieuSanXuatThang.nam} * 100 + ${mesMucTieuSanXuatThang.thang}) >= ${fromKey}`,
+            sql`(${mesMucTieuSanXuatThang.nam} * 100 + ${mesMucTieuSanXuatThang.thang}) <= ${toKey}`,
+          ),
+        )
+        .orderBy(
+          asc(mesMucTieuSanXuatThang.nam),
+          asc(mesMucTieuSanXuatThang.thang),
+          asc(mesMucTieuSanXuatThang.mucThuong),
+        );
+    }),
+
+  /** Chi tiết hàng ngày trong khoảng [fromDate, toDate]. Đọc thuần — KHÔNG
+   *  tạo hàng thiếu (khác getOrCreateChitiet). Dùng cho chế độ xem khoảng. */
+  listChitietRange: rbacProcedure("view", "entity")
+    .input(ChitietRangeInput)
+    .query(async ({ ctx, input }) => {
+      const [lo, hi] =
+        input.fromDate <= input.toDate
+          ? [input.fromDate, input.toDate]
+          : [input.toDate, input.fromDate];
+      return ctx.db
+        .select()
+        .from(mesMucTieuSanXuatChitiet)
+        .where(
+          and(
+            eq(mesMucTieuSanXuatChitiet.companyId, ctx.user.companyId),
+            eq(mesMucTieuSanXuatChitiet.maCongDoan, input.maBoPhan),
+            sql`${mesMucTieuSanXuatChitiet.ngaythang} >= ${lo}::date`,
+            sql`${mesMucTieuSanXuatChitiet.ngaythang} <= ${hi}::date`,
+          ),
+        )
+        .orderBy(asc(mesMucTieuSanXuatChitiet.ngaythang));
     }),
 
   /** Tạo 4 hàng mức thưởng nếu chưa tồn tại. Trả về danh sách sau khi init. */

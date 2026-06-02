@@ -59,6 +59,7 @@ import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
 import { migrationRouter } from "./migration-router";
 import { legacyMenuRouter } from "./legacy-menu-router";
+import { navRouter } from "./nav-router";
 import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
 import { mesMucTieuMigrateRouter } from "./mes-muctieu-migrate-router";
 import { printTemplatesRouter } from "./print-templates-router";
@@ -538,6 +539,9 @@ export const appRouter = router({
 
   /* ── Cockpit menu-driven — bản đồ menu app cũ (SYS_MENU_NEW) ── */
   legacyMenu: legacyMenuRouter,
+
+  /* ── Trình dựng menu (nav builder) — cây điều hướng per-company ── */
+  nav: navRouter,
 
   /* ── MES: Mục tiêu sản xuất ── */
   mesMucTieuSanXuat: mesMucTieuSanXuatRouter,

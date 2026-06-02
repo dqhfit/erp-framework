@@ -192,6 +192,8 @@ export interface Manifest {
     seedTables: string[];
     excludeTables: string[];
     maxTables: number;
+    /** Proc form gọi — set khi discover ở chế độ proc-centric (cockpit). */
+    seedProcs?: string[];
     lastRunAt: string;
   };
   /** Lưu lịch sử refresh để user biết bảng/cột nào mới so với lần trước. */

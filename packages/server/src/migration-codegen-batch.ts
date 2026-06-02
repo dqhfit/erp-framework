@@ -78,6 +78,8 @@ export async function runGenerateModule(args: {
   userId: string;
   opts?: RunGenerateOpts;
   publishProgress?: (p: RunGenerateProgress) => void;
+  /** Cooperative stop: true → dừng giữa các proc (idempotent, resume được). */
+  shouldStop?: () => boolean | Promise<boolean>;
 }): Promise<RunGenerateResult> {
   const opts: Required<
     Pick<RunGenerateOpts, "skipExisting" | "overwriteFiles" | "includeDirty">
@@ -112,6 +114,7 @@ export async function runGenerateModule(args: {
   let failed = 0;
 
   for (let i = 0; i < candidates.length; i++) {
+    if (await args.shouldStop?.()) break; // user huỷ → dừng sau proc hiện tại
     const proc = candidates[i]!;
     const current = i + 1;
     const total = candidates.length;

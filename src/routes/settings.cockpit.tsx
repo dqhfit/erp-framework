@@ -206,6 +206,7 @@ export function CockpitPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const alertResolveRef = useRef<(() => void) | null>(null);
+  const stopFixRef = useRef(false); // cờ dừng vòng "Tự sửa" giữa các proc
 
   const showAlert = useCallback((msg: string): Promise<void> => {
     return new Promise((resolve) => {
@@ -466,10 +467,12 @@ export function CockpitPage() {
         return;
       }
       setBusy(`fix:${module}`);
+      stopFixRef.current = false;
       let fixed = 0;
       let still = 0;
       try {
         for (const f of fails) {
+          if (stopFixRef.current) break; // user nhấn Dừng → dừng sau proc hiện tại
           // 1) lấy feedback chi tiết (diff golden vs output)
           const v = await migApi.verifyProc(module, f.procName);
           if (v.verified) {
@@ -941,23 +944,31 @@ export function CockpitPage() {
                         Verify golden
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {verifyResult && verifyResult.failed > 0 && (
+                        {busy === `fix:${selected.module}` && (
                           <Button
                             size="sm"
-                            variant="default"
-                            disabled={busy != null}
-                            onClick={() => doFixVerifyFails(selected.module!)}
-                            icon={
-                              busy === `fix:${selected.module}` ? (
-                                <I.Loader size={11} className="animate-spin" />
-                              ) : (
-                                <I.Wand size={11} />
-                              )
-                            }
+                            variant="danger"
+                            onClick={() => {
+                              stopFixRef.current = true;
+                            }}
+                            icon={<I.X size={11} />}
                           >
-                            Tự sửa ({verifyResult.failed})
+                            Dừng
                           </Button>
                         )}
+                        {verifyResult &&
+                          verifyResult.failed > 0 &&
+                          busy !== `fix:${selected.module}` && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={busy != null}
+                              onClick={() => doFixVerifyFails(selected.module!)}
+                              icon={<I.Wand size={11} />}
+                            >
+                              Tự sửa ({verifyResult.failed})
+                            </Button>
+                          )}
                         <Button
                           size="sm"
                           variant="default"

@@ -95,6 +95,19 @@ export function createMesMucTieuSanXuatClient(baseUrl: string) {
         MucTieuThangRow[]
       >,
 
+    /** Header nhiều tháng trong khoảng (read-only). */
+    listThangRange: (input: {
+      namFrom: number;
+      thangFrom: number;
+      namTo: number;
+      thangTo: number;
+      maBoPhan: string;
+    }) => trpc.mesMucTieuSanXuat.listThangRange.query(input) as Promise<MucTieuThangRow[]>,
+
+    /** Chi tiết hàng ngày trong khoảng [fromDate, toDate] (read-only). */
+    listChitietRange: (input: { fromDate: string; toDate: string; maBoPhan: string }) =>
+      trpc.mesMucTieuSanXuat.listChitietRange.query(input) as Promise<MucTieuChitietRow[]>,
+
     saveThang: (input: {
       nam: number;
       thang: number;

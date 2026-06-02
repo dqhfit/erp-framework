@@ -20,7 +20,7 @@
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { mesMucTieuSanXuatChitiet, mesMucTieuSanXuatThang } from "@erp-framework/db";
 import { sql } from "drizzle-orm";
-import { db } from "./ai/db.js";
+import { closeDb, db } from "./ai/db.js";
 import { resolveCompanyId } from "./ai/llm-client.js";
 
 export interface MucTieuMigrateOptions {
@@ -320,5 +320,7 @@ export async function runMucTieuMigrate(opts: MucTieuMigrateOptions): Promise<vo
     }
   } finally {
     await client.close();
+    // Đóng pool PG để process thoát sạch (không treo sau khi xong).
+    await closeDb();
   }
 }

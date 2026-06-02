@@ -49,6 +49,9 @@ export interface EnrichOptions {
   onlyProcs?: string[];
   /** Callback per-item để worker/UI theo dõi tiến trình. */
   onProgress?: (info: EnrichProgressInfo) => void;
+  /** Cooperative stop: trả true → dừng giữa chừng (giữ progress, resume qua
+   *  skipEnriched). Worker đọc status='canceled' của job. */
+  shouldStop?: () => boolean | Promise<boolean>;
 }
 
 interface EnrichedTableOutput {
@@ -120,6 +123,7 @@ export async function runEnrich(
   let totalIn = 0;
   let totalOut = 0;
   let costStopped = false;
+  let userStopped = false;
   let tablesDone = 0;
   let procsDone = 0;
 
@@ -127,6 +131,10 @@ export async function runEnrich(
     // --- Enrich table --- (bỏ qua khi single-proc mode)
     if (!isSingleProcMode) {
       for (const t of m.tables) {
+        if (await opts.shouldStop?.()) {
+          userStopped = true;
+          break;
+        }
         if (opts.skipEnriched && t.enrichedAt) continue;
         let samples: unknown[] = [];
         try {
@@ -204,8 +212,12 @@ export async function runEnrich(
       console.warn(`! Không tìm thấy proc nào khớp onlyProcs=${onlyProcs!.join(",")}`);
     }
 
-    if (!costStopped) {
+    if (!costStopped && !userStopped) {
       for (const p of procsToEnrich) {
+        if (await opts.shouldStop?.()) {
+          userStopped = true;
+          break;
+        }
         if (opts.skipEnriched && p.enrichedAt) continue;
 
         let body = "";
@@ -295,7 +307,9 @@ export async function runEnrich(
   const cumIn = baseIn + totalIn;
   const cumOut = baseOut + totalOut;
   const cost = estimateCostUsd(cumIn, cumOut);
-  if (costStopped) {
+  if (userStopped) {
+    console.log(`\n⏹ Enrich bị DỪNG (user huỷ): ${outPath} — progress đã lưu, resume được.`);
+  } else if (costStopped) {
     console.log(`\n⚠ Enrich dừng giữa chừng (vượt cost): ${outPath}`);
     console.log(
       `  Token tích lũy ~ in:${cumIn} out:${cumOut} (run này +${totalIn}/+${totalOut})  Cost ~ $${cost.toFixed(3)}`,
