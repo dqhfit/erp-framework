@@ -43,10 +43,12 @@ Env cần đặt:
   MSSQL_ALLOW_WRITE=1       Cho phép execProc (chỉ bật khi capture golden)
   DATABASE_URL              Connection string PG của framework
   MIGRATION_COMPANY_ID      Company UUID target (default: company đầu tiên)
-  ANTHROPIC_API_KEY         Key dev local — bắt buộc cho codegen-proc
+  BRIDGE_URL                Bridge Claude Code CLI cho codegen-proc (Docker:
+                            http://bridge:8909; dev mặc định http://localhost:8909).
+                            codegen-proc KHÔNG cần ANTHROPIC_API_KEY.
   MIGRATION_CODEGEN_MODEL   Model override cho codegen-proc (default claude-opus-4-8)
-  MIGRATION_CODEGEN_TYPECHECK  Prefix lệnh typecheck agent được phép chạy
-                            (trống = chặn Bash, agent chỉ viết file)
+  MIGRATION_CODEGEN_TYPECHECK  Lệnh typecheck agent được phép chạy (so khớp
+                            chính xác + cấm shell-metachar; trống = chặn Bash)
 
 Ví dụ:
   pnpm migrate discover --name sales --seed-tables dbo.Orders,dbo.OrderItems

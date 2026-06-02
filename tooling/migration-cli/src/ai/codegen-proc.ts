@@ -9,13 +9,19 @@
    - AGENT (SDK query) làm phần coding: đọc file mẫu, viết file đích,
      (tuỳ chọn) chạy typecheck + sửa lặp. Bị `canUseTool` chặn cứng:
        · Read/Glob/Grep: cho phép (chỉ đọc).
-       · Write/Edit: CHỈ trong packages/plugins/module-<module>/.
-       · Bash: CHỈ khi khớp prefix typecheck cấu hình ở env
-         MIGRATION_CODEGEN_TYPECHECK (mặc định trống = chặn hết Bash).
+       · Write/Edit: CHỈ trong packages/plugins/module-<module>/ (so khớp
+         realpath + separator, chống sibling-prefix & symlink escape).
+       · Bash: CHỈ lệnh typecheck ở env MIGRATION_CODEGEN_TYPECHECK (cho
+         kèm arg sau dấu cách, nhưng REJECT mọi shell-metachar
+         ; & | ` $ > < newline → chống chaining). Trống = chặn hết Bash.
        · Còn lại: chặn.
 
-   KHÔNG đụng packages/server runtime. KHÔNG auto-commit. ANTHROPIC_API_KEY
-   lấy từ env dev local (KHÔNG dùng llm_profiles per-tenant).
+   KHÔNG đụng packages/server runtime. KHÔNG auto-commit.
+
+   LLM auth: KHÔNG dùng ANTHROPIC_API_KEY. Agent SDK spawn Claude Code CLI
+   và trỏ ANTHROPIC_BASE_URL về bridge cục bộ (BRIDGE_URL hoặc
+   http://localhost:8909) — bridge tự auth qua phiên Claude Code local
+   (giống adapter "claude-cli" của llm-client/llm-json). Không cần key thật.
    ========================================================== */
 
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
@@ -147,9 +153,10 @@ function makeGuard(moduleDir: string, typecheckPrefix: string | null): CanUseToo
 export async function runCodegenProc(
   opts: CodegenProcOptions,
 ): Promise<{ filePath: string; costUsd: number; numTurns: number }> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("codegen-proc: cần đặt env ANTHROPIC_API_KEY (key dev local).");
-  }
+  // KHÔNG cần ANTHROPIC_API_KEY — route qua bridge cục bộ. Cùng cách resolve
+  // như llm-json/llm-client: BRIDGE_URL (Docker: http://bridge:8909) hoặc
+  // http://localhost:8909 (dev chạy ngoài Docker).
+  const bridgeUrl = (process.env.BRIDGE_URL || "http://localhost:8909").replace(/\/$/, "");
 
   const repoRoot = findRepoRoot();
   const m = readManifest(opts.module);
@@ -231,6 +238,7 @@ export async function runCodegenProc(
 
   console.log(`▸ codegen-proc: ${proc.name} → ${targetPath}`);
   console.log(`  Repo root: ${repoRoot}`);
+  console.log(`  LLM: bridge ${bridgeUrl} (Claude Code CLI, không cần API key)`);
   console.log(`  Model: ${opts.model ?? process.env.MIGRATION_CODEGEN_MODEL ?? DEFAULT_MODEL}`);
   console.log(
     `  maxTurns: ${opts.maxTurns ?? 30}  | Bash typecheck: ${typecheckPrefix ?? "(tắt)"}`,
@@ -252,6 +260,14 @@ export async function runCodegenProc(
       tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
       permissionMode: "default",
       canUseTool: makeGuard(moduleDir, typecheckPrefix),
+      // env REPLACE toàn bộ env subprocess (theo doc SDK) → phải spread
+      // process.env để giữ PATH/HOME. Trỏ CLI về bridge, không cần key thật;
+      // placeholder ANTHROPIC_API_KEY để CLI chạy API-mode (bridge bỏ qua key).
+      env: {
+        ...process.env,
+        ANTHROPIC_BASE_URL: bridgeUrl,
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "bridge",
+      },
     },
   });
 
