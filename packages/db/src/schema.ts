@@ -189,6 +189,34 @@ export const entities = pgTable(
   }),
 );
 
+/* Nguồn dữ liệu (DataSource) — đối tượng hạng nhất kiểu ORM: gộp field từ
+   nhiều entity liên quan (join qua lookup) thành 1 bảng phẳng, đọc+ghi, gán
+   cho widget. config (jsonb) chứa DataSourceConfig (xem core/datasource/config).
+   KHÔNG có bảng dữ liệu riêng — đọc/ghi xuyên qua entity_records của các entity
+   nguồn (base + relation). Mirror cấu trúc entities. */
+export const dataSources = pgTable(
+  "datasources",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // định danh máy: "don_hang_kem_khach"
+    label: text("label").notNull(), // nhãn hiển thị
+    icon: text("icon"),
+    config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyNameIdx: uniqueIndex("datasources_company_name_idx").on(
+      t.companyId,
+      sql`lower(${t.name})`,
+    ),
+    companyIdx: index("datasources_company_idx").on(t.companyId),
+  }),
+);
+
 /* Dữ liệu thực tế của entity động — JSONB. Index: btree(entityId)
    + GIN(data) riêng; index khoảng/sort viết SQL thô trong migration.
    - deletedAt: soft delete; null = active, ts = đã xoá nhưng còn restore được.

@@ -10,8 +10,7 @@
 import { createApiDataSource } from "@erp-framework/client";
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Input, Modal } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionStepOpenPopup } from "@/types/page";
 
@@ -246,18 +245,13 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                     {f.label}
                   </label>
                 ) : f.options && f.options.length > 0 ? (
-                  <select
-                    className={cn("input w-full")}
+                  <SearchableSelect
+                    className="w-full"
                     value={formValues[f.name] ?? ""}
-                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                  >
-                    <option value="">— chọn —</option>
-                    {f.options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                    options={f.options.map((opt) => ({ value: opt, label: opt }))}
+                    emptyOption="— chọn —"
+                  />
                 ) : f.type === "text" || f.type === "longtext" ? (
                   <textarea
                     className="input w-full resize-none"

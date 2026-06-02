@@ -24,7 +24,7 @@ import { I } from "@/components/Icons";
 import { Chart } from "@/components/renderer/Chart";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
-import { Chip } from "@/components/ui";
+import { Chip, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useT } from "@/hooks/useT";
 import { applyFieldFormat } from "@/lib/format";
@@ -90,19 +90,85 @@ function usePageState(): PageStateCtx {
   return ctx;
 }
 
-/** Hook nhỏ — nạp record thật của một entity (giới hạn 500 dòng).
+/* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
+
+type LoadFilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in";
+/** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
+type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
+
+/** Số dòng mặc định khi widget không cấu hình rowLimit. */
+const DEFAULT_ROW_LIMIT = 500;
+/** Trần cứng — khớp queryParams.limit.max(10_000) ở server (tránh lỗi validate). */
+const MAX_ROW_LIMIT = 10_000;
+
+interface UseRecordsOpts {
+  /** Số dòng tối đa tải (server-side LIMIT). Mặc định 500. */
+  limit?: number;
+  /** Điều kiện lọc áp ở DB TRƯỚC khi cắt limit. */
+  filters?: LoadFilters;
+  /** Cổng: false → không tải gì (vd chờ chọn bộ lọc). Mặc định true. */
+  enabled?: boolean;
+}
+
+/** Suy ra UseRecordsOpts từ config widget + page-state.
+ *  - rowLimit  : số dòng (number > 0).
+ *  - loadFilters: điều kiện server-side {field: {op, value}}.
+ *  - loadGate  : stateKey — chỉ tải khi state này có giá trị. */
+function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
+  const pageState = usePageState();
+  const rawLimit = cfg.rowLimit;
+  const limit =
+    typeof rawLimit === "number" && rawLimit > 0
+      ? Math.min(Math.floor(rawLimit), MAX_ROW_LIMIT)
+      : DEFAULT_ROW_LIMIT;
+  const lf = cfg.loadFilters as LoadFilters | undefined;
+  let filters: LoadFilters | undefined;
+  if (lf && Object.keys(lf).length > 0) {
+    // Chuẩn hóa: op "in" cần value là MẢNG (server dùng = ANY(arr)); designer
+    // lưu chuỗi "a,b,c" → tách thành mảng. Op khác giữ nguyên.
+    filters = {};
+    for (const [field, cond] of Object.entries(lf)) {
+      if (cond.op === "in" && typeof cond.value === "string") {
+        filters[field] = {
+          op: "in",
+          value: cond.value
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        };
+      } else {
+        filters[field] = cond;
+      }
+    }
+  }
+  const gateKey = (cfg.loadGate as string | undefined)?.trim();
+  let enabled = true;
+  if (gateKey) {
+    const v = pageState.get(gateKey);
+    enabled = !(v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0));
+  }
+  return { limit, filters, enabled };
+}
+
+/** Hook nhỏ — nạp record thật của một entity (số dòng + điều kiện cấu hình được).
  *  Khi ActionWidget gọi procedure xong, nó set pageState["__refresh:<entityId>"]
  *  = timestamp; ta đọc tag đó vào deps để useEffect re-run → refetch. */
-function useRecords(entityId?: string) {
+function useRecords(entityId?: string, opts?: UseRecordsOpts) {
+  const limit = opts?.limit ?? DEFAULT_ROW_LIMIT;
+  const enabled = opts?.enabled !== false;
+  const filters = opts?.filters;
+  // Khóa ổn định cho deps — tránh re-fetch vô hạn do object literal mới mỗi render.
+  const filtersKey = filters ? JSON.stringify(filters) : "";
+
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!entityId);
+  const [loading, setLoading] = useState<boolean>(!!entityId && enabled);
   const [err, setErr] = useState("");
   const pageState = usePageState();
   const refreshTag = entityId
     ? (pageState.get(`__refresh:${entityId}`) as number | undefined)
     : undefined;
   useEffect(() => {
-    if (!entityId) {
+    if (!entityId || !enabled) {
       setRows([]);
       setLoading(false);
       return;
@@ -111,7 +177,7 @@ function useRecords(entityId?: string) {
     setLoading(true);
     setErr("");
     api
-      .getRecords(entityId, { limit: 500 })
+      .getRecords(entityId, { limit, filters })
       .then((res) => {
         if (alive) {
           setRows(res.rows.map((r) => r.data));
@@ -127,13 +193,154 @@ function useRecords(entityId?: string) {
     return () => {
       alive = false;
     };
-  }, [entityId, refreshTag]);
+    // filtersKey thay cho filters object để deps ổn định.
+  }, [entityId, refreshTag, limit, enabled, filtersKey]);
   return { rows, loading, err };
 }
 
 function useEntity(entityId?: string): MockEntity | undefined {
   const entities = useUserObjects((s) => s.entities);
   return entities.find((e) => e.id === entityId);
+}
+
+/* ── DataSource (ORM-like) read hook — row PHẲNG đã join + field meta. ──
+   refresh tag riêng (`__refresh:ds:<id>`) để ActionWidget có thể trigger refetch.
+   field meta map sang EntityField (key→name/id) để widget dùng đồng nhất. */
+function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecordsOpts) {
+  const limit = opts.limit ?? DEFAULT_ROW_LIMIT;
+  const enabled = opts.enabled !== false;
+  const filters = opts.filters;
+  const filtersKey = filters ? JSON.stringify(filters) : "";
+  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [fields, setFields] = useState<EntityField[]>([]);
+  const [loading, setLoading] = useState<boolean>(!!dataSourceId && enabled);
+  const [err, setErr] = useState("");
+  const pageState = usePageState();
+  const refreshTag = dataSourceId
+    ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
+    : undefined;
+  useEffect(() => {
+    if (!dataSourceId || !enabled) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    setErr("");
+    Promise.all([
+      api.getDataSourceRecords(dataSourceId, { limit, filters }),
+      api.getDataSourceMeta(dataSourceId),
+    ])
+      .then(([res, meta]) => {
+        if (!alive) return;
+        setRows(res.rows as Record<string, unknown>[]);
+        setFields(
+          meta.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+        );
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (alive) {
+          setErr((e as Error).message);
+          setLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [dataSourceId, refreshTag, limit, enabled, filtersKey]);
+  return { rows, fields, loading, err };
+}
+
+export interface WidgetData {
+  rows: Record<string, unknown>[];
+  /** Field meta để render cột/label (entity fields HOẶC datasource flat fields). */
+  fields: EntityField[];
+  loading: boolean;
+  err: string;
+  /** true nếu widget bind tới nguồn dữ liệu (datasource) thay entity. */
+  isDataSource: boolean;
+  create: (data: Record<string, unknown>) => Promise<void>;
+  update: (id: string, data: Record<string, unknown>) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+}
+
+/* ── Hook hợp nhất — widget bind ENTITY (cfg.entity) hoặc DATASOURCE
+   (cfg.dataSourceId). Nhánh entity giữ NGUYÊN hành vi cũ (tương thích
+   ngược); nhánh datasource đọc/ghi row phẳng đã join. */
+function useWidgetData(cfg: Record<string, unknown>): WidgetData {
+  const dataSourceId = (cfg.dataSourceId as string | undefined) || undefined;
+  const entityId = dataSourceId ? undefined : (cfg.entity as string | undefined);
+  const opts = useDataOpts(cfg);
+  const ent = useEntity(entityId);
+  const entRecs = useRecords(entityId, opts);
+  const ds = useDataSourceRecords(dataSourceId, opts);
+
+  if (dataSourceId) {
+    return {
+      rows: ds.rows,
+      fields: ds.fields,
+      loading: ds.loading,
+      err: ds.err,
+      isDataSource: true,
+      create: (data) => api.createDataSourceRecord(dataSourceId, data).then(() => undefined),
+      update: (id, data) =>
+        api.updateDataSourceRecord(dataSourceId, id, data).then(() => undefined),
+      remove: (id) => api.deleteDataSourceRecord(dataSourceId, id),
+    };
+  }
+  return {
+    rows: entRecs.rows,
+    fields: ent?.fields ?? [],
+    loading: entRecs.loading,
+    err: entRecs.err,
+    isDataSource: false,
+    create: (data) =>
+      entityId ? api.createRecord(entityId, data).then(() => undefined) : Promise.resolve(),
+    update: (id, data) => api.updateRecord(id, data).then(() => undefined),
+    remove: (id) => api.deleteRecord(id),
+  };
+}
+
+/* ── Hook nhẹ — chỉ field meta + create (KHÔNG fetch rows). Cho FormWidget:
+   form tạo mới không cần kéo toàn bộ row (join datasource có thể nặng). */
+function useWidgetMeta(cfg: Record<string, unknown>): {
+  isDataSource: boolean;
+  fields: EntityField[];
+  create: (data: Record<string, unknown>) => Promise<void>;
+} {
+  const dataSourceId = (cfg.dataSourceId as string | undefined) || undefined;
+  const entityId = dataSourceId ? undefined : (cfg.entity as string | undefined);
+  const ent = useEntity(entityId);
+  const [dsFields, setDsFields] = useState<EntityField[]>([]);
+  useEffect(() => {
+    if (!dataSourceId) {
+      setDsFields([]);
+      return;
+    }
+    let alive = true;
+    api
+      .getDataSourceMeta(dataSourceId)
+      .then((m) => {
+        if (alive)
+          setDsFields(
+            m.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [dataSourceId]);
+  return {
+    isDataSource: !!dataSourceId,
+    fields: dataSourceId ? dsFields : (ent?.fields ?? []),
+    create: dataSourceId
+      ? (data) => api.createDataSourceRecord(dataSourceId, data).then(() => undefined)
+      : (data) =>
+          entityId ? api.createRecord(entityId, data).then(() => undefined) : Promise.resolve(),
+  };
 }
 
 // ─── EditableListWidget — bảng chỉnh sửa inline (không có công thức) ──────────
@@ -331,6 +538,7 @@ function EditableListWidget({
 /** Widget "list" — bảng record thật, cột suy từ field của entity. */
 function ListWidget({
   entityId,
+  dataSourceId,
   stateKey,
   fields,
   selectionStateKey,
@@ -343,6 +551,9 @@ function ListWidget({
   editable,
   batchEdit,
   excelMode,
+  rowLimit,
+  loadFilters,
+  loadGate,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -369,16 +580,31 @@ function ListWidget({
   batchEdit?: boolean;
   /** Chế độ bảng tính kiểu Excel với hỗ trợ công thức. */
   excelMode?: boolean;
+  /** Số dòng tối đa tải (mặc định 500). */
+  rowLimit?: number;
+  /** Điều kiện lọc server-side áp trước khi cắt limit. */
+  loadFilters?: LoadFilters;
+  /** stateKey cổng: chỉ tải khi state có giá trị. */
+  loadGate?: string;
+  /** Bind tới nguồn dữ liệu (datasource) thay entity. */
+  dataSourceId?: string;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
-  const { rows, loading, err } = useRecords(entityId);
+  const {
+    rows,
+    loading,
+    err,
+    fields: dataFields,
+    isDataSource,
+    update: dataUpdate,
+  } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
 
-  if (!entityId) {
+  if (!entityId && !dataSourceId) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
   }
-  const allFields = ent?.fields ?? [];
+  const allFields = isDataSource ? dataFields : (ent?.fields ?? []);
 
   // fields=[...] → dùng đúng list đó; không có config → lọc theo defaultVisible của field
   const visibleFields =
@@ -487,9 +713,11 @@ function ListWidget({
 
   const columns = [...checkboxCol, ...fieldColumns];
 
-  // Hàm lưu 1 record (dùng cho editable và excelMode)
+  // Hàm lưu 1 record (dùng cho editable và excelMode). Datasource → ghi qua
+  // resolver (base field về record gốc), entity → records.update trực tiếp.
   const saveRecord = async (rowId: unknown, changes: Record<string, unknown>) => {
-    await api.updateRecord(String(rowId), changes);
+    if (isDataSource) await dataUpdate(String(rowId), changes);
+    else await api.updateRecord(String(rowId), changes);
   };
 
   // ── Chế độ bảng tính Excel ──────────────────────────────────────────
@@ -584,7 +812,7 @@ function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: 
   const forwardRefs =
     (cfg.forwardRefs as Array<{ field: string; refEntityId: string }> | undefined) ?? [];
   const ent = useEntity(entityId);
-  const { rows } = useRecords(entityId);
+  const { rows, fields: wdFields, isDataSource, update: dataUpdate } = useWidgetData(cfg);
   const pageState = usePageState();
 
   // Form state cho chế độ chỉnh sửa
@@ -596,7 +824,7 @@ function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: 
   const recordId = recordIdFromState ? pageState.get(recordIdFromState) : undefined;
   const record = rows.find((r) => r.id === recordId || String(r.id) === String(recordId));
 
-  const allFields = ent?.fields ?? [];
+  const allFields = isDataSource ? wdFields : (ent?.fields ?? []);
   const selectedFieldNames = (cfg.fields as string[] | undefined) ?? [];
   const allScalar = allFields.filter((f) => f.type !== "collection");
   const scalarFields =
@@ -663,7 +891,8 @@ function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: 
     try {
       const data: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
-      await api.updateRecord(String(record.id), data);
+      if (isDataSource) await dataUpdate(String(record.id), data);
+      else await api.updateRecord(String(record.id), data);
       setSaveMsg(t("widget.saved_ok"));
     } catch (e) {
       setSaveErr((e as Error).message);
@@ -719,18 +948,13 @@ function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: 
                 {f.required ? " *" : ""}
               </label>
               {f.type === "select" && f.options?.length ? (
-                <select
-                  className="input w-full"
+                <SearchableSelect
+                  className="w-full"
                   value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
-                >
-                  <option value="">— chọn —</option>
-                  {f.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, [f.name]: v })}
+                  options={f.options.map((o) => ({ value: o, label: o }))}
+                  emptyOption="— chọn —"
+                />
               ) : (
                 <input
                   className="input w-full"
@@ -826,10 +1050,15 @@ function CollectionSection({
     setLoading(true);
     setErr("");
     api
-      .getRecords(childEntityId, { limit: 500 })
+      // Lọc khóa ngoại NGAY tại DB (trước limit) thay vì kéo 500 dòng rồi lọc
+      // client — đúng khi entity con có >500 dòng tổng.
+      .getRecords(childEntityId, {
+        limit: DEFAULT_ROW_LIMIT,
+        filters: { [fkField]: { op: "=", value: parentId } },
+      })
       .then((res) => {
         if (!alive) return;
-        // Filter client-side theo fkField === parentId.
+        // Lọc lại client-side phòng hờ (server đã lọc đúng fkField).
         const filtered = res.rows.filter((r) => {
           const v = (r.data as Record<string, unknown>)[fkField];
           return v === parentId || String(v) === String(parentId);
@@ -1023,8 +1252,8 @@ function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const filterFromState = cfg.filterFromState as { field: string; stateKey: string } | undefined;
   const filters = cfg.filters as FilterNode | null | undefined;
   const pageState = usePageState();
-  // Chỉ truy vấn khi đã cấu hình đủ entity + field nhóm.
-  const { rows: allRows, loading, err } = useRecords(entityId && groupBy ? entityId : undefined);
+  // Chỉ truy vấn khi đã cấu hình field nhóm (entity/datasource từ cfg).
+  const { rows: allRows, loading, err } = useWidgetData(groupBy ? cfg : {});
 
   if (!entityId || !groupBy) {
     return (
@@ -1080,6 +1309,7 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
   const t = useT();
   const entityId = cfg.entity as string | undefined;
   const ent = useEntity(entityId);
+  const { fields: wdFields, isDataSource, create: wdCreate } = useWidgetMeta(cfg);
   const [form, setForm] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -1102,17 +1332,18 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
     return () => clearTimeout(t);
   }, [form, compId, emitLive]);
 
-  if (!entityId || !ent) {
+  if (!isDataSource && (!entityId || !ent)) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_form")}</div>;
   }
   const masterVal = linkedToState ? pageState.get(linkedToState.stateKey) : undefined;
   const hasMaster =
     !linkedToState || (masterVal !== undefined && masterVal !== null && masterVal !== "");
   const selectedFieldNames = (cfg.fields as string[] | undefined) ?? [];
+  const sourceFields = isDataSource ? wdFields : (ent?.fields ?? []);
   const allFields =
     selectedFieldNames.length > 0
-      ? (ent.fields ?? []).filter((f) => selectedFieldNames.includes(f.name))
-      : (ent.fields ?? []);
+      ? sourceFields.filter((f) => selectedFieldNames.includes(f.name))
+      : sourceFields;
   const fields = linkedToState?.field
     ? allFields.filter((f) => f.name !== linkedToState.field)
     : allFields;
@@ -1128,7 +1359,7 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
       if (linkedToState && masterVal != null && masterVal !== "") {
         data[linkedToState.field] = masterVal;
       }
-      await api.createRecord(entityId, data);
+      await wdCreate(data);
       setForm({});
       setMsg(t("widget.saved_record"));
     } catch (e) {
@@ -1163,18 +1394,13 @@ function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; compId?: st
                   multi={f.type === "multi-lookup"}
                 />
               ) : f.type === "select" && f.options?.length ? (
-                <select
-                  className="input w-full"
+                <SearchableSelect
+                  className="w-full"
                   value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
-                >
-                  <option value="">— chọn —</option>
-                  {f.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, [f.name]: v })}
+                  options={f.options.map((o) => ({ value: o, label: o }))}
+                  emptyOption="— chọn —"
+                />
               ) : f.type === "boolean" ? (
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -1232,7 +1458,7 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const filterFromState = cfg.filterFromState as { field: string; stateKey: string } | undefined;
   const filters = cfg.filters as FilterNode | null | undefined;
   const ent = useEntity(entityId);
-  const { rows: allRows, loading, err } = useRecords(entityId);
+  const { rows: allRows, loading, err } = useWidgetData(cfg);
   const pageState = usePageState();
 
   if (!entityId || !ent) {
@@ -1433,18 +1659,13 @@ function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
                       multi={f.type === "multi-lookup"}
                     />
                   ) : f.type === "select" && f.options?.length ? (
-                    <select
-                      className="input w-full"
+                    <SearchableSelect
+                      className="w-full"
                       value={form[f.name] ?? ""}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                    >
-                      <option value="">— chọn —</option>
-                      {f.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => setField(f.name, v)}
+                      options={f.options.map((o) => ({ value: o, label: o }))}
+                      emptyOption="— chọn —"
+                    />
                   ) : f.type === "boolean" ? (
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <input
@@ -1537,7 +1758,7 @@ function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const titleField = (cfg.titleField as string) || "name";
   const filters = cfg.filters as FilterNode | null | undefined;
   const ent = useEntity(entityId);
-  const { rows: allRows, loading, err } = useRecords(entityId);
+  const { rows: allRows, loading, err } = useWidgetData(cfg);
   const pageState = usePageState();
 
   if (!entityId || !ent)
@@ -1607,7 +1828,7 @@ function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const titleField = (cfg.titleField as string) || "name";
   const filters = cfg.filters as FilterNode | null | undefined;
   const ent = useEntity(entityId);
-  const { rows: allRows, loading, err } = useRecords(entityId);
+  const { rows: allRows, loading, err } = useWidgetData(cfg);
   const pageState = usePageState();
 
   if (!entityId || !ent)
@@ -1696,7 +1917,7 @@ function KpiWidget({ cfg }: { cfg: Record<string, unknown> }) {
     | "min"
     | "max";
   const filters = cfg.filters as FilterNode | null | undefined;
-  const { rows: allRows, loading } = useRecords(entityId);
+  const { rows: allRows, loading } = useWidgetData(cfg);
   const pageState = usePageState();
 
   let valueStr = (cfg.value as string) ?? "—";
@@ -1737,7 +1958,7 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const agg = (cfg.agg as string) || "count";
   const filters = cfg.filters as FilterNode | null | undefined;
   const ent = useEntity(entityId);
-  const { rows: allRows, loading, err } = useRecords(entityId);
+  const { rows: allRows, loading, err } = useWidgetData(cfg);
   const pageState = usePageState();
 
   if (!entityId || !ent)
@@ -1883,6 +2104,7 @@ function RenderSubWidget({
     return (
       <ListWidget
         entityId={cfg.entity as string | undefined}
+        dataSourceId={cfg.dataSourceId as string | undefined}
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
@@ -1893,6 +2115,9 @@ function RenderSubWidget({
         editable={cfg.editable === true}
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
+        rowLimit={cfg.rowLimit as number | undefined}
+        loadFilters={cfg.loadFilters as LoadFilters | undefined}
+        loadGate={cfg.loadGate as string | undefined}
       />
     );
   if (kind === "detail") return <DetailWidget cfg={cfg} />;
@@ -2005,9 +2230,8 @@ function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
 function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const pageState = usePageState();
-  const entity = cfg.entity as string | undefined;
   const field = cfg.field as string | undefined;
-  const { rows } = useRecords(entity);
+  const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
@@ -2030,18 +2254,13 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   return (
     <div className="p-2 h-full flex flex-col gap-1">
       {label && <div className="text-xs font-medium text-muted">{label}</div>}
-      <select
+      <SearchableSelect
+        className="w-full"
         value={val}
-        onChange={(e) => pageState.set(stateKey, e.target.value)}
-        className="w-full h-8 px-2 border border-border rounded bg-bg text-sm outline-none focus:border-accent"
-      >
-        <option value="">— tất cả —</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => pageState.set(stateKey, v)}
+        options={options.map((o) => ({ value: o, label: o }))}
+        emptyOption="— tất cả —"
+      />
     </div>
   );
 }
@@ -2049,9 +2268,8 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const t = useT();
   const pageState = usePageState();
-  const entity = cfg.entity as string | undefined;
   const field = cfg.field as string | undefined;
-  const { rows } = useRecords(entity);
+  const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
@@ -2132,9 +2350,8 @@ function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
 function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const pageState = usePageState();
-  const entity = cfg.entity as string | undefined;
   const field = cfg.field as string | undefined;
-  const { rows } = useRecords(entity);
+  const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
@@ -2248,6 +2465,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
     return withEmbeddedActions(
       <ListWidget
         entityId={cfg.entity as string | undefined}
+        dataSourceId={cfg.dataSourceId as string | undefined}
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
@@ -2260,6 +2478,9 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         editable={cfg.editable === true}
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
+        rowLimit={cfg.rowLimit as number | undefined}
+        loadFilters={cfg.loadFilters as LoadFilters | undefined}
+        loadGate={cfg.loadGate as string | undefined}
       />,
       embActs,
       pageState,

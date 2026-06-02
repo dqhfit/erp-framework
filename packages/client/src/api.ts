@@ -5,19 +5,37 @@
    ========================================================== */
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type {
-  DataSource, EntityConfig, EntityFieldDef, EntityRecord,
-  QueryParams, Paginated,
+  DataSource,
+  DataSourceMeta,
+  DataSourceRow,
+  EntityConfig,
+  EntityFieldDef,
+  EntityRecord,
+  FilterOp,
+  QueryParams,
+  Paginated,
 } from "@erp-framework/core/datasource";
+
+/** Tham số truy vấn nguồn dữ liệu (filter/sort theo key field phẳng). */
+export interface DataSourceQueryParams {
+  limit?: number;
+  offset?: number;
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+  sort?: { key: string; dir: "asc" | "desc" };
+  q?: string;
+}
 import type { AppRouter } from "@erp-framework/server";
 
 /* tRPC client — kiểu suy ra từ factory để khỏi phụ thuộc tên type nội bộ. */
 function makeClient(baseUrl: string) {
   return createTRPCClient<AppRouter>({
-    links: [httpBatchLink({
-      url: baseUrl.replace(/\/$/, "") + "/trpc",
-      // Gửi kèm cookie phiên — RBAC server cần, kể cả khác origin.
-      fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
-    })],
+    links: [
+      httpBatchLink({
+        url: baseUrl.replace(/\/$/, "") + "/trpc",
+        // Gửi kèm cookie phiên — RBAC server cần, kể cả khác origin.
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
   });
 }
 type Trpc = ReturnType<typeof makeClient>;
@@ -25,13 +43,20 @@ type Trpc = ReturnType<typeof makeClient>;
 /* Server trả về Drizzle row (shape thô) — map sang DTO bên dưới
    để xử lý lệch null↔undefined và kiểu jsonb. */
 interface RawEntity {
-  id: string; name: string; label: string;
-  icon: string | null; fields: unknown;
+  id: string;
+  name: string;
+  label: string;
+  icon: string | null;
+  fields: unknown;
 }
 interface RawRecord {
-  id: string; entityId: string; schemaVersion: string;
-  data: unknown; createdBy: string | null;
-  createdAt: string | Date; updatedAt: string | Date;
+  id: string;
+  entityId: string;
+  schemaVersion: string;
+  data: unknown;
+  createdBy: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 function isoOf(v: string | Date): string {
@@ -79,10 +104,7 @@ export class ApiDataSource implements DataSource {
     await this.trpc.entities.delete.mutate(id);
   }
 
-  async getRecords(
-    entityId: string,
-    query?: QueryParams,
-  ): Promise<Paginated<EntityRecord>> {
+  async getRecords(entityId: string, query?: QueryParams): Promise<Paginated<EntityRecord>> {
     // Tách includeDeleted ra cấp ngoài (server router nhận như input phẳng).
     const { includeDeleted, ...serverQuery } = query ?? {};
     const res = await this.trpc.records.list.query({
@@ -96,24 +118,33 @@ export class ApiDataSource implements DataSource {
     };
   }
   /** Bulk delete - cap 1000 ids. Trả {deleted, errors[]}. */
-  async bulkDeleteRecords(entityId: string, ids: string[]): Promise<{
-    deleted: number; errors: Array<{ id: string; message: string }>;
+  async bulkDeleteRecords(
+    entityId: string,
+    ids: string[],
+  ): Promise<{
+    deleted: number;
+    errors: Array<{ id: string; message: string }>;
   }> {
     return this.trpc.records.bulkDelete.mutate({ entityId, ids });
   }
   /** Bulk update - cap 1000. patch áp dụng cho tất cả ids. */
   async bulkUpdateRecords(
-    entityId: string, ids: string[], patch: Record<string, unknown>,
+    entityId: string,
+    ids: string[],
+    patch: Record<string, unknown>,
   ): Promise<{ updated: number; errors: Array<{ id: string; message: string }> }> {
     return this.trpc.records.bulkUpdate.mutate({ entityId, ids, patch });
   }
   /** Export records as CSV/JSON. */
   async exportRecords(
-    entityId: string, format: "csv" | "json", query?: QueryParams,
+    entityId: string,
+    format: "csv" | "json",
+    query?: QueryParams,
   ): Promise<{ format: "csv" | "json"; content: string }> {
     const { includeDeleted: _, ...serverQuery } = query ?? {};
     const r = await this.trpc.records.export.query({
-      entityId, format,
+      entityId,
+      format,
       query: Object.keys(serverQuery).length ? serverQuery : undefined,
     });
     return r;
@@ -122,10 +153,7 @@ export class ApiDataSource implements DataSource {
     const row = await this.trpc.records.get.query(recordId);
     return row ? toRecord(row as RawRecord) : null;
   }
-  async createRecord(
-    entityId: string,
-    data: Record<string, unknown>,
-  ): Promise<EntityRecord> {
+  async createRecord(entityId: string, data: Record<string, unknown>): Promise<EntityRecord> {
     const row = await this.trpc.records.create.mutate({ entityId, data });
     return toRecord(row as RawRecord);
   }
@@ -135,7 +163,9 @@ export class ApiDataSource implements DataSource {
     expectedVersion?: number,
   ): Promise<EntityRecord> {
     const row = await this.trpc.records.update.mutate({
-      recordId, data, expectedVersion,
+      recordId,
+      data,
+      expectedVersion,
     });
     return toRecord(row as RawRecord);
   }
@@ -143,22 +173,78 @@ export class ApiDataSource implements DataSource {
     // Soft delete: server set deleted_at; bản ghi vẫn restore được.
     await this.trpc.records.delete.mutate(recordId);
   }
+
+  /* ── Nguồn dữ liệu (DataSource ORM-like): row PHẲNG đã join ── */
+  async getDataSourceMeta(dataSourceId: string): Promise<DataSourceMeta> {
+    return this.trpc.dataSources.meta.query(dataSourceId) as Promise<DataSourceMeta>;
+  }
+  async getDataSourceRecords(
+    dataSourceId: string,
+    query?: DataSourceQueryParams,
+  ): Promise<{ rows: DataSourceRow[]; total: number }> {
+    return this.trpc.dataSources.listRecords.query({ dataSourceId, query }) as Promise<{
+      rows: DataSourceRow[];
+      total: number;
+    }>;
+  }
+  async getDataSourceRecord(dataSourceId: string, recordId: string): Promise<DataSourceRow | null> {
+    return this.trpc.dataSources.getRecord.query({
+      dataSourceId,
+      recordId,
+    }) as Promise<DataSourceRow | null>;
+  }
+  async createDataSourceRecord(
+    dataSourceId: string,
+    data: Record<string, unknown>,
+  ): Promise<DataSourceRow | null> {
+    return this.trpc.dataSources.createRecord.mutate({
+      dataSourceId,
+      data,
+    }) as Promise<DataSourceRow | null>;
+  }
+  async updateDataSourceRecord(
+    dataSourceId: string,
+    recordId: string,
+    data: Record<string, unknown>,
+    expectedVersion?: number,
+  ): Promise<DataSourceRow | null> {
+    return this.trpc.dataSources.updateRecord.mutate({
+      dataSourceId,
+      recordId,
+      data,
+      expectedVersion,
+    }) as Promise<DataSourceRow | null>;
+  }
+  async deleteDataSourceRecord(dataSourceId: string, recordId: string): Promise<void> {
+    await this.trpc.dataSources.deleteRecord.mutate({ dataSourceId, recordId });
+  }
   async restoreRecord(recordId: string): Promise<void> {
     await this.trpc.records.restore.mutate(recordId);
   }
   async hardDeleteRecord(recordId: string): Promise<void> {
     await this.trpc.records.hardDelete.mutate(recordId);
   }
-  async getRecordHistory(recordId: string): Promise<Array<{
-    id: string; version: number; data: Record<string, unknown>;
-    diff: Record<string, { old: unknown; new: unknown }>;
-    actorUserId: string | null; createdAt: string;
-  }>> {
+  async getRecordHistory(recordId: string): Promise<
+    Array<{
+      id: string;
+      version: number;
+      data: Record<string, unknown>;
+      diff: Record<string, { old: unknown; new: unknown }>;
+      actorUserId: string | null;
+      createdAt: string;
+    }>
+  > {
     const rows = await this.trpc.records.history.query(recordId);
-    return (rows as Array<{
-      id: string; version: number; data: unknown; diff: unknown;
-      actorUserId: string | null; createdAt: string | Date;
-    }>).map((r) => ({
+    return (
+      rows as Array<{
+        id: string;
+        version: number;
+        data: unknown;
+        diff: unknown;
+        actorUserId: string | null;
+        createdAt: string | Date;
+      }>
+    ).map((r) => ({
       id: r.id,
       version: r.version,
       data: (r.data ?? {}) as Record<string, unknown>,
@@ -172,10 +258,7 @@ export class ApiDataSource implements DataSource {
     return toRecord(row as RawRecord);
   }
 
-  async triggerWorkflow(
-    workflowId: string,
-    context?: unknown,
-  ): Promise<{ runId: string }> {
+  async triggerWorkflow(workflowId: string, context?: unknown): Promise<{ runId: string }> {
     return this.trpc.workflows.trigger.mutate({
       workflowId,
       context: (context as Record<string, unknown> | undefined) ?? undefined,

@@ -198,3 +198,13 @@ export interface DataSource {
   /* Workflow & scheduler */
   triggerWorkflow(workflowId: string, context?: unknown): Promise<{ runId: string }>;
 }
+
+/* ─── Nguồn dữ liệu (DataSource ORM-like) ─────────────────── */
+export type {
+  JoinKind,
+  DataSourceRelation,
+  DataSourceField,
+  DataSourceConfig,
+  DataSourceMeta,
+  DataSourceRow,
+} from "./config";

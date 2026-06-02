@@ -7,7 +7,7 @@
 import { createApiDataSource } from "@erp-framework/client";
 import { type ReactNode, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Modal } from "@/components/ui";
+import { Button, Modal, SearchableSelect } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { PageStateLike } from "@/lib/run-action";
 import { useUserObjects } from "@/stores/userObjects";
@@ -140,18 +140,13 @@ export function WizardModal({ step, pageState, onDone, onCancel, renderAction }:
                       multi={f.type === "multi-lookup"}
                     />
                   ) : f.type === "select" && f.options?.length ? (
-                    <select
-                      className="input w-full"
+                    <SearchableSelect
+                      className="w-full"
                       value={form[f.name] ?? ""}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                    >
-                      <option value="">— chọn —</option>
-                      {f.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => setField(f.name, v)}
+                      options={f.options.map((o) => ({ value: o, label: o }))}
+                      emptyOption="— chọn —"
+                    />
                   ) : f.type === "boolean" ? (
                     <label className="flex items-center gap-2 text-sm mt-0.5 cursor-pointer">
                       <input

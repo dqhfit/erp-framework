@@ -1,4 +1,5 @@
 import { createObjectsClient } from "@erp-framework/client";
+import type { DataSourceConfig } from "@erp-framework/core";
 /* ==========================================================
    userObjects — Đối tượng low-code (entity / page / workflow /
    agent). Nguồn dữ liệu: PostgreSQL qua @erp-framework/client.
@@ -10,6 +11,7 @@ import { create } from "zustand";
 import type {
   IconName,
   MockAgent,
+  MockDataSource,
   MockEntity,
   MockPage,
   MockViewerGroup,
@@ -133,6 +135,16 @@ function rowToAgent(r: Row): MockAgent {
   };
 }
 
+function rowToDataSource(r: Row): MockDataSource {
+  const cfg = (r.config ?? {}) as Partial<DataSourceConfig>;
+  return {
+    id: r.id as string,
+    name: (r.label as string) || (r.name as string) || "",
+    icon: ((r.icon as string) || "Database") as IconName,
+    baseEntityId: cfg.baseEntityId || undefined,
+  };
+}
+
 /* ─── Store ─────────────────────────────────────────────── */
 interface UserObjectsState {
   ready: boolean;
@@ -140,9 +152,11 @@ interface UserObjectsState {
   pages: MockPage[];
   workflows: MockWorkflow[];
   agents: MockAgent[];
+  dataSources: MockDataSource[];
   pageContent: Record<string, unknown>;
   workflowContent: Record<string, unknown>;
   agentContent: Record<string, unknown>;
+  dataSourceContent: Record<string, DataSourceConfig>;
   myGroupIds: string[];
   viewerGroupsList: MockViewerGroup[];
 
@@ -173,6 +187,12 @@ interface UserObjectsState {
   renameAgent: (id: string, name: string) => void;
   setAgentContent: (id: string, data: unknown) => void;
 
+  addDataSource: (d: MockDataSource) => void;
+  upsertDataSource: (d: MockDataSource) => void;
+  deleteDataSource: (id: string) => void;
+  renameDataSource: (id: string, name: string) => void;
+  setDataSourceContent: (id: string, cfg: DataSourceConfig) => void;
+
   setPageViewerGroups: (pageId: string, groupIds: string[]) => void;
 }
 
@@ -187,19 +207,22 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   pages: [],
   workflows: [],
   agents: [],
+  dataSources: [],
   pageContent: {},
   workflowContent: {},
   agentContent: {},
+  dataSourceContent: {},
   myGroupIds: [],
   viewerGroupsList: [],
 
   hydrate: async () => {
     try {
-      const [ents, pgs, wfs, ags, myGroups, vGroups] = await Promise.all([
+      const [ents, pgs, wfs, ags, dss, myGroups, vGroups] = await Promise.all([
         api.entities.list(),
         api.pages.list(),
         api.workflows.list(),
         api.agents.list(),
+        api.dataSources.list().catch(() => [] as Row[]),
         api.viewerGroups.getMyGroups().catch(() => [] as string[]),
         api.viewerGroups
           .list()
@@ -211,15 +234,20 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
       for (const r of wfs as Row[]) workflowContent[r.id as string] = r.graph ?? {};
       const agentContent: Record<string, unknown> = {};
       for (const r of ags as Row[]) agentContent[r.id as string] = r.config ?? {};
+      const dataSourceContent: Record<string, DataSourceConfig> = {};
+      for (const r of dss as Row[])
+        dataSourceContent[r.id as string] = (r.config ?? {}) as DataSourceConfig;
       set({
         ready: true,
         entities: (ents as Row[]).map(rowToEntity),
         pages: (pgs as Row[]).map(rowToPage),
         workflows: (wfs as Row[]).map(rowToWorkflow),
         agents: (ags as Row[]).map(rowToAgent),
+        dataSources: (dss as Row[]).map(rowToDataSource),
         pageContent,
         workflowContent,
         agentContent,
+        dataSourceContent,
         myGroupIds: myGroups,
         viewerGroupsList: vGroups as MockViewerGroup[],
       });
@@ -406,6 +434,50 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     saveAgentById(get, id);
   },
 
+  /* ── Nguồn dữ liệu (DataSource) ── */
+  addDataSource: (d) => {
+    set((s) => ({
+      dataSources: [...s.dataSources, d],
+      dataSourceContent: {
+        ...s.dataSourceContent,
+        [d.id]: { baseEntityId: d.baseEntityId ?? "", relations: [], fields: [] },
+      },
+    }));
+    saveDataSourceById(get, d.id);
+  },
+  upsertDataSource: (d) => {
+    set((s) => {
+      const i = s.dataSources.findIndex((x) => x.id === d.id);
+      const list =
+        i >= 0 ? s.dataSources.map((x) => (x.id === d.id ? d : x)) : [...s.dataSources, d];
+      return { dataSources: list };
+    });
+    saveDataSourceById(get, d.id);
+  },
+  deleteDataSource: (id) => {
+    set((s) => {
+      const { [id]: _, ...rest } = s.dataSourceContent;
+      return { dataSources: s.dataSources.filter((x) => x.id !== id), dataSourceContent: rest };
+    });
+    bg(api.dataSources.delete(id), "xoá nguồn dữ liệu");
+  },
+  renameDataSource: (id, name) => {
+    set((s) => ({
+      dataSources: s.dataSources.map((x) => (x.id === id ? { ...x, name } : x)),
+    }));
+    saveDataSourceById(get, id);
+  },
+  setDataSourceContent: (id, cfg) => {
+    set((s) => ({
+      dataSourceContent: { ...s.dataSourceContent, [id]: cfg },
+      // Đồng bộ baseEntityId hiển thị ở sidebar.
+      dataSources: s.dataSources.map((x) =>
+        x.id === id ? { ...x, baseEntityId: cfg.baseEntityId || undefined } : x,
+      ),
+    }));
+    saveDataSourceById(get, id);
+  },
+
   /* ── Viewer groups ── */
   setPageViewerGroups: (pageId, groupIds) => {
     set((s) => ({
@@ -458,5 +530,21 @@ function saveAgentById(get: Get, id: string): void {
       config: (get().agentContent[id] ?? {}) as Record<string, unknown>,
     }),
     "lưu agent",
+  );
+}
+
+function saveDataSourceById(get: Get, id: string): void {
+  const d = get().dataSources.find((x) => x.id === id);
+  if (!d) return;
+  const cfg = get().dataSourceContent[id] ?? { baseEntityId: "", relations: [], fields: [] };
+  bg(
+    api.dataSources.save({
+      id: d.id,
+      name: machineName(d.name, d.id),
+      label: d.name,
+      icon: d.icon,
+      config: cfg,
+    }),
+    "lưu nguồn dữ liệu",
   );
 }

@@ -9,6 +9,7 @@
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
 import { useEffect, useState } from "react";
+import { SearchableSelect } from "@/components/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
 const api = createApiDataSource("");
@@ -129,16 +130,13 @@ export function LookupPicker({ refEntityId, value, onChange, multi = false, clas
 
   // Single lookup
   return (
-    <select className={cls} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">— chọn {refEnt?.name ?? "bản ghi"} —</option>
-      {rows.map((row) => {
-        const id = String(row.id ?? "");
-        return (
-          <option key={id} value={id}>
-            {rowLabel(row)}
-          </option>
-        );
-      })}
-    </select>
+    <SearchableSelect
+      className={className ? className : "w-full"}
+      value={value}
+      onChange={onChange}
+      options={rows.map((row) => ({ value: String(row.id ?? ""), label: rowLabel(row) }))}
+      emptyOption={`— chọn ${refEnt?.name ?? "bản ghi"} —`}
+      searchPlaceholder={`Tìm ${refEnt?.name ?? "bản ghi"}…`}
+    />
   );
 }

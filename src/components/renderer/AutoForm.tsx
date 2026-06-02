@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { I } from "@/components/Icons";
-import { Button, FormField, Input, Select, Switch, Textarea } from "@/components/ui";
+import { Button, FormField, Input, SearchableSelect, Switch, Textarea } from "@/components/ui";
 import { useEnum } from "@/hooks/useEnum";
 import { pickLabel } from "@/lib/enum-label";
 import { useLocale } from "@/stores/locale";
@@ -127,16 +127,22 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
       ) : field.type === "boolean" ? (
         <Switch checked={!!value} onChange={(v) => setValue(v)} label="Có / Không" />
       ) : field.type === "select" ? (
-        <Select {...reg}>
-          <option value="">— chọn —</option>
-          {(field.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect
+          className="w-full"
+          value={value == null ? "" : String(value)}
+          onChange={(v) => setValue(v)}
+          options={(field.options ?? []).map((o) => ({
+            value: String(o.value),
+            label: o.label,
+          }))}
+          emptyOption="— chọn —"
+        />
       ) : field.type === "enum" ? (
-        <EnumSelect enumId={field.enumId} reg={reg} />
+        <EnumSelect
+          enumId={field.enumId}
+          value={value == null ? "" : String(value)}
+          onChange={(v) => setValue(v)}
+        />
       ) : field.type === "multi-enum" ? (
         <EnumMultiSelect
           enumId={field.enumId}
@@ -179,22 +185,22 @@ function FieldRenderer({ field, register, error, value, setValue }: FieldRendere
 
 interface EnumSelectProps {
   enumId?: string;
-  reg: ReturnType<ReturnType<typeof useForm>["register"]>;
+  value: string;
+  onChange: (v: string) => void;
 }
-function EnumSelect({ enumId, reg }: EnumSelectProps) {
+function EnumSelect({ enumId, value, onChange }: EnumSelectProps) {
   const e = useEnum(enumId);
   const lang = useLocale((s) => s.lang);
   if (!enumId) return <div className="text-xs text-muted italic">Chưa cấu hình enum.</div>;
   if (!e) return <div className="text-xs text-muted italic">Đang tải enum...</div>;
   return (
-    <Select {...reg}>
-      <option value="">— chọn —</option>
-      {e.values.map((v) => (
-        <option key={v.value} value={v.value}>
-          {pickLabel(v, lang)}
-        </option>
-      ))}
-    </Select>
+    <SearchableSelect
+      className="w-full"
+      value={value}
+      onChange={onChange}
+      options={e.values.map((v) => ({ value: String(v.value), label: pickLabel(v, lang) }))}
+      emptyOption="— chọn —"
+    />
   );
 }
 

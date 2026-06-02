@@ -24,6 +24,8 @@ interface SearchableSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
+  /** Khi set, chèn 1 mục value="" với nhãn này lên đầu (vd "— chọn —"). */
+  emptyOption?: string;
   disabled?: boolean;
   className?: string;
 }
@@ -40,6 +42,7 @@ export function SearchableSelect({
   placeholder = "Chọn…",
   searchPlaceholder = "Tìm…",
   emptyText = "Không có kết quả",
+  emptyOption,
   disabled,
   className,
 }: SearchableSelectProps) {
@@ -52,13 +55,19 @@ export function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+  // Chèn mục rỗng "— chọn —" lên đầu nếu có emptyOption.
+  const allOptions = useMemo(
+    () => (emptyOption != null ? [{ value: "", label: emptyOption }, ...options] : options),
+    [emptyOption, options],
+  );
+
+  const selected = allOptions.find((o) => o.value === value);
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
-    if (!q) return options;
-    return options.filter((o) => normalize(o.label).includes(q));
-  }, [options, query]);
+    if (!q) return allOptions;
+    return allOptions.filter((o) => normalize(o.label).includes(q));
+  }, [allOptions, query]);
 
   // Đóng khi click ra ngoài.
   useEffect(() => {
@@ -76,12 +85,12 @@ export function SearchableSelect({
     setQuery("");
     const idx = Math.max(
       0,
-      options.findIndex((o) => o.value === value),
+      allOptions.findIndex((o) => o.value === value),
     );
     setActiveIdx(idx);
     // Focus sau khi panel render.
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open, value, options]);
+  }, [open, value, allOptions]);
 
   // Cuộn item active vào tầm nhìn.
   useEffect(() => {

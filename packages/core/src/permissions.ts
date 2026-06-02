@@ -31,6 +31,7 @@ export type ObjectType =
   | "procedure"
   | "enum"
   | "feedback"
+  | "datasource" // nguồn dữ liệu (join nhiều entity, ORM-like)
   // Object mở rộng (P2.2):
   | "tool" // tool registry (MCP/HTTP)
   | "notification" // in-app notifications
@@ -65,6 +66,7 @@ export const ALL_OBJECT_TYPES: ObjectType[] = [
   "procedure",
   "enum",
   "feedback",
+  "datasource",
   "tool",
   "notification",
   "comment",
@@ -118,6 +120,10 @@ const MATRIX: Record<Role, string[]> = {
     "create:enum",
     "edit:enum",
     "delete:enum",
+    "create:datasource",
+    "edit:datasource",
+    "run:datasource",
+    "delete:datasource",
     "create:feedback",
     "edit:feedback",
     "delete:feedback",

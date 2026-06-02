@@ -34,6 +34,7 @@ import { entitySyncRouter } from "./entity-sync-router";
 import { governanceRouter } from "./governance-router";
 import { pluginsRouter } from "./plugins-router";
 import { recordsRouter } from "./records-router";
+import { dataSourcesRouter } from "./datasources-router";
 import { entitiesRouter } from "./entities-router";
 import { workflowsRouter } from "./workflows-router";
 import { schedulesRouter } from "./schedules-router";
@@ -448,6 +449,9 @@ export const appRouter = router({
 
   /* ── Record (dữ liệu động) ── */
   records: recordsRouter,
+
+  /* ── Nguồn dữ liệu (DataSource ORM-like: join nhiều entity, đọc+ghi) ── */
+  dataSources: dataSourcesRouter,
 
   /* ── Workflow — lọc theo công ty đang chọn ── */
   workflows: workflowsRouter,

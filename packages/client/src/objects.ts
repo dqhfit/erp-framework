@@ -4,6 +4,7 @@
    App dùng client này để thay localStorage bằng PostgreSQL.
    ========================================================== */
 
+import type { DataSourceConfig, FilterOp } from "@erp-framework/core";
 import type { AppRouter } from "@erp-framework/server";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
@@ -85,6 +86,20 @@ export interface ScheduleSaveInput {
   cronExpr: string;
   enabled?: boolean;
 }
+export interface DataSourceSaveInput {
+  id?: string;
+  name: string;
+  label: string;
+  icon?: string;
+  config: DataSourceConfig;
+}
+export interface DataSourceQuery {
+  limit?: number;
+  offset?: number;
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+  sort?: { key: string; dir: "asc" | "desc" };
+  q?: string;
+}
 
 /** Tạo client CRUD cho 4 loại đối tượng low-code. */
 export function createObjectsClient(baseUrl: string) {
@@ -154,6 +169,29 @@ export function createObjectsClient(baseUrl: string) {
       list: () => trpc.schedules.list.query(),
       save: (input: ScheduleSaveInput) => trpc.schedules.save.mutate(input),
       delete: (id: string) => trpc.schedules.delete.mutate(id),
+    },
+    dataSources: {
+      list: () => trpc.dataSources.list.query(),
+      get: (id: string) => trpc.dataSources.get.query(id),
+      save: (input: DataSourceSaveInput) => trpc.dataSources.save.mutate(input),
+      delete: (id: string) => trpc.dataSources.delete.mutate(id),
+      /** Field phẳng đã chiếu (cho widget render). */
+      meta: (id: string) => trpc.dataSources.meta.query(id),
+      /** Đọc dữ liệu joined (bảng phẳng). */
+      listRecords: (dataSourceId: string, query?: DataSourceQuery) =>
+        trpc.dataSources.listRecords.query({ dataSourceId, query }),
+      getRecord: (dataSourceId: string, recordId: string) =>
+        trpc.dataSources.getRecord.query({ dataSourceId, recordId }),
+      createRecord: (dataSourceId: string, data: Record<string, unknown>) =>
+        trpc.dataSources.createRecord.mutate({ dataSourceId, data }),
+      updateRecord: (
+        dataSourceId: string,
+        recordId: string,
+        data: Record<string, unknown>,
+        expectedVersion?: number,
+      ) => trpc.dataSources.updateRecord.mutate({ dataSourceId, recordId, data, expectedVersion }),
+      deleteRecord: (dataSourceId: string, recordId: string) =>
+        trpc.dataSources.deleteRecord.mutate({ dataSourceId, recordId }),
     },
     activity: {
       list: () => trpc.activity.list.query(),

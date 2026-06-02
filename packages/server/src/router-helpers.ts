@@ -162,7 +162,7 @@ export const queryParams = z
   .object({
     filters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
     sort: z.object({ field: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
-    limit: z.number().int().positive().max(500).optional(),
+    limit: z.number().int().positive().max(10_000).optional(),
     offset: z.number().int().nonnegative().optional(),
     /** Full-text search — match @@ trên search_tsv (Postgres). */
     q: z.string().optional(),

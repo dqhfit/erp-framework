@@ -1,0 +1,654 @@
+module: thong_tin_khach_hang
+tables:
+  - name: dbo.tr_khuvuc_sanxuat
+    suggestedEntityName: tr_khuvuc_sanxuat
+    primaryKey:
+      - makhuvuc
+    columns:
+      - name: makhuvuc
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: makhuvuc
+          entityType: text
+      - name: tenkhuvuc
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: tenkhuvuc
+          entityType: text
+      - name: active
+        type: bit
+        isNullable: true
+        mapTo:
+          field: active
+          entityType: boolean
+      - name: stt
+        type: float
+        isNullable: true
+        mapTo:
+          field: stt
+          entityType: number
+      - name: tenxuong
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: tenxuong
+          entityType: text
+    inferredRelations:
+      - column: makhuvuc
+        refTable: dbo.trtb_m_op
+        refColumn: department
+        sourceProc: dbo.trtb_m_location_getall2
+  - name: dbo.tr_nhacc
+    suggestedEntityName: tr_nhacc
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: int
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: number
+      - name: vendor_id
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: vendor_id
+          entityType: text
+      - name: vendor_name
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: vendor_name
+          entityType: text
+      - name: address
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: address
+          entityType: text
+      - name: area
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: area
+          entityType: text
+      - name: phone
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: phone
+          entityType: text
+      - name: email
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: email
+          entityType: text
+      - name: website
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: website
+          entityType: text
+      - name: loaincc
+        type: int
+        isNullable: true
+        mapTo:
+          field: loaincc
+          entityType: number
+      - name: create_by
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: create_by
+          entityType: text
+      - name: create_date
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: create_date
+          entityType: datetime
+      - name: sotaikhoan
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: sotaikhoan
+          entityType: text
+      - name: tentaikhoan
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: tentaikhoan
+          entityType: text
+      - name: tennganhang
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: tennganhang
+          entityType: text
+  - name: dbo.trtb_m_location
+    suggestedEntityName: trtb_m_location
+    primaryKey:
+      - c_location
+    columns:
+      - name: c_location
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: c_location
+          entityType: text
+      - name: c_op
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_op
+          entityType: text
+      - name: n_location
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: n_location
+          entityType: text
+      - name: n_scan
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: n_scan
+          entityType: text
+      - name: c_nextloc
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_nextloc
+          entityType: text
+      - name: org
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: org
+          entityType: text
+      - name: MayMoc
+        type: uniqueidentifier
+        isNullable: true
+        mapTo:
+          field: may_moc
+          entityType: text
+      - name: stt
+        type: int
+        isNullable: true
+        mapTo:
+          field: stt
+          entityType: number
+      - name: bophanchiphi
+        type: uniqueidentifier
+        isNullable: true
+        mapTo:
+          field: bophanchiphi
+          entityType: text
+      - name: loaichiphi
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: loaichiphi
+          entityType: text
+      - name: oday
+        type: float
+        isNullable: true
+        mapTo:
+          field: oday
+          entityType: number
+      - name: orong
+        type: float
+        isNullable: true
+        mapTo:
+          field: orong
+          entityType: number
+      - name: odai
+        type: float
+        isNullable: true
+        mapTo:
+          field: odai
+          entityType: number
+      - name: active
+        type: bit
+        isNullable: true
+        mapTo:
+          field: active
+          entityType: boolean
+      - name: Ngay
+        type: datetime
+        isNullable: true
+        mapTo:
+          field: ngay
+          entityType: datetime
+      - name: LoaiTieuChuan
+        type: uniqueidentifier
+        isNullable: true
+        mapTo:
+          field: loai_tieu_chuan
+          entityType: text
+      - name: TieuChuanTheoChiTiet
+        type: bit
+        isNullable: true
+        mapTo:
+          field: tieu_chuan_theo_chi_tiet
+          entityType: boolean
+      - name: AQL
+        type: bit
+        isNullable: true
+        mapTo:
+          field: aql
+          entityType: boolean
+      - name: isShow
+        type: bit
+        isNullable: true
+        mapTo:
+          field: is_show
+          entityType: boolean
+    inferredRelations:
+      - column: c_op
+        refTable: dbo.trtb_m_op
+        refColumn: c_op
+        sourceProc: dbo.trtb_m_location_next_getall
+  - name: dbo.trtb_m_location_next
+    suggestedEntityName: trtb_m_location_next
+    primaryKey:
+      - Id
+    columns:
+      - name: Id
+        type: uniqueidentifier
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: text
+      - name: CongDoan
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: cong_doan
+          entityType: text
+      - name: CongDoanKeTiep
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: cong_doan_ke_tiep
+          entityType: relation
+          relationEntity: trtb_m_location
+    inferredRelations:
+      - column: CongDoanKeTiep
+        refTable: dbo.trtb_m_location
+        refColumn: c_location
+        sourceProc: (declared FK)
+      - column: congdoanketiep
+        refTable: dbo.trtb_m_location
+        refColumn: c_location
+        sourceProc: dbo.trtb_m_location_next_getall
+  - name: dbo.trtb_m_location_process
+    suggestedEntityName: trtb_m_location_process
+    primaryKey:
+      - c_op
+      - c_location
+    columns:
+      - name: c_op
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: c_op
+          entityType: text
+      - name: c_location
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: c_location
+          entityType: text
+      - name: c_nextloc
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_nextloc
+          entityType: text
+      - name: stt
+        type: int
+        isNullable: true
+        mapTo:
+          field: stt
+          entityType: number
+      - name: location_type
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: location_type
+          entityType: text
+    inferredRelations:
+      - column: c_location
+        refTable: dbo.trtb_m_location
+        refColumn: c_location
+        sourceProc: dbo.trtb_m_location_getall
+      - column: c_op
+        refTable: dbo.trtb_m_op
+        refColumn: c_op
+        sourceProc: dbo.trtb_m_location_getall
+  - name: dbo.trtb_m_location_type
+    suggestedEntityName: trtb_m_location_type
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: nvarchar
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: text
+      - name: name
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: name
+          entityType: text
+  - name: dbo.trtb_m_op
+    suggestedEntityName: trtb_m_op
+    primaryKey:
+      - id
+    columns:
+      - name: id
+        type: int
+        isNullable: false
+        mapTo:
+          field: id
+          entityType: number
+      - name: c_op
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_op
+          entityType: text
+      - name: n_op
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: n_op
+          entityType: text
+      - name: c_location
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_location
+          entityType: text
+      - name: f_out_yn
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: f_out_yn
+          entityType: text
+      - name: c_prod_loc
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_prod_loc
+          entityType: text
+      - name: c_out_loc
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_out_loc
+          entityType: text
+      - name: c_line
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: c_line
+          entityType: text
+      - name: org
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: org
+          entityType: text
+      - name: attribute3
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: attribute3
+          entityType: text
+      - name: attribute4
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: attribute4
+          entityType: text
+      - name: attribute5
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: attribute5
+          entityType: text
+      - name: department
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: department
+          entityType: text
+      - name: stt
+        type: int
+        isNullable: true
+        mapTo:
+          field: stt
+          entityType: number
+      - name: active
+        type: bit
+        isNullable: true
+        mapTo:
+          field: active
+          entityType: boolean
+      - name: mathaythe
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: mathaythe
+          entityType: text
+      - name: p_op
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: p_op
+          entityType: text
+      - name: matonhom
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: matonhom
+          entityType: text
+      - name: yeucau_chatluong
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: yeucau_chatluong
+          entityType: text
+      - name: id_maymoc
+        type: int
+        isNullable: true
+        mapTo:
+          field: id_maymoc
+          entityType: number
+      - name: yeucau_kythuat
+        type: nvarchar
+        isNullable: true
+        mapTo:
+          field: yeucau_kythuat
+          entityType: text
+    inferredRelations:
+      - column: department
+        refTable: dbo.tr_khuvuc_sanxuat
+        refColumn: makhuvuc
+        sourceProc: dbo.trtb_m_location_getall
+      - column: c_op
+        refTable: dbo.trtb_m_location
+        refColumn: c_op
+        sourceProc: dbo.trtb_m_location_getall2
+procs:
+  - name: dbo.tr_nhacc_delete
+    reads: []
+    writes:
+      - dbo.tr_nhacc
+    flags: []
+    suggestedTier: B
+  - name: dbo.tr_nhacc_get
+    reads:
+      - dbo.tr_nhacc
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.tr_nhacc_getall
+    reads:
+      - dbo.tr_nhacc
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.tr_nhacc_getbyid
+    reads:
+      - dbo.tr_nhacc
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.tr_nhacc_insert2
+    reads: []
+    writes:
+      - dbo.tr_nhacc
+    flags: []
+    suggestedTier: B
+  - name: dbo.tr_nhacc_update2
+    reads: []
+    writes:
+      - dbo.tr_nhacc
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_get
+    reads:
+      - dbo.trtb_m_location
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_get_son_dgo
+    reads:
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location_type
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getall
+    reads:
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location
+      - dbo.trtb_m_location_process
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getall2
+    reads:
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getbydepartment
+    reads:
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getlist
+    reads:
+      - dbo.trtb_m_location
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getlist2
+    reads:
+      - dbo.trtb_m_location
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_getlist3
+    reads:
+      - dbo.trtb_m_location
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_insert
+    reads: []
+    writes:
+      - dbo.trtb_m_location
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_next_getall
+    reads:
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location
+      - dbo.trtb_m_location_next
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_thongkethang
+    reads:
+      - dbo.string_split
+      - dbo.tr_khuvuc_sanxuat
+      - dbo.trtb_m_location
+      - dbo.trtb_m_location_process
+      - dbo.trtb_m_op
+    writes: []
+    flags: []
+    suggestedTier: B
+  - name: dbo.trtb_m_location_update
+    reads: []
+    writes:
+      - dbo.trtb_m_location
+    flags: []
+    suggestedTier: B
+crossModuleEdges: []
+status:
+  phase: discovered
+  capturedGoldenAt: null
+  scaffoldedAt: null
+  cutoverAt: null
+  retiredAt: null
+discoverParams:
+  seedTables:
+    - dbo.tr_khuvuc_sanxuat
+    - dbo.tr_nhacc
+    - dbo.trtb_m_location
+    - dbo.trtb_m_location_next
+    - dbo.trtb_m_location_process
+    - dbo.trtb_m_location_type
+    - dbo.trtb_m_op
+  excludeTables: []
+  maxTables: 60
+  seedProcs:
+    - TRTB_M_LOCATION_GET
+    - TRTB_M_LOCATION_GETALL
+    - TRTB_M_LOCATION_GETALL2
+    - TRTB_M_LOCATION_GETBYDEPARTMENT
+    - TRTB_M_LOCATION_GETLIST
+    - TRTB_M_LOCATION_GETLIST2
+    - TRTB_M_LOCATION_GETLIST3
+    - TRTB_M_LOCATION_GET_SON_DGO
+    - TRTB_M_LOCATION_INSERT
+    - TRTB_M_LOCATION_NEXT_GETALL
+    - TRTB_M_LOCATION_THONGKETHANG
+    - TRTB_M_LOCATION_UPDATE
+    - TR_NHACC_DELETE
+    - TR_NHACC_Get
+    - TR_NHACC_GetAll
+    - TR_NHACC_GetByID
+    - TR_NHACC_INSERT2
+    - TR_NHACC_UPDATE2
+  lastRunAt: 2026-06-02T18:22:52.512Z

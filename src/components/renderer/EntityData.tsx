@@ -14,7 +14,7 @@ import { createApiDataSource, createSavedViewsClient, type SavedView } from "@er
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { DataGrid } from "@/components/renderer/DataGrid";
-import { Button, Chip, Drawer, FormField, Input, Select } from "@/components/ui";
+import { Button, Chip, Drawer, FormField, Input, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { pickFieldLabel } from "@/lib/enum-label";
 import { applyFieldFormat } from "@/lib/format";
@@ -349,10 +349,9 @@ export function EntityData({ entityId }: { entityId: string }) {
             />
           </div>
           {/* Saved views dropdown */}
-          <Select
+          <SearchableSelect
             value={currentViewId}
-            onChange={(e) => {
-              const id = e.target.value;
+            onChange={(id) => {
               if (!id) {
                 setCurrentViewId("");
                 return;
@@ -360,16 +359,14 @@ export function EntityData({ entityId }: { entityId: string }) {
               const v = views.find((vv) => vv.id === id);
               if (v) applyView(v);
             }}
+            options={views.map((v) => ({
+              value: v.id,
+              label: v.name + (v.isDefault ? " ★" : ""),
+            }))}
+            emptyOption="— View —"
+            searchPlaceholder="Tìm view…"
             className="w-[160px]"
-          >
-            <option value="">— View —</option>
-            {views.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-                {v.isDefault ? " ★" : ""}
-              </option>
-            ))}
-          </Select>
+          />
           <Button size="sm" variant="default" icon={<I.Save size={11} />} onClick={saveCurrentView}>
             Lưu view
           </Button>
@@ -431,17 +428,13 @@ export function EntityData({ entityId }: { entityId: string }) {
           {fields.map((f) => (
             <FormField key={f.id} label={pickFieldLabel(f, lang) + (f.required ? " *" : "")}>
               {f.type === "select" && f.options?.length ? (
-                <Select
+                <SearchableSelect
+                  className="w-full"
                   value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
-                >
-                  <option value="">— chọn —</option>
-                  {f.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(v) => setForm({ ...form, [f.name]: v })}
+                  options={f.options.map((o) => ({ value: o, label: o }))}
+                  emptyOption="— chọn —"
+                />
               ) : f.type === "sequence" ? (
                 <Input value={form[f.name] ?? ""} readOnly placeholder="(server tự sinh)" />
               ) : (

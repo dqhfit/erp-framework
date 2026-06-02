@@ -118,3 +118,13 @@ export interface MockAgent {
   /** ID của template đã dùng để tạo agent (nếu có). */
   templateId?: string;
 }
+
+/** Nguồn dữ liệu (DataSource ORM-like) — tóm tắt cho Sidebar. Cấu hình đầy đủ
+ *  (DataSourceConfig) nằm ở userObjects.dataSourceContent[id]. */
+export interface MockDataSource {
+  id: string;
+  name: string;
+  icon: IconName;
+  /** Entity gốc (để hiển thị nhanh; rỗng khi chưa cấu hình). */
+  baseEntityId?: string;
+}

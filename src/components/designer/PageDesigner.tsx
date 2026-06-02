@@ -77,6 +77,218 @@ interface Props {
   pageId: string;
 }
 
+/* ── Cấu hình tải dữ liệu (số dòng + điều kiện + cổng) ─────────────────────
+   Dùng chung cho mọi widget đọc record-list. Ghi vào config keys: rowLimit,
+   loadFilters (map field→{op,value}), loadGate (stateKey). Renderer đọc các
+   key này qua useDataOpts (ConsumerPage). */
+const RECORD_DATA_KINDS = new Set([
+  "list",
+  "chart",
+  "kanban",
+  "calendar",
+  "map",
+  "pivot",
+  "kpi",
+  "combobox",
+  "listbox",
+  "tagbox",
+]);
+const LOAD_OPS = ["=", "!=", ">", ">=", "<", "<=", "contains", "in"] as const;
+type LoadCond = { op: string; value: unknown };
+
+/* Widget hỗ trợ chọn nguồn = entity HOẶC datasource (gồm cả detail/form). */
+const BINDING_KINDS = new Set([...RECORD_DATA_KINDS, "detail", "form"]);
+
+/* Bộ chọn nguồn dữ liệu: Entity ↔ Nguồn dữ liệu (datasource). Ghi cfg.entity
+   hoặc cfg.dataSourceId. dataSourceId === undefined = mode entity; định nghĩa
+   (kể cả "") = mode datasource. */
+function BindingSourceConfig({
+  cfg,
+  dataSources,
+  onChange,
+}: {
+  cfg: Record<string, unknown>;
+  dataSources: Array<{ id: string; name: string }>;
+  onChange: (patch: Record<string, unknown>) => void;
+}) {
+  const dsId = cfg.dataSourceId as string | undefined;
+  const isDs = dsId !== undefined;
+  const btn = (active: boolean) =>
+    cn(
+      "flex-1 rounded border px-2 py-1 text-xs",
+      active ? "border-accent bg-accent/10 text-accent" : "border-border text-muted",
+    );
+  return (
+    <div className="rounded-md border border-border p-2 space-y-2 bg-bg-soft/40">
+      <div className="text-xs font-semibold text-muted">Nguồn bind</div>
+      <div className="flex gap-1">
+        <button
+          type="button"
+          className={btn(!isDs)}
+          onClick={() => onChange({ dataSourceId: undefined })}
+        >
+          Entity
+        </button>
+        <button
+          type="button"
+          className={btn(isDs)}
+          onClick={() => onChange({ dataSourceId: dsId ?? "", entity: undefined, fields: null })}
+        >
+          Nguồn dữ liệu
+        </button>
+      </div>
+      {isDs && (
+        <Select
+          value={dsId ?? ""}
+          onChange={(e) =>
+            onChange({ dataSourceId: e.target.value, entity: undefined, fields: null })
+          }
+        >
+          <option value="">— chọn nguồn dữ liệu —</option>
+          {dataSources.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </Select>
+      )}
+    </div>
+  );
+}
+
+function DataLoadConfig({
+  cfg,
+  fields,
+  onChange,
+}: {
+  cfg: Record<string, unknown>;
+  fields: Array<{ name: string; label?: string }>;
+  onChange: (patch: Record<string, unknown>) => void;
+}) {
+  const rowLimit = typeof cfg.rowLimit === "number" ? cfg.rowLimit : undefined;
+  const gate = (cfg.loadGate as string) ?? "";
+  const lf = (cfg.loadFilters as Record<string, LoadCond>) ?? {};
+  const entries = Object.entries(lf);
+
+  const writeFilters = (next: Record<string, LoadCond>) =>
+    onChange({ loadFilters: Object.keys(next).length ? next : undefined });
+
+  const setCond = (field: string, op: string, value: string) => {
+    if (!field) return;
+    writeFilters({ ...lf, [field]: { op, value } });
+  };
+  const renameField = (oldField: string, newField: string) => {
+    if (!newField || newField === oldField || lf[newField]) return;
+    const next: Record<string, LoadCond> = {};
+    for (const [k, v] of Object.entries(lf)) next[k === oldField ? newField : k] = v;
+    writeFilters(next);
+  };
+  const removeCond = (field: string) => {
+    const next = { ...lf };
+    delete next[field];
+    writeFilters(next);
+  };
+  const addCond = () => {
+    const avail = fields.find((f) => !lf[f.name]);
+    if (!avail) return;
+    writeFilters({ ...lf, [avail.name]: { op: "=", value: "" } });
+  };
+
+  const fieldLabel = (name: string) => fields.find((f) => f.name === name)?.label ?? name;
+
+  return (
+    <div className="rounded-md border border-border p-2 space-y-2 bg-bg-soft/40">
+      <div className="text-xs font-semibold text-muted">Tải dữ liệu</div>
+      <FormField label="Số dòng tối đa (trống = 500, tối đa 10.000)">
+        <Input
+          type="number"
+          min="1"
+          max="10000"
+          placeholder="500"
+          value={rowLimit ?? ""}
+          onChange={(e) => {
+            const n = Number.parseInt(e.target.value, 10);
+            onChange({
+              rowLimit: Number.isFinite(n) && n > 0 ? Math.min(n, 10_000) : undefined,
+            });
+          }}
+        />
+      </FormField>
+      <FormField label="Chỉ tải khi state có giá trị (cổng)">
+        <Input
+          placeholder="vd: bo_phan_da_chon (để trống = luôn tải)"
+          value={gate}
+          onChange={(e) => onChange({ loadGate: e.target.value.trim() || undefined })}
+        />
+      </FormField>
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[11px] text-muted">Điều kiện trước khi load (lọc tại DB)</span>
+          <button
+            type="button"
+            onClick={addCond}
+            disabled={fields.length === 0 || entries.length >= fields.length}
+            className="text-[11px] text-accent hover:underline disabled:opacity-40 disabled:no-underline"
+          >
+            + Thêm
+          </button>
+        </div>
+        {fields.length === 0 ? (
+          <p className="text-[11px] text-muted italic">Chọn Entity trước để thêm điều kiện.</p>
+        ) : entries.length === 0 ? (
+          <p className="text-[11px] text-muted italic">Không có điều kiện — tải tất cả.</p>
+        ) : (
+          entries.map(([field, cond]) => (
+            <div key={field} className="flex items-center gap-1 mb-1">
+              <Select
+                className="flex-1 min-w-0"
+                value={field}
+                onChange={(e) => renameField(field, e.target.value)}
+              >
+                {fields.map((f) => (
+                  <option key={f.name} value={f.name} disabled={f.name !== field && !!lf[f.name]}>
+                    {fieldLabel(f.name)}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                className="w-20 shrink-0"
+                value={cond.op}
+                onChange={(e) => setCond(field, e.target.value, String(cond.value ?? ""))}
+              >
+                {LOAD_OPS.map((op) => (
+                  <option key={op} value={op}>
+                    {op}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                className="w-24 shrink-0"
+                placeholder="giá trị"
+                value={String(cond.value ?? "")}
+                onChange={(e) => setCond(field, cond.op, e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => removeCond(field)}
+                className="shrink-0 text-muted hover:text-danger px-1"
+                title="Xóa điều kiện"
+              >
+                <I.X size={12} />
+              </button>
+            </div>
+          ))
+        )}
+        {entries.some((e) => e[1].op === "in") && (
+          <p className="text-[10px] text-muted mt-0.5">
+            Toán tử "in": nhập nhiều giá trị cách nhau dấu phẩy.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PageDesigner({ pageId }: Props) {
   const t = useT();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
@@ -169,6 +381,7 @@ export function PageDesigner({ pageId }: Props) {
   const isPublished = page?.isPublished ?? false;
   const publishMode = page?.publishMode ?? "private";
   const entities = useUserObjects((s) => s.entities);
+  const dataSources = useUserObjects((s) => s.dataSources);
   const ready = useUserObjects((s) => s.ready);
 
   // Click ngoài dropdown publish → đóng
@@ -990,8 +1203,32 @@ export function PageDesigner({ pageId }: Props) {
                       </div>
                     </>
                   )}
-                  {/* Entity selector — reset fields khi đổi entity */}
+                  {/* Tải dữ liệu — số dòng + điều kiện + cổng (mọi widget record-list) */}
+                  {/* Chọn nguồn bind: Entity hoặc Nguồn dữ liệu (datasource) */}
+                  {inspTab === "dulieu" && BINDING_KINDS.has(sel.kind) && (
+                    <BindingSourceConfig
+                      cfg={sel.config}
+                      dataSources={dataSources}
+                      onChange={(patch) => update(sel.id, { config: { ...sel.config, ...patch } })}
+                    />
+                  )}
                   {inspTab === "dulieu" &&
+                    RECORD_DATA_KINDS.has(sel.kind) &&
+                    sel.config.dataSourceId === undefined && (
+                      <DataLoadConfig
+                        cfg={sel.config}
+                        fields={
+                          (entities.find((e) => e.id === (sel.config.entity as string | undefined))
+                            ?.fields ?? []) as Array<{ name: string; label?: string }>
+                        }
+                        onChange={(patch) =>
+                          update(sel.id, { config: { ...sel.config, ...patch } })
+                        }
+                      />
+                    )}
+                  {/* Entity selector — reset fields khi đổi entity (ẩn khi bind datasource) */}
+                  {inspTab === "dulieu" &&
+                    sel.config.dataSourceId === undefined &&
                     (sel.kind === "list" ||
                       sel.kind === "detail" ||
                       sel.kind === "form" ||

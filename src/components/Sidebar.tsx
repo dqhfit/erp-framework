@@ -706,6 +706,7 @@ export function Sidebar() {
     pages: true,
     workflows: true,
     agents: true,
+    datasources: true,
     ops: true,
     settings: false,
   });
@@ -717,6 +718,7 @@ export function Sidebar() {
       pages: next,
       workflows: next,
       agents: next,
+      datasources: next,
       ops: next,
       settings: next,
     });
@@ -746,7 +748,14 @@ export function Sidebar() {
       ? arr.filter((i) => i.name.toLowerCase().includes(search.trim().toLowerCase()))
       : arr;
   const effectiveSectionsOpen = search.trim()
-    ? { ...sectionsOpen, entities: true, pages: true, workflows: true, agents: true }
+    ? {
+        ...sectionsOpen,
+        entities: true,
+        pages: true,
+        workflows: true,
+        agents: true,
+        datasources: true,
+      }
     : sectionsOpen;
 
   // RBAC — chặn nút theo role. Lấy role+enforce để component re-render khi đổi.
@@ -762,6 +771,7 @@ export function Sidebar() {
   const userPages = useUserObjects((s) => s.pages);
   const userWorkflows = useUserObjects((s) => s.workflows);
   const userAgents = useUserObjects((s) => s.agents);
+  const userDataSources = useUserObjects((s) => s.dataSources);
   // Membership: primary agent + my agents — dùng để pin ★/★★ và sort lên đầu.
   const primaryAgentId = useAuth((s) => s.primaryAgentId);
   const myAgentRoles = useAuth((s) => s.myAgentRoles);
@@ -787,6 +797,9 @@ export function Sidebar() {
     addAgent,
     deleteAgent,
     renameAgent,
+    addDataSource,
+    deleteDataSource,
+    renameDataSource,
   } = useUserObjects.getState();
 
   /** Thu gọn 2 nhóm Vận hành + Cấu hình khi user điều hướng vào object/page/... */
@@ -812,6 +825,8 @@ export function Sidebar() {
   const handleRenameWorkflow = (id: string, newName: string) => renameWorkflow(id, newName);
   const handleDeleteAgent = onDeleteFn("agent", deleteAgent, "/agents");
   const handleRenameAgent = (id: string, newName: string) => renameAgent(id, newName);
+  const handleDeleteDataSource = onDeleteFn("datasource", deleteDataSource, "/datasources");
+  const handleRenameDataSource = (id: string, newName: string) => renameDataSource(id, newName);
 
   /** Prompt name + tạo + navigate. id là uuid client cấp (khớp backend). */
   const promptName = async (label: string): Promise<{ id: string; name: string } | null> => {
@@ -847,6 +862,12 @@ export function Sidebar() {
     if (!r) return;
     addAgent({ id: r.id, name: r.name, model: "claude-sonnet-4-6", tools: 0 });
     navigate({ to: "/agents/$id", params: { id: r.id } });
+  };
+  const handleAddDataSource = async () => {
+    const r = await promptName("datasource");
+    if (!r) return;
+    addDataSource({ id: r.id, name: r.name, icon: "Database" });
+    navigate({ to: "/datasources/$id", params: { id: r.id } });
   };
 
   return (
@@ -1093,6 +1114,35 @@ export function Sidebar() {
               isFav: favs.isFav(a.id),
               onFavorite: () =>
                 favs.toggle({ id: a.id, to: `/agents/${a.id}`, label: a.name, iconName: "Bot" }),
+            }))}
+          />
+        )}
+        {!isViewer && (!search.trim() || filterBySearch(userDataSources).length > 0) && (
+          <SidebarSection
+            title="Nguồn dữ liệu"
+            collapsed={collapsed}
+            pathname={pathname}
+            open={effectiveSectionsOpen.datasources}
+            onToggle={toggle("datasources")}
+            onAdd={can("create", "datasource") ? handleAddDataSource : undefined}
+            onDelete={can("delete", "datasource") ? handleDeleteDataSource : undefined}
+            onRename={can("edit", "datasource") ? handleRenameDataSource : undefined}
+            sectionKey="datasources"
+            onNavigate={collapseOpsSettings}
+            items={filterBySearch(userDataSources).map((d) => ({
+              id: d.id,
+              name: d.name,
+              iconName: d.icon,
+              to: `/datasources/${d.id}`,
+              userOwned: true,
+              isFav: favs.isFav(d.id),
+              onFavorite: () =>
+                favs.toggle({
+                  id: d.id,
+                  to: `/datasources/${d.id}`,
+                  label: d.name,
+                  iconName: d.icon,
+                }),
             }))}
           />
         )}
