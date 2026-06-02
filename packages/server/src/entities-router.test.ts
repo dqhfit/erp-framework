@@ -5,9 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { entitiesRouter } from "./entities-router";
 import { createCallerFactory } from "./trpc";
-import {
-  makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError,
-} from "./test-helpers";
+import { makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError } from "./test-helpers";
 
 const caller = createCallerFactory(entitiesRouter);
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -30,10 +28,7 @@ describe("entities-router", () => {
 
     it("delete: viewer FORBIDDEN", async () => {
       const ctx = makeMockCtx({ user: makeMockUser({ role: "viewer" }) });
-      await assertThrowsTRPCError(
-        () => caller(ctx).delete(VALID_UUID),
-        "FORBIDDEN",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).delete(VALID_UUID), "FORBIDDEN");
     });
   });
 
@@ -42,19 +37,28 @@ describe("entities-router", () => {
       const { db, enqueueInsert } = makeMockDb();
       enqueueInsert([{ id: VALID_UUID, name: "n", label: "L" }]);
       const r = await caller(makeMockCtx({ db })).save({
-        name: "customer", label: "Khách hàng", fields: [],
+        name: "customer",
+        label: "Khách hàng",
+        fields: [],
       });
       expect(r?.id).toBe(VALID_UUID);
     });
 
     it("FORBIDDEN: entity thuộc company khác", async () => {
       const { db, enqueueSelect } = makeMockDb();
+      // save() chạy 2 select: (1) check trùng tên trong công ty → rỗng (không
+      // trùng), (2) check ownership theo id → entity thuộc co_other → FORBIDDEN.
+      enqueueSelect([]);
       enqueueSelect([{ companyId: "co_other" }]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).save({
-          id: VALID_UUID, name: "x", label: "X", fields: [],
-        }),
+        () =>
+          caller(ctx).save({
+            id: VALID_UUID,
+            name: "x",
+            label: "X",
+            fields: [],
+          }),
         "FORBIDDEN",
       );
     });
@@ -63,10 +67,13 @@ describe("entities-router", () => {
   describe("renameField", () => {
     it("rename + migrate data jsonb_set", async () => {
       const { db, enqueueSelect, ops } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, companyId: "co_test_1",
-        fields: [{ name: "old_name", type: "string", label: "X" }],
-      }]);
+      enqueueSelect([
+        {
+          id: VALID_UUID,
+          companyId: "co_test_1",
+          fields: [{ name: "old_name", type: "string", label: "X" }],
+        },
+      ]);
       const r = await caller(makeMockCtx({ db })).renameField({
         entityId: VALID_UUID,
         oldKey: "old_name",
@@ -81,42 +88,57 @@ describe("entities-router", () => {
       enqueueSelect([]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).renameField({
-          entityId: VALID_UUID, oldKey: "a", newKey: "b",
-        }),
+        () =>
+          caller(ctx).renameField({
+            entityId: VALID_UUID,
+            oldKey: "a",
+            newKey: "b",
+          }),
         "NOT_FOUND",
       );
     });
 
     it("BAD_REQUEST: oldKey không có trong fields", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, companyId: "co_test_1",
-        fields: [{ name: "x", type: "string" }],
-      }]);
+      enqueueSelect([
+        {
+          id: VALID_UUID,
+          companyId: "co_test_1",
+          fields: [{ name: "x", type: "string" }],
+        },
+      ]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).renameField({
-          entityId: VALID_UUID, oldKey: "y", newKey: "z",
-        }),
+        () =>
+          caller(ctx).renameField({
+            entityId: VALID_UUID,
+            oldKey: "y",
+            newKey: "z",
+          }),
         "BAD_REQUEST",
       );
     });
 
     it("BAD_REQUEST: newKey trùng field đã có", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, companyId: "co_test_1",
-        fields: [
-          { name: "old", type: "string" },
-          { name: "new", type: "string" },
-        ],
-      }]);
+      enqueueSelect([
+        {
+          id: VALID_UUID,
+          companyId: "co_test_1",
+          fields: [
+            { name: "old", type: "string" },
+            { name: "new", type: "string" },
+          ],
+        },
+      ]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).renameField({
-          entityId: VALID_UUID, oldKey: "old", newKey: "new",
-        }),
+        () =>
+          caller(ctx).renameField({
+            entityId: VALID_UUID,
+            oldKey: "old",
+            newKey: "new",
+          }),
         "BAD_REQUEST",
       );
     });
@@ -124,9 +146,12 @@ describe("entities-router", () => {
     it("validation: newKey phải là identifier", async () => {
       const ctx = makeMockCtx();
       await assertThrowsTRPCError(
-        () => caller(ctx).renameField({
-          entityId: VALID_UUID, oldKey: "x", newKey: "1invalid",
-        }),
+        () =>
+          caller(ctx).renameField({
+            entityId: VALID_UUID,
+            oldKey: "x",
+            newKey: "1invalid",
+          }),
         "BAD_REQUEST",
       );
     });
@@ -138,39 +163,51 @@ describe("entities-router", () => {
       enqueueSelect([]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).changeFieldType({
-          entityId: VALID_UUID, fieldName: "x", newType: "number",
-        }),
+        () =>
+          caller(ctx).changeFieldType({
+            entityId: VALID_UUID,
+            fieldName: "x",
+            newType: "number",
+          }),
         "NOT_FOUND",
       );
     });
 
     it("BAD_REQUEST: field không có", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, companyId: "co_test_1",
-        fields: [{ name: "exists", type: "string" }],
-      }]);
+      enqueueSelect([
+        {
+          id: VALID_UUID,
+          companyId: "co_test_1",
+          fields: [{ name: "exists", type: "string" }],
+        },
+      ]);
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).changeFieldType({
-          entityId: VALID_UUID, fieldName: "missing", newType: "number",
-        }),
+        () =>
+          caller(ctx).changeFieldType({
+            entityId: VALID_UUID,
+            fieldName: "missing",
+            newType: "number",
+          }),
         "BAD_REQUEST",
       );
     });
 
     it("happy path: coerce records + return migrated count", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, companyId: "co_test_1",
-        fields: [{ name: "qty", type: "string", label: "Số lượng" }],
-      }]);
       enqueueSelect([
-        { id: VALID_UUID, data: { qty: "100" } },
+        {
+          id: VALID_UUID,
+          companyId: "co_test_1",
+          fields: [{ name: "qty", type: "string", label: "Số lượng" }],
+        },
       ]);
+      enqueueSelect([{ id: VALID_UUID, data: { qty: "100" } }]);
       const r = await caller(makeMockCtx({ db })).changeFieldType({
-        entityId: VALID_UUID, fieldName: "qty", newType: "number",
+        entityId: VALID_UUID,
+        fieldName: "qty",
+        newType: "number",
       });
       expect(r.migrated).toBeGreaterThanOrEqual(0);
       expect(Array.isArray(r.errors)).toBe(true);
