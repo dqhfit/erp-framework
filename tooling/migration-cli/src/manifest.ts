@@ -67,6 +67,9 @@ export interface ManifestTable {
   label?: string;
   /** AI enrich gán — mô tả nghiệp vụ. */
   description?: string;
+  /** ISO timestamp lần enrich AI gần nhất. Set bởi applyTableEnrichment.
+   *  skipEnriched dùng field này (thay heuristic looksLikeAuto bị sai). */
+  enrichedAt?: string;
   /** Phase Q3 — timestamp ETL bulk-read thành công cho bảng này.
    *  Codegen guard check field này để cho phép sinh code proc đụng bảng này. */
   migratedAt?: string;
@@ -98,6 +101,8 @@ export interface ManifestProc {
   description?: string;
   /** AI enrich gán — lý do chọn tier (debug). */
   tierReason?: string;
+  /** ISO timestamp lần enrich AI gần nhất. skipEnriched dùng field này. */
+  enrichedAt?: string;
   /** Phase Q1 — proc có còn được dùng không. Mặc định true.
    *  false = mark dead, skip codegen + bỏ khỏi live tables aggregation. */
   active?: boolean;

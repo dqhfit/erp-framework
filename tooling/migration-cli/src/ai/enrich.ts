@@ -106,9 +106,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
     // --- Enrich table --- (bỏ qua khi single-proc mode)
     if (!isSingleProcMode) {
       for (const t of m.tables) {
-        if (opts.skipEnriched && t.suggestedEntityName && !looksLikeAuto(t.suggestedEntityName)) {
-          continue;
-        }
+        if (opts.skipEnriched && t.enrichedAt) continue;
         let samples: unknown[] = [];
         try {
           samples = await mssql.bulkRead(t.name, { limit: 5 });
@@ -185,7 +183,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
 
     if (!costStopped) {
       for (const p of procsToEnrich) {
-        if (opts.skipEnriched && p.targetProcName && !looksLikeAuto(p.targetProcName)) continue;
+        if (opts.skipEnriched && p.enrichedAt) continue;
 
         let body = "";
         try {
@@ -844,6 +842,7 @@ function applyTableEnrichment(t: ManifestTable, e: EnrichedTableOutput): void {
   t.label = e.label;
   t.description = e.description;
   t.suggestedKind = e.suggestedKind ?? "entity";
+  t.enrichedAt = new Date().toISOString();
   if (e.suggestedKind === "enum") {
     t.enumOptions = e.enumOptions ?? [];
   } else {
@@ -885,6 +884,7 @@ function applyTableEnrichment(t: ManifestTable, e: EnrichedTableOutput): void {
 }
 
 function applyProcEnrichment(p: ManifestProc, e: EnrichedProcOutput, moduleName: string): void {
+  p.enrichedAt = new Date().toISOString();
   p.suggestedTier = e.tier;
   if (e.tier === "B" && e.targetProcName) {
     p.targetProcName = e.targetProcName;
@@ -905,12 +905,4 @@ function applyProcEnrichment(p: ManifestProc, e: EnrichedProcOutput, moduleName:
 
 function procShort(full: string): string {
   return full.split(".").pop() ?? full;
-}
-
-/** Heuristic: tên "auto-generated" (snake_case English thuần từ tên bảng MSSQL) — chưa enrich. */
-function looksLikeAuto(name: string): boolean {
-  // Auto-gen từ snakeCase tên table MSSQL: chưa có dấu Vietnam, tất cả lowercase ASCII.
-  // Sau enrich từ LLM: vẫn là không dấu (theo STYLE) → không phân biệt được từ riêng.
-  // Tạm thời luôn enrich lại khi --apply chưa dùng. Skip flag để user có tùy chọn.
-  return /^[a-z0-9_]+$/.test(name);
 }
