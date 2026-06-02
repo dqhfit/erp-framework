@@ -86,6 +86,12 @@ services:
         condition: service_started
     volumes:
       - erp-uploads:/data/uploads
+      # Persist KẾT QUẢ MIGRATE qua mọi lần redeploy (cwd server = packages/server).
+      # Nếu không, redeploy MẤT toàn bộ manifest discover/enrich + decisions + audit.
+      # Docker tự copy file baked-in (vd sales.yaml) vào volume lần đầu.
+      - erp-migration:/app/packages/server/migration-plan
+      # Golden baseline (capture-golden) — verify proc cần, cũng phải persist.
+      - erp-golden:/app/packages/server/e2e/golden
     # Không expose ra ngoài — app (nginx) proxy nội bộ qua /trpc.
     # Mở dòng dưới nếu cần gọi thẳng server để debug.
     # ports:
@@ -178,3 +184,5 @@ volumes:
   erp-uploads:
   ollama-data:
   mosquitto-data:
+  erp-migration: # manifest migrate + decisions + ai-log + audit (persist qua redeploy)
+  erp-golden: # golden baseline cho verify proc

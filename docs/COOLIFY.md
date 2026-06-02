@@ -49,11 +49,20 @@ container (db, tika, server, app, bridge, ollama) + 1 one-shot kéo model
 
 ## Persistence
 
-Coolify quản lý 4 volume — giữ nguyên qua mọi lần redeploy:
+Coolify quản lý các volume — giữ nguyên qua mọi lần redeploy:
 - `erp-pgdata` — dữ liệu PostgreSQL (entity, page, workflow, user, KB chunks…).
 - `erp-uploads` — file tải lên Knowledge Base.
 - `bridge-data` — token đăng nhập Claude Pro/Max của Bridge CLI.
 - `ollama-data` — model Ollama đã pull (nomic-embed-text…).
+- `erp-migration` — **kết quả Migrate DQHF**: manifest discover/enrich, decisions,
+  ai-log, audit (`packages/server/migration-plan/`). KHÔNG có volume này thì
+  **mỗi redeploy MẤT HẾT** công discover/enrich.
+- `erp-golden` — golden baseline (`packages/server/e2e/golden/`) cho verify proc.
+
+> ⚠️ Nếu deploy bằng compose CŨ (chưa có 2 volume `erp-migration`/`erp-golden`),
+> mọi manifest/golden tạo lúc chạy nằm trong FS container → **redeploy là bay sạch**.
+> Cập nhật compose + redeploy 1 lần để bật persist (Docker tự copy file baked-in
+> như `sales.yaml` vào volume lần đầu).
 
 Sao lưu định kỳ qua **Backups** trong UI Coolify (snapshot Postgres).
 
