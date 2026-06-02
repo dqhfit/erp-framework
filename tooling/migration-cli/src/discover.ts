@@ -126,6 +126,14 @@ export async function runDiscover(opts: DiscoverOptions): Promise<void> {
           }
         }
       }
+      // FETCH info cho MỌI bảng trong module (gồm bảng proc reads/writes + FK
+      // vừa thêm) → nếu không, manifest build (dùng tableInfoCache.get) sẽ SKIP
+      // bảng chưa cache → bảng biến mất khỏi manifest.
+      for (const tname of [...moduleTables]) {
+        if (!tableInfoCache.has(tname)) {
+          await getTableCached(client, tname, tableInfoCache);
+        }
+      }
     }
 
     // BFS (table-centric) — chỉ dùng cho CLI seed-tables, KHÔNG cho proc-centric.

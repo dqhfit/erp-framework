@@ -504,7 +504,9 @@ export const navItems = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    parentId: uuid("parent_id"),
+    parentId: uuid("parent_id").references((): AnyPgColumn => navItems.id, {
+      onDelete: "cascade",
+    }),
     kind: text("kind").notNull().default("group"),
     label: text("label").notNull(),
     icon: text("icon"),

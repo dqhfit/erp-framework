@@ -62,10 +62,13 @@ export function NavMenuSection({ collapsed }: { collapsed?: boolean }) {
     }
   };
 
-  const renderRow = (it: NavItem, depth: number) => {
+  const renderRow = (it: NavItem, depth: number, seen: Set<string>): ReactElement | null => {
+    // Phòng thủ chống cây vòng (DB lỗi) → render đệ quy không vô hạn.
+    if (seen.has(it.id) || depth > 50) return null;
+    const here = new Set(seen).add(it.id);
     const kids = childrenOf.get(it.id) ?? [];
     const isOpen = expanded.has(it.id);
-    const Custom = it.icon ? IconMap[it.icon] : undefined;
+    const Custom = it.icon && typeof IconMap[it.icon] === "function" ? IconMap[it.icon] : undefined;
     return (
       <div key={it.id}>
         <button
@@ -94,7 +97,7 @@ export function NavMenuSection({ collapsed }: { collapsed?: boolean }) {
           )}
           <span className="flex-1 truncate">{it.label}</span>
         </button>
-        {it.kind === "group" && isOpen && kids.map((c) => renderRow(c, depth + 1))}
+        {it.kind === "group" && isOpen && kids.map((c) => renderRow(c, depth + 1, here))}
       </div>
     );
   };
@@ -109,7 +112,7 @@ export function NavMenuSection({ collapsed }: { collapsed?: boolean }) {
         {open ? <I.ChevronDown size={12} /> : <I.ChevronRight size={12} />}
         Menu
       </button>
-      {open && <div className="px-1">{roots.map((r) => renderRow(r, 0))}</div>}
+      {open && <div className="px-1">{roots.map((r) => renderRow(r, 0, new Set()))}</div>}
     </div>
   );
 }

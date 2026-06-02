@@ -1848,7 +1848,11 @@ export const migrationRouter = router({
           const proc = (m.procs ?? []).find(
             (p) => p.name.toLowerCase() === r.procName.toLowerCase(),
           ) as Record<string, unknown> | undefined;
-          if (proc && r.verified) proc.verifiedAt = new Date().toISOString();
+          if (!proc) continue;
+          // Pass → ghi verifiedAt; FAIL → XOÁ verifiedAt cũ (nếu không, proc
+          // từng pass rồi fail vẫn giữ verifiedAt → finalize gate bị bypass).
+          if (r.verified) proc.verifiedAt = new Date().toISOString();
+          else delete proc.verifiedAt;
         }
         writeFileSync(mp, YAML.stringify(m, { lineWidth: 0 }), "utf8");
       } catch {

@@ -4,7 +4,7 @@
    ========================================================== */
 import { createNavClient, type NavItem, type NavKind } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, EmptyState, Input, Select } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
@@ -115,9 +115,12 @@ function NavBuilderPage() {
       // Thả lên nhóm → thành con nhóm đó. Thả lên trang/link → thành anh em (cùng cha).
       const newParent = target ? (target.kind === "group" ? target.id : target.parentId) : null;
       const sibs = (childrenOf.get(newParent) ?? []).filter((x) => x.id !== id);
+      // sortOrder = max+1 (KHÔNG dùng sibs.length — sortOrder có thể không liên
+      // tục sau delete/move → length trùng giá trị đang có).
+      const nextOrder = sibs.reduce((mx, s) => Math.max(mx, s.sortOrder), -1) + 1;
       setBusy(true);
       try {
-        await navApi.move({ id, parentId: newParent, sortOrder: sibs.length });
+        await navApi.move({ id, parentId: newParent, sortOrder: nextOrder });
         await load();
       } catch (e) {
         await dialog.alert(`Lỗi di chuyển: ${(e as Error)?.message ?? e}`);
@@ -169,7 +172,9 @@ function NavBuilderPage() {
     [childrenOf, load],
   );
 
-  const renderRow = (item: NavItem, depth: number) => {
+  const renderRow = (item: NavItem, depth: number, seen: Set<string>): ReactElement | null => {
+    if (seen.has(item.id) || depth > 50) return null; // phòng cây vòng
+    const here = new Set(seen).add(item.id);
     const kids = childrenOf.get(item.id) ?? [];
     const isDrop = dropTarget === item.id;
     return (
@@ -238,7 +243,7 @@ function NavBuilderPage() {
             </button>
           </div>
         </div>
-        {kids.map((c) => renderRow(c, depth + 1))}
+        {kids.map((c) => renderRow(c, depth + 1, here))}
       </div>
     );
   };
@@ -346,7 +351,7 @@ function NavBuilderPage() {
               void doDrop(null);
             }}
           >
-            {roots.map((r) => renderRow(r, 0))}
+            {roots.map((r) => renderRow(r, 0, new Set()))}
             <div className="mt-1 rounded border border-dashed border-border px-2 py-1.5 text-[11px] text-muted">
               Thả vào đây để đưa ra ngoài cùng (gốc).
             </div>

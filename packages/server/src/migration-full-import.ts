@@ -193,12 +193,16 @@ export async function runFullImportJob(data: FullJobData): Promise<{
   // Cooperative cancel: đọc lại status để dừng GIỮA CHỪNG khi user Huỷ. Gọi ở
   // ranh giới mỗi bảng + mỗi batch (checkpoint đã lưu nên resume an toàn).
   const isCanceled = async (): Promise<boolean> => {
-    const [j] = await db
-      .select({ status: migrationFullJobs.status })
-      .from(migrationFullJobs)
-      .where(eq(migrationFullJobs.id, data.jobId))
-      .limit(1);
-    return j?.status === "canceled";
+    try {
+      const [j] = await db
+        .select({ status: migrationFullJobs.status })
+        .from(migrationFullJobs)
+        .where(eq(migrationFullJobs.id, data.jobId))
+        .limit(1);
+      return j?.status === "canceled";
+    } catch {
+      return false; // lỗi đọc thoáng qua → coi như chưa cancel, không vỡ job
+    }
   };
 
   try {
@@ -412,24 +416,16 @@ export async function runFullImportJob(data: FullJobData): Promise<{
           })
           .where(eq(entities.id, tableEntityId));
 
-        // Reconciliation: so COUNT nguồn (MSSQL) vs đích (entity_records). Drift
-        // = mất/thừa dữ liệu âm thầm — đánh dấu để completion coi như CHƯA xong.
+        // Reconciliation: so COUNT nguồn (MSSQL) vs SỐ DÒNG BẢNG NÀY đã import
+        // (rowsImported), KHÔNG đếm count(*) toàn entity — vì nhiều bảng nguồn
+        // có thể dùng CHUNG 1 entity (dedup) → count(*) gồm cả bảng khác → drift
+        // GIẢ → job kẹt paused mãi. rowsImported là per-bảng nên chuẩn xác.
         let reconcile: "ok" | "drift" | "skip" = "skip";
         let srcCount: number | null = null;
-        let tgtCount: number | null = null;
+        const tgtCount: number | null = rowsImported;
         try {
           srcCount = await client.countRows(t.tableName);
-          const [c] = await db
-            .select({ n: sql<number>`count(*)::bigint` })
-            .from(entityRecords)
-            .where(
-              and(
-                eq(entityRecords.companyId, job.companyId),
-                eq(entityRecords.entityId, tableEntityId),
-              ),
-            );
-          tgtCount = Number(c?.n ?? 0);
-          reconcile = srcCount === tgtCount ? "ok" : "drift";
+          reconcile = srcCount === rowsImported ? "ok" : "drift";
         } catch {
           // Không đếm được nguồn (vd view, quyền) → skip, không chặn.
           reconcile = "skip";
@@ -460,12 +456,20 @@ export async function runFullImportJob(data: FullJobData): Promise<{
     // user đổi ý — nhưng job canceled sẽ không tự resume).
     if (canceledMidRun) {
       const [c] = await db
-        .select({ rows: sql<number>`COALESCE(sum(rows_imported), 0)::bigint` })
+        .select({
+          rows: sql<number>`COALESCE(sum(rows_imported), 0)::bigint`,
+          done: sql<number>`count(*) FILTER (WHERE status = 'done')::int`,
+        })
         .from(migrationFullJobTables)
         .where(eq(migrationFullJobTables.jobId, data.jobId));
       await db
         .update(migrationFullJobs)
-        .set({ lastHeartbeat: new Date(), updatedAt: new Date() })
+        .set({
+          completedTables: c?.done ?? 0,
+          totalRowsImported: Number(c?.rows ?? 0),
+          lastHeartbeat: new Date(),
+          updatedAt: new Date(),
+        })
         .where(eq(migrationFullJobs.id, data.jobId));
       publishWs(`migration:${data.userId}`, {
         kind: "full-job-done",

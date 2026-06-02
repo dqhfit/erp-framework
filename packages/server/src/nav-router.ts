@@ -100,9 +100,30 @@ export const navRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Chong vong: khong cho dat cha la chinh no.
+      // Chong VONG: khong cho dat cha la chinh no HOAC la hau due cua no
+      // (neu khong render de quy se vo han -> vo Sidebar toan company).
       if (input.parentId === input.id) {
         throw new Error("Khong the dat cha la chinh no.");
+      }
+      if (input.parentId) {
+        const all = await ctx.db
+          .select({ id: navItems.id, parentId: navItems.parentId })
+          .from(navItems)
+          .where(eq(navItems.companyId, ctx.user.companyId));
+        const parentMap = new Map(all.map((r) => [r.id, r.parentId]));
+        // Di nguoc tu parentId len goc: neu gap input.id -> tao vong.
+        let cur: string | null = input.parentId;
+        let guard = 0;
+        while (cur && guard++ < 10_000) {
+          if (cur === input.id) {
+            throw new Error("Khong the keo nhom vao chinh nhanh con cua no.");
+          }
+          cur = parentMap.get(cur) ?? null;
+        }
+        // parentId phai ton tai trong company.
+        if (!parentMap.has(input.parentId)) {
+          throw new Error("Nhom cha khong ton tai.");
+        }
       }
       await ctx.db
         .update(navItems)

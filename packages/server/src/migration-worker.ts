@@ -272,12 +272,16 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
     // Cooperative stop: đọc lại status='canceled' để dừng giữa chừng (enrich/
     // generate check ở ranh giới mỗi item).
     const jobCanceled = async (): Promise<boolean> => {
-      const [r] = await db
-        .select({ status: migrationJobs.status })
-        .from(migrationJobs)
-        .where(eq(migrationJobs.id, data.jobId))
-        .limit(1);
-      return r?.status === "canceled";
+      try {
+        const [r] = await db
+          .select({ status: migrationJobs.status })
+          .from(migrationJobs)
+          .where(eq(migrationJobs.id, data.jobId))
+          .limit(1);
+        return r?.status === "canceled";
+      } catch {
+        return false; // lỗi đọc thoáng qua → coi như chưa cancel
+      }
     };
 
     switch (data.action) {
@@ -386,8 +390,10 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
     }
 
     // User huỷ giữa chừng (enrich/generate đã dừng cooperative) → set canceled,
-    // KHÔNG ghi đè completed. full-import tự xử lý canceled bên trong.
-    const wasCanceled = !isFullImport && (await jobCanceled());
+    // KHÔNG ghi đè completed. CHỈ áp cho action có cooperative stop — discover/
+    // data/capture-golden chạy tới hết, đừng bôi "canceled" lên kết quả đã xong.
+    const wasCanceled =
+      (data.action === "enrich" || data.action === "generate") && (await jobCanceled());
     state.status = wasCanceled ? "canceled" : "completed";
     state.completedAt = new Date().toISOString();
     state.durationMs = Date.now() - t0;
