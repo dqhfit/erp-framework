@@ -88,6 +88,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
 
   let totalIn = 0;
   let totalOut = 0;
+  let costStopped = false;
 
   try {
     // --- Enrich table --- (bỏ qua khi single-proc mode)
@@ -132,16 +133,21 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
         );
         totalIn += r.tokensInApprox;
         totalOut += r.tokensOutApprox;
-        const cost = estimateCostUsd(totalIn, totalOut);
-        if (cost > maxCost) {
-          throw new Error(`Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng.`);
-        }
 
         if (r.output) {
           applyTableEnrichment(t, r.output);
           console.log(`  ✓ table ${t.name} → ${t.suggestedEntityName} (${t.columns.length} field)`);
         } else {
           console.log(`  ! Skip table ${t.name} (LLM fail — giữ auto-generated)`);
+        }
+
+        const cost = estimateCostUsd(totalIn, totalOut);
+        if (cost > maxCost) {
+          console.warn(
+            `  ! Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng sớm — progress đã lưu, resume bằng skipEnriched.`,
+          );
+          costStopped = true;
+          break;
         }
       }
     } // end if !isSingleProcMode
@@ -158,61 +164,68 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
       console.warn(`! Không tìm thấy proc nào khớp onlyProcs=${onlyProcs!.join(",")}`);
     }
 
-    for (const p of procsToEnrich) {
-      if (opts.skipEnriched && p.targetProcName && !looksLikeAuto(p.targetProcName)) continue;
+    if (!costStopped) {
+      for (const p of procsToEnrich) {
+        if (opts.skipEnriched && p.targetProcName && !looksLikeAuto(p.targetProcName)) continue;
 
-      let body = "";
-      try {
-        const [sch, name] = p.name.split(".");
-        if (sch && name) {
-          const proc = await mssql.getProc(sch, name);
-          body = proc?.body ?? "";
+        let body = "";
+        try {
+          const [sch, name] = p.name.split(".");
+          if (sch && name) {
+            const proc = await mssql.getProc(sch, name);
+            body = proc?.body ?? "";
+          }
+        } catch (e) {
+          console.warn(`  ! Không đọc body ${p.name}: ${(e as Error).message}`);
         }
-      } catch (e) {
-        console.warn(`  ! Không đọc body ${p.name}: ${(e as Error).message}`);
-      }
-      // Truncate body để tránh vượt context.
-      if (body.length > 6000) body = body.slice(0, 6000) + "\n-- ... (truncated)";
+        // Truncate body để tránh vượt context.
+        if (body.length > 6000) body = body.slice(0, 6000) + "\n-- ... (truncated)";
 
-      const userPayload = JSON.stringify({
-        procName: p.name,
-        body,
-        parseAnalysis: {
-          readsTables: p.reads,
-          writesTables: p.writes,
-          flags: p.flags,
-          suggestedTier: p.suggestedTier,
-        },
-        tablesEnriched: enrichedTableMap,
-      });
+        const userPayload = JSON.stringify({
+          procName: p.name,
+          body,
+          parseAnalysis: {
+            readsTables: p.reads,
+            writesTables: p.writes,
+            flags: p.flags,
+            suggestedTier: p.suggestedTier,
+          },
+          tablesEnriched: enrichedTableMap,
+        });
 
-      const r = await callAi<EnrichedProcOutput>(
-        {
-          module: opts.module,
-          phase: `enrich-proc-${p.name.replace(/\W/g, "_")}`,
-          companyId: opts.companyId,
-        },
-        {
-          system: promptProc,
-          user: userPayload,
-          maxTokens: 1000,
-          temperature: 0.2,
-        },
-      );
-      totalIn += r.tokensInApprox;
-      totalOut += r.tokensOutApprox;
-      const cost = estimateCostUsd(totalIn, totalOut);
-      if (cost > maxCost) {
-        throw new Error(`Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng.`);
-      }
-
-      if (r.output) {
-        applyProcEnrichment(p, r.output, opts.module);
-        console.log(
-          `  ✓ proc ${p.name} → ${p.targetProcName ?? p.targetFile} [tier ${p.suggestedTier}]`,
+        const r = await callAi<EnrichedProcOutput>(
+          {
+            module: opts.module,
+            phase: `enrich-proc-${p.name.replace(/\W/g, "_")}`,
+            companyId: opts.companyId,
+          },
+          {
+            system: promptProc,
+            user: userPayload,
+            maxTokens: 1000,
+            temperature: 0.2,
+          },
         );
-      } else {
-        console.log(`  ! Skip proc ${p.name} (LLM fail)`);
+        totalIn += r.tokensInApprox;
+        totalOut += r.tokensOutApprox;
+
+        if (r.output) {
+          applyProcEnrichment(p, r.output, opts.module);
+          console.log(
+            `  ✓ proc ${p.name} → ${p.targetProcName ?? p.targetFile} [tier ${p.suggestedTier}]`,
+          );
+        } else {
+          console.log(`  ! Skip proc ${p.name} (LLM fail)`);
+        }
+
+        const cost = estimateCostUsd(totalIn, totalOut);
+        if (cost > maxCost) {
+          console.warn(
+            `  ! Vượt --max-cost-usd=${maxCost} (~${cost.toFixed(2)} USD). Dừng sớm — progress đã lưu, resume bằng skipEnriched.`,
+          );
+          costStopped = true;
+          break;
+        }
       }
     }
   } finally {
@@ -222,6 +235,7 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
   // Ghi enriched manifest. Single-proc dry-run KHÔNG ghi (tránh đè
   // enriched.yaml hiện tại với chỉ 1 proc enriched). User xem output
   // qua ai-log/<module>/enrich-proc-<name>-*.json.
+  // costStopped=true vẫn ghi để giữ partial progress — resume dùng skipEnriched.
   let outPath = "(không ghi — dry-run 1 proc, xem ai-log)";
   if (!isSingleProcMode) {
     outPath = opts.apply
@@ -231,11 +245,19 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
   }
 
   const cost = estimateCostUsd(totalIn, totalOut);
-  console.log(`\n✓ Enrich xong: ${outPath}`);
-  console.log(`  Token ~ in:${totalIn} out:${totalOut}  Cost ~ $${cost.toFixed(3)}`);
-  if (!opts.apply && !isSingleProcMode) {
-    console.log(`\n▸ Diff <module>.yaml vs <module>.enriched.yaml trước khi --apply.`);
-    console.log(`  Hoặc chạy lại: pnpm migrate enrich --module ${opts.module} --apply`);
+  if (costStopped) {
+    console.log(`\n⚠ Enrich dừng giữa chừng (vượt cost): ${outPath}`);
+    console.log(`  Token ~ in:${totalIn} out:${totalOut}  Cost ~ $${cost.toFixed(3)}`);
+    console.log(
+      `  Resume: chạy lại với --skip-enriched (hoặc bấm Resume trong UI) để tiếp tục từ đây.`,
+    );
+  } else {
+    console.log(`\n✓ Enrich xong: ${outPath}`);
+    console.log(`  Token ~ in:${totalIn} out:${totalOut}  Cost ~ $${cost.toFixed(3)}`);
+    if (!opts.apply && !isSingleProcMode) {
+      console.log(`\n▸ Diff <module>.yaml vs <module>.enriched.yaml trước khi --apply.`);
+      console.log(`  Hoặc chạy lại: pnpm migrate enrich --module ${opts.module} --apply`);
+    }
   }
 }
 

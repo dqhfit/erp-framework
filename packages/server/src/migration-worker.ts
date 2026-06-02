@@ -146,11 +146,14 @@ export async function resumeMigrationJob(jobId: string): Promise<void> {
   jobStates.set(jobId, state);
   const userId = row.userId ?? "";
   publishWs(`migration:${userId}`, { kind: "queued", state });
+  const baseArgs = (row.args ?? {}) as Record<string, unknown>;
+  // Enrich resume: bật skipEnriched để bỏ qua những item đã xong, tiếp tục từ đây.
+  const resumeArgs = row.action === "enrich" ? { ...baseArgs, skipEnriched: true } : baseArgs;
   await bossSend({
     jobId,
     action: row.action as MigrationAction,
     module: row.module,
-    args: (row.args ?? {}) as Record<string, unknown>,
+    args: resumeArgs,
     userId,
     companyId: row.companyId,
   });
