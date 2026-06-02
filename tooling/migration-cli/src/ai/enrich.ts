@@ -17,6 +17,14 @@ import {
 } from "../manifest.js";
 import { callAi, loadStyleGuide, loadPrompt, estimateCostUsd } from "./llm-client.js";
 
+export interface EnrichProgressInfo {
+  phase: "table" | "proc";
+  name: string;
+  /** Số thứ tự trong batch hiện tại (1-based). */
+  index: number;
+  total: number;
+}
+
 export interface EnrichOptions {
   module: string;
   apply: boolean;
@@ -33,6 +41,8 @@ export interface EnrichOptions {
    *  - KHÔNG ghi enriched.yaml (dry-run thuần, chỉ log vào ai-log)
    *  Dùng để debug 1 proc cụ thể trước khi run cả module. */
   onlyProcs?: string[];
+  /** Callback per-item để worker/UI theo dõi tiến trình. */
+  onProgress?: (info: EnrichProgressInfo) => void;
 }
 
 interface EnrichedTableOutput {
@@ -89,6 +99,8 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
   let totalIn = 0;
   let totalOut = 0;
   let costStopped = false;
+  let tablesDone = 0;
+  let procsDone = 0;
 
   try {
     // --- Enrich table --- (bỏ qua khi single-proc mode)
@@ -140,6 +152,13 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
         } else {
           console.log(`  ! Skip table ${t.name} (LLM fail — giữ auto-generated)`);
         }
+        tablesDone++;
+        opts.onProgress?.({
+          phase: "table",
+          name: t.name,
+          index: tablesDone,
+          total: m.tables.length,
+        });
 
         const cost = estimateCostUsd(totalIn, totalOut);
         if (cost > maxCost) {
@@ -217,6 +236,13 @@ export async function runEnrich(opts: EnrichOptions): Promise<void> {
         } else {
           console.log(`  ! Skip proc ${p.name} (LLM fail)`);
         }
+        procsDone++;
+        opts.onProgress?.({
+          phase: "proc",
+          name: p.name,
+          index: procsDone,
+          total: procsToEnrich.length,
+        });
 
         const cost = estimateCostUsd(totalIn, totalOut);
         if (cost > maxCost) {

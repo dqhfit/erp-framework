@@ -3289,6 +3289,12 @@ function JobRunner({
           <span className="text-xs text-muted">{(state.durationMs / 1000).toFixed(1)}s</span>
         )}
       </div>
+      {isRunning && state?.message && (
+        <div className="flex items-center gap-1.5 text-xs text-muted font-mono bg-muted/10 px-2 py-1 rounded">
+          <I.Loader size={11} className="animate-spin shrink-0" />
+          <span className="truncate">{state.message}</span>
+        </div>
+      )}
       {state?.error && (
         <Card className="p-3 border-danger/30 bg-danger/5">
           <div className="text-xs font-medium text-danger mb-1">{t("common.error")}</div>

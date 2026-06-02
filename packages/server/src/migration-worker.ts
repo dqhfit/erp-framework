@@ -263,6 +263,25 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           onlyProcs: arrayArg(data.args.onlyProcs),
           mssqlClient: mc(),
           companyId: data.companyId,
+          onProgress: ({ phase, name, index, total }) => {
+            const label = phase === "table" ? "Table" : "Proc";
+            const msg = `${label} ${index}/${total}: ${name}`;
+            state!.message = msg;
+            // Fire-and-forget: cập nhật message + heartbeat để UI poll thấy.
+            db.update(migrationJobs)
+              .set({ message: msg, lastHeartbeat: new Date(), updatedAt: new Date() })
+              .where(eq(migrationJobs.id, data.jobId))
+              .catch(() => undefined);
+            publishWs(`migration:${data.userId}`, {
+              kind: "enrich-progress",
+              jobId: data.jobId,
+              phase,
+              name,
+              index,
+              total,
+              message: msg,
+            });
+          },
         });
         break;
       case "capture-golden":
