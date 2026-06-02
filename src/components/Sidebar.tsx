@@ -706,7 +706,6 @@ export function Sidebar() {
     workflows: true,
     agents: true,
     ops: true,
-    mes: false,
     settings: false,
   });
   const allOpen = Object.values(sectionsOpen).some(Boolean);
@@ -718,7 +717,6 @@ export function Sidebar() {
       workflows: next,
       agents: next,
       ops: next,
-      mes: next,
       settings: next,
     });
   };
@@ -979,8 +977,38 @@ export function Sidebar() {
                     p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
               )
             : userPages;
-          const pagesFiltered = filterBySearch(pagesBase);
-          if (search.trim() && pagesFiltered.length === 0) return null;
+          // Trang tĩnh: route hardcode không nằm trong userPages (vd MES Mục
+          // tiêu sản xuất). Không userOwned → không xóa/rename/kéo-thả.
+          const staticPages: SectionItem[] = [
+            {
+              id: "/mes/muctieu-sanxuat",
+              name: "Mục tiêu sản xuất",
+              iconName: "Calculator",
+              to: "/mes/muctieu-sanxuat",
+              isFav: favs.isFav("/mes/muctieu-sanxuat"),
+              onFavorite: () =>
+                favs.toggle({
+                  id: "/mes/muctieu-sanxuat",
+                  to: "/mes/muctieu-sanxuat",
+                  label: "Mục tiêu sản xuất",
+                  iconName: "Calculator",
+                }),
+            },
+          ];
+          const pageItems: SectionItem[] = [
+            ...filterBySearch(staticPages),
+            ...filterBySearch(pagesBase).map((p) => ({
+              id: p.id,
+              name: p.name,
+              iconName: p.icon,
+              to: `/pages/${p.id}`,
+              userOwned: true,
+              isFav: favs.isFav(p.id),
+              onFavorite: () =>
+                favs.toggle({ id: p.id, to: `/pages/${p.id}`, label: p.name, iconName: p.icon }),
+            })),
+          ];
+          if (search.trim() && pageItems.length === 0) return null;
           return (
             <SidebarSection
               title={t("sidebar.pages")}
@@ -994,16 +1022,7 @@ export function Sidebar() {
               onRename={can("edit", "page") ? handleRenamePage : undefined}
               sectionKey="pages"
               onNavigate={collapseOpsSettings}
-              items={pagesFiltered.map((p) => ({
-                id: p.id,
-                name: p.name,
-                iconName: p.icon,
-                to: `/pages/${p.id}`,
-                userOwned: true,
-                isFav: favs.isFav(p.id),
-                onFavorite: () =>
-                  favs.toggle({ id: p.id, to: `/pages/${p.id}`, label: p.name, iconName: p.icon }),
-              }))}
+              items={pageItems}
             />
           );
         })()}
@@ -1232,29 +1251,6 @@ export function Sidebar() {
             }
           />
         </NavGroup>
-        <NavGroup
-          title="MES Sản xuất"
-          collapsed={collapsed}
-          open={sectionsOpen.mes}
-          onToggle={toggle("mes")}
-        >
-          <SidebarItem
-            to="/mes/muctieu-sanxuat"
-            active={pathname === "/mes/muctieu-sanxuat"}
-            icon={<I.Calculator size={14} />}
-            collapsed={collapsed}
-            label="Mục tiêu sản xuất"
-            isFavorited={favs.isFav("/mes/muctieu-sanxuat")}
-            onToggleFavorite={() =>
-              favs.toggle({
-                id: "/mes/muctieu-sanxuat",
-                to: "/mes/muctieu-sanxuat",
-                label: "Mục tiêu sản xuất",
-                iconName: "Calculator",
-              })
-            }
-          />
-        </NavGroup>
         {!isViewer && (
           <NavGroup
             title={t("sidebar.group_settings")}
@@ -1392,49 +1388,17 @@ export function Sidebar() {
             />
             <SidebarItem
               to="/settings/migration"
-              active={pathname === "/settings/migration"}
+              active={pathname === "/settings/migration" || pathname === "/settings/cockpit"}
               icon={<I.Database size={14} />}
               collapsed={collapsed}
-              label="Migration MSSQL"
+              label="Migrate DQHF"
               isFavorited={favs.isFav("/settings/migration")}
               onToggleFavorite={() =>
                 favs.toggle({
                   id: "/settings/migration",
                   to: "/settings/migration",
-                  label: "Migration MSSQL",
+                  label: "Migrate DQHF",
                   iconName: "Database",
-                })
-              }
-            />
-            <SidebarItem
-              to="/settings/mes-migrate"
-              active={pathname === "/settings/mes-migrate"}
-              icon={<I.ArrowRight size={14} />}
-              collapsed={collapsed}
-              label="Migrate MES → ERP"
-              isFavorited={favs.isFav("/settings/mes-migrate")}
-              onToggleFavorite={() =>
-                favs.toggle({
-                  id: "/settings/mes-migrate",
-                  to: "/settings/mes-migrate",
-                  label: "Migrate MES → ERP",
-                  iconName: "ArrowRight",
-                })
-              }
-            />
-            <SidebarItem
-              to="/settings/cockpit"
-              active={pathname === "/settings/cockpit"}
-              icon={<I.Layers size={14} />}
-              collapsed={collapsed}
-              label="Cockpit (menu cũ)"
-              isFavorited={favs.isFav("/settings/cockpit")}
-              onToggleFavorite={() =>
-                favs.toggle({
-                  id: "/settings/cockpit",
-                  to: "/settings/cockpit",
-                  label: "Cockpit (menu cũ)",
-                  iconName: "Layers",
                 })
               }
             />

@@ -381,9 +381,32 @@ export async function runFullImportJob(data: FullJobData): Promise<{
           })
           .where(eq(entities.id, tableEntityId));
 
+        // Reconciliation: so COUNT nguồn (MSSQL) vs đích (entity_records). Drift
+        // = mất/thừa dữ liệu âm thầm — đánh dấu để completion coi như CHƯA xong.
+        let reconcile: "ok" | "drift" | "skip" = "skip";
+        let srcCount: number | null = null;
+        let tgtCount: number | null = null;
+        try {
+          srcCount = await client.countRows(t.tableName);
+          const [c] = await db
+            .select({ n: sql<number>`count(*)::bigint` })
+            .from(entityRecords)
+            .where(
+              and(
+                eq(entityRecords.companyId, job.companyId),
+                eq(entityRecords.entityId, tableEntityId),
+              ),
+            );
+          tgtCount = Number(c?.n ?? 0);
+          reconcile = srcCount === tgtCount ? "ok" : "drift";
+        } catch {
+          // Không đếm được nguồn (vd view, quyền) → skip, không chặn.
+          reconcile = "skip";
+        }
+
         await db
           .update(migrationFullJobTables)
-          .set({ status: "done", updatedAt: new Date() })
+          .set({ status: "done", srcCount, tgtCount, reconcile, updatedAt: new Date() })
           .where(eq(migrationFullJobTables.id, t.id));
         succeededTables++;
       } catch (e) {
@@ -412,15 +435,17 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         skipped: sql<number>`count(*) FILTER (WHERE status = 'skipped')::int`,
         failed: sql<number>`count(*) FILTER (WHERE status = 'failed')::int`,
         pending: sql<number>`count(*) FILTER (WHERE status IN ('pending', 'running'))::int`,
+        // Bảng đã 'done' nhưng reconcile lệch nguồn≠đích — coi như CHƯA xong.
+        drift: sql<number>`count(*) FILTER (WHERE status = 'done' AND reconcile = 'drift')::int`,
         totalRows: sql<number>`COALESCE(sum(rows_imported), 0)::bigint`,
       })
       .from(migrationFullJobTables)
       .where(eq(migrationFullJobTables.jobId, data.jobId));
 
     const totalRowsAll = Number(stats?.totalRows ?? 0);
-    // Còn việc cần làm = failed (retry được) + pending/running. skipped & done
-    // coi như đã giải quyết. Hết việc → completed (kể cả khi có bảng skipped).
-    const unresolved = (stats?.failed ?? 0) + (stats?.pending ?? 0);
+    // Còn việc cần làm = failed (retry được) + pending/running + drift (đếm
+    // lệch → cần re-import/điều tra). skipped & done-ok coi như đã giải quyết.
+    const unresolved = (stats?.failed ?? 0) + (stats?.pending ?? 0) + (stats?.drift ?? 0);
     const allDone = unresolved === 0;
     // Còn việc nhưng đã có tiến triển → paused để user/boot resume. Chưa làm
     // được gì (toàn lỗi) → failed.

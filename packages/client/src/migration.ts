@@ -260,16 +260,54 @@ export function createMigrationClient(baseUrl: string) {
           };
         };
       }>,
-    finalizeModule: (module: string, force: boolean = false) =>
-      trpc.migration.finalizeModule.mutate({ module, force }) as Promise<{
+    finalizeModule: (module: string, force: boolean = false, reason?: string) =>
+      trpc.migration.finalizeModule.mutate({ module, force, reason }) as Promise<{
         ok: boolean;
         phase: "live";
         cutoverAt: string;
+        unverifiedProcs: number;
       }>,
     unfinalizeModule: (module: string) =>
       trpc.migration.unfinalizeModule.mutate({ module }) as Promise<{
         ok: boolean;
         phase: "filled";
+      }>,
+    /** Phase A — verify 1 proc đã migrate so với golden baseline. */
+    verifyProc: (module: string, procName: string) =>
+      trpc.migration.verifyProc.mutate({ module, procName }) as Promise<{
+        module: string;
+        procName: string;
+        invokeName: string | null;
+        tier: string;
+        verified: boolean;
+        totalCases: number;
+        passedCases: number;
+        cases: Array<{
+          name: string;
+          kind: string;
+          ok: boolean;
+          reason: string;
+          diff?: { input: unknown; expected: unknown; actual: unknown };
+        }>;
+        feedback: string;
+        error?: string;
+      }>,
+    /** Phase A — verify hàng loạt proc active có golden + đã generate. */
+    verifyModuleProcs: (module: string) =>
+      trpc.migration.verifyModuleProcs.mutate({ module }) as Promise<{
+        module: string;
+        total: number;
+        verified: number;
+        failed: number;
+        noGolden: number;
+        procs: Array<{
+          procName: string;
+          tier: string;
+          verified: boolean;
+          passedCases: number;
+          totalCases: number;
+          error?: string;
+        }>;
       }>,
     addToExclude: (input: { module: string; tableNames: string[] }) =>
       trpc.migration.addToExclude.mutate(input) as Promise<{
@@ -666,6 +704,9 @@ export function createMigrationClient(baseUrl: string) {
           batchSize: number;
           status: string;
           error: string | null;
+          srcCount: number | null;
+          tgtCount: number | null;
+          reconcile: string | null;
           updatedAt: string;
         }>;
       }>,

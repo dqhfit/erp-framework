@@ -15,6 +15,7 @@ import { runGenerate } from "./generate.js";
 import { runData } from "./data.js";
 import { runEnrich } from "./ai/enrich.js";
 import { runCodegenProc } from "./ai/codegen-proc.js";
+import { runMucTieuMigrate } from "./muctieu-migrate.js";
 
 const HELP = `
 Dùng:
@@ -38,6 +39,12 @@ Subcommand:
 
   data           --module <module> [--table T] [--limit 10000]
 
+  muctieu        --list | (--nam N --thang T --bo-phan BP) | --all
+                 [--nam N] [--thang T] [--bo-phan BP]
+                 Migrate "Mục tiêu sản xuất" DQHF (tr_muctieu_sanxuat2 +
+                 chitiet) MSSQL → PG (upsert, an toàn re-run). Thay cho
+                 wizard UI "Migrate MES -> ERP" cũ.
+
 Env cần đặt:
   MSSQL_CONNECTION_STRING   Connection string MSSQL (read-only mặc định)
   MSSQL_ALLOW_WRITE=1       Cho phép execProc (chỉ bật khi capture golden)
@@ -55,6 +62,9 @@ Ví dụ:
   pnpm migrate enrich --module sales --apply
   pnpm migrate capture-golden --module sales --samples 5
   pnpm migrate codegen-proc --module sales --proc dbo.Lay_DonHang
+  pnpm migrate muctieu --list
+  pnpm migrate muctieu --nam 2025 --thang 5 --bo-phan SC
+  pnpm migrate muctieu --all --nam 2025
 `.trim();
 
 async function main(): Promise<void> {
@@ -201,6 +211,29 @@ async function main(): Promise<void> {
                 .filter(Boolean)
             : undefined,
           limit: values.limit ? parseInt(values.limit, 10) : 10_000,
+        });
+        break;
+      }
+      case "muctieu": {
+        const { values } = parseArgs({
+          args: argv,
+          strict: true,
+          options: {
+            list: { type: "boolean", default: false },
+            all: { type: "boolean", default: false },
+            nam: { type: "string" },
+            thang: { type: "string" },
+            "bo-phan": { type: "string" },
+            company: { type: "string" },
+          },
+        });
+        await runMucTieuMigrate({
+          list: values.list === true,
+          all: values.all === true,
+          nam: values.nam ? parseInt(values.nam, 10) : undefined,
+          thang: values.thang ? parseInt(values.thang, 10) : undefined,
+          maBoPhan: values["bo-phan"],
+          companyId: values.company,
         });
         break;
       }

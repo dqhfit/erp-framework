@@ -607,6 +607,9 @@ export async function codegenProc(opts: {
   procName: string;
   mssqlClient: MssqlClient;
   companyId?: string;
+  /** Phản hồi từ lần sinh TRƯỚC (diff golden vs output) — nhúng vào prompt để
+   *  AI tự sửa logic cho khớp hành vi quan sát được (vòng verify golden). */
+  feedback?: string;
 }): Promise<CodegenProcResult> {
   const m = readManifest(opts.module);
   const proc = m.procs.find((p) => p.name === opts.procName);
@@ -683,6 +686,14 @@ export async function codegenProc(opts: {
       writesTables: proc.writes,
       flags: proc.flags,
     },
+    // Vòng verify golden: lần sinh trước cho output LỆCH baseline — AI phải
+    // sửa logic để khớp. Diff cụ thể (input + expected + actual) ở đây.
+    ...(opts.feedback
+      ? {
+          priorAttemptFeedback:
+            "Code lần trước SAI so với golden baseline. Sửa logic cho khớp:\n" + opts.feedback,
+        }
+      : {}),
   });
 
   const t0 = Date.now();

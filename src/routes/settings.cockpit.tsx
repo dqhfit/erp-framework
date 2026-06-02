@@ -186,7 +186,7 @@ function SearchRow({
   );
 }
 
-function CockpitPage() {
+export function CockpitPage() {
   const [tree, setTree] = useState<LegacyMenuNode[]>([]);
   const [stats, setStats] = useState<LegacyMenuStats | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -200,6 +200,9 @@ function CockpitPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [jobs, setJobs] = useState<MigrationJobRow[]>([]);
   const [localResolveProgress, setLocalResolveProgress] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<Awaited<
+    ReturnType<typeof migApi.verifyModuleProcs>
+  > | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const alertResolveRef = useRef<(() => void) | null>(null);
@@ -422,6 +425,29 @@ function CockpitPage() {
     [showAlert],
   );
 
+  /** Phase A — verify mọi proc active của module so với golden baseline.
+   *  Sync (không qua queue) — trả pass/fail ngay để hiện. */
+  const doVerify = useCallback(
+    async (module: string) => {
+      setBusy(`verify:${module}`);
+      setVerifyResult(null);
+      try {
+        const r = await migApi.verifyModuleProcs(module);
+        setVerifyResult(r);
+        if (r.total === 0) {
+          await showAlert(
+            "Không có proc nào để verify (proc active đã generate + có golden). Capture golden + generate trước.",
+          );
+        }
+      } catch (e) {
+        await showAlert(`Lỗi verify: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [showAlert],
+  );
+
   const doScaffoldReport = useCallback(
     async (reportClass: string) => {
       setBusy(`tpl:${reportClass}`);
@@ -497,7 +523,7 @@ function CockpitPage() {
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Cockpit — Port theo menu app cũ</h1>
+          <h1 className="text-lg font-semibold">Migrate DQHF — Menu cũ</h1>
           <p className="text-sm text-muted">
             Cây menu DQHF (SYS_MENU_NEW). Bấm mục có form để xem proc/bảng và port.
           </p>
@@ -821,6 +847,62 @@ function CockpitPage() {
                       </div>
                     );
                   })()}
+
+                {/* Phase A — Verify proc đã migrate so với golden baseline */}
+                {selected.module && (
+                  <div className="rounded border border-border bg-bg-soft px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-medium text-muted uppercase tracking-wide">
+                        Verify golden
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busy != null}
+                        onClick={() => doVerify(selected.module!)}
+                        icon={
+                          busy === `verify:${selected.module}` ? (
+                            <I.Loader size={11} className="animate-spin" />
+                          ) : (
+                            <I.Check size={11} />
+                          )
+                        }
+                      >
+                        Verify proc
+                      </Button>
+                    </div>
+                    {verifyResult && (
+                      <div className="mt-1.5 text-[11px]">
+                        <span className="text-success font-medium">{verifyResult.verified} ✓</span>
+                        {" · "}
+                        <span className="text-danger font-medium">{verifyResult.failed} ✗</span>
+                        {verifyResult.noGolden > 0 && (
+                          <span className="text-muted">
+                            {" "}
+                            · {verifyResult.noGolden} thiếu golden
+                          </span>
+                        )}
+                        <span className="text-muted"> / {verifyResult.total} proc</span>
+                        {verifyResult.procs.filter((p) => !p.verified).length > 0 && (
+                          <div className="mt-1 max-h-32 overflow-auto rounded bg-bg p-1.5 font-mono leading-relaxed">
+                            {verifyResult.procs
+                              .filter((p) => !p.verified)
+                              .map((p) => (
+                                <div key={p.procName} className="text-danger">
+                                  {p.procName}: {p.passedCases}/{p.totalCases}
+                                  {p.error ? ` — ${p.error}` : ""}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[11px] text-muted">
+                      Chạy proc đã port với input golden, so output. Cần capture-golden + generate
+                      trước.
+                    </div>
+                  </div>
+                )}
 
                 {detail?.resolved ? (
                   <div className="flex flex-col gap-2 text-sm">

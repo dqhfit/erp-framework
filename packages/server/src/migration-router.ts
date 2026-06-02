@@ -47,6 +47,7 @@ import {
 } from "./migration-classify-ai";
 import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
+import { verifyProcAgainstGolden } from "./migration-verify";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
 import { buildCombinedMigratedSet } from "./migration-migrated-set";
 import { enqueueMigrationJob, getMigrationJobStatus, resumeMigrationJob } from "./migration-worker";
@@ -879,6 +880,8 @@ export const migrationRouter = router({
           targetFile?: string;
           label?: string;
           description?: string;
+          active?: boolean;
+          verifiedAt?: string;
         }>;
       };
 
@@ -959,6 +962,8 @@ export const migrationRouter = router({
           codegenApplied,
           codegenTarget,
           goldenCaptured,
+          active: proc.active !== false,
+          verified: !!proc.verifiedAt, // Phase A: golden-replay đã pass
         };
       });
 
@@ -974,7 +979,12 @@ export const migrationRouter = router({
           enriched: procs.filter((p) => p.enriched).length,
           codegenApplied: procs.filter((p) => p.codegenApplied).length,
           goldenCaptured: procs.filter((p) => p.goldenCaptured).length,
+          verified: procs.filter((p) => p.verified).length,
           tierC: procs.filter((p) => p.tier === "C").length,
+          // Proc active đã codegen nhưng CHƯA verify golden — Phase C gate dùng.
+          unverifiedActive: procs.filter(
+            (p) => p.active && p.tier !== "C" && p.tier !== "A" && p.codegenApplied && !p.verified,
+          ).length,
         },
       };
 
@@ -987,12 +997,16 @@ export const migrationRouter = router({
       };
     }),
 
-  /** Kết thúc module: chuyển phase sang "live" + ghi cutoverAt. */
+  /** Kết thúc module: chuyển phase sang "live" + ghi cutoverAt.
+   *  GATE (Phase C): chặn nếu còn proc active đã codegen NHƯNG chưa verify
+   *  golden (verifiedAt rỗng). Bỏ qua gate bằng force=true + reason (ghi
+   *  decisions để truy nguồn quyết định nhận nợ). */
   finalizeModule: rbacProcedure("edit", "settings")
     .input(
       z.object({
         module: moduleNameSchema,
         force: z.boolean().default(false),
+        reason: z.string().optional(),
       }),
     )
     .mutation(({ input, ctx }) => {
@@ -1001,6 +1015,37 @@ export const migrationRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Manifest không tồn tại." });
       }
       const m = YAML.parse(readFileSync(p, "utf8")) as Record<string, unknown>;
+
+      // Gate verify: proc active, không phải Tier A/C, đã có target (codegen)
+      // nhưng thiếu verifiedAt → chưa chứng minh khớp golden.
+      const procs = (m.procs as Array<Record<string, unknown>> | undefined) ?? [];
+      const unverified = procs.filter(
+        (pr) =>
+          pr.active !== false &&
+          pr.suggestedTier !== "A" &&
+          pr.suggestedTier !== "C" &&
+          (pr.targetProcName || pr.targetFile) &&
+          !pr.verifiedAt,
+      );
+      if (unverified.length > 0 && !input.force) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            `${unverified.length} proc active đã codegen nhưng CHƯA verify golden: ` +
+            `${unverified
+              .slice(0, 8)
+              .map((pr) => pr.name)
+              .join(", ")}${unverified.length > 8 ? "…" : ""}. ` +
+            `Chạy verifyProc/verifyModuleProcs trước, hoặc finalize với force=true + reason để nhận nợ.`,
+        });
+      }
+      if (input.force && unverified.length > 0 && !input.reason?.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "force=true khi còn proc chưa verify thì BẮT BUỘC có reason (ghi audit).",
+        });
+      }
+
       const status = (m.status as Record<string, unknown> | undefined) ?? {};
       status.phase = "live";
       status.cutoverAt = new Date().toISOString();
@@ -1009,10 +1054,20 @@ export const migrationRouter = router({
       writeFileSync(p, YAML.stringify(m, { lineWidth: 0 }), "utf8");
       appendDecision({
         module: input.module,
-        action: { type: "finalizeModule", force: input.force },
+        action: {
+          type: "finalizeModule",
+          force: input.force,
+          unverifiedProcs: unverified.length,
+          reason: input.reason,
+        },
         by: ctx.user.id,
       });
-      return { ok: true, phase: "live" as const, cutoverAt: status.cutoverAt as string };
+      return {
+        ok: true,
+        phase: "live" as const,
+        cutoverAt: status.cutoverAt as string,
+        unverifiedProcs: unverified.length,
+      };
     }),
 
   /** Rollback finalize → phase=filled. */
@@ -1453,6 +1508,9 @@ export const migrationRouter = router({
         module: moduleNameSchema,
         procName: z.string().min(1),
         connectionId: z.string().uuid().optional(),
+        /** Vòng verify golden: diff lần sinh trước để AI tự sửa logic cho khớp
+         *  baseline (lấy từ verifyProc.feedback). */
+        feedback: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1465,6 +1523,7 @@ export const migrationRouter = router({
           procName: input.procName,
           mssqlClient: client,
           companyId: ctx.user.companyId,
+          feedback: input.feedback,
         });
       } finally {
         await client.close();
@@ -1682,6 +1741,122 @@ export const migrationRouter = router({
         tier: "D" as const,
         filePath: target,
         upserted: fileExists ? ("overwritten" as const) : ("created" as const),
+      };
+    }),
+
+  /** Phase A — Verify proc đã migrate so với golden baseline: chạy proc
+   *  (Tier B/D) với từng input golden, so output (key-insensitive multiset).
+   *  Trả pass/fail + diff + feedback (nhúng vào codegenProcDryRun.feedback để
+   *  AI tự sửa). Đánh dấu manifest verifiedAt khi 100% case pass. */
+  verifyProc: rbacProcedure("edit", "settings")
+    .input(z.object({ module: moduleNameSchema, procName: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await verifyProcAgainstGolden({
+        db: ctx.db,
+        companyId: ctx.user.companyId,
+        module: input.module,
+        procName: input.procName,
+        actorUserId: ctx.user.id,
+      });
+      // Ghi/xoá verifiedAt trong manifest theo kết quả → Phase C gate đọc được.
+      const mp = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (existsSync(mp)) {
+        try {
+          const m = YAML.parse(readFileSync(mp, "utf8")) as {
+            procs?: Array<Record<string, unknown>>;
+          };
+          const proc = (m.procs ?? []).find(
+            (p) => String(p.name).toLowerCase() === input.procName.toLowerCase(),
+          );
+          if (proc) {
+            if (r.verified) proc.verifiedAt = new Date().toISOString();
+            else delete proc.verifiedAt;
+            writeFileSync(mp, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+          }
+        } catch {
+          /* manifest parse fail — skip, verify result vẫn trả về */
+        }
+      }
+      appendDecision({
+        module: input.module,
+        action: {
+          type: "verifyProc",
+          procName: input.procName,
+          verified: r.verified,
+          passedCases: r.passedCases,
+          totalCases: r.totalCases,
+        },
+        by: ctx.user.id,
+      });
+      return r;
+    }),
+
+  /** Phase A — Verify hàng loạt: mọi proc active có golden + đã generate.
+   *  Trả tổng hợp + danh sách proc chưa verified (để Review/gate). */
+  verifyModuleProcs: rbacProcedure("edit", "settings")
+    .input(z.object({ module: moduleNameSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const mp = resolve(MODULES_DIR(), `${input.module}.yaml`);
+      if (!existsSync(mp)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manifest module không tồn tại." });
+      }
+      const m = YAML.parse(readFileSync(mp, "utf8")) as {
+        procs?: Array<{
+          name: string;
+          active?: boolean;
+          suggestedTier?: string;
+          targetProcName?: string;
+          targetFile?: string;
+        }>;
+      };
+      // Chỉ verify proc active, không phải Tier C, đã generate (có target).
+      const targets = (m.procs ?? []).filter(
+        (p) =>
+          p.active !== false &&
+          p.suggestedTier !== "C" &&
+          p.suggestedTier !== "A" &&
+          (p.targetProcName || p.targetFile),
+      );
+      const results: Awaited<ReturnType<typeof verifyProcAgainstGolden>>[] = [];
+      for (const p of targets) {
+        results.push(
+          await verifyProcAgainstGolden({
+            db: ctx.db,
+            companyId: ctx.user.companyId,
+            module: input.module,
+            procName: p.name,
+            actorUserId: ctx.user.id,
+          }),
+        );
+      }
+      // Ghi verifiedAt cho proc pass (1 lần ghi file).
+      try {
+        for (const r of results) {
+          const proc = (m.procs ?? []).find(
+            (p) => p.name.toLowerCase() === r.procName.toLowerCase(),
+          ) as Record<string, unknown> | undefined;
+          if (proc && r.verified) proc.verifiedAt = new Date().toISOString();
+        }
+        writeFileSync(mp, YAML.stringify(m, { lineWidth: 0 }), "utf8");
+      } catch {
+        /* skip */
+      }
+      const verified = results.filter((r) => r.verified).length;
+      const noGolden = results.filter((r) => r.error?.includes("golden")).length;
+      return {
+        module: input.module,
+        total: results.length,
+        verified,
+        failed: results.length - verified,
+        noGolden,
+        procs: results.map((r) => ({
+          procName: r.procName,
+          tier: r.tier,
+          verified: r.verified,
+          passedCases: r.passedCases,
+          totalCases: r.totalCases,
+          error: r.error,
+        })),
       };
     }),
 

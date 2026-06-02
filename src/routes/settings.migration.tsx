@@ -37,6 +37,7 @@ import { ProceduresTab } from "@/components/migration/ProceduresTab";
 import { RelationsTab } from "@/components/migration/RelationsTab";
 import { ActionJobsPanel } from "@/components/migration/ActionJobsPanel";
 import { RunAllProcsScreen } from "@/components/migration/RunAllProcsScreen";
+import { CockpitPage } from "./settings.cockpit";
 import { SqlBlock } from "@/components/SqlHighlight";
 import {
   Button,
@@ -133,7 +134,7 @@ function MigrationPage() {
   );
   // Phase V refactor: active screen ưu tiên hơn module (khi set, main area
   // hiển thị screen full-page thay vì module tabs).
-  type ScreenId = "quick-migrate" | "full-jobs" | "migrated-entities" | "run-all-procs";
+  type ScreenId = "quick-migrate" | "full-jobs" | "migrated-entities" | "run-all-procs" | "cockpit";
   const activeScreen = urlSearch.screen ?? null;
   const setActiveScreen = useCallback(
     (id: ScreenId | null) => {
@@ -302,6 +303,20 @@ function MigrationPage() {
               <span className="font-medium">Migrate proc</span>
               <span className="ml-auto text-[10px] text-muted">1 lần · idempotent</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveScreen("cockpit")}
+              className={[
+                "w-full flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors",
+                activeScreen === "cockpit"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-surface hover:bg-hover/30",
+              ].join(" ")}
+            >
+              <I.Layers size={14} />
+              <span className="font-medium">Menu cũ DQHF</span>
+              <span className="ml-auto text-[10px] text-muted">port theo menu</span>
+            </button>
           </div>
         </SidebarSection>
         <ModuleListPane
@@ -347,6 +362,10 @@ function MigrationPage() {
         ) : activeScreen === "run-all-procs" ? (
           <div className="h-full pl-9 flex flex-col">
             <RunAllProcsScreen onClose={() => setActiveScreen(null)} />
+          </div>
+        ) : activeScreen === "cockpit" ? (
+          <div className="h-full pl-9 flex flex-col min-h-0">
+            <CockpitPage />
           </div>
         ) : !selected ? (
           <div className="p-8 pl-12">
@@ -4895,6 +4914,24 @@ function FullImportJobsPanel() {
                               <Chip variant={statusVariant(t.status)} className="text-[9px]!">
                                 {t.status}
                               </Chip>
+                              {t.reconcile === "drift" && (
+                                <Chip
+                                  variant="warning"
+                                  className="text-[9px]! ml-1"
+                                  title={`Lệch: nguồn ${t.srcCount ?? "?"} ≠ đích ${t.tgtCount ?? "?"}`}
+                                >
+                                  drift {t.srcCount ?? "?"}≠{t.tgtCount ?? "?"}
+                                </Chip>
+                              )}
+                              {t.reconcile === "ok" && (
+                                <Chip
+                                  variant="success"
+                                  className="text-[9px]! ml-1"
+                                  title="Khớp nguồn"
+                                >
+                                  ✓ reconcile
+                                </Chip>
+                              )}
                             </td>
                             <td className="text-right">{t.rowsImported.toLocaleString("vi-VN")}</td>
                             <td
@@ -8263,8 +8300,15 @@ export const Route = createFileRoute("/settings/migration")({
     tab: typeof search.tab === "string" ? search.tab : undefined,
     screen:
       typeof search.screen === "string" &&
-      ["quick-migrate", "full-jobs", "migrated-entities", "run-all-procs"].includes(search.screen)
-        ? (search.screen as "quick-migrate" | "full-jobs" | "migrated-entities" | "run-all-procs")
+      ["quick-migrate", "full-jobs", "migrated-entities", "run-all-procs", "cockpit"].includes(
+        search.screen,
+      )
+        ? (search.screen as
+            | "quick-migrate"
+            | "full-jobs"
+            | "migrated-entities"
+            | "run-all-procs"
+            | "cockpit")
         : undefined,
   }),
 });

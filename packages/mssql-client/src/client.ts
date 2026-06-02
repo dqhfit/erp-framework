@@ -167,6 +167,17 @@ export class MssqlClient {
     return r.recordset as T[];
   }
 
+  /** Đếm số dòng 1 bảng — dùng cho reconciliation sau full-import (so với
+   *  count entity_records phía PG). schemaTable validate + bracket-escape. */
+  async countRows(schemaTable: string): Promise<number> {
+    const safeName = escapeMssqlIdentifier(schemaTable);
+    const pool = this.requirePool();
+    const r = await pool
+      .request()
+      .query<{ n: number }>(`SELECT COUNT_BIG(*) AS n FROM ${safeName}`);
+    return Number(r.recordset[0]?.n ?? 0);
+  }
+
   /** Phase U — Streaming read theo PK. Trả batch + nextLastPk để caller
    *  resume lần sau. Dùng cho Full import: lặp gọi method này cho đến khi
    *  rows.length < batchSize (hết data).

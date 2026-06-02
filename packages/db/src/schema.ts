@@ -805,6 +805,11 @@ export const migrationFullJobTables = pgTable(
     batchSize: integer("batch_size").default(5000).notNull(),
     status: text("status").default("pending").notNull(),
     error: text("error"),
+    // Reconciliation sau import: so COUNT nguon (MSSQL) vs dich (entity_records).
+    // reconcile: null=chua check | 'ok'=khop | 'drift'=lech | 'skip'=khong check.
+    srcCount: bigint("src_count", { mode: "number" }),
+    tgtCount: bigint("tgt_count", { mode: "number" }),
+    reconcile: text("reconcile"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
