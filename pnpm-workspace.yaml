@@ -14,10 +14,16 @@ onlyBuiltDependencies:
   - isolated-vm
 
 # pnpm 11: settings doi tu package.json#pnpm + .npmrc sang DAY. Policy
-# "minimum-release-age" (mac dinh ~24h) chan cai package vua publish ->
-# vo CI/Docker build moi khi dependency moi len npm (vd claude-agent-sdk).
-# Dat 0 de tat. (.npmrc khong con duoc pnpm 11 doc cho setting nay.)
-minimumReleaseAge: 0
+# "minimum-release-age" chan cai package vua publish (chong supply-chain
+# attack: ban compromise duoc go nhanh khi chua kip phat hien). Giu cua
+# so 24h cho TOAN BO dep, chi mo ngoai le cho @anthropic-ai/claude-agent-sdk
+# (+ binary theo nen) vi tooling migration can uptake nhanh -> neu khong
+# se vo CI/Docker build moi khi SDK ra ban moi. (.npmrc khong con duoc
+# pnpm 11 doc cho setting nay.)
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@anthropic-ai/claude-agent-sdk'
+  - '@anthropic-ai/claude-agent-sdk-*'
 
 # pnpm 11 KHONG con doc package.json#pnpm.overrides -> frozen install bao
 # ERR_PNPM_LOCKFILE_CONFIG_MISMATCH (lockfile co overrides, config thi
