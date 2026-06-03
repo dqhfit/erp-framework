@@ -138,6 +138,11 @@ theo format DSL dùng TÊN đối tượng + alias:
     // N-N qua bảng nối: 'of' = bảng nối, 'via' = entity thật chứa valueField.
     { "as": "tong_gia_sp", "fn": "sum", "of": "DonHang_SanPham", "byField": "don_hang_id", "valueField": "gia", "via": { "entity": "SanPham", "field": "san_pham_id" } }
   ],
+  "computed": [
+    // Cột tính toán (formula trên CỘT PHẲNG khác, tham chiếu {key}). Read-only.
+    { "as": "thanh_tien", "label": "Thành tiền", "expr": "{so_luong} * {don_gia}", "type": "number" },
+    { "as": "ho_ten", "expr": "CONCAT({ho}, " ", {ten})" }
+  ],
   "limit": 100
 }
 Quy tắc DATASOURCE (bắt buộc):
@@ -152,6 +157,10 @@ Quy tắc AGGREGATE (1-N / N-N, read-only):
 - N-N: 'of' = bảng nối, 'byField' = FK gần (về node nguồn); 'via.entity' = entity thật, 'via.field' = FK xa trên bảng nối → đọc 'valueField' trên entity thật.
 - fn=count KHÔNG cần valueField; sum/avg/min/max BẮT BUỘC valueField.
 - 'aggregates' là TUỲ CHỌN — bỏ qua nếu yêu cầu không cần gom.
+Quy tắc COMPUTED (cột tính toán, read-only, TUỲ CHỌN):
+- 'expr' tham chiếu CỘT PHẲNG khác bằng {key} (key của columns/aggregates/computed trước), KHÔNG dùng tên field gốc/entity.
+- Hàm: IF, AND/OR/NOT, COALESCE, CONCAT/UPPER/LOWER/LEFT/RIGHT/REPLACE/LEN, ROUND/CEIL/FLOOR/ABS/MOD/POW, SUM/AVG/MIN/MAX, YEAR/MONTH/DAY/DAYS_BETWEEN/TODAY, FORMAT_VND…
+- Computed eval SAU columns + aggregates; cột sau dùng được cột trước.
 `.trim();
 
 // ============= System prompts =============

@@ -10,17 +10,27 @@ import { createObjectsClient } from "@erp-framework/client";
 import type {
   AggFn,
   DataSourceAggregate,
+  DataSourceComputed,
   DataSourceConfig,
   DataSourceField,
   DataSourceRelation,
   DataSourceRow,
 } from "@erp-framework/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { FormulaEditor } from "@/components/designer/FormulaEditor";
 import { I } from "@/components/Icons";
 import { Button, Card, FormField, Input, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { getFieldTypes } from "@/lib/field-types";
 import type { EntityField } from "@/lib/object-types";
 import { slugify, useUserObjects } from "@/stores/userObjects";
+
+/** Cột phẳng khả dụng cho FormulaEditor (key/label/type). */
+export interface FlatCol {
+  key: string;
+  label: string;
+  type?: string;
+}
 
 const dsApi = createObjectsClient("");
 const EMPTY: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
@@ -37,6 +47,7 @@ export function DataSourceDesigner({ id }: { id: string }) {
 
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [addFieldEntityId, setAddFieldEntityId] = useState<string | null>(null);
 
   const update = (patch: Partial<DataSourceConfig>) => setContent(id, { ...cfg, ...patch });
 
@@ -146,6 +157,20 @@ export function DataSourceDesigner({ id }: { id: string }) {
   const removeAggregate = (key: string) =>
     update({ aggregates: aggregates.filter((a) => a.key !== key) });
 
+  /* ── Cột tính toán (computed) ── */
+  const computed = cfg.computed ?? [];
+  const addComputed = (c: DataSourceComputed) => update({ computed: [...computed, c] });
+  const patchComputed = (key: string, patch: Partial<DataSourceComputed>) =>
+    update({ computed: computed.map((c) => (c.key === key ? { ...c, ...patch } : c)) });
+  const removeComputed = (key: string) =>
+    update({ computed: computed.filter((c) => c.key !== key) });
+  // Cột phẳng khả dụng cho formula = projection + aggregate + computed.
+  const flatCols: FlatCol[] = [
+    ...cfg.fields.map((f) => ({ key: f.key, label: f.label, type: f.type })),
+    ...aggregates.map((a) => ({ key: a.key, label: a.label, type: "number" })),
+    ...computed.map((c) => ({ key: c.key, label: c.label, type: c.type })),
+  ];
+
   /* ── Preview ── */
   const loadPreview = async () => {
     if (!cfg.baseEntityId) {
@@ -165,8 +190,12 @@ export function DataSourceDesigner({ id }: { id: string }) {
 
   const projection = cfg.fields;
   const previewKeys =
-    projection.length > 0 || aggregates.length > 0
-      ? [...projection.map((f) => f.key), ...aggregates.map((a) => a.key)]
+    projection.length > 0 || aggregates.length > 0 || computed.length > 0
+      ? [
+          ...projection.map((f) => f.key),
+          ...aggregates.map((a) => a.key),
+          ...computed.map((c) => c.key),
+        ]
       : ["id"];
   const baseEnt = entById(cfg.baseEntityId);
 
@@ -273,31 +302,47 @@ export function DataSourceDesigner({ id }: { id: string }) {
             </div>
             {nodes.map((rid) => {
               const fields = nodeFields(rid);
-              if (fields.length === 0) return null;
+              const eid = nodeEntityId(rid);
               return (
                 <div key={rid}>
-                  <div className="mb-1 text-xs font-medium text-accent">
-                    {nodeAlias(rid)}
-                    {rid === "base" ? " (gốc)" : ""}
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-xs font-medium text-accent">
+                      {nodeAlias(rid)}
+                      {rid === "base" ? " (gốc)" : ""}
+                    </span>
+                    {eid && (
+                      <button
+                        type="button"
+                        onClick={() => setAddFieldEntityId(eid)}
+                        className="text-[10px] text-muted hover:text-accent flex items-center gap-0.5"
+                        title="Thêm trường mới vào entity"
+                      >
+                        <I.Plus size={10} /> trường
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {fields.map((f) => {
-                      const on = hasField(rid, f.name);
-                      return (
-                        <button
-                          key={f.name}
-                          type="button"
-                          onClick={() => toggleField(rid, f)}
-                          className={`rounded border px-2 py-0.5 text-xs ${
-                            on
-                              ? "border-accent bg-accent/10 text-accent"
-                              : "border-border text-muted hover:border-accent/50"
-                          }`}
-                        >
-                          {f.label || f.name}
-                        </button>
-                      );
-                    })}
+                    {fields.length === 0 ? (
+                      <span className="text-[11px] text-muted italic">Chưa có field</span>
+                    ) : (
+                      fields.map((f) => {
+                        const on = hasField(rid, f.name);
+                        return (
+                          <button
+                            key={f.name}
+                            type="button"
+                            onClick={() => toggleField(rid, f)}
+                            className={`rounded border px-2 py-0.5 text-xs ${
+                              on
+                                ? "border-accent bg-accent/10 text-accent"
+                                : "border-border text-muted hover:border-accent/50"
+                            }`}
+                          >
+                            {f.label || f.name}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               );
@@ -408,6 +453,22 @@ export function DataSourceDesigner({ id }: { id: string }) {
             </p>
           </Card>
 
+          {/* Cột tính toán (computed) */}
+          <Card className="p-3 space-y-2">
+            <div className="text-sm font-semibold text-text">Cột tính toán (formula)</div>
+            <ComputedColumns
+              computed={computed}
+              availableCols={flatCols}
+              onAdd={addComputed}
+              onPatch={patchComputed}
+              onRemove={removeComputed}
+            />
+            <p className="text-[11px] text-muted">
+              Biểu thức trên CỘT PHẲNG khác (tham chiếu <code>{"{key}"}</code>) + hàm
+              IF/CONCAT/ROUND… Cột chỉ đọc, eval sau projection + aggregate.
+            </p>
+          </Card>
+
           {/* Số dòng + xem trước */}
           <Card className="p-3 space-y-2">
             <div className="flex items-end gap-3">
@@ -478,6 +539,8 @@ export function DataSourceDesigner({ id }: { id: string }) {
           </Card>
         </>
       )}
+
+      <AddEntityFieldModal entityId={addFieldEntityId} onClose={() => setAddFieldEntityId(null)} />
     </div>
   );
 }
@@ -826,6 +889,299 @@ export function AddAggregate({
       >
         Thêm aggregate
       </Button>
+    </div>
+  );
+}
+
+/* ── Sub: cột tính toán (formula). Dùng chung Config tab + Canvas. ── */
+export function ComputedColumns({
+  computed,
+  availableCols,
+  onAdd,
+  onPatch,
+  onRemove,
+}: {
+  computed: DataSourceComputed[];
+  availableCols: FlatCol[];
+  onAdd: (c: DataSourceComputed) => void;
+  onPatch: (key: string, patch: Partial<DataSourceComputed>) => void;
+  onRemove: (key: string) => void;
+}) {
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [draftKey, setDraftKey] = useState("");
+  const [draftLabel, setDraftLabel] = useState("");
+  const [draftExpr, setDraftExpr] = useState("");
+
+  const taken = new Set([...computed.map((c) => c.key), ...availableCols.map((c) => c.key)]);
+  const addDraft = () => {
+    const k = slugify(draftKey);
+    if (!k) {
+      dialog.alert("Cần key cho cột.");
+      return;
+    }
+    if (taken.has(k)) {
+      dialog.alert(`Key "${k}" đã tồn tại.`);
+      return;
+    }
+    if (!draftExpr.trim()) {
+      dialog.alert("Cần biểu thức.");
+      return;
+    }
+    onAdd({ key: k, label: draftLabel.trim() || k, expr: draftExpr });
+    setDraftKey("");
+    setDraftLabel("");
+    setDraftExpr("");
+  };
+
+  return (
+    <div className="space-y-2">
+      {computed.length === 0 && (
+        <p className="text-[11px] text-muted italic">Chưa có cột tính toán.</p>
+      )}
+      {computed.map((c) => (
+        <div key={c.key} className="rounded border border-border p-2 text-xs space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-accent flex-1 truncate">{c.key}</span>
+            <button
+              type="button"
+              onClick={() => setEditingKey(editingKey === c.key ? null : c.key)}
+              className="text-muted hover:text-accent"
+              title="Sửa biểu thức"
+            >
+              <I.Edit size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(c.key)}
+              className="text-muted hover:text-danger"
+              title="Xoá cột"
+            >
+              <I.X size={13} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted shrink-0">nhãn</span>
+            <Input
+              className="h-6 flex-1"
+              value={c.label}
+              onChange={(e) => onPatch(c.key, { label: e.target.value })}
+            />
+          </div>
+          {editingKey === c.key ? (
+            <FormulaEditor
+              value={c.expr}
+              onChange={(v) => onPatch(c.key, { expr: v })}
+              availableFields={availableCols.filter((x) => x.key !== c.key)}
+            />
+          ) : (
+            <code className="block text-[11px] text-muted truncate">{c.expr || "—"}</code>
+          )}
+        </div>
+      ))}
+
+      <div className="rounded border border-dashed border-border p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Input
+            className="h-7 w-36"
+            value={draftKey}
+            onChange={(e) => setDraftKey(e.target.value)}
+            placeholder="key (thanh_tien)"
+          />
+          <Input
+            className="h-7 flex-1"
+            value={draftLabel}
+            onChange={(e) => setDraftLabel(e.target.value)}
+            placeholder="Nhãn"
+          />
+        </div>
+        <FormulaEditor value={draftExpr} onChange={setDraftExpr} availableFields={availableCols} />
+        <Button onClick={addDraft} disabled={!draftKey.trim() || !draftExpr.trim()} className="h-8">
+          Thêm cột tính toán
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Modal: thêm TRƯỜNG mới vào entity (base hoặc target relation) ngay từ
+   datasource. Entity low-code → chỉ cập nhật metadata fields (KHÔNG migration);
+   updateEntity tự lưu server (RBAC edit entity). Dùng chung Config tab + Canvas. */
+export function AddEntityFieldModal({
+  entityId,
+  onClose,
+}: {
+  entityId: string | null;
+  onClose: () => void;
+}) {
+  const entities = useUserObjects((s) => s.entities);
+  const updateEntity = useUserObjects((s) => s.updateEntity);
+  const ent = entities.find((e) => e.id === entityId);
+  const fieldTypes = getFieldTypes();
+
+  const [name, setName] = useState("");
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState("text");
+  const [required, setRequired] = useState(false);
+  const [ref, setRef] = useState("");
+  const [optionsText, setOptionsText] = useState("");
+
+  // Reset khi mở cho entity mới.
+  useEffect(() => {
+    if (entityId) {
+      setName("");
+      setLabel("");
+      setType("text");
+      setRequired(false);
+      setRef("");
+      setOptionsText("");
+    }
+  }, [entityId]);
+
+  if (!entityId || !ent) return null;
+  const isRef = type === "lookup" || type === "multi-lookup";
+  const isOpt = type === "select" || type === "multiselect";
+
+  const submit = () => {
+    const fname = slugify(name || label);
+    if (!fname) {
+      dialog.alert("Cần tên trường.");
+      return;
+    }
+    if (ent.fields.some((f) => f.name === fname)) {
+      dialog.alert(`Trường "${fname}" đã tồn tại trên ${ent.name}.`);
+      return;
+    }
+    if (isRef && !ref) {
+      dialog.alert("Lookup cần chọn entity tham chiếu.");
+      return;
+    }
+    const nf: EntityField = {
+      id: `nf_${crypto.randomUUID().slice(0, 8)}`,
+      name: fname,
+      label: label.trim() || fname,
+      type,
+      ...(required ? { required: true } : {}),
+      ...(isRef ? { ref } : {}),
+      ...(isOpt
+        ? {
+            options: optionsText
+              .split(/[\n,]/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          }
+        : {}),
+    };
+    updateEntity(entityId, { fields: [...ent.fields, nf] });
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-[420px] bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-sm">
+            Thêm trường vào <span className="text-accent font-mono">{ent.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+          >
+            <I.X size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <FormField label="Tên trường (snake_case)">
+            <Input
+              className="h-8"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="vd: ghi_chu"
+            />
+          </FormField>
+          <FormField label="Nhãn">
+            <Input
+              className="h-8"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Ghi chú"
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Kiểu">
+          <SearchableSelect
+            className="w-full"
+            value={type}
+            onChange={setType}
+            options={fieldTypes.map((ft) => ({ value: ft.id, label: `${ft.name} — ${ft.desc}` }))}
+            searchPlaceholder="Tìm kiểu…"
+          />
+        </FormField>
+
+        {isRef && (
+          <FormField label="Entity tham chiếu (lookup)">
+            <SearchableSelect
+              className="w-full"
+              value={ref}
+              onChange={setRef}
+              options={entities.map((e) => ({ value: e.id, label: e.name }))}
+              placeholder="Chọn entity…"
+              searchPlaceholder="Tìm entity…"
+            />
+          </FormField>
+        )}
+        {isOpt && (
+          <FormField label="Tuỳ chọn (mỗi dòng / phẩy 1 giá trị)">
+            <textarea
+              className="input font-mono text-xs w-full"
+              rows={3}
+              value={optionsText}
+              onChange={(e) => setOptionsText(e.target.value)}
+              placeholder={"A\nB\nC"}
+            />
+          </FormField>
+        )}
+
+        <label className="flex items-center gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            className="accent-accent"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+          />
+          Bắt buộc
+        </label>
+
+        <p className="text-[11px] text-muted">
+          Entity low-code: thêm trường chỉ cập nhật metadata, không cần migration. Record cũ để
+          trống trường mới.
+        </p>
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 px-3 text-sm rounded-lg border border-border hover:bg-hover/50"
+          >
+            Huỷ
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!(name.trim() || label.trim())}
+            className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
+          >
+            Thêm trường
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

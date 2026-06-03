@@ -14,6 +14,7 @@
 import { createObjectsClient } from "@erp-framework/client";
 import type {
   DataSourceAggregate,
+  DataSourceComputed,
   DataSourceConfig,
   DataSourceField,
   DataSourceRelation,
@@ -42,7 +43,12 @@ import { dialog } from "@/lib/dialog";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { slugify, useUserObjects } from "@/stores/userObjects";
-import { AddAggregate } from "./DataSourceDesigner";
+import {
+  AddAggregate,
+  AddEntityFieldModal,
+  ComputedColumns,
+  type FlatCol,
+} from "./DataSourceDesigner";
 
 const dsApi = createObjectsClient("");
 const EMPTY: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
@@ -57,6 +63,7 @@ interface DSNodeData extends Record<string, unknown> {
   onToggleField: (nodeId: string, fieldName: string) => void;
   onSelect: (nodeId: string) => void;
   onRemove: (nodeId: string) => void;
+  onAddField?: (entityId: string) => void;
 }
 type DSNodeType = Node<DSNodeData>;
 
@@ -105,6 +112,19 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
           {data.alias}
           {data.isBase && <span className="ml-1 text-[10px] text-accent">(gốc)</span>}
         </span>
+        {data.entityId && data.onAddField && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onAddField?.(data.entityId as string);
+            }}
+            className="w-5 h-5 rounded hover:bg-accent/15 flex items-center justify-center text-muted hover:text-accent"
+            title="Thêm trường vào entity"
+          >
+            <I.Plus size={11} />
+          </button>
+        )}
         {!data.isBase && (
           <button
             type="button"
@@ -352,6 +372,8 @@ function Canvas({ id }: { id: string }) {
   /* ── Selection + UI state ─────────────────────────────────── */
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<"config" | "agg">("config");
+  const [computedPanelOpen, setComputedPanelOpen] = useState(false);
+  const [addFieldEntityId, setAddFieldEntityId] = useState<string | null>(null);
   const [add, setAdd] = useState<AddState>(ADD_CLOSED);
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -396,6 +418,7 @@ function Canvas({ id }: { id: string }) {
         onToggleField: toggleField,
         onSelect: setSelectedNodeId,
         onRemove: removeRelation,
+        onAddField: setAddFieldEntityId,
       } as DSNodeData,
     }));
 
@@ -640,9 +663,14 @@ function Canvas({ id }: { id: string }) {
   const addParentFields = nodeFields(add.parentNodeId);
   const addTargetEnt = entById(add.targetEntityId);
   const aggregates = cfg.aggregates ?? [];
+  const computed = cfg.computed ?? [];
   const previewKeys =
-    cfg.fields.length > 0 || aggregates.length > 0
-      ? [...cfg.fields.map((f) => f.key), ...aggregates.map((a) => a.key)]
+    cfg.fields.length > 0 || aggregates.length > 0 || computed.length > 0
+      ? [
+          ...cfg.fields.map((f) => f.key),
+          ...aggregates.map((a) => a.key),
+          ...computed.map((c) => c.key),
+        ]
       : ["id"];
 
   /* ── Aggregate handlers ── */
@@ -655,6 +683,18 @@ function Canvas({ id }: { id: string }) {
   const nodeAggregates = selectedNodeId
     ? aggregates.filter((a) => (a.sourceRelationId ?? "base") === selectedNodeId)
     : [];
+
+  /* ── Computed (global, không theo node) ── */
+  const addComputed = (c: DataSourceComputed) => update({ computed: [...computed, c] });
+  const patchComputed = (key: string, patch: Partial<DataSourceComputed>) =>
+    update({ computed: computed.map((c) => (c.key === key ? { ...c, ...patch } : c)) });
+  const removeComputed = (key: string) =>
+    update({ computed: computed.filter((c) => c.key !== key) });
+  const flatCols: FlatCol[] = [
+    ...cfg.fields.map((f) => ({ key: f.key, label: f.label, type: f.type })),
+    ...aggregates.map((a) => ({ key: a.key, label: a.label, type: "number" })),
+    ...computed.map((c) => ({ key: c.key, label: c.label, type: c.type })),
+  ];
 
   /* ── Empty (chưa chọn gốc) ────────────────────────────────── */
   if (!cfg.baseEntityId) {
@@ -693,6 +733,7 @@ function Canvas({ id }: { id: string }) {
               : n.id.startsWith("aggfar:")
                 ? n.id.slice(7)
                 : null;
+            setComputedPanelOpen(false);
             if (aggKey) {
               const a = (cfg.aggregates ?? []).find((x) => x.key === aggKey);
               setSelectedNodeId(a?.sourceRelationId ?? "base");
@@ -727,6 +768,27 @@ function Canvas({ id }: { id: string }) {
           >
             <I.Plus size={12} />
             Thêm đối tượng
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setComputedPanelOpen((v) => !v);
+              setSelectedNodeId(null);
+            }}
+            className={cn(
+              "h-8 px-3 rounded-lg border text-xs flex items-center gap-1.5 shadow-sm",
+              computedPanelOpen
+                ? "bg-accent/15 border-accent/40 text-accent"
+                : "bg-panel border-border hover:bg-hover/50",
+            )}
+          >
+            <I.Edit size={12} />
+            Cột tính toán
+            {computed.length > 0 && (
+              <span className="ml-0.5 bg-accent text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                {computed.length}
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -1006,6 +1068,36 @@ function Canvas({ id }: { id: string }) {
         </div>
       )}
 
+      {/* Right panel — Cột tính toán (global) */}
+      {computedPanelOpen && (
+        <div className="w-[400px] border-l border-border bg-panel flex flex-col overflow-hidden shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+            <I.Edit size={14} className="text-accent shrink-0" />
+            <span className="font-semibold text-sm flex-1">Cột tính toán (formula)</span>
+            <button
+              type="button"
+              onClick={() => setComputedPanelOpen(false)}
+              className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+            >
+              <I.X size={13} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <ComputedColumns
+              computed={computed}
+              availableCols={flatCols}
+              onAdd={addComputed}
+              onPatch={patchComputed}
+              onRemove={removeComputed}
+            />
+            <p className="text-[11px] text-muted">
+              Biểu thức trên CỘT PHẲNG khác (<code>{"{key}"}</code>) + hàm IF/CONCAT/ROUND… Cột chỉ
+              đọc, eval sau projection + aggregate.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Add-object dialog ──────────────────────────────── */}
       {add.open && (
         <div
@@ -1122,6 +1214,8 @@ function Canvas({ id }: { id: string }) {
           </div>
         </div>
       )}
+
+      <AddEntityFieldModal entityId={addFieldEntityId} onClose={() => setAddFieldEntityId(null)} />
     </div>
   );
 }

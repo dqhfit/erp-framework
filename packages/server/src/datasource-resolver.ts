@@ -16,14 +16,15 @@
    trang đã limit (server-side chỉ lọc/sort field base).
    ========================================================== */
 
-import type {
-  DataSourceConfig,
-  DataSourceField,
-  DataSourceRelation,
-  DataSourceRow,
-  EntityFieldDef,
-  FilterOp,
-  Role,
+import {
+  type DataSourceConfig,
+  type DataSourceField,
+  type DataSourceRelation,
+  type DataSourceRow,
+  type EntityFieldDef,
+  evaluate,
+  type FilterOp,
+  type Role,
 } from "@erp-framework/core";
 import { entityRecords } from "@erp-framework/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -364,6 +365,11 @@ async function stitchAndProject(
       row[f.key] = nd ? (nd[f.sourceField] ?? null) : null;
     }
     for (const [k, v] of Object.entries(aggByRow[i]!)) row[k] = v;
+    // Cột tính toán: eval theo thứ tự (cột sau ref được cột trước), fail-safe null.
+    for (const c of cfg.computed ?? []) {
+      const r = evaluate(c.expr, row as Record<string, unknown>);
+      row[c.key] = r.ok ? (r.value ?? null) : null;
+    }
     return row;
   });
 }
@@ -452,7 +458,15 @@ export async function resolveFields(
     type: "number",
     writable: false,
   }));
-  return [...base, ...aggFields];
+  const computedFields: DataSourceField[] = (cfg.computed ?? []).map((c) => ({
+    key: c.key,
+    sourceRelationId: "base",
+    sourceField: c.key,
+    label: c.label,
+    type: c.type || "text",
+    writable: false,
+  }));
+  return [...base, ...aggFields, ...computedFields];
 }
 
 export async function resolveGet(

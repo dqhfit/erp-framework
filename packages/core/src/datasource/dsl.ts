@@ -16,6 +16,7 @@
 import type {
   AggFn,
   DataSourceAggregate,
+  DataSourceComputed,
   DataSourceConfig,
   DataSourceField,
   DataSourceRelation,
@@ -71,6 +72,15 @@ export interface DataSourceDslAgg {
   via?: { entity: string; field: string; keyField?: string };
 }
 
+/** Cột tính toán (formula trên cột phẳng). Key-based — KHÔNG cần resolve tên. */
+export interface DataSourceDslComputed {
+  as: string;
+  label?: string;
+  /** Biểu thức formula: `{key}` ref cột phẳng + hàm catalog. */
+  expr: string;
+  type?: string;
+}
+
 export interface DataSourceDsl {
   /** TÊN đối tượng gốc (aggregate root). */
   base: string;
@@ -78,6 +88,8 @@ export interface DataSourceDsl {
   columns?: DataSourceDslColumn[];
   /** Cột aggregate quan hệ 1-N / N-N. */
   aggregates?: DataSourceDslAgg[];
+  /** Cột tính toán (formula). */
+  computed?: DataSourceDslComputed[];
   /** Số dòng mặc định. */
   limit?: number;
 }
@@ -269,12 +281,31 @@ export function compileDataSourceDsl(dsl: DataSourceDsl, entities: DslEntity[]):
     });
   }
 
+  const computed: DataSourceComputed[] = [];
+  for (const c of dsl.computed ?? []) {
+    if (!c.as) {
+      errors.push("Một computed thiếu 'as' (key).");
+      continue;
+    }
+    if (!c.expr || !c.expr.trim()) {
+      errors.push(`Computed "${c.as}": thiếu 'expr'.`);
+      continue;
+    }
+    computed.push({
+      key: slug(c.as),
+      label: c.label || c.as,
+      expr: c.expr,
+      ...(c.type ? { type: c.type } : {}),
+    });
+  }
+
   return {
     config: {
       baseEntityId: baseEnt.id,
       relations,
       fields,
       ...(aggregates.length ? { aggregates } : {}),
+      ...(computed.length ? { computed } : {}),
       defaultLimit: dsl.limit,
     },
     errors,
@@ -333,11 +364,19 @@ export function decompileToDsl(cfg: DataSourceConfig, entities: DslEntity[]): Da
       : {}),
   }));
 
+  const computed: DataSourceDslComputed[] = (cfg.computed ?? []).map((c) => ({
+    as: c.key,
+    label: c.label,
+    expr: c.expr,
+    ...(c.type ? { type: c.type } : {}),
+  }));
+
   return {
     base: baseEnt?.name || "",
     joins,
     columns,
     ...(aggregates.length ? { aggregates } : {}),
+    ...(computed.length ? { computed } : {}),
     ...(cfg.defaultLimit ? { limit: cfg.defaultLimit } : {}),
   };
 }

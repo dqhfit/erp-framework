@@ -203,6 +203,7 @@ export interface DataSource {
 export type {
   AggFn,
   DataSourceAggregate,
+  DataSourceComputed,
   DataSourceConfig,
   DataSourceField,
   DataSourceMeta,
@@ -212,9 +213,10 @@ export type {
 } from "./config";
 export type {
   CompileResult,
-  DataSourceDslAgg,
   DataSourceDsl,
+  DataSourceDslAgg,
   DataSourceDslColumn,
+  DataSourceDslComputed,
   DataSourceDslJoin,
   DslEntity,
 } from "./dsl";

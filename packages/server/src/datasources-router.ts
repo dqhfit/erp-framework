@@ -56,11 +56,19 @@ const dsField = z.object({
   writable: z.boolean().optional(),
 });
 
+const dsComputed = z.object({
+  key: z.string().min(1),
+  label: z.string(),
+  expr: z.string(),
+  type: z.string().optional(),
+});
+
 const dsConfig = z.object({
   baseEntityId: z.string().default(""), // "" khi datasource vừa tạo, chưa cấu hình
   relations: z.array(dsRelation).default([]),
   fields: z.array(dsField).default([]),
   aggregates: z.array(dsAggregate).optional(),
+  computed: z.array(dsComputed).optional(),
   baseFilters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
   sort: z.object({ key: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
   defaultLimit: z.number().int().positive().max(10_000).optional(),
@@ -92,6 +100,7 @@ function normCfg(raw: unknown): DataSourceConfig {
     relations: c.relations ?? [],
     fields: c.fields ?? [],
     aggregates: c.aggregates,
+    computed: c.computed,
     baseFilters: c.baseFilters,
     sort: c.sort,
     defaultLimit: c.defaultLimit,
