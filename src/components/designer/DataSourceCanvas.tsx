@@ -38,6 +38,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
+import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { Button, Card, FormField, Input, SearchableSelect, Tabs } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -47,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { slugify, useUserObjects } from "@/stores/userObjects";
 import {
   AddAggregate,
+  AddEntityFieldForm,
   AddEntityFieldModal,
   ComputedColumns,
   type FlatCol,
@@ -62,6 +64,8 @@ interface DSNodeData extends Record<string, unknown> {
   alias: string;
   isBase: boolean;
   projected: Set<string>;
+  /** Hiển thị tên cột (name) hay nhãn (label) của trường trên node. */
+  fieldMode: "name" | "label";
   onToggleField: (nodeId: string, fieldName: string) => void;
   onSelect: (nodeId: string) => void;
   onRemove: (nodeId: string) => void;
@@ -149,6 +153,9 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         )}
         {fields.map((f) => {
           const on = data.projected.has(f.name);
+          // Hiển thị theo chế độ: nhãn (label) hoặc tên cột (name); tooltip hiện cái còn lại.
+          const disp = data.fieldMode === "label" ? f.label || f.name : f.name;
+          const alt = data.fieldMode === "label" ? f.name : f.label || f.name;
           return (
             <div
               key={f.id}
@@ -178,9 +185,14 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
                 title="Đưa cột vào bảng phẳng"
               />
               <span
-                className={cn("flex-1 truncate text-xs font-mono", on ? "text-text" : "text-muted")}
+                className={cn(
+                  "flex-1 truncate text-xs",
+                  data.fieldMode === "label" ? "" : "font-mono",
+                  on ? "text-text" : "text-muted",
+                )}
+                title={alt}
               >
-                {f.name}
+                {disp}
               </span>
               <span className="text-[10px] text-muted shrink-0">{f.type}</span>
             </div>
@@ -374,12 +386,25 @@ function Canvas({ id }: { id: string }) {
 
   /* ── Selection + UI state ─────────────────────────────────── */
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [panelTab, setPanelTab] = useState<"config" | "agg">("config");
+  const [panelTab, setPanelTab] = useState<"config" | "agg" | "computed" | "addfield">("config");
   const [computedPanelOpen, setComputedPanelOpen] = useState(false);
   const [addFieldEntityId, setAddFieldEntityId] = useState<string | null>(null);
   const [add, setAdd] = useState<AddState>(ADD_CLOSED);
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  // Chế độ hiển thị trường (TOÀN CỤC) — đồng bộ Nguồn dữ liệu / Trang / Workflow.
+  const { mode: fieldMode, fieldDisp } = useFieldDisplay();
+  // Hiển thị tên cột (string) trong ngữ cảnh 1 entity — tra field để lấy nhãn nếu cần.
+  // useCallback để dùng được trong buildNodes/edges memo mà không vỡ deps.
+  const colDisp = useCallback(
+    (entityId: string | undefined, fname?: string) => {
+      if (!fname || fname === "id") return fname || "id";
+      const f = entById(entityId)?.fields.find((x) => x.name === fname);
+      if (!f) return fname;
+      return fieldMode === "label" ? f.label || f.name : f.name;
+    },
+    [entById, fieldMode],
+  );
 
   /* ── Layout (vị trí node) ─────────────────────────────────── */
   const STORAGE_KEY = `ds-erd-${id}`;
@@ -418,6 +443,7 @@ function Canvas({ id }: { id: string }) {
         alias: nodeAlias(rid),
         isBase: rid === "base",
         projected: projectedByNode.get(rid) ?? new Set<string>(),
+        fieldMode,
         onToggleField: toggleField,
         onSelect: setSelectedNodeId,
         onRemove: removeRelation,
@@ -438,8 +464,8 @@ function Canvas({ id }: { id: string }) {
           entityName: entById(a.targetEntityId)?.name ?? a.targetEntityId,
           badge: a.via ? "N-N" : "1-N",
           fn: a.agg,
-          byField: a.targetField,
-          valueField: a.via ? undefined : a.valueField,
+          byField: colDisp(a.targetEntityId, a.targetField),
+          valueField: a.via ? undefined : colDisp(a.targetEntityId, a.valueField),
         } as AggNodeData,
       });
       if (a.via) {
@@ -452,7 +478,7 @@ function Canvas({ id }: { id: string }) {
             aggKey: a.key,
             entityName: entById(a.via.farEntityId)?.name ?? a.via.farEntityId,
             badge: "far",
-            valueField: a.valueField,
+            valueField: colDisp(a.via.farEntityId, a.valueField),
           } as AggNodeData,
         });
       }
@@ -463,6 +489,8 @@ function Canvas({ id }: { id: string }) {
     nodeEntityId,
     nodeAlias,
     projectedByNode,
+    fieldMode,
+    colDisp,
     toggleField,
     removeRelation,
     cfg.aggregates,
@@ -500,7 +528,7 @@ function Canvas({ id }: { id: string }) {
         sourceHandle: `src-${rel.fromField}`,
         target: rel.id,
         targetHandle: `tgt-${to}`,
-        label: `${rel.fromField} = ${to}`,
+        label: `${colDisp(nodeEntityId(rel.fromRelationId ?? "base"), rel.fromField)} = ${colDisp(nodeEntityId(rel.id), to)}`,
         labelStyle,
         labelBgStyle,
         labelBgPadding: [3, 2] as [number, number],
@@ -530,7 +558,7 @@ function Canvas({ id }: { id: string }) {
         sourceHandle: "agg-out",
         target: `agg:${a.key}`,
         targetHandle: "agg-in",
-        label: `${a.agg.toUpperCase()}${a.agg !== "count" && !a.via && a.valueField ? `(${a.valueField})` : ""} · ${a.targetField}`,
+        label: `${a.agg.toUpperCase()}${a.agg !== "count" && !a.via && a.valueField ? `(${colDisp(a.targetEntityId, a.valueField)})` : ""} · ${colDisp(a.targetEntityId, a.targetField)}`,
         labelStyle,
         labelBgStyle,
         labelBgPadding: [3, 2] as [number, number],
@@ -551,7 +579,7 @@ function Canvas({ id }: { id: string }) {
           sourceHandle: "agg-out",
           target: `aggfar:${a.key}`,
           targetHandle: "agg-in",
-          label: `${a.via.farField}${a.valueField ? ` · ${a.valueField}` : ""}`,
+          label: `${colDisp(a.targetEntityId, a.via.farField)}${a.valueField ? ` · ${colDisp(a.via.farEntityId, a.valueField)}` : ""}`,
           labelStyle,
           labelBgStyle,
           labelBgPadding: [3, 2] as [number, number],
@@ -568,7 +596,7 @@ function Canvas({ id }: { id: string }) {
       }
     }
     return [...relEdges, ...aggEdges];
-  }, [cfg.relations, cfg.aggregates]);
+  }, [cfg.relations, cfg.aggregates, colDisp, nodeEntityId]);
 
   /* ── Persist vị trí (debounced) ───────────────────────────── */
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -796,6 +824,9 @@ function Canvas({ id }: { id: string }) {
                 </span>
               )}
             </button>
+            <div className="h-8 flex items-center px-2.5 rounded-lg bg-panel border border-border shadow-sm">
+              <FieldDisplayToggle />
+            </div>
             <button
               type="button"
               onClick={() => fitView({ padding: 0.2, duration: 400 })}
@@ -837,8 +868,10 @@ function Canvas({ id }: { id: string }) {
                   <thead>
                     <tr className="bg-bg-soft border-b border-border text-muted">
                       {previewKeys.map((k) => (
-                        <th key={k} className="px-2 py-1 text-left whitespace-nowrap">
-                          {k}
+                        <th key={k} className="px-2 py-1 text-left whitespace-nowrap" title={k}>
+                          {fieldMode === "label"
+                            ? (flatCols.find((c) => c.key === k)?.label ?? k)
+                            : k}
                         </th>
                       ))}
                     </tr>
@@ -893,7 +926,7 @@ function Canvas({ id }: { id: string }) {
 
             <Tabs
               value={panelTab}
-              onChange={(v) => setPanelTab(v as "config" | "agg")}
+              onChange={(v) => setPanelTab(v as "config" | "agg" | "computed" | "addfield")}
               options={[
                 { value: "config", label: "Cấu hình" },
                 {
@@ -902,6 +935,11 @@ function Canvas({ id }: { id: string }) {
                     ? `Aggregate (${nodeAggregates.length})`
                     : "Aggregate",
                 },
+                {
+                  value: "computed",
+                  label: computed.length ? `Cột tính toán (${computed.length})` : "Cột tính toán",
+                },
+                { value: "addfield", label: "Thêm trường" },
               ]}
               className="px-3 shrink-0"
             />
@@ -909,6 +947,9 @@ function Canvas({ id }: { id: string }) {
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               {panelTab === "config" ? (
                 <>
+                  {/* Toggle hiển thị tên trường: Tên cột ↔ Nhãn (đồng bộ toàn cục) */}
+                  <FieldDisplayToggle />
+
                   {/* Cấu hình join (chỉ với relation) */}
                   {selRel && (
                     <Card className="p-3 space-y-2">
@@ -930,7 +971,7 @@ function Canvas({ id }: { id: string }) {
                           onChange={(v) => patchRelation(selRel.id, { fromField: v })}
                           options={nodeFields(selRel.fromRelationId ?? "base").map((f) => ({
                             value: f.name,
-                            label: `${f.label || f.name} (${f.name})`,
+                            label: fieldDisp(f),
                           }))}
                           placeholder="Chọn cột nguồn…"
                         />
@@ -946,7 +987,7 @@ function Canvas({ id }: { id: string }) {
                             { value: "id", label: "id (record id)" },
                             ...nodeFields(selRel.id).map((f) => ({
                               value: f.name,
-                              label: `${f.label || f.name} (${f.name})`,
+                              label: fieldDisp(f),
                             })),
                           ]}
                         />
@@ -989,9 +1030,11 @@ function Canvas({ id }: { id: string }) {
                           <div key={f.key} className="flex items-center gap-1.5">
                             <span
                               className="text-[10px] text-muted w-20 shrink-0 truncate"
-                              title={f.sourceField}
+                              title={
+                                fieldMode === "label" ? f.sourceField : f.label || f.sourceField
+                              }
                             >
-                              {f.sourceField}
+                              {fieldMode === "label" ? f.label || f.sourceField : f.sourceField}
                             </span>
                             <Input
                               className="h-6 flex-1"
@@ -1014,7 +1057,7 @@ function Canvas({ id }: { id: string }) {
                     )}
                   </Card>
                 </>
-              ) : (
+              ) : panelTab === "agg" ? (
                 <>
                   {/* Tab Aggregate — scope theo node nguồn đang chọn */}
                   {nodeAggregates.length === 0 ? (
@@ -1039,8 +1082,11 @@ function Canvas({ id }: { id: string }) {
                         </div>
                         <div className="text-[11px] text-muted">
                           {a.agg.toUpperCase()}
-                          {a.agg !== "count" && a.valueField ? `(${a.valueField})` : "(*)"} của{" "}
-                          {entById(a.targetEntityId)?.name ?? a.targetEntityId}.{a.targetField}
+                          {a.agg !== "count" && a.valueField
+                            ? `(${colDisp(a.via?.farEntityId ?? a.targetEntityId, a.valueField)})`
+                            : "(*)"}{" "}
+                          của {entById(a.targetEntityId)?.name ?? a.targetEntityId}.
+                          {colDisp(a.targetEntityId, a.targetField)}
                           {a.via
                             ? ` → ${entById(a.via.farEntityId)?.name ?? a.via.farEntityId} (N-N)`
                             : " (1-N)"}
@@ -1069,12 +1115,40 @@ function Canvas({ id }: { id: string }) {
                       entById={entById}
                       existingKeys={aggregates.map((a) => a.key)}
                       onAdd={addAggregate}
+                      fieldDisp={fieldDisp}
                     />
                   </Card>
                   <p className="text-[11px] text-muted">
                     1-N: gom record con trỏ ngược. N-N: qua bảng nối + entity far. Cột aggregate chỉ
                     đọc, hiện trong bảng Xem trước.
                   </p>
+                </>
+              ) : panelTab === "computed" ? (
+                <>
+                  {/* Tab Cột tính toán (formula) — global cho cả nguồn dữ liệu */}
+                  <ComputedColumns
+                    computed={computed}
+                    availableCols={flatCols}
+                    onAdd={addComputed}
+                    onPatch={patchComputed}
+                    onRemove={removeComputed}
+                  />
+                  <p className="text-[11px] text-muted">
+                    Biểu thức trên CỘT PHẲNG khác (<code>{"{key}"}</code>) + hàm IF/CONCAT/ROUND…
+                    Cột chỉ đọc, eval sau projection + aggregate. Áp dụng chung cho cả nguồn dữ
+                    liệu.
+                  </p>
+                </>
+              ) : (
+                <>
+                  {/* Tab Thêm trường — thêm field vào entity của node đang chọn */}
+                  <div className="text-xs font-semibold text-text">
+                    Thêm trường vào{" "}
+                    <span className="text-accent font-mono">
+                      {entById(nodeEntityId(selectedNodeId))?.name ?? nodeAlias(selectedNodeId)}
+                    </span>
+                  </div>
+                  <AddEntityFieldForm entityId={nodeEntityId(selectedNodeId) ?? null} />
                 </>
               )}
             </div>
@@ -1159,7 +1233,7 @@ function Canvas({ id }: { id: string }) {
                     onChange={(v) => setAdd((p) => ({ ...p, fromField: v }))}
                     options={addParentFields.map((f) => ({
                       value: f.name,
-                      label: `${f.label || f.name} (${f.name})`,
+                      label: fieldDisp(f),
                     }))}
                     placeholder="Chọn cột…"
                   />
@@ -1173,7 +1247,7 @@ function Canvas({ id }: { id: string }) {
                       { value: "id", label: "id (record id)" },
                       ...(addTargetEnt?.fields.map((f) => ({
                         value: f.name,
-                        label: `${f.label || f.name} (${f.name})`,
+                        label: fieldDisp(f),
                       })) ?? []),
                     ]}
                   />

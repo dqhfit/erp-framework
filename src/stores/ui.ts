@@ -6,6 +6,8 @@ export type Theme = "dark" | "light";
 export type Density = "comfortable" | "compact";
 export type Mode = "designer" | "consumer";
 export type AiCreateTarget = "entity" | "page" | "workflow" | "agent" | null;
+/** Cách hiển thị tên trường trong các designer: tên cột (name) hay nhãn (label). */
+export type FieldDisplayMode = "name" | "label";
 
 export interface AgentObjectContext {
   type: "entity" | "workflow" | "page" | "agent";
@@ -20,6 +22,8 @@ interface UIState {
   sidebarCollapsed: boolean;
   inspectorVisible: boolean;
   mode: Mode;
+  /** Tuỳ chọn TOÀN CỤC: hiển thị trường theo tên cột hay nhãn (Nguồn dữ liệu/Trang/Workflow). */
+  fieldDisplayMode: FieldDisplayMode;
   agentOpen: boolean;
   cmdOpen: boolean;
   tweaksOpen: boolean;
@@ -35,6 +39,7 @@ interface UIState {
   setSidebarCollapsed: (v: boolean) => void;
   setInspectorVisible: (v: boolean) => void;
   setMode: (m: Mode) => void;
+  setFieldDisplayMode: (m: FieldDisplayMode) => void;
   setAgentOpen: (v: boolean) => void;
   setCmdOpen: (v: boolean) => void;
   setTweaksOpen: (v: boolean) => void;
@@ -63,6 +68,7 @@ export const useUI = create<UIState>()(
       sidebarCollapsed: false,
       inspectorVisible: true,
       mode: "designer",
+      fieldDisplayMode: "name",
       agentOpen: false,
       cmdOpen: false,
       tweaksOpen: false,
@@ -75,6 +81,7 @@ export const useUI = create<UIState>()(
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setInspectorVisible: (inspectorVisible) => set({ inspectorVisible }),
       setMode: (mode) => set({ mode }),
+      setFieldDisplayMode: (fieldDisplayMode) => set({ fieldDisplayMode }),
       setAgentOpen: (agentOpen) => set({ agentOpen }),
       setCmdOpen: (cmdOpen) => set({ cmdOpen }),
       setTweaksOpen: (tweaksOpen) => set({ tweaksOpen }),
@@ -91,6 +98,7 @@ export const useUI = create<UIState>()(
         sidebarCollapsed: s.sidebarCollapsed,
         inspectorVisible: s.inspectorVisible,
         mode: s.mode,
+        fieldDisplayMode: s.fieldDisplayMode,
         agentOpen: s.agentOpen,
         cmdOpen: s.cmdOpen,
         tweaksOpen: s.tweaksOpen,

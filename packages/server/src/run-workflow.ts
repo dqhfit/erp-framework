@@ -8,6 +8,8 @@
    riêng qua ExecuteOptions để test/ghi đè.
    ========================================================== */
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import {
   pluginRegistry,
   type Role,
@@ -54,6 +56,119 @@ export interface ExecuteOptions {
    *  cao hơn → fail-closed trước khi chạy (P3.3). Caller scheduler không
    *  truyền → bỏ qua check (auto-run = system, trusted). */
   actorRole?: Role;
+  /** Độ sâu lồng workflow (node subworkflow/foreach gọi executeWorkflow).
+   *  Guard chống đệ quy vô hạn — vượt MAX_WF_DEPTH thì ném lỗi. */
+  _depth?: number;
+}
+
+/** Giới hạn lồng sub-workflow (giống MAX_DEPTH của procedure-runner). */
+const MAX_WF_DEPTH = 5;
+
+/** IPv4 nội bộ/đặc biệt: loopback, RFC1918, link-local, CGNAT, "this host". */
+function isPrivateIpv4(ip: string): boolean {
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4 || p.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true; // dạng lạ → chặn
+  const [a, b] = p as [number, number, number, number];
+  if (a === 10 || a === 127 || a === 0) return true; // 10/8, 127/8, 0/8
+  if (a === 169 && b === 254) return true; // 169.254/16 link-local (cloud metadata)
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
+  if (a === 192 && b === 168) return true; // 192.168/16
+  if (a === 100 && b >= 64 && b <= 127) return true; // 100.64/10 CGNAT
+  return false;
+}
+
+/** IP (v4/v6) thuộc dải nội bộ/loopback/link-local → chặn SSRF. */
+function isPrivateIp(addr: string, family: number): boolean {
+  if (family === 4) return isPrivateIpv4(addr);
+  const a = addr.toLowerCase();
+  if (a === "::1" || a === "::") return true; // loopback / unspecified
+  if (a.startsWith("fe80") || a.startsWith("fc") || a.startsWith("fd")) return true; // link-local / ULA
+  const mapped = a.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/); // IPv4-mapped
+  if (mapped?.[1]) return isPrivateIpv4(mapped[1]);
+  return false;
+}
+
+/** Chặn SSRF: chỉ http/https, host không phân giải tới IP nội bộ. Có thể siết
+ *  thêm bằng allowlist host (env HTTP_NODE_ALLOWED_HOSTS, phân tách dấu phẩy).
+ *  Export để test regression. */
+export async function assertPublicUrl(rawUrl: string): Promise<void> {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    throw new Error("URL không hợp lệ");
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(`Scheme bị chặn (chỉ http/https): ${u.protocol}`);
+  }
+  const allow = (process.env.HTTP_NODE_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (allow.length && !allow.includes(u.hostname)) {
+    throw new Error(`Host không nằm trong allowlist: ${u.hostname}`);
+  }
+  const literal = isIP(u.hostname);
+  if (literal) {
+    if (isPrivateIp(u.hostname, literal)) throw new Error(`Chặn IP nội bộ (SSRF): ${u.hostname}`);
+    return;
+  }
+  const addrs = await lookup(u.hostname, { all: true });
+  for (const a of addrs) {
+    if (isPrivateIp(a.address, a.family)) {
+      throw new Error(`Host phân giải tới IP nội bộ (SSRF): ${u.hostname} → ${a.address}`);
+    }
+  }
+}
+
+/** Gọi HTTP cho node "http" — fetch có timeout (AbortController) + guard SSRF.
+ *  Body object → JSON; response JSON parse được → object, không thì giữ text.
+ *  Redirect xử lý thủ công, re-validate từng hop (chống bypass qua Location). */
+async function defaultRunHttp(req: {
+  url: string;
+  method: string;
+  headers: Record<string, unknown>;
+  body?: unknown;
+}): Promise<{ status: number; body: unknown }> {
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.HTTP_NODE_TIMEOUT_MS ?? 15_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.headers ?? {})) headers[k] = String(v);
+    const init: RequestInit = {
+      method: req.method,
+      headers,
+      signal: controller.signal,
+      redirect: "manual", // tự theo redirect để re-validate host từng hop
+    };
+    if (req.method !== "GET" && req.method !== "HEAD" && req.body != null) {
+      init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      if (!Object.keys(headers).some((h) => h.toLowerCase() === "content-type")) {
+        headers["content-type"] = "application/json";
+      }
+    }
+    let url = req.url;
+    let r: Response | undefined;
+    for (let hop = 0; hop <= 3; hop++) {
+      await assertPublicUrl(url); // chặn SSRF mỗi hop (kể cả sau redirect)
+      r = await fetch(url, init);
+      const loc = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
+      if (!loc) break;
+      url = new URL(loc, url).toString();
+    }
+    if (!r) throw new Error("HTTP không có phản hồi");
+    const text = await r.text();
+    let body: unknown = text;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      // giữ nguyên text nếu không phải JSON
+    }
+    return { status: r.status, body };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Kiểm tra mọi node có config.requiresRole đều ≤ actorRole. Ném Error
@@ -85,6 +200,13 @@ export async function executeWorkflow(
   workflowId: string,
   opts: ExecuteOptions = {},
 ): Promise<{ runId: string; status: "completed" | "paused" | "error"; stepCount: number }> {
+  const depth = opts._depth ?? 0;
+  if (depth > MAX_WF_DEPTH) {
+    throw new Error(
+      `Sub-workflow lồng quá sâu (>${MAX_WF_DEPTH}) — có thể vòng đệ quy ` +
+        "(workflow tự gọi chính nó hoặc A→B→A). Cắt vòng lặp trong thiết kế.",
+    );
+  }
   const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId));
   if (!wf) throw new Error(`Workflow không tồn tại: ${workflowId}`);
   // Đa công ty: workflow phải thuộc đúng công ty của người gọi.
@@ -155,6 +277,22 @@ export async function executeWorkflow(
         callTool,
         actorUserId: null,
       }),
+      // Node subworkflow/foreach: chạy workflow con qua chính executeWorkflow
+      // (tăng _depth để guard đệ quy). Mỗi sub-run vẫn ghi workflow_runs riêng
+      // → giữ observability + scope companyId. Đọc lại vars đã ghi để trả về.
+      runSubWorkflow: async (subId, initialVars) => {
+        const r = await executeWorkflow(db, subId, {
+          companyId: wf.companyId,
+          context: initialVars,
+          _depth: depth + 1,
+        });
+        const [subRun] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, r.runId));
+        return {
+          status: r.status,
+          vars: (subRun?.vars ?? {}) as Record<string, unknown>,
+        };
+      },
+      runHttp: defaultRunHttp,
     }),
     new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(

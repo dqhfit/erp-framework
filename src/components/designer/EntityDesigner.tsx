@@ -55,6 +55,7 @@ export function EntityDesigner({ entityId }: Props) {
   const [localView, setLocalView] = useState<"schema" | "form" | "data">("schema");
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [dragFromPalette, setDragFromPalette] = useState<string | null>(null);
+  const [fieldTypeSearch, setFieldTypeSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [pageMenuOpen, setPageMenuOpen] = useState(false);
@@ -663,41 +664,58 @@ export function EntityDesigner({ entityId }: Props) {
         {/* Field palette */}
         {localView === "schema" && paletteVisible && (
           <div className="w-[220px] shrink-0 border-r border-border bg-panel flex flex-col">
-            <div className="px-3 py-2.5 border-b border-border">
+            <div className="px-3 py-2.5 border-b border-border space-y-1.5">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
                 {t("designer.field_types")}
               </div>
-              <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_list")}</div>
+              <div className="relative">
+                <I.Search
+                  size={12}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+                />
+                <input
+                  value={fieldTypeSearch}
+                  onChange={(e) => setFieldTypeSearch(e.target.value)}
+                  placeholder={t("common.search")}
+                  className="w-full h-7 pl-6 pr-2 rounded-md bg-bg-soft border border-border text-xs outline-none focus:border-accent/60"
+                />
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-1.5 grid grid-cols-2 gap-1.5 content-start">
-              {getFieldTypes().map((ft) => {
-                const IC = I[ft.icon] ?? I.Type;
-                return (
-                  <div
-                    key={ft.id}
-                    draggable
-                    onDragStart={(e) => {
-                      setDragFromPalette(ft.id);
-                      e.dataTransfer.effectAllowed = "copy";
-                    }}
-                    onDragEnd={() => {
-                      setDragFromPalette(null);
-                      setDragOverIdx(null);
-                    }}
-                    onDoubleClick={() => addField(ft.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 hover:bg-hover/40 cursor-grab active:cursor-grabbing",
-                      dragFromPalette === ft.id && "dragging",
-                    )}
-                    title={`${ftLabel(ft, t)} — ${ft.desc} (double-click to add)`}
-                  >
-                    <IC size={14} className="text-muted" />
-                    <div className="text-[11px] font-medium leading-tight text-center">
-                      {ftLabel(ft, t)}
+              {getFieldTypes()
+                .filter((ft) => {
+                  const q = fieldTypeSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return `${ftLabel(ft, t)} ${ft.desc ?? ""}`.toLowerCase().includes(q);
+                })
+                .map((ft) => {
+                  const IC = I[ft.icon] ?? I.Type;
+                  return (
+                    <div
+                      key={ft.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDragFromPalette(ft.id);
+                        e.dataTransfer.effectAllowed = "copy";
+                      }}
+                      onDragEnd={() => {
+                        setDragFromPalette(null);
+                        setDragOverIdx(null);
+                      }}
+                      onDoubleClick={() => addField(ft.id)}
+                      className={cn(
+                        "flex flex-col items-center gap-1 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 hover:bg-hover/40 cursor-grab active:cursor-grabbing",
+                        dragFromPalette === ft.id && "dragging",
+                      )}
+                      title={`${ftLabel(ft, t)} — ${ft.desc} (double-click to add)`}
+                    >
+                      <IC size={14} className="text-muted" />
+                      <div className="text-[11px] font-medium leading-tight text-center">
+                        {ftLabel(ft, t)}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
             <div className="p-2 border-t border-border text-[11px] text-muted">
               {t("designer.tip_dblclick")}

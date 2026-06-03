@@ -24,6 +24,7 @@ import { Chart } from "@/components/renderer/Chart";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
+import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import { Chip, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -2911,7 +2912,14 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                           : undefined
                       }
                     >
-                      <Widget comp={c} pageId={pageId} />
+                      {isMobile || !isScalableKind(c.kind) ? (
+                        // Danh sách/tương tác: giữ nguyên + tự cuộn; mobile: layout dọc.
+                        <Widget comp={c} pageId={pageId} />
+                      ) : (
+                        <ScaleToFit>
+                          <Widget comp={c} pageId={pageId} />
+                        </ScaleToFit>
+                      )}
 
                       {/* Resize handles — chỉ hiện khi layoutEditing */}
                       {layoutEditing && (

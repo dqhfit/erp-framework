@@ -18,6 +18,7 @@ import type {
 } from "@erp-framework/core";
 import { useEffect, useState } from "react";
 import { FormulaEditor } from "@/components/designer/FormulaEditor";
+import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { Button, Card, FormField, Input, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
@@ -48,6 +49,15 @@ export function DataSourceDesigner({ id }: { id: string }) {
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [addFieldEntityId, setAddFieldEntityId] = useState<string | null>(null);
+
+  // Chế độ hiển thị trường (TOÀN CỤC) — đồng bộ Nguồn dữ liệu / Trang / Workflow.
+  const { mode: fieldMode, fieldDisp } = useFieldDisplay();
+  // Hiển thị tên cột (string) trong ngữ cảnh 1 entity — tra field để lấy nhãn nếu cần.
+  const colDisp = (entityId: string | undefined, fname?: string) => {
+    if (!fname || fname === "id") return fname || "id";
+    const f = entById(entityId)?.fields.find((x) => x.name === fname);
+    return f ? fieldDisp(f) : fname;
+  };
 
   const update = (patch: Partial<DataSourceConfig>) => setContent(id, { ...cfg, ...patch });
 
@@ -201,11 +211,15 @@ export function DataSourceDesigner({ id }: { id: string }) {
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-auto p-4">
-      <div>
-        <h1 className="text-lg font-bold text-text">{dsName || "Nguồn dữ liệu"}</h1>
-        <p className="text-sm text-muted">
-          Gộp field từ nhiều entity (join qua lookup) thành 1 bảng phẳng, đọc + ghi, gán cho widget.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-text">{dsName || "Nguồn dữ liệu"}</h1>
+          <p className="text-sm text-muted">
+            Gộp field từ nhiều entity (join qua lookup) thành 1 bảng phẳng, đọc + ghi, gán cho
+            widget.
+          </p>
+        </div>
+        {cfg.baseEntityId && <FieldDisplayToggle className="shrink-0" />}
       </div>
 
       {/* Entity gốc */}
@@ -243,7 +257,8 @@ export function DataSourceDesigner({ id }: { id: string }) {
                 className="flex flex-wrap items-center gap-2 rounded border border-border p-2 text-xs"
               >
                 <span className="text-muted">
-                  {nodeAlias(rel.fromRelationId ?? "base")}.<b>{rel.fromField}</b> ={" "}
+                  {nodeAlias(rel.fromRelationId ?? "base")}.
+                  <b>{colDisp(nodeEntityId(rel.fromRelationId ?? "base"), rel.fromField)}</b> ={" "}
                   {entById(rel.targetEntityId)?.name ?? rel.targetEntityId}.
                 </span>
                 {/* Cột đích khớp (id = lookup cổ điển; khác = join cột↔cột) */}
@@ -255,7 +270,7 @@ export function DataSourceDesigner({ id }: { id: string }) {
                     { value: "id", label: "id (record id)" },
                     ...nodeFields(rel.id).map((f) => ({
                       value: f.name,
-                      label: f.name,
+                      label: fieldDisp(f),
                     })),
                   ]}
                 />
@@ -292,6 +307,7 @@ export function DataSourceDesigner({ id }: { id: string }) {
               entities={entities}
               entById={entById}
               onAdd={addRelation}
+              fieldDisp={fieldDisp}
             />
           </Card>
 
@@ -337,8 +353,9 @@ export function DataSourceDesigner({ id }: { id: string }) {
                                 ? "border-accent bg-accent/10 text-accent"
                                 : "border-border text-muted hover:border-accent/50"
                             }`}
+                            title={fieldMode === "label" ? f.name : f.label || f.name}
                           >
-                            {f.label || f.name}
+                            {fieldDisp(f)}
                           </button>
                         );
                       })
@@ -364,7 +381,8 @@ export function DataSourceDesigner({ id }: { id: string }) {
                     {projection.map((f) => (
                       <tr key={f.key} className="border-b border-border/50 last:border-0">
                         <td className="px-2 py-1 text-muted">
-                          {nodeAlias(f.sourceRelationId)}.{f.sourceField}
+                          {nodeAlias(f.sourceRelationId)}.
+                          {colDisp(nodeEntityId(f.sourceRelationId), f.sourceField)}
                         </td>
                         <td className="px-2 py-1">
                           <Input
@@ -416,8 +434,11 @@ export function DataSourceDesigner({ id }: { id: string }) {
                 <span className="font-mono text-accent">{a.key}</span>
                 <span className="text-muted">
                   = {a.agg.toUpperCase()}
-                  {a.agg !== "count" && a.valueField ? `(${a.valueField})` : "(*)"} của{" "}
-                  {entById(a.targetEntityId)?.name ?? a.targetEntityId}.{a.targetField}
+                  {a.agg !== "count" && a.valueField
+                    ? `(${colDisp(a.via?.farEntityId ?? a.targetEntityId, a.valueField)})`
+                    : "(*)"}{" "}
+                  của {entById(a.targetEntityId)?.name ?? a.targetEntityId}.
+                  {colDisp(a.targetEntityId, a.targetField)}
                   {a.via
                     ? ` → ${entById(a.via.farEntityId)?.name ?? a.via.farEntityId} (N-N)`
                     : " (1-N)"}
@@ -446,6 +467,7 @@ export function DataSourceDesigner({ id }: { id: string }) {
               entById={entById}
               existingKeys={aggregates.map((a) => a.key)}
               onAdd={addAggregate}
+              fieldDisp={fieldDisp}
             />
             <p className="text-[11px] text-muted">
               1-N: gom record con trỏ ngược (vd ChiTietDon.don_id = id đơn). N-N: qua bảng nối +
@@ -556,6 +578,7 @@ function AddRelation({
   entities,
   entById,
   onAdd,
+  fieldDisp = (f) => f.name,
 }: {
   nodes: string[];
   nodeAlias: (rid: string) => string;
@@ -570,6 +593,8 @@ function AddRelation({
     joinKind: "left" | "inner";
     alias: string;
   }) => void;
+  /** Cách hiển thị tên trường (nhãn ↔ tên cột); mặc định tên cột. */
+  fieldDisp?: (f: { name: string; label?: string }) => string;
 }) {
   const [fromRid, setFromRid] = useState("base");
   const [targetEntityId, setTargetEntityId] = useState("");
@@ -628,7 +653,7 @@ function AddRelation({
           className="w-40"
           value={fromField}
           onChange={setFromField}
-          options={parentFields.map((f) => ({ value: f.name, label: `${f.label || f.name}` }))}
+          options={parentFields.map((f) => ({ value: f.name, label: fieldDisp(f) }))}
           placeholder="Chọn cột…"
         />
       </div>
@@ -651,7 +676,7 @@ function AddRelation({
           onChange={setToField}
           options={[
             { value: "id", label: "id (record id)" },
-            ...(targetEnt?.fields.map((f) => ({ value: f.name, label: f.name })) ?? []),
+            ...(targetEnt?.fields.map((f) => ({ value: f.name, label: fieldDisp(f) })) ?? []),
           ]}
         />
       </div>
@@ -689,6 +714,7 @@ export function AddAggregate({
   existingKeys,
   onAdd,
   fixedFromRid,
+  fieldDisp = (f) => f.name,
 }: {
   nodes: string[];
   nodeAlias: (rid: string) => string;
@@ -699,6 +725,8 @@ export function AddAggregate({
   onAdd: (agg: DataSourceAggregate) => void;
   /** Khi set: khoá node nguồn = node này, ẩn selector "Node nguồn". */
   fixedFromRid?: string;
+  /** Cách hiển thị tên trường (nhãn ↔ tên cột); mặc định tên cột. */
+  fieldDisp?: (f: { name: string; label?: string }) => string;
 }) {
   const [key, setKey] = useState("");
   const [fn, setFn] = useState<AggFn>("count");
@@ -804,7 +832,7 @@ export function AddAggregate({
           onChange={setMatchField}
           options={[
             { value: "id", label: "id (record id)" },
-            ...sourceFields.map((f) => ({ value: f.name, label: f.name })),
+            ...sourceFields.map((f) => ({ value: f.name, label: fieldDisp(f) })),
           ]}
         />
       </div>
@@ -829,7 +857,7 @@ export function AddAggregate({
           className="w-36"
           value={targetField}
           onChange={setTargetField}
-          options={(ofEnt?.fields ?? []).map((f) => ({ value: f.name, label: f.name }))}
+          options={(ofEnt?.fields ?? []).map((f) => ({ value: f.name, label: fieldDisp(f) }))}
           placeholder="FK → nguồn"
         />
       </div>
@@ -864,7 +892,7 @@ export function AddAggregate({
               className="w-32"
               value={farField}
               onChange={setFarField}
-              options={(ofEnt?.fields ?? []).map((f) => ({ value: f.name, label: f.name }))}
+              options={(ofEnt?.fields ?? []).map((f) => ({ value: f.name, label: fieldDisp(f) }))}
               placeholder="FK → far"
             />
           </div>
@@ -877,7 +905,7 @@ export function AddAggregate({
             className="w-32"
             value={valueField}
             onChange={setValueField}
-            options={valueHostFields.map((f) => ({ value: f.name, label: f.name }))}
+            options={valueHostFields.map((f) => ({ value: f.name, label: fieldDisp(f) }))}
             placeholder="số để gom"
           />
         </div>
@@ -1006,12 +1034,17 @@ export function ComputedColumns({
 /* ── Modal: thêm TRƯỜNG mới vào entity (base hoặc target relation) ngay từ
    datasource. Entity low-code → chỉ cập nhật metadata fields (KHÔNG migration);
    updateEntity tự lưu server (RBAC edit entity). Dùng chung Config tab + Canvas. */
-export function AddEntityFieldModal({
+/* Form thêm trường vào entity — dùng chung cho modal (popup) lẫn tab
+   trong side panel của DataSourceCanvas. Sau khi thêm, reset field để
+   nhập tiếp; node trên canvas tự cập nhật (đọc entities từ store). */
+export function AddEntityFieldForm({
   entityId,
-  onClose,
+  onDone,
+  showCancel,
 }: {
   entityId: string | null;
-  onClose: () => void;
+  onDone?: () => void;
+  showCancel?: boolean;
 }) {
   const entities = useUserObjects((s) => s.entities);
   const updateEntity = useUserObjects((s) => s.updateEntity);
@@ -1025,16 +1058,19 @@ export function AddEntityFieldModal({
   const [ref, setRef] = useState("");
   const [optionsText, setOptionsText] = useState("");
 
-  // Reset khi mở cho entity mới.
+  const resetFields = () => {
+    setName("");
+    setLabel("");
+    setType("text");
+    setRequired(false);
+    setRef("");
+    setOptionsText("");
+  };
+
+  // Reset khi đổi entity (mở cho entity mới).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ reset khi đổi entityId
   useEffect(() => {
-    if (entityId) {
-      setName("");
-      setLabel("");
-      setType("text");
-      setRequired(false);
-      setRef("");
-      setOptionsText("");
-    }
+    if (entityId) resetFields();
   }, [entityId]);
 
   if (!entityId || !ent) return null;
@@ -1072,8 +1108,112 @@ export function AddEntityFieldModal({
         : {}),
     };
     updateEntity(entityId, { fields: [...ent.fields, nf] });
-    onClose();
+    resetFields();
+    onDone?.();
   };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        <FormField label="Tên trường (snake_case)">
+          <Input
+            className="h-8"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="vd: ghi_chu"
+          />
+        </FormField>
+        <FormField label="Nhãn">
+          <Input
+            className="h-8"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Ghi chú"
+          />
+        </FormField>
+      </div>
+
+      <FormField label="Kiểu">
+        <SearchableSelect
+          className="w-full"
+          value={type}
+          onChange={setType}
+          options={fieldTypes.map((ft) => ({ value: ft.id, label: `${ft.name} — ${ft.desc}` }))}
+          searchPlaceholder="Tìm kiểu…"
+        />
+      </FormField>
+
+      {isRef && (
+        <FormField label="Entity tham chiếu (lookup)">
+          <SearchableSelect
+            className="w-full"
+            value={ref}
+            onChange={setRef}
+            options={entities.map((e) => ({ value: e.id, label: e.name }))}
+            placeholder="Chọn entity…"
+            searchPlaceholder="Tìm entity…"
+          />
+        </FormField>
+      )}
+      {isOpt && (
+        <FormField label="Tuỳ chọn (mỗi dòng / phẩy 1 giá trị)">
+          <textarea
+            className="input font-mono text-xs w-full"
+            rows={3}
+            value={optionsText}
+            onChange={(e) => setOptionsText(e.target.value)}
+            placeholder={"A\nB\nC"}
+          />
+        </FormField>
+      )}
+
+      <label className="flex items-center gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          className="accent-accent"
+          checked={required}
+          onChange={(e) => setRequired(e.target.checked)}
+        />
+        Bắt buộc
+      </label>
+
+      <p className="text-[11px] text-muted">
+        Entity low-code: thêm trường chỉ cập nhật metadata, không cần migration. Record cũ để trống
+        trường mới.
+      </p>
+
+      <div className="flex gap-2 justify-end pt-1">
+        {showCancel && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="h-8 px-3 text-sm rounded-lg border border-border hover:bg-hover/50"
+          >
+            Huỷ
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!(name.trim() || label.trim())}
+          className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
+        >
+          Thêm trường
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function AddEntityFieldModal({
+  entityId,
+  onClose,
+}: {
+  entityId: string | null;
+  onClose: () => void;
+}) {
+  const ent = useUserObjects((s) => s.entities).find((e) => e.id === entityId);
+  if (!entityId || !ent) return null;
 
   return (
     <div
@@ -1095,92 +1235,7 @@ export function AddEntityFieldModal({
             <I.X size={13} />
           </button>
         </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <FormField label="Tên trường (snake_case)">
-            <Input
-              className="h-8"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="vd: ghi_chu"
-            />
-          </FormField>
-          <FormField label="Nhãn">
-            <Input
-              className="h-8"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Ghi chú"
-            />
-          </FormField>
-        </div>
-
-        <FormField label="Kiểu">
-          <SearchableSelect
-            className="w-full"
-            value={type}
-            onChange={setType}
-            options={fieldTypes.map((ft) => ({ value: ft.id, label: `${ft.name} — ${ft.desc}` }))}
-            searchPlaceholder="Tìm kiểu…"
-          />
-        </FormField>
-
-        {isRef && (
-          <FormField label="Entity tham chiếu (lookup)">
-            <SearchableSelect
-              className="w-full"
-              value={ref}
-              onChange={setRef}
-              options={entities.map((e) => ({ value: e.id, label: e.name }))}
-              placeholder="Chọn entity…"
-              searchPlaceholder="Tìm entity…"
-            />
-          </FormField>
-        )}
-        {isOpt && (
-          <FormField label="Tuỳ chọn (mỗi dòng / phẩy 1 giá trị)">
-            <textarea
-              className="input font-mono text-xs w-full"
-              rows={3}
-              value={optionsText}
-              onChange={(e) => setOptionsText(e.target.value)}
-              placeholder={"A\nB\nC"}
-            />
-          </FormField>
-        )}
-
-        <label className="flex items-center gap-2 text-xs text-muted">
-          <input
-            type="checkbox"
-            className="accent-accent"
-            checked={required}
-            onChange={(e) => setRequired(e.target.checked)}
-          />
-          Bắt buộc
-        </label>
-
-        <p className="text-[11px] text-muted">
-          Entity low-code: thêm trường chỉ cập nhật metadata, không cần migration. Record cũ để
-          trống trường mới.
-        </p>
-
-        <div className="flex gap-2 justify-end pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 px-3 text-sm rounded-lg border border-border hover:bg-hover/50"
-          >
-            Huỷ
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!(name.trim() || label.trim())}
-            className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
-          >
-            Thêm trường
-          </button>
-        </div>
+        <AddEntityFieldForm entityId={entityId} onDone={onClose} showCancel />
       </div>
     </div>
   );

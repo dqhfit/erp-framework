@@ -28,6 +28,7 @@ import { pluginRegistry, type WfPort } from "@erp-framework/core";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { WorkflowRunPanel } from "@/components/designer/WorkflowRunPanel";
+import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { Button, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
@@ -47,11 +48,16 @@ type WorkflowNodeKind =
   | "trigger"
   | "action"
   | "condition"
+  | "switch"
   | "agent"
   | "approval"
   | "delay"
   | "code"
   | "procedure"
+  | "setvar"
+  | "http"
+  | "subworkflow"
+  | "foreach"
   | (string & {});
 
 interface NodePaletteItem {
@@ -76,6 +82,13 @@ const NODE_PALETTE: NodePaletteItem[] = [
     label: "Condition",
     desc: "If/else branching",
     icon: "GitBranch",
+    color: "var(--warning)",
+  },
+  {
+    kind: "switch",
+    label: "Switch",
+    desc: "Rẽ nhiều nhánh theo giá trị",
+    icon: "GitFork",
     color: "var(--warning)",
   },
   { kind: "agent", label: "Agent", desc: "Gọi LLM", icon: "Sparkles", color: "var(--accent)" },
@@ -113,6 +126,34 @@ const NODE_PALETTE: NodePaletteItem[] = [
     desc: "Gọi native procedure",
     icon: "Package",
     color: "var(--accent)",
+  },
+  {
+    kind: "setvar",
+    label: "Đặt biến",
+    desc: "Biến đổi data bằng formula",
+    icon: "Braces",
+    color: "var(--accent)",
+  },
+  {
+    kind: "http",
+    label: "HTTP",
+    desc: "Gọi API ngoài",
+    icon: "Globe",
+    color: "var(--accent-2)",
+  },
+  {
+    kind: "subworkflow",
+    label: "Sub-workflow",
+    desc: "Gọi workflow con",
+    icon: "Workflow",
+    color: "var(--accent-2)",
+  },
+  {
+    kind: "foreach",
+    label: "ForEach",
+    desc: "Lặp mảng → chạy workflow con",
+    icon: "Repeat",
+    color: "var(--accent-2)",
   },
 ];
 
@@ -200,13 +241,32 @@ function nodePorts(data: WfNodeData, key: "inputs" | "outputs"): WfPort[] {
 
 function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
   const t = useT();
+  // Hiển thị cổng dữ liệu theo tên kỹ thuật (id) hay nhãn — tuỳ chọn toàn cục.
+  const { mode: fieldMode } = useFieldDisplay();
   const meta = getNodePalette().find((p) => p.kind === data.kind);
   const IC = I[(meta?.icon ?? "Bot") as IconName];
   const isCondition = data.kind === "condition";
+  const isSwitch = data.kind === "switch";
+  const isApproval = data.kind === "approval";
+  // Switch: 1 nhánh / case + nhánh "default" cuối. Handle id "case:<idx>"/"default".
+  const switchCases = isSwitch
+    ? Array.isArray(data.config?.cases)
+      ? (data.config.cases as Array<{ value?: unknown; label?: string }>)
+      : []
+    : [];
+  const switchBranches = isSwitch
+    ? [
+        ...switchCases.map((c, i) => ({ id: `case:${i}`, label: c.label || `case ${i + 1}` })),
+        { id: "default", label: "default" },
+      ]
+    : [];
   const inPorts = nodePorts(data, "inputs");
   const outPorts = nodePorts(data, "outputs");
   const portRows = Math.max(inPorts.length, outPorts.length);
-  const minHeight = NODE_HEADER_H + (portRows > 0 ? portRows * NODE_PORT_ROW + 6 : 0);
+  const dataMin = portRows > 0 ? portRows * NODE_PORT_ROW + 6 : 0;
+  // Switch cần đủ chỗ cho các nhánh control xếp dọc bên phải.
+  const switchMin = isSwitch ? switchBranches.length * NODE_PORT_ROW + 6 : 0;
+  const minHeight = NODE_HEADER_H + Math.max(dataMin, switchMin);
   const ctrlTop = NODE_HEADER_H / 2;
   return (
     <div
@@ -237,7 +297,8 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
           style={{ top: ctrlTop, background: meta?.color }}
         />
       )}
-      {/* Control-flow source (phải) — condition rẽ Y/N, còn lại 1 cổng */}
+      {/* Control-flow source (phải) — condition rẽ Y/N, switch rẽ N nhánh,
+          còn lại 1 cổng mặc định */}
       {isCondition ? (
         <>
           <Handle
@@ -265,6 +326,57 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
             N
           </span>
         </>
+      ) : isSwitch ? (
+        switchBranches.map((b, i) => {
+          const top = NODE_HEADER_H / 2 + i * NODE_PORT_ROW;
+          const isDefault = b.id === "default";
+          return (
+            <div key={b.id}>
+              <Handle
+                type="source"
+                id={b.id}
+                position={Position.Right}
+                style={{ top, background: isDefault ? "var(--muted)" : "var(--warning)" }}
+              />
+              <span
+                className={cn(
+                  "absolute right-3 text-[8px] font-semibold truncate max-w-[72px] text-right",
+                  isDefault ? "text-muted" : "text-warning",
+                )}
+                style={{ top: top - 6 }}
+              >
+                {b.label}
+              </span>
+            </div>
+          );
+        })
+      ) : isApproval ? (
+        <>
+          <Handle
+            type="source"
+            id="approved"
+            position={Position.Right}
+            style={{ top: ctrlTop - 7, background: "var(--success)" }}
+          />
+          <span
+            className="absolute right-1.5 text-[8px] font-semibold text-success"
+            style={{ top: ctrlTop - 13 }}
+          >
+            ✓
+          </span>
+          <Handle
+            type="source"
+            id="rejected"
+            position={Position.Right}
+            style={{ top: ctrlTop + 7, background: "var(--danger)" }}
+          />
+          <span
+            className="absolute right-1.5 text-[8px] font-semibold text-danger"
+            style={{ top: ctrlTop + 3 }}
+          >
+            ✕
+          </span>
+        </>
       ) : (
         <Handle
           type="source"
@@ -287,8 +399,9 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
             <span
               className="absolute left-3 text-[9px] text-accent-2 truncate max-w-[72px]"
               style={{ top: top - 7 }}
+              title={fieldMode === "label" ? p.id : p.label || p.id}
             >
-              {p.label || p.id}
+              {fieldMode === "label" ? p.label || p.id : p.id}
             </span>
           </div>
         );
@@ -307,12 +420,32 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
             <span
               className="absolute right-3 text-[9px] text-accent truncate max-w-[72px] text-right"
               style={{ top: top - 7 }}
+              title={fieldMode === "label" ? p.id : p.label || p.id}
             >
-              {p.label || p.id}
+              {fieldMode === "label" ? p.label || p.id : p.id}
             </span>
           </div>
         );
       })}
+
+      {/* Cổng nhánh LỖI (dưới) — id "error". Edge từ đây có label "error";
+          runner đi nhánh này khi node lỗi thay vì dừng workflow. */}
+      {data.kind !== "trigger" && (
+        <>
+          <Handle
+            type="source"
+            id="error"
+            position={Position.Bottom}
+            style={{ background: "var(--danger)" }}
+          />
+          <span
+            className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-semibold text-danger"
+            style={{ pointerEvents: "none" }}
+          >
+            err
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -456,6 +589,7 @@ function WorkflowInner({ workflowId }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [dragKind, setDragKind] = useState<WorkflowNodeKind | null>(null);
+  const [nodeSearch, setNodeSearch] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -465,6 +599,8 @@ function WorkflowInner({ workflowId }: Props) {
   // Nguồn trigger ở CẤP WORKFLOW (workflows.triggerType) — không phải node.
   const setWorkflowTrigger = useUserObjects((s) => s.setWorkflowTrigger);
   const wfModel = useUserObjects((s) => s.workflows.find((w) => w.id === workflowId));
+  // Danh sách workflow để chọn cho node subworkflow/foreach (loại trừ chính nó).
+  const allWorkflows = useUserObjects((s) => s.workflows);
   const entitiesList = useUserObjects((s) => s.entities);
   const triggerType: WorkflowTriggerType = wfModel?.triggerType ?? "manual";
   const triggerConfig = wfModel?.triggerConfig ?? {};
@@ -565,13 +701,29 @@ function WorkflowInner({ workflowId }: Props) {
         );
         return;
       }
-      // Control-flow: condition suy label "Yes"/"No" từ source handle.
-      const label = c.sourceHandle === "yes" ? "Yes" : c.sourceHandle === "no" ? "No" : undefined;
+      // Control-flow: condition suy "Yes"/"No"; switch lấy nhãn case từ config;
+      // còn lại không nhãn.
+      let label: string | undefined;
+      const sh = c.sourceHandle ?? "";
+      if (sh === "yes") label = "Yes";
+      else if (sh === "no") label = "No";
+      else if (sh === "error") label = "error";
+      else if (sh === "approved") label = "approved";
+      else if (sh === "rejected") label = "rejected";
+      else if (sh === "default") label = "default";
+      else if (sh.startsWith("case:")) {
+        const idx = Number(sh.slice(5));
+        const srcNode = nodes.find((n) => n.id === c.source);
+        const cases = Array.isArray(srcNode?.data.config?.cases)
+          ? (srcNode.data.config.cases as Array<{ label?: string }>)
+          : [];
+        label = cases[idx]?.label || `case ${idx + 1}`;
+      }
       setEdges((es) =>
         addEdge({ ...c, type: "wf", label, markerEnd: { type: MarkerType.ArrowClosed } }, es),
       );
     },
-    [setEdges],
+    [setEdges, nodes],
   );
   /* Chặn nối chéo loại: data-output chỉ vào data-input, control chỉ vào control. */
   const isValidConnection = useCallback((c: Connection | Edge) => {
@@ -632,6 +784,196 @@ function WorkflowInner({ workflowId }: Props) {
       selPorts(key).filter((_, i) => i !== idx),
     );
 
+  /* ── Cases của node switch ── */
+  type WfCase = { value?: unknown; label?: string };
+  const selCases = (): WfCase[] =>
+    Array.isArray(sel?.data.config?.cases) ? (sel.data.config.cases as WfCase[]) : [];
+  const addCase = () => {
+    const arr = selCases();
+    patchConfig("cases", [...arr, { value: "", label: `case ${arr.length + 1}` }]);
+  };
+  const updateCase = (idx: number, patch: Partial<WfCase>) =>
+    patchConfig(
+      "cases",
+      selCases().map((c, i) => (i === idx ? { ...c, ...patch } : c)),
+    );
+  const removeCase = (idx: number) =>
+    patchConfig(
+      "cases",
+      selCases().filter((_, i) => i !== idx),
+    );
+
+  /* ── Assignments của node setvar ── */
+  type WfAssign = { key?: string; formula?: string };
+  const selAssigns = (): WfAssign[] =>
+    Array.isArray(sel?.data.config?.assignments) ? (sel.data.config.assignments as WfAssign[]) : [];
+  const addAssign = () => patchConfig("assignments", [...selAssigns(), { key: "", formula: "" }]);
+  const updateAssign = (idx: number, patch: Partial<WfAssign>) =>
+    patchConfig(
+      "assignments",
+      selAssigns().map((a, i) => (i === idx ? { ...a, ...patch } : a)),
+    );
+  const removeAssign = (idx: number) =>
+    patchConfig(
+      "assignments",
+      selAssigns().filter((_, i) => i !== idx),
+    );
+
+  /* Gợi ý cổng output của các node nối tới node đang chọn (qua data-edge HOẶC
+     control-edge) — giúp biết tên cổng/biến có thể tham chiếu. */
+  const upstreamOutPorts = (): string[] => {
+    if (!sel) return [];
+    const srcIds = new Set(edges.filter((e) => e.target === sel.id).map((e) => e.source));
+    const out: string[] = [];
+    for (const n of nodes) {
+      if (!srcIds.has(n.id)) continue;
+      for (const p of nodePorts(n.data, "outputs")) out.push(`${n.data.label}.${p.id}`);
+    }
+    return out;
+  };
+
+  /* ── Nguồn giá trị cho cổng input (trực quan hoá thiết lập) ── */
+  // Mọi cổng output của node KHÁC → làm nguồn nối edge.
+  const allOutSources = (): { value: string; label: string; nodeId: string; portId: string }[] => {
+    const out: { value: string; label: string; nodeId: string; portId: string }[] = [];
+    for (const n of nodes) {
+      if (n.id === sel?.id) continue;
+      for (const p of nodePorts(n.data, "outputs")) {
+        out.push({
+          value: `${n.id}::${p.id}`,
+          label: `${n.data.label} · ${p.label || p.id}`,
+          nodeId: n.id,
+          portId: p.id,
+        });
+      }
+    }
+    return out;
+  };
+  // Trường của entity workflow tham chiếu (trigger entity_changed) → {entity.data.x}.
+  const entityFieldRefs = (): { ref: string; label: string }[] => {
+    const ent = entitiesList.find((e) => e.id === triggerConfig.entityId);
+    if (!ent) return [];
+    return ent.fields.map((f) => ({ ref: `entity.data.${f.name}`, label: f.label || f.name }));
+  };
+  // Biến runtime suy đoán từ trigger + các node (agent/foreach/setvar).
+  const availableVarRefs = (): string[] => {
+    const vs = new Set<string>();
+    if (triggerType === "entity_changed") vs.add("entity");
+    if (triggerType === "webhook") vs.add("webhook");
+    if (triggerType === "iot_telemetry") vs.add("iot");
+    for (const n of nodes) {
+      if (n.id === sel?.id) continue;
+      if (n.data.kind === "agent") vs.add(`agent_${n.id}`);
+      if (n.data.kind === "agent_chain") vs.add(`agent_chain_${n.id}`);
+      if (n.data.kind === "foreach") vs.add(`foreach_${n.id}`);
+      if (n.data.kind === "setvar") {
+        const as = Array.isArray(n.data.config?.assignments)
+          ? (n.data.config.assignments as Array<{ key?: string }>)
+          : [];
+        for (const a of as) if (a.key) vs.add(a.key);
+      }
+    }
+    return [...vs];
+  };
+  // Data-edge đang nối tới cổng input portId (nếu có).
+  const inputBinding = (portId: string): { nodeId: string; portId: string } | null => {
+    if (!sel) return null;
+    const e = edges.find(
+      (ed) =>
+        ed.target === sel.id &&
+        ed.targetHandle === `in:${portId}` &&
+        (ed.sourceHandle ?? "").startsWith("out:"),
+    );
+    return e ? { nodeId: e.source, portId: (e.sourceHandle ?? "").slice(4) } : null;
+  };
+  // Gỡ mọi data-edge tới cổng input portId.
+  const clearInputEdge = (portId: string) => {
+    if (!sel) return;
+    setEdges((es) =>
+      es.filter(
+        (e) =>
+          !(
+            e.target === sel.id &&
+            e.targetHandle === `in:${portId}` &&
+            (e.sourceHandle ?? "").startsWith("out:")
+          ),
+      ),
+    );
+  };
+  // Nối cổng output node nguồn → cổng input portId (thay edge cũ nếu có).
+  const bindInputEdge = (portId: string, srcNodeId: string, srcPortId: string) => {
+    if (!sel || !portId) return;
+    setEdges((es) => {
+      const without = es.filter(
+        (e) =>
+          !(
+            e.target === sel.id &&
+            e.targetHandle === `in:${portId}` &&
+            (e.sourceHandle ?? "").startsWith("out:")
+          ),
+      );
+      return [
+        ...without,
+        {
+          id: `e_${Math.random().toString(36).slice(2, 8)}`,
+          type: "wf",
+          animated: true,
+          style: { stroke: "var(--accent-2)", strokeDasharray: "5 3" },
+          data: { kind: "data" },
+          source: srcNodeId,
+          sourceHandle: `out:${srcPortId}`,
+          target: sel.id,
+          targetHandle: `in:${portId}`,
+        },
+      ];
+    });
+  };
+  // Áp lựa chọn "Nguồn" cho cổng input idx (portId).
+  const setInputSource = (idx: number, portId: string, choice: string) => {
+    if (choice === "static") {
+      clearInputEdge(portId);
+      updatePort("inputs", idx, { formula: undefined });
+    } else if (choice === "formula") {
+      clearInputEdge(portId);
+      updatePort("inputs", idx, {
+        value: undefined,
+        formula: selPorts("inputs")[idx]?.formula ?? "",
+      });
+    } else {
+      // choice = "<nodeId>::<portId>"
+      const [nid, pid] = choice.split("::");
+      if (nid && pid) {
+        updatePort("inputs", idx, { value: undefined, formula: undefined });
+        bindInputEdge(portId, nid, pid);
+      }
+    }
+  };
+  // Gợi ý path bóc field cho cổng output: payload trigger + trường entity.
+  const outputPathSuggestions = (): string[] => {
+    const s = new Set<string>();
+    if (sel?.data.kind === "trigger") {
+      if (triggerType === "entity_changed") {
+        s.add("entity");
+        s.add("entity.data");
+        s.add("entity.event");
+        s.add("entity.recordId");
+      }
+      if (triggerType === "webhook") s.add("webhook");
+      if (triggerType === "iot_telemetry") s.add("iot");
+    }
+    const ent = entitiesList.find((e) => e.id === triggerConfig.entityId);
+    if (ent) {
+      for (const f of ent.fields) {
+        s.add(f.name); // bóc trực tiếp từ record (output của action/http hay trả record)
+        if (sel?.data.kind === "trigger") s.add(`entity.data.${f.name}`);
+      }
+    }
+    return [...s];
+  };
+
+  // Đổi toạ độ con trỏ (screen) → toạ độ canvas ReactFlow, bù pan/zoom (fitView).
+  const { screenToFlowPosition } = useReactFlow();
+
   const addNode = (kind: WorkflowNodeKind, pos: { x: number; y: number }) => {
     const meta = getNodePalette().find((p) => p.kind === kind);
     const id = `n_${Math.random().toString(36).slice(2, 7)}`;
@@ -654,8 +996,8 @@ function WorkflowInner({ workflowId }: Props) {
         <div className="w-7 h-7 rounded-md bg-accent/15 text-accent flex items-center justify-center">
           <I.Workflow size={14} />
         </div>
-        <div className="flex flex-col leading-tight">
-          <div className="font-semibold text-base">Workflow {workflowId}</div>
+        <div className="flex flex-col leading-tight min-w-0">
+          <div className="font-semibold text-base truncate">{wfModel?.name ?? workflowId}</div>
           <div className="text-[11px] text-muted">
             {nodes.length} nodes · {edges.length} edges
           </div>
@@ -696,6 +1038,8 @@ function WorkflowInner({ workflowId }: Props) {
           </span>
         )}
         <div className="w-px h-5 bg-border mx-1" />
+        <FieldDisplayToggle label="" />
+        <div className="w-px h-5 bg-border mx-1" />
         <button
           type="button"
           title={inspectorVisible ? "Ẩn inspector" : "Hiện inspector"}
@@ -717,7 +1061,7 @@ function WorkflowInner({ workflowId }: Props) {
         current={
           nodes.length > 0
             ? {
-                name: `Workflow ${workflowId}`,
+                name: wfModel?.name ?? `Workflow ${workflowId}`,
                 nodes: nodes.map((n) => ({
                   id: n.id,
                   type: n.data.kind,
@@ -748,7 +1092,7 @@ function WorkflowInner({ workflowId }: Props) {
         open={runOpen}
         onClose={() => setRunOpen(false)}
         workflowId={workflowId}
-        workflowName={`Workflow ${workflowId}`}
+        workflowName={wfModel?.name ?? `Workflow ${workflowId}`}
       />
 
       {isMobile && <MobileDesignerNotice />}
@@ -757,45 +1101,64 @@ function WorkflowInner({ workflowId }: Props) {
         {/* Palette — ẩn trên mobile (kéo-thả không khả dụng) */}
         {!isMobile && (
           <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
-            <div className="px-3 py-2.5 border-b border-border">
+            <div className="px-3 py-2.5 border-b border-border space-y-1.5">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
                 {t("designer.nodes")}
               </div>
-              <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
+              <div className="relative">
+                <I.Search
+                  size={12}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+                />
+                <input
+                  value={nodeSearch}
+                  onChange={(e) => setNodeSearch(e.target.value)}
+                  placeholder={t("common.search")}
+                  className="w-full h-7 pl-6 pr-2 rounded-md bg-bg-soft border border-border text-xs outline-none focus:border-accent/60"
+                />
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-              {getNodePalette().map((p) => {
-                const IC = I[p.icon];
-                return (
-                  <div
-                    key={p.kind}
-                    draggable
-                    onDragStart={(e) => {
-                      setDragKind(p.kind);
-                      e.dataTransfer.setData("application/x-wf-kind", p.kind);
-                      e.dataTransfer.effectAllowed = "copy";
-                    }}
-                    onDragEnd={() => setDragKind(null)}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
-                      dragKind === p.kind && "dragging",
-                    )}
-                  >
-                    <span
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
-                      style={{ background: p.color }}
+              {getNodePalette()
+                .filter((p) => {
+                  const q = nodeSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return `${t(`wf.node.${p.kind}`)} ${t(`wf.node.${p.kind}.desc`)}`
+                    .toLowerCase()
+                    .includes(q);
+                })
+                .map((p) => {
+                  const IC = I[p.icon];
+                  return (
+                    <div
+                      key={p.kind}
+                      draggable
+                      onDragStart={(e) => {
+                        setDragKind(p.kind);
+                        e.dataTransfer.setData("application/x-wf-kind", p.kind);
+                        e.dataTransfer.effectAllowed = "copy";
+                      }}
+                      onDragEnd={() => setDragKind(null)}
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
+                        dragKind === p.kind && "dragging",
+                      )}
                     >
-                      <IC size={12} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
-                      <div className="text-[10px] text-muted truncate">
-                        {t(`wf.node.${p.kind}.desc`)}
+                      <span
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
+                        style={{ background: p.color }}
+                      >
+                        <IC size={12} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
+                        <div className="text-[10px] text-muted truncate">
+                          {t(`wf.node.${p.kind}.desc`)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
         )}
@@ -810,8 +1173,9 @@ function WorkflowInner({ workflowId }: Props) {
             e.preventDefault();
             const kind = e.dataTransfer.getData("application/x-wf-kind") as WorkflowNodeKind;
             if (!kind) return;
-            const rect = (e.target as HTMLElement).getBoundingClientRect();
-            addNode(kind, { x: e.clientX - rect.left - 80, y: e.clientY - rect.top - 30 });
+            // screenToFlowPosition bù pan/zoom; trừ nửa node (~90×30) để neo vào giữa node.
+            const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+            addNode(kind, { x: p.x - 90, y: p.y - 30 });
             setDragKind(null);
           }}
         >
@@ -1094,6 +1458,71 @@ function WorkflowInner({ workflowId }: Props) {
                   </>
                 )}
 
+                {/* ===== Switch — rẽ nhiều nhánh theo giá trị ===== */}
+                {sel.data.kind === "switch" && (
+                  <>
+                    <FormField label="Biểu thức (giá trị để khớp)">
+                      <Input
+                        placeholder="{trang_thai}"
+                        value={
+                          typeof sel.data.config?.expr === "string" ? sel.data.config.expr : ""
+                        }
+                        onChange={(e) => patchConfig("expr", e.target.value)}
+                      />
+                    </FormField>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider text-warning font-semibold">
+                          Cases
+                        </span>
+                        <button
+                          type="button"
+                          className="text-[11px] text-accent hover:underline"
+                          onClick={addCase}
+                        >
+                          + Thêm case
+                        </button>
+                      </div>
+                      {selCases().length === 0 && (
+                        <div className="text-[11px] text-muted">
+                          Chưa có case — mọi giá trị đi nhánh <code>default</code>.
+                        </div>
+                      )}
+                      {selCases().map((c, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: case không có id ổn định
+                        <div key={i} className="flex items-center gap-1.5">
+                          <Input
+                            className="text-xs!"
+                            placeholder="giá trị"
+                            value={typeof c.value === "string" ? c.value : String(c.value ?? "")}
+                            onChange={(e) => updateCase(i, { value: e.target.value })}
+                          />
+                          <Input
+                            className="text-xs!"
+                            placeholder="nhãn nhánh"
+                            value={c.label ?? ""}
+                            onChange={(e) => updateCase(i, { label: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            title="Xoá case"
+                            className="text-danger text-xs shrink-0 px-1"
+                            onClick={() => removeCase(i)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Eval biểu thức → so khớp <code>value</code> của từng case (dạng chuỗi). Khớp →
+                      đi nhánh cùng <code>nhãn</code>; không khớp → nhánh{" "}
+                      <span className="text-muted font-semibold">default</span>. Nối edge từ chấm
+                      bên phải tới node đích.
+                    </div>
+                  </>
+                )}
+
                 {/* ===== Agent — gọi 1 LLM ===== */}
                 {sel.data.kind === "agent" && (
                   <>
@@ -1201,11 +1630,30 @@ function WorkflowInner({ workflowId }: Props) {
 
                 {/* ===== Approval — tạm dừng chờ duyệt ===== */}
                 {sel.data.kind === "approval" && (
-                  <div className="text-[11px] text-muted leading-relaxed">
-                    Workflow tạm dừng (status <code>paused</code>) tại node này chờ duyệt; người
-                    duyệt xử lý ở màn <code>/approvals</code>. Dùng "Quyền tối thiểu" bên dưới để
-                    chỉ role đủ quyền mới trigger được nhánh có node này.
-                  </div>
+                  <>
+                    <FormField label="Người duyệt (role)">
+                      <Select
+                        value={
+                          typeof sel.data.config?.assignee === "string"
+                            ? sel.data.config.assignee
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("assignee", e.target.value || undefined)}
+                      >
+                        <option value="">Bất kỳ role đủ quyền</option>
+                        <option value="viewer">viewer</option>
+                        <option value="editor">editor</option>
+                        <option value="admin">admin</option>
+                      </Select>
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Tạm dừng (status <code>paused</code>) chờ duyệt ở màn <code>/approvals</code>.
+                      Khi duyệt/từ chối, workflow đi nhánh{" "}
+                      <span className="text-success font-semibold">✓ approved</span> /{" "}
+                      <span className="text-danger font-semibold">✕ rejected</span> (nối edge từ 2
+                      chấm bên phải). <code>Người duyệt</code> giới hạn role được quyết định.
+                    </div>
+                  </>
                 )}
 
                 {/* ===== Procedure — gọi native procedure ===== */}
@@ -1255,6 +1703,267 @@ function WorkflowInner({ workflowId }: Props) {
                   </>
                 )}
 
+                {/* ===== Đặt biến — biến đổi data bằng formula ===== */}
+                {sel.data.kind === "setvar" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
+                          Gán biến
+                        </span>
+                        <button
+                          type="button"
+                          className="text-[11px] text-accent hover:underline"
+                          onClick={addAssign}
+                        >
+                          + Thêm biến
+                        </button>
+                      </div>
+                      {selAssigns().length === 0 && (
+                        <div className="text-[11px] text-muted">
+                          Chưa có biến — thêm cặp tên + formula để gán vào <code>vars</code>.
+                        </div>
+                      )}
+                      {selAssigns().map((a, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: hàng do user sửa, không reorder
+                        <div key={i} className="flex items-center gap-1.5">
+                          <Input
+                            className="text-xs!"
+                            placeholder="tên biến"
+                            value={a.key ?? ""}
+                            onChange={(e) => updateAssign(i, { key: e.target.value })}
+                          />
+                          <Input
+                            className="text-xs!"
+                            placeholder="formula, vd {gia} * {sl}"
+                            value={a.formula ?? ""}
+                            onChange={(e) => updateAssign(i, { formula: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            title="Xoá"
+                            className="text-danger text-xs shrink-0 px-1"
+                            onClick={() => removeAssign(i)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Mỗi dòng gán <code>vars.tên = formula</code> (eval theo vars + cổng input). Bỏ
+                      trống formula → lấy giá trị cổng input cùng tên. Không cần viết code.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== HTTP — gọi API ngoài ===== */}
+                {sel.data.kind === "http" && (
+                  <>
+                    <div className="flex gap-1.5">
+                      <FormField label="Method">
+                        <Select
+                          value={
+                            typeof sel.data.config?.method === "string"
+                              ? sel.data.config.method
+                              : "GET"
+                          }
+                          onChange={(e) => patchConfig("method", e.target.value)}
+                        >
+                          {["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormField>
+                      <div className="flex-1">
+                        <FormField label="URL">
+                          <Input
+                            placeholder="https://api.example.com/v1/orders"
+                            value={
+                              typeof sel.data.config?.url === "string" ? sel.data.config.url : ""
+                            }
+                            onChange={(e) => patchConfig("url", e.target.value)}
+                          />
+                        </FormField>
+                      </div>
+                    </div>
+                    <JsonField
+                      key={`${sel.id}-headers`}
+                      label="Headers (JSON)"
+                      value={sel.data.config?.headers}
+                      placeholder='{"Authorization": "Bearer ..."}'
+                      onValid={(v) => patchConfig("headers", v)}
+                    />
+                    <JsonField
+                      key={`${sel.id}-httpbody`}
+                      label="Body (JSON)"
+                      value={sel.data.config?.body}
+                      placeholder='{"name": "ABC"}'
+                      onValid={(v) => patchConfig("body", v)}
+                    />
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Cổng input <code>url</code>/<code>body</code> ghi đè cấu hình. Response JSON →
+                      merge vào <code>vars</code>. Status ≥ 400 coi như lỗi (đi nhánh{" "}
+                      <span className="text-danger font-semibold">err</span> nếu có). Timeout 15s.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== Sub-workflow — gọi workflow con ===== */}
+                {sel.data.kind === "subworkflow" && (
+                  <>
+                    <FormField label="Workflow con">
+                      <Select
+                        value={
+                          typeof sel.data.config?.workflowId === "string"
+                            ? sel.data.config.workflowId
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("workflowId", e.target.value)}
+                      >
+                        <option value="">— chọn workflow —</option>
+                        {allWorkflows
+                          .filter((w) => w.id !== workflowId)
+                          .map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name}
+                            </option>
+                          ))}
+                      </Select>
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Chạy workflow con với <code>vars</code> + cổng input làm biến khởi tạo;{" "}
+                      <code>vars</code> trả về merge ngược vào workflow cha. Lồng tối đa 5 cấp.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== ForEach — lặp mảng, mỗi phần tử chạy workflow con ===== */}
+                {sel.data.kind === "foreach" && (
+                  <>
+                    <FormField label="Mảng lặp (biểu thức)">
+                      <Input
+                        placeholder="{danh_sach}  — hoặc nối cổng in:items"
+                        value={
+                          typeof sel.data.config?.itemsExpr === "string"
+                            ? sel.data.config.itemsExpr
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("itemsExpr", e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Tên biến phần tử">
+                      <Input
+                        placeholder="item"
+                        value={
+                          typeof sel.data.config?.itemVar === "string"
+                            ? sel.data.config.itemVar
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("itemVar", e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Workflow con (chạy mỗi phần tử)">
+                      <Select
+                        value={
+                          typeof sel.data.config?.workflowId === "string"
+                            ? sel.data.config.workflowId
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("workflowId", e.target.value)}
+                      >
+                        <option value="">— chọn workflow —</option>
+                        {allWorkflows
+                          .filter((w) => w.id !== workflowId)
+                          .map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name}
+                            </option>
+                          ))}
+                      </Select>
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Mỗi phần tử → chạy workflow con với <code>{"{item}"}</code> (đổi tên ở trên) +{" "}
+                      <code>{"{index}"}</code>. Kết quả gom vào <code>vars.foreach_{sel.id}</code>.
+                      Tối đa 1000 phần tử.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== Độ tin cậy: retry / backoff / timeout per-node ===== */}
+                {sel.data.kind !== "trigger" && (
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <span className="text-[10px] uppercase tracking-wider text-danger font-semibold">
+                      Độ tin cậy
+                    </span>
+                    {(() => {
+                      const retry =
+                        sel.data.config?.retry && typeof sel.data.config.retry === "object"
+                          ? (sel.data.config.retry as { max?: number; backoffMs?: number })
+                          : {};
+                      return (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <FormField label="Retry">
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              value={typeof retry.max === "number" ? retry.max : ""}
+                              onChange={(e) =>
+                                patchConfig("retry", {
+                                  ...retry,
+                                  max: e.target.value === "" ? undefined : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </FormField>
+                          <FormField label="Backoff ms">
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              value={typeof retry.backoffMs === "number" ? retry.backoffMs : ""}
+                              onChange={(e) =>
+                                patchConfig("retry", {
+                                  ...retry,
+                                  backoffMs:
+                                    e.target.value === "" ? undefined : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </FormField>
+                          <FormField label="Timeout ms">
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              value={
+                                typeof sel.data.config?.timeoutMs === "number"
+                                  ? sel.data.config.timeoutMs
+                                  : ""
+                              }
+                              onChange={(e) =>
+                                patchConfig(
+                                  "timeoutMs",
+                                  e.target.value === "" ? undefined : Number(e.target.value),
+                                )
+                              }
+                            />
+                          </FormField>
+                        </div>
+                      );
+                    })()}
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Lỗi → thử lại <code>Retry</code> lần (chờ <code>Backoff</code> giữa các lần).
+                      Quá <code>Timeout</code> ms → coi như lỗi. Nối cổng{" "}
+                      <span className="text-danger font-semibold">err</span> (đáy node) sang node xử
+                      lý lỗi để chạy nhánh khắc phục thay vì dừng.
+                    </div>
+                  </div>
+                )}
+
                 {/* ===== Cổng dữ liệu I/O (kéo edge nối node) ===== */}
                 {sel.data.kind !== "approval" && (
                   <div className="border-t border-border pt-3 space-y-3">
@@ -1277,30 +1986,106 @@ function WorkflowInner({ workflowId }: Props) {
                             {t("designer.ports_in_hint")}
                           </div>
                         )}
-                        {selPorts("inputs").map((p, i) => (
-                          // biome-ignore lint/suspicious/noArrayIndexKey: id cổng do user sửa nên không dùng làm key (mất focus); hàng ít reorder
-                          <div key={`inp-${i}`} className="flex gap-1 items-center">
-                            <Input
-                              className="text-xs!"
-                              placeholder="id"
-                              value={p.id}
-                              onChange={(e) => updatePort("inputs", i, { id: e.target.value })}
-                            />
-                            <Input
-                              className="text-xs!"
-                              placeholder={t("designer.port_static")}
-                              value={p.value == null ? "" : String(p.value)}
-                              onChange={(e) => updatePort("inputs", i, { value: e.target.value })}
-                            />
-                            <button
-                              type="button"
-                              className="shrink-0 text-muted hover:text-danger"
-                              onClick={() => removePort("inputs", i)}
+                        {selPorts("inputs").map((p, i) => {
+                          const binding = inputBinding(p.id);
+                          const mode = binding
+                            ? `${binding.nodeId}::${binding.portId}`
+                            : p.formula != null
+                              ? "formula"
+                              : "static";
+                          return (
+                            <div
+                              // biome-ignore lint/suspicious/noArrayIndexKey: id cổng do user sửa nên không dùng làm key (mất focus); hàng ít reorder
+                              key={`inp-${i}`}
+                              className="space-y-1 border border-border rounded-md p-1.5"
                             >
-                              <I.Trash size={12} />
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex gap-1 items-center">
+                                <Input
+                                  className="text-xs! w-20"
+                                  placeholder="id"
+                                  value={p.id}
+                                  onChange={(e) => updatePort("inputs", i, { id: e.target.value })}
+                                />
+                                <Select
+                                  className="text-xs! flex-1"
+                                  value={mode}
+                                  onChange={(e) => setInputSource(i, p.id, e.target.value)}
+                                >
+                                  <option value="static">Giá trị tĩnh</option>
+                                  <option value="formula">Công thức / biến</option>
+                                  {allOutSources().length > 0 && (
+                                    <optgroup label="Từ node trước">
+                                      {allOutSources().map((s) => (
+                                        <option key={s.value} value={s.value}>
+                                          {s.label}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                </Select>
+                                <button
+                                  type="button"
+                                  className="shrink-0 text-muted hover:text-danger"
+                                  onClick={() => {
+                                    clearInputEdge(p.id);
+                                    removePort("inputs", i);
+                                  }}
+                                >
+                                  <I.Trash size={12} />
+                                </button>
+                              </div>
+                              {mode === "static" && (
+                                <Input
+                                  className="text-xs!"
+                                  placeholder={t("designer.port_static")}
+                                  value={p.value == null ? "" : String(p.value)}
+                                  onChange={(e) =>
+                                    updatePort("inputs", i, { value: e.target.value })
+                                  }
+                                />
+                              )}
+                              {mode === "formula" && (
+                                <>
+                                  <Input
+                                    className="text-xs!"
+                                    placeholder="vd {entity.data.total} hoặc {agent_x}"
+                                    value={p.formula ?? ""}
+                                    onChange={(e) =>
+                                      updatePort("inputs", i, { formula: e.target.value })
+                                    }
+                                  />
+                                  {(entityFieldRefs().length > 0 ||
+                                    availableVarRefs().length > 0) && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {[
+                                        ...entityFieldRefs().map((f) => f.ref),
+                                        ...availableVarRefs(),
+                                      ].map((ref) => (
+                                        <button
+                                          key={ref}
+                                          type="button"
+                                          className="px-1 rounded bg-panel border border-border text-[10px] text-accent hover:bg-accent/10"
+                                          onClick={() =>
+                                            updatePort("inputs", i, {
+                                              formula: `${p.formula ?? ""}{${ref}}`,
+                                            })
+                                          }
+                                        >
+                                          {ref}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              {binding && (
+                                <div className="text-[10px] text-accent-2">
+                                  ← nối từ node nguồn (data-edge trên canvas)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     {sel.data.kind !== "delay" && (
@@ -1355,8 +2140,16 @@ function WorkflowInner({ workflowId }: Props) {
                               className="text-xs!"
                               placeholder={t("designer.port_path")}
                               value={p.path ?? ""}
+                              list={`outpaths-${sel.id}`}
                               onChange={(e) => updatePort("outputs", i, { path: e.target.value })}
                             />
+                            {outputPathSuggestions().length > 0 && (
+                              <datalist id={`outpaths-${sel.id}`}>
+                                {outputPathSuggestions().map((s) => (
+                                  <option key={s} value={s} />
+                                ))}
+                              </datalist>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1368,6 +2161,12 @@ function WorkflowInner({ workflowId }: Props) {
                         {selPorts("inputs")
                           .map((p) => `{${p.id}}`)
                           .join(", ")}
+                      </div>
+                    )}
+                    {/* Gợi ý cổng output của node nối tới (để biết nguồn data có sẵn). */}
+                    {upstreamOutPorts().length > 0 && (
+                      <div className="text-[11px] text-muted leading-relaxed">
+                        Cổng nguồn từ node trước: {upstreamOutPorts().join(", ")}
                       </div>
                     )}
                   </div>

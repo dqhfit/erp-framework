@@ -108,9 +108,47 @@ export interface RunWorkflowOptions {
     name: string,
     args: Record<string, unknown>,
   ) => Promise<{ output: unknown; logs: string[]; durationMs: number }>;
+  /**
+   * Chạy một workflow CON theo id (node subworkflow/foreach). Server thường
+   * cài bằng cách gọi lại executeWorkflow (có depth-guard chống lồng vô hạn).
+   * Core chỉ định nghĩa contract; thiếu callback → node trả lỗi.
+   */
+  runSubWorkflow?: (
+    workflowId: string,
+    initialVars: Record<string, unknown>,
+  ) => Promise<{ status: string; vars: Record<string, unknown> }>;
+  /**
+   * Gọi HTTP request cho node "http". Server cài bằng fetch (có timeout/guard);
+   * core chỉ định nghĩa contract — thiếu callback → node trả lỗi.
+   */
+  runHttp?: (req: {
+    url: string;
+    method: string;
+    headers: Record<string, unknown>;
+    body?: unknown;
+  }) => Promise<{ status: number; body: unknown; headers?: Record<string, unknown> }>;
 }
 
+/** Cap số phần tử lặp của node foreach — chống mảng khổng lồ treo runner. */
+const MAX_FOREACH = 1000;
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Đọc cấu hình độ tin cậy per-node: retry/backoff + timeout.
+ *  config.retry = { max, backoffMs }; config.timeoutMs = số ms. */
+function readReliability(cfg: Record<string, unknown>): {
+  retryMax: number;
+  backoffMs: number;
+  timeoutMs: number;
+} {
+  const r =
+    cfg.retry && typeof cfg.retry === "object" ? (cfg.retry as Record<string, unknown>) : {};
+  return {
+    retryMax: Math.max(0, Math.floor(Number(r.max ?? 0)) || 0),
+    backoffMs: Math.max(0, Number(r.backoffMs ?? 0) || 0),
+    timeoutMs: Math.max(0, Number(cfg.timeoutMs ?? 0) || 0),
+  };
+}
 
 /** Lấy args literal từ config (config.args là object). */
 function resolveArgs(config: Record<string, unknown>): Record<string, unknown> {
@@ -153,19 +191,25 @@ function portsOf(node: WfNode | undefined, key: "inputs" | "outputs"): WfPort[] 
   return Array.isArray(v) ? (v as WfPort[]) : [];
 }
 
-/** Gom giá trị input của node: mặc định từ value tĩnh của cổng input đã
- *  khai báo, rồi ghi đè bằng giá trị nối từ data-edge (output node nguồn
- *  + path của cổng output). */
+/** Gom giá trị input của node. Thứ tự ưu tiên (cao → thấp):
+ *  data-edge (nối cổng node trước) > formula cổng (eval theo vars — dùng cho
+ *  tham chiếu biến/entity field) > value tĩnh. */
 function resolveNodeInputs(
   node: WfNode,
   edges: WfEdge[],
   byId: Map<string, WfNode>,
   nodeOutputs: Map<string, unknown>,
   portValues: Map<string, unknown>,
+  vars: Record<string, unknown>,
 ): Record<string, unknown> {
   const inputs: Record<string, unknown> = {};
   for (const p of portsOf(node, "inputs")) {
-    if (p.value !== undefined) inputs[p.id] = p.value;
+    if (typeof p.formula === "string" && p.formula.trim()) {
+      // Cổng nguồn "công thức/biến": eval theo vars (vd {entity.data.total}).
+      inputs[p.id] = evaluate(p.formula, { ...vars }).value;
+    } else if (p.value !== undefined) {
+      inputs[p.id] = p.value;
+    }
   }
   for (const e of edges) {
     if (e.target !== node.id) continue;
@@ -235,192 +279,400 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
 
     const cfg = node.config ?? {};
     // Input của node: value tĩnh cổng input + ghi đè từ data-edge.
-    const inputs = resolveNodeInputs(node, opt.edges, byId, nodeOutputs, portValues);
+    const inputs = resolveNodeInputs(node, opt.edges, byId, nodeOutputs, portValues, vars);
     const t0 = performance.now();
-    let step: RunStep;
+    let step!: RunStep;
     let followLabels: string[] | null = null;
     // Raw output để các node sau bóc field qua data-edge.
     let rawOutput: unknown;
 
-    try {
-      switch (node.type) {
-        case "trigger": {
-          // Output của trigger = payload khởi tạo (vars hiện có).
-          rawOutput = { ...vars };
-          step = mkStep(node, "ok", `Trigger kích hoạt`, t0);
-          break;
-        }
-        case "action": {
-          const tool = typeof cfg.tool === "string" ? cfg.tool : "";
-          if (!tool) {
-            step = mkStep(node, "skipped", "Chưa cấu hình tool — bỏ qua", t0);
-          } else {
-            // Input cổng ghi đè args literal (cổng input = tên arg).
-            const out = await opt.callTool(tool, { ...resolveArgs(cfg), ...inputs });
-            if (out && typeof out === "object" && !Array.isArray(out)) {
-              Object.assign(vars, out as Record<string, unknown>);
+    // Độ tin cậy per-node: timeout (Promise.race) + retry/backoff khi lỗi.
+    const rel = readReliability(cfg);
+    for (let attempt = 0; ; attempt++) {
+      followLabels = null;
+      rawOutput = undefined;
+      try {
+        // Thân node bọc trong IIFE để áp timeout per-node nếu cấu hình.
+        const body = (async () => {
+          switch (node.type) {
+            case "trigger": {
+              // Output của trigger = payload khởi tạo (vars hiện có).
+              rawOutput = { ...vars };
+              step = mkStep(node, "ok", `Trigger kích hoạt`, t0);
+              break;
             }
-            rawOutput = out;
-            step = mkStep(node, "ok", `Đã gọi tool \`${tool}\``, t0, out);
+            case "action": {
+              const tool = typeof cfg.tool === "string" ? cfg.tool : "";
+              if (!tool) {
+                step = mkStep(node, "skipped", "Chưa cấu hình tool — bỏ qua", t0);
+              } else {
+                // Input cổng ghi đè args literal (cổng input = tên arg).
+                const out = await opt.callTool(tool, { ...resolveArgs(cfg), ...inputs });
+                if (out && typeof out === "object" && !Array.isArray(out)) {
+                  Object.assign(vars, out as Record<string, unknown>);
+                }
+                rawOutput = out;
+                step = mkStep(node, "ok", `Đã gọi tool \`${tool}\``, t0, out);
+              }
+              break;
+            }
+            case "condition": {
+              const expr = typeof cfg.expr === "string" ? cfg.expr : "";
+              if (!expr) {
+                step = mkStep(node, "skipped", "Chưa có biểu thức — đi tất cả nhánh", t0);
+              } else {
+                // Cổng input phủ lên vars khi eval (tham chiếu {portId}).
+                const r = evaluate(expr, { ...vars, ...inputs });
+                const truthy = !!r.value;
+                followLabels = truthy ? ["true", "yes", "đúng", ""] : ["false", "no", "sai"];
+                rawOutput = r.value;
+                step = mkStep(
+                  node,
+                  r.ok ? "ok" : "error",
+                  r.ok
+                    ? `Điều kiện = ${truthy ? "ĐÚNG" : "SAI"} → nhánh ${truthy ? "true" : "false"}`
+                    : `Lỗi biểu thức: ${r.error}`,
+                  t0,
+                  r.value,
+                );
+              }
+              break;
+            }
+            case "agent": {
+              if (!opt.callAgent) {
+                step = mkStep(node, "skipped", "Không có agent runner", t0);
+              } else {
+                // Cổng input "system"/"prompt" ghi đè config tương ứng.
+                const agentCfg: Record<string, unknown> = { ...cfg };
+                if ("system" in inputs) agentCfg.system = inputs.system;
+                if ("prompt" in inputs) agentCfg.prompt = inputs.prompt;
+                const res = await opt.callAgent(agentCfg, vars);
+                vars[`agent_${node.id}`] = res.text;
+                rawOutput = res.text;
+                step = mkStep(node, "ok", `Agent trả lời (${res.text.length} ký tự)`, t0, res.text);
+                step.tokens = res.usage;
+                step.model = res.model;
+              }
+              break;
+            }
+            case "agent_chain": {
+              // Chained agent: chạy N step sequential, output step trước
+              // làm input bổ sung step sau (qua vars.chain_prev). Mỗi step
+              // dùng config riêng (prompts[i] / models[i]) hoặc share.
+              if (!opt.callAgent) {
+                step = mkStep(node, "skipped", "Không có agent runner", t0);
+                break;
+              }
+              const steps = (cfg.steps as Array<Record<string, unknown>>) ?? [];
+              const maxChainSteps = Math.min(Number(cfg.maxSteps ?? 5), 20);
+              if (!Array.isArray(steps) || steps.length === 0) {
+                step = mkStep(node, "skipped", "agent_chain cần config.steps[]", t0);
+                break;
+              }
+              let totalIn = 0,
+                totalOut = 0;
+              let prevText = "";
+              const outputs: string[] = [];
+              for (let i = 0; i < Math.min(steps.length, maxChainSteps); i++) {
+                const stepCfg = { ...steps[i], chain_prev: prevText };
+                const r = await opt.callAgent(stepCfg, { ...vars, chain_prev: prevText });
+                outputs.push(r.text);
+                prevText = r.text;
+                totalIn += r.usage.input_tokens;
+                totalOut += r.usage.output_tokens;
+              }
+              vars[`agent_chain_${node.id}`] = outputs;
+              rawOutput = outputs;
+              step = mkStep(
+                node,
+                "ok",
+                `Chain ${outputs.length}/${steps.length} agent (${prevText.length} ký tự cuối)`,
+                t0,
+                outputs,
+              );
+              step.tokens = { input_tokens: totalIn, output_tokens: totalOut };
+              break;
+            }
+            case "delay": {
+              // Cổng input "minutes" ghi đè config.minutes.
+              const mins = Number(inputs.minutes ?? cfg.minutes ?? 0);
+              const realWait = Math.min(mins * 60_000, maxDelayMs);
+              await sleep(realWait);
+              step = mkStep(
+                node,
+                "ok",
+                `Chờ ${mins} phút (thực chờ ${(realWait / 1000).toFixed(1)}s)`,
+                t0,
+              );
+              break;
+            }
+            case "approval": {
+              // Quyết định duyệt (khi resume server set vars["approval_<id>"]
+              // hoặc cổng input "decision"): "approved"/"rejected" → đi nhánh
+              // tương ứng; chưa có → tạm dừng chờ duyệt.
+              const decision = String(
+                vars[`approval_${node.id}`] ?? inputs.decision ?? "",
+              ).toLowerCase();
+              if (decision === "approved" || decision === "rejected") {
+                followLabels = [decision];
+                step = mkStep(
+                  node,
+                  "ok",
+                  decision === "approved"
+                    ? "Đã duyệt → nhánh approved"
+                    : "Từ chối → nhánh rejected",
+                  t0,
+                  decision,
+                );
+              } else {
+                step = mkStep(node, "paused", `Chờ duyệt: "${node.label}" — workflow tạm dừng`, t0);
+              }
+              break;
+            }
+            case "code": {
+              const code = typeof cfg.code === "string" ? cfg.code : "";
+              if (!code.trim()) {
+                step = mkStep(node, "skipped", "Chưa có code — bỏ qua", t0);
+                break;
+              }
+              if (!opt.runCode) {
+                step = mkStep(node, "error", "Server không cấu hình sandbox cho code-node", t0);
+                break;
+              }
+              // Cổng input phủ lên vars truyền vào sandbox.
+              const r = await opt.runCode(code, { vars: { ...vars, ...inputs }, nodeId: id });
+              if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
+                Object.assign(vars, r.output);
+              }
+              rawOutput = r.output;
+              const detail = r.logs.length ? r.logs.join("\n") : `Code chạy ${r.durationMs}ms`;
+              step = mkStep(node, "ok", detail, t0, r.output);
+              break;
+            }
+            case "procedure": {
+              const name = typeof cfg.name === "string" ? cfg.name : "";
+              if (!name) {
+                step = mkStep(node, "skipped", "Chưa chọn procedure — bỏ qua", t0);
+                break;
+              }
+              if (!opt.invokeProcedure) {
+                step = mkStep(node, "error", "Server không cấu hình procedure runner", t0);
+                break;
+              }
+              // Cổng input ghi đè args literal (cổng input = tên arg).
+              const r = await opt.invokeProcedure(name, { ...resolveArgs(cfg), ...inputs });
+              if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
+                Object.assign(vars, r.output as Record<string, unknown>);
+              }
+              rawOutput = r.output;
+              const detail = r.logs.length
+                ? r.logs.join("\n")
+                : `Procedure "${name}" chạy ${r.durationMs}ms`;
+              step = mkStep(node, "ok", detail, t0, r.output);
+              break;
+            }
+            case "http": {
+              // Gọi HTTP API ngoài. Cổng input ghi đè url/body. Body object
+              // của response (JSON) merge vào vars; status >= 400 → coi lỗi.
+              const url = typeof inputs.url === "string" ? inputs.url : (cfg.url as string) || "";
+              if (!url) {
+                step = mkStep(node, "skipped", "Chưa có URL — bỏ qua", t0);
+                break;
+              }
+              if (!opt.runHttp) {
+                step = mkStep(node, "error", "Server không cấu hình runHttp", t0);
+                break;
+              }
+              const method = (typeof cfg.method === "string" ? cfg.method : "GET").toUpperCase();
+              const headers =
+                cfg.headers && typeof cfg.headers === "object"
+                  ? (cfg.headers as Record<string, unknown>)
+                  : {};
+              const body = inputs.body ?? cfg.body;
+              const res = await opt.runHttp({ url, method, headers, body });
+              if (res.body && typeof res.body === "object" && !Array.isArray(res.body)) {
+                Object.assign(vars, res.body as Record<string, unknown>);
+              }
+              rawOutput = res.body;
+              step = mkStep(
+                node,
+                res.status >= 400 ? "error" : "ok",
+                `HTTP ${method} → ${res.status}`,
+                t0,
+                res.body,
+              );
+              break;
+            }
+            case "setvar": {
+              // Đặt/biến đổi biến qua formula — không cần code. Mỗi assignment
+              // {key, formula}: formula eval theo {vars, inputs}; rỗng → lấy
+              // inputs[key]. Kết quả gán vào vars và là rawOutput của node.
+              const assigns = Array.isArray(cfg.assignments)
+                ? (cfg.assignments as Array<{ key?: string; formula?: string }>)
+                : [];
+              const out: Record<string, unknown> = {};
+              for (const a of assigns) {
+                if (!a.key) continue;
+                const v =
+                  typeof a.formula === "string" && a.formula.trim()
+                    ? evaluate(a.formula, { ...vars, ...inputs }).value
+                    : inputs[a.key];
+                vars[a.key] = v;
+                out[a.key] = v;
+              }
+              rawOutput = out;
+              step = mkStep(node, "ok", `Đặt ${Object.keys(out).length} biến`, t0, out);
+              break;
+            }
+            case "switch": {
+              // Router đa nhánh: eval expr → so khớp với cases[].value → đi nhánh
+              // có edge.label = case.label; không khớp → nhánh "default".
+              const expr = typeof cfg.expr === "string" ? cfg.expr : "";
+              const cases = Array.isArray(cfg.cases)
+                ? (cfg.cases as Array<{ value?: unknown; label?: string }>)
+                : [];
+              if (!expr) {
+                step = mkStep(node, "skipped", "Chưa có biểu thức — đi nhánh default", t0);
+                followLabels = ["default"];
+                break;
+              }
+              const r = evaluate(expr, { ...vars, ...inputs });
+              rawOutput = r.value;
+              if (!r.ok) {
+                step = mkStep(node, "error", `Lỗi biểu thức: ${r.error}`, t0);
+                break;
+              }
+              // So khớp dạng chuỗi để an toàn với số/boolean.
+              const got = String(r.value);
+              const hit = cases.find((c) => String(c.value) === got);
+              const lbl = hit?.label ? hit.label : "default";
+              followLabels = [lbl.toLowerCase()];
+              step = mkStep(node, "ok", `Switch = ${got} → nhánh "${lbl}"`, t0, r.value);
+              break;
+            }
+            case "subworkflow": {
+              const subId = typeof cfg.workflowId === "string" ? cfg.workflowId : "";
+              if (!subId) {
+                step = mkStep(node, "skipped", "Chưa chọn workflow con — bỏ qua", t0);
+                break;
+              }
+              if (!opt.runSubWorkflow) {
+                step = mkStep(node, "error", "Server không cấu hình runSubWorkflow", t0);
+                break;
+              }
+              // Cổng input phủ lên vars truyền làm initialVars của workflow con.
+              const sub = await opt.runSubWorkflow(subId, { ...vars, ...inputs });
+              Object.assign(vars, sub.vars);
+              rawOutput = sub.vars;
+              step = mkStep(
+                node,
+                sub.status === "error" ? "error" : "ok",
+                `Workflow con chạy — ${sub.status}`,
+                t0,
+                sub.vars,
+              );
+              break;
+            }
+            case "foreach": {
+              const subId = typeof cfg.workflowId === "string" ? cfg.workflowId : "";
+              if (!subId) {
+                step = mkStep(node, "skipped", "Chưa chọn workflow con — bỏ qua", t0);
+                break;
+              }
+              if (!opt.runSubWorkflow) {
+                step = mkStep(node, "error", "Server không cấu hình runSubWorkflow", t0);
+                break;
+              }
+              // Mảng lặp: ưu tiên cổng input "items", rồi tới itemsExpr (formula).
+              let arr: unknown = inputs.items;
+              if (arr === undefined && typeof cfg.itemsExpr === "string" && cfg.itemsExpr.trim()) {
+                arr = evaluate(cfg.itemsExpr, { ...vars, ...inputs }).value;
+              }
+              if (!Array.isArray(arr)) {
+                step = mkStep(node, "skipped", "Cổng/biểu thức items không phải mảng", t0);
+                break;
+              }
+              if (arr.length > MAX_FOREACH) {
+                step = mkStep(
+                  node,
+                  "error",
+                  `foreach quá ${MAX_FOREACH} phần tử (${arr.length})`,
+                  t0,
+                );
+                break;
+              }
+              const itemVar = typeof cfg.itemVar === "string" && cfg.itemVar ? cfg.itemVar : "item";
+              const results: Array<Record<string, unknown>> = [];
+              let failed = 0;
+              for (let i = 0; i < arr.length; i++) {
+                const sub = await opt.runSubWorkflow(subId, {
+                  ...vars,
+                  ...inputs,
+                  [itemVar]: arr[i],
+                  index: i,
+                });
+                if (sub.status === "error") failed++;
+                results.push(sub.vars);
+              }
+              vars[`foreach_${node.id}`] = results;
+              rawOutput = results;
+              step = mkStep(
+                node,
+                failed ? "error" : "ok",
+                `Lặp ${arr.length} phần tử${failed ? ` (${failed} lỗi)` : ""}`,
+                t0,
+                results,
+              );
+              break;
+            }
+            default: {
+              // Node type lạ → tra plugin trong registry.
+              const plugin = opt.registry?.workflowNode(node.type);
+              if (plugin) {
+                const res = await plugin.run({ config: cfg, vars: { ...vars, ...inputs } });
+                if (res.output) Object.assign(vars, res.output);
+                if (res.branch) followLabels = [res.branch.toLowerCase()];
+                rawOutput = res.output;
+                step = mkStep(
+                  node,
+                  "ok",
+                  res.detail ?? `Node plugin "${node.type}"`,
+                  t0,
+                  res.output,
+                );
+              } else {
+                step = mkStep(node, "ok", node.label, t0);
+              }
+            }
           }
-          break;
+        })();
+        if (rel.timeoutMs > 0) {
+          await Promise.race([
+            body,
+            new Promise<never>((_, rej) =>
+              setTimeout(
+                () => rej(new Error(`Node timeout sau ${rel.timeoutMs}ms`)),
+                rel.timeoutMs,
+              ),
+            ),
+          ]);
+        } else {
+          await body;
         }
-        case "condition": {
-          const expr = typeof cfg.expr === "string" ? cfg.expr : "";
-          if (!expr) {
-            step = mkStep(node, "skipped", "Chưa có biểu thức — đi tất cả nhánh", t0);
-          } else {
-            // Cổng input phủ lên vars khi eval (tham chiếu {portId}).
-            const r = evaluate(expr, { ...vars, ...inputs });
-            const truthy = !!r.value;
-            followLabels = truthy ? ["true", "yes", "đúng", ""] : ["false", "no", "sai"];
-            rawOutput = r.value;
-            step = mkStep(
-              node,
-              r.ok ? "ok" : "error",
-              r.ok
-                ? `Điều kiện = ${truthy ? "ĐÚNG" : "SAI"} → nhánh ${truthy ? "true" : "false"}`
-                : `Lỗi biểu thức: ${r.error}`,
-              t0,
-              r.value,
-            );
-          }
-          break;
-        }
-        case "agent": {
-          if (!opt.callAgent) {
-            step = mkStep(node, "skipped", "Không có agent runner", t0);
-          } else {
-            // Cổng input "system"/"prompt" ghi đè config tương ứng.
-            const agentCfg: Record<string, unknown> = { ...cfg };
-            if ("system" in inputs) agentCfg.system = inputs.system;
-            if ("prompt" in inputs) agentCfg.prompt = inputs.prompt;
-            const res = await opt.callAgent(agentCfg, vars);
-            vars[`agent_${node.id}`] = res.text;
-            rawOutput = res.text;
-            step = mkStep(node, "ok", `Agent trả lời (${res.text.length} ký tự)`, t0, res.text);
-            step.tokens = res.usage;
-            step.model = res.model;
-          }
-          break;
-        }
-        case "agent_chain": {
-          // Chained agent: chạy N step sequential, output step trước
-          // làm input bổ sung step sau (qua vars.chain_prev). Mỗi step
-          // dùng config riêng (prompts[i] / models[i]) hoặc share.
-          if (!opt.callAgent) {
-            step = mkStep(node, "skipped", "Không có agent runner", t0);
-            break;
-          }
-          const steps = (cfg.steps as Array<Record<string, unknown>>) ?? [];
-          const maxChainSteps = Math.min(Number(cfg.maxSteps ?? 5), 20);
-          if (!Array.isArray(steps) || steps.length === 0) {
-            step = mkStep(node, "skipped", "agent_chain cần config.steps[]", t0);
-            break;
-          }
-          let totalIn = 0,
-            totalOut = 0;
-          let prevText = "";
-          const outputs: string[] = [];
-          for (let i = 0; i < Math.min(steps.length, maxChainSteps); i++) {
-            const stepCfg = { ...steps[i], chain_prev: prevText };
-            const r = await opt.callAgent(stepCfg, { ...vars, chain_prev: prevText });
-            outputs.push(r.text);
-            prevText = r.text;
-            totalIn += r.usage.input_tokens;
-            totalOut += r.usage.output_tokens;
-          }
-          vars[`agent_chain_${node.id}`] = outputs;
-          rawOutput = outputs;
-          step = mkStep(
-            node,
-            "ok",
-            `Chain ${outputs.length}/${steps.length} agent (${prevText.length} ký tự cuối)`,
-            t0,
-            outputs,
-          );
-          step.tokens = { input_tokens: totalIn, output_tokens: totalOut };
-          break;
-        }
-        case "delay": {
-          // Cổng input "minutes" ghi đè config.minutes.
-          const mins = Number(inputs.minutes ?? cfg.minutes ?? 0);
-          const realWait = Math.min(mins * 60_000, maxDelayMs);
-          await sleep(realWait);
-          step = mkStep(
-            node,
-            "ok",
-            `Chờ ${mins} phút (thực chờ ${(realWait / 1000).toFixed(1)}s)`,
-            t0,
-          );
-          break;
-        }
-        case "approval": {
-          step = mkStep(node, "paused", `Chờ duyệt: "${node.label}" — workflow tạm dừng`, t0);
-          overallStatus = "paused";
-          break;
-        }
-        case "code": {
-          const code = typeof cfg.code === "string" ? cfg.code : "";
-          if (!code.trim()) {
-            step = mkStep(node, "skipped", "Chưa có code — bỏ qua", t0);
-            break;
-          }
-          if (!opt.runCode) {
-            step = mkStep(node, "error", "Server không cấu hình sandbox cho code-node", t0);
-            overallStatus = "error";
-            break;
-          }
-          // Cổng input phủ lên vars truyền vào sandbox.
-          const r = await opt.runCode(code, { vars: { ...vars, ...inputs }, nodeId: id });
-          if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
-            Object.assign(vars, r.output);
-          }
-          rawOutput = r.output;
-          const detail = r.logs.length ? r.logs.join("\n") : `Code chạy ${r.durationMs}ms`;
-          step = mkStep(node, "ok", detail, t0, r.output);
-          break;
-        }
-        case "procedure": {
-          const name = typeof cfg.name === "string" ? cfg.name : "";
-          if (!name) {
-            step = mkStep(node, "skipped", "Chưa chọn procedure — bỏ qua", t0);
-            break;
-          }
-          if (!opt.invokeProcedure) {
-            step = mkStep(node, "error", "Server không cấu hình procedure runner", t0);
-            overallStatus = "error";
-            break;
-          }
-          // Cổng input ghi đè args literal (cổng input = tên arg).
-          const r = await opt.invokeProcedure(name, { ...resolveArgs(cfg), ...inputs });
-          if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
-            Object.assign(vars, r.output as Record<string, unknown>);
-          }
-          rawOutput = r.output;
-          const detail = r.logs.length
-            ? r.logs.join("\n")
-            : `Procedure "${name}" chạy ${r.durationMs}ms`;
-          step = mkStep(node, "ok", detail, t0, r.output);
-          break;
-        }
-        default: {
-          // Node type lạ → tra plugin trong registry.
-          const plugin = opt.registry?.workflowNode(node.type);
-          if (plugin) {
-            const res = await plugin.run({ config: cfg, vars: { ...vars, ...inputs } });
-            if (res.output) Object.assign(vars, res.output);
-            if (res.branch) followLabels = [res.branch.toLowerCase()];
-            rawOutput = res.output;
-            step = mkStep(node, "ok", res.detail ?? `Node plugin "${node.type}"`, t0, res.output);
-          } else {
-            step = mkStep(node, "ok", node.label, t0);
-          }
-        }
+      } catch (e) {
+        step = mkStep(
+          node,
+          "error",
+          `Lỗi${attempt ? ` (sau ${attempt} lần thử lại)` : ""}: ${(e as Error).message}`,
+          t0,
+        );
       }
-    } catch (e) {
-      step = mkStep(node, "error", `Lỗi: ${(e as Error).message}`, t0);
-      overallStatus = "error";
+      // Retry khi node lỗi và còn lượt; ok/skipped/paused → dừng vòng.
+      if (step.status === "error" && attempt < rel.retryMax) {
+        await sleep(rel.backoffMs);
+        continue;
+      }
+      break;
     }
 
     // Lưu raw output cho data-edge của node sau (kể cả undefined).
@@ -437,15 +689,34 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
     steps.push(step);
     opt.onStep?.(step);
 
-    // Approval/error → dừng nhánh này
-    if (step.status === "paused" || step.status === "error") continue;
+    // Approval → tạm dừng workflow, dừng nhánh này.
+    if (step.status === "paused") {
+      overallStatus = "paused";
+      continue;
+    }
 
-    // Đi tiếp theo edge CONTROL-FLOW (bỏ qua data-edge nối cổng).
-    for (const e of opt.edges.filter((ed) => ed.source === id && !isDataEdge(ed))) {
-      if (followLabels) {
-        const lbl = (e.label ?? "").toLowerCase();
-        if (!followLabels.includes(lbl)) continue;
+    // Node lỗi: nếu có edge nhánh "error" → đi nhánh xử lý lỗi (KHÔNG đánh dấu
+    // workflow lỗi); không có nhánh → dừng nhánh + đánh dấu lỗi (như cũ).
+    if (step.status === "error") {
+      const errTargets = opt.edges.filter(
+        (ed) => ed.source === id && !isDataEdge(ed) && (ed.label ?? "").toLowerCase() === "error",
+      );
+      if (errTargets.length) {
+        for (const e of errTargets) if (!visited.has(e.target)) queue.push(e.target);
+      } else {
+        overallStatus = "error";
       }
+      continue;
+    }
+
+    // Đi tiếp theo edge CONTROL-FLOW (bỏ qua data-edge nối cổng). Nhãn "error"
+    // là dành riêng cho nhánh lỗi → không đi khi node chạy bình thường.
+    // (followLabels được gán trong IIFE nên TS không suy được kiểu — ép lại.)
+    const follow = followLabels as string[] | null;
+    for (const e of opt.edges.filter((ed) => ed.source === id && !isDataEdge(ed))) {
+      const lbl = (e.label ?? "").toLowerCase();
+      if (lbl === "error") continue;
+      if (follow && !follow.includes(lbl)) continue;
       if (!visited.has(e.target)) queue.push(e.target);
     }
   }

@@ -440,6 +440,27 @@ export const I = {
       <path d="M6 7v10M6 12h7a3 3 0 0 0 3-3V7" />
     </Icon>
   ),
+  GitFork: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="18" r="2" />
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="18" cy="6" r="2" />
+      <path d="M18 8v1a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V8M12 12v4" />
+    </Icon>
+  ),
+  Repeat: (p: IP) => (
+    <Icon {...p}>
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+    </Icon>
+  ),
+  Braces: (p: IP) => (
+    <Icon {...p}>
+      <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1" />
+      <path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1" />
+    </Icon>
+  ),
   Bell: (p: IP) => (
     <Icon {...p}>
       <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />

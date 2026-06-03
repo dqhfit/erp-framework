@@ -173,11 +173,12 @@ function SidebarItem({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const hasActions = !collapsed && (onDelete || onRename || onToggleFavorite);
-  // Extra left padding when group header to make room for chevron button
-  const chevronPl = isGroupHeader && !collapsed ? 28 : undefined;
-  // Right padding: 20px per action button
+  // Caret mở/đóng nhóm đặt CUỐI dòng, luôn hiển thị cho group header.
+  const showCaret = !!isGroupHeader && !collapsed;
+  // Right padding: 20px mỗi nút action (hiện khi hover) + caret (luôn hiện).
   const actionCount = [onToggleFavorite, isDraggable, onRename, onDelete].filter(Boolean).length;
-  const rightPr = hasActions ? actionCount * 20 + 8 : undefined;
+  const rightUnits = actionCount + (showCaret ? 1 : 0);
+  const rightPr = rightUnits > 0 ? rightUnits * 20 + 8 : undefined;
 
   const commit = () => {
     const next = inputRef.current?.value.trim();
@@ -196,10 +197,7 @@ function SidebarItem({
         onDrop={onDrop}
         onDragLeave={onDragLeave}
       >
-        <div
-          className={cn("sidebar-item", active && "active")}
-          style={chevronPl ? { paddingLeft: chevronPl } : undefined}
-        >
+        <div className={cn("sidebar-item", active && "active")}>
           <span className="icon text-muted shrink-0">{icon}</span>
           <input
             ref={inputRef}
@@ -238,30 +236,10 @@ function SidebarItem({
       onDragLeave={onDragLeave}
       onDoubleClick={onRename && !collapsed ? () => setEditing(true) : undefined}
     >
-      {/* Chevron — absolutely positioned outside <Link> to avoid invalid nesting */}
-      {isGroupHeader && !collapsed && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleExpanded?.();
-          }}
-          className="absolute left-[10px] top-1/2 -translate-y-1/2 z-10 w-4 h-4 flex items-center justify-center text-muted/50 hover:text-text"
-          aria-label={isExpanded ? t("sidebar.collapse_group") : t("sidebar.expand_group")}
-        >
-          <I.ChevronRight
-            size={9}
-            className={cn("transition-transform", isExpanded && "rotate-90")}
-          />
-        </button>
-      )}
       <Link
         to={to}
-        className={cn("sidebar-item", active && "active")}
-        style={{
-          ...(chevronPl ? { paddingLeft: chevronPl } : {}),
-          ...(rightPr ? { paddingRight: rightPr } : {}),
-        }}
+        className={cn("sidebar-item", active && "active", showCaret && "font-medium bg-bg-soft/40")}
+        style={rightPr ? { paddingRight: rightPr } : undefined}
         title={title ?? label}
         onClick={onNavigate}
       >
@@ -277,61 +255,83 @@ function SidebarItem({
           </>
         )}
       </Link>
-      {hasActions && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onToggleFavorite && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleFavorite();
-              }}
-              className={cn(
-                "w-5 h-5 rounded-sm flex items-center justify-center transition-colors",
-                isFavorited
-                  ? "text-amber-400 hover:text-amber-300"
-                  : "text-muted/40 hover:bg-hover/80 hover:text-amber-400",
+      {(hasActions || showCaret) && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {hasActions && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleFavorite();
+                  }}
+                  className={cn(
+                    "w-5 h-5 rounded-sm flex items-center justify-center transition-colors",
+                    isFavorited
+                      ? "text-amber-400 hover:text-amber-300"
+                      : "text-muted/40 hover:bg-hover/80 hover:text-amber-400",
+                  )}
+                  title={isFavorited ? t("sidebar.remove_favorite") : t("sidebar.add_favorite")}
+                >
+                  <I.Star size={11} />
+                </button>
               )}
-              title={isFavorited ? t("sidebar.remove_favorite") : t("sidebar.add_favorite")}
-            >
-              <I.Star size={11} />
-            </button>
+              {isDraggable && (
+                <span
+                  className="w-5 h-5 flex items-center justify-center text-muted/30 cursor-grab"
+                  title={t("sidebar.drag_to_group")}
+                >
+                  <I.Grip size={10} />
+                </span>
+              )}
+              {onRename && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditing(true);
+                  }}
+                  className="w-5 h-5 rounded-sm hover:bg-hover/80 flex items-center justify-center text-muted hover:text-text"
+                  title={t("common.rename")}
+                >
+                  <I.Edit size={11} />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="w-5 h-5 rounded-sm hover:bg-danger/20 flex items-center justify-center text-muted hover:text-danger"
+                  title={t("common.delete")}
+                >
+                  <I.Trash size={11} />
+                </button>
+              )}
+            </div>
           )}
-          {isDraggable && (
-            <span
-              className="w-5 h-5 flex items-center justify-center text-muted/30 cursor-grab"
-              title={t("sidebar.drag_to_group")}
-            >
-              <I.Grip size={10} />
-            </span>
-          )}
-          {onRename && (
+          {/* Caret mở/đóng nhóm — luôn hiện cho group header, đặt ngoài cùng phải */}
+          {showCaret && (
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setEditing(true);
+                onToggleExpanded?.();
               }}
-              className="w-5 h-5 rounded-sm hover:bg-hover/80 flex items-center justify-center text-muted hover:text-text"
-              title={t("common.rename")}
+              className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/60 hover:text-text hover:bg-hover/60 transition-colors"
+              aria-label={isExpanded ? t("sidebar.collapse_group") : t("sidebar.expand_group")}
             >
-              <I.Edit size={11} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="w-5 h-5 rounded-sm hover:bg-danger/20 flex items-center justify-center text-muted hover:text-danger"
-              title={t("common.delete")}
-            >
-              <I.Trash size={11} />
+              <I.ChevronRight
+                size={11}
+                className={cn("transition-transform", isExpanded && "rotate-90")}
+              />
             </button>
           )}
         </div>
@@ -659,12 +659,15 @@ function NavGroup({
   open,
   onToggle,
   children,
+  scrollCap,
 }: {
   title: string;
   collapsed: boolean;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  /** Giới hạn chiều cao nội dung nhóm ≤ 50% màn hình + tự cuộn (nhóm dài như Vận hành/Cấu hình). */
+  scrollCap?: boolean;
 }) {
   const t = useT();
   if (collapsed) return <>{children}</>;
@@ -691,7 +694,7 @@ function NavGroup({
           <I.ChevronsUpDown size={11} />
         </button>
       </div>
-      {open && <div>{children}</div>}
+      {open && <div className={cn(scrollCap && "max-h-[50vh] overflow-y-auto")}>{children}</div>}
     </div>
   );
 }
@@ -733,6 +736,13 @@ export function Sidebar() {
   };
   const toggle = (key: keyof typeof sectionsOpen) => () =>
     setSectionsOpen((s) => ({ ...s, [key]: !s[key] }));
+
+  /** Accordion cho Vận hành ↔ Cấu hình: mở nhóm này thì thu gọn nhóm kia. */
+  const toggleExclusive = (key: "ops" | "settings") => () =>
+    setSectionsOpen((s) => {
+      const opening = !s[key];
+      return { ...s, ops: opening && key === "ops", settings: opening && key === "settings" };
+    });
 
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1203,7 +1213,8 @@ export function Sidebar() {
             title={t("sidebar.group_ops")}
             collapsed={collapsed}
             open={sectionsOpen.ops}
-            onToggle={toggle("ops")}
+            onToggle={toggleExclusive("ops")}
+            scrollCap
           >
             {/* /server-data ẩn khỏi Sidebar — truy cập trực tiếp qua URL khi cần */}
             <SidebarItem
@@ -1364,7 +1375,8 @@ export function Sidebar() {
               title={t("sidebar.group_settings")}
               collapsed={collapsed}
               open={sectionsOpen.settings}
-              onToggle={toggle("settings")}
+              onToggle={toggleExclusive("settings")}
+              scrollCap
             >
               <SidebarItem
                 to="/settings/agents"
