@@ -85,7 +85,7 @@ Trả về JSON. Nodes có toạ độ tuyệt đối (x, y) pixel; edges nối 
   "nodes": [
     {
       "id": "n1",
-      "type": "trigger|action|condition|agent|approval|delay",
+      "type": "trigger|action|condition|agent|agent_chain|approval|delay|code|procedure",
       "label": "Khi đơn > 50tr",
       "x": 100, "y": 80,
       "config": {                          // optional, tuỳ type
@@ -93,7 +93,10 @@ Trả về JSON. Nodes có toạ độ tuyệt đối (x, y) pixel; edges nối 
         "tool": "sales.order.update",      // action
         "expr": "{total} > 50000000",      // condition
         "agentId": "a_sales",              // agent
-        "minutes": 30                      // delay
+        "minutes": 30,                     // delay
+        "code": "return { ok: true }",     // code (JS sandbox)
+        "name": "inventory.reserve",       // procedure (native procedure name + args)
+        "args": {}                         // procedure / action
       }
     }
   ],

@@ -20,7 +20,7 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
   return createPortal(
     <div className="fixed inset-0 z-900 overflow-y-auto" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-none" />
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
         <div
           ref={containerRef}
           role="dialog"

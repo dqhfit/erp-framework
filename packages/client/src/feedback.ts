@@ -7,8 +7,13 @@ import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@erp-framework/server";
 
 export type FeedbackArea =
-  | "entity" | "workflow" | "agent" | "settings"
-  | "ui" | "performance" | "other";
+  | "entity"
+  | "workflow"
+  | "agent"
+  | "settings"
+  | "ui"
+  | "performance"
+  | "other";
 export type FeedbackStatus = "new" | "in_progress" | "done" | "wontfix";
 export type FeedbackSeverity = "nice_to_have" | "normal" | "blocker";
 
@@ -65,21 +70,31 @@ export interface FeedbackCreateInput {
 
 export function createFeedbackClient(baseUrl: string) {
   const trpc = createTRPCClient<AppRouter>({
-    links: [httpBatchLink({
-      url: baseUrl.replace(/\/$/, "") + "/trpc",
-      fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
-    })],
+    links: [
+      httpBatchLink({
+        url: baseUrl.replace(/\/$/, "") + "/trpc",
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
   });
   return {
     list: (filters?: {
-      status?: FeedbackStatus; area?: FeedbackArea; mine?: boolean; limit?: number;
+      status?: FeedbackStatus;
+      area?: FeedbackArea;
+      mine?: boolean;
+      limit?: number;
     }) => trpc.feedback.list.query(filters) as unknown as Promise<FeedbackListItem[]>,
     get: (id: string) => trpc.feedback.get.query(id) as unknown as Promise<FeedbackDetail>,
     create: (input: FeedbackCreateInput) =>
       trpc.feedback.create.mutate(input) as unknown as Promise<{ id: string }>,
-    update: (input: { id: string; title?: string; body?: string;
-      suggestion?: string; area?: FeedbackArea; severity?: FeedbackSeverity }) =>
-      trpc.feedback.update.mutate(input),
+    update: (input: {
+      id: string;
+      title?: string;
+      body?: string;
+      suggestion?: string;
+      area?: FeedbackArea;
+      severity?: FeedbackSeverity;
+    }) => trpc.feedback.update.mutate(input),
     setStatus: (input: { id: string; status: FeedbackStatus; resolutionNote?: string }) =>
       trpc.feedback.setStatus.mutate(input),
     delete: (id: string) => trpc.feedback.delete.mutate(id),
@@ -92,6 +107,57 @@ export function createFeedbackClient(baseUrl: string) {
     deleteComment: (id: string) => trpc.feedback.deleteComment.mutate(id),
     findSimilar: (input: { title: string; body?: string; limit?: number }) =>
       trpc.feedback.findSimilar.mutate(input) as unknown as Promise<SimilarHit[]>,
+    mergeExport: (input: {
+      status?: FeedbackStatus;
+      area?: FeedbackArea;
+      mine?: boolean;
+      ai?: boolean;
+    }) =>
+      trpc.feedback.mergeExport.mutate(input) as unknown as Promise<{
+        markdown: string;
+        count: number;
+        mode: "raw" | "ai";
+        items: { id: string; title: string; status: FeedbackStatus }[];
+        aiFailed?: boolean;
+      }>,
+    bulkSetStatus: (input: { ids: string[]; status: FeedbackStatus; resolutionNote?: string }) =>
+      trpc.feedback.bulkSetStatus.mutate(input) as unknown as Promise<{
+        ok: boolean;
+        updated: number;
+      }>,
+    saveMergeBatch: (input: {
+      status?: FeedbackStatus;
+      area?: FeedbackArea;
+      mine?: boolean;
+      label?: string;
+      note?: string;
+    }) =>
+      trpc.feedback.saveMergeBatch.mutate(input) as unknown as Promise<{
+        id: string;
+        label: string;
+        itemCount: number;
+      }>,
+    listMergeBatches: () =>
+      trpc.feedback.listMergeBatches.query() as unknown as Promise<
+        Array<{
+          id: string;
+          label: string;
+          note: string | null;
+          itemCount: number;
+          createdAt: string;
+        }>
+      >,
+    getMergeBatch: (id: string) =>
+      trpc.feedback.getMergeBatch.query(id) as unknown as Promise<{
+        id: string;
+        label: string;
+        note: string | null;
+        itemCount: number;
+        createdAt: string;
+        items: Array<{ id: string; title: string; status: FeedbackStatus }>;
+      }>,
+    deleteMergeBatch: (id: string) =>
+      trpc.feedback.deleteMergeBatch.mutate(id) as unknown as Promise<{ ok: boolean }>,
   };
 }
 

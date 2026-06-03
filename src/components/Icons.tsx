@@ -409,6 +409,11 @@ export const I = {
       <path d="M9 3v18" />
     </Icon>
   ),
+  Menu: (p: IP) => (
+    <Icon {...p}>
+      <path d="M3 6h18M3 12h18M3 18h18" />
+    </Icon>
+  ),
   PanelRight: (p: IP) => (
     <Icon {...p}>
       <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -445,6 +450,12 @@ export const I = {
     <Icon {...p}>
       <circle cx="12" cy="12" r="10" />
       <path d="M9.1 9.1a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
+    </Icon>
+  ),
+  Info: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
     </Icon>
   ),
   ArrowRight: (p: IP) => (

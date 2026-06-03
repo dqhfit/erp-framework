@@ -3,10 +3,12 @@ import { ActionInspector } from "@/components/designer/ActionInspector";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
 import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldBinder";
+import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button, Chip, EmptyState, FormField, Input, Select, Switch } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { useUndoable } from "@/hooks/useUndoable";
 import type { PageDesign } from "@/lib/ai-design-prompts";
@@ -308,6 +310,7 @@ function DataLoadConfig({
 
 export function PageDesigner({ pageId }: Props) {
   const t = useT();
+  const isMobile = useIsMobile();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
   const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
@@ -610,6 +613,28 @@ export function PageDesigner({ pageId }: Props) {
   };
   const update = (id: string, patch: Partial<PageComponent>) =>
     setComponents((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+  // Mobile: trình thiết kế kéo-thả không dùng được → hiện banner + xem trước
+  // (ConsumerPage tự stack 1 cột). Chỉnh sửa bố cục để dành cho desktop.
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="h-11 shrink-0 flex items-center px-3 gap-2 border-b border-border bg-panel">
+          <div className="w-7 h-7 rounded-md bg-accent/15 text-accent flex items-center justify-center">
+            <I.Layout size={14} />
+          </div>
+          <div className="flex flex-col leading-tight min-w-0">
+            <div className="font-semibold text-base truncate">{page?.name ?? pageId}</div>
+            <div className="text-[11px] text-muted">{components.length} component(s)</div>
+          </div>
+        </div>
+        <MobileDesignerNotice />
+        <div className="flex-1 overflow-auto">
+          <ConsumerPage pageId={pageId} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

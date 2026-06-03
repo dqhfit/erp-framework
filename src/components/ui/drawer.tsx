@@ -1,5 +1,7 @@
 import { type ReactNode, useId } from "react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { cn } from "@/lib/utils";
 import { I } from "../Icons";
 import { Button } from "./button";
 
@@ -14,6 +16,7 @@ interface DrawerProps {
 export function Drawer({ open, onClose, title, width = 420, children, footer }: DrawerProps) {
   // Focus trap + Esc + return focus về trigger (giống Modal).
   const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
+  const isMobile = useIsMobile();
   const titleId = useId();
   if (!open) return null;
   return (
@@ -25,8 +28,11 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="absolute top-0 right-0 h-full panel border-l border-border shadow-2xl flex flex-col outline-hidden"
-        style={{ width }}
+        className={cn(
+          "absolute top-0 right-0 h-full panel border-l border-border shadow-2xl flex flex-col outline-hidden",
+          isMobile && "w-screen max-w-full",
+        )}
+        style={isMobile ? undefined : { width }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-3 border-b border-border h-12 shrink-0">

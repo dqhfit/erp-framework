@@ -10,10 +10,12 @@ import {
    ========================================================== */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { MergeFeedbackModal } from "@/components/feedback/MergeFeedbackModal";
 import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, EmptyState, Select, Tabs } from "@/components/ui";
 import { useT } from "@/hooks/useT";
+import { useAuth } from "@/stores/auth";
 
 const client = createFeedbackClient("");
 
@@ -50,6 +52,8 @@ function FeedbackIndex() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const isAdmin = useAuth((s) => s.user?.role) === "admin";
 
   const filters = useMemo(
     () => ({
@@ -74,6 +78,15 @@ function FeedbackIndex() {
       <div className="max-w-[1100px] mx-auto p-6">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl font-semibold flex-1">{t("feedback.title")}</h1>
+          {isAdmin && (
+            <Button
+              variant="default"
+              icon={<I.Copy size={14} />}
+              onClick={() => setMergeOpen(true)}
+            >
+              {t("feedback.merge_btn")}
+            </Button>
+          )}
           <Button variant="primary" icon={<I.Plus size={14} />} onClick={() => setSubmitOpen(true)}>
             {t("feedback.submit_btn")}
           </Button>
@@ -158,6 +171,7 @@ function FeedbackIndex() {
         </div>
       </div>
       <SubmitFeedbackModal open={submitOpen} onClose={() => setSubmitOpen(false)} />
+      <MergeFeedbackModal open={mergeOpen} onClose={() => setMergeOpen(false)} filters={filters} />
     </div>
   );
 }

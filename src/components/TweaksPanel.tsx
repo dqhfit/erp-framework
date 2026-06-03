@@ -1,5 +1,6 @@
 import { I } from "@/components/Icons";
 import { Button, Switch } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { type AccentColor, type Density, type Theme, useUI } from "@/stores/ui";
 
@@ -27,6 +28,7 @@ export function TweaksPanel() {
     setAgentOpen,
     setCmdOpen,
   } = useUI();
+  const isMobile = useIsMobile();
 
   if (!tweaksOpen) return null;
 
@@ -34,7 +36,12 @@ export function TweaksPanel() {
     <>
       {/* Backdrop click outside */}
       <div className="fixed inset-0 z-699" onClick={() => setTweaksOpen(false)} />
-      <aside className="fixed top-14 right-4 z-700 w-[300px] panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-80px)] overflow-hidden">
+      <aside
+        className={cn(
+          "fixed top-14 z-700 panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-80px)] overflow-hidden",
+          isMobile ? "inset-x-2 w-auto" : "right-4 w-[300px]",
+        )}
+      >
         <div className="h-10 px-3 flex items-center justify-between border-b border-border shrink-0">
           <div className="font-semibold text-sm flex items-center gap-2">
             <I.Wand size={14} className="text-accent" />

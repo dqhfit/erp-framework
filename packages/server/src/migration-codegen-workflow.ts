@@ -6,7 +6,7 @@
    - IF/CASE WHEN → node type="condition", config.expression
    - INSERT/UPDATE/DELETE → node type="action", config.action.kind="entity-*"
    - EXEC dbo.foo → node type="action", config.action.kind="procedure"
-   - WHILE/cursor → node type="loop"
+   - WHILE/cursor → node type="action" kind="raw-sql" (runtime chưa hỗ trợ lặp)
 
    Output validate qua zod; lỗi parse → throw. Caller (router) handle
    upsert vào bảng workflows.
@@ -18,7 +18,17 @@ import { callLlmJson } from "./llm-json";
 
 const NodeSchema = z.object({
   id: z.string().min(1),
-  type: z.enum(["trigger", "action", "condition", "loop", "agent", "approval", "delay", "subflow"]),
+  type: z.enum([
+    "trigger",
+    "action",
+    "condition",
+    "agent",
+    "agent_chain",
+    "approval",
+    "delay",
+    "code",
+    "procedure",
+  ]),
   position: z.object({ x: z.number(), y: z.number() }),
   config: z.record(z.string(), z.unknown()),
 });
@@ -55,7 +65,7 @@ Output JSON với schema:
   "nodes": [
     {
       "id": "<unique node id snake_case>",
-      "type": "trigger | action | condition | loop | approval | delay",
+      "type": "trigger | action | condition | approval | delay",
       "position": { "x": <number>, "y": <number> },
       "config": { ... }
     }
@@ -78,7 +88,7 @@ Quy tắc mapping:
 - UPDATE X SET → node type="action", config.action={kind:"entity-update", entity:"<X mapped>", filter:{...}, set:{...}}
 - DELETE FROM X → node type="action", config.action={kind:"entity-delete", entity:"<X mapped>", filter:{...}}
 - EXEC dbo.foo @a, @b → node type="action", config.action={kind:"procedure", name:"<foo migrated name>", args:{...}}
-- WHILE / cursor → node type="loop", config.over="<source>", body chứa sub-nodes
+- WHILE / cursor → runtime CHƯA hỗ trợ lặp; dùng node type="action" config.action={kind:"raw-sql", sql:"<SQL gốc>"} để human review sau
 - RAISERROR/THROW → node type="action", config.action={kind:"raise-error", message:"..."}
 
 Position layout: từ trên xuống, x=0 cho main flow, x=200 cho branch nhánh else.

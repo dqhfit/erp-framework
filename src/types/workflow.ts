@@ -2,11 +2,12 @@ export type NodeType =
   | "trigger"
   | "action"
   | "condition"
-  | "loop"
   | "agent"
+  | "agent_chain"
   | "approval"
   | "delay"
-  | "subflow";
+  | "code"
+  | "procedure";
 
 export interface WorkflowNode {
   id: string;

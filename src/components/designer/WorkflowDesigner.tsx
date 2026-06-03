@@ -1,9 +1,13 @@
 import {
   addEdge,
   Background,
+  BaseEdge,
   type Connection,
   Controls,
   type Edge,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  getBezierPath,
   Handle,
   MarkerType,
   MiniMap,
@@ -12,18 +16,22 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  reconnectEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import { createObjectsClient } from "@erp-framework/client";
 import { pluginRegistry, type WfPort } from "@erp-framework/core";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { WorkflowRunPanel } from "@/components/designer/WorkflowRunPanel";
 import { I } from "@/components/Icons";
 import { Button, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import type { WorkflowDesign } from "@/lib/ai-design-prompts";
 import type { IconName, WorkflowTriggerType } from "@/lib/object-types";
@@ -151,9 +159,10 @@ const INITIAL_NODES: Node<WfNodeData>[] = [
   },
 ];
 const INITIAL_EDGES: Edge[] = [
-  { id: "e1", source: "n1", target: "n2", markerEnd: { type: MarkerType.ArrowClosed } },
+  { id: "e1", type: "wf", source: "n1", target: "n2", markerEnd: { type: MarkerType.ArrowClosed } },
   {
     id: "e2",
+    type: "wf",
     source: "n2",
     sourceHandle: "yes",
     target: "n3",
@@ -162,6 +171,7 @@ const INITIAL_EDGES: Edge[] = [
   },
   {
     id: "e3",
+    type: "wf",
     source: "n2",
     sourceHandle: "no",
     target: "n4",
@@ -309,6 +319,63 @@ function WfNode({ data }: NodeProps<Node<WfNodeData>>) {
 
 const NODE_TYPES = { wf: WfNode };
 
+/* Edge tuỳ biến: giữ nguyên style (nét đứt data / mũi tên control do
+   ReactFlow truyền qua props) + thêm nút × ở trung điểm để xoá nhanh.
+   Nút chỉ hiện khi hover lên edge hoặc edge đang được chọn. */
+function WfFlowEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  markerEnd,
+  style,
+  label,
+  selected,
+}: EdgeProps) {
+  const { setEdges } = useReactFlow();
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan group absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1"
+          style={{ left: labelX, top: labelY, pointerEvents: "all" }}
+        >
+          {typeof label === "string" && label && (
+            <span className="px-1 rounded bg-panel border border-border text-[10px] text-muted">
+              {label}
+            </span>
+          )}
+          <button
+            type="button"
+            title="Xoá link"
+            onClick={() => setEdges((es) => es.filter((e) => e.id !== id))}
+            className={cn(
+              "w-4 h-4 rounded-full bg-danger text-white flex items-center justify-center text-[10px] leading-none transition-opacity",
+              selected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            ×
+          </button>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+const EDGE_TYPES = { wf: WfFlowEdge };
+
 /* Field nhập JSON có buffer text RIÊNG: cho phép gõ JSON dở dang mà
    value controlled không bị revert về chuỗi parse-được trước đó. Chỉ
    đẩy giá trị đã parse ra ngoài khi hợp lệ; lỗi cú pháp hiện cảnh báo
@@ -380,12 +447,14 @@ export function WorkflowDesigner({ workflowId }: Props) {
 
 function WorkflowInner({ workflowId }: Props) {
   const t = useT();
+  const isMobile = useIsMobile();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
   const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<WfNodeData>>(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(INITIAL_EDGES);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [dragKind, setDragKind] = useState<WorkflowNodeKind | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
@@ -415,8 +484,10 @@ function WorkflowInner({ workflowId }: Props) {
       | { nodes?: Node<WfNodeData>[]; edges?: Edge[] }
       | undefined;
     if (stored?.nodes) setNodes(stored.nodes);
-    if (stored?.edges) setEdges(stored.edges);
+    // Vá edge cũ đã lưu thiếu `type` → custom edge (nút ×) áp dụng cả edge cũ.
+    if (stored?.edges) setEdges(stored.edges.map((e) => ({ ...e, type: e.type ?? "wf" })));
     setSelected(null);
+    setSelectedEdge(null);
   }, [setEdges, workflowId, setNodes]);
 
   const save = () => {
@@ -461,6 +532,7 @@ function WorkflowInner({ workflowId }: Props) {
       const sourceHandle = lbl === "yes" ? "yes" : lbl === "no" ? "no" : undefined;
       return {
         id: `e_${Date.now()}_${i}`,
+        type: "wf",
         source: e.source,
         sourceHandle,
         target: e.target,
@@ -483,6 +555,7 @@ function WorkflowInner({ workflowId }: Props) {
           addEdge(
             {
               ...c,
+              type: "wf",
               animated: true,
               style: { stroke: "var(--accent-2)", strokeDasharray: "5 3" },
               data: { kind: "data" },
@@ -494,7 +567,9 @@ function WorkflowInner({ workflowId }: Props) {
       }
       // Control-flow: condition suy label "Yes"/"No" từ source handle.
       const label = c.sourceHandle === "yes" ? "Yes" : c.sourceHandle === "no" ? "No" : undefined;
-      setEdges((es) => addEdge({ ...c, label, markerEnd: { type: MarkerType.ArrowClosed } }, es));
+      setEdges((es) =>
+        addEdge({ ...c, type: "wf", label, markerEnd: { type: MarkerType.ArrowClosed } }, es),
+      );
     },
     [setEdges],
   );
@@ -504,8 +579,20 @@ function WorkflowInner({ workflowId }: Props) {
     const dataTgt = (c.targetHandle ?? "").startsWith("in:");
     return dataSrc === dataTgt;
   }, []);
+  /* Reconnect: kéo lại đầu mút edge sang node/cổng khác (isValidConnection chặn nối sai loại). */
+  const onReconnect = useCallback(
+    (oldEdge: Edge, c: Connection) => setEdges((es) => reconnectEdge(oldEdge, c, es)),
+    [setEdges],
+  );
+  const patchEdge = (id: string, patch: Partial<Edge>) =>
+    setEdges((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const removeEdge = (id: string) => {
+    setEdges((es) => es.filter((e) => e.id !== id));
+    setSelectedEdge(null);
+  };
 
   const sel = nodes.find((n) => n.id === selected);
+  const selEdge = edges.find((e) => e.id === selectedEdge);
 
   /* Cập nhật node đang chọn — gom logic setNodes lặp lại của inspector. */
   const patchData = (patch: Partial<WfNodeData>) =>
@@ -664,50 +751,54 @@ function WorkflowInner({ workflowId }: Props) {
         workflowName={`Workflow ${workflowId}`}
       />
 
+      {isMobile && <MobileDesignerNotice />}
+
       <div className="flex-1 flex overflow-hidden">
-        {/* Palette */}
-        <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
-          <div className="px-3 py-2.5 border-b border-border">
-            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-              {t("designer.nodes")}
+        {/* Palette — ẩn trên mobile (kéo-thả không khả dụng) */}
+        {!isMobile && (
+          <div className="w-[200px] shrink-0 border-r border-border bg-panel flex flex-col">
+            <div className="px-3 py-2.5 border-b border-border">
+              <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
+                {t("designer.nodes")}
+              </div>
+              <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
             </div>
-            <div className="text-xs text-muted mt-0.5">{t("designer.drag_to_canvas")}</div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-            {getNodePalette().map((p) => {
-              const IC = I[p.icon];
-              return (
-                <div
-                  key={p.kind}
-                  draggable
-                  onDragStart={(e) => {
-                    setDragKind(p.kind);
-                    e.dataTransfer.setData("application/x-wf-kind", p.kind);
-                    e.dataTransfer.effectAllowed = "copy";
-                  }}
-                  onDragEnd={() => setDragKind(null)}
-                  className={cn(
-                    "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
-                    dragKind === p.kind && "dragging",
-                  )}
-                >
-                  <span
-                    className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
-                    style={{ background: p.color }}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {getNodePalette().map((p) => {
+                const IC = I[p.icon];
+                return (
+                  <div
+                    key={p.kind}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragKind(p.kind);
+                      e.dataTransfer.setData("application/x-wf-kind", p.kind);
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
+                    onDragEnd={() => setDragKind(null)}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md border border-border bg-bg-soft hover:border-accent/60 cursor-grab active:cursor-grabbing text-xs",
+                      dragKind === p.kind && "dragging",
+                    )}
                   >
-                    <IC size={12} />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
-                    <div className="text-[10px] text-muted truncate">
-                      {t(`wf.node.${p.kind}.desc`)}
+                    <span
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
+                      style={{ background: p.color }}
+                    >
+                      <IC size={12} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-medium">{t(`wf.node.${p.kind}`)}</div>
+                      <div className="text-[10px] text-muted truncate">
+                        {t(`wf.node.${p.kind}.desc`)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Canvas */}
         <div
@@ -728,12 +819,27 @@ function WorkflowInner({ workflowId }: Props) {
             nodes={nodes}
             edges={edges}
             nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
+            deleteKeyCode={isMobile ? null : ["Delete", "Backspace"]}
+            nodesDraggable={!isMobile}
+            nodesConnectable={!isMobile}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnect={onReconnect}
             isValidConnection={isValidConnection}
-            onNodeClick={(_, n) => setSelected(n.id)}
-            onPaneClick={() => setSelected(null)}
+            onNodeClick={(_, n) => {
+              setSelected(n.id);
+              setSelectedEdge(null);
+            }}
+            onEdgeClick={(_, e) => {
+              setSelectedEdge(e.id);
+              setSelected(null);
+            }}
+            onPaneClick={() => {
+              setSelected(null);
+              setSelectedEdge(null);
+            }}
             fitView
             attributionPosition="bottom-left"
             proOptions={{ hideAttribution: true }}
@@ -751,8 +857,8 @@ function WorkflowInner({ workflowId }: Props) {
           </ReactFlow>
         </div>
 
-        {/* Inspector */}
-        {inspectorVisible && (
+        {/* Inspector — ẩn trên mobile (xem đồ thị read-only, sửa trên desktop) */}
+        {inspectorVisible && !isMobile && (
           <aside className="w-[280px] shrink-0 border-l border-border bg-panel overflow-y-auto">
             <div className="px-3 py-2.5 border-b border-border">
               <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
@@ -1296,8 +1402,75 @@ function WorkflowInner({ workflowId }: Props) {
                   {t("designer.delete_node")}
                 </Button>
               </div>
+            ) : selEdge ? (
+              (() => {
+                const isData = (selEdge.data as { kind?: string } | undefined)?.kind === "data";
+                const srcNode = nodes.find((n) => n.id === selEdge.source);
+                const tgtNode = nodes.find((n) => n.id === selEdge.target);
+                const fromCondition = srcNode?.data.kind === "condition";
+                const branch =
+                  selEdge.sourceHandle === "yes"
+                    ? "yes"
+                    : selEdge.sourceHandle === "no"
+                      ? "no"
+                      : "";
+                return (
+                  <div className="p-3 space-y-3">
+                    <FormField label={t("designer.edge_kind")}>
+                      <div className="h-9 px-3 flex items-center text-sm border border-border rounded-md bg-bg-soft">
+                        <Chip variant={isData ? "default" : "accent"}>
+                          {isData ? t("designer.edge_data") : t("designer.edge_control")}
+                        </Chip>
+                      </div>
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      <span className="text-fg">{srcNode?.data.label ?? selEdge.source}</span>
+                      {" → "}
+                      <span className="text-fg">{tgtNode?.data.label ?? selEdge.target}</span>
+                    </div>
+                    {!isData && fromCondition && (
+                      <FormField label={t("designer.edge_branch")}>
+                        <Select
+                          value={branch}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            patchEdge(selEdge.id, {
+                              sourceHandle: v || null,
+                              label: v === "yes" ? "Yes" : v === "no" ? "No" : undefined,
+                            });
+                          }}
+                        >
+                          <option value="">—</option>
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </Select>
+                      </FormField>
+                    )}
+                    {!isData && !fromCondition && (
+                      <FormField label={t("designer.edge_label")}>
+                        <Input
+                          value={typeof selEdge.label === "string" ? selEdge.label : ""}
+                          onChange={(e) =>
+                            patchEdge(selEdge.id, { label: e.target.value || undefined })
+                          }
+                        />
+                      </FormField>
+                    )}
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={<I.Trash size={12} />}
+                      onClick={() => removeEdge(selEdge.id)}
+                    >
+                      {t("designer.delete_edge")}
+                    </Button>
+                  </div>
+                );
+              })()
             ) : (
-              <div className="p-6 text-center text-sm text-muted">{t("designer.select_node")}</div>
+              <div className="p-6 text-center text-sm text-muted">
+                {t("designer.select_node_or_edge")}
+              </div>
             )}
           </aside>
         )}

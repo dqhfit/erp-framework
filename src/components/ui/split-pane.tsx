@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 interface SplitPaneProps {
   left: ReactNode;
@@ -23,6 +24,7 @@ export function SplitPane({
   storageKey,
   className = "",
 }: SplitPaneProps) {
+  const isMobile = useIsMobile();
   const [leftWidth, setLeftWidth] = useState<number>(() => {
     if (storageKey) {
       const saved = localStorage.getItem(storageKey);
@@ -75,6 +77,16 @@ export function SplitPane({
       window.removeEventListener("mouseup", onUp);
     };
   }, [leftWidth, minLeft, minRight, storageKey]);
+
+  // Mobile: bỏ split ngang + drag → xếp chồng dọc, mỗi panel cuộn riêng.
+  if (isMobile) {
+    return (
+      <div className={`flex min-h-0 flex-1 flex-col gap-0 overflow-auto ${className}`}>
+        <div className="flex min-h-0 flex-col overflow-hidden border-b border-border">{left}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{right}</div>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={`flex min-h-0 flex-1 gap-0 ${className}`}>

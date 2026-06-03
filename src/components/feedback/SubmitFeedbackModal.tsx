@@ -19,6 +19,24 @@ import { useT } from "@/hooks/useT";
 
 const client = createFeedbackClient("");
 
+/* Draft lưu localStorage — đóng/mở (và reload) không mất, chỉ clear khi
+   gửi thành công. KHÔNG lưu `url` (theo trang hiện tại lúc gửi). */
+const DRAFT_KEY = "erp.feedbackDraft";
+interface Draft {
+  title: string;
+  body: string;
+  suggestion: string;
+  area: FeedbackArea;
+  severity: FeedbackSeverity;
+}
+function loadDraft(): Partial<Draft> | null {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -55,17 +73,32 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
   // Dùng href = pathname + searchStr + hash đầy đủ.
   const url = useMemo(() => loc.href, [loc.href]);
 
-  // Reset khi mở lại.
+  // Mở lại → nạp draft đã lưu (giữ nội dung qua đóng/mở + reload + giữa các
+  // instance modal). Không có draft → giữ rỗng.
   useEffect(() => {
     if (!open) return;
-    setTitle("");
-    setBody("");
-    setSuggestion("");
-    setArea("ui");
-    setSeverity("normal");
+    const d = loadDraft();
+    if (d) {
+      setTitle(d.title ?? "");
+      setBody(d.body ?? "");
+      setSuggestion(d.suggestion ?? "");
+      setArea(d.area ?? "ui");
+      setSeverity(d.severity ?? "normal");
+    }
     setErr("");
     setSimilar([]);
   }, [open]);
+
+  // Lưu draft khi đang mở (guard !open → chỉ instance đang mở ghi, tránh
+  // instance còn lại ghi đè draft rỗng).
+  useEffect(() => {
+    if (!open) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, body, suggestion, area, severity }));
+    } catch {
+      // localStorage đầy/bị chặn — bỏ qua, không vỡ form.
+    }
+  }, [open, title, body, suggestion, area, severity]);
 
   // Debounced findSimilar — chỉ chạy khi title đủ dài.
   useEffect(() => {
@@ -96,6 +129,18 @@ export function SubmitFeedbackModal({ open, onClose }: Props) {
         severity,
         url,
       });
+      // Gửi thành công → clear draft + reset form.
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // bỏ qua
+      }
+      setTitle("");
+      setBody("");
+      setSuggestion("");
+      setArea("ui");
+      setSeverity("normal");
+      setSimilar([]);
       onClose();
       await nav({ to: "/feedback/$id", params: { id: r.id } });
     } catch (e) {

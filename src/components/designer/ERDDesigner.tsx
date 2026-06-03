@@ -884,7 +884,7 @@ function ERDCanvas() {
       {/* ── Add entity dialog ──────────────────────────────── */}
       {newEntOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) {
               setNewEntOpen(false);
@@ -892,7 +892,7 @@ function ERDCanvas() {
             }
           }}
         >
-          <div className="w-80 bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-4">
+          <div className="w-80 max-w-full bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">Thêm đối tượng mới</span>
               <button
@@ -953,12 +953,12 @@ function ERDCanvas() {
       {/* ── Relationship dialog ──────────────────────────────── */}
       {relDialog.open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setRelDialog(REL_CLOSED);
           }}
         >
-          <div className="w-[520px] bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-4">
+          <div className="w-[520px] max-w-full bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-4">
             {/* Header */}
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">

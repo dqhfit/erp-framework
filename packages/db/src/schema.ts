@@ -1734,6 +1734,35 @@ export const feedbackComments = pgTable(
   }),
 );
 
+/* ─── Đợt gộp feedback (admin "đánh dấu" 1 lần gộp để đổi trạng thái
+   hàng loạt sau này). feedbackIds là snapshot id tại thời điểm lưu —
+   mục bị xoá sẽ bỏ qua khi áp dụng. ─────────────────────────────── */
+export const feedbackMergeBatches = pgTable(
+  "feedback_merge_batches",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    label: text("label").notNull(),
+    note: text("note"),
+    // Snapshot filter lúc gộp: { status?, area?, mine? }.
+    filterSnapshot: jsonb("filter_snapshot"),
+    // Snapshot danh sách feedback id (string[]).
+    feedbackIds: jsonb("feedback_ids").notNull(),
+    itemCount: integer("item_count").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyCreatedIdx: index("feedback_merge_batches_company_created_idx").on(
+      t.companyId,
+      t.createdAt,
+    ),
+  }),
+);
+
 /* ─── Lịch sử trò chuyện với Agent (per-user, có thể xoá) ─────────── */
 export const agentConversations = pgTable(
   "agent_conversations",

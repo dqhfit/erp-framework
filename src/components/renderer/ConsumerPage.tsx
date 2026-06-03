@@ -26,6 +26,7 @@ import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { Chip, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { applyFieldFormat } from "@/lib/format";
 import type { EntityField, MockEntity } from "@/lib/object-types";
@@ -2570,6 +2571,7 @@ function clearPersonalLayoutLS(key: string): void {
 
 export function ConsumerPage({ pageId }: { pageId: string }) {
   const t = useT();
+  const isMobile = useIsMobile();
   const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
   const userId = useAuth((s) => s.user?.id ?? null);
@@ -2606,6 +2608,10 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
   // Nguồn hiển thị: bố cục cá nhân → bố cục gốc
   const displayComps = layoutEditing ? localComps : (personalLayout ?? baseComponents);
   const hasPersonal = personalLayout !== null;
+  // Mobile: stack 1 cột theo thứ tự đọc (trên→dưới, trái→phải).
+  const renderComps = isMobile
+    ? [...displayComps].sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || (a.x ?? 0) - (b.x ?? 0))
+    : displayComps;
 
   /* ── Drag state ───────────────────────────────────────── */
   const [dragCompId, setDragCompId] = useState<string | null>(null);
@@ -2781,7 +2787,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
 
             <div className="shrink-0 mt-1 flex items-center gap-2">
               {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
-              {hasPersonal && !layoutEditing && (
+              {hasPersonal && !layoutEditing && !isMobile && (
                 <button
                   type="button"
                   onClick={handleReset}
@@ -2793,8 +2799,8 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                 </button>
               )}
 
-              {/* Nút Sắp xếp / Xong */}
-              {layoutEditing ? (
+              {/* Nút Sắp xếp / Xong — ẩn trên mobile (kéo-thả không khả dụng) */}
+              {isMobile ? null : layoutEditing ? (
                 <button
                   type="button"
                   onClick={exitEdit}
@@ -2827,7 +2833,10 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
               <div
                 ref={gridRef}
                 className="grid gap-3"
-                style={{ gridTemplateColumns: "repeat(12, 1fr)", gridAutoRows: `${ROW_H}px` }}
+                style={{
+                  gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)",
+                  gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
+                }}
               >
                 {/* Ghost placeholder during drag */}
                 {layoutEditing &&
@@ -2849,7 +2858,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                     );
                   })()}
 
-                {displayComps.map((c) => {
+                {renderComps.map((c) => {
                   const colStart = (c.x ?? 0) + 1;
                   const rowStart = (c.y ?? 0) + 1;
                   const w = Math.min(c.w || 3, 12);
@@ -2859,18 +2868,25 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                   return (
                     <div
                       key={c.id}
-                      draggable={layoutEditing && !isBeingResized}
+                      draggable={layoutEditing && !isBeingResized && !isMobile}
                       className={cn(
                         "card overflow-hidden",
-                        layoutEditing && "relative group/card",
-                        layoutEditing && !isBeingResized && "cursor-grab active:cursor-grabbing",
+                        layoutEditing && !isMobile && "relative group/card",
+                        layoutEditing &&
+                          !isBeingResized &&
+                          !isMobile &&
+                          "cursor-grab active:cursor-grabbing",
                         isBeingDragged && "opacity-40",
                         isBeingResized && "select-none",
                       )}
-                      style={{
-                        gridColumn: `${colStart} / span ${w}`,
-                        gridRow: `${rowStart} / span ${h}`,
-                      }}
+                      style={
+                        isMobile
+                          ? { minHeight: h * ROW_H }
+                          : {
+                              gridColumn: `${colStart} / span ${w}`,
+                              gridRow: `${rowStart} / span ${h}`,
+                            }
+                      }
                       onDragStart={
                         layoutEditing
                           ? (e) => {

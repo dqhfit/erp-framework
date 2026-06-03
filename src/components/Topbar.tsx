@@ -5,7 +5,8 @@ import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { I } from "@/components/Icons";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { PickPrimaryModal } from "@/components/PickPrimaryModal";
-import { Button, Chip, Kbd } from "@/components/ui";
+import { Button, Kbd } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
@@ -14,6 +15,7 @@ import { useUserObjects } from "@/stores/userObjects";
 export function Topbar() {
   const t = useT();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     theme,
     setTheme,
@@ -24,6 +26,7 @@ export function Topbar() {
     setCmdOpen,
     tweaksOpen,
     setTweaksOpen,
+    setMobileNavOpen,
   } = useUI();
 
   // Chip "Agent chính": có primary → avatar + tên; chưa có → chip dashed.
@@ -57,41 +60,69 @@ export function Topbar() {
       .join("")
       .toUpperCase() ?? "?";
 
+  // Tách brand "ERP Framework" → "ERP" (chính) + "Framework" (phụ, nhỏ)
+  // để hiển thị 2 dòng gọn trên mobile.
+  const brand = t("topbar.brand");
+  const brandSpace = brand.indexOf(" ");
+  const brandMain = brandSpace === -1 ? brand : brand.slice(0, brandSpace);
+  const brandSub = brandSpace === -1 ? "" : brand.slice(brandSpace + 1);
+
   return (
-    <div className="h-12 shrink-0 flex items-center px-3 gap-1.5 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
+    <div className="h-12 shrink-0 flex items-center px-1 gap-0.5 sm:px-3 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
+      {/* Hamburger mở off-canvas nav — chỉ mobile, nằm bên trái logo */}
+      {isMobile && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setMobileNavOpen(true)}
+          icon={<I.Menu size={16} />}
+          title={t("topbar.toggle_sidebar")}
+        />
+      )}
+
       {/* Brand */}
       <button
         type="button"
         onClick={() => navigate({ to: "/" })}
-        className="flex items-center gap-2 px-1.5 h-8 rounded-md hover:bg-hover/50"
+        className="flex items-center gap-1 px-1 h-8 rounded-md hover:bg-hover/50 sm:gap-2 sm:px-1.5"
       >
         <span
-          className="w-6 h-6 rounded-md flex items-center justify-center text-white"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
           style={{
             background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
           }}
         >
           <I.Bolt size={14} strokeWidth={2.5} />
         </span>
-        <span className="font-semibold tracking-tight">{t("topbar.brand")}</span>
-        <Chip className="h-[18px]! text-[10px]!">v1.0</Chip>
+        {isMobile ? (
+          // Mobile: "ERP" gọn + "Framework" nhỏ ngay dưới.
+          <span className="flex flex-col items-start leading-none">
+            <span className="font-semibold text-[13px] tracking-tight">{brandMain}</span>
+            {brandSub && <span className="text-[8px] text-muted leading-none">{brandSub}</span>}
+          </span>
+        ) : (
+          <span className="font-semibold tracking-tight">{brand}</span>
+        )}
       </button>
 
-      <div className="w-px h-5 bg-border mx-1" />
+      {!isMobile && <div className="w-px h-5 bg-border mx-1" />}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        icon={<I.PanelLeft size={14} />}
-        title={t("topbar.toggle_sidebar")}
-      />
+      {/* Toggle collapse sidebar — chỉ desktop (mobile dùng hamburger trái logo) */}
+      {!isMobile && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          icon={<I.PanelLeft size={14} />}
+          title={t("topbar.toggle_sidebar")}
+        />
+      )}
 
       {/* Search / Command */}
       <button
         type="button"
         onClick={() => setCmdOpen(true)}
-        className="flex items-center gap-2 h-8 px-2.5 rounded-md bg-bg-soft border border-border text-muted hover:text-text hover:border-hover transition-colors min-w-0 flex-1 max-w-[420px] mx-2 whitespace-nowrap overflow-hidden"
+        className="flex items-center gap-2 h-8 px-2.5 rounded-md bg-bg-soft border border-border text-muted hover:text-text hover:border-hover transition-colors min-w-0 flex-1 max-w-[420px] mx-0.5 sm:mx-2 whitespace-nowrap overflow-hidden"
       >
         <I.Search size={14} className="shrink-0" />
         <span className="text-sm truncate hidden sm:inline">{t("topbar.search_placeholder")}</span>
@@ -186,7 +217,7 @@ export function Topbar() {
       />
 
       {/* User avatar + dropdown menu */}
-      <div ref={userMenuRef} className="relative ml-1 shrink-0">
+      <div ref={userMenuRef} className="relative ml-0.5 sm:ml-1 shrink-0">
         <button
           type="button"
           onClick={() => setUserMenuOpen((o) => !o)}

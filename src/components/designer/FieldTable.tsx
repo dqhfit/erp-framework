@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { FALLBACK_FIELD_TYPE, ftLabel, getFieldTypes } from "@/lib/field-types";
 import type { EntityField, MockEntity } from "@/lib/object-types";
@@ -411,6 +412,149 @@ function FieldTableRow({
   );
 }
 
+/* ── Card (mobile) ──────────────────────────────────────────
+   Bảng ngang không dùng được trên màn hẹp → mỗi field 1 card,
+   các thuộc tính xếp dọc. Reorder bằng nút lên/xuống (drag HTML5
+   không hoạt động trên touch). */
+function FieldCard({
+  field,
+  idx,
+  total,
+  active,
+  entities,
+  onSelect,
+  onUpdate,
+  onReorder,
+  onDelete,
+  onDuplicate,
+}: {
+  field: EntityField;
+  idx: number;
+  total: number;
+  active: boolean;
+  entities: MockEntity[];
+  onSelect: () => void;
+  onUpdate: (patch: Partial<EntityField>) => void;
+  onReorder: (from: number, to: number) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}) {
+  const t = useT();
+  const isRef =
+    field.type === "lookup" || field.type === "multi-lookup" || field.type === "collection";
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: card chứa nhiều control lồng nhau (input/checkbox/button) nên không thể là <button>; role=button chỉ để chọn field hiển thị inspector
+    <div
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onSelect();
+      }}
+      role="button"
+      tabIndex={0}
+      className={cn(
+        "rounded-lg border p-3 space-y-2.5 transition-colors",
+        active ? "border-accent bg-accent/8" : "border-border bg-panel",
+      )}
+    >
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <TypePicker value={field.type} onChange={(type) => onUpdate({ type })} />
+        <div className="flex-1 min-w-0">
+          <CellInput
+            value={field.label}
+            placeholder="Label"
+            onChange={(label) => onUpdate({ label })}
+          />
+          <CellInput
+            value={field.name}
+            placeholder="name"
+            mono
+            onChange={(name) => onUpdate({ name })}
+          />
+        </div>
+      </div>
+
+      {isRef && (
+        <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
+          <span className="text-muted">Ref</span>
+          <RefCell value={field.ref} entities={entities} onChange={(ref) => onUpdate({ ref })} />
+        </div>
+      )}
+
+      <div
+        className="flex items-center gap-4 text-xs text-muted"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <label className="flex items-center gap-1.5">
+          <CheckCell
+            checked={!!field.required}
+            onChange={(required) => onUpdate({ required })}
+            title={t("field.required")}
+          />
+          Req
+        </label>
+        <label className="flex items-center gap-1.5">
+          <CheckCell
+            checked={!!field.unique}
+            onChange={(unique) => onUpdate({ unique })}
+            title="Unique"
+          />
+          Uniq
+        </label>
+        <label className="flex items-center gap-1.5">
+          <CheckCell
+            checked={field.defaultVisible !== false}
+            onChange={(v) => onUpdate({ defaultVisible: v })}
+            title="Hiển thị mặc định"
+          />
+          Vis
+        </label>
+      </div>
+
+      <div
+        className="flex items-center gap-0.5 pt-1 border-t border-border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => idx > 0 && onReorder(idx, idx - 1)}
+          disabled={idx === 0}
+          className="w-7 h-7 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted disabled:opacity-30"
+          title="Lên"
+        >
+          <I.ChevronUp size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => idx < total - 1 && onReorder(idx, idx + 1)}
+          disabled={idx === total - 1}
+          className="w-7 h-7 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted disabled:opacity-30"
+          title="Xuống"
+        >
+          <I.ChevronDown size={13} />
+        </button>
+        <div className="ml-auto flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onDuplicate}
+            className="w-7 h-7 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted"
+            title={t("field.duplicate")}
+          >
+            <I.Copy size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-7 h-7 rounded-sm hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger"
+            title={t("field.delete_btn")}
+          >
+            <I.Trash size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main component ─────────────────────────────────────── */
 export function FieldTable({
   fields,
@@ -422,6 +566,30 @@ export function FieldTable({
   onDelete,
   onDuplicate,
 }: FieldTableProps) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="space-y-2">
+        {fields.map((f, idx) => (
+          <FieldCard
+            key={f.id ?? idx}
+            field={f}
+            idx={idx}
+            total={fields.length}
+            active={selectedId === f.id}
+            entities={entities}
+            onSelect={() => onSelect(f.id)}
+            onUpdate={(patch) => onUpdate(f.id, patch)}
+            onReorder={onReorder}
+            onDelete={() => onDelete(f.id)}
+            onDuplicate={() => onDuplicate(f.id)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="card overflow-x-clip">
       <table className="w-full text-sm border-collapse min-w-[640px]">

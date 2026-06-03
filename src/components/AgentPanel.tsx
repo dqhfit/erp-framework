@@ -6,6 +6,7 @@ import { Button, Chip, Select, Textarea } from "@/components/ui";
 import { mcpToolsToToolDefs } from "@/core/agent-runner";
 import { llmRegistry } from "@/core/llm";
 import { useMcpClient } from "@/hooks/useMcpClient";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { roleCan } from "@/lib/permissions";
@@ -81,7 +82,14 @@ export function AgentPanel() {
   const canAddKb = !rbacEnforce || roleCan(rbacRole, "create", "knowledge");
   const open = useUI((s) => s.agentOpen);
   const setOpen = useUI((s) => s.setAgentOpen);
+  const setMobileNavOpen = useUI((s) => s.setMobileNavOpen);
+  const isMobile = useIsMobile();
   const agentContext = useUI((s) => s.agentContext);
+
+  // Mobile: panel full-width chiếm trọn → đóng off-canvas nav để tránh chồng lớp.
+  useEffect(() => {
+    if (isMobile && open) setMobileNavOpen(false);
+  }, [isMobile, open, setMobileNavOpen]);
   const llmProfiles = useSettings((s) => s.llmProfiles);
   const profileNames = useMemo(() => Object.keys(llmProfiles), [llmProfiles]);
   const { tools: mcpTools } = useMcpClient();
@@ -359,7 +367,12 @@ export function AgentPanel() {
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-12 bottom-0 w-[400px] bg-panel border-l border-border flex flex-col z-40 shadow-2xl">
+    <aside
+      className={cn(
+        "fixed right-0 top-12 bottom-0 bg-panel border-l border-border flex flex-col z-40 shadow-2xl",
+        isMobile ? "left-0 w-full" : "w-[400px]",
+      )}
+    >
       {/* Header */}
       <div className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-border">
         <span

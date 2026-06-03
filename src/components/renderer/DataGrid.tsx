@@ -17,6 +17,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Chip, Input } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { idbGet, idbSet } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ export function DataGrid<T>({
   pageSize,
 }: DataGridProps<T>) {
   const t = useT();
+  const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -197,7 +199,7 @@ export function DataGrid<T>({
           {label && <span className="text-xs font-semibold text-muted mr-1 shrink-0">{label}</span>}
 
           {/* Global search */}
-          <div className="relative flex-1 min-w-[140px] max-w-[260px]">
+          <div className="relative flex-1 min-w-[140px] max-w-full sm:max-w-[260px]">
             <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
             <Input
               placeholder={t("datagrid.search_placeholder")}
@@ -310,120 +312,197 @@ export function DataGrid<T>({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-panel-2 z-10">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-border">
-                {hg.headers.map((header) => {
-                  const sorted = header.column.getIsSorted();
-                  const sortIndex = header.column.getSortIndex();
-                  return (
-                    <th
-                      key={header.id}
-                      onClick={
-                        header.column.getCanSort()
-                          ? header.column.getToggleSortingHandler()
-                          : undefined
-                      }
-                      className={cn(
-                        "text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
-                        header.column.getCanSort() && "cursor-pointer hover:text-text select-none",
-                      )}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {sorted === "asc" && <I.ChevronUp size={11} />}
-                        {sorted === "desc" && <I.ChevronDown size={11} />}
-                        {sorted && sorting.length > 1 && (
-                          <span className="text-[9px] text-muted/70 font-normal">
-                            {sortIndex + 1}
-                          </span>
+      {isMobile ? (
+        <div className="flex-1 overflow-auto p-2 space-y-2">
+          {table.getRowModel().rows.length === 0 ? (
+            <div className="text-center py-8 text-muted text-sm">
+              {emptyText ?? t("datagrid.empty")}
+            </div>
+          ) : (
+            table.getRowModel().rows.map((row) => {
+              if (row.getIsGrouped()) {
+                const colId = row.groupingColumnId ?? "";
+                const colHeader = table.getColumn(colId)?.columnDef.header?.toString() ?? colId;
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={row.getToggleExpandedHandler()}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-panel-2/60 border border-border text-xs font-semibold text-muted"
+                  >
+                    {row.getIsExpanded() ? (
+                      <I.ChevronDown size={12} />
+                    ) : (
+                      <I.ChevronRight size={12} />
+                    )}
+                    <span className="text-text/70">{colHeader}:</span>
+                    <span className="text-text">{String(row.groupingValue ?? "—")}</span>
+                    <Chip className="ml-auto text-[10px] py-0">{row.subRows.length}</Chip>
+                  </button>
+                );
+              }
+              const selected = isRowSelected?.(row.original) ?? false;
+              const clickable = !!onRowClick;
+              return (
+                <div
+                  key={row.id}
+                  onClick={clickable ? () => onRowClick(row.original) : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (e) => {
+                          if (e.key === "Enter") onRowClick(row.original);
+                        }
+                      : undefined
+                  }
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  className={cn(
+                    "rounded-md border p-2.5 space-y-1 transition-colors",
+                    clickable && "cursor-pointer",
+                    selected
+                      ? "bg-accent/10 border-accent ring-1 ring-accent"
+                      : "border-border bg-panel hover:bg-hover/20",
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    if (cell.getIsPlaceholder()) return null;
+                    const hdr = cell.column.columnDef.header;
+                    const headerLabel = typeof hdr === "string" ? hdr : cell.column.id;
+                    return (
+                      <div key={cell.id} className="flex gap-2 items-baseline text-sm">
+                        <span className="text-[11px] uppercase tracking-wide text-muted min-w-[88px] shrink-0">
+                          {headerLabel}
+                        </span>
+                        <span className="flex-1 min-w-0 break-words">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead className="sticky top-0 bg-panel-2 z-10">
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="border-b border-border">
+                  {hg.headers.map((header) => {
+                    const sorted = header.column.getIsSorted();
+                    const sortIndex = header.column.getSortIndex();
+                    return (
+                      <th
+                        key={header.id}
+                        onClick={
+                          header.column.getCanSort()
+                            ? header.column.getToggleSortingHandler()
+                            : undefined
+                        }
+                        className={cn(
+                          "text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
+                          header.column.getCanSort() &&
+                            "cursor-pointer hover:text-text select-none",
                         )}
-                      </span>
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {sorted === "asc" && <I.ChevronUp size={11} />}
+                          {sorted === "desc" && <I.ChevronDown size={11} />}
+                          {sorted && sorting.length > 1 && (
+                            <span className="text-[9px] text-muted/70 font-normal">
+                              {sortIndex + 1}
+                            </span>
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+              {/* Column filter row */}
+              {filterRowOpen && (
+                <tr className="border-b border-border bg-panel-2/60">
+                  {table.getHeaderGroups()[0]?.headers.map((header) => (
+                    <th key={header.id} className="px-1.5 py-1">
+                      {header.column.getCanFilter() ? (
+                        <Input
+                          placeholder={t("datagrid.col_filter_placeholder")}
+                          value={(header.column.getFilterValue() as string) ?? ""}
+                          onChange={(e) =>
+                            header.column.setFilterValue(e.target.value || undefined)
+                          }
+                          className="h-6 text-xs px-2 font-normal"
+                        />
+                      ) : null}
                     </th>
-                  );
-                })}
-              </tr>
-            ))}
-            {/* Column filter row */}
-            {filterRowOpen && (
-              <tr className="border-b border-border bg-panel-2/60">
-                {table.getHeaderGroups()[0]?.headers.map((header) => (
-                  <th key={header.id} className="px-1.5 py-1">
-                    {header.column.getCanFilter() ? (
-                      <Input
-                        placeholder={t("datagrid.col_filter_placeholder")}
-                        value={(header.column.getFilterValue() as string) ?? ""}
-                        onChange={(e) => header.column.setFilterValue(e.target.value || undefined)}
-                        className="h-6 text-xs px-2 font-normal"
-                      />
-                    ) : null}
-                  </th>
-                ))}
-              </tr>
-            )}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="text-center py-8 text-muted text-sm">
-                  {emptyText ?? t("datagrid.empty")}
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => {
-                if (row.getIsGrouped()) {
-                  const colId = row.groupingColumnId ?? "";
-                  const colHeader = table.getColumn(colId)?.columnDef.header?.toString() ?? colId;
+                  ))}
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="text-center py-8 text-muted text-sm">
+                    {emptyText ?? t("datagrid.empty")}
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => {
+                  if (row.getIsGrouped()) {
+                    const colId = row.groupingColumnId ?? "";
+                    const colHeader = table.getColumn(colId)?.columnDef.header?.toString() ?? colId;
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-border bg-panel-2/50 cursor-pointer hover:bg-hover/20"
+                        onClick={row.getToggleExpandedHandler()}
+                      >
+                        <td colSpan={columns.length} className="px-3 py-1.5">
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+                            {row.getIsExpanded() ? (
+                              <I.ChevronDown size={12} />
+                            ) : (
+                              <I.ChevronRight size={12} />
+                            )}
+                            <span className="text-text/70">{colHeader}:</span>
+                            <span className="text-text">{String(row.groupingValue ?? "—")}</span>
+                            <Chip className="ml-1 text-[10px] py-0">{row.subRows.length}</Chip>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const selected = isRowSelected?.(row.original) ?? false;
+                  const clickable = !!onRowClick;
                   return (
                     <tr
                       key={row.id}
-                      className="border-b border-border bg-panel-2/50 cursor-pointer hover:bg-hover/20"
-                      onClick={row.getToggleExpandedHandler()}
+                      className={[
+                        "border-b border-border transition-colors",
+                        clickable ? "cursor-pointer" : "",
+                        selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
+                      ].join(" ")}
+                      onClick={clickable ? () => onRowClick(row.original) : undefined}
                     >
-                      <td colSpan={columns.length} className="px-3 py-1.5">
-                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
-                          {row.getIsExpanded() ? (
-                            <I.ChevronDown size={12} />
-                          ) : (
-                            <I.ChevronRight size={12} />
-                          )}
-                          <span className="text-text/70">{colHeader}:</span>
-                          <span className="text-text">{String(row.groupingValue ?? "—")}</span>
-                          <Chip className="ml-1 text-[10px] py-0">{row.subRows.length}</Chip>
-                        </span>
-                      </td>
+                      {row.getVisibleCells().map((cell) => {
+                        if (cell.getIsPlaceholder()) return <td key={cell.id} />;
+                        return (
+                          <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
-                }
-                const selected = isRowSelected?.(row.original) ?? false;
-                const clickable = !!onRowClick;
-                return (
-                  <tr
-                    key={row.id}
-                    className={[
-                      "border-b border-border transition-colors",
-                      clickable ? "cursor-pointer" : "",
-                      selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
-                    ].join(" ")}
-                    onClick={clickable ? () => onRowClick(row.original) : undefined}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      if (cell.getIsPlaceholder()) return <td key={cell.id} />;
-                      return (
-                        <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {pageCount > 1 && (
         <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-panel-2/40 shrink-0 text-xs text-muted">

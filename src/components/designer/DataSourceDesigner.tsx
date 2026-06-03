@@ -1077,12 +1077,12 @@ export function AddEntityFieldModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-[420px] bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
+      <div className="w-[420px] max-w-full bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm">
             Thêm trường vào <span className="text-accent font-mono">{ent.name}</span>

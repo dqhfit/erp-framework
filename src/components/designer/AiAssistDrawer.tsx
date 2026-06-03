@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Select } from "@/components/ui";
 import { designWithAi, listLlmProfileNames } from "@/core/ai-design";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import type { DesignByType, DesignContext, DesignObjectType } from "@/lib/ai-design-prompts";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function AiAssistDrawer<T extends DesignObjectType>({
   onApply,
 }: Props<T>) {
   const t = useT();
+  const isMobile = useIsMobile();
   const [profile, setProfile] = useState<string>("");
   const [profiles, setProfiles] = useState<string[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -146,7 +148,8 @@ export function AiAssistDrawer<T extends DesignObjectType>({
       {/* Drawer */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 h-full w-[420px] bg-panel border-l border-border shadow-2xl flex flex-col",
+          "fixed top-0 right-0 z-50 h-full bg-panel border-l border-border shadow-2xl flex flex-col",
+          isMobile ? "left-0 w-full" : "w-[420px]",
           "transition-transform duration-200",
           open ? "translate-x-0" : "translate-x-full",
         )}

@@ -706,7 +706,7 @@ export function EntityDesigner({ entityId }: Props) {
         )}
 
         {/* Fields list canvas */}
-        <div className="flex-1 overflow-auto bg-bg min-w-[480px] relative">
+        <div className="flex-1 overflow-auto bg-bg md:min-w-[480px] relative">
           {localView === "form" && (
             <div className="absolute inset-0 z-10 bg-bg overflow-auto">
               <EntityFormPreview entity={entity} />

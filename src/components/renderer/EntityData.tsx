@@ -405,7 +405,7 @@ export function EntityData({ entityId }: { entityId: string }) {
         {err && <Chip variant="danger">Lỗi: {err}</Chip>}
 
         <div className="card p-0 overflow-hidden mt-3">
-          <div className="h-[560px]">
+          <div className="h-[70vh] sm:h-[560px]">
             <DataGrid
               data={rows}
               columns={columns}

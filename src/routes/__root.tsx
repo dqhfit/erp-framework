@@ -5,6 +5,7 @@ import { AgentPanel } from "@/components/AgentPanel";
 import { AuthGate } from "@/components/AuthGate";
 import { CommandPalette } from "@/components/CommandPalette";
 import { DialogHost } from "@/components/DialogHost";
+import { FeedbackFab } from "@/components/feedback/FeedbackFab";
 import { GlobalAiCreateDrawer } from "@/components/GlobalAiCreateDrawer";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -12,6 +13,7 @@ import { TweaksPanel } from "@/components/TweaksPanel";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
@@ -74,6 +76,8 @@ function EmbedGate({ children }: { children: ReactNode }) {
 
 function AppShell() {
   useGlobalShortcuts();
+  // Gọi vô điều kiện, trước mọi early-return — giữ thứ tự hooks ổn định.
+  const isMobile = useIsMobile();
   const agentOpen = useUI((s) => s.agentOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const role = useAuth((s) => s.user?.role);
@@ -126,8 +130,11 @@ function AppShell() {
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />
         <main
-          className="flex-1 overflow-hidden flex flex-col"
-          style={{ marginRight: agentOpen ? 400 : 0, transition: "margin 200ms ease" }}
+          className="flex-1 overflow-hidden flex flex-col min-w-0"
+          style={{
+            marginRight: !isMobile && agentOpen ? 400 : 0,
+            transition: "margin 200ms ease",
+          }}
         >
           <Outlet />
         </main>
@@ -138,6 +145,7 @@ function AppShell() {
       <GlobalAiCreateDrawer />
       <DialogHost />
       <ToastHost />
+      <FeedbackFab />
     </div>
   );
 }

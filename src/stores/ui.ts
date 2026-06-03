@@ -23,6 +23,9 @@ interface UIState {
   agentOpen: boolean;
   cmdOpen: boolean;
   tweaksOpen: boolean;
+  /** Sidebar off-canvas đang mở trên mobile (<768px). Session-only,
+     không persist — tách khỏi sidebarCollapsed (trạng thái 56/240 desktop). */
+  mobileNavOpen: boolean;
   aiCreateTarget: AiCreateTarget;
   /** Context đối tượng đang được xem — route set, AgentPanel đọc. Không persist. */
   agentContext: AgentObjectContext | null;
@@ -35,6 +38,7 @@ interface UIState {
   setAgentOpen: (v: boolean) => void;
   setCmdOpen: (v: boolean) => void;
   setTweaksOpen: (v: boolean) => void;
+  setMobileNavOpen: (v: boolean) => void;
   setAiCreateTarget: (t: AiCreateTarget) => void;
   setAgentContext: (ctx: AgentObjectContext | null) => void;
 }
@@ -62,6 +66,7 @@ export const useUI = create<UIState>()(
       agentOpen: false,
       cmdOpen: false,
       tweaksOpen: false,
+      mobileNavOpen: false,
       aiCreateTarget: null,
       agentContext: null,
       setTheme: (theme) => set({ theme }),
@@ -73,6 +78,7 @@ export const useUI = create<UIState>()(
       setAgentOpen: (agentOpen) => set({ agentOpen }),
       setCmdOpen: (cmdOpen) => set({ cmdOpen }),
       setTweaksOpen: (tweaksOpen) => set({ tweaksOpen }),
+      setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
       setAiCreateTarget: (aiCreateTarget) => set({ aiCreateTarget }),
       setAgentContext: (agentContext) => set({ agentContext }),
     }),

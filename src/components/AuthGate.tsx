@@ -54,8 +54,8 @@ function LoginScreen() {
     errorCode === "TOO_MANY_REQUESTS" && !error ? t("auth.error_rate_limit") : error;
 
   return (
-    <div className="h-screen flex items-center justify-center bg-bg text-text">
-      <Card className="w-[380px] space-y-4">
+    <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
+      <Card className="w-[380px] max-w-full space-y-4">
         <div>
           <h1 className="text-lg font-semibold">
             {mode === "login" ? t("auth.login_title") : t("auth.register_title")}
@@ -144,7 +144,7 @@ function PendingApprovalScreen() {
   const logout = useAuth((s) => s.logout);
   return (
     <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
-      <Card className="w-[420px] space-y-4 text-center">
+      <Card className="w-[420px] max-w-full space-y-4 text-center">
         <div className="flex justify-center">
           <span className="w-14 h-14 rounded-full bg-warning/15 flex items-center justify-center">
             <I.Clock size={28} className="text-warning" />
@@ -167,7 +167,7 @@ function DisabledScreen() {
   const logout = useAuth((s) => s.logout);
   return (
     <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
-      <Card className="w-[420px] space-y-4 text-center">
+      <Card className="w-[420px] max-w-full space-y-4 text-center">
         <div className="flex justify-center">
           <span className="w-14 h-14 rounded-full bg-danger/15 flex items-center justify-center">
             <I.Ban size={28} className="text-danger" />

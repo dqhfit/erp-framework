@@ -77,7 +77,7 @@ function InviteRoute() {
 
   return (
     <div className="h-screen flex items-center justify-center bg-bg text-text p-4">
-      <Card className="w-[420px] space-y-4">
+      <Card className="w-[420px] max-w-full space-y-4">
         <div className="flex items-center gap-3">
           <span
             className="w-10 h-10 rounded-md flex items-center justify-center text-white"

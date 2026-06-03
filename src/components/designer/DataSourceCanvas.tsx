@@ -37,8 +37,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { I } from "@/components/Icons";
 import { Button, Card, FormField, Input, SearchableSelect, Tabs } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { dialog } from "@/lib/dialog";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
@@ -276,6 +278,7 @@ const ADD_CLOSED: AddState = {
 /* ── Inner canvas ─────────────────────────────────────────── */
 function Canvas({ id }: { id: string }) {
   const { fitView } = useReactFlow();
+  const isMobile = useIsMobile();
   const entities = useUserObjects((s) => s.entities);
   const cfg = useUserObjects((s) => s.dataSourceContent[id]) ?? EMPTY;
   const setContent = useUserObjects((s) => s.setDataSourceContent);
@@ -718,504 +721,518 @@ function Canvas({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex h-full w-full">
-      {/* Canvas */}
-      <div className="flex-1 h-full relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={handleNodesChange}
-          onNodeClick={(_, n) => {
-            // Ghost node aggregate → mở panel node NGUỒN của nó, tab Aggregate.
-            const aggKey = n.id.startsWith("agg:")
-              ? n.id.slice(4)
-              : n.id.startsWith("aggfar:")
-                ? n.id.slice(7)
-                : null;
-            setComputedPanelOpen(false);
-            if (aggKey) {
-              const a = (cfg.aggregates ?? []).find((x) => x.key === aggKey);
-              setSelectedNodeId(a?.sourceRelationId ?? "base");
-              setPanelTab("agg");
-            } else {
-              setSelectedNodeId(n.id);
-              setPanelTab("config");
-            }
-          }}
-          nodesConnectable={false}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
-          maxZoom={2}
-          className="bg-bg"
-        >
-          <Background color="hsl(var(--border))" />
-          <Controls />
-          <MiniMap
-            nodeColor="hsl(var(--panel-2))"
-            maskColor="rgba(0,0,0,0.1)"
-            className="!bg-panel !border-border"
-          />
-        </ReactFlow>
-
-        {/* Toolbar */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 z-10 flex-wrap">
-          <button
-            type="button"
-            onClick={openAdd}
-            className="h-8 px-3 rounded-lg bg-accent text-white text-xs hover:bg-accent/90 flex items-center gap-1.5 shadow-sm"
-          >
-            <I.Plus size={12} />
-            Thêm đối tượng
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setComputedPanelOpen((v) => !v);
-              setSelectedNodeId(null);
+    <div className="flex flex-col h-full w-full">
+      {isMobile && <MobileDesignerNotice />}
+      <div className="relative flex flex-1 min-h-0 w-full">
+        {/* Canvas */}
+        <div className="flex-1 h-full relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            nodesDraggable={!isMobile}
+            onNodesChange={handleNodesChange}
+            onNodeClick={(_, n) => {
+              // Ghost node aggregate → mở panel node NGUỒN của nó, tab Aggregate.
+              const aggKey = n.id.startsWith("agg:")
+                ? n.id.slice(4)
+                : n.id.startsWith("aggfar:")
+                  ? n.id.slice(7)
+                  : null;
+              setComputedPanelOpen(false);
+              if (aggKey) {
+                const a = (cfg.aggregates ?? []).find((x) => x.key === aggKey);
+                setSelectedNodeId(a?.sourceRelationId ?? "base");
+                setPanelTab("agg");
+              } else {
+                setSelectedNodeId(n.id);
+                setPanelTab("config");
+              }
             }}
-            className={cn(
-              "h-8 px-3 rounded-lg border text-xs flex items-center gap-1.5 shadow-sm",
-              computedPanelOpen
-                ? "bg-accent/15 border-accent/40 text-accent"
-                : "bg-panel border-border hover:bg-hover/50",
-            )}
+            nodesConnectable={false}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.2}
+            maxZoom={2}
+            className="bg-bg"
           >
-            <I.Edit size={12} />
-            Cột tính toán
-            {computed.length > 0 && (
-              <span className="ml-0.5 bg-accent text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
-                {computed.length}
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => fitView({ padding: 0.2, duration: 400 })}
-            className="h-8 px-3 rounded-lg bg-panel border border-border text-xs hover:bg-hover/50 flex items-center gap-1.5 shadow-sm"
-          >
-            <I.Eye size={12} />
-            Fit view
-          </button>
-          <button
-            type="button"
-            onClick={() => void loadPreview()}
-            disabled={previewing}
-            className="h-8 px-3 rounded-lg bg-panel border border-border text-xs hover:bg-hover/50 flex items-center gap-1.5 shadow-sm disabled:opacity-60"
-          >
-            {previewing ? <I.Loader size={12} className="animate-spin" /> : <I.Table size={12} />}
-            Xem trước
-          </button>
-          <div className="h-8 px-3 rounded-lg bg-panel border border-border text-xs flex items-center gap-1.5 shadow-sm text-muted">
-            <I.Database size={12} />
-            {nodeIds.length} đối tượng · {cfg.relations.length} join · {cfg.fields.length} cột
+            <Background color="hsl(var(--border))" />
+            <Controls />
+            <MiniMap
+              nodeColor="hsl(var(--panel-2))"
+              maskColor="rgba(0,0,0,0.1)"
+              className="!bg-panel !border-border"
+            />
+          </ReactFlow>
+
+          {/* Toolbar */}
+          <div className="absolute top-3 left-3 flex items-center gap-2 z-10 flex-wrap">
+            <button
+              type="button"
+              onClick={openAdd}
+              className="h-8 px-3 rounded-lg bg-accent text-white text-xs hover:bg-accent/90 flex items-center gap-1.5 shadow-sm"
+            >
+              <I.Plus size={12} />
+              Thêm đối tượng
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setComputedPanelOpen((v) => !v);
+                setSelectedNodeId(null);
+              }}
+              className={cn(
+                "h-8 px-3 rounded-lg border text-xs flex items-center gap-1.5 shadow-sm",
+                computedPanelOpen
+                  ? "bg-accent/15 border-accent/40 text-accent"
+                  : "bg-panel border-border hover:bg-hover/50",
+              )}
+            >
+              <I.Edit size={12} />
+              Cột tính toán
+              {computed.length > 0 && (
+                <span className="ml-0.5 bg-accent text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                  {computed.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => fitView({ padding: 0.2, duration: 400 })}
+              className="h-8 px-3 rounded-lg bg-panel border border-border text-xs hover:bg-hover/50 flex items-center gap-1.5 shadow-sm"
+            >
+              <I.Eye size={12} />
+              Fit view
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadPreview()}
+              disabled={previewing}
+              className="h-8 px-3 rounded-lg bg-panel border border-border text-xs hover:bg-hover/50 flex items-center gap-1.5 shadow-sm disabled:opacity-60"
+            >
+              {previewing ? <I.Loader size={12} className="animate-spin" /> : <I.Table size={12} />}
+              Xem trước
+            </button>
+            <div className="h-8 px-3 rounded-lg bg-panel border border-border text-xs flex items-center gap-1.5 shadow-sm text-muted">
+              <I.Database size={12} />
+              {nodeIds.length} đối tượng · {cfg.relations.length} join · {cfg.fields.length} cột
+            </div>
           </div>
+
+          {/* Preview overlay */}
+          {preview && (
+            <div className="absolute bottom-3 left-3 right-3 max-h-[34%] z-10 bg-panel border border-border rounded-lg shadow-xl flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
+                <span className="text-xs font-semibold">Xem trước ({preview.length} dòng)</span>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+                >
+                  <I.X size={13} />
+                </button>
+              </div>
+              <div className="overflow-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-bg-soft border-b border-border text-muted">
+                      {previewKeys.map((k) => (
+                        <th key={k} className="px-2 py-1 text-left whitespace-nowrap">
+                          {k}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((row) => (
+                      <tr key={row.id} className="border-b border-border/50 last:border-0">
+                        {previewKeys.map((k) => (
+                          <td key={k} className="px-2 py-1 whitespace-nowrap">
+                            {String(row[k] ?? "")}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {preview.length === 0 && (
+                      <tr>
+                        <td
+                          className="px-2 py-2 text-muted italic"
+                          colSpan={Math.max(1, previewKeys.length)}
+                        >
+                          Không có dữ liệu.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Preview overlay */}
-        {preview && (
-          <div className="absolute bottom-3 left-3 right-3 max-h-[34%] z-10 bg-panel border border-border rounded-lg shadow-xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
-              <span className="text-xs font-semibold">Xem trước ({preview.length} dòng)</span>
+        {/* Right panel — node được chọn */}
+        {selectedNodeId && (
+          <div
+            className={cn(
+              "border-l border-border bg-panel flex flex-col overflow-hidden",
+              isMobile ? "absolute inset-0 z-20 w-full" : "w-[360px] shrink-0",
+            )}
+          >
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+              <span className="font-semibold text-sm flex-1 truncate">
+                {nodeAlias(selectedNodeId)}
+              </span>
               <button
                 type="button"
-                onClick={() => setPreview(null)}
+                onClick={() => setSelectedNodeId(null)}
                 className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
               >
                 <I.X size={13} />
               </button>
             </div>
-            <div className="overflow-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-bg-soft border-b border-border text-muted">
-                    {previewKeys.map((k) => (
-                      <th key={k} className="px-2 py-1 text-left whitespace-nowrap">
-                        {k}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.map((row) => (
-                    <tr key={row.id} className="border-b border-border/50 last:border-0">
-                      {previewKeys.map((k) => (
-                        <td key={k} className="px-2 py-1 whitespace-nowrap">
-                          {String(row[k] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                  {preview.length === 0 && (
-                    <tr>
-                      <td
-                        className="px-2 py-2 text-muted italic"
-                        colSpan={Math.max(1, previewKeys.length)}
+
+            <Tabs
+              value={panelTab}
+              onChange={(v) => setPanelTab(v as "config" | "agg")}
+              options={[
+                { value: "config", label: "Cấu hình" },
+                {
+                  value: "agg",
+                  label: nodeAggregates.length
+                    ? `Aggregate (${nodeAggregates.length})`
+                    : "Aggregate",
+                },
+              ]}
+              className="px-3 shrink-0"
+            />
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {panelTab === "config" ? (
+                <>
+                  {/* Cấu hình join (chỉ với relation) */}
+                  {selRel && (
+                    <Card className="p-3 space-y-2">
+                      <div className="text-xs font-semibold text-text">Quan hệ (join)</div>
+                      <FormField label="Alias">
+                        <Input
+                          className="h-7"
+                          value={selRel.alias}
+                          onChange={(e) => patchRelation(selRel.id, { alias: e.target.value })}
+                        />
+                      </FormField>
+                      <div className="text-[11px] text-muted">
+                        Từ: <b>{nodeAlias(selRel.fromRelationId ?? "base")}</b>
+                      </div>
+                      <FormField label="Cột nguồn (node cha)">
+                        <SearchableSelect
+                          className="w-full"
+                          value={selRel.fromField}
+                          onChange={(v) => patchRelation(selRel.id, { fromField: v })}
+                          options={nodeFields(selRel.fromRelationId ?? "base").map((f) => ({
+                            value: f.name,
+                            label: `${f.label || f.name} (${f.name})`,
+                          }))}
+                          placeholder="Chọn cột nguồn…"
+                        />
+                      </FormField>
+                      <FormField label="Cột đích (khớp)">
+                        <SearchableSelect
+                          className="w-full"
+                          value={selRel.toField || "id"}
+                          onChange={(v) =>
+                            patchRelation(selRel.id, { toField: v === "id" ? undefined : v })
+                          }
+                          options={[
+                            { value: "id", label: "id (record id)" },
+                            ...nodeFields(selRel.id).map((f) => ({
+                              value: f.name,
+                              label: `${f.label || f.name} (${f.name})`,
+                            })),
+                          ]}
+                        />
+                      </FormField>
+                      <FormField label="Kiểu join">
+                        <SearchableSelect
+                          className="w-full"
+                          value={selRel.joinKind}
+                          onChange={(v) =>
+                            patchRelation(selRel.id, { joinKind: v as "left" | "inner" })
+                          }
+                          options={[
+                            { value: "left", label: "left (giữ row gốc)" },
+                            { value: "inner", label: "inner (lọc thiếu)" },
+                          ]}
+                        />
+                      </FormField>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-danger"
+                        icon={<I.X size={13} />}
+                        onClick={() => removeRelation(selRel.id)}
                       >
-                        Không có dữ liệu.
-                      </td>
-                    </tr>
+                        Xoá quan hệ
+                      </Button>
+                    </Card>
                   )}
-                </tbody>
-              </table>
+
+                  {/* Cột đã chọn (projection) của node này */}
+                  <Card className="p-3 space-y-2">
+                    <div className="text-xs font-semibold text-text">Cột đã chọn</div>
+                    {selFields.length === 0 ? (
+                      <p className="text-[11px] text-muted italic">
+                        Chưa chọn cột — tick checkbox trên node để thêm.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {selFields.map((f) => (
+                          <div key={f.key} className="flex items-center gap-1.5">
+                            <span
+                              className="text-[10px] text-muted w-20 shrink-0 truncate"
+                              title={f.sourceField}
+                            >
+                              {f.sourceField}
+                            </span>
+                            <Input
+                              className="h-6 flex-1"
+                              value={f.key}
+                              onChange={(e) => patchField(f.key, { key: slugify(e.target.value) })}
+                              title="Khoá (key) phẳng"
+                            />
+                            <label className="flex items-center gap-1 text-[10px] text-muted shrink-0">
+                              <input
+                                type="checkbox"
+                                className="accent-accent"
+                                checked={f.writable === true}
+                                onChange={(e) => patchField(f.key, { writable: e.target.checked })}
+                              />
+                              ghi
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </>
+              ) : (
+                <>
+                  {/* Tab Aggregate — scope theo node nguồn đang chọn */}
+                  {nodeAggregates.length === 0 ? (
+                    <p className="text-xs text-muted italic">
+                      Node này chưa có cột gom. Thêm bên dưới (vd đếm số dòng con, tổng tiền…).
+                    </p>
+                  ) : (
+                    nodeAggregates.map((a) => (
+                      <Card key={a.key} className="p-2.5 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-accent text-xs flex-1 truncate">
+                            {a.key}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeAggregate(a.key)}
+                            className="text-muted hover:text-danger"
+                            title="Xoá aggregate"
+                          >
+                            <I.X size={13} />
+                          </button>
+                        </div>
+                        <div className="text-[11px] text-muted">
+                          {a.agg.toUpperCase()}
+                          {a.agg !== "count" && a.valueField ? `(${a.valueField})` : "(*)"} của{" "}
+                          {entById(a.targetEntityId)?.name ?? a.targetEntityId}.{a.targetField}
+                          {a.via
+                            ? ` → ${entById(a.via.farEntityId)?.name ?? a.via.farEntityId} (N-N)`
+                            : " (1-N)"}
+                        </div>
+                        <Input
+                          className="h-7 w-full"
+                          value={a.label}
+                          onChange={(e) => patchAggregate(a.key, { label: e.target.value })}
+                          title="Nhãn hiển thị"
+                        />
+                      </Card>
+                    ))
+                  )}
+
+                  <Card className="p-2.5">
+                    <div className="text-xs font-semibold text-text mb-1">
+                      Thêm aggregate cho {nodeAlias(selectedNodeId)}
+                    </div>
+                    <AddAggregate
+                      key={selectedNodeId}
+                      fixedFromRid={selectedNodeId}
+                      nodes={nodeIds}
+                      nodeAlias={nodeAlias}
+                      nodeFields={nodeFields}
+                      entities={entities}
+                      entById={entById}
+                      existingKeys={aggregates.map((a) => a.key)}
+                      onAdd={addAggregate}
+                    />
+                  </Card>
+                  <p className="text-[11px] text-muted">
+                    1-N: gom record con trỏ ngược. N-N: qua bảng nối + entity far. Cột aggregate chỉ
+                    đọc, hiện trong bảng Xem trước.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}
-      </div>
 
-      {/* Right panel — node được chọn */}
-      {selectedNodeId && (
-        <div className="w-[360px] border-l border-border bg-panel flex flex-col overflow-hidden shrink-0">
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
-            <span className="font-semibold text-sm flex-1 truncate">
-              {nodeAlias(selectedNodeId)}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedNodeId(null)}
-              className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
-            >
-              <I.X size={13} />
-            </button>
-          </div>
-
-          <Tabs
-            value={panelTab}
-            onChange={(v) => setPanelTab(v as "config" | "agg")}
-            options={[
-              { value: "config", label: "Cấu hình" },
-              {
-                value: "agg",
-                label: nodeAggregates.length ? `Aggregate (${nodeAggregates.length})` : "Aggregate",
-              },
-            ]}
-            className="px-3 shrink-0"
-          />
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {panelTab === "config" ? (
-              <>
-                {/* Cấu hình join (chỉ với relation) */}
-                {selRel && (
-                  <Card className="p-3 space-y-2">
-                    <div className="text-xs font-semibold text-text">Quan hệ (join)</div>
-                    <FormField label="Alias">
-                      <Input
-                        className="h-7"
-                        value={selRel.alias}
-                        onChange={(e) => patchRelation(selRel.id, { alias: e.target.value })}
-                      />
-                    </FormField>
-                    <div className="text-[11px] text-muted">
-                      Từ: <b>{nodeAlias(selRel.fromRelationId ?? "base")}</b>
-                    </div>
-                    <FormField label="Cột nguồn (node cha)">
-                      <SearchableSelect
-                        className="w-full"
-                        value={selRel.fromField}
-                        onChange={(v) => patchRelation(selRel.id, { fromField: v })}
-                        options={nodeFields(selRel.fromRelationId ?? "base").map((f) => ({
-                          value: f.name,
-                          label: `${f.label || f.name} (${f.name})`,
-                        }))}
-                        placeholder="Chọn cột nguồn…"
-                      />
-                    </FormField>
-                    <FormField label="Cột đích (khớp)">
-                      <SearchableSelect
-                        className="w-full"
-                        value={selRel.toField || "id"}
-                        onChange={(v) =>
-                          patchRelation(selRel.id, { toField: v === "id" ? undefined : v })
-                        }
-                        options={[
-                          { value: "id", label: "id (record id)" },
-                          ...nodeFields(selRel.id).map((f) => ({
-                            value: f.name,
-                            label: `${f.label || f.name} (${f.name})`,
-                          })),
-                        ]}
-                      />
-                    </FormField>
-                    <FormField label="Kiểu join">
-                      <SearchableSelect
-                        className="w-full"
-                        value={selRel.joinKind}
-                        onChange={(v) =>
-                          patchRelation(selRel.id, { joinKind: v as "left" | "inner" })
-                        }
-                        options={[
-                          { value: "left", label: "left (giữ row gốc)" },
-                          { value: "inner", label: "inner (lọc thiếu)" },
-                        ]}
-                      />
-                    </FormField>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-danger"
-                      icon={<I.X size={13} />}
-                      onClick={() => removeRelation(selRel.id)}
-                    >
-                      Xoá quan hệ
-                    </Button>
-                  </Card>
-                )}
-
-                {/* Cột đã chọn (projection) của node này */}
-                <Card className="p-3 space-y-2">
-                  <div className="text-xs font-semibold text-text">Cột đã chọn</div>
-                  {selFields.length === 0 ? (
-                    <p className="text-[11px] text-muted italic">
-                      Chưa chọn cột — tick checkbox trên node để thêm.
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {selFields.map((f) => (
-                        <div key={f.key} className="flex items-center gap-1.5">
-                          <span
-                            className="text-[10px] text-muted w-20 shrink-0 truncate"
-                            title={f.sourceField}
-                          >
-                            {f.sourceField}
-                          </span>
-                          <Input
-                            className="h-6 flex-1"
-                            value={f.key}
-                            onChange={(e) => patchField(f.key, { key: slugify(e.target.value) })}
-                            title="Khoá (key) phẳng"
-                          />
-                          <label className="flex items-center gap-1 text-[10px] text-muted shrink-0">
-                            <input
-                              type="checkbox"
-                              className="accent-accent"
-                              checked={f.writable === true}
-                              onChange={(e) => patchField(f.key, { writable: e.target.checked })}
-                            />
-                            ghi
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </>
-            ) : (
-              <>
-                {/* Tab Aggregate — scope theo node nguồn đang chọn */}
-                {nodeAggregates.length === 0 ? (
-                  <p className="text-xs text-muted italic">
-                    Node này chưa có cột gom. Thêm bên dưới (vd đếm số dòng con, tổng tiền…).
-                  </p>
-                ) : (
-                  nodeAggregates.map((a) => (
-                    <Card key={a.key} className="p-2.5 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-accent text-xs flex-1 truncate">
-                          {a.key}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeAggregate(a.key)}
-                          className="text-muted hover:text-danger"
-                          title="Xoá aggregate"
-                        >
-                          <I.X size={13} />
-                        </button>
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        {a.agg.toUpperCase()}
-                        {a.agg !== "count" && a.valueField ? `(${a.valueField})` : "(*)"} của{" "}
-                        {entById(a.targetEntityId)?.name ?? a.targetEntityId}.{a.targetField}
-                        {a.via
-                          ? ` → ${entById(a.via.farEntityId)?.name ?? a.via.farEntityId} (N-N)`
-                          : " (1-N)"}
-                      </div>
-                      <Input
-                        className="h-7 w-full"
-                        value={a.label}
-                        onChange={(e) => patchAggregate(a.key, { label: e.target.value })}
-                        title="Nhãn hiển thị"
-                      />
-                    </Card>
-                  ))
-                )}
-
-                <Card className="p-2.5">
-                  <div className="text-xs font-semibold text-text mb-1">
-                    Thêm aggregate cho {nodeAlias(selectedNodeId)}
-                  </div>
-                  <AddAggregate
-                    key={selectedNodeId}
-                    fixedFromRid={selectedNodeId}
-                    nodes={nodeIds}
-                    nodeAlias={nodeAlias}
-                    nodeFields={nodeFields}
-                    entities={entities}
-                    entById={entById}
-                    existingKeys={aggregates.map((a) => a.key)}
-                    onAdd={addAggregate}
-                  />
-                </Card>
-                <p className="text-[11px] text-muted">
-                  1-N: gom record con trỏ ngược. N-N: qua bảng nối + entity far. Cột aggregate chỉ
-                  đọc, hiện trong bảng Xem trước.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Right panel — Cột tính toán (global) */}
-      {computedPanelOpen && (
-        <div className="w-[400px] border-l border-border bg-panel flex flex-col overflow-hidden shrink-0">
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
-            <I.Edit size={14} className="text-accent shrink-0" />
-            <span className="font-semibold text-sm flex-1">Cột tính toán (formula)</span>
-            <button
-              type="button"
-              onClick={() => setComputedPanelOpen(false)}
-              className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
-            >
-              <I.X size={13} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            <ComputedColumns
-              computed={computed}
-              availableCols={flatCols}
-              onAdd={addComputed}
-              onPatch={patchComputed}
-              onRemove={removeComputed}
-            />
-            <p className="text-[11px] text-muted">
-              Biểu thức trên CỘT PHẲNG khác (<code>{"{key}"}</code>) + hàm IF/CONCAT/ROUND… Cột chỉ
-              đọc, eval sau projection + aggregate.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Add-object dialog ──────────────────────────────── */}
-      {add.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setAdd(ADD_CLOSED);
-          }}
-        >
-          <div className="w-[460px] bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm">Thêm đối tượng vào canvas</span>
+        {/* Right panel — Cột tính toán (global) */}
+        {computedPanelOpen && (
+          <div className="w-[400px] border-l border-border bg-panel flex flex-col overflow-hidden shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+              <I.Edit size={14} className="text-accent shrink-0" />
+              <span className="font-semibold text-sm flex-1">Cột tính toán (formula)</span>
               <button
                 type="button"
-                onClick={() => setAdd(ADD_CLOSED)}
+                onClick={() => setComputedPanelOpen(false)}
                 className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
               >
                 <I.X size={13} />
               </button>
             </div>
-
-            <FormField label="Nối từ node (cha)">
-              <SearchableSelect
-                className="w-full"
-                value={add.parentNodeId}
-                onChange={(v) => setAdd((p) => ({ ...p, parentNodeId: v, fromField: "" }))}
-                options={nodeIds.map((n) => ({ value: n, label: nodeAlias(n) }))}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <ComputedColumns
+                computed={computed}
+                availableCols={flatCols}
+                onAdd={addComputed}
+                onPatch={patchComputed}
+                onRemove={removeComputed}
               />
-            </FormField>
-
-            <FormField label="Đối tượng đích (thêm vào canvas)">
-              <SearchableSelect
-                className="w-full"
-                value={add.targetEntityId}
-                onChange={onPickTarget}
-                options={entities.map((e) => ({ value: e.id, label: e.name }))}
-                placeholder="Chọn đối tượng…"
-                searchPlaceholder="Tìm đối tượng…"
-              />
-            </FormField>
-
-            <div className="grid grid-cols-2 gap-2">
-              <FormField label="Cột nguồn (node cha)">
-                <SearchableSelect
-                  className="w-full"
-                  value={add.fromField}
-                  onChange={(v) => setAdd((p) => ({ ...p, fromField: v }))}
-                  options={addParentFields.map((f) => ({
-                    value: f.name,
-                    label: `${f.label || f.name} (${f.name})`,
-                  }))}
-                  placeholder="Chọn cột…"
-                />
-              </FormField>
-              <FormField label="Cột đích (khớp)">
-                <SearchableSelect
-                  className="w-full"
-                  value={add.toField}
-                  onChange={(v) => setAdd((p) => ({ ...p, toField: v }))}
-                  options={[
-                    { value: "id", label: "id (record id)" },
-                    ...(addTargetEnt?.fields.map((f) => ({
-                      value: f.name,
-                      label: `${f.label || f.name} (${f.name})`,
-                    })) ?? []),
-                  ]}
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <FormField label="Alias">
-                <Input
-                  className="h-8"
-                  value={add.alias}
-                  onChange={(e) => setAdd((p) => ({ ...p, alias: e.target.value }))}
-                  placeholder="vd: khach_hang"
-                />
-              </FormField>
-              <FormField label="Kiểu join">
-                <SearchableSelect
-                  className="w-full"
-                  value={add.joinKind}
-                  onChange={(v) => setAdd((p) => ({ ...p, joinKind: v as "left" | "inner" }))}
-                  options={[
-                    { value: "left", label: "left (giữ)" },
-                    { value: "inner", label: "inner (lọc)" },
-                  ]}
-                />
-              </FormField>
-            </div>
-
-            <p className="text-[11px] text-muted">
-              Join cột↔cột giả định many-to-one (lấy record đích đầu tiên khớp). Cột nối phải là
-              plaintext (không mã hoá) ở cả 2 phía.
-            </p>
-
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                type="button"
-                onClick={() => setAdd(ADD_CLOSED)}
-                className="h-8 px-3 text-sm rounded-lg border border-border hover:bg-hover/50"
-              >
-                Huỷ
-              </button>
-              <button
-                type="button"
-                onClick={confirmAdd}
-                disabled={!add.targetEntityId || !add.fromField}
-                className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
-              >
-                Thêm
-              </button>
+              <p className="text-[11px] text-muted">
+                Biểu thức trên CỘT PHẲNG khác (<code>{"{key}"}</code>) + hàm IF/CONCAT/ROUND… Cột
+                chỉ đọc, eval sau projection + aggregate.
+              </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <AddEntityFieldModal entityId={addFieldEntityId} onClose={() => setAddFieldEntityId(null)} />
+        {/* ── Add-object dialog ──────────────────────────────── */}
+        {add.open && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setAdd(ADD_CLOSED);
+            }}
+          >
+            <div className="w-[460px] max-w-full bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">Thêm đối tượng vào canvas</span>
+                <button
+                  type="button"
+                  onClick={() => setAdd(ADD_CLOSED)}
+                  className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+                >
+                  <I.X size={13} />
+                </button>
+              </div>
+
+              <FormField label="Nối từ node (cha)">
+                <SearchableSelect
+                  className="w-full"
+                  value={add.parentNodeId}
+                  onChange={(v) => setAdd((p) => ({ ...p, parentNodeId: v, fromField: "" }))}
+                  options={nodeIds.map((n) => ({ value: n, label: nodeAlias(n) }))}
+                />
+              </FormField>
+
+              <FormField label="Đối tượng đích (thêm vào canvas)">
+                <SearchableSelect
+                  className="w-full"
+                  value={add.targetEntityId}
+                  onChange={onPickTarget}
+                  options={entities.map((e) => ({ value: e.id, label: e.name }))}
+                  placeholder="Chọn đối tượng…"
+                  searchPlaceholder="Tìm đối tượng…"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-2">
+                <FormField label="Cột nguồn (node cha)">
+                  <SearchableSelect
+                    className="w-full"
+                    value={add.fromField}
+                    onChange={(v) => setAdd((p) => ({ ...p, fromField: v }))}
+                    options={addParentFields.map((f) => ({
+                      value: f.name,
+                      label: `${f.label || f.name} (${f.name})`,
+                    }))}
+                    placeholder="Chọn cột…"
+                  />
+                </FormField>
+                <FormField label="Cột đích (khớp)">
+                  <SearchableSelect
+                    className="w-full"
+                    value={add.toField}
+                    onChange={(v) => setAdd((p) => ({ ...p, toField: v }))}
+                    options={[
+                      { value: "id", label: "id (record id)" },
+                      ...(addTargetEnt?.fields.map((f) => ({
+                        value: f.name,
+                        label: `${f.label || f.name} (${f.name})`,
+                      })) ?? []),
+                    ]}
+                  />
+                </FormField>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <FormField label="Alias">
+                  <Input
+                    className="h-8"
+                    value={add.alias}
+                    onChange={(e) => setAdd((p) => ({ ...p, alias: e.target.value }))}
+                    placeholder="vd: khach_hang"
+                  />
+                </FormField>
+                <FormField label="Kiểu join">
+                  <SearchableSelect
+                    className="w-full"
+                    value={add.joinKind}
+                    onChange={(v) => setAdd((p) => ({ ...p, joinKind: v as "left" | "inner" }))}
+                    options={[
+                      { value: "left", label: "left (giữ)" },
+                      { value: "inner", label: "inner (lọc)" },
+                    ]}
+                  />
+                </FormField>
+              </div>
+
+              <p className="text-[11px] text-muted">
+                Join cột↔cột giả định many-to-one (lấy record đích đầu tiên khớp). Cột nối phải là
+                plaintext (không mã hoá) ở cả 2 phía.
+              </p>
+
+              <div className="flex gap-2 justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAdd(ADD_CLOSED)}
+                  className="h-8 px-3 text-sm rounded-lg border border-border hover:bg-hover/50"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAdd}
+                  disabled={!add.targetEntityId || !add.fromField}
+                  className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
+                >
+                  Thêm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <AddEntityFieldModal
+          entityId={addFieldEntityId}
+          onClose={() => setAddFieldEntityId(null)}
+        />
+      </div>
     </div>
   );
 }
