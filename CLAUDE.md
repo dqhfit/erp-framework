@@ -142,12 +142,22 @@
 
 ## 9. Lint hiện trạng
 
-- Biome 1.9.4 config `biome.json`. Recommended rules + noConsole
-  (allow error/warn) + useImportType warn.
-- **`pnpm lint` hiện báo ~467 pre-existing issues** chủ yếu
-  `lint/a11y/useButtonType` và `lint/style/useTemplate`, đa số FIXABLE.
-  Cleanup chưa làm → KHÔNG enforce trong CI. Sprint cleanup riêng:
-  chạy `npx biome check src --fix --unsafe` rồi review từng nhóm.
+- Biome **2.4.15** config `biome.json`. `pnpm lint` = `biome check src`.
+- **CI HARD-ENFORCE 0 error** (job `check` → step "Lint (Biome, hard-fail)").
+  Error-level phải = 0 mới merge; **warning KHÔNG chặn** (vd
+  `noNonNullAssertion`, `suppressions/unused`). Một số a11y rule đã disable
+  ở `biome.json` cho intentional UI pattern.
+- **Mục này từng nói "467 issues, không enforce" — ĐÃ LỖI THỜI.** Lint
+  được hard-fail từ CI commit (May 26). Khi thêm code mới, chạy `pnpm lint`
+  trước khi push; safe-autofix bằng `npx biome check src --write` (KHÔNG
+  `--unsafe` mặc định — unsafe đụng hook deps gây đổi hành vi).
+- **Biome KHÔNG đọc `// eslint-disable-line` cũ** — phải dùng
+  `// biome-ignore lint/<group>/<rule>: <lý do>` đặt NGAY TRÊN dòng vi phạm
+  (với rule cấp-element a11y: trên dòng thẻ mở JSX, không phải dòng attribute;
+  với `key={...}`/`useEffect`: trên đúng dòng đó). Comment sai vị trí →
+  `suppressions/unused` (warning) mà rule gốc vẫn nổ.
+- `useExhaustiveDependencies`: KHÔNG sửa bằng cách thêm/bớt deps (nguy cơ
+  loop re-render) — suppress có lý do nếu deps cố ý không đầy đủ.
 
 ## 10. Audit baseline
 
@@ -171,8 +181,9 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
 5. **AI fail-safe** — embedding/LLM lỗi không vỡ submit. `callLlmJson`
    trả null, caller handle nhánh thiếu.
 6. **`pnpm overrides` để vá CVE transitive** — vd ép `esbuild ^0.25.0`,
-   `vite ^6.4.2` qua root `package.json#pnpm.overrides` thay vì major
-   bump vitest.
+   `vite ^6.4.2`. **CHÚ Ý pnpm 11**: khai báo ở `pnpm-workspace.yaml`
+   (`overrides:`), KHÔNG chỉ ở `package.json#pnpm` — pnpm 11 bỏ qua field
+   đó (xem bài học #19). Giữ bản sao package.json cho pnpm 10 local.
 7. **Drizzle 0.36 → 0.45.2 không phá API** — 9 minor nhưng schema/query
    builder/migrator giữ nguyên. An toàn bump nếu tests pass.
 8. **Bundle 1.6MB main → 490KB qua `manualChunks`** vite — tách
@@ -228,3 +239,22 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
     job thứ 2+ xong không detect. Dùng `useRef`. Và đừng gọi `fetch()`
     trong `setState(prev => ...)` (StrictMode chạy 2× = gấp đôi request)
     — đọc cờ active từ ref.
+
+### Bài học từ session CI/lint (2026-06-03)
+
+19. **pnpm 11 (CI) KHÔNG đọc settings từ `.npmrc` lẫn `package.json#pnpm`**
+    — đã dời "settings home" sang `pnpm-workspace.yaml`. Triệu chứng: step
+    "Cài dependency" (`pnpm install --ignore-scripts`) exit 1 trên runner
+    NHƯNG pnpm 10 local pass. Ba setting bắt buộc ở `pnpm-workspace.yaml`:
+    (a) `onlyBuiltDependencies`; (b) `minimumReleaseAge` (+ `…Exclude`) —
+    `.npmrc minimum-release-age=0` bị bỏ qua → default ~24h chặn dep vừa
+    publish (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`); (c) `overrides` —
+    `package.json#pnpm.overrides` bị bỏ qua → frozen install báo
+    `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. Tái hiện local: `CI=true npx
+    pnpm@11 install --frozen-lockfile --ignore-scripts
+    --config.confirmModulesPurge=false`.
+20. **CI hard-fail Biome 0 error** (xem mục 9). `// eslint-disable-line` cũ
+    KHÔNG có tác dụng với Biome — chuyển sang `// biome-ignore lint/<group>/
+    <rule>: <lý do>` đúng vị trí (cấp-element a11y: dòng trên thẻ mở JSX).
+    `useExhaustiveDependencies`: suppress, ĐỪNG thêm/bớt deps (loop re-render).
+    `noNonNullAssertion` là warning — không chặn.
