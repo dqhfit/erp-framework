@@ -47,7 +47,7 @@ function ToolsGallery() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1200px] mx-auto p-6">
+      <div className="max-w-[1200px] mx-auto p-3 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <h1 className="text-xl font-semibold flex-1">Tools</h1>
           <Input

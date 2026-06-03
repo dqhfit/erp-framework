@@ -95,7 +95,7 @@ function EnumDesigner() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-6">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Button
             size="sm"

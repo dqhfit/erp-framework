@@ -102,7 +102,7 @@ function IotDeviceDetail() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1000px] mx-auto p-8">
+      <div className="max-w-[1000px] mx-auto p-3 sm:p-8">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-xl font-semibold flex-1">{device.name}</h1>
           <Button size="sm" variant="default" icon={<I.Redo size={12} />} onClick={rotateKey}>

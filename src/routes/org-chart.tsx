@@ -212,7 +212,7 @@ function OrgChartRoute() {
 
   return (
     <div className="overflow-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-8">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-8">
         <div className="flex items-start justify-between gap-4 mb-1">
           <h1 className="text-xl font-semibold">Sơ đồ phân cấp agent</h1>
           <div className="flex items-center gap-1.5 shrink-0">

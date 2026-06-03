@@ -304,7 +304,7 @@ export function EntityData({ entityId }: { entityId: string }) {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-6">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-semibold">{ent.name}</h1>

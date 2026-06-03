@@ -102,7 +102,7 @@ function PluginsSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[760px] mx-auto p-8">
+      <div className="max-w-[760px] mx-auto p-3 sm:p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.plugins.title")}</h1>
         <div className="text-sm text-muted mb-6">{t("settings.plugins.subtitle")}</div>
 

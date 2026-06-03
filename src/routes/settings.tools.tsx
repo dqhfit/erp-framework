@@ -76,7 +76,7 @@ function ToolsAdmin() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-6">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
         <h1 className="text-xl font-semibold mb-1">Quản lý Tools</h1>
         <div className="text-sm text-muted mb-4">
           Tools = artifact ngoài monorepo (vd <code>D:\code\cowok\Tools\*</code>). Discover qua

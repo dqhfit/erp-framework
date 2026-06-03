@@ -105,7 +105,7 @@ function ViewerGroupsSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[820px] mx-auto p-8">
+      <div className="max-w-[820px] mx-auto p-3 sm:p-8">
         <h1 className="text-xl font-semibold mb-1">{t("settings.viewer_groups")}</h1>
         <div className="text-sm text-muted mb-6">
           Nhom nguoi xem phan quyen trang portal. Viewer chi thay trang duoc phan vao nhom cua ho

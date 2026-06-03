@@ -75,7 +75,7 @@ function FeedbackIndex() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-6">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl font-semibold flex-1">{t("feedback.title")}</h1>
           {isAdmin && (

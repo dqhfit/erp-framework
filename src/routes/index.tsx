@@ -79,7 +79,7 @@ function Home() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1180px] mx-auto px-8 py-10">
+      <div className="max-w-[1180px] mx-auto px-3 py-4 sm:px-8 sm:py-10">
         {/* Hero */}
         <div className="mb-8">
           <div className="text-sm text-muted mb-1">

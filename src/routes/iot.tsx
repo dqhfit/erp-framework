@@ -69,7 +69,7 @@ function IotPage() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-8">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-8">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-xl font-semibold flex-1">Thiết bị IoT</h1>
           <Button variant="primary" icon={<I.Plus size={14} />} onClick={() => setShowCreate(true)}>
