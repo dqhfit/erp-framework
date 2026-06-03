@@ -15,14 +15,31 @@ import type { PluginRegistry } from "../plugin/registry";
 
 export interface WfNode {
   id: string;
-  type: string;            // trigger|action|condition|agent|approval|delay
+  type: string; // trigger|action|condition|agent|approval|delay
   label: string;
   config?: Record<string, unknown>;
 }
 export interface WfEdge {
   source: string;
   target: string;
-  label?: string;          // "true"/"false"/"yes"/"no"/...
+  label?: string; // "true"/"false"/"yes"/"no"/...
+  /** Handle nguồn/đích. Data-edge: sourceHandle="out:<portId>",
+   *  targetHandle="in:<portId>". Control-edge: rỗng / "yes" / "no". */
+  sourceHandle?: string;
+  targetHandle?: string;
+}
+
+/** Cổng dữ liệu của node.
+ *  - Input: `value` (giá trị tĩnh khi không nối edge).
+ *  - Output: `formula` (biểu thức tính giá trị cổng — tham chiếu cổng input
+ *    bằng `{inPortId}` và vars; ƯU TIÊN nếu có) HOẶC `path` (dot-path bóc
+ *    field từ raw output của node). */
+export interface WfPort {
+  id: string;
+  label?: string;
+  path?: string;
+  value?: unknown;
+  formula?: string;
 }
 
 export interface RunStep {
@@ -55,7 +72,11 @@ export interface RunWorkflowOptions {
   callAgent?: (
     nodeConfig: Record<string, unknown>,
     vars: Record<string, unknown>,
-  ) => Promise<{ text: string; model: string; usage: { input_tokens: number; output_tokens: number } }>;
+  ) => Promise<{
+    text: string;
+    model: string;
+    usage: { input_tokens: number; output_tokens: number };
+  }>;
   /** Biến khởi tạo (vd trigger payload) */
   initialVars?: Record<string, unknown>;
   /** Callback mỗi bước — cho UI/log cập nhật realtime */
@@ -97,12 +118,84 @@ function resolveArgs(config: Record<string, unknown>): Record<string, unknown> {
   return a && typeof a === "object" && !Array.isArray(a) ? (a as Record<string, unknown>) : {};
 }
 
+/** Bóc giá trị theo đường dẫn dot ("a.b.c"). Rỗng = trả nguyên object. */
+function resolvePath(obj: unknown, path?: string): unknown {
+  if (!path) return obj;
+  let cur: unknown = obj;
+  for (const part of path.split(".")) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
+}
+
+/** Edge mang DỮ LIỆU (nối cổng) thay vì control-flow. */
+function isDataEdge(e: WfEdge): boolean {
+  return (
+    (e.sourceHandle?.startsWith("out:") ?? false) || (e.targetHandle?.startsWith("in:") ?? false)
+  );
+}
+
+/** Mọi node cấp data-edge cho `nodeId` đã chạy chưa (có trong nodeOutputs)?
+ *  Dùng để ưu tiên node đủ nguồn dữ liệu — node nguồn chạy TRƯỚC node đích. */
+function dataDepsMet(nodeId: string, edges: WfEdge[], nodeOutputs: Map<string, unknown>): boolean {
+  for (const e of edges) {
+    if (e.target !== nodeId || e.source === nodeId) continue;
+    if (!isDataEdge(e)) continue;
+    if (!nodeOutputs.has(e.source)) return false;
+  }
+  return true;
+}
+
+/** Đọc mảng cổng từ config (inputs/outputs). */
+function portsOf(node: WfNode | undefined, key: "inputs" | "outputs"): WfPort[] {
+  const v = node?.config?.[key];
+  return Array.isArray(v) ? (v as WfPort[]) : [];
+}
+
+/** Gom giá trị input của node: mặc định từ value tĩnh của cổng input đã
+ *  khai báo, rồi ghi đè bằng giá trị nối từ data-edge (output node nguồn
+ *  + path của cổng output). */
+function resolveNodeInputs(
+  node: WfNode,
+  edges: WfEdge[],
+  byId: Map<string, WfNode>,
+  nodeOutputs: Map<string, unknown>,
+  portValues: Map<string, unknown>,
+): Record<string, unknown> {
+  const inputs: Record<string, unknown> = {};
+  for (const p of portsOf(node, "inputs")) {
+    if (p.value !== undefined) inputs[p.id] = p.value;
+  }
+  for (const e of edges) {
+    if (e.target !== node.id) continue;
+    if (!e.targetHandle?.startsWith("in:") || !e.sourceHandle?.startsWith("out:")) continue;
+    const inPortId = e.targetHandle.slice(3);
+    const outPortId = e.sourceHandle.slice(4);
+    // Giá trị cổng output đã được tính khi node nguồn chạy (formula/path).
+    const key = `${e.source}:${outPortId}`;
+    if (portValues.has(key)) {
+      inputs[inPortId] = portValues.get(key);
+    } else {
+      // Fallback (node nguồn chưa chạy / cổng không khai báo) → bóc path thô.
+      const outPort = portsOf(byId.get(e.source), "outputs").find((o) => o.id === outPortId);
+      inputs[inPortId] = resolvePath(nodeOutputs.get(e.source), outPort?.path);
+    }
+  }
+  return inputs;
+}
+
 export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
   const maxSteps = opt.maxSteps ?? 50;
   const maxDelayMs = opt.maxDelayMs ?? 3000;
   const byId = new Map(opt.nodes.map((n) => [n.id, n]));
   const steps: RunStep[] = [];
   const vars: Record<string, unknown> = { ...(opt.initialVars ?? {}) };
+  // Raw output mỗi node — nguồn cho data-edge (cổng I/O giữa các node).
+  const nodeOutputs = new Map<string, unknown>();
+  // Giá trị từng cổng output đã tính (key "<nodeId>:<portId>"). Cổng có
+  // formula → eval; còn lại → bóc path từ raw output.
+  const portValues = new Map<string, unknown>();
 
   const triggers = opt.nodes.filter((n) => n.type === "trigger");
   if (!opt.nodes.length) {
@@ -110,8 +203,12 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
   }
   if (!triggers.length) {
     const s: RunStep = {
-      nodeId: "", kind: "error", label: "—", status: "error",
-      detail: "Workflow không có node Trigger.", durationMs: 0,
+      nodeId: "",
+      kind: "error",
+      label: "—",
+      status: "error",
+      detail: "Workflow không có node Trigger.",
+      durationMs: 0,
     };
     return { status: "error", steps: [s], vars };
   }
@@ -121,20 +218,35 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
   let overallStatus: RunResult["status"] = "completed";
 
   while (queue.length && steps.length < maxSteps) {
-    const id = queue.shift()!;
+    // Topo theo data-dependency: ưu tiên node CHƯA chạy đã đủ nguồn dữ
+    // liệu (mọi node cấp data-edge đã chạy) → nguồn luôn chạy trước đích,
+    // kể cả khi 2 nhánh song song. Không node nào đủ → lấy node đầu hàng
+    // để tránh deadlock (nguồn không reachable / nối vòng → input thiếu =
+    // undefined, giữ tiến độ).
+    let pick = queue.findIndex(
+      (nid) => !visited.has(nid) && dataDepsMet(nid, opt.edges, nodeOutputs),
+    );
+    if (pick === -1) pick = 0;
+    const id = queue.splice(pick, 1)[0]!;
     if (visited.has(id)) continue;
     visited.add(id);
     const node = byId.get(id);
     if (!node) continue;
 
     const cfg = node.config ?? {};
+    // Input của node: value tĩnh cổng input + ghi đè từ data-edge.
+    const inputs = resolveNodeInputs(node, opt.edges, byId, nodeOutputs, portValues);
     const t0 = performance.now();
     let step: RunStep;
     let followLabels: string[] | null = null;
+    // Raw output để các node sau bóc field qua data-edge.
+    let rawOutput: unknown;
 
     try {
       switch (node.type) {
         case "trigger": {
+          // Output của trigger = payload khởi tạo (vars hiện có).
+          rawOutput = { ...vars };
           step = mkStep(node, "ok", `Trigger kích hoạt`, t0);
           break;
         }
@@ -143,10 +255,12 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
           if (!tool) {
             step = mkStep(node, "skipped", "Chưa cấu hình tool — bỏ qua", t0);
           } else {
-            const out = await opt.callTool(tool, resolveArgs(cfg));
+            // Input cổng ghi đè args literal (cổng input = tên arg).
+            const out = await opt.callTool(tool, { ...resolveArgs(cfg), ...inputs });
             if (out && typeof out === "object" && !Array.isArray(out)) {
               Object.assign(vars, out as Record<string, unknown>);
             }
+            rawOutput = out;
             step = mkStep(node, "ok", `Đã gọi tool \`${tool}\``, t0, out);
           }
           break;
@@ -156,12 +270,20 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
           if (!expr) {
             step = mkStep(node, "skipped", "Chưa có biểu thức — đi tất cả nhánh", t0);
           } else {
-            const r = evaluate(expr, vars);
+            // Cổng input phủ lên vars khi eval (tham chiếu {portId}).
+            const r = evaluate(expr, { ...vars, ...inputs });
             const truthy = !!r.value;
             followLabels = truthy ? ["true", "yes", "đúng", ""] : ["false", "no", "sai"];
-            step = mkStep(node, r.ok ? "ok" : "error",
-              r.ok ? `Điều kiện = ${truthy ? "ĐÚNG" : "SAI"} → nhánh ${truthy ? "true" : "false"}`
-                   : `Lỗi biểu thức: ${r.error}`, t0, r.value);
+            rawOutput = r.value;
+            step = mkStep(
+              node,
+              r.ok ? "ok" : "error",
+              r.ok
+                ? `Điều kiện = ${truthy ? "ĐÚNG" : "SAI"} → nhánh ${truthy ? "true" : "false"}`
+                : `Lỗi biểu thức: ${r.error}`,
+              t0,
+              r.value,
+            );
           }
           break;
         }
@@ -169,8 +291,13 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
           if (!opt.callAgent) {
             step = mkStep(node, "skipped", "Không có agent runner", t0);
           } else {
-            const res = await opt.callAgent(cfg, vars);
+            // Cổng input "system"/"prompt" ghi đè config tương ứng.
+            const agentCfg: Record<string, unknown> = { ...cfg };
+            if ("system" in inputs) agentCfg.system = inputs.system;
+            if ("prompt" in inputs) agentCfg.prompt = inputs.prompt;
+            const res = await opt.callAgent(agentCfg, vars);
             vars[`agent_${node.id}`] = res.text;
+            rawOutput = res.text;
             step = mkStep(node, "ok", `Agent trả lời (${res.text.length} ký tự)`, t0, res.text);
             step.tokens = res.usage;
             step.model = res.model;
@@ -191,7 +318,8 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
             step = mkStep(node, "skipped", "agent_chain cần config.steps[]", t0);
             break;
           }
-          let totalIn = 0, totalOut = 0;
+          let totalIn = 0,
+            totalOut = 0;
           let prevText = "";
           const outputs: string[] = [];
           for (let i = 0; i < Math.min(steps.length, maxChainSteps); i++) {
@@ -203,18 +331,28 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
             totalOut += r.usage.output_tokens;
           }
           vars[`agent_chain_${node.id}`] = outputs;
-          step = mkStep(node, "ok",
+          rawOutput = outputs;
+          step = mkStep(
+            node,
+            "ok",
             `Chain ${outputs.length}/${steps.length} agent (${prevText.length} ký tự cuối)`,
-            t0, outputs);
+            t0,
+            outputs,
+          );
           step.tokens = { input_tokens: totalIn, output_tokens: totalOut };
           break;
         }
         case "delay": {
-          const mins = Number(cfg.minutes ?? 0);
+          // Cổng input "minutes" ghi đè config.minutes.
+          const mins = Number(inputs.minutes ?? cfg.minutes ?? 0);
           const realWait = Math.min(mins * 60_000, maxDelayMs);
           await sleep(realWait);
-          step = mkStep(node, "ok",
-            `Chờ ${mins} phút (thực chờ ${(realWait / 1000).toFixed(1)}s)`, t0);
+          step = mkStep(
+            node,
+            "ok",
+            `Chờ ${mins} phút (thực chờ ${(realWait / 1000).toFixed(1)}s)`,
+            t0,
+          );
           break;
         }
         case "approval": {
@@ -229,18 +367,17 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
             break;
           }
           if (!opt.runCode) {
-            step = mkStep(node, "error",
-              "Server không cấu hình sandbox cho code-node", t0);
+            step = mkStep(node, "error", "Server không cấu hình sandbox cho code-node", t0);
             overallStatus = "error";
             break;
           }
-          const r = await opt.runCode(code, { vars, nodeId: id });
+          // Cổng input phủ lên vars truyền vào sandbox.
+          const r = await opt.runCode(code, { vars: { ...vars, ...inputs }, nodeId: id });
           if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
             Object.assign(vars, r.output);
           }
-          const detail = r.logs.length
-            ? r.logs.join("\n")
-            : `Code chạy ${r.durationMs}ms`;
+          rawOutput = r.output;
+          const detail = r.logs.length ? r.logs.join("\n") : `Code chạy ${r.durationMs}ms`;
           step = mkStep(node, "ok", detail, t0, r.output);
           break;
         }
@@ -251,15 +388,16 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
             break;
           }
           if (!opt.invokeProcedure) {
-            step = mkStep(node, "error",
-              "Server không cấu hình procedure runner", t0);
+            step = mkStep(node, "error", "Server không cấu hình procedure runner", t0);
             overallStatus = "error";
             break;
           }
-          const r = await opt.invokeProcedure(name, resolveArgs(cfg));
+          // Cổng input ghi đè args literal (cổng input = tên arg).
+          const r = await opt.invokeProcedure(name, { ...resolveArgs(cfg), ...inputs });
           if (r.output && typeof r.output === "object" && !Array.isArray(r.output)) {
             Object.assign(vars, r.output as Record<string, unknown>);
           }
+          rawOutput = r.output;
           const detail = r.logs.length
             ? r.logs.join("\n")
             : `Procedure "${name}" chạy ${r.durationMs}ms`;
@@ -270,11 +408,11 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
           // Node type lạ → tra plugin trong registry.
           const plugin = opt.registry?.workflowNode(node.type);
           if (plugin) {
-            const res = await plugin.run({ config: cfg, vars });
+            const res = await plugin.run({ config: cfg, vars: { ...vars, ...inputs } });
             if (res.output) Object.assign(vars, res.output);
             if (res.branch) followLabels = [res.branch.toLowerCase()];
-            step = mkStep(node, "ok",
-              res.detail ?? `Node plugin "${node.type}"`, t0, res.output);
+            rawOutput = res.output;
+            step = mkStep(node, "ok", res.detail ?? `Node plugin "${node.type}"`, t0, res.output);
           } else {
             step = mkStep(node, "ok", node.label, t0);
           }
@@ -285,14 +423,25 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
       overallStatus = "error";
     }
 
+    // Lưu raw output cho data-edge của node sau (kể cả undefined).
+    nodeOutputs.set(id, rawOutput);
+    // Tính giá trị từng cổng output: có formula → eval theo {vars, inputs}
+    // (tham chiếu cổng input bằng {inPortId}); còn lại → bóc path từ raw.
+    for (const p of portsOf(node, "outputs")) {
+      const v =
+        typeof p.formula === "string" && p.formula.trim()
+          ? evaluate(p.formula, { ...vars, ...inputs }).value
+          : resolvePath(rawOutput, p.path);
+      portValues.set(`${id}:${p.id}`, v);
+    }
     steps.push(step);
     opt.onStep?.(step);
 
     // Approval/error → dừng nhánh này
     if (step.status === "paused" || step.status === "error") continue;
 
-    // Đi tiếp theo edge
-    for (const e of opt.edges.filter((ed) => ed.source === id)) {
+    // Đi tiếp theo edge CONTROL-FLOW (bỏ qua data-edge nối cổng).
+    for (const e of opt.edges.filter((ed) => ed.source === id && !isDataEdge(ed))) {
       if (followLabels) {
         const lbl = (e.label ?? "").toLowerCase();
         if (!followLabels.includes(lbl)) continue;

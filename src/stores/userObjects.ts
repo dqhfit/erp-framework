@@ -120,6 +120,8 @@ function rowToWorkflow(r: Row): MockWorkflow {
     icon: "Workflow",
     status: r.isActive ? "active" : "paused",
     runs: 0,
+    triggerType: (r.triggerType as MockWorkflow["triggerType"]) ?? "manual",
+    triggerConfig: (r.triggerConfig ?? {}) as Record<string, unknown>,
   };
 }
 
@@ -181,6 +183,12 @@ interface UserObjectsState {
   deleteWorkflow: (id: string) => void;
   renameWorkflow: (id: string, name: string) => void;
   setWorkflowContent: (id: string, data: unknown) => void;
+  /** Đổi nguồn trigger (cấp workflow) + lưu xuống DB. */
+  setWorkflowTrigger: (
+    id: string,
+    triggerType: MockWorkflow["triggerType"],
+    triggerConfig?: Record<string, unknown>,
+  ) => void;
 
   addAgent: (a: MockAgent) => void;
   deleteAgent: (id: string) => void;
@@ -392,6 +400,16 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
     set((s) => ({ workflowContent: { ...s.workflowContent, [id]: data } }));
     saveWorkflowById(get, id);
   },
+  setWorkflowTrigger: (id, triggerType, triggerConfig) => {
+    set((s) => ({
+      workflows: s.workflows.map((w) =>
+        w.id === id
+          ? { ...w, triggerType, ...(triggerConfig !== undefined ? { triggerConfig } : {}) }
+          : w,
+      ),
+    }));
+    saveWorkflowById(get, id);
+  },
 
   /* ── Agent ── */
   addAgent: (a) => {
@@ -513,6 +531,8 @@ function saveWorkflowById(get: Get, id: string): void {
       id: w.id,
       name: w.name,
       isActive: w.status === "active",
+      triggerType: w.triggerType ?? "manual",
+      triggerConfig: w.triggerConfig ?? {},
       graph: (get().workflowContent[id] ?? {}) as Record<string, unknown>,
     }),
     "lưu workflow",

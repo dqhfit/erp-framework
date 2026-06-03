@@ -143,7 +143,10 @@ export const agentInput = z.object({
 export const workflowInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1),
-  triggerType: z.enum(["manual", "webhook", "cron", "entity_changed"]).optional(),
+  triggerType: z.enum(["manual", "webhook", "cron", "entity_changed", "iot_telemetry"]).optional(),
+  /* Cấu hình filter riêng cho từng triggerType (vd {deviceId, channel} cho
+     iot_telemetry). Mỗi triggerType tự quy ước schema con. */
+  triggerConfig: z.record(z.string(), z.unknown()).optional(),
   graph: z.record(z.string(), z.unknown()).optional(),
   isActive: z.boolean().optional(),
 });

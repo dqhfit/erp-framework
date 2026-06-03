@@ -61,6 +61,12 @@ export default defineConfig({
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },
+      // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token.
+      // Forward để URL cùng-origin (hiển thị ở designer) chạy được trong dev.
+      "/webhooks": {
+        target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
+        changeOrigin: true,
+      },
     },
   },
   build: {

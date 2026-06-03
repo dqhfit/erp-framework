@@ -102,12 +102,25 @@ export interface MockViewerGroup {
   pageIds: string[];
 }
 
+/** Nguồn kích hoạt workflow — khớp pgEnum workflow_trigger (cấp workflow,
+ *  KHÔNG phải cấp node). Runner đọc workflows.triggerType để biết ai bắn. */
+export type WorkflowTriggerType =
+  | "manual"
+  | "cron"
+  | "iot_telemetry"
+  | "webhook"
+  | "entity_changed";
+
 export interface MockWorkflow {
   id: string;
   name: string;
   icon: IconName;
   status: "active" | "paused";
   runs: number;
+  /** Nguồn trigger (mặc định "manual"). Lưu ở DB column workflows.trigger_type. */
+  triggerType?: WorkflowTriggerType;
+  /** Filter trigger (vd {deviceId, channel} cho iot_telemetry, {cronExpr}…). */
+  triggerConfig?: Record<string, unknown>;
 }
 
 export interface MockAgent {

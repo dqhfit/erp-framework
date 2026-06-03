@@ -76,7 +76,9 @@ export interface AgentMemberRow {
 export interface WorkflowSaveInput {
   id?: string;
   name: string;
-  triggerType?: "manual" | "webhook" | "cron" | "entity_changed";
+  triggerType?: "manual" | "webhook" | "cron" | "entity_changed" | "iot_telemetry";
+  /** Filter trigger (vd {deviceId, channel} cho iot_telemetry). */
+  triggerConfig?: Record<string, unknown>;
   graph?: Record<string, unknown>;
   isActive?: boolean;
 }

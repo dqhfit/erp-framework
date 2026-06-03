@@ -37,9 +37,13 @@ import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
-import { knowledgeSearch } from "./knowledge-search";
 import { agenticRetrieve } from "./knowledge-agentic";
+import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
+import { registerOAuth } from "./oauth";
+import { registerPrintRoutes } from "./print-routes";
+import { registerRestApi } from "./rest-api";
+import { appRouter } from "./router";
 import {
   buildRecordWhere,
   decryptDataOut,
@@ -47,10 +51,7 @@ import {
   queryParams,
   stripUnreadableFields,
 } from "./router-helpers";
-import { registerOAuth } from "./oauth";
-import { registerPrintRoutes } from "./print-routes";
-import { registerRestApi } from "./rest-api";
-import { appRouter } from "./router";
+import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
@@ -251,6 +252,10 @@ async function main(): Promise<void> {
   // (auth header X-API-Key, scopes per entity). Mobile/external/3rd-party
   // dùng được thẳng, không cần codegen tRPC.
   registerRestApi(app, db);
+
+  // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
+  // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.
+  registerWebhookRoutes(app, db);
 
   // Engine in PDF — GET /print/:id?format=html|pdf — render template + data.
   registerPrintRoutes(app, db);

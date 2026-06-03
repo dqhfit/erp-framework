@@ -45,6 +45,7 @@ import {
   stripUnwritableFields,
 } from "./router-helpers";
 import { rbacProcedure, router } from "./trpc";
+import { triggerEntityWorkflows } from "./workflow-triggers";
 import { publish as publishWs } from "./ws-hub";
 
 export const recordsRouter = router({
@@ -175,6 +176,15 @@ export const recordsRouter = router({
       });
       // Decrypt + ẩn field user không có quyền read trước khi trả response.
       const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
+      // Workflow trigger 'entity_changed' (best-effort, không block).
+      void triggerEntityWorkflows(ctx.db, {
+        companyId: ctx.user.companyId,
+        entityId: input.entityId,
+        entityName: entName,
+        event: "create",
+        recordId: row.id,
+        data: decoded,
+      });
       return {
         ...row,
         data: stripUnreadableFields(fields, decoded, ctx.user.role),
@@ -339,6 +349,16 @@ export const recordsRouter = router({
             data: row.data,
           });
         }
+        // Workflow trigger 'entity_changed' (best-effort, không block).
+        // data: bản giải mã của record sau update (decryptDataOut row.data).
+        void triggerEntityWorkflows(ctx.db, {
+          companyId: ctx.user.companyId,
+          entityId: rec.entityId,
+          entityName: ent?.name,
+          event: "update",
+          recordId: input.recordId,
+          data: decryptDataOut(fields, row.data as Record<string, unknown>),
+        });
       }
       return row;
     }),
@@ -551,6 +571,14 @@ export const recordsRouter = router({
           entityId: before.entityId,
           event: "delete",
           record: before,
+        });
+        // Workflow trigger 'entity_changed' (best-effort). entityName để
+        // trống → helper tự tra. data không gửi (record đã xoá mềm).
+        void triggerEntityWorkflows(ctx.db, {
+          companyId: ctx.user.companyId,
+          entityId: before.entityId,
+          event: "delete",
+          recordId: input,
         });
       }
     }),

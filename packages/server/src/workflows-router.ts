@@ -33,6 +33,7 @@ export const workflowsRouter = router({
       const values = {
         name: input.name,
         triggerType: input.triggerType ?? "manual",
+        ...(input.triggerConfig !== undefined ? { triggerConfig: input.triggerConfig } : {}),
         ...(input.graph !== undefined ? { graph: input.graph } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       };

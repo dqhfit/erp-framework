@@ -34,7 +34,13 @@ interface RawGraph {
     type?: string;
     data?: { kind?: string; label?: string; config?: Record<string, unknown> };
   }>;
-  edges?: Array<{ source: string; target: string; label?: unknown }>;
+  edges?: Array<{
+    source: string;
+    target: string;
+    label?: unknown;
+    sourceHandle?: unknown;
+    targetHandle?: unknown;
+  }>;
 }
 
 export interface ExecuteOptions {
@@ -100,6 +106,9 @@ export async function executeWorkflow(
     source: e.source,
     target: e.target,
     label: typeof e.label === "string" ? e.label : undefined,
+    // Giữ handle để runner phân biệt data-edge (cổng) vs control-flow.
+    sourceHandle: typeof e.sourceHandle === "string" ? e.sourceHandle : undefined,
+    targetHandle: typeof e.targetHandle === "string" ? e.targetHandle : undefined,
   }));
 
   // P3.3 — field-level RBAC trên workflow step. Fail-closed nếu có
