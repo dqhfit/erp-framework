@@ -18,12 +18,12 @@ import {
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
-import { ActionWidget } from "@/components/renderer/ActionWidget";
-import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { I } from "@/components/Icons";
+import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Chart } from "@/components/renderer/Chart";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
+import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { Chip, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useT } from "@/hooks/useT";
@@ -167,6 +167,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const refreshTag = entityId
     ? (pageState.get(`__refresh:${entityId}`) as number | undefined)
     : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey (chuỗi ổn định) thay cho object filters; refreshTag là tín hiệu reload thủ công
   useEffect(() => {
     if (!entityId || !enabled) {
       setRows([]);
@@ -219,6 +220,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const refreshTag = dataSourceId
     ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
     : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey (chuỗi ổn định) thay cho object filters; refreshTag là tín hiệu reload thủ công
   useEffect(() => {
     if (!dataSourceId || !enabled) {
       setRows([]);
@@ -481,7 +483,7 @@ function EditableListWidget({
                 const isDirty = pending.has(rowIdStr);
                 return (
                   <tr
-                    key={r}
+                    key={rowIdStr || r}
                     className={isDirty ? "bg-warning/5" : r % 2 === 0 ? "" : "bg-bg-soft/40"}
                   >
                     {visibleFields.map((f) => {
@@ -504,6 +506,7 @@ function EditableListWidget({
                               type="text"
                               defaultValue={val}
                               className="w-full h-full px-1.5 bg-white dark:bg-bg outline outline-1 outline-accent text-xs"
+                              // biome-ignore lint/a11y/noAutofocus: autofocus chủ ý để con trỏ vào ô vừa double-click chỉnh sửa
                               autoFocus
                               onBlur={(e) => commitCell(r, f.name, e.target.value)}
                               onKeyDown={(e) => {
@@ -552,6 +555,7 @@ function ListWidget({
   batchEdit,
   excelMode,
   rowLimit,
+  pageSize,
   loadFilters,
   loadGate,
 }: {
@@ -582,6 +586,8 @@ function ListWidget({
   excelMode?: boolean;
   /** Số dòng tối đa tải (mặc định 500). */
   rowLimit?: number;
+  /** Số dòng hiển thị mỗi trang (phân trang client-side; mặc định 50). */
+  pageSize?: number;
   /** Điều kiện lọc server-side áp trước khi cắt limit. */
   loadFilters?: LoadFilters;
   /** stateKey cổng: chỉ tải khi state có giá trị. */
@@ -793,6 +799,7 @@ function ListWidget({
             onGlobalFilterChange={
               searchStateKey ? (v: string) => pageState.set(searchStateKey, v) : undefined
             }
+            pageSize={pageSize}
           />
         )}
       </div>
@@ -1044,6 +1051,7 @@ function CollectionSection({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey cố ý nằm trong deps để buộc reload thủ công sau khi thêm/sửa/xóa dòng con
   useEffect(() => {
     if (!childEntityId) return;
     let alive = true;
@@ -2116,6 +2124,7 @@ function RenderSubWidget({
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
+        pageSize={cfg.pageSize as number | undefined}
         loadFilters={cfg.loadFilters as LoadFilters | undefined}
         loadGate={cfg.loadGate as string | undefined}
       />
@@ -2479,6 +2488,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
+        pageSize={cfg.pageSize as number | undefined}
         loadFilters={cfg.loadFilters as LoadFilters | undefined}
         loadGate={cfg.loadGate as string | undefined}
       />,
@@ -2941,7 +2951,13 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                               setResizingId(c.id);
                             }}
                           >
-                            <svg width="7" height="7" viewBox="0 0 7 7" className="text-accent/70">
+                            <svg
+                              width="7"
+                              height="7"
+                              viewBox="0 0 7 7"
+                              className="text-accent/70"
+                              aria-hidden="true"
+                            >
                               <path
                                 d="M1 6 L6 1 M3.5 6 L6 3.5"
                                 stroke="currentColor"

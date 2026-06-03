@@ -3,8 +3,8 @@
    Handles: PK field row (right) = target; FK field rows (left) = source.
    ========================================================== */
 
-import { Handle, type Node, Position, type NodeProps } from "@xyflow/react";
 import { useNavigate } from "@tanstack/react-router";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { I } from "@/components/Icons";
 import { FALLBACK_FIELD_TYPE, getFieldTypes } from "@/lib/field-types";
 import type { MockEntity } from "@/lib/object-types";

@@ -533,6 +533,14 @@ const VI: Dict = {
   "datagrid.group_all_grouped": "Đã nhóm tất cả cột",
   "datagrid.group_clear": "Xóa tất cả nhóm",
   "datagrid.row_count": "{filtered}/{total} dòng",
+  "datagrid.page_range": "{from}–{to} / {total}",
+  "datagrid.page_info": "Trang {page}/{count}",
+  "datagrid.per_page": "Số dòng mỗi trang",
+  "datagrid.per_page_n": "{n}/trang",
+  "datagrid.first": "Trang đầu",
+  "datagrid.prev": "Trang trước",
+  "datagrid.next": "Trang sau",
+  "datagrid.last": "Trang cuối",
 
   // ExcelGrid component
   "excel.aria_label": "Bảng tính Excel",
@@ -1138,6 +1146,14 @@ const EN: Dict = {
   "datagrid.group_all_grouped": "All columns grouped",
   "datagrid.group_clear": "Clear all groups",
   "datagrid.row_count": "{filtered}/{total} rows",
+  "datagrid.page_range": "{from}–{to} of {total}",
+  "datagrid.page_info": "Page {page}/{count}",
+  "datagrid.per_page": "Rows per page",
+  "datagrid.per_page_n": "{n}/page",
+  "datagrid.first": "First page",
+  "datagrid.prev": "Previous page",
+  "datagrid.next": "Next page",
+  "datagrid.last": "Last page",
 
   // ExcelGrid component
   "excel.aria_label": "Excel Spreadsheet",

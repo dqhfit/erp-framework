@@ -468,8 +468,11 @@ function MesMigratePage() {
                 </tr>
               </thead>
               <tbody>
-                {previews.map((p, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                {previews.map((p) => (
+                  <tr
+                    key={`${p.maBoPhan}-${p.nam}-${p.thang}`}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  >
                     <td className="px-3 py-1.5 font-medium text-sky-700">{p.maBoPhan}</td>
                     <td className="px-3 py-1.5 text-center">{p.thang}</td>
                     <td className="px-3 py-1.5 text-center">{p.nam}</td>
@@ -557,8 +560,11 @@ function MesMigratePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
-                    <tr key={i} className="border-b border-emerald-100 last:border-0">
+                  {results.map((r) => (
+                    <tr
+                      key={`${r.maBoPhan}-${r.nam}-${r.thang}`}
+                      className="border-b border-emerald-100 last:border-0"
+                    >
                       <td className="px-3 py-1 font-medium">{r.maBoPhan}</td>
                       <td className="px-3 py-1 text-center">
                         {r.thang}/{r.nam}

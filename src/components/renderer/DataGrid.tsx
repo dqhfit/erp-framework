@@ -8,7 +8,9 @@ import {
   getExpandedRowModel,
   getFilteredRowModel,
   getGroupedRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
+  type PaginationState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -25,6 +27,11 @@ interface SavedGridState {
   grouping: GroupingState;
   columnFilters: ColumnFiltersState;
 }
+
+/** Số dòng/trang mặc định + tuỳ chọn — phân trang client-side để chỉ render
+ *  một trang DOM mỗi lần (hiệu năng), không cắt dữ liệu đã tải. */
+const DEFAULT_PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -45,6 +52,8 @@ export interface DataGridProps<T> {
    *  ListWidget set khi cfg.searchStateKey để bind 2 chiều với pageState. */
   globalFilter?: string;
   onGlobalFilterChange?: (value: string) => void;
+  /** Số dòng/trang. Mặc định 50. Controls chỉ hiện khi có >1 trang. */
+  pageSize?: number;
 }
 
 export function DataGrid<T>({
@@ -59,9 +68,14 @@ export function DataGrid<T>({
   isRowSelected,
   globalFilter: gfControlled,
   onGlobalFilterChange,
+  pageSize,
 }: DataGridProps<T>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: pageSize && pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE,
+  });
   const [globalFilterInner, setGlobalFilterInner] = useState("");
   const isControlled = gfControlled !== undefined;
   const globalFilter = isControlled ? gfControlled : globalFilterInner;
@@ -82,6 +96,7 @@ export function DataGrid<T>({
 
   // Restore state from IDB once on mount
   const restoredRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ restore 1 lần khi mount theo stateKey, các setter ổn định không cần liệt kê
   useEffect(() => {
     if (!stateKey || restoredRef.current) return;
     restoredRef.current = true;
@@ -122,22 +137,44 @@ export function DataGrid<T>({
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter, columnFilters, grouping, expanded },
+    state: { sorting, globalFilter, columnFilters, grouping, expanded, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onGroupingChange: setGrouping,
     onExpandedChange: setExpanded,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: "includesString",
     enableMultiSort: true,
     isMultiSortEvent: (e) => (e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey,
     groupedColumnMode: false,
+    // ListWidget tạo mảng `data` mới mỗi render khi filter/search client-side →
+    // auto-reset theo identity sẽ nhảy trang liên tục. Tự reset theo NỘI DUNG
+    // (filter/độ dài/grouping) ở effect bên dưới thay vì theo tham chiếu mảng.
+    autoResetPageIndex: false,
   });
+
+  // Đồng bộ khi widget đổi cấu hình số dòng/trang.
+  useEffect(() => {
+    if (pageSize && pageSize > 0) {
+      setPagination((p) => (p.pageSize === pageSize ? p : { pageIndex: 0, pageSize }));
+    }
+  }, [pageSize]);
+
+  // Reset về trang đầu khi tập dữ liệu/bộ lọc đổi — bám NỘI DUNG (không bám
+  // identity mảng) để tránh reset mỗi render khi ListWidget lọc client-side.
+  const colFiltersKey = JSON.stringify(columnFilters);
+  const groupingKey = grouping.join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ đích bám khoá nội dung, không bám object filter.
+  useEffect(() => {
+    setPagination((p) => (p.pageIndex === 0 ? p : { ...p, pageIndex: 0 }));
+  }, [globalFilter, colFiltersKey, groupingKey, data.length]);
 
   const sortableColumns = table
     .getAllColumns()
@@ -145,6 +182,13 @@ export function DataGrid<T>({
   const availableGroupCols = sortableColumns.filter((c) => !grouping.includes(c.id));
   const activeFilterCount = columnFilters.length;
   const filteredCount = table.getFilteredRowModel().rows.length;
+
+  // Phân trang (client-side) — chỉ render 1 trang DOM mỗi lần.
+  const pageCount = table.getPageCount();
+  const rangeFrom = filteredCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
+  const rangeTo = Math.min(filteredCount, (pagination.pageIndex + 1) * pagination.pageSize);
+  const pageBtn =
+    "p-1 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -380,6 +424,69 @@ export function DataGrid<T>({
           </tbody>
         </table>
       </div>
+
+      {pageCount > 1 && (
+        <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-panel-2/40 shrink-0 text-xs text-muted">
+          <span>
+            {t("datagrid.page_range", { from: rangeFrom, to: rangeTo, total: filteredCount })}
+          </span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })}
+              title={t("datagrid.per_page")}
+              className="h-7 rounded border border-border bg-panel px-1.5 text-xs"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {t("datagrid.per_page_n", { n })}
+                </option>
+              ))}
+            </select>
+            <div className="inline-flex items-center">
+              <button
+                type="button"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+                title={t("datagrid.first")}
+                className={pageBtn}
+              >
+                <I.ChevronsLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                title={t("datagrid.prev")}
+                className={pageBtn}
+              >
+                <I.ChevronLeft size={14} />
+              </button>
+              <span className="px-2 whitespace-nowrap">
+                {t("datagrid.page_info", { page: pagination.pageIndex + 1, count: pageCount })}
+              </span>
+              <button
+                type="button"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                title={t("datagrid.next")}
+                className={pageBtn}
+              >
+                <I.ChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => table.setPageIndex(pageCount - 1)}
+                disabled={!table.getCanNextPage()}
+                title={t("datagrid.last")}
+                className={pageBtn}
+              >
+                <I.ChevronsRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

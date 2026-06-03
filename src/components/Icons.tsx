@@ -118,6 +118,18 @@ export const I = {
       <path d="m15 6-6 6 6 6" />
     </Icon>
   ),
+  ChevronsLeft: (p: IP) => (
+    <Icon {...p}>
+      <path d="m11 17-5-5 5-5" />
+      <path d="m18 17-5-5 5-5" />
+    </Icon>
+  ),
+  ChevronsRight: (p: IP) => (
+    <Icon {...p}>
+      <path d="m6 17 5-5-5-5" />
+      <path d="m13 17 5-5-5-5" />
+    </Icon>
+  ),
   ChevronUp: (p: IP) => (
     <Icon {...p}>
       <path d="m18 15-6-6-6 6" />

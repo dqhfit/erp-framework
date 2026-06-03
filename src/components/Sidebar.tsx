@@ -60,6 +60,7 @@ function useGroupState(key?: string) {
 // FavItem tái sử dụng SidebarFavItem từ preferences store để đảm bảo
 // cùng shape khi lưu/đọc từ server.
 import type { SidebarFavItem } from "@/stores/preferences";
+
 type FavItem = SidebarFavItem;
 
 function useFavs() {
@@ -202,6 +203,7 @@ function SidebarItem({
           <input
             ref={inputRef}
             defaultValue={label}
+            // biome-ignore lint/a11y/noAutofocus: input rename xuất hiện đúng lúc user bấm đổi tên, cần focus ngay để gõ
             autoFocus
             className="flex-1 bg-transparent outline-none text-[13px] min-w-0 leading-none"
             onFocus={(e) => e.currentTarget.select()}
@@ -735,6 +737,7 @@ export function Sidebar() {
     setSearch("");
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phản ứng khi collapsed đổi; closeSearch là helper local ổn định, thêm vào deps sẽ chạy effect thừa
   useEffect(() => {
     if (collapsed) closeSearch();
   }, [collapsed]);

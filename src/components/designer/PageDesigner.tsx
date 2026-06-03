@@ -6,17 +6,17 @@ import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldB
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button, Chip, EmptyState, FormField, Input, Select, Switch } from "@/components/ui";
-import type { ActionConfig, ActionVariant, FilterNode } from "@/types/page";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useT } from "@/hooks/useT";
 import { useUndoable } from "@/hooks/useUndoable";
 import type { PageDesign } from "@/lib/ai-design-prompts";
 import type { IconName } from "@/lib/object-types";
-import { collectStateSources, type StateSource } from "@/lib/page-state-sources";
 import { applyInsertAndResolve } from "@/lib/page-layout";
+import { collectStateSources, type StateSource } from "@/lib/page-state-sources";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
+import type { ActionConfig, ActionVariant, FilterNode } from "@/types/page";
 
 type ComponentKind =
   | "list"
@@ -78,9 +78,10 @@ interface Props {
 }
 
 /* ── Cấu hình tải dữ liệu (số dòng + điều kiện + cổng) ─────────────────────
-   Dùng chung cho mọi widget đọc record-list. Ghi vào config keys: rowLimit,
-   loadFilters (map field→{op,value}), loadGate (stateKey). Renderer đọc các
-   key này qua useDataOpts (ConsumerPage). */
+   Dùng chung cho mọi widget đọc record-list. Ghi vào config keys: rowLimit
+   (trần tải server-side), pageSize (số dòng/trang khi render), loadFilters
+   (map field→{op,value}), loadGate (stateKey). Renderer đọc các key này qua
+   useDataOpts + DataGrid (ConsumerPage). */
 const RECORD_DATA_KINDS = new Set([
   "list",
   "chart",
@@ -166,6 +167,7 @@ function DataLoadConfig({
   onChange: (patch: Record<string, unknown>) => void;
 }) {
   const rowLimit = typeof cfg.rowLimit === "number" ? cfg.rowLimit : undefined;
+  const pageSize = typeof cfg.pageSize === "number" ? cfg.pageSize : undefined;
   const gate = (cfg.loadGate as string) ?? "";
   const lf = (cfg.loadFilters as Record<string, LoadCond>) ?? {};
   const entries = Object.entries(lf);
@@ -199,7 +201,7 @@ function DataLoadConfig({
   return (
     <div className="rounded-md border border-border p-2 space-y-2 bg-bg-soft/40">
       <div className="text-xs font-semibold text-muted">Tải dữ liệu</div>
-      <FormField label="Số dòng tối đa (trống = 500, tối đa 10.000)">
+      <FormField label="Số dòng tối đa tải (trống = 500, tối đa 10.000)">
         <Input
           type="number"
           min="1"
@@ -210,6 +212,21 @@ function DataLoadConfig({
             const n = Number.parseInt(e.target.value, 10);
             onChange({
               rowLimit: Number.isFinite(n) && n > 0 ? Math.min(n, 10_000) : undefined,
+            });
+          }}
+        />
+      </FormField>
+      <FormField label="Số dòng mỗi trang (trống = 50; phân trang để render nhẹ hơn)">
+        <Input
+          type="number"
+          min="1"
+          max="10000"
+          placeholder="50"
+          value={pageSize ?? ""}
+          onChange={(e) => {
+            const n = Number.parseInt(e.target.value, 10);
+            onChange({
+              pageSize: Number.isFinite(n) && n > 0 ? Math.min(n, 10_000) : undefined,
             });
           }}
         />
@@ -397,6 +414,7 @@ export function PageDesigner({ pageId }: Props) {
   }, [publishOpen]);
 
   // Load nội dung đã lưu khi đổi page hoặc khi hydration hoàn tất
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setComponents là setter ổn định, chỉ chạy lại khi đổi page/ready
   useEffect(() => {
     if (!ready) return;
     const stored = useUserObjects.getState().pageContent[pageId];
@@ -404,6 +422,7 @@ export function PageDesigner({ pageId }: Props) {
   }, [pageId, ready]);
 
   // Reset selection khi chuyển page
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ reset khi pageId đổi, setSelected setter ổn định
   useEffect(() => {
     setSelected(null);
   }, [pageId]);
@@ -430,8 +449,10 @@ export function PageDesigner({ pageId }: Props) {
     };
     scrollRafRef.current = requestAnimationFrame(tick);
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cleanup mount/unmount duy nhất, stopAutoScroll dùng ref nội bộ
   useEffect(() => stopAutoScroll, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ gắn listener resize 1 lần, setComponents setter ổn định
   useEffect(() => {
     const GAP = 12; // gap-3 = 12px
     const ROW_STRIDE = 80 + GAP;
@@ -2558,7 +2579,13 @@ function ComponentCard({
               onResizeStart("se", e.clientX, e.clientY);
             }}
           >
-            <svg width="7" height="7" viewBox="0 0 7 7" className="text-accent/70">
+            <svg
+              width="7"
+              height="7"
+              viewBox="0 0 7 7"
+              className="text-accent/70"
+              aria-hidden="true"
+            >
               <path
                 d="M1 6 L6 1 M3.5 6 L6 3.5 M6 6 L6 6"
                 stroke="currentColor"

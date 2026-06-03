@@ -24,9 +24,17 @@ export interface DataSourceRelation {
   alias: string;
   /** null = hop từ base; khác null = id relation cha (nested). */
   fromRelationId: string | null;
-  /** Tên field lookup trên node "from" chứa recordId đích. */
+  /** Tên field trên node "from" chứa GIÁ TRỊ khoá nối. Với lookup là
+   *  recordId đích; với join cột-tự-do là giá trị bất kỳ khớp `toField`. */
   fromField: string;
-  /** Entity mà field lookup trỏ tới. */
+  /** Tên cột trên entity đích để khớp với giá trị `fromField`.
+   *  Bỏ trống hoặc "id" = khớp theo record id đích (lookup cổ điển,
+   *  tương thích ngược). Khác = join cột↔cột (vd order.ma_kh = kh.ma).
+   *  Lưu ý: cột nối phải là plaintext (KHÔNG encrypted) ở cả 2 phía vì
+   *  so khớp ở tầng SQL; nhiều record đích khớp → lấy record đầu tiên
+   *  (giả định many-to-one, giữ model bảng phẳng + ghi ngược aggregate). */
+  toField?: string;
+  /** Entity mà quan hệ trỏ tới. */
   targetEntityId: string;
   /** "left" (mặc định) giữ row base dù thiếu record liên quan; "inner" loại bỏ. */
   joinKind: JoinKind;

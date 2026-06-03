@@ -250,7 +250,7 @@ function tokenize(src: string): Token[] {
     // Number
     if (/[0-9]/.test(ch) || (ch === "." && next && /[0-9]/.test(next))) {
       let j = i + 1;
-      while (j < len && /[0-9.eE+\-]/.test(src[j]!)) {
+      while (j < len && /[0-9.eE+-]/.test(src[j]!)) {
         // Stop trên +/- nếu không nằm sau e/E (mantissa).
         const c = src[j]!;
         if ((c === "+" || c === "-") && src[j - 1] !== "e" && src[j - 1] !== "E") break;
@@ -276,7 +276,7 @@ function tokenize(src: string): Token[] {
     let j = i + 1;
     while (j < len) {
       const c = src[j]!;
-      if (/[A-Za-z0-9_@\[\]"'\.]/.test(c)) break;
+      if (/[A-Za-z0-9_@[\]"'.]/.test(c)) break;
       if (c === "-" && src[j + 1] === "-") break;
       if (c === "/" && src[j + 1] === "*") break;
       j++;

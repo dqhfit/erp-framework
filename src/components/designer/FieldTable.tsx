@@ -79,6 +79,7 @@ function CellInput({
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: cần span inline để truncate trong ô bảng, không dùng <button> (chặn double-click + layout block)
     <span
       role="button"
       tabIndex={0}

@@ -83,11 +83,6 @@ function orderRelations(relations: DataSourceRelation[]): DataSourceRelation[] {
   return out.concat(pending);
 }
 
-function asId(v: unknown): string | null {
-  if (typeof v === "string") return v || null;
-  return v != null ? String(v) : null;
-}
-
 function num(v: unknown): number {
   return typeof v === "number" ? v : Number(v);
 }
@@ -160,13 +155,24 @@ async function stitchAndProject(
       targetFields = await loadEntityFields(db, companyId, rel.targetEntityId);
       fieldCache.set(rel.targetEntityId, targetFields);
     }
-    const idByRow = nodes.map((nd) => {
+    // toField rỗng/"id" = khớp theo record id (lookup); khác = join cột↔cột.
+    const toField = rel.toField && rel.toField !== "id" ? rel.toField : null;
+
+    // Giá trị khoá nối lấy từ node "from" (đã decrypt) theo fromField.
+    const keyByRow = nodes.map((nd) => {
       const from = rel.fromRelationId == null ? nd.base : nd[rel.fromRelationId];
-      return from ? asId(from[rel.fromField]) : null;
+      if (!from) return null;
+      const v = from[rel.fromField];
+      return v == null || v === "" ? null : String(v);
     });
-    const distinct = [...new Set(idByRow.filter((x): x is string => !!x))];
-    const recMap = new Map<string, Record<string, unknown>>();
+    const distinct = [...new Set(keyByRow.filter((x): x is string => x != null))];
+
+    // Map khoá → { id record thật, data đã decrypt+strip }. First-match wins.
+    const entryMap = new Map<string, { id: string; data: Record<string, unknown> }>();
     if (distinct.length > 0) {
+      const matchExpr = toField
+        ? sql`(${entityRecords.data} ->> ${toField})`
+        : sql`${entityRecords.id}`;
       const recs = await db
         .select()
         .from(entityRecords)
@@ -174,25 +180,30 @@ async function stitchAndProject(
           and(
             eq(entityRecords.companyId, companyId),
             eq(entityRecords.entityId, rel.targetEntityId),
-            inArray(entityRecords.id, distinct),
+            inArray(matchExpr, distinct),
             sql`${entityRecords.deletedAt} IS NULL`,
           ),
         );
       for (const rec of recs) {
-        recMap.set(
-          rec.id as string,
-          stripUnreadableFields(
-            targetFields,
-            decryptDataOut(targetFields, rec.data as Record<string, unknown>),
-            role,
-          ),
-        );
+        const data = rec.data as Record<string, unknown>;
+        const key = toField
+          ? data[toField] == null
+            ? null
+            : String(data[toField])
+          : (rec.id as string);
+        if (key == null || entryMap.has(key)) continue; // first-match wins
+        entryMap.set(key, {
+          id: rec.id as string,
+          data: stripUnreadableFields(targetFields, decryptDataOut(targetFields, data), role),
+        });
       }
     }
     nodes.forEach((nd, i) => {
-      const tid = idByRow[i]!;
-      nd[rel.id] = tid ? (recMap.get(tid) ?? null) : null;
-      ids[i]![rel.id] = tid;
+      const key = keyByRow[i];
+      const entry = key != null ? (entryMap.get(key) ?? null) : null;
+      nd[rel.id] = entry?.data ?? null;
+      // __ids giữ id record thật đã khớp → ghi ngược đúng record liên quan.
+      ids[i]![rel.id] = entry?.id ?? null;
     });
   }
 

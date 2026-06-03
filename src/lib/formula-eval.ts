@@ -431,9 +431,10 @@ function callFn(name: string, raw: Value[], ctx: Ctx): Value {
     case "CODE":
       return s0(raw).charCodeAt(0);
     case "CLEAN":
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: CLEAN của Excel chủ ý loại bỏ ký tự control U+0000..U+001F
       return s0(raw).replace(/[ -]/g, "");
     case "NUMBERVALUE":
-      return Number(s0(raw).replace(/[^\d.\-]/g, ""));
+      return Number(s0(raw).replace(/[^\d.-]/g, ""));
 
     // ─ Thống kê điều kiện ─
     case "COUNTIF": {

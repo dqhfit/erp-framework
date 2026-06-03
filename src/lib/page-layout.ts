@@ -23,7 +23,7 @@ export function applyInsertAndResolve<T extends LayoutComp>(anchorId: string, co
     bh: number,
   ) => ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 
-  let result = comps.map((c) => ({ ...c }));
+  const result = comps.map((c) => ({ ...c }));
   for (let pass = 0; pass < 30; pass++) {
     const sorted = [...result].sort((a, b) => {
       if (a.id === anchorId) return -1;

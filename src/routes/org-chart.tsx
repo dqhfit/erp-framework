@@ -113,6 +113,7 @@ function OrgChartRoute() {
     return (
       <div key={a.id} className="flex flex-col items-center">
         {/* Hộp agent — click để chỉnh cấp trên */}
+        {/* biome-ignore lint/a11y/useSemanticElements: hộp agent cần div flex-col chứa nhiều phần tử con, không nhét vừa <button> */}
         <div
           role="button"
           tabIndex={0}

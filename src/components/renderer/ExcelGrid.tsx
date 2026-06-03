@@ -5,11 +5,11 @@
    ========================================================== */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
-import { cn } from "@/lib/utils";
-import { type Value, colToLetter, evalFormula } from "@/lib/formula-eval";
-import { applyFieldFormat } from "@/lib/format";
 import { useT } from "@/hooks/useT";
+import { applyFieldFormat } from "@/lib/format";
+import { colToLetter, evalFormula, type Value } from "@/lib/formula-eval";
 import type { EntityField } from "@/lib/object-types";
+import { cn } from "@/lib/utils";
 
 const COL_W = 110;
 const ROW_H = 24;
@@ -228,8 +228,12 @@ export function ExcelGrid({
   const autoFitAllCols = () => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const measure = (text: string, font: string) =>
-      ctx ? ((ctx.font = font), ctx.measureText(text).width) : text.length * 7;
+    const measure = (text: string, font: string) => {
+      if (!ctx) return text.length * 7;
+      // tach phep gan khoi bieu thuc: set font roi do chu (giu nguyen logic)
+      ctx.font = font;
+      return ctx.measureText(text).width;
+    };
     const HDR = "600 10px ui-sans-serif,system-ui,sans-serif";
     const CELL = "12px ui-sans-serif,system-ui,sans-serif";
     const next: Record<number, number> = {};
@@ -394,6 +398,7 @@ export function ExcelGrid({
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setCell on dinh xuyen render, them vao deps lam invalidate callback khong can thiet
   const commitEdit = useCallback(
     (save = true) => {
       if (!selRef.current || !editing) return;
@@ -676,8 +681,7 @@ export function ExcelGrid({
 
   /* ── Render ───────────────────────────────────────────────── */
   return (
-    // biome-ignore lint/a11y/noNoninteractiveTabindex: spreadsheet container requires keyboard focus for cell navigation
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role=grid with aria-label is valid
+    // biome-ignore lint/a11y/useSemanticElements: dung div role=grid chu y - layout spreadsheet ao hoa (virtualized) khong dung <table> that
     <div
       ref={containerRef}
       role="grid"
@@ -979,7 +983,6 @@ export function ExcelGrid({
           </thead>
 
           <tbody>
-            {/* biome-ignore lint/suspicious/noArrayIndexKey: display row index is spreadsheet identity */}
             {Array.from({ length: VISIBLE }, (_, dr) => {
               const rr = visibleRows[dr]!;
               const origRow = rows[rr]!;
@@ -1025,8 +1028,8 @@ export function ExcelGrid({
                       !isFormula && cellField != null && BOOL_TYPES.has(cellField.type);
 
                     return (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: display col index is spreadsheet identity
                       <td
+                        // biome-ignore lint/suspicious/noArrayIndexKey: dc la chi so cot hien thi - chinh la danh tinh o trong spreadsheet
                         key={dc}
                         ref={(el) => {
                           if (el) cellRefs.current.set(cellKey, el);

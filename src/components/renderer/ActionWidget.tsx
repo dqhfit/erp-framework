@@ -7,15 +7,15 @@ import { createProceduresClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
+import { WizardModal } from "@/components/renderer/WizardModal";
 import { Button } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { type Role, roleCan } from "@/lib/permissions";
-import { resolveBinding, type PageStateLike, runActionSteps } from "@/lib/run-action";
+import { type PageStateLike, resolveBinding, runActionSteps } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/stores/auth";
 import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/types/page";
-import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
-import { WizardModal } from "@/components/renderer/WizardModal";
 
 const procClient = createProceduresClient("");
 

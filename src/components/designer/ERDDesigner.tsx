@@ -16,8 +16,8 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EntityERDNode, type EntityERDNodeData } from "@/components/designer/erd-entity-node";
 import { FieldTable } from "@/components/designer/FieldTable";
 import { I } from "@/components/Icons";
@@ -193,6 +193,7 @@ function ERDCanvas() {
   }, [iconPickerOpen]);
 
   /* Reset entity editing when selection changes */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ reset khi selectedEntityId đổi; setters của useState đã stable
   useEffect(() => {
     setEntityNameDraft(null);
     setIconPickerOpen(false);
@@ -277,7 +278,6 @@ function ERDCanvas() {
       }),
     );
     setEdges(buildEdges(entities));
-    // biome-ignore lint/correctness/useExhaustiveDeps: makeNode là stable ref
   }, [entities, setNodes, setEdges, makeNode]);
 
   /* ── Apply hidden state ─────────────────────────────────── */

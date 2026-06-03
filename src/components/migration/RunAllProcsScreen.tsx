@@ -440,6 +440,7 @@ export function RunAllProcsScreen({ onClose }: Props) {
   const clearBodySearch = () => setBodyMatches(null);
 
   /** Các keys hiển thị hiện tại (đã lọc). */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyOf là hàm thuần ổn định, chỉ cần tính lại khi filteredRows đổi
   const filteredKeys = useMemo(
     () => new Set(filteredRows.map(({ module, row }) => keyOf(module, row.name))),
     [filteredRows],

@@ -8,6 +8,7 @@ import { useUI } from "@/stores/ui";
  */
 export function useSetAgentContext(ctx: AgentObjectContext | null) {
   const set = useUI((s) => s.setAgentContext);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi nhận dạng context (type/id/label) đổi; set là stable, ctx object thay đổi ref mỗi render nên không đưa vào deps
   useEffect(() => {
     set(ctx);
     return () => set(null);

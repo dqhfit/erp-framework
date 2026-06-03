@@ -61,6 +61,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   }, [step.entity, step.popupMode, recordId]);
 
   /* Khởi tạo form trống */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chu y chi reset form khi doi popupMode/entity, khong reset khi visibleFields thay doi de tranh xoa input dang nhap
   useEffect(() => {
     if (step.popupMode !== "form") return;
     const init: Record<string, string> = {};
@@ -165,6 +166,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                   <tbody>
                     {filteredRows.map((row, i) => (
                       <tr
+                        // biome-ignore lint/suspicious/noArrayIndexKey: row la Record dong, khong dam bao co id on dinh; chi so hang la danh tinh hien thi
                         key={i}
                         className="border-t border-border hover:bg-hover cursor-pointer group/row"
                         onClick={() => onSelect(row)}

@@ -12,9 +12,9 @@
    ========================================================== */
 
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
 import { I } from "@/components/Icons";
 import { useT } from "@/hooks/useT";
+import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Modal } from "./modal";
 
@@ -87,6 +87,7 @@ export function TagBox({
   }, [open]);
 
   // Reset highlight khi filtered đổi.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý reset highlight mỗi khi query q đổi, setHighlight setter ổn định
   useEffect(() => {
     setHighlight(0);
   }, [q]);
@@ -135,6 +136,7 @@ export function TagBox({
 
   return (
     <div ref={wrapRef} className={cn("relative", className)}>
+      {/* biome-ignore lint/a11y/useSemanticElements: container chip tổng hợp nhiều phần tử con, không thể thay bằng <button> */}
       <div
         className={cn(
           "flex flex-wrap items-center gap-1 min-h-[34px] px-2 py-1 border rounded bg-bg",
@@ -278,12 +280,12 @@ function PickerModal({
   const [draft, setDraft] = useState<Set<string>>(new Set());
 
   // Khi modal mở → khởi tạo draft từ selected hiện tại.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ khởi tạo lại draft khi modal mở, không phụ thuộc selected thay đổi sau đó
   useEffect(() => {
     if (open) {
       setDraft(new Set(selected));
       setFilter("");
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ reset khi mở
   }, [open]);
 
   const filtered = useMemo(() => {
@@ -338,6 +340,7 @@ function PickerModal({
             onChange={(e) => setFilter(e.target.value)}
             placeholder={t("tagbox.filter_ph")}
             className="flex-1 px-2 h-8 border border-border rounded bg-bg text-sm outline-none focus:border-accent"
+            // biome-ignore lint/a11y/noAutofocus: chủ ý focus ô lọc ngay khi modal chọn tag mở
             autoFocus
           />
           <span className="text-xs text-muted whitespace-nowrap">

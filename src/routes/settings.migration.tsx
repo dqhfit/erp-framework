@@ -33,11 +33,10 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { ActionJobsPanel } from "@/components/migration/ActionJobsPanel";
 import { ProceduresTab } from "@/components/migration/ProceduresTab";
 import { RelationsTab } from "@/components/migration/RelationsTab";
-import { ActionJobsPanel } from "@/components/migration/ActionJobsPanel";
 import { RunAllProcsScreen } from "@/components/migration/RunAllProcsScreen";
-import { CockpitPage } from "./settings.cockpit";
 import { SqlBlock } from "@/components/SqlHighlight";
 import {
   Button,
@@ -50,9 +49,10 @@ import {
   TagBox,
   Textarea,
 } from "@/components/ui";
-import { dialog } from "@/lib/dialog";
 import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
 import { useAuth } from "@/stores/auth";
+import { CockpitPage } from "./settings.cockpit";
 
 const migration = createMigrationClient("");
 const connectionsApi = createMssqlConnectionsClient("");
@@ -175,6 +175,7 @@ function MigrationPage() {
   }, []);
 
   // Load list module + env check.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý reload lại khi reloadKey đổi
   useEffect(() => {
     if (!canEdit) return;
     migration
@@ -1657,8 +1658,8 @@ function TableDetail({ tbl, moduleName }: { tbl: ManifestTableRow; moduleName: s
         <div>
           <div className="text-muted mb-1">FK suy ra từ JOIN ({tbl.inferredRelations.length})</div>
           <ul className="text-[11px] space-y-0.5">
-            {tbl.inferredRelations.map((r, i) => (
-              <li key={i}>
+            {tbl.inferredRelations.map((r) => (
+              <li key={`${r.column}-${r.refTable}-${r.refColumn}`}>
                 <code>{r.column}</code> →{" "}
                 <code>
                   {r.refTable}.{r.refColumn}
@@ -1723,6 +1724,7 @@ function SampleRowsTable({ rows }: { rows: unknown[] }) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: rows preview thuần đọc, không có id ổn định
             <tr key={i} className="border-t border-border">
               {cols.map((c) => (
                 <td key={c} className="px-2 py-0.5 whitespace-nowrap max-w-[200px] truncate">
@@ -1907,6 +1909,7 @@ function MaterializeEnumDialog({
           </div>
           <ul className="text-[10px] text-muted space-y-0.5">
             {decisions.map((d, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: log quyết định append-only, không có id riêng
               <li key={i}>
                 <span>{new Date(d.at).toLocaleString("vi-VN")}</span>
                 <span className="ml-2">module={d.module}</span>
@@ -1983,6 +1986,7 @@ function MaterializeEnumDialog({
           )}
           {splitRules.map((r, i) => (
             <SplitRuleEditor
+              // biome-ignore lint/suspicious/noArrayIndexKey: rule tham chiếu bằng index (update/remove theo i), không có id riêng
               key={i}
               rule={r}
               cols={cols}
@@ -2630,8 +2634,11 @@ function EdgesPanel({ edges }: { edges: ManifestEdge[] }) {
                 </tr>
               </thead>
               <tbody>
-                {edges.map((e, i) => (
-                  <tr key={i} className="border-t border-border">
+                {edges.map((e) => (
+                  <tr
+                    key={`${e.proc}-${e.externalTable}-${e.kind}`}
+                    className="border-t border-border"
+                  >
                     <td className="px-2 py-1 font-mono">{e.proc}</td>
                     <td className="px-2 py-1 font-mono">{e.externalTable}</td>
                     <td className="px-2 py-1">
@@ -3254,6 +3261,7 @@ function JobRunner({
   };
 
   // Poll status 2s khi có job đang chạy.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onCompleted ổn định ngoài, chủ ý chỉ chạy lại khi jobId đổi
   useEffect(() => {
     if (!jobId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -3277,7 +3285,6 @@ function JobRunner({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: onCompleted ổn định ngoài
   }, [jobId]);
 
   const statusChip = useMemo(() => {
@@ -3358,6 +3365,7 @@ function SidebarSection({
     });
   return (
     <div className="border-b border-border">
+      {/* biome-ignore lint/a11y/useSemanticElements: header custom chứa nút action lồng bên trong, không dùng <button> thật được */}
       <div
         className="flex items-center gap-1 px-3 py-2 bg-surface/50 cursor-pointer select-none"
         onClick={toggle}
@@ -3565,6 +3573,7 @@ function QuickMigrateScreen({
   const [pendingTables, setPendingTables] = useState<Set<string>>(new Set());
 
   // Load connections + validate connId đã lưu; fallback về default nếu không còn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần lúc mount, pickedConnId đọc giá trị đầu là đủ
   useEffect(() => {
     connectionsApi
       .list()
@@ -3577,7 +3586,6 @@ function QuickMigrateScreen({
         }
       })
       .catch(() => setConns([]));
-    // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần
   }, []);
 
   // Persist connId mỗi khi thay đổi.
@@ -3644,6 +3652,7 @@ function QuickMigrateScreen({
 
   // Load migrated entities theo connection để biết bảng nào đã migrate.
   // Reload sau mỗi lần migrate thành công (migratedReloadKey++).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý reload khi migratedReloadKey đổi
   useEffect(() => {
     if (!pickedConnId) {
       setMigratedMap(new Map());
@@ -4371,7 +4380,7 @@ function QuickMigratePreviewPane({
                         const isPk = p.pkField === f.name;
                         return (
                           <tr
-                            key={`${p.tableName}:${f.name}:${idx}`}
+                            key={`${p.tableName}:${f.name}`}
                             className={["border-t border-border", isPk ? "bg-warning/5" : ""].join(
                               " ",
                             )}
@@ -4735,6 +4744,7 @@ function FullImportJobsPanel() {
 
   // Load chi tiết khi user expand hoặc khi jobs thay đổi (để table status
   // cập nhật real-time theo auto-refresh 3s).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý refetch khi jobs đổi để cập nhật status real-time
   useEffect(() => {
     if (!expandedJobId) {
       setDetail(null);
@@ -5795,6 +5805,7 @@ function DiagramNodeActions({
   const [err, setErr] = useState("");
 
   // Reset khi đổi node selected.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý reset form khi node.id đổi (chọn node khác)
   useEffect(() => {
     setNewName(node.entityName);
     setNewKind(node.kind);
@@ -5880,6 +5891,7 @@ function DiagramNodeActions({
           <div className="text-success font-medium mb-1">{t("mig.diagram_applied")}</div>
           <ul className="text-[11px] text-muted space-y-0.5 list-disc pl-4">
             {changes.map((c, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: danh sách thay đổi tĩnh chỉ-đọc, chuỗi có thể trùng
               <li key={i}>{c}</li>
             ))}
           </ul>
@@ -6126,6 +6138,7 @@ function NormalizeRenameView({
           </thead>
           <tbody>
             {result.renames.map((r, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: chọn theo index (picked.has(i)/toggle(i)), không có id riêng
               <tr key={i} className="border-t border-border hover:bg-surface">
                 <td className="px-2 py-1">
                   <input type="checkbox" checked={picked.has(i)} onChange={() => toggle(i)} />
@@ -6171,6 +6184,7 @@ function NormalizeRenameView({
           <div className="text-success font-medium mb-1">{t("mig.normalize_results")}</div>
           <ul className="text-[11px] text-muted space-y-0.5">
             {applied.map((l, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: danh sách kết quả tĩnh chỉ-đọc, chuỗi có thể trùng
               <li key={i}>{l}</li>
             ))}
           </ul>
@@ -6936,8 +6950,8 @@ function CodegenPreview({
               {output.paramsSchema.length === 0 ? "(none)" : ""}
             </div>
             <ul className="text-[10px] ml-3 list-disc">
-              {output.paramsSchema.map((p, i) => (
-                <li key={i}>
+              {output.paramsSchema.map((p) => (
+                <li key={String(p.name)}>
                   <code>{String(p.name)}</code>: {String(p.type)}
                   {p.required ? " *" : ""}
                   {p.description ? ` — ${String(p.description)}` : ""}
@@ -8047,6 +8061,7 @@ function AuditTab({ moduleName }: { moduleName: string }) {
   const [err, setErr] = useState("");
 
   // Load file đã save trước (nếu có).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần khi mount module, editedMd đọc giá trị hiện tại là đủ
   useEffect(() => {
     migration
       .getAuditReport(moduleName)
@@ -8057,7 +8072,6 @@ function AuditTab({ moduleName }: { moduleName: string }) {
         }
       })
       .catch(() => undefined);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ load 1 lần khi mount module
   }, [moduleName]);
 
   // Auto-save draft.
@@ -8256,12 +8270,12 @@ function renderMdLine(line: string, key: number): React.ReactElement {
 function inline(text: string): React.ReactElement {
   // Tokenize: dùng regex chia thành parts.
   const parts: React.ReactElement[] = [];
-  let i = 0;
+  const i = 0;
   let keyN = 0;
   const re = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
   let lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
+  let m: RegExpExecArray | null = re.exec(text);
+  while (m !== null) {
     if (m.index > lastIndex) {
       parts.push(<span key={keyN++}>{text.slice(lastIndex, m.index)}</span>);
     }
@@ -8285,6 +8299,7 @@ function inline(text: string): React.ReactElement {
       }
     }
     lastIndex = m.index + tok.length;
+    m = re.exec(text);
   }
   if (lastIndex < text.length) {
     parts.push(<span key={keyN++}>{text.slice(lastIndex)}</span>);

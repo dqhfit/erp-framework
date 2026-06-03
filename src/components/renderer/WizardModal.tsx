@@ -7,12 +7,12 @@
 import { createApiDataSource } from "@erp-framework/client";
 import { type ReactNode, useState } from "react";
 import { I } from "@/components/Icons";
+import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { Button, Modal, SearchableSelect } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import type { PageStateLike } from "@/lib/run-action";
+import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
-import { LookupPicker } from "@/components/renderer/LookupPicker";
 
 const api = createApiDataSource("");
 
