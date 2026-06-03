@@ -201,10 +201,22 @@ export interface DataSource {
 
 /* ─── Nguồn dữ liệu (DataSource ORM-like) ─────────────────── */
 export type {
-  JoinKind,
-  DataSourceRelation,
-  DataSourceField,
+  AggFn,
+  DataSourceAggregate,
   DataSourceConfig,
+  DataSourceField,
   DataSourceMeta,
+  DataSourceRelation,
   DataSourceRow,
+  JoinKind,
 } from "./config";
+export type {
+  CompileResult,
+  DataSourceDslAgg,
+  DataSourceDsl,
+  DataSourceDslColumn,
+  DataSourceDslJoin,
+  DslEntity,
+} from "./dsl";
+/* DSL "code" + compiler (tên-based ↔ config id-based). */
+export { compileDataSourceDsl, decompileToDsl } from "./dsl";

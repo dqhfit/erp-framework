@@ -24,8 +24,27 @@ const dsRelation = z.object({
   alias: z.string(),
   fromRelationId: z.string().nullable(),
   fromField: z.string().min(1),
+  toField: z.string().optional(),
   targetEntityId: z.string().uuid(),
   joinKind: z.enum(["left", "inner"]).default("left"),
+});
+
+const dsAggregate = z.object({
+  key: z.string().min(1),
+  label: z.string(),
+  agg: z.enum(["count", "sum", "avg", "min", "max"]),
+  sourceRelationId: z.string().optional(),
+  matchField: z.string().optional(),
+  targetEntityId: z.string().uuid(),
+  targetField: z.string().min(1),
+  valueField: z.string().optional(),
+  via: z
+    .object({
+      farEntityId: z.string().uuid(),
+      farField: z.string().min(1),
+      farKeyField: z.string().optional(),
+    })
+    .optional(),
 });
 
 const dsField = z.object({
@@ -41,6 +60,7 @@ const dsConfig = z.object({
   baseEntityId: z.string().default(""), // "" khi datasource vừa tạo, chưa cấu hình
   relations: z.array(dsRelation).default([]),
   fields: z.array(dsField).default([]),
+  aggregates: z.array(dsAggregate).optional(),
   baseFilters: z.record(z.string(), z.object({ op: filterOp, value: z.unknown() })).optional(),
   sort: z.object({ key: z.string(), dir: z.enum(["asc", "desc"]) }).optional(),
   defaultLimit: z.number().int().positive().max(10_000).optional(),
@@ -71,6 +91,7 @@ function normCfg(raw: unknown): DataSourceConfig {
     baseEntityId: c.baseEntityId ?? "",
     relations: c.relations ?? [],
     fields: c.fields ?? [],
+    aggregates: c.aggregates,
     baseFilters: c.baseFilters,
     sort: c.sort,
     defaultLimit: c.defaultLimit,

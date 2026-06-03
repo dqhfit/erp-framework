@@ -8,13 +8,22 @@
      config hiện tại + lệnh chỉnh.
    ========================================================== */
 
-export type DesignObjectType = "entity" | "page" | "workflow" | "agent";
+import type { DataSourceDsl } from "@erp-framework/core";
+
+export type DesignObjectType = "entity" | "page" | "workflow" | "agent" | "datasource";
 
 export interface DesignContext {
   /** MCP tool có sẵn (tên + mô tả tóm tắt) */
   mcpTools?: Array<{ name: string; description?: string }>;
   /** Danh sách entity khác — để LLM gợi ý lookup */
   otherEntities?: Array<{ id: string; name: string; mcp?: string; fieldKeys?: string[] }>;
+  /** Catalog đối tượng đầy đủ (cho datasource) — field name + type + ref (TÊN đích). */
+  entityCatalog?: Array<{
+    id: string;
+    name: string;
+    fields: Array<{ name: string; type: string; ref?: string }>;
+    primaryKey?: string;
+  }>;
   /** Sample data 5 row đầu nếu có */
   sampleRows?: unknown[];
 }
@@ -103,6 +112,48 @@ Trả về JSON:
 }
 `.trim();
 
+const DATASOURCE_SCHEMA_HINT = `
+Trả về JSON mô tả "Nguồn dữ liệu" (gộp NHIỀU đối tượng thành 1 bảng phẳng đọc/ghi)
+theo format DSL dùng TÊN đối tượng + alias:
+{
+  "base": "TenDoiTuongGoc",          // đối tượng gốc (aggregate root, ghi được)
+  "joins": [
+    {
+      "as": "khach_hang",            // alias duy nhất cho quan hệ (đặt tên node con)
+      "from": "TenDoiTuongGoc",      // TÊN đối tượng gốc HOẶC alias join trước (lồng nhiều cấp)
+      "fromField": "ma_kh",          // cột trên 'from' chứa giá trị nối
+      "to": "KhachHang",             // TÊN đối tượng đích
+      "toField": "ma",               // cột đích khớp; bỏ trống hoặc "id" = khớp record id (lookup)
+      "kind": "left"                 // "left" (giữ row gốc) | "inner" (lọc thiếu)
+    }
+  ],
+  "columns": [
+    { "from": "TenDoiTuongGoc", "field": "so_dh", "as": "so_dh", "label": "Số ĐH", "writable": true },
+    { "from": "khach_hang", "field": "ten", "as": "khach_ten", "label": "Tên KH" }
+  ],
+  "aggregates": [
+    // 1-N (reverse FK): đếm/cộng record con trỏ ngược về node nguồn.
+    { "as": "so_dong", "label": "Số dòng", "fn": "count", "of": "ChiTietDonHang", "byField": "don_hang_id" },
+    { "as": "tong_sl", "label": "Tổng SL", "fn": "sum", "of": "ChiTietDonHang", "byField": "don_hang_id", "valueField": "so_luong" },
+    // N-N qua bảng nối: 'of' = bảng nối, 'via' = entity thật chứa valueField.
+    { "as": "tong_gia_sp", "fn": "sum", "of": "DonHang_SanPham", "byField": "don_hang_id", "valueField": "gia", "via": { "entity": "SanPham", "field": "san_pham_id" } }
+  ],
+  "limit": 100
+}
+Quy tắc DATASOURCE (bắt buộc):
+- CHỈ dùng TÊN đối tượng + tên field CÓ trong "Danh mục đối tượng" đã liệt kê. TUYỆT ĐỐI không bịa.
+- 'from' của join/column tham chiếu TÊN-đối-tượng-gốc hoặc ALIAS join (KHÔNG dùng tên đối tượng đích).
+- Nếu node cha có field lookup trỏ tới đích (type lookup, '->' tên đích) → đặt fromField = field lookup đó, toField = "id".
+- Ngược lại join theo cột nghiệp vụ: fromField = cột mã ở cha, toField = cột mã tương ứng ở đích.
+- Field từ đối tượng gốc nên writable=true; field từ join để mặc định (chỉ đọc) trừ khi cần ghi ngược.
+Quy tắc AGGREGATE (1-N / N-N, read-only):
+- Dùng khi cần GOM nhiều record con về 1 số (đếm số dòng, tổng tiền, trung bình…).
+- 1-N: 'of' = entity con, 'byField' = field FK trên con trỏ về node nguồn (mặc định khớp record id của 'from', 'from' mặc định base).
+- N-N: 'of' = bảng nối, 'byField' = FK gần (về node nguồn); 'via.entity' = entity thật, 'via.field' = FK xa trên bảng nối → đọc 'valueField' trên entity thật.
+- fn=count KHÔNG cần valueField; sum/avg/min/max BẮT BUỘC valueField.
+- 'aggregates' là TUỲ CHỌN — bỏ qua nếu yêu cầu không cần gom.
+`.trim();
+
 // ============= System prompts =============
 
 const SYSTEM_BASE = `
@@ -122,6 +173,7 @@ export const SYSTEM_PROMPTS: Record<DesignObjectType, string> = {
   page: `${SYSTEM_BASE}\n\n=== Output schema cho PAGE ===\n${PAGE_SCHEMA_HINT}`,
   workflow: `${SYSTEM_BASE}\n\n=== Output schema cho WORKFLOW ===\n${WORKFLOW_SCHEMA_HINT}`,
   agent: `${SYSTEM_BASE}\n\n=== Output schema cho AGENT ===\n${AGENT_SCHEMA_HINT}`,
+  datasource: `${SYSTEM_BASE}\n\n=== Output schema cho DATASOURCE ===\n${DATASOURCE_SCHEMA_HINT}`,
 };
 
 // ============= User message builder =============
@@ -151,6 +203,23 @@ export function buildUserMessage(
           (e) =>
             `- id="${e.id}", name="${e.name}"${e.fieldKeys ? `, fields=[${e.fieldKeys.slice(0, 8).join(",")}]` : ""}`,
         )
+        .join("\n"),
+    );
+  }
+  if (context.entityCatalog?.length) {
+    parts.push(
+      "\n## Danh mục đối tượng (dùng TÊN + field CHÍNH XÁC; 'name:type', lookup có '->đích'):",
+    );
+    parts.push(
+      context.entityCatalog
+        .slice(0, 40)
+        .map((e) => {
+          const fs = e.fields
+            .slice(0, 40)
+            .map((f) => (f.ref ? `${f.name}:${f.type}->${f.ref}` : `${f.name}:${f.type}`))
+            .join(", ");
+          return `- ${e.name}${e.primaryKey ? ` (PK=${e.primaryKey})` : ""}: ${fs}`;
+        })
         .join("\n"),
     );
   }
@@ -241,4 +310,6 @@ export type DesignByType<T extends DesignObjectType> = T extends "entity"
       ? WorkflowDesign
       : T extends "agent"
         ? AgentDesign
-        : never;
+        : T extends "datasource"
+          ? DataSourceDsl
+          : never;

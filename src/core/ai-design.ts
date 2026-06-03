@@ -70,6 +70,7 @@ function validateShape<T>(type: DesignObjectType, data: unknown): T {
     page: ["name", "components"],
     workflow: ["name", "nodes"],
     agent: ["name", "model", "systemPrompt"],
+    datasource: ["base"],
   };
 
   for (const k of required[type]) {

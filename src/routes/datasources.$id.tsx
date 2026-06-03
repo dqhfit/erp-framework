@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { DataSourceCanvas } from "@/components/designer/DataSourceCanvas";
+import { DataSourceCodePanel } from "@/components/designer/DataSourceCodePanel";
 import { DataSourceDesigner } from "@/components/designer/DataSourceDesigner";
 import { Tabs } from "@/components/ui";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useUserObjects } from "@/stores/userObjects";
 
-type DSTab = "config" | "canvas";
+type DSTab = "config" | "canvas" | "code";
 
 function Route_() {
   const { id } = Route.useParams();
@@ -22,11 +23,18 @@ function Route_() {
         options={[
           { value: "config", label: "Cấu hình" },
           { value: "canvas", label: "Canvas (ERD)" },
+          { value: "code", label: "Code & AI" },
         ]}
         className="px-4 shrink-0"
       />
       <div className="flex-1 min-h-0">
-        {tab === "config" ? <DataSourceDesigner id={id} /> : <DataSourceCanvas id={id} />}
+        {tab === "config" ? (
+          <DataSourceDesigner id={id} />
+        ) : tab === "canvas" ? (
+          <DataSourceCanvas id={id} />
+        ) : (
+          <DataSourceCodePanel id={id} />
+        )}
       </div>
     </div>
   );

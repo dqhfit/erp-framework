@@ -13,6 +13,7 @@
 
 import { createObjectsClient } from "@erp-framework/client";
 import type {
+  DataSourceAggregate,
   DataSourceConfig,
   DataSourceField,
   DataSourceRelation,
@@ -36,11 +37,12 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Card, FormField, Input, SearchableSelect } from "@/components/ui";
+import { Button, Card, FormField, Input, SearchableSelect, Tabs } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { slugify, useUserObjects } from "@/stores/userObjects";
+import { AddAggregate } from "./DataSourceDesigner";
 
 const dsApi = createObjectsClient("");
 const EMPTY: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
@@ -77,6 +79,14 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         position={Position.Left}
         isConnectable={false}
         className="!w-2 !h-2 !bg-warning !border-0 !top-[18px]"
+      />
+      {/* Handle phát aggregate (1-N / N-N) — đáy node */}
+      <Handle
+        type="source"
+        id="agg-out"
+        position={Position.Bottom}
+        isConnectable={false}
+        className="!w-2 !h-2 !bg-accent !border-0"
       />
 
       {/* Header */}
@@ -159,7 +169,69 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
   );
 }
 
-const nodeTypes = { dsNode: DSNode } as const;
+/* ── Ghost node: đối tượng "nhiều" của aggregate (1-N child / N-N junction / far) ── */
+interface AggNodeData extends Record<string, unknown> {
+  aggKey: string;
+  entityName: string;
+  badge: string; // "1-N" | "N-N" | "far"
+  fn?: string;
+  byField?: string;
+  valueField?: string;
+}
+type AggNodeType = Node<AggNodeData>;
+
+function AggGhostNode({ data, selected }: NodeProps<AggNodeType>) {
+  return (
+    <div
+      className={cn(
+        "bg-panel/80 border-2 border-dashed rounded-xl shadow-sm min-w-[170px] max-w-[210px] text-sm select-none",
+        selected ? "border-accent" : "border-accent/40",
+      )}
+    >
+      <Handle
+        type="target"
+        id="agg-in"
+        position={Position.Top}
+        isConnectable={false}
+        className="!w-2 !h-2 !bg-accent !border-0"
+      />
+      <Handle
+        type="source"
+        id="agg-out"
+        position={Position.Bottom}
+        isConnectable={false}
+        className="!w-2 !h-2 !bg-accent !border-0"
+      />
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-dashed border-border">
+        <I.BarChart size={11} className="text-accent shrink-0" />
+        <span className="font-semibold flex-1 truncate text-[12px]">{data.entityName}</span>
+        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/15 text-accent shrink-0">
+          {data.badge}
+        </span>
+      </div>
+      <div className="px-3 py-1.5 text-[11px] text-muted space-y-0.5">
+        {data.fn && (
+          <div>
+            fn: <b className="text-text uppercase">{data.fn}</b>
+          </div>
+        )}
+        {data.byField && (
+          <div>
+            FK: <span className="font-mono">{data.byField}</span>
+          </div>
+        )}
+        {data.valueField && (
+          <div>
+            value: <span className="font-mono">{data.valueField}</span>
+          </div>
+        )}
+        <div className="font-mono text-accent/70 truncate">→ {data.aggKey}</div>
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = { dsNode: DSNode, aggNode: AggGhostNode } as const;
 
 /* ── Add-object dialog state ──────────────────────────────── */
 interface AddState {
@@ -279,6 +351,7 @@ function Canvas({ id }: { id: string }) {
 
   /* ── Selection + UI state ─────────────────────────────────── */
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [panelTab, setPanelTab] = useState<"config" | "agg">("config");
   const [add, setAdd] = useState<AddState>(ADD_CLOSED);
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -309,8 +382,8 @@ function Canvas({ id }: { id: string }) {
     return m;
   }, [cfg.fields]);
 
-  const buildNodes = useCallback((): DSNodeType[] => {
-    return nodeIds.map((rid, i) => ({
+  const buildNodes = useCallback((): Node[] => {
+    const joinNodes: Node[] = nodeIds.map((rid, i) => ({
       id: rid,
       type: "dsNode" as const,
       position: layoutRef.current[rid] ?? { x: (i % 3) * 300, y: Math.floor(i / 3) * 280 },
@@ -323,11 +396,54 @@ function Canvas({ id }: { id: string }) {
         onToggleField: toggleField,
         onSelect: setSelectedNodeId,
         onRemove: removeRelation,
-      },
+      } as DSNodeData,
     }));
-  }, [nodeIds, nodeEntityId, nodeAlias, projectedByNode, toggleField, removeRelation]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<DSNodeType>(buildNodes());
+    // Ghost node cho đối tượng "nhiều" của mỗi aggregate (1-N child / N-N junction + far).
+    const ghost: Node[] = [];
+    (cfg.aggregates ?? []).forEach((a, i) => {
+      const childId = `agg:${a.key}`;
+      ghost.push({
+        id: childId,
+        type: "aggNode" as const,
+        position: layoutRef.current[childId] ?? { x: i * 240, y: 360 },
+        data: {
+          aggKey: a.key,
+          entityName: entById(a.targetEntityId)?.name ?? a.targetEntityId,
+          badge: a.via ? "N-N" : "1-N",
+          fn: a.agg,
+          byField: a.targetField,
+          valueField: a.via ? undefined : a.valueField,
+        } as AggNodeData,
+      });
+      if (a.via) {
+        const farId = `aggfar:${a.key}`;
+        ghost.push({
+          id: farId,
+          type: "aggNode" as const,
+          position: layoutRef.current[farId] ?? { x: i * 240 + 40, y: 600 },
+          data: {
+            aggKey: a.key,
+            entityName: entById(a.via.farEntityId)?.name ?? a.via.farEntityId,
+            badge: "far",
+            valueField: a.valueField,
+          } as AggNodeData,
+        });
+      }
+    });
+    return [...joinNodes, ...ghost];
+  }, [
+    nodeIds,
+    nodeEntityId,
+    nodeAlias,
+    projectedByNode,
+    toggleField,
+    removeRelation,
+    cfg.aggregates,
+    entById,
+  ]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(buildNodes());
 
   /* Resync nodes khi cfg/entities đổi (giữ vị trí hiện tại). */
   const mounted = useRef(false);
@@ -343,7 +459,14 @@ function Canvas({ id }: { id: string }) {
   }, [buildNodes, setNodes]);
 
   const edges = useMemo((): Edge[] => {
-    return cfg.relations.map((rel) => {
+    const labelStyle = {
+      fontSize: 9,
+      fill: "hsl(var(--text))",
+      fontFamily: "ui-monospace, monospace",
+    };
+    const labelBgStyle = { fill: "hsl(var(--panel))", fillOpacity: 0.95 };
+
+    const relEdges: Edge[] = cfg.relations.map((rel) => {
       const to = rel.toField && rel.toField !== "id" ? rel.toField : "id";
       return {
         id: rel.id,
@@ -352,12 +475,8 @@ function Canvas({ id }: { id: string }) {
         target: rel.id,
         targetHandle: `tgt-${to}`,
         label: `${rel.fromField} = ${to}`,
-        labelStyle: {
-          fontSize: 9,
-          fill: "hsl(var(--text))",
-          fontFamily: "ui-monospace, monospace",
-        },
-        labelBgStyle: { fill: "hsl(var(--panel))", fillOpacity: 0.95 },
+        labelStyle,
+        labelBgStyle,
         labelBgPadding: [3, 2] as [number, number],
         labelBgBorderRadius: 3,
         markerEnd: {
@@ -374,7 +493,56 @@ function Canvas({ id }: { id: string }) {
         type: "smoothstep",
       };
     });
-  }, [cfg.relations]);
+
+    // Cạnh aggregate (nét đứt, màu accent-2): node nguồn → đối tượng "nhiều"; N-N thêm junction → far.
+    const aggEdges: Edge[] = [];
+    for (const a of cfg.aggregates ?? []) {
+      const src = a.sourceRelationId ?? "base";
+      aggEdges.push({
+        id: `agge:${a.key}`,
+        source: src,
+        sourceHandle: "agg-out",
+        target: `agg:${a.key}`,
+        targetHandle: "agg-in",
+        label: `${a.agg.toUpperCase()}${a.agg !== "count" && !a.via && a.valueField ? `(${a.valueField})` : ""} · ${a.targetField}`,
+        labelStyle,
+        labelBgStyle,
+        labelBgPadding: [3, 2] as [number, number],
+        labelBgBorderRadius: 3,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 10,
+          height: 10,
+          color: "hsl(var(--accent-2))",
+        },
+        style: { stroke: "hsl(var(--accent-2))", strokeWidth: 1, strokeDasharray: "4,3" },
+        type: "smoothstep",
+      });
+      if (a.via) {
+        aggEdges.push({
+          id: `aggef:${a.key}`,
+          source: `agg:${a.key}`,
+          sourceHandle: "agg-out",
+          target: `aggfar:${a.key}`,
+          targetHandle: "agg-in",
+          label: `${a.via.farField}${a.valueField ? ` · ${a.valueField}` : ""}`,
+          labelStyle,
+          labelBgStyle,
+          labelBgPadding: [3, 2] as [number, number],
+          labelBgBorderRadius: 3,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 10,
+            height: 10,
+            color: "hsl(var(--accent-2))",
+          },
+          style: { stroke: "hsl(var(--accent-2))", strokeWidth: 1, strokeDasharray: "4,3" },
+          type: "smoothstep",
+        });
+      }
+    }
+    return [...relEdges, ...aggEdges];
+  }, [cfg.relations, cfg.aggregates]);
 
   /* ── Persist vị trí (debounced) ───────────────────────────── */
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -471,6 +639,22 @@ function Canvas({ id }: { id: string }) {
     : [];
   const addParentFields = nodeFields(add.parentNodeId);
   const addTargetEnt = entById(add.targetEntityId);
+  const aggregates = cfg.aggregates ?? [];
+  const previewKeys =
+    cfg.fields.length > 0 || aggregates.length > 0
+      ? [...cfg.fields.map((f) => f.key), ...aggregates.map((a) => a.key)]
+      : ["id"];
+
+  /* ── Aggregate handlers ── */
+  const addAggregate = (agg: DataSourceAggregate) => update({ aggregates: [...aggregates, agg] });
+  const patchAggregate = (key: string, patch: Partial<DataSourceAggregate>) =>
+    update({ aggregates: aggregates.map((a) => (a.key === key ? { ...a, ...patch } : a)) });
+  const removeAggregate = (key: string) =>
+    update({ aggregates: aggregates.filter((a) => a.key !== key) });
+  // Aggregate có node nguồn = node đang chọn (default "base").
+  const nodeAggregates = selectedNodeId
+    ? aggregates.filter((a) => (a.sourceRelationId ?? "base") === selectedNodeId)
+    : [];
 
   /* ── Empty (chưa chọn gốc) ────────────────────────────────── */
   if (!cfg.baseEntityId) {
@@ -502,7 +686,22 @@ function Canvas({ id }: { id: string }) {
           edges={edges}
           nodeTypes={nodeTypes}
           onNodesChange={handleNodesChange}
-          onNodeClick={(_, n) => setSelectedNodeId(n.id)}
+          onNodeClick={(_, n) => {
+            // Ghost node aggregate → mở panel node NGUỒN của nó, tab Aggregate.
+            const aggKey = n.id.startsWith("agg:")
+              ? n.id.slice(4)
+              : n.id.startsWith("aggfar:")
+                ? n.id.slice(7)
+                : null;
+            if (aggKey) {
+              const a = (cfg.aggregates ?? []).find((x) => x.key === aggKey);
+              setSelectedNodeId(a?.sourceRelationId ?? "base");
+              setPanelTab("agg");
+            } else {
+              setSelectedNodeId(n.id);
+              setPanelTab("config");
+            }
+          }}
           nodesConnectable={false}
           fitView
           fitViewOptions={{ padding: 0.2 }}
@@ -569,7 +768,7 @@ function Canvas({ id }: { id: string }) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-bg-soft border-b border-border text-muted">
-                    {(cfg.fields.length > 0 ? cfg.fields.map((f) => f.key) : ["id"]).map((k) => (
+                    {previewKeys.map((k) => (
                       <th key={k} className="px-2 py-1 text-left whitespace-nowrap">
                         {k}
                       </th>
@@ -579,7 +778,7 @@ function Canvas({ id }: { id: string }) {
                 <tbody>
                   {preview.map((row) => (
                     <tr key={row.id} className="border-b border-border/50 last:border-0">
-                      {(cfg.fields.length > 0 ? cfg.fields.map((f) => f.key) : ["id"]).map((k) => (
+                      {previewKeys.map((k) => (
                         <td key={k} className="px-2 py-1 whitespace-nowrap">
                           {String(row[k] ?? "")}
                         </td>
@@ -590,7 +789,7 @@ function Canvas({ id }: { id: string }) {
                     <tr>
                       <td
                         className="px-2 py-2 text-muted italic"
-                        colSpan={Math.max(1, cfg.fields.length)}
+                        colSpan={Math.max(1, previewKeys.length)}
                       >
                         Không có dữ liệu.
                       </td>
@@ -619,109 +818,190 @@ function Canvas({ id }: { id: string }) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {/* Cấu hình join (chỉ với relation) */}
-            {selRel && (
-              <Card className="p-3 space-y-2">
-                <div className="text-xs font-semibold text-text">Quan hệ (join)</div>
-                <FormField label="Alias">
-                  <Input
-                    className="h-7"
-                    value={selRel.alias}
-                    onChange={(e) => patchRelation(selRel.id, { alias: e.target.value })}
-                  />
-                </FormField>
-                <div className="text-[11px] text-muted">
-                  Từ: <b>{nodeAlias(selRel.fromRelationId ?? "base")}</b>
-                </div>
-                <FormField label="Cột nguồn (node cha)">
-                  <SearchableSelect
-                    className="w-full"
-                    value={selRel.fromField}
-                    onChange={(v) => patchRelation(selRel.id, { fromField: v })}
-                    options={nodeFields(selRel.fromRelationId ?? "base").map((f) => ({
-                      value: f.name,
-                      label: `${f.label || f.name} (${f.name})`,
-                    }))}
-                    placeholder="Chọn cột nguồn…"
-                  />
-                </FormField>
-                <FormField label="Cột đích (khớp)">
-                  <SearchableSelect
-                    className="w-full"
-                    value={selRel.toField || "id"}
-                    onChange={(v) =>
-                      patchRelation(selRel.id, { toField: v === "id" ? undefined : v })
-                    }
-                    options={[
-                      { value: "id", label: "id (record id)" },
-                      ...nodeFields(selRel.id).map((f) => ({
-                        value: f.name,
-                        label: `${f.label || f.name} (${f.name})`,
-                      })),
-                    ]}
-                  />
-                </FormField>
-                <FormField label="Kiểu join">
-                  <SearchableSelect
-                    className="w-full"
-                    value={selRel.joinKind}
-                    onChange={(v) => patchRelation(selRel.id, { joinKind: v as "left" | "inner" })}
-                    options={[
-                      { value: "left", label: "left (giữ row gốc)" },
-                      { value: "inner", label: "inner (lọc thiếu)" },
-                    ]}
-                  />
-                </FormField>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-danger"
-                  icon={<I.X size={13} />}
-                  onClick={() => removeRelation(selRel.id)}
-                >
-                  Xoá quan hệ
-                </Button>
-              </Card>
-            )}
+          <Tabs
+            value={panelTab}
+            onChange={(v) => setPanelTab(v as "config" | "agg")}
+            options={[
+              { value: "config", label: "Cấu hình" },
+              {
+                value: "agg",
+                label: nodeAggregates.length ? `Aggregate (${nodeAggregates.length})` : "Aggregate",
+              },
+            ]}
+            className="px-3 shrink-0"
+          />
 
-            {/* Cột đã chọn (projection) của node này */}
-            <Card className="p-3 space-y-2">
-              <div className="text-xs font-semibold text-text">Cột đã chọn</div>
-              {selFields.length === 0 ? (
-                <p className="text-[11px] text-muted italic">
-                  Chưa chọn cột — tick checkbox trên node để thêm.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {selFields.map((f) => (
-                    <div key={f.key} className="flex items-center gap-1.5">
-                      <span
-                        className="text-[10px] text-muted w-20 shrink-0 truncate"
-                        title={f.sourceField}
-                      >
-                        {f.sourceField}
-                      </span>
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {panelTab === "config" ? (
+              <>
+                {/* Cấu hình join (chỉ với relation) */}
+                {selRel && (
+                  <Card className="p-3 space-y-2">
+                    <div className="text-xs font-semibold text-text">Quan hệ (join)</div>
+                    <FormField label="Alias">
                       <Input
-                        className="h-6 flex-1"
-                        value={f.key}
-                        onChange={(e) => patchField(f.key, { key: slugify(e.target.value) })}
-                        title="Khoá (key) phẳng"
+                        className="h-7"
+                        value={selRel.alias}
+                        onChange={(e) => patchRelation(selRel.id, { alias: e.target.value })}
                       />
-                      <label className="flex items-center gap-1 text-[10px] text-muted shrink-0">
-                        <input
-                          type="checkbox"
-                          className="accent-accent"
-                          checked={f.writable === true}
-                          onChange={(e) => patchField(f.key, { writable: e.target.checked })}
-                        />
-                        ghi
-                      </label>
+                    </FormField>
+                    <div className="text-[11px] text-muted">
+                      Từ: <b>{nodeAlias(selRel.fromRelationId ?? "base")}</b>
                     </div>
-                  ))}
-                </div>
-              )}
-            </Card>
+                    <FormField label="Cột nguồn (node cha)">
+                      <SearchableSelect
+                        className="w-full"
+                        value={selRel.fromField}
+                        onChange={(v) => patchRelation(selRel.id, { fromField: v })}
+                        options={nodeFields(selRel.fromRelationId ?? "base").map((f) => ({
+                          value: f.name,
+                          label: `${f.label || f.name} (${f.name})`,
+                        }))}
+                        placeholder="Chọn cột nguồn…"
+                      />
+                    </FormField>
+                    <FormField label="Cột đích (khớp)">
+                      <SearchableSelect
+                        className="w-full"
+                        value={selRel.toField || "id"}
+                        onChange={(v) =>
+                          patchRelation(selRel.id, { toField: v === "id" ? undefined : v })
+                        }
+                        options={[
+                          { value: "id", label: "id (record id)" },
+                          ...nodeFields(selRel.id).map((f) => ({
+                            value: f.name,
+                            label: `${f.label || f.name} (${f.name})`,
+                          })),
+                        ]}
+                      />
+                    </FormField>
+                    <FormField label="Kiểu join">
+                      <SearchableSelect
+                        className="w-full"
+                        value={selRel.joinKind}
+                        onChange={(v) =>
+                          patchRelation(selRel.id, { joinKind: v as "left" | "inner" })
+                        }
+                        options={[
+                          { value: "left", label: "left (giữ row gốc)" },
+                          { value: "inner", label: "inner (lọc thiếu)" },
+                        ]}
+                      />
+                    </FormField>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-danger"
+                      icon={<I.X size={13} />}
+                      onClick={() => removeRelation(selRel.id)}
+                    >
+                      Xoá quan hệ
+                    </Button>
+                  </Card>
+                )}
+
+                {/* Cột đã chọn (projection) của node này */}
+                <Card className="p-3 space-y-2">
+                  <div className="text-xs font-semibold text-text">Cột đã chọn</div>
+                  {selFields.length === 0 ? (
+                    <p className="text-[11px] text-muted italic">
+                      Chưa chọn cột — tick checkbox trên node để thêm.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {selFields.map((f) => (
+                        <div key={f.key} className="flex items-center gap-1.5">
+                          <span
+                            className="text-[10px] text-muted w-20 shrink-0 truncate"
+                            title={f.sourceField}
+                          >
+                            {f.sourceField}
+                          </span>
+                          <Input
+                            className="h-6 flex-1"
+                            value={f.key}
+                            onChange={(e) => patchField(f.key, { key: slugify(e.target.value) })}
+                            title="Khoá (key) phẳng"
+                          />
+                          <label className="flex items-center gap-1 text-[10px] text-muted shrink-0">
+                            <input
+                              type="checkbox"
+                              className="accent-accent"
+                              checked={f.writable === true}
+                              onChange={(e) => patchField(f.key, { writable: e.target.checked })}
+                            />
+                            ghi
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Tab Aggregate — scope theo node nguồn đang chọn */}
+                {nodeAggregates.length === 0 ? (
+                  <p className="text-xs text-muted italic">
+                    Node này chưa có cột gom. Thêm bên dưới (vd đếm số dòng con, tổng tiền…).
+                  </p>
+                ) : (
+                  nodeAggregates.map((a) => (
+                    <Card key={a.key} className="p-2.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-accent text-xs flex-1 truncate">
+                          {a.key}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAggregate(a.key)}
+                          className="text-muted hover:text-danger"
+                          title="Xoá aggregate"
+                        >
+                          <I.X size={13} />
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-muted">
+                        {a.agg.toUpperCase()}
+                        {a.agg !== "count" && a.valueField ? `(${a.valueField})` : "(*)"} của{" "}
+                        {entById(a.targetEntityId)?.name ?? a.targetEntityId}.{a.targetField}
+                        {a.via
+                          ? ` → ${entById(a.via.farEntityId)?.name ?? a.via.farEntityId} (N-N)`
+                          : " (1-N)"}
+                      </div>
+                      <Input
+                        className="h-7 w-full"
+                        value={a.label}
+                        onChange={(e) => patchAggregate(a.key, { label: e.target.value })}
+                        title="Nhãn hiển thị"
+                      />
+                    </Card>
+                  ))
+                )}
+
+                <Card className="p-2.5">
+                  <div className="text-xs font-semibold text-text mb-1">
+                    Thêm aggregate cho {nodeAlias(selectedNodeId)}
+                  </div>
+                  <AddAggregate
+                    key={selectedNodeId}
+                    fixedFromRid={selectedNodeId}
+                    nodes={nodeIds}
+                    nodeAlias={nodeAlias}
+                    nodeFields={nodeFields}
+                    entities={entities}
+                    entById={entById}
+                    existingKeys={aggregates.map((a) => a.key)}
+                    onAdd={addAggregate}
+                  />
+                </Card>
+                <p className="text-[11px] text-muted">
+                  1-N: gom record con trỏ ngược. N-N: qua bảng nối + entity far. Cột aggregate chỉ
+                  đọc, hiện trong bảng Xem trước.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

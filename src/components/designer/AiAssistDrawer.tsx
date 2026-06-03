@@ -40,6 +40,7 @@ const TYPE_LABEL: Record<DesignObjectType, string> = {
   page: "Page",
   workflow: "Workflow",
   agent: "Agent",
+  datasource: "Nguồn dữ liệu",
 };
 
 export function AiAssistDrawer<T extends DesignObjectType>({

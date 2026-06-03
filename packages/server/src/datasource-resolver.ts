@@ -170,9 +170,15 @@ async function stitchAndProject(
     // Map khoá → { id record thật, data đã decrypt+strip }. First-match wins.
     const entryMap = new Map<string, { id: string; data: Record<string, unknown> }>();
     if (distinct.length > 0) {
-      const matchExpr = toField
-        ? sql`(${entityRecords.data} ->> ${toField})`
-        : sql`${entityRecords.id}`;
+      // Khớp theo field JSON non-PK, hoặc theo id (cast ::text). Tách 2 lời gọi
+      // inArray thay vì ternary chung — ternary làm TS suy kiểu lẫn PgColumn
+      // (xung đột type-identity drizzle qua ranh giới package).
+      // Cast id sang text: vừa khớp lookup uuid (text canonical == param), vừa
+      // KHÔNG ném lỗi "invalid input syntax for type uuid" khi join cột↔cột
+      // nhầm về id mà giá trị là mã nghiệp vụ (vd "DH-2026-001") → trả 0 match.
+      const keyMatch = toField
+        ? inArray(sql`(${entityRecords.data} ->> ${toField})`, distinct)
+        : inArray(sql`(${entityRecords.id})::text`, distinct);
       const recs = await db
         .select()
         .from(entityRecords)
@@ -180,7 +186,7 @@ async function stitchAndProject(
           and(
             eq(entityRecords.companyId, companyId),
             eq(entityRecords.entityId, rel.targetEntityId),
-            inArray(matchExpr, distinct),
+            keyMatch,
             sql`${entityRecords.deletedAt} IS NULL`,
           ),
         );
@@ -213,6 +219,143 @@ async function stitchAndProject(
     if (rel.joinKind === "inner") keep = keep.filter((i) => nodes[i]![rel.id] != null);
   }
 
+  // ── Aggregate 1-N / N-N — batch (không N+1), tính cho MỌI base row ──
+  const aggByRow: Record<string, unknown>[] = baseRows.map(() => ({}));
+  for (const agg of cfg.aggregates ?? []) {
+    const sourceRid = agg.sourceRelationId ?? "base";
+    const matchField = agg.matchField ?? "id";
+    const isCount = agg.agg === "count";
+
+    // Giá trị khớp (FK ngược) của từng base row.
+    const matchByRow: Array<string | null> = baseRows.map((br, i) => {
+      if (matchField === "id") {
+        const id = sourceRid === "base" ? br.id : ids[i]![sourceRid];
+        return id != null ? String(id) : null;
+      }
+      const nd = sourceRid === "base" ? nodes[i]!.base : nodes[i]![sourceRid];
+      const v = nd ? nd[matchField] : null;
+      return v == null || v === "" ? null : String(v);
+    });
+    const distinct = [...new Set(matchByRow.filter((x): x is string => x != null))];
+    if (distinct.length === 0) {
+      baseRows.forEach((_, i) => {
+        aggByRow[i]![agg.key] = isCount ? 0 : null;
+      });
+      continue;
+    }
+
+    // Bảng "nhiều": entity con (1-N) hoặc bảng nối (N-N).
+    let targetFields = fieldCache.get(agg.targetEntityId);
+    if (!targetFields) {
+      targetFields = await loadEntityFields(db, companyId, agg.targetEntityId);
+      fieldCache.set(agg.targetEntityId, targetFields);
+    }
+    const targetRecs = (await db
+      .select()
+      .from(entityRecords)
+      .where(
+        and(
+          eq(entityRecords.companyId, companyId),
+          eq(entityRecords.entityId, agg.targetEntityId),
+          inArray(sql`(${entityRecords.data} ->> ${agg.targetField})`, distinct),
+          sql`${entityRecords.deletedAt} IS NULL`,
+        ),
+      )) as Array<{ id: string; data: Record<string, unknown> }>;
+
+    // N-N: nạp record far (entity thật) để đọc valueField — trừ count.
+    let farMap: Map<string, Record<string, unknown>> | null = null;
+    const via = agg.via;
+    if (via && !isCount && agg.valueField) {
+      const farKey = via.farKeyField && via.farKeyField !== "id" ? via.farKeyField : null;
+      const farIds = [
+        ...new Set(
+          targetRecs
+            .map((r) => r.data[via.farField])
+            .filter((v) => v != null && v !== "")
+            .map(String),
+        ),
+      ];
+      let farFields = fieldCache.get(via.farEntityId);
+      if (!farFields) {
+        farFields = await loadEntityFields(db, companyId, via.farEntityId);
+        fieldCache.set(via.farEntityId, farFields);
+      }
+      farMap = new Map();
+      if (farIds.length > 0) {
+        const farRecs = (await db
+          .select()
+          .from(entityRecords)
+          .where(
+            and(
+              eq(entityRecords.companyId, companyId),
+              eq(entityRecords.entityId, via.farEntityId),
+              farKey
+                ? inArray(sql`(${entityRecords.data} ->> ${farKey})`, farIds)
+                : inArray(sql`(${entityRecords.id})::text`, farIds),
+              sql`${entityRecords.deletedAt} IS NULL`,
+            ),
+          )) as Array<{ id: string; data: Record<string, unknown> }>;
+        for (const fr of farRecs) {
+          const k = farKey ? String(fr.data[farKey] ?? "") : String(fr.id);
+          if (k && !farMap.has(k)) {
+            farMap.set(
+              k,
+              stripUnreadableFields(farFields, decryptDataOut(farFields, fr.data), role),
+            );
+          }
+        }
+      }
+    }
+
+    // Gom theo giá trị khớp.
+    const acc = new Map<string, { count: number; values: number[] }>();
+    for (const rec of targetRecs) {
+      const mv = rec.data[agg.targetField];
+      if (mv == null) continue;
+      const key = String(mv);
+      let a = acc.get(key);
+      if (!a) {
+        a = { count: 0, values: [] };
+        acc.set(key, a);
+      }
+      a.count++;
+      if (!isCount && agg.valueField) {
+        let host: Record<string, unknown> | undefined;
+        if (via && farMap) {
+          const farId = rec.data[via.farField];
+          host = farId != null ? farMap.get(String(farId)) : undefined;
+        } else {
+          host = stripUnreadableFields(targetFields, decryptDataOut(targetFields, rec.data), role);
+        }
+        const n = Number(host ? host[agg.valueField] : undefined);
+        if (Number.isFinite(n)) a.values.push(n);
+      }
+    }
+
+    const reduceAgg = (a: { count: number; values: number[] } | undefined): number | null => {
+      if (!a) return isCount ? 0 : null;
+      const sum = a.values.reduce((s, x) => s + x, 0);
+      switch (agg.agg) {
+        case "count":
+          return a.count;
+        case "sum":
+          return sum;
+        case "avg":
+          return a.values.length ? sum / a.values.length : null;
+        case "min":
+          return a.values.length ? Math.min(...a.values) : null;
+        case "max":
+          return a.values.length ? Math.max(...a.values) : null;
+        default:
+          return null;
+      }
+    };
+    baseRows.forEach((_, i) => {
+      const mv = matchByRow[i];
+      aggByRow[i]![agg.key] = mv != null ? reduceAgg(acc.get(mv)) : isCount ? 0 : null;
+    });
+  }
+
   const projection = cfg.fields.length > 0 ? cfg.fields : autoBaseFields(baseFields);
   return keep.map((i) => {
     const row: DataSourceRow = { id: baseRows[i]!.id, __ids: ids[i] };
@@ -220,6 +363,7 @@ async function stitchAndProject(
       const nd = f.sourceRelationId === "base" ? nodes[i]!.base : nodes[i]![f.sourceRelationId];
       row[f.key] = nd ? (nd[f.sourceField] ?? null) : null;
     }
+    for (const [k, v] of Object.entries(aggByRow[i]!)) row[k] = v;
     return row;
   });
 }
@@ -286,15 +430,29 @@ export async function resolveList(
   return { rows, total };
 }
 
-/** Field phẳng đã chiếu (cho widget render). cfg.fields nếu có, else auto base. */
+/** Field phẳng đã chiếu (cho widget render). cfg.fields nếu có, else auto base,
+ *  + cột aggregate (read-only, type number). KHÔNG vào write path (splitWriteData
+ *  chỉ đọc cfg.fields). */
 export async function resolveFields(
   db: DB,
   companyId: string,
   cfg: DataSourceConfig,
 ): Promise<DataSourceField[]> {
-  if (cfg.fields.length > 0) return cfg.fields;
-  if (!cfg.baseEntityId) return [];
-  return autoBaseFields(await loadEntityFields(db, companyId, cfg.baseEntityId));
+  const base =
+    cfg.fields.length > 0
+      ? cfg.fields
+      : cfg.baseEntityId
+        ? autoBaseFields(await loadEntityFields(db, companyId, cfg.baseEntityId))
+        : [];
+  const aggFields: DataSourceField[] = (cfg.aggregates ?? []).map((a) => ({
+    key: a.key,
+    sourceRelationId: "base",
+    sourceField: a.key,
+    label: a.label,
+    type: "number",
+    writable: false,
+  }));
+  return [...base, ...aggFields];
 }
 
 export async function resolveGet(

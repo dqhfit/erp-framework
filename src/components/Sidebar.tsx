@@ -995,6 +995,35 @@ export function Sidebar() {
             }))}
           />
         )}
+        {!isViewer && (!search.trim() || filterBySearch(userDataSources).length > 0) && (
+          <SidebarSection
+            title="Nguồn dữ liệu"
+            collapsed={collapsed}
+            pathname={pathname}
+            open={effectiveSectionsOpen.datasources}
+            onToggle={toggle("datasources")}
+            onAdd={can("create", "datasource") ? handleAddDataSource : undefined}
+            onDelete={can("delete", "datasource") ? handleDeleteDataSource : undefined}
+            onRename={can("edit", "datasource") ? handleRenameDataSource : undefined}
+            sectionKey="datasources"
+            onNavigate={collapseOpsSettings}
+            items={filterBySearch(userDataSources).map((d) => ({
+              id: d.id,
+              name: d.name,
+              iconName: d.icon,
+              to: `/datasources/${d.id}`,
+              userOwned: true,
+              isFav: favs.isFav(d.id),
+              onFavorite: () =>
+                favs.toggle({
+                  id: d.id,
+                  to: `/datasources/${d.id}`,
+                  label: d.name,
+                  iconName: d.icon,
+                }),
+            }))}
+          />
+        )}
         {(() => {
           const pagesBase = isViewer
             ? userPages.filter(
@@ -1117,35 +1146,6 @@ export function Sidebar() {
               isFav: favs.isFav(a.id),
               onFavorite: () =>
                 favs.toggle({ id: a.id, to: `/agents/${a.id}`, label: a.name, iconName: "Bot" }),
-            }))}
-          />
-        )}
-        {!isViewer && (!search.trim() || filterBySearch(userDataSources).length > 0) && (
-          <SidebarSection
-            title="Nguồn dữ liệu"
-            collapsed={collapsed}
-            pathname={pathname}
-            open={effectiveSectionsOpen.datasources}
-            onToggle={toggle("datasources")}
-            onAdd={can("create", "datasource") ? handleAddDataSource : undefined}
-            onDelete={can("delete", "datasource") ? handleDeleteDataSource : undefined}
-            onRename={can("edit", "datasource") ? handleRenameDataSource : undefined}
-            sectionKey="datasources"
-            onNavigate={collapseOpsSettings}
-            items={filterBySearch(userDataSources).map((d) => ({
-              id: d.id,
-              name: d.name,
-              iconName: d.icon,
-              to: `/datasources/${d.id}`,
-              userOwned: true,
-              isFav: favs.isFav(d.id),
-              onFavorite: () =>
-                favs.toggle({
-                  id: d.id,
-                  to: `/datasources/${d.id}`,
-                  label: d.name,
-                  iconName: d.icon,
-                }),
             }))}
           />
         )}

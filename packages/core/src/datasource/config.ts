@@ -55,11 +55,71 @@ export interface DataSourceField {
   writable?: boolean;
 }
 
+/** Hàm gom cho aggregate quan hệ 1-N / N-N. */
+export type AggFn = "count" | "sum" | "avg" | "min" | "max";
+
+/** Cột aggregate: gom giá trị từ NHIỀU record con (1-N reverse FK) hoặc qua
+ *  bảng nối (N-N). Read-only (không ghi ngược). Tính ở tầng app (batch, không
+ *  N+1). Khác với relation (many-to-one, 1 record): aggregate là many-to-MANY
+ *  rút về 1 số.
+ *
+ *  1-N (reverse FK): với mỗi node nguồn, tìm record `targetEntity` có
+ *  `targetField == matchValue` (matchValue lấy từ node nguồn theo `matchField`,
+ *  mặc định record id) → gom `valueField` bằng `agg`.
+ *
+ *  N-N (qua bảng nối): `targetEntity` = bảng nối; `targetField` khớp node nguồn;
+ *  `via.farField` trên bảng nối trỏ tới record thật ở `via.farEntityId` (khớp
+ *  `via.farKeyField`, mặc định id) — `valueField` đọc trên record far đó.
+ *  count = đếm số dòng bảng nối (số liên kết). */
+export interface DataSourceAggregate {
+  /** Khoá phẳng widget thấy. */
+  key: string;
+  label: string;
+  agg: AggFn;
+  /** Node cung cấp giá trị khớp: "base" hoặc id relation. Mặc định "base". */
+  sourceRelationId?: string | "base";
+  /** Field trên node nguồn giữ giá trị khớp. Mặc định "id" (record id). */
+  matchField?: string;
+  /** Entity "nhiều": bảng con (1-N) hoặc bảng nối (N-N). */
+  targetEntityId: string;
+  /** Field FK trên target khớp với giá trị `matchField` của node nguồn. */
+  targetField: string;
+  /** Field giá trị để gom (sum/avg/min/max). count KHÔNG cần. */
+  valueField?: string;
+  /** N-N qua bảng nối — bỏ trống = 1-N trực tiếp. */
+  via?: {
+    /** Entity thật chứa `valueField` (đầu xa của bảng nối). */
+    farEntityId: string;
+    /** Field trên bảng nối trỏ tới record far. */
+    farField: string;
+    /** Field id trên far để khớp `farField`. Mặc định "id". */
+    farKeyField?: string;
+  };
+}
+
+/** Cột TÍNH TOÁN (read-only): biểu thức formula trên các cột phẳng khác.
+ *  Eval ở tầng app SAU stitch + aggregate, theo thứ tự mảng (cột sau tham
+ *  chiếu được cột trước). Cú pháp = formula engine (`{key}` ref cột phẳng,
+ *  + hàm IF/CONCAT/ROUND/SUM…). Fail-safe: lỗi eval → null, KHÔNG vỡ row. */
+export interface DataSourceComputed {
+  /** Khoá phẳng widget thấy. */
+  key: string;
+  label: string;
+  /** Biểu thức: `{key}` tham chiếu cột phẳng (projection/aggregate/computed trước). */
+  expr: string;
+  /** Kiểu hiển thị gợi ý (number/text/date…). Mặc định "text". */
+  type?: string;
+}
+
 export interface DataSourceConfig {
   baseEntityId: string;
   relations: DataSourceRelation[];
   /** Projection. Rỗng = tự chiếu field của base. */
   fields: DataSourceField[];
+  /** Cột aggregate quan hệ 1-N / N-N (read-only). */
+  aggregates?: DataSourceAggregate[];
+  /** Cột tính toán (formula trên cột phẳng, read-only). */
+  computed?: DataSourceComputed[];
   /** Lọc server-side, CHỈ trên field base (shape = QueryParams.filters). */
   baseFilters?: Record<string, { op: FilterOp; value: unknown }>;
   /** sort.key tham chiếu fields[].key. */
