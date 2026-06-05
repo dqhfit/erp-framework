@@ -35,6 +35,10 @@ function LoginScreen() {
     if (mode === "login") await login(email, password);
     else await register(email, name, password);
     setBusy(false);
+    // Đăng nhập thất bại → xoá ô mật khẩu. Tránh user bấm "Đăng nhập"
+    // liên tiếp với cùng mật khẩu sai → chạm rate-limit khoá 15 phút.
+    // (login/register nuốt lỗi vào store; status vẫn "out" nếu thất bại.)
+    if (mode === "login" && useAuth.getState().status !== "in") setPassword("");
   };
 
   // Khi register thất bại do first-admin-only (FORBIDDEN) → tự đổi về

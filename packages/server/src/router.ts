@@ -143,10 +143,20 @@ export const appRouter = router({
       }),
 
     login: publicProcedure
-      .use(rateLimit("auth.login", 5, 15 * 60 * 1000))
+      .use(rateLimit("auth.login", 8, 15 * 60 * 1000))
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const [u] = await ctx.db.select().from(users).where(eq(users.email, input.email));
+        // Tài khoản đã được admin tạo nhưng CHƯA đặt mật khẩu (passwordHash
+        // rỗng = pending invite). Báo rõ để user mở link mời thay vì thử
+        // mật khẩu liên tục → tránh bị khoá rate-limit.
+        if (u && u.passwordHash === "") {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message:
+              "Tài khoản chưa kích hoạt. Vui lòng mở link mời trong email để đặt mật khẩu, rồi đăng nhập.",
+          });
+        }
         if (!u || !(await verifyPassword(input.password, u.passwordHash))) {
           // Log thất bại nếu user tồn tại (có company để gắn). Email lạ →
           // skip (không spam log với email tuỳ ý nhập sai).
