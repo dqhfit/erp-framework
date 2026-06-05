@@ -350,6 +350,9 @@ export async function executeWorkflow(
           };
         },
         runHttp: defaultRunHttp,
+        // Ngân sách giữa chừng: chặn trước mỗi node agent/llm/agent_chain để
+        // workflow phẳng nhiều node LLM không vượt xa hạn mức trong 1 run.
+        assertBudget: () => assertWithinBudget(db, wf.companyId),
         // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
         searchKnowledge: async (query, kopt) => {
           const sk =

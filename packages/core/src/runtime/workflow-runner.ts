@@ -136,10 +136,20 @@ export interface RunWorkflowOptions {
     query: string,
     opts: { limit?: number; sourceKind?: string },
   ) => Promise<Array<{ content: string; sourceTitle: string; score: number }>>;
+  /**
+   * Kiểm tra ngân sách TRƯỚC mỗi node tốn LLM (agent/llm/agent_chain). Throw
+   * → dừng hẳn workflow (không vào nhánh "error"). Server cài bằng
+   * assertWithinBudget; thiếu callback → bỏ qua (không chặn giữa chừng).
+   */
+  assertBudget?: () => Promise<void>;
 }
 
 /** Cap số phần tử lặp của node foreach — chống mảng khổng lồ treo runner. */
 const MAX_FOREACH = 1000;
+
+/** Số sub-workflow foreach chạy SONG SONG (bounded) — cân bằng tốc độ vs tải
+   DB/LLM, tránh chạm WORKFLOW_TIMEOUT khi mảng lớn. Kết quả giữ đúng thứ tự. */
+const FOREACH_CONCURRENCY = 5;
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -285,6 +295,16 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
     visited.add(id);
     const node = byId.get(id);
     if (!node) continue;
+
+    // Ngân sách giữa chừng: trước node tốn LLM, kiểm tra hạn mức. Throw RA
+    // NGOÀI (không bọc try) → dừng hẳn workflow thay vì thành node-error có
+    // thể bị nhánh "error" nuốt. Sub-workflow tự check ở đầu executeWorkflow.
+    if (
+      opt.assertBudget &&
+      (node.type === "agent" || node.type === "llm" || node.type === "agent_chain")
+    ) {
+      await opt.assertBudget();
+    }
 
     const cfg = node.config ?? {};
     // Input của node: value tĩnh cổng input + ghi đè từ data-edge.
@@ -664,18 +684,29 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
                 break;
               }
               const itemVar = typeof cfg.itemVar === "string" && cfg.itemVar ? cfg.itemVar : "item";
-              const results: Array<Record<string, unknown>> = [];
+              // Chạy song song có giới hạn (worker pool); kết quả ghi theo
+              // index nên thứ tự foreach_<id> luôn khớp mảng đầu vào.
+              const runSub = opt.runSubWorkflow;
+              const items = arr;
+              const results: Array<Record<string, unknown>> = new Array(items.length);
               let failed = 0;
-              for (let i = 0; i < arr.length; i++) {
-                const sub = await opt.runSubWorkflow(subId, {
-                  ...vars,
-                  ...inputs,
-                  [itemVar]: arr[i],
-                  index: i,
-                });
-                if (sub.status === "error") failed++;
-                results.push(sub.vars);
-              }
+              let nextIdx = 0;
+              const worker = async () => {
+                while (true) {
+                  const i = nextIdx++;
+                  if (i >= items.length) break;
+                  const sub = await runSub(subId, {
+                    ...vars,
+                    ...inputs,
+                    [itemVar]: items[i],
+                    index: i,
+                  });
+                  if (sub.status === "error") failed++;
+                  results[i] = sub.vars;
+                }
+              };
+              const poolSize = Math.min(FOREACH_CONCURRENCY, items.length);
+              await Promise.all(Array.from({ length: poolSize }, () => worker()));
               vars[`foreach_${node.id}`] = results;
               rawOutput = results;
               step = mkStep(

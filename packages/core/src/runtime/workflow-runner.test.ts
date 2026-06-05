@@ -647,3 +647,77 @@ describe("workflow-runner node tích hợp (http / approval)", () => {
     expect(res.status).toBe("paused");
   });
 });
+
+describe("workflow-runner budget + foreach concurrency", () => {
+  it("foreach: kết quả giữ đúng index dù sub-workflow xong lệch thứ tự", async () => {
+    const nodes: WfNode[] = [
+      { id: "t", type: "trigger", label: "T" },
+      {
+        id: "f",
+        type: "foreach",
+        label: "Lặp",
+        config: { workflowId: "c", itemsExpr: "{list}", itemVar: "it" },
+      },
+    ];
+    const res = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes,
+      edges: [{ source: "t", target: "f" }],
+      callTool: async () => ({}),
+      // index nhỏ → chờ lâu hơn → hoàn tất ĐẢO thứ tự, kiểm tra ghi theo index.
+      runSubWorkflow: async (_id, vars) => {
+        const i = vars.index as number;
+        await new Promise((r) => setTimeout(r, (4 - i) * 5));
+        return { status: "completed", vars: { v: vars.it } };
+      },
+      initialVars: { list: [10, 20, 30, 40] },
+    });
+    const collected = res.vars.foreach_f as Array<Record<string, unknown>>;
+    expect(collected.map((c) => c.v)).toEqual([10, 20, 30, 40]);
+  });
+
+  it("assertBudget throw trước node agent → dừng hẳn (reject), KHÔNG gọi LLM", async () => {
+    let agentCalled = 0;
+    await expect(
+      runWorkflow({
+        workflowId: "w",
+        workflowName: "t",
+        nodes: [
+          { id: "t", type: "trigger", label: "T" },
+          { id: "a", type: "agent", label: "A", config: {} },
+        ],
+        edges: [{ source: "t", target: "a" }],
+        callTool: async () => ({}),
+        callAgent: async () => {
+          agentCalled++;
+          return { text: "x", model: "m", usage: { input_tokens: 0, output_tokens: 0 } };
+        },
+        assertBudget: async () => {
+          throw new Error("Vượt ngân sách tháng");
+        },
+      }),
+    ).rejects.toThrow("Vượt ngân sách");
+    expect(agentCalled).toBe(0);
+  });
+
+  it("assertBudget KHÔNG chặn node thường (vd action)", async () => {
+    let budgetChecks = 0;
+    const res = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes: [
+        { id: "t", type: "trigger", label: "T" },
+        { id: "a", type: "action", label: "A", config: { tool: "noop" } },
+      ],
+      edges: [{ source: "t", target: "a" }],
+      callTool: async () => ({}),
+      assertBudget: async () => {
+        budgetChecks++;
+      },
+    });
+    expect(res.status).toBe("completed");
+    // Chỉ kiểm ngân sách cho node tốn LLM → action không kích hoạt.
+    expect(budgetChecks).toBe(0);
+  });
+});
