@@ -137,6 +137,10 @@ export function createObjectsClient(baseUrl: string) {
         trpc.workflows.trigger.mutate({ workflowId, context }),
       // Lịch sử các lần chạy gần đây (gồm steps).
       runs: (workflowId: string) => trpc.workflows.runs.query(workflowId),
+      // Tiếp tục run đang chờ duyệt (node approval): đặt quyết định rồi chạy
+      // tiếp từ checkpoint (node đã chạy không lặp lại).
+      resumeApproval: (runId: string, nodeId: string, decision: "approved" | "rejected") =>
+        trpc.workflows.resumeApproval.mutate({ runId, nodeId, decision }),
     },
     agents: {
       list: () => trpc.agents.list.query(),

@@ -50,10 +50,20 @@ const STEP_ICON: Record<RunStep["status"], string> = {
   paused: "⏸",
 };
 
-/* Một bước — bấm để mở/đóng payload output (debug). */
-function StepRow({ step }: { step: RunStep }) {
+/* Một bước — bấm để mở/đóng payload output (debug). Node approval đang
+   "paused" hiện nút Duyệt / Từ chối (gọi resumeApproval). */
+function StepRow({
+  step,
+  onResolve,
+  busy,
+}: {
+  step: RunStep;
+  onResolve?: (decision: "approved" | "rejected") => void;
+  busy?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const hasOutput = step.output !== undefined && step.output !== null;
+  const canApprove = step.status === "paused" && step.kind === "approval" && !!onResolve;
   return (
     <div className="px-3 py-2 text-sm">
       <button
@@ -81,6 +91,27 @@ function StepRow({ step }: { step: RunStep }) {
           {JSON.stringify(step.output, null, 2)}
         </pre>
       )}
+      {canApprove && (
+        <div className="mt-2 ml-5 flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={() => onResolve?.("approved")}
+          >
+            ✓ Duyệt
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={busy}
+            icon={<I.X size={12} />}
+            onClick={() => onResolve?.("rejected")}
+          >
+            Từ chối
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -91,6 +122,9 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [result, setResult] = useState<string>("");
   const [history, setHistory] = useState<RunRow[]>([]);
+  // Run đang xem (để duyệt approval) + cờ đang xử lý duyệt.
+  const [viewRunId, setViewRunId] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   const [schedules, setSchedules] = useState<ServerSchedule[]>([]);
   const [cronExpr, setCronExpr] = useState("0 9 * * *");
@@ -126,6 +160,7 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
     setResult("");
     try {
       const r = await objects.workflows.trigger(workflowId);
+      setViewRunId(r.runId);
       const runs = await objects.workflows.runs(workflowId);
       const run = (runs as RunRow[]).find((x) => x.id === r.runId);
       if (run) setSteps((run.steps ?? []) as RunStep[]);
@@ -147,7 +182,32 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
   /* Mở một lần chạy cũ để soi từng bước. */
   const openRun = (run: RunRow) => {
     setSteps((run.steps ?? []) as RunStep[]);
+    setViewRunId(run.id);
     setResult(`Xem lại run — ${run.status}`);
+  };
+
+  /* Duyệt / từ chối một node approval đang chờ → resume từ checkpoint. */
+  const resolveApproval = async (nodeId: string, decision: "approved" | "rejected") => {
+    if (!viewRunId) return;
+    setResolving(true);
+    try {
+      const r = await objects.workflows.resumeApproval(viewRunId, nodeId, decision);
+      const runs = await objects.workflows.runs(workflowId);
+      const run = (runs as RunRow[]).find((x) => x.id === r.runId);
+      if (run) setSteps((run.steps ?? []) as RunStep[]);
+      setHistory(runs as RunRow[]);
+      setResult(
+        r.status === "completed"
+          ? "✓ Đã duyệt — workflow chạy xong."
+          : r.status === "paused"
+            ? "⏸ Đã ghi nhận — còn bước chờ duyệt khác."
+            : "✗ Workflow lỗi sau khi duyệt.",
+      );
+    } catch (e) {
+      setResult(`✗ Lỗi: ${(e as Error).message}`);
+    } finally {
+      setResolving(false);
+    }
   };
 
   const handleAddSchedule = async () => {
@@ -225,8 +285,13 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
           {steps.length > 0 && (
             <div className="mt-3 border border-border rounded-md divide-y divide-border max-h-[300px] overflow-auto">
               {steps.map((s, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
-                <StepRow key={i} step={s} />
+                <StepRow
+                  // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
+                  key={i}
+                  step={s}
+                  onResolve={(d) => resolveApproval(s.nodeId, d)}
+                  busy={resolving}
+                />
               ))}
             </div>
           )}
