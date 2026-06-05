@@ -69,28 +69,36 @@ const DEFAULT_TOOLS = [
   "calendar.book",
 ];
 
+/** System prompt mặc định cho agent mới — KHÔNG kế thừa agent trước. */
+const defaultSystemPrompt = (name: string) =>
+  `Bạn là trợ lý ${name.toLowerCase()} cho công ty.\nQuy tắc:\n- Trả lời tiếng Việt, ngắn gọn, thân thiện.\n- Trước khi tạo / sửa dữ liệu, hãy xác nhận lại với người dùng.\n- Dùng các tool MCP có sẵn để truy vấn dữ liệu thật.`;
+
+/** State mặc định dựng từ agent row — dùng cho agent mới + làm base phòng
+    thủ khi merge config đã lưu (stored có thể rỗng `{}` ở agent vừa tạo
+    thủ công, hoặc thiếu trường ở agent template-instantiated). */
+const makeDefaultState = (name: string, model: string, toolCount: number): AgentState => ({
+  name,
+  // Fallback nếu agent backend không có model — agent mới tạo, hydrate
+  // race v.v. — tránh propagate undefined xuống useDynamicModels.
+  model: model || "claude-sonnet-4-6",
+  systemPrompt: defaultSystemPrompt(name),
+  temperature: 0.7,
+  tools: DEFAULT_TOOLS.slice(0, toolCount),
+  memory: emptyMemory(),
+  fallbackModels: [],
+  isPrivate: false,
+});
+
 type TabKey = "config" | "memory" | "heartbeat" | "members";
 
-function AgentRoute() {
-  const { id } = Route.useParams();
+function AgentEditor({ id }: { id: string }) {
   const userAgents = useUserObjects((s) => s.agents);
   const fallbackAgent: MockAgent = { id, name: "Agent", model: "claude-sonnet-4-6", tools: 0 };
   const agent = userAgents.find((a) => a.id === id) ?? fallbackAgent;
   const setAgentOpen = useUI((s) => s.setAgentOpen);
   const { tools: mcpTools } = useMcpClient();
 
-  const initialState: AgentState = {
-    name: agent.name,
-    // Fallback nếu agent backend không có model — agent mới tạo, hydrate
-    // race v.v. — tránh propagate undefined xuống useDynamicModels.
-    model: agent.model || "claude-sonnet-4-6",
-    systemPrompt: `Bạn là trợ lý ${agent.name.toLowerCase()} cho công ty.\nQuy tắc:\n- Trả lời tiếng Việt, ngắn gọn, thân thiện.\n- Trước khi tạo / sửa dữ liệu, hãy xác nhận lại với người dùng.\n- Dùng các tool MCP có sẵn để truy vấn dữ liệu thật.`,
-    temperature: 0.7,
-    tools: DEFAULT_TOOLS.slice(0, agent.tools),
-    memory: emptyMemory(),
-    fallbackModels: [],
-    isPrivate: false,
-  };
+  const initialState = makeDefaultState(agent.name, agent.model, agent.tools);
   const [state, setState] = useState<AgentState>(initialState);
   const [lastSaved, setLastSaved] = useState<AgentState>(initialState);
   useDocumentTitle(state.name);
@@ -104,30 +112,33 @@ function AgentRoute() {
   const [tab, setTab] = useState<TabKey>("config");
   const [activeMem, setActiveMem] = useState<MemoryFile>("IDENTITY");
 
-  // Load config đã lưu khi đổi agent
+  // Nạp config đã lưu khi đổi agent. LUÔN dựng từ default base rồi mới
+  // override bằng stored — kể cả khi KHÔNG có stored (agent mới tạo thủ
+  // công lưu config:{}) — để: (a) agent mới không kế thừa state agent
+  // trước; (b) stored rỗng `{}` / thiếu trường không sinh undefined gây
+  // crash (vd state.temperature.toFixed). key={id} ở Route đã remount nên
+  // initialState cũng đúng; effect này là lớp merge phòng thủ cho stored.
   useEffect(() => {
     const stored = useUserObjects.getState().agentContent[id] as Partial<AgentState> | undefined;
-    if (stored) {
-      // name/model đứng trước spread: template-instantiated agents lưu
-      // name+model ở cột agents chứ không trong config JSONB, nên stored
-      // có thể thiếu 2 trường này. Đặt fallback từ agent row trước rồi
-      // override bằng stored để không bị undefined.
-      const s = stored as AgentState;
-      const next: AgentState = {
-        ...s,
-        // Template-instantiated agents store name+model in the agents table
-        // column, not in config JSONB, so s.name/s.model may be undefined.
-        // Fall back to the agent row values so the header never shows blank.
-        name: s.name || agent.name,
-        model: s.model || agent.model || "claude-sonnet-4-6",
-        memory: { ...emptyMemory(), ...(stored.memory ?? {}) },
-        fallbackModels: stored.fallbackModels ?? [],
-        isPrivate: stored.isPrivate === true,
-      };
-      setState(next);
-      setLastSaved(next);
-    }
-  }, [id, agent.name, agent.model]);
+    const base = makeDefaultState(agent.name, agent.model, agent.tools);
+    const next: AgentState = {
+      ...base,
+      ...(stored ?? {}),
+      // Template-instantiated agents lưu name+model ở cột bảng agents, không
+      // trong config JSONB → stored có thể thiếu; fallback từ agent row.
+      name: stored?.name || agent.name,
+      model: stored?.model || agent.model || "claude-sonnet-4-6",
+      // Ép giá trị hợp lệ cho các trường bắt buộc (stored có thể là `{}`).
+      systemPrompt: stored?.systemPrompt ?? base.systemPrompt,
+      temperature: typeof stored?.temperature === "number" ? stored.temperature : base.temperature,
+      tools: Array.isArray(stored?.tools) ? stored.tools : base.tools,
+      memory: { ...emptyMemory(), ...(stored?.memory ?? {}) },
+      fallbackModels: Array.isArray(stored?.fallbackModels) ? stored.fallbackModels : [],
+      isPrivate: stored?.isPrivate === true,
+    };
+    setState(next);
+    setLastSaved(next);
+  }, [id, agent.name, agent.model, agent.tools]);
 
   // Lấy 7 template mặc định (server đã chèn tên agent vào).
   useEffect(() => {
@@ -617,6 +628,14 @@ function PrimaryBanner({ agentId, agentName }: { agentId: string; agentName: str
       />
     </div>
   );
+}
+
+/* Wrapper: key={id} ép remount toàn bộ editor khi đổi agent → state khởi
+   tạo lại từ đầu, KHÔNG kế thừa systemPrompt/tools/memory của agent trước
+   (bug tạo agent mới thủ công). Tab/AI-drawer cũng reset theo. */
+function AgentRoute() {
+  const { id } = Route.useParams();
+  return <AgentEditor key={id} id={id} />;
 }
 
 export const Route = createFileRoute("/agents/$id")({ component: AgentRoute });
