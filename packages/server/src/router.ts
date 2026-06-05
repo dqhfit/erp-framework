@@ -147,16 +147,10 @@ export const appRouter = router({
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const [u] = await ctx.db.select().from(users).where(eq(users.email, input.email));
-        // Tài khoản đã được admin tạo nhưng CHƯA đặt mật khẩu (passwordHash
-        // rỗng = pending invite). Báo rõ để user mở link mời thay vì thử
-        // mật khẩu liên tục → tránh bị khoá rate-limit.
-        if (u && u.passwordHash === "") {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message:
-              "Tài khoản chưa kích hoạt. Vui lòng mở link mời trong email để đặt mật khẩu, rồi đăng nhập.",
-          });
-        }
+        // Tài khoản pending-invite (passwordHash rỗng) verifyPassword luôn
+        // trả false → rơi vào nhánh dưới. KHÔNG tách thông báo theo trạng
+        // thái tài khoản (chống dò email/enumeration): mọi thất bại trả CÙNG
+        // một message — đã kèm gợi ý link mời để vẫn hướng dẫn user pending.
         if (!u || !(await verifyPassword(input.password, u.passwordHash))) {
           // Log thất bại nếu user tồn tại (có company để gắn). Email lạ →
           // skip (không spam log với email tuỳ ý nhập sai).
@@ -179,7 +173,8 @@ export const appRouter = router({
           }
           throw new TRPCError({
             code: "UNAUTHORIZED",
-            message: "Email hoặc mật khẩu không đúng",
+            message:
+              "Email hoặc mật khẩu không đúng. Nếu bạn vừa được mời, hãy mở link mời trong email để đặt mật khẩu trước khi đăng nhập.",
           });
         }
         const token = newSessionToken();
