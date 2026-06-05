@@ -380,6 +380,9 @@ async function main(): Promise<void> {
       let memoryPreamble = "";
       let boundAgentId: string | null = null;
       const agentModels: string[] = [];
+      // #3b: phạm vi tri thức + công cụ riêng của agent (đọc từ config).
+      let agentSourceIds: string[] | undefined;
+      let agentToolAllow: string[] | null = null;
       if (body.agentId) {
         // ACL per-agent: nếu agent private, user phải là member; nếu open,
         // RBAC company-wide đã pass ở trên. canActOnAgentLite return false
@@ -401,7 +404,24 @@ async function main(): Promise<void> {
           const mem = await loadAgentMemory(ag.id, ag.name);
           memoryPreamble = formatMemoryPreamble(mem) + "\n\n---\n\n";
           boundAgentId = ag.id;
-          const cfg = (ag.config ?? {}) as { model?: string; fallbackModels?: string[] };
+          const cfg = (ag.config ?? {}) as {
+            model?: string;
+            fallbackModels?: string[];
+            knowledgeSourceIds?: string[];
+            tools?: string[];
+          };
+          // Phạm vi tri thức: chỉ giới hạn khi agent cấu hình ≥1 nguồn;
+          // rỗng/thiếu → agent dùng toàn bộ tri thức công ty (như trước).
+          if (Array.isArray(cfg.knowledgeSourceIds) && cfg.knowledgeSourceIds.length > 0) {
+            agentSourceIds = cfg.knowledgeSourceIds.filter(
+              (x): x is string => typeof x === "string",
+            );
+          }
+          // Allowlist công cụ: undefined = chưa cấu hình (agent cũ) → KHÔNG
+          // ép; [] hoặc [...] = đã cấu hình → fail-closed theo danh sách.
+          agentToolAllow = Array.isArray(cfg.tools)
+            ? cfg.tools.filter((x): x is string => typeof x === "string")
+            : null;
           const primary = cfg.model || ag.model;
           if (primary) agentModels.push(primary);
           if (Array.isArray(cfg.fallbackModels)) {
@@ -432,6 +452,7 @@ async function main(): Promise<void> {
             userId: s.userId,
             plan: body.deepSearch === true,
             grade: body.deepSearch === true,
+            sourceIds: agentSourceIds,
           });
           if (hits.length && !gradedOut) {
             kbContext =
@@ -483,6 +504,7 @@ async function main(): Promise<void> {
           const hits = await knowledgeSearch(db, active.companyId, String(args.query ?? ""), {
             limit: Number.isFinite(k) ? k : 5,
             sourceKind,
+            sourceIds: agentSourceIds,
           });
           return hits.map((h) => ({
             source: h.sourceTitle,
@@ -561,6 +583,12 @@ async function main(): Promise<void> {
               active.role,
             ),
           }));
+        }
+        // #3b: fail-closed enforce allowlist công cụ của agent (chỉ khi đã
+        // cấu hình — agentToolAllow != null). Tool built-in (memory/knowledge/
+        // records) đã return ở trên nên không vướng allowlist này.
+        if (agentToolAllow && !agentToolAllow.includes(name)) {
+          throw new Error(`Agent không được phép gọi công cụ "${name}".`);
         }
         return mcpCallTool(name, args);
       };

@@ -45,6 +45,10 @@ export interface KnowledgeSearchOpts {
   /** Giới hạn theo quyền user/nhóm (Step 1). undefined = không lọc (admin
      hoặc ngữ cảnh hệ thống). Agent-scope xử lý riêng (#3b). */
   acl?: KnowledgeAcl;
+  /** Giới hạn theo tập nguồn cấu hình cho agent (#3b). undefined/rỗng =
+     không giới hạn. Khác acl (user/nhóm) — đây là phạm vi tri thức riêng
+     của agent, độc lập với người đang chat. */
+  sourceIds?: string[];
 }
 
 type Row = {
@@ -98,6 +102,14 @@ export async function knowledgeSearch(
   const srcConds: SQL[] = [];
   if (opts.sourceKind) srcConds.push(sql`kind = ${opts.sourceKind}`);
   if (opts.acl) srcConds.push(knowledgeAccessibleSql(opts.acl));
+  if (opts.sourceIds && opts.sourceIds.length > 0) {
+    srcConds.push(
+      sql`id IN (${sql.join(
+        opts.sourceIds.map((sid) => sql`${sid}::uuid`),
+        sql`, `,
+      )})`,
+    );
+  }
   const srcCond = srcConds.length
     ? sql` AND source_id IN (SELECT id FROM knowledge_sources WHERE company_id = ${companyId}::uuid AND ${sql.join(srcConds, sql` AND `)})`
     : sql``;

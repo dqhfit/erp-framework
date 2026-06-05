@@ -220,7 +220,19 @@ export function AgentPanel() {
       const history = messages
         .filter((m) => !m.pending && !m.error && m.id !== userMsg.id)
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-      const toolDefs = mcpTools.length ? mcpToolsToToolDefs(mcpTools) : [];
+      // Khi gắn agent có cấu hình allowlist tool (config.tools) → chỉ gửi các
+      // tool agent được phép (server cũng enforce fail-closed, #3b). Config
+      // rỗng/thiếu `tools` → gửi tất cả (tương thích agent cũ).
+      let toolDefs = mcpTools.length ? mcpToolsToToolDefs(mcpTools) : [];
+      if (boundAgentId) {
+        const cfg = useUserObjects.getState().agentContent[boundAgentId] as
+          | { tools?: unknown }
+          | undefined;
+        if (Array.isArray(cfg?.tools)) {
+          const allow = new Set(cfg.tools.filter((x): x is string => typeof x === "string"));
+          toolDefs = toolDefs.filter((t) => allow.has(t.name));
+        }
+      }
 
       // Gọi agent backend — server chạy vòng lặp LLM + MCP tool, phát
       // event theo từng bước qua SSE.

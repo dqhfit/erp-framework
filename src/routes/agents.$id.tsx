@@ -1,4 +1,8 @@
-import { createObjectsClient } from "@erp-framework/client";
+import {
+  createKnowledgeClient,
+  createObjectsClient,
+  type KnowledgeSource,
+} from "@erp-framework/client";
 import { inferAdapterFromModel } from "@erp-framework/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +20,8 @@ import type { MockAgent } from "@/lib/object-types";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
+
+const kbClient = createKnowledgeClient("");
 
 // 7 file memory chuẩn giống paperclip/openclaw — agent đọc thành
 // preamble system prompt, có thể tự ghi nhớ qua tool memory_remember.
@@ -47,6 +53,9 @@ interface AgentState {
   systemPrompt: string;
   temperature: number;
   tools: string[];
+  /** Phạm vi tri thức riêng của agent — id nguồn Knowledge Base agent được
+     phép tra. Rỗng = dùng toàn bộ tri thức công ty. Server enforce (#3b). */
+  knowledgeSourceIds: string[];
   /** Adapter để biết list model nào — dùng đầu model name để đoán nếu chưa có */
   adapter?: string;
   /** Memory files persona — server nạp vào system preamble + tool ghi nhớ. */
@@ -84,6 +93,7 @@ const makeDefaultState = (name: string, model: string, toolCount: number): Agent
   systemPrompt: defaultSystemPrompt(name),
   temperature: 0.7,
   tools: DEFAULT_TOOLS.slice(0, toolCount),
+  knowledgeSourceIds: [],
   memory: emptyMemory(),
   fallbackModels: [],
   isPrivate: false,
@@ -111,6 +121,7 @@ function AgentEditor({ id }: { id: string }) {
 
   const [tab, setTab] = useState<TabKey>("config");
   const [activeMem, setActiveMem] = useState<MemoryFile>("IDENTITY");
+  const [kbSources, setKbSources] = useState<KnowledgeSource[]>([]);
 
   // Nạp config đã lưu khi đổi agent. LUÔN dựng từ default base rồi mới
   // override bằng stored — kể cả khi KHÔNG có stored (agent mới tạo thủ
@@ -132,6 +143,9 @@ function AgentEditor({ id }: { id: string }) {
       systemPrompt: stored?.systemPrompt ?? base.systemPrompt,
       temperature: typeof stored?.temperature === "number" ? stored.temperature : base.temperature,
       tools: Array.isArray(stored?.tools) ? stored.tools : base.tools,
+      knowledgeSourceIds: Array.isArray(stored?.knowledgeSourceIds)
+        ? stored.knowledgeSourceIds
+        : base.knowledgeSourceIds,
       memory: { ...emptyMemory(), ...(stored?.memory ?? {}) },
       fallbackModels: Array.isArray(stored?.fallbackModels) ? stored.fallbackModels : [],
       isPrivate: stored?.isPrivate === true,
@@ -149,6 +163,16 @@ function AgentEditor({ id }: { id: string }) {
         /* chưa đăng nhập / agent chưa có ở backend */
       });
   }, [id, api]);
+
+  // Danh sách nguồn tri thức để chọn phạm vi cho agent (#3b).
+  useEffect(() => {
+    kbClient
+      .list()
+      .then((rows) => setKbSources(rows as KnowledgeSource[]))
+      .catch(() => {
+        /* chưa đăng nhập / không có quyền */
+      });
+  }, []);
 
   const dirty = useMemo(
     () => JSON.stringify(state) !== JSON.stringify(lastSaved),
@@ -204,6 +228,15 @@ function AgentEditor({ id }: { id: string }) {
     setState((s) => ({
       ...s,
       tools: s.tools.includes(t) ? s.tools.filter((x) => x !== t) : [...s.tools, t],
+    }));
+  };
+
+  const toggleKnowledge = (sid: string) => {
+    setState((s) => ({
+      ...s,
+      knowledgeSourceIds: s.knowledgeSourceIds.includes(sid)
+        ? s.knowledgeSourceIds.filter((x) => x !== sid)
+        : [...s.knowledgeSourceIds, sid],
     }));
   };
 
@@ -368,6 +401,46 @@ function AgentEditor({ id }: { id: string }) {
             );
           })}
         </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Tri thức (
+            {state.knowledgeSourceIds.length === 0 ? "tất cả" : state.knowledgeSourceIds.length})
+          </div>
+          <a href="/knowledge" className="text-[11px] text-accent hover:underline">
+            Quản lý nguồn
+          </a>
+        </div>
+        {kbSources.length === 0 ? (
+          <div className="text-xs text-muted">
+            Chưa có nguồn tri thức nào. Thêm ở trang Knowledge Base.
+          </div>
+        ) : (
+          <>
+            <div className="text-[11px] text-muted mb-2">
+              Chọn nguồn agent được phép tra cứu. Để TRỐNG = agent dùng toàn bộ tri thức công ty.
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {kbSources.map((src) => {
+                const on = state.knowledgeSourceIds.includes(src.id);
+                return (
+                  <button
+                    type="button"
+                    key={src.id}
+                    onClick={() => toggleKnowledge(src.id)}
+                    className={`chip ${on ? "chip-accent" : ""} cursor-pointer`}
+                    title={src.title}
+                  >
+                    {on ? "✓ " : ""}
+                    {src.title}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );

@@ -10,8 +10,8 @@
    agenticRetrieve (đã chừa hook). Toàn bộ fail-safe.
    ========================================================== */
 import type { DB } from "./db";
+import { type KnowledgeHit, type KnowledgeSearchOpts, knowledgeSearch } from "./knowledge-search";
 import { callLlmJson } from "./llm-json";
-import { knowledgeSearch, type KnowledgeHit, type KnowledgeSearchOpts } from "./knowledge-search";
 
 const QUERY_REWRITE_SYSTEM =
   "Bạn là bộ viết lại truy vấn cho hệ thống tra cứu tài liệu nội bộ doanh " +
@@ -146,7 +146,13 @@ export async function agenticRetrieve(
   if (!q) return { hits: [], queries: [] };
 
   const limit = Math.min(20, Math.max(1, opts.limit ?? 5));
-  const searchOpts: KnowledgeSearchOpts = { limit, sourceKind: opts.sourceKind };
+  // Truyền tiếp acl (user/nhóm) + sourceIds (scope agent) xuống mọi lần search.
+  const searchOpts: KnowledgeSearchOpts = {
+    limit,
+    sourceKind: opts.sourceKind,
+    acl: opts.acl,
+    sourceIds: opts.sourceIds,
+  };
 
   const queries = opts.plan ? await planQueries(db, companyId, q, opts.userId) : [q];
 
