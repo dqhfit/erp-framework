@@ -9,6 +9,8 @@ function WorkflowRoute() {
   const name = useUserObjects((s) => s.workflows.find((w) => w.id === id)?.name);
   useDocumentTitle(name);
   useSetAgentContext(name ? { type: "workflow", id, label: name } : null);
-  return <WorkflowDesigner workflowId={id} />;
+  // key={id} → mỗi workflow là một instance độc lập: chuyển workflow sẽ
+  // remount, reset sạch state cục bộ + chạy flush autosave khi unmount.
+  return <WorkflowDesigner key={id} workflowId={id} />;
 }
 export const Route = createFileRoute("/workflows/$id")({ component: WorkflowRoute });

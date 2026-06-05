@@ -25,6 +25,7 @@ import { logActivity } from "./activity";
 import { assertWithinBudget } from "./budget";
 import { makeRunCode } from "./code-runner";
 import type { DB } from "./db";
+import { knowledgeSearch } from "./knowledge-search";
 import { makeCallAgent } from "./llm-client";
 import { makeCallTool } from "./mcp-client";
 import { makeInvokeProcedure } from "./procedure-runner";
@@ -293,6 +294,22 @@ export async function executeWorkflow(
         };
       },
       runHttp: defaultRunHttp,
+      // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
+      searchKnowledge: async (query, kopt) => {
+        const sk =
+          kopt.sourceKind === "file" || kopt.sourceKind === "entity" || kopt.sourceKind === "text"
+            ? kopt.sourceKind
+            : undefined;
+        const hits = await knowledgeSearch(db, wf.companyId, query, {
+          limit: kopt.limit,
+          sourceKind: sk,
+        });
+        return hits.map((h) => ({
+          content: h.content,
+          sourceTitle: h.sourceTitle,
+          score: h.score,
+        }));
+      },
     }),
     new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(

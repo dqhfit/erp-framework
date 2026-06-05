@@ -127,6 +127,15 @@ export interface RunWorkflowOptions {
     headers: Record<string, unknown>;
     body?: unknown;
   }) => Promise<{ status: number; body: unknown; headers?: Record<string, unknown> }>;
+  /**
+   * Tra cứu Knowledge Base (RAG) cho node "knowledge". Server cài bằng
+   * knowledgeSearch (hybrid vector + FTS); core chỉ định nghĩa contract —
+   * thiếu callback → node trả skipped.
+   */
+  searchKnowledge?: (
+    query: string,
+    opts: { limit?: number; sourceKind?: string },
+  ) => Promise<Array<{ content: string; sourceTitle: string; score: number }>>;
 }
 
 /** Cap số phần tử lặp của node foreach — chống mảng khổng lồ treo runner. */
@@ -353,6 +362,57 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
                 step.tokens = res.usage;
                 step.model = res.model;
               }
+              break;
+            }
+            case "llm": {
+              // Node LLM ĐỘC LẬP: một lượt gọi LLM (system + prompt) → text.
+              // Khác "agent" ở trình bày tối giản (chỉ prompt/system/model, không
+              // gắn Agent entity) → dùng song song với node Agent trong cùng
+              // workflow. Cùng cơ chế callAgent (vốn là 1-shot completion).
+              if (!opt.callAgent) {
+                step = mkStep(node, "skipped", "Không có LLM runner", t0);
+              } else {
+                const llmCfg: Record<string, unknown> = { ...cfg };
+                if ("system" in inputs) llmCfg.system = inputs.system;
+                if ("prompt" in inputs) llmCfg.prompt = inputs.prompt;
+                const res = await opt.callAgent(llmCfg, vars);
+                vars[`llm_${node.id}`] = res.text;
+                rawOutput = res.text;
+                step = mkStep(node, "ok", `LLM trả lời (${res.text.length} ký tự)`, t0, res.text);
+                step.tokens = res.usage;
+                step.model = res.model;
+              }
+              break;
+            }
+            case "knowledge": {
+              // Tra Knowledge Base (RAG). Cổng input "query" ghi đè config.query.
+              // Output: vars.knowledge_<id> = context ghép đoạn (cho node LLM/agent
+              // sau dùng), vars.knowledge_<id>_hits = danh sách hit thô.
+              if (!opt.searchKnowledge) {
+                step = mkStep(node, "skipped", "Server không cấu hình searchKnowledge", t0);
+                break;
+              }
+              const q =
+                typeof inputs.query === "string" && inputs.query.trim()
+                  ? inputs.query
+                  : typeof cfg.query === "string"
+                    ? cfg.query
+                    : "";
+              if (!q.trim()) {
+                step = mkStep(node, "skipped", "Chưa có truy vấn — bỏ qua", t0);
+                break;
+              }
+              const topK = Math.max(1, Math.min(20, Number(cfg.topK ?? 5)));
+              const sourceKind =
+                typeof cfg.sourceKind === "string" && cfg.sourceKind ? cfg.sourceKind : undefined;
+              const hits = await opt.searchKnowledge(q, { limit: topK, sourceKind });
+              const context = hits
+                .map((h, i) => `[${i + 1}] ${h.sourceTitle}\n${h.content}`)
+                .join("\n\n");
+              vars[`knowledge_${node.id}`] = context;
+              vars[`knowledge_${node.id}_hits`] = hits;
+              rawOutput = { hits, context };
+              step = mkStep(node, "ok", `Tra KB: ${hits.length} đoạn khớp`, t0, hits);
               break;
             }
             case "agent_chain": {

@@ -21,7 +21,7 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import { createObjectsClient } from "@erp-framework/client";
 import { pluginRegistry, type WfPort } from "@erp-framework/core";
@@ -58,6 +58,8 @@ type WorkflowNodeKind =
   | "http"
   | "subworkflow"
   | "foreach"
+  | "llm"
+  | "knowledge"
   | (string & {});
 
 interface NodePaletteItem {
@@ -92,6 +94,20 @@ const NODE_PALETTE: NodePaletteItem[] = [
     color: "var(--warning)",
   },
   { kind: "agent", label: "Agent", desc: "Gọi LLM", icon: "Sparkles", color: "var(--accent)" },
+  {
+    kind: "llm",
+    label: "LLM",
+    desc: "Một lượt gọi LLM",
+    icon: "MessageSquare",
+    color: "var(--accent)",
+  },
+  {
+    kind: "knowledge",
+    label: "Knowledge",
+    desc: "Tra Knowledge Base (RAG)",
+    icon: "BookOpen",
+    color: "var(--accent-2)",
+  },
   {
     kind: "agent_chain",
     label: "Agent Chain",
@@ -172,54 +188,6 @@ function getNodePalette(): NodePaletteItem[] {
     }));
   return [...NODE_PALETTE, ...fromPlugins];
 }
-
-const INITIAL_NODES: Node<WfNodeData>[] = [
-  {
-    id: "n1",
-    type: "wf",
-    position: { x: 80, y: 80 },
-    data: { kind: "trigger", label: "Đơn hàng mới" },
-  },
-  {
-    id: "n2",
-    type: "wf",
-    position: { x: 320, y: 80 },
-    data: { kind: "condition", label: "Tổng > 50tr ?" },
-  },
-  {
-    id: "n3",
-    type: "wf",
-    position: { x: 560, y: 20 },
-    data: { kind: "approval", label: "Sếp duyệt" },
-  },
-  {
-    id: "n4",
-    type: "wf",
-    position: { x: 560, y: 160 },
-    data: { kind: "action", label: "Tạo đơn ngay" },
-  },
-];
-const INITIAL_EDGES: Edge[] = [
-  { id: "e1", type: "wf", source: "n1", target: "n2", markerEnd: { type: MarkerType.ArrowClosed } },
-  {
-    id: "e2",
-    type: "wf",
-    source: "n2",
-    sourceHandle: "yes",
-    target: "n3",
-    label: "Yes",
-    markerEnd: { type: MarkerType.ArrowClosed },
-  },
-  {
-    id: "e3",
-    type: "wf",
-    source: "n2",
-    sourceHandle: "no",
-    target: "n4",
-    label: "No",
-    markerEnd: { type: MarkerType.ArrowClosed },
-  },
-];
 
 interface WfNodeData {
   kind: WorkflowNodeKind;
@@ -566,6 +534,45 @@ function JsonField({
   );
 }
 
+/* Canvas khởi tạo cho workflow MỚI (chưa có graph lưu): chỉ 1 node
+   trigger trống — KHÔNG dùng demo 4-node để tránh cảm giác "trang mới
+   kế thừa nội dung cũ". */
+const STARTER_NODES: Node<WfNodeData>[] = [
+  {
+    id: "n_trigger",
+    type: "wf",
+    position: { x: 120, y: 120 },
+    data: { kind: "trigger", label: "Bắt đầu" },
+  },
+];
+
+/* Đọc graph đã lưu của workflow từ store. Workflow mới / graph rỗng →
+   trả STARTER (canvas trắng), KHÔNG giữ lại nodes của workflow trước. */
+function readStoredGraph(workflowId: string): { nodes: Node<WfNodeData>[]; edges: Edge[] } {
+  const stored = useUserObjects.getState().workflowContent[workflowId] as
+    | { nodes?: Node<WfNodeData>[]; edges?: Edge[] }
+    | undefined;
+  if (stored?.nodes && stored.nodes.length > 0) {
+    return {
+      nodes: stored.nodes,
+      // Vá edge cũ thiếu `type` → custom edge (nút ×) áp dụng cả edge cũ.
+      edges: (stored.edges ?? []).map((e) => ({ ...e, type: e.type ?? "wf" })),
+    };
+  }
+  return { nodes: STARTER_NODES, edges: [] };
+}
+
+/* Chuỗi hoá graph để so sánh "có thay đổi cần lưu chưa". Bỏ trạng thái
+   UI thoáng qua (selected/dragging) để chọn node KHÔNG kích autosave. */
+function serializeGraph(nodes: Node<WfNodeData>[], edges: Edge[]): string {
+  const n = nodes.map((x) => ({ id: x.id, type: x.type, position: x.position, data: x.data }));
+  const e = edges.map((x) => {
+    const { selected: _s, ...rest } = x;
+    return rest;
+  });
+  return JSON.stringify({ n, e });
+}
+
 interface Props {
   workflowId: string;
 }
@@ -584,8 +591,11 @@ function WorkflowInner({ workflowId }: Props) {
   const inspectorVisible = useUI((s) => s.inspectorVisible);
   const setInspectorVisible = useUI((s) => s.setInspectorVisible);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<WfNodeData>>(INITIAL_NODES);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(INITIAL_EDGES);
+  // Khởi tạo trực tiếp từ graph đã lưu (tránh nháy demo + tránh kế thừa
+  // nội dung workflow trước). Effect bên dưới tải lại khi store hydrate xong.
+  const initial = readStoredGraph(workflowId);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<WfNodeData>>(initial.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [dragKind, setDragKind] = useState<WorkflowNodeKind | null>(null);
@@ -596,6 +606,16 @@ function WorkflowInner({ workflowId }: Props) {
   const [published, setPublished] = useState(false);
   const { tools: mcpTools } = useMcpClient();
   const setWorkflowContent = useUserObjects((s) => s.setWorkflowContent);
+  const ready = useUserObjects((s) => s.ready);
+  // Refs giữ giá trị mới nhất cho autosave/flush (closure ổn định, không
+  // gắn lại listener mỗi render).
+  const lastSavedRef = useRef<string>(serializeGraph(initial.nodes, initial.edges));
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const wfIdRef = useRef(workflowId);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+  wfIdRef.current = workflowId;
   // Nguồn trigger ở CẤP WORKFLOW (workflows.triggerType) — không phải node.
   const setWorkflowTrigger = useUserObjects((s) => s.setWorkflowTrigger);
   const wfModel = useUserObjects((s) => s.workflows.find((w) => w.id === workflowId));
@@ -614,23 +634,53 @@ function WorkflowInner({ workflowId }: Props) {
     setWorkflowTrigger(workflowId, "entity_changed", { ...triggerConfig, events: next });
   };
 
-  // Load nội dung đã lưu khi đổi workflow
+  // Tải lại graph khi đổi workflow HOẶC khi store hydrate xong (deep-link).
+  // readStoredGraph LUÔN trả giá trị reset (STARTER nếu rỗng) nên không bao
+  // giờ giữ lại nodes của workflow trước → tạo workflow mới = canvas trắng.
   useEffect(() => {
-    const stored = useUserObjects.getState().workflowContent[workflowId] as
-      | { nodes?: Node<WfNodeData>[]; edges?: Edge[] }
-      | undefined;
-    if (stored?.nodes) setNodes(stored.nodes);
-    // Vá edge cũ đã lưu thiếu `type` → custom edge (nút ×) áp dụng cả edge cũ.
-    if (stored?.edges) setEdges(stored.edges.map((e) => ({ ...e, type: e.type ?? "wf" })));
+    if (!ready) return;
+    const g = readStoredGraph(workflowId);
+    setNodes(g.nodes);
+    setEdges(g.edges);
+    lastSavedRef.current = serializeGraph(g.nodes, g.edges);
     setSelected(null);
     setSelectedEdge(null);
-  }, [setEdges, workflowId, setNodes]);
+  }, [setEdges, workflowId, setNodes, ready]);
 
   const save = () => {
+    lastSavedRef.current = serializeGraph(nodes, edges);
     setWorkflowContent(workflowId, { nodes, edges });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  /* Autosave: tự lưu nháp sau khi ngừng chỉnh ~800ms. So sánh snapshot để
+     bỏ qua thao tác chỉ-chọn-node (không đổi graph) và lần tải đầu → reload
+     trang không mất dữ liệu. */
+  useEffect(() => {
+    if (!ready) return;
+    const snap = serializeGraph(nodes, edges);
+    if (snap === lastSavedRef.current) return;
+    const h = setTimeout(() => {
+      lastSavedRef.current = snap;
+      setWorkflowContent(workflowId, { nodes, edges });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1200);
+    }, 800);
+    return () => clearTimeout(h);
+  }, [nodes, edges, ready, workflowId, setWorkflowContent]);
+
+  /* Flush khi rời workflow (unmount / đổi id qua key route): còn thay đổi
+     chưa lưu thì lưu ngay — điều hướng nhanh < 800ms cũng không mất. */
+  useEffect(() => {
+    return () => {
+      const snap = serializeGraph(nodesRef.current, edgesRef.current);
+      if (snap !== lastSavedRef.current) {
+        lastSavedRef.current = snap;
+        setWorkflowContent(wfIdRef.current, { nodes: nodesRef.current, edges: edgesRef.current });
+      }
+    };
+  }, [setWorkflowContent]);
   /* Publish: lưu bản nháp rồi chốt thành bản đang chạy (publishedGraph). */
   const publish = async () => {
     save();
@@ -642,12 +692,16 @@ function WorkflowInner({ workflowId }: Props) {
       console.error("[workflow] publish lỗi:", e);
     }
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
+  // saveRef luôn trỏ `save` mới nhất → listener gắn 1 lần nhưng KHÔNG bị
+  // stale (trước đây capture save mount-time → Ctrl+S lưu nhầm workflow đầu
+  // tiên với nodes cũ → ghi đè workflow cũ thành graph rỗng).
+  const saveRef = useRef(save);
+  saveRef.current = save;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        save();
+        saveRef.current();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -864,6 +918,8 @@ function WorkflowInner({ workflowId }: Props) {
     for (const n of nodes) {
       if (n.id === sel?.id) continue;
       if (n.data.kind === "agent") vs.add(`agent_${n.id}`);
+      if (n.data.kind === "llm") vs.add(`llm_${n.id}`);
+      if (n.data.kind === "knowledge") vs.add(`knowledge_${n.id}`);
       if (n.data.kind === "agent_chain") vs.add(`agent_chain_${n.id}`);
       if (n.data.kind === "foreach") vs.add(`foreach_${n.id}`);
       if (n.data.kind === "setvar") {
@@ -1559,6 +1615,103 @@ function WorkflowInner({ workflowId }: Props) {
                     </FormField>
                     <div className="text-[11px] text-muted">
                       Kết quả lưu vào <code>vars.agent_{sel.id}</code>.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== LLM — một lượt gọi LLM độc lập (song song Agent) ===== */}
+                {sel.data.kind === "llm" && (
+                  <>
+                    <FormField label={t("designer.agent_profile")}>
+                      <Input
+                        placeholder="(mặc định — profile chat của công ty)"
+                        value={
+                          typeof sel.data.config?.profile === "string"
+                            ? sel.data.config.profile
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("profile", e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label={t("designer.agent_system")}>
+                      <Textarea
+                        rows={3}
+                        placeholder="Vai trò + hướng dẫn cho LLM."
+                        value={
+                          typeof sel.data.config?.system === "string" ? sel.data.config.system : ""
+                        }
+                        onChange={(e) => patchConfig("system", e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label={t("designer.agent_prompt")}>
+                      <Textarea
+                        rows={5}
+                        placeholder="Bỏ trống = gửi toàn bộ vars (JSON). Tham chiếu biến qua {ten_bien}."
+                        value={
+                          typeof sel.data.config?.prompt === "string" ? sel.data.config.prompt : ""
+                        }
+                        onChange={(e) => patchConfig("prompt", e.target.value)}
+                      />
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Kết quả lưu vào <code>vars.llm_{sel.id}</code>. Khác Agent: chỉ một lượt
+                      prompt, không gắn Agent entity/tool — chạy song song node Agent trong cùng
+                      workflow.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== Knowledge — tra Knowledge Base (RAG) ===== */}
+                {sel.data.kind === "knowledge" && (
+                  <>
+                    <FormField label="Truy vấn">
+                      <Textarea
+                        rows={3}
+                        placeholder="Câu hỏi tra cứu. Nối cổng input 'query' để truyền động."
+                        value={
+                          typeof sel.data.config?.query === "string" ? sel.data.config.query : ""
+                        }
+                        onChange={(e) => patchConfig("query", e.target.value)}
+                      />
+                    </FormField>
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField label="Số đoạn (topK)">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          placeholder="5"
+                          value={
+                            typeof sel.data.config?.topK === "number" ? sel.data.config.topK : ""
+                          }
+                          onChange={(e) =>
+                            patchConfig(
+                              "topK",
+                              e.target.value === "" ? undefined : Number(e.target.value),
+                            )
+                          }
+                        />
+                      </FormField>
+                      <FormField label="Loại nguồn">
+                        <Select
+                          value={
+                            typeof sel.data.config?.sourceKind === "string"
+                              ? sel.data.config.sourceKind
+                              : ""
+                          }
+                          onChange={(e) => patchConfig("sourceKind", e.target.value || undefined)}
+                        >
+                          <option value="">Mọi loại</option>
+                          <option value="file">File</option>
+                          <option value="entity">Entity</option>
+                          <option value="text">Text</option>
+                        </Select>
+                      </FormField>
+                    </div>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Tra Knowledge Base công ty (hybrid vector + từ khoá). Ngữ cảnh ghép đoạn lưu
+                      vào <code>vars.knowledge_{sel.id}</code> (cho node LLM/Agent sau dùng); hit
+                      thô ở <code>vars.knowledge_{sel.id}_hits</code>.
                     </div>
                   </>
                 )}
