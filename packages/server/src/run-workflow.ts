@@ -9,6 +9,8 @@
    ========================================================== */
 
 import { lookup } from "node:dns/promises";
+import http from "node:http";
+import https from "node:https";
 import { isIP } from "node:net";
 import {
   pluginRegistry,
@@ -89,10 +91,12 @@ function isPrivateIp(addr: string, family: number): boolean {
   return false;
 }
 
-/** Chặn SSRF: chỉ http/https, host không phân giải tới IP nội bộ. Có thể siết
- *  thêm bằng allowlist host (env HTTP_NODE_ALLOWED_HOSTS, phân tách dấu phẩy).
- *  Export để test regression. */
-export async function assertPublicUrl(rawUrl: string): Promise<void> {
+/** Resolve + validate URL công khai (1 LẦN). Trả URL parsed + danh sách IP
+ *  đã validate (không nội bộ). Throw nếu scheme/allowlist/SSRF vi phạm.
+ *  Caller dùng IP trả về để GHIM kết nối (chống DNS-rebinding TOCTOU). */
+async function resolvePublic(
+  rawUrl: string,
+): Promise<{ u: URL; addrs: Array<{ address: string; family: number }> }> {
   let u: URL;
   try {
     u = new URL(rawUrl);
@@ -112,7 +116,7 @@ export async function assertPublicUrl(rawUrl: string): Promise<void> {
   const literal = isIP(u.hostname);
   if (literal) {
     if (isPrivateIp(u.hostname, literal)) throw new Error(`Chặn IP nội bộ (SSRF): ${u.hostname}`);
-    return;
+    return { u, addrs: [{ address: u.hostname, family: literal }] };
   }
   const addrs = await lookup(u.hostname, { all: true });
   for (const a of addrs) {
@@ -120,56 +124,103 @@ export async function assertPublicUrl(rawUrl: string): Promise<void> {
       throw new Error(`Host phân giải tới IP nội bộ (SSRF): ${u.hostname} → ${a.address}`);
     }
   }
+  if (!addrs.length) throw new Error(`Không phân giải được host: ${u.hostname}`);
+  return { u, addrs };
 }
 
-/** Gọi HTTP cho node "http" — fetch có timeout (AbortController) + guard SSRF.
- *  Body object → JSON; response JSON parse được → object, không thì giữ text.
- *  Redirect xử lý thủ công, re-validate từng hop (chống bypass qua Location). */
+/** Chặn SSRF: chỉ http/https, host không phân giải tới IP nội bộ. Có thể siết
+ *  thêm bằng allowlist host (env HTTP_NODE_ALLOWED_HOSTS, phân tách dấu phẩy).
+ *  Export để test regression. */
+export async function assertPublicUrl(rawUrl: string): Promise<void> {
+  await resolvePublic(rawUrl);
+}
+
+/** Gửi 1 request GHIM tới IP đã validate (pin) — fetch/agent KHÔNG tự phân
+ *  giải lại nên đóng được khe DNS-rebinding giữa validate và connect. Vẫn
+ *  giữ Host header + SNI theo hostname gốc nên HTTPS/cert vẫn đúng. */
+function pinnedRequest(
+  u: URL,
+  pin: { address: string; family: number },
+  method: string,
+  headers: Record<string, string>,
+  bodyStr: string | undefined,
+  timeoutMs: number,
+): Promise<{ status: number; location: string | null; text: string }> {
+  return new Promise((resolve, reject) => {
+    const isHttps = u.protocol === "https:";
+    const mod = isHttps ? https : http;
+    const reqq = mod.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        servername: isHttps ? u.hostname : undefined, // SNI theo hostname gốc
+        port: u.port || (isHttps ? 443 : 80),
+        method,
+        path: u.pathname + u.search,
+        headers,
+        // PIN: chỉ nối tới IP đã validate — chặn rebinding sau khi validate.
+        lookup: (_host, _opts, cb) => cb(null, pin.address, pin.family),
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c as Buffer));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode ?? 0,
+            location: typeof res.headers.location === "string" ? res.headers.location : null,
+            text: Buffer.concat(chunks).toString("utf8"),
+          }),
+        );
+      },
+    );
+    reqq.setTimeout(timeoutMs, () => reqq.destroy(new Error(`HTTP timeout sau ${timeoutMs}ms`)));
+    reqq.on("error", reject);
+    if (bodyStr != null) reqq.write(bodyStr);
+    reqq.end();
+  });
+}
+
+/** Gọi HTTP cho node "http" — node:http/https request GHIM IP (chống SSRF
+ *  DNS-rebinding) + timeout. Body object → JSON; response JSON parse được →
+ *  object, không thì giữ text. Redirect thủ công ≤3 hop, resolve+validate+pin
+ *  lại mỗi hop (chống bypass qua Location). */
 async function defaultRunHttp(req: {
   url: string;
   method: string;
   headers: Record<string, unknown>;
   body?: unknown;
 }): Promise<{ status: number; body: unknown }> {
-  const controller = new AbortController();
   const timeoutMs = Number(process.env.HTTP_NODE_TIMEOUT_MS ?? 15_000);
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const headers: Record<string, string> = {};
-    for (const [k, v] of Object.entries(req.headers ?? {})) headers[k] = String(v);
-    const init: RequestInit = {
-      method: req.method,
-      headers,
-      signal: controller.signal,
-      redirect: "manual", // tự theo redirect để re-validate host từng hop
-    };
-    if (req.method !== "GET" && req.method !== "HEAD" && req.body != null) {
-      init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-      if (!Object.keys(headers).some((h) => h.toLowerCase() === "content-type")) {
-        headers["content-type"] = "application/json";
-      }
+  const headers: Record<string, string> = {};
+  for (const [k, v] of Object.entries(req.headers ?? {})) headers[k] = String(v);
+  let bodyStr: string | undefined;
+  if (req.method !== "GET" && req.method !== "HEAD" && req.body != null) {
+    bodyStr = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    if (!Object.keys(headers).some((h) => h.toLowerCase() === "content-type")) {
+      headers["content-type"] = "application/json";
     }
-    let url = req.url;
-    let r: Response | undefined;
-    for (let hop = 0; hop <= 3; hop++) {
-      await assertPublicUrl(url); // chặn SSRF mỗi hop (kể cả sau redirect)
-      r = await fetch(url, init);
-      const loc = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
-      if (!loc) break;
-      url = new URL(loc, url).toString();
-    }
-    if (!r) throw new Error("HTTP không có phản hồi");
-    const text = await r.text();
-    let body: unknown = text;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      // giữ nguyên text nếu không phải JSON
-    }
-    return { status: r.status, body };
-  } finally {
-    clearTimeout(timer);
   }
+  let url = req.url;
+  // Theo redirect thủ công, GHIM IP mỗi hop (resolve+validate 1 lần/hop rồi
+  // nối tới đúng IP đó) — đóng khe DNS-rebinding kể cả sau Location.
+  for (let hop = 0; hop <= 3; hop++) {
+    const { u, addrs } = await resolvePublic(url);
+    const pin = addrs[0];
+    if (!pin) throw new Error(`Không phân giải được host: ${u.hostname}`);
+    const res = await pinnedRequest(u, pin, req.method, headers, bodyStr, timeoutMs);
+    const loc = res.status >= 300 && res.status < 400 ? res.location : null;
+    if (!loc) {
+      let body: unknown = res.text;
+      try {
+        body = JSON.parse(res.text);
+      } catch {
+        // giữ nguyên text nếu không phải JSON
+      }
+      return { status: res.status, body };
+    }
+    url = new URL(loc, url).toString();
+  }
+  throw new Error("HTTP quá nhiều redirect (>3)");
 }
 
 /** Kiểm tra mọi node có config.requiresRole đều ≤ actorRole. Ném Error
@@ -261,99 +312,115 @@ export async function executeWorkflow(
      Default 5 phút; override qua env WORKFLOW_TIMEOUT_MS. */
   const timeoutMs = Number(process.env.WORKFLOW_TIMEOUT_MS ?? 300_000);
   let timeoutHandle: NodeJS.Timeout | undefined;
-  const result = await Promise.race([
-    runWorkflow({
-      workflowId,
-      workflowName: wf.name,
-      nodes,
-      edges,
-      callTool,
-      callAgent: opts.callAgent ?? makeCallAgent(db),
-      initialVars: opts.context,
-      registry: pluginRegistry,
-      runCode: makeRunCode({ callTool, companyId: wf.companyId }),
-      invokeProcedure: makeInvokeProcedure({
-        db,
-        companyId: wf.companyId,
+  try {
+    const result = await Promise.race([
+      runWorkflow({
+        workflowId,
+        workflowName: wf.name,
+        nodes,
+        edges,
         callTool,
-        actorUserId: null,
-      }),
-      // Node subworkflow/foreach: chạy workflow con qua chính executeWorkflow
-      // (tăng _depth để guard đệ quy). Mỗi sub-run vẫn ghi workflow_runs riêng
-      // → giữ observability + scope companyId. Đọc lại vars đã ghi để trả về.
-      runSubWorkflow: async (subId, initialVars) => {
-        const r = await executeWorkflow(db, subId, {
+        callAgent: opts.callAgent ?? makeCallAgent(db),
+        initialVars: opts.context,
+        registry: pluginRegistry,
+        runCode: makeRunCode({ callTool, companyId: wf.companyId }),
+        invokeProcedure: makeInvokeProcedure({
+          db,
           companyId: wf.companyId,
-          context: initialVars,
-          _depth: depth + 1,
-        });
-        const [subRun] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, r.runId));
-        return {
-          status: r.status,
-          vars: (subRun?.vars ?? {}) as Record<string, unknown>,
-        };
-      },
-      runHttp: defaultRunHttp,
-      // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
-      searchKnowledge: async (query, kopt) => {
-        const sk =
-          kopt.sourceKind === "file" || kopt.sourceKind === "entity" || kopt.sourceKind === "text"
-            ? kopt.sourceKind
-            : undefined;
-        const hits = await knowledgeSearch(db, wf.companyId, query, {
-          limit: kopt.limit,
-          sourceKind: sk,
-        });
-        return hits.map((h) => ({
-          content: h.content,
-          sourceTitle: h.sourceTitle,
-          score: h.score,
-        }));
-      },
-    }),
-    new Promise<never>((_, reject) => {
-      timeoutHandle = setTimeout(
-        () =>
-          reject(
-            new Error(
-              `Workflow "${wf.name}" timeout sau ${timeoutMs}ms — ` +
-                "có thể loop vô hạn hoặc agent LLM hang. " +
-                "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu.",
+          callTool,
+          actorUserId: null,
+        }),
+        // Node subworkflow/foreach: chạy workflow con qua chính executeWorkflow
+        // (tăng _depth để guard đệ quy). Mỗi sub-run vẫn ghi workflow_runs riêng
+        // → giữ observability + scope companyId. Đọc lại vars đã ghi để trả về.
+        runSubWorkflow: async (subId, initialVars) => {
+          const r = await executeWorkflow(db, subId, {
+            companyId: wf.companyId,
+            context: initialVars,
+            // Truyền actorRole xuống workflow con để gate requiresRole áp cả
+            // node trong sub-workflow (nếu không, viewer trigger cha → bypass
+            // gate của node con). undefined (scheduler/system) → bỏ qua như cũ.
+            actorRole: opts.actorRole,
+            _depth: depth + 1,
+          });
+          const [subRun] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, r.runId));
+          return {
+            status: r.status,
+            vars: (subRun?.vars ?? {}) as Record<string, unknown>,
+          };
+        },
+        runHttp: defaultRunHttp,
+        // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
+        searchKnowledge: async (query, kopt) => {
+          const sk =
+            kopt.sourceKind === "file" || kopt.sourceKind === "entity" || kopt.sourceKind === "text"
+              ? kopt.sourceKind
+              : undefined;
+          const hits = await knowledgeSearch(db, wf.companyId, query, {
+            limit: kopt.limit,
+            sourceKind: sk,
+          });
+          return hits.map((h) => ({
+            content: h.content,
+            sourceTitle: h.sourceTitle,
+            score: h.score,
+          }));
+        },
+      }),
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Workflow "${wf.name}" timeout sau ${timeoutMs}ms — ` +
+                  "có thể loop vô hạn hoặc agent LLM hang. " +
+                  "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu.",
+              ),
             ),
-          ),
-        timeoutMs,
-      );
-    }),
-  ]).finally(() => {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  });
+          timeoutMs,
+        );
+      }),
+    ]).finally(() => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    });
 
-  // Ghi kết quả cuối
-  await db
-    .update(workflowRuns)
-    .set({
-      status: result.status,
-      steps: result.steps,
-      vars: result.vars,
-      finishedAt: new Date(),
-    })
-    .where(eq(workflowRuns.id, run.id));
+    // Ghi kết quả cuối
+    await db
+      .update(workflowRuns)
+      .set({
+        status: result.status,
+        steps: result.steps,
+        vars: result.vars,
+        finishedAt: new Date(),
+      })
+      .where(eq(workflowRuns.id, run.id));
 
-  // Ghi nhật ký hành động (gộp token của các bước agent).
-  const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);
-  const tOut = result.steps.reduce((n, s) => n + (s.tokens?.output_tokens ?? 0), 0);
-  await logActivity(db, {
-    companyId: wf.companyId,
-    kind: "run_workflow",
-    objectType: "workflow",
-    target: wf.name,
-    detail: `Chạy workflow — ${result.status} (${result.steps.length} bước)`,
-    tokensInput: tIn || undefined,
-    tokensOutput: tOut || undefined,
-    model: result.steps.find((s) => s.model)?.model,
-  });
+    // Ghi nhật ký hành động (gộp token của các bước agent).
+    const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);
+    const tOut = result.steps.reduce((n, s) => n + (s.tokens?.output_tokens ?? 0), 0);
+    await logActivity(db, {
+      companyId: wf.companyId,
+      kind: "run_workflow",
+      objectType: "workflow",
+      target: wf.name,
+      detail: `Chạy workflow — ${result.status} (${result.steps.length} bước)`,
+      tokensInput: tIn || undefined,
+      tokensOutput: tOut || undefined,
+      model: result.steps.find((s) => s.model)?.model,
+    });
 
-  return { runId: run.id, status: result.status, stepCount: result.steps.length };
+    return { runId: run.id, status: result.status, stepCount: result.steps.length };
+  } catch (e) {
+    // #1: đừng để run kẹt "running" khi throw (timeout WORKFLOW_TIMEOUT_MS,
+    // runWorkflow lỗi, budget/SSRF giữa chừng…). Ghi error + finishedAt rồi
+    // re-throw. Nuốt lỗi của chính lệnh update để không che lỗi gốc.
+    await db
+      .update(workflowRuns)
+      .set({ status: "error", finishedAt: new Date(), vars: { _error: (e as Error).message } })
+      .where(eq(workflowRuns.id, run.id))
+      .catch(() => {});
+    throw e;
+  }
 }
 
 /** Lịch sử các lần chạy gần đây của một workflow (trong phạm vi công ty). */

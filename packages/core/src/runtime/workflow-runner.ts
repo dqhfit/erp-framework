@@ -424,7 +424,9 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
                 break;
               }
               const steps = (cfg.steps as Array<Record<string, unknown>>) ?? [];
-              const maxChainSteps = Math.min(Number(cfg.maxSteps ?? 5), 20);
+              // `|| 5`: maxSteps phi số (NaN) hoặc 0 → mặc định 5, tránh
+              // Math.min(NaN,20)=NaN làm vòng lặp không chạy mà vẫn báo "ok".
+              const maxChainSteps = Math.min(Number(cfg.maxSteps) || 5, 20);
               if (!Array.isArray(steps) || steps.length === 0) {
                 step = mkStep(node, "skipped", "agent_chain cần config.steps[]", t0);
                 break;
