@@ -42,6 +42,7 @@ import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayTo
 import { I } from "@/components/Icons";
 import { Button, Card, FormField, Input, SearchableSelect, Tabs } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { type LinkSuggestion, suggestLinks } from "@/lib/datasource-autolink";
 import { dialog } from "@/lib/dialog";
 import type { EntityField } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
@@ -392,6 +393,9 @@ function Canvas({ id }: { id: string }) {
   const [add, setAdd] = useState<AddState>(ADD_CLOSED);
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  // Auto-link: panel đề xuất liên kết + tập id đã bỏ qua (ẩn trong phiên).
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [dismissedLinks, setDismissedLinks] = useState<Set<string>>(new Set());
   // Chế độ hiển thị trường (TOÀN CỤC) — đồng bộ Nguồn dữ liệu / Trang / Workflow.
   const { mode: fieldMode, fieldDisp } = useFieldDisplay();
   // Hiển thị tên cột (string) trong ngữ cảnh 1 entity — tra field để lấy nhãn nếu cần.
@@ -669,6 +673,65 @@ function Canvas({ id }: { id: string }) {
     setSelectedNodeId(rid);
   };
 
+  /* ── Auto-link: đề xuất liên kết (Tier 1-3, deterministic, không LLM) ── */
+  const suggestions = useMemo(
+    () => suggestLinks(entities, cfg).filter((s) => !dismissedLinks.has(s.id)),
+    [entities, cfg, dismissedLinks],
+  );
+  const dismissLink = (sid: string) => setDismissedLinks((prev) => new Set(prev).add(sid));
+
+  // Chấp nhận join: dựng chuỗi relation theo steps (tự thêm bảng trung gian).
+  const acceptJoin = (s: LinkSuggestion) => {
+    const newRels: DataSourceRelation[] = [];
+    let prevNodeId = s.fromNodeId;
+    let pos = layoutRef.current[s.fromNodeId] ?? { x: 0, y: 0 };
+    for (const step of s.steps) {
+      const rid = crypto.randomUUID();
+      const tgtName = entById(step.toEntityId)?.name || step.toEntityId;
+      newRels.push({
+        id: rid,
+        alias: slugify(tgtName),
+        fromRelationId: prevNodeId === "base" ? null : prevNodeId,
+        fromField: step.fromField,
+        toField: step.toField === "id" ? undefined : step.toField,
+        targetEntityId: step.toEntityId,
+        joinKind: "left",
+      });
+      pos = { x: pos.x + 320, y: pos.y + 40 };
+      layoutRef.current[rid] = pos;
+      prevNodeId = rid;
+    }
+    update({ relations: [...cfg.relations, ...newRels] });
+    setSelectedNodeId(prevNodeId);
+  };
+
+  // Chấp nhận aggregate (1-N): đếm số dòng con trỏ về node nguồn.
+  const acceptAgg = (s: LinkSuggestion) => {
+    if (!s.aggTargetField) return;
+    const child = entById(s.targetEntityId);
+    const existing = new Set((cfg.aggregates ?? []).map((a) => a.key));
+    let key = slugify(`so_${child?.name || s.targetEntityId}`);
+    let n = 2;
+    while (existing.has(key)) key = `${slugify(`so_${child?.name || s.targetEntityId}`)}_${n++}`;
+    update({
+      aggregates: [
+        ...(cfg.aggregates ?? []),
+        {
+          key,
+          label: `Số ${child?.name ?? s.targetEntityId}`,
+          agg: "count",
+          sourceRelationId: s.fromNodeId,
+          matchField: "id",
+          targetEntityId: s.targetEntityId,
+          targetField: s.aggTargetField,
+        },
+      ],
+    });
+  };
+
+  const acceptSuggestion = (s: LinkSuggestion) =>
+    s.kind === "aggregate" ? acceptAgg(s) : acceptJoin(s);
+
   /* ── Preview ──────────────────────────────────────────────── */
   const loadPreview = async () => {
     if (!cfg.baseEntityId) {
@@ -806,8 +869,32 @@ function Canvas({ id }: { id: string }) {
             <button
               type="button"
               onClick={() => {
+                setSuggestOpen((v) => !v);
+                setSelectedNodeId(null);
+                setComputedPanelOpen(false);
+              }}
+              className={cn(
+                "h-8 px-3 rounded-lg border text-xs flex items-center gap-1.5 shadow-sm",
+                suggestOpen
+                  ? "bg-accent/15 border-accent/40 text-accent"
+                  : "bg-panel border-border hover:bg-hover/50",
+              )}
+              title="Tự động phát hiện liên kết giữa các đối tượng"
+            >
+              <I.Sparkles size={12} />
+              Phát hiện liên kết
+              {suggestions.length > 0 && (
+                <span className="ml-0.5 bg-accent text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                  {suggestions.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setComputedPanelOpen((v) => !v);
                 setSelectedNodeId(null);
+                setSuggestOpen(false);
               }}
               className={cn(
                 "h-8 px-3 rounded-lg border text-xs flex items-center gap-1.5 shadow-sm",
@@ -1180,6 +1267,100 @@ function Canvas({ id }: { id: string }) {
               <p className="text-[11px] text-muted">
                 Biểu thức trên CỘT PHẲNG khác (<code>{"{key}"}</code>) + hàm IF/CONCAT/ROUND… Cột
                 chỉ đọc, eval sau projection + aggregate.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Right panel — Đề xuất liên kết (auto-link) */}
+        {suggestOpen && (
+          <div
+            className={cn(
+              "border-l border-border bg-panel flex flex-col overflow-hidden",
+              isMobile ? "absolute inset-0 z-20 w-full" : "w-[380px] shrink-0",
+            )}
+          >
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+              <I.Sparkles size={14} className="text-accent shrink-0" />
+              <span className="font-semibold text-sm flex-1">Đề xuất liên kết</span>
+              <button
+                type="button"
+                onClick={() => setSuggestOpen(false)}
+                className="w-6 h-6 rounded hover:bg-hover/60 flex items-center justify-center text-muted"
+              >
+                <I.X size={13} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {suggestions.length === 0 ? (
+                <div className="text-center py-8 text-muted">
+                  <I.Sparkles size={28} className="mx-auto opacity-30 mb-2" />
+                  <p className="text-xs">
+                    Không phát hiện liên kết tự động nào (qua khoá ngoại) cho các đối tượng hiện có.
+                  </p>
+                  <p className="text-[11px] mt-1">Dùng "Thêm đối tượng" để nối thủ công.</p>
+                </div>
+              ) : (
+                suggestions.map((s) => {
+                  const tierLabel = s.tier === 1 ? "FK" : s.tier === 2 ? "1-N" : "Gián tiếp";
+                  const pct = Math.round(s.confidence * 100);
+                  const confCls =
+                    s.confidence >= 0.85
+                      ? "bg-emerald-500/15 text-emerald-500"
+                      : s.confidence >= 0.6
+                        ? "bg-amber-500/15 text-amber-600"
+                        : "bg-muted/15 text-muted";
+                  return (
+                    <Card key={s.id} className="p-2.5 space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-semibold",
+                            confCls,
+                          )}
+                          title={`Độ tin cậy ${pct}%`}
+                        >
+                          {pct}%
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/15 text-accent shrink-0">
+                          {tierLabel}
+                        </span>
+                        <span className="text-xs flex-1 truncate font-medium" title={s.reason}>
+                          {nodeAlias(s.fromNodeId)} →{" "}
+                          {entById(s.targetEntityId)?.name ?? s.targetEntityId}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-muted">{s.reason}</div>
+                      {s.steps.length > 1 && (
+                        <div className="text-[10px] text-muted font-mono truncate">
+                          {s.steps.map((st) => `${st.fromField}→${st.toField}`).join("  ·  ")}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-0.5">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          icon={<I.Plus size={12} />}
+                          onClick={() => acceptSuggestion(s)}
+                        >
+                          {s.kind === "aggregate" ? "Thêm cột đếm" : "Tạo liên kết"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<I.X size={12} />}
+                          onClick={() => dismissLink(s.id)}
+                        >
+                          Bỏ qua
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+              <p className="text-[11px] text-muted pt-1">
+                Phát hiện dựa trên khoá ngoại (field lookup) trong metadata. Tier 3 tự thêm bảng
+                trung gian khi tạo liên kết.
               </p>
             </div>
           </div>
