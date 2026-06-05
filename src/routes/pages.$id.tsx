@@ -9,6 +9,8 @@ function PageRoute() {
   const name = useUserObjects((s) => s.pages.find((p) => p.id === id)?.name);
   useDocumentTitle(name);
   useSetAgentContext(name ? { type: "page", id, label: name } : null);
-  return <PageDesigner pageId={id} />;
+  // key={id} → mỗi trang là instance độc lập: chuyển trang remount, reset
+  // sạch state cục bộ (không kế thừa nội dung trang trước).
+  return <PageDesigner key={id} pageId={id} />;
 }
 export const Route = createFileRoute("/pages/$id")({ component: PageRoute });

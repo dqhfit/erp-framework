@@ -104,6 +104,11 @@ type LoadCond = { op: string; value: unknown };
 /* Widget hỗ trợ chọn nguồn = entity HOẶC datasource (gồm cả detail/form). */
 const BINDING_KINDS = new Set([...RECORD_DATA_KINDS, "detail", "form"]);
 
+/* Widget NHẬP (search/combobox/listbox/tagbox) — gắn nguồn + state ở tab
+   "Nguồn & Điều khiển". Dùng để nhắc discoverability (badge canvas + nút
+   chuyển tab trong inspector). */
+const INPUT_WIDGET_KINDS = new Set(["search", "combobox", "listbox", "tagbox"]);
+
 /* Bộ chọn nguồn dữ liệu: Entity ↔ Nguồn dữ liệu (datasource). Ghi cfg.entity
    hoặc cfg.dataSourceId. dataSourceId === undefined = mode entity; định nghĩa
    (kể cả "") = mode datasource. */
@@ -430,6 +435,9 @@ export function PageDesigner({ pageId }: Props) {
     if (!ready) return;
     const stored = useUserObjects.getState().pageContent[pageId];
     if (Array.isArray(stored)) setComponents(stored as PageComponent[]);
+    // Trang mới / chưa có nội dung (content = {} hoặc undefined) → canvas
+    // TRẮNG, KHÔNG giữ lại demo/nội dung trang trước (lỗi "kế thừa trang cũ").
+    else setComponents([]);
   }, [pageId, ready]);
 
   // Reset selection khi chuyển page
@@ -1266,6 +1274,19 @@ export function PageDesigner({ pageId }: Props) {
                           />
                         </FormField>
                       </div>
+                      <div className="text-[10px] text-muted/70 leading-relaxed">
+                        Mẹo: kéo cạnh phải/đáy hoặc góc dưới-phải của widget trên canvas để đổi kích
+                        thước (hoặc nhập số ô ở trên).
+                      </div>
+                      {INPUT_WIDGET_KINDS.has(sel.kind) && (
+                        <button
+                          type="button"
+                          onClick={() => setInspTab("dieukien")}
+                          className="w-full text-left text-[11px] px-2 py-1.5 rounded-md border border-accent/30 bg-accent/5 text-accent hover:bg-accent/10"
+                        >
+                          → Gắn nguồn dữ liệu (Entity + Field) ở tab “Nguồn &amp; Điều khiển”
+                        </button>
+                      )}
                     </>
                   )}
                   {/* Tải dữ liệu — số dòng + điều kiện + cổng (mọi widget record-list) */}
@@ -2483,7 +2504,7 @@ function tabsForKind(kind: ComponentKind) {
       tabs.push({ key: "hanhDong", label: "Hành động" });
     return tabs;
   }
-  if (inputKinds.includes(kind)) return [...base, { key: "dieukien", label: "Điều khiển" }];
+  if (inputKinds.includes(kind)) return [...base, { key: "dieukien", label: "Nguồn & Điều khiển" }];
   if (kind === "split") return [...base, { key: "bocuc", label: "Bố cục" }];
   if (kind === "actionbar") return [...base, { key: "hanhDong", label: "Hành động" }];
   if (kind === "action") return [...base, { key: "cauhinh", label: "Cấu hình" }];
@@ -2524,6 +2545,12 @@ function ComponentCard({
   onDragLeave,
   onResizeStart,
 }: ComponentCardProps) {
+  // Widget nhập chưa gắn nguồn nào (entity/options/stateKey) → badge nhắc.
+  const unbound =
+    INPUT_WIDGET_KINDS.has(comp.kind) &&
+    !comp.config.entity &&
+    !comp.config.options &&
+    !comp.config.stateKey;
   return (
     <div
       draggable={!isResizing}
@@ -2565,6 +2592,14 @@ function ComponentCard({
         <div className="flex items-center gap-1.5">
           <I.Grip size={11} className="cursor-grab shrink-0 opacity-40 hover:opacity-70" />
           <span className="font-mono uppercase">{comp.kind}</span>
+          {unbound && (
+            <span
+              title="Widget chưa gắn nguồn dữ liệu. Mở tab “Nguồn & Điều khiển” (chọn widget → inspector) để chọn Entity + Field hoặc nhập tuỳ chọn tĩnh."
+              className="px-1 rounded-sm bg-warning/15 text-warning text-[9px] normal-case font-normal"
+            >
+              chưa gắn nguồn
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -2589,14 +2624,16 @@ function ComponentCard({
       </div>
       {!previewMode && (
         <>
-          {/* Resize handle — right edge */}
+          {/* Resize handle — right edge (rộng 2.5px cho dễ bắt, nhất là
+              widget nhỏ như KPI) */}
           <div
             className={cn(
-              "absolute right-0 top-0 bottom-2.5 w-1.5 cursor-ew-resize z-20 transition-colors",
+              "absolute right-0 top-0 bottom-2.5 w-2.5 cursor-ew-resize z-20 transition-colors",
               "opacity-0 group-hover/card:opacity-100",
               (selected || isResizing) && "opacity-100 bg-accent/20",
               "hover:bg-accent/50",
             )}
+            title="Kéo để đổi chiều rộng"
             onMouseDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -2606,11 +2643,12 @@ function ComponentCard({
           {/* Resize handle — bottom edge */}
           <div
             className={cn(
-              "absolute left-0 right-2.5 bottom-0 h-1.5 cursor-ns-resize z-20 transition-colors",
+              "absolute left-0 right-2.5 bottom-0 h-2.5 cursor-ns-resize z-20 transition-colors",
               "opacity-0 group-hover/card:opacity-100",
               (selected || isResizing) && "opacity-100 bg-accent/20",
               "hover:bg-accent/50",
             )}
+            title="Kéo để đổi chiều cao"
             onMouseDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -2620,12 +2658,13 @@ function ComponentCard({
           {/* Resize handle — bottom-right corner */}
           <div
             className={cn(
-              "absolute right-0 bottom-0 w-2.5 h-2.5 cursor-nwse-resize z-30 transition-colors",
+              "absolute right-0 bottom-0 w-3.5 h-3.5 cursor-nwse-resize z-30 transition-colors",
               "opacity-0 group-hover/card:opacity-100",
               (selected || isResizing) && "opacity-100",
               "hover:bg-accent/60",
               "flex items-center justify-center",
             )}
+            title="Kéo để đổi kích thước"
             onMouseDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
