@@ -3,8 +3,9 @@
    server (nguồn tri thức, tra cứu RAG, profile embedding). Tải file
    đi qua route /upload (multipart) — ngoài tRPC.
    ========================================================== */
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
 import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 export interface KnowledgeSource {
   id: string;
@@ -15,6 +16,9 @@ export interface KnowledgeSource {
   error: string | null;
   /** Biểu thức cron tự nạp lại (chỉ nguồn entity); null = tắt. */
   reindexCron: string | null;
+  /** Phân quyền: "company" = mọi user trong công ty xem; "restricted" =
+   *  chỉ admin + người tạo + user/nhóm được cấp. Mặc định "company". */
+  visibility?: "company" | "restricted";
   /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. ingest =
    *  thống kê tiến độ/tốc độ embedding lần nạp gần nhất (worker ghi). */
   meta?: Record<string, unknown> & {
@@ -84,6 +88,15 @@ export function createKnowledgeClient(baseUrl: string) {
     ) => trpc.knowledge.sources.update.mutate({ id, ...patch }),
     /** Tra cứu ANN cosine. */
     search: (query: string, limit?: number) => trpc.knowledge.search.query({ query, limit }),
+    /** Phân quyền hiện tại của nguồn (visibility + nhóm + user được cấp). */
+    getAcl: (id: string) => trpc.knowledge.sources.acl.query(id),
+    /** Đặt phân quyền nguồn: visibility + thay thế danh sách nhóm + user. */
+    setAcl: (input: {
+      id: string;
+      visibility: "company" | "restricted";
+      groupIds: string[];
+      userIds: string[];
+    }) => trpc.knowledge.sources.setAcl.mutate(input),
     /** Cấu hình embedding hiện tại (null nếu chưa có). */
     getEmbeddingProfile: () => trpc.knowledge.embeddingProfile.get.query(),
     /** Lưu cấu hình embedding. */

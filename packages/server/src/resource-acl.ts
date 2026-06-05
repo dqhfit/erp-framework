@@ -9,9 +9,10 @@
    các helper ở đây để query role.
 
    Resource type whitelist:
-   - "agent"  : đã backfill từ agent_members (migration 0044)
-   - "page"   : để dành (Sprint mở rộng share Pages tương lai)
-   - "record" : để dành (per-row ACL trên entity_records tương lai)
+   - "agent"     : đã backfill từ agent_members (migration 0044)
+   - "knowledge" : cấp nguồn tri thức cho user riêng lẻ (P #3, migration 0068)
+   - "page"      : để dành (Sprint mở rộng share Pages tương lai)
+   - "record"    : để dành (per-row ACL trên entity_records tương lai)
 
    Role là chuỗi tự do theo từng resource type — caller phải tự
    validate (vd agent: owner|operator|observer).
@@ -21,7 +22,7 @@ import { resourceMembers } from "@erp-framework/db";
 import { and, eq } from "drizzle-orm";
 import type { DB } from "./db";
 
-export type ResourceType = "agent" | "page" | "record";
+export type ResourceType = "agent" | "knowledge" | "page" | "record";
 
 export interface ResourceMember {
   userId: string;

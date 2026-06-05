@@ -11,9 +11,10 @@
    "knowledge_search" của agent. Fail-safe theo CLAUDE.md: nếu embedding
    lỗi → tự lùi về FTS-only thay vì vỡ, đảm bảo vẫn có kết quả keyword.
    ========================================================== */
-import { sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import { embedTexts } from "./embeddings";
+import { type KnowledgeAcl, knowledgeAccessibleSql } from "./knowledge-acl";
 
 export interface KnowledgeHit {
   chunkId: string;
@@ -41,6 +42,9 @@ export interface KnowledgeSearchOpts {
   limit?: number;
   /** Lọc theo loại nguồn (knowledge_sources.kind). Bỏ trống = mọi loại. */
   sourceKind?: "file" | "entity" | "text";
+  /** Giới hạn theo quyền user/nhóm (Step 1). undefined = không lọc (admin
+     hoặc ngữ cảnh hệ thống). Agent-scope xử lý riêng (#3b). */
+  acl?: KnowledgeAcl;
 }
 
 type Row = {
@@ -87,11 +91,15 @@ export async function knowledgeSearch(
   // Vòng nến rộng để hai nhánh có đủ ứng viên trước khi hoà rank.
   const cand = Math.max(20, limit * 4);
 
-  // Lọc theo loại nguồn — đặt TRONG nhánh chọn ứng viên (CTE/WHERE) để
+  // Lọc ứng viên theo loại nguồn (sourceKind) + quyền truy cập (acl) — gộp
+  // vào MỘT subquery source_id IN (...), đặt TRONG nhánh chọn ứng viên để
   // không bị co tập kết quả sau khi đã rank. source_id không nhập nhằng
-  // (chỉ knowledge_chunks có cột này). Rỗng → fragment trống.
-  const kindCond = opts.sourceKind
-    ? sql` AND source_id IN (SELECT id FROM knowledge_sources WHERE company_id = ${companyId}::uuid AND kind = ${opts.sourceKind})`
+  // (chỉ knowledge_chunks có cột này). Không điều kiện nào → fragment trống.
+  const srcConds: SQL[] = [];
+  if (opts.sourceKind) srcConds.push(sql`kind = ${opts.sourceKind}`);
+  if (opts.acl) srcConds.push(knowledgeAccessibleSql(opts.acl));
+  const srcCond = srcConds.length
+    ? sql` AND source_id IN (SELECT id FROM knowledge_sources WHERE company_id = ${companyId}::uuid AND ${sql.join(srcConds, sql` AND `)})`
     : sql``;
 
   // Embed câu hỏi — fail-safe: lỗi (profile thiếu / sidecar down) thì
@@ -114,7 +122,7 @@ export async function knowledgeSearch(
       FROM knowledge_chunks c
       JOIN knowledge_sources s ON s.id = c.source_id
       WHERE c.company_id = ${companyId}::uuid
-        AND c.search_tsv @@ websearch_to_tsquery('simple', ${q})${kindCond}
+        AND c.search_tsv @@ websearch_to_tsquery('simple', ${q})${srcCond}
       ORDER BY sim DESC
       LIMIT ${limit}
     `)) as unknown as Row[];
@@ -129,7 +137,7 @@ export async function knowledgeSearch(
       SELECT id,
              row_number() OVER (ORDER BY embedding <=> ${lit}::vector) AS rnk
       FROM knowledge_chunks
-      WHERE company_id = ${companyId}::uuid AND embedding IS NOT NULL${kindCond}
+      WHERE company_id = ${companyId}::uuid AND embedding IS NOT NULL${srcCond}
       ORDER BY embedding <=> ${lit}::vector
       LIMIT ${cand}
     ),
@@ -140,7 +148,7 @@ export async function knowledgeSearch(
              ) AS rnk
       FROM knowledge_chunks c
       WHERE c.company_id = ${companyId}::uuid
-        AND c.search_tsv @@ websearch_to_tsquery('simple', ${q})${kindCond}
+        AND c.search_tsv @@ websearch_to_tsquery('simple', ${q})${srcCond}
       ORDER BY ts_rank(c.search_tsv, websearch_to_tsquery('simple', ${q})) DESC
       LIMIT ${cand}
     ),

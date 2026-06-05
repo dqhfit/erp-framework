@@ -1189,6 +1189,11 @@ export const knowledgeSources = pgTable(
     title: text("title").notNull(),
     // status: "pending" | "processing" | "ready" | "error"
     status: text("status").notNull().default("pending"),
+    // visibility: "company" = mọi user có quyền view:knowledge trong công ty
+    //   đều xem (mặc định, tương thích ngược); "restricted" = chỉ admin +
+    //   người tạo + user/nhóm được cấp (resource_members resource_type=
+    //   'knowledge' + knowledge_source_viewer_groups). Xem knowledge-acl.ts.
+    visibility: text("visibility").notNull().default("company"),
     // meta: file → { path, mime, size, originalName }; entity → { entityId };
     //       text → { text }
     meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
@@ -1232,6 +1237,22 @@ export const knowledgeChunks = pgTable(
     companyIdIdx: index("knowledge_chunks_company_id_idx").on(t.companyId),
     sourceIdIdx: index("knowledge_chunks_source_id_idx").on(t.sourceId),
   }),
+);
+
+/* Phân quyền nguồn tri thức theo nhóm người xem — mirror page_viewer_groups.
+   Nguồn visibility='restricted' gắn ≥1 nhóm → chỉ thành viên nhóm đó (cùng
+   admin + người tạo + user được cấp riêng qua resource_members) truy cập. */
+export const knowledgeSourceViewerGroups = pgTable(
+  "knowledge_source_viewer_groups",
+  {
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => knowledgeSources.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => viewerGroups.id, { onDelete: "cascade" }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.sourceId, t.groupId] }) }),
 );
 
 /* ─── IoT — thiết bị gửi/nhận dữ liệu ───────────────────── */

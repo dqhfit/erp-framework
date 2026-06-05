@@ -1,5 +1,7 @@
 import {
+  createCompaniesClient,
   createKnowledgeClient,
+  createObjectsClient,
   type KnowledgeHit,
   type KnowledgeSource,
 } from "@erp-framework/client";
@@ -17,6 +19,19 @@ import { dialog } from "@/lib/dialog";
 import { useUserObjects } from "@/stores/userObjects";
 
 const kb = createKnowledgeClient("");
+const objApi = createObjectsClient("");
+const companiesApi = createCompaniesClient("");
+
+interface ViewerGroupLite {
+  id: string;
+  name: string;
+  color: string;
+}
+interface MemberLite {
+  userId: string;
+  email: string;
+  name: string;
+}
 
 const KIND_LABEL: Record<string, string> = {
   file: "Tệp",
@@ -91,6 +106,14 @@ function KnowledgePage() {
   const [edText, setEdText] = useState("");
   const [edCron, setEdCron] = useState("");
 
+  // Phân quyền truy cập (visibility + nhóm + user được cấp)
+  const [aclFor, setAclFor] = useState<KnowledgeSource | null>(null);
+  const [aclVis, setAclVis] = useState<"company" | "restricted">("company");
+  const [aclGroups, setAclGroups] = useState<Set<string>>(new Set());
+  const [aclUsers, setAclUsers] = useState<Set<string>>(new Set());
+  const [groups, setGroups] = useState<ViewerGroupLite[]>([]);
+  const [members, setMembers] = useState<MemberLite[]>([]);
+
   const load = useCallback(() => {
     kb.list()
       .then((rows) => setSources(rows as KnowledgeSource[]))
@@ -102,6 +125,22 @@ function KnowledgePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Nạp danh sách nhóm người xem + thành viên công ty (cho bảng phân quyền).
+  useEffect(() => {
+    objApi.viewerGroups
+      .list()
+      .then((g) => setGroups(g as ViewerGroupLite[]))
+      .catch(() => {
+        /* chưa đăng nhập / không có quyền */
+      });
+    companiesApi
+      .members()
+      .then((m) => setMembers(m.map((r) => ({ userId: r.userId, email: r.email, name: r.name }))))
+      .catch(() => {
+        /* chưa đăng nhập / không có quyền */
+      });
+  }, []);
 
   // Tự làm mới khi còn nguồn đang xử lý.
   const hasPending = useMemo(
@@ -205,6 +244,41 @@ function KnowledgePage() {
       await kb.update(s.id, patch);
       setEditing(null);
     }, "Đã lưu thay đổi nguồn.");
+  };
+
+  // === Phân quyền ===
+  const openAcl = async (s: KnowledgeSource) => {
+    setAclFor(s);
+    setAclVis(s.visibility === "restricted" ? "restricted" : "company");
+    setAclGroups(new Set());
+    setAclUsers(new Set());
+    try {
+      const a = await kb.getAcl(s.id);
+      setAclVis(a.visibility === "restricted" ? "restricted" : "company");
+      setAclGroups(new Set(a.groupIds));
+      setAclUsers(new Set(a.userIds));
+    } catch {
+      /* giữ mặc định nếu lỗi */
+    }
+  };
+  const toggleIn = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setter(next);
+  };
+  const saveAcl = () => {
+    const s = aclFor;
+    if (!s) return;
+    void run(async () => {
+      await kb.setAcl({
+        id: s.id,
+        visibility: aclVis,
+        groupIds: aclVis === "restricted" ? [...aclGroups] : [],
+        userIds: aclVis === "restricted" ? [...aclUsers] : [],
+      });
+      setAclFor(null);
+    }, "Đã cập nhật quyền truy cập.");
   };
 
   return (
@@ -358,8 +432,23 @@ function KnowledgePage() {
                     <I.Clock size={9} /> {s.reindexCron}
                   </Chip>
                 )}
+                {s.visibility === "restricted" && (
+                  <Chip variant="warning" className="text-[10px]!">
+                    <I.Lock size={9} /> Riêng tư
+                  </Chip>
+                )}
                 <StatusChip s={s} />
                 <IngestInfo s={s} />
+                <Button
+                  size="sm"
+                  variant="default"
+                  icon={<I.Lock size={12} />}
+                  disabled={busy}
+                  onClick={() => void openAcl(s)}
+                  title="Phân quyền truy cập theo user/nhóm"
+                >
+                  Quyền
+                </Button>
                 <Button
                   size="sm"
                   variant="default"
@@ -480,6 +569,145 @@ function KnowledgePage() {
                   onClick={saveEdit}
                 >
                   Lưu
+                </Button>
+              </div>
+            </div>
+          )}
+        </Drawer>
+
+        {/* === Drawer phân quyền truy cập === */}
+        <Drawer open={!!aclFor} onClose={() => setAclFor(null)} title="Phân quyền truy cập">
+          {aclFor && (
+            <div className="p-4 space-y-4">
+              <div className="text-sm">
+                Nguồn: <span className="font-medium">{aclFor.title}</span>
+              </div>
+
+              {/* Chọn phạm vi hiển thị */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setAclVis("company")}
+                  className={`w-full text-left rounded-md border p-3 flex items-start gap-2.5 transition-colors ${
+                    aclVis === "company"
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:bg-hover/40"
+                  }`}
+                >
+                  <I.Globe size={16} className="mt-0.5 shrink-0 text-muted" />
+                  <div>
+                    <div className="text-sm font-medium">Toàn công ty</div>
+                    <div className="text-xs text-muted">
+                      Mọi người dùng có quyền xem Knowledge Base đều truy cập được.
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAclVis("restricted")}
+                  className={`w-full text-left rounded-md border p-3 flex items-start gap-2.5 transition-colors ${
+                    aclVis === "restricted"
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:bg-hover/40"
+                  }`}
+                >
+                  <I.Lock size={16} className="mt-0.5 shrink-0 text-muted" />
+                  <div>
+                    <div className="text-sm font-medium">Giới hạn (riêng tư)</div>
+                    <div className="text-xs text-muted">
+                      Chỉ admin, người tạo và các nhóm/người dùng được chọn dưới đây.
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {aclVis === "restricted" && (
+                <>
+                  {/* Nhóm người xem */}
+                  <FormField label={`Nhóm người xem (${aclGroups.size})`}>
+                    {groups.length === 0 ? (
+                      <div className="text-xs text-muted">
+                        Chưa có nhóm nào.{" "}
+                        <a href="/settings/viewer-groups" className="text-accent hover:underline">
+                          Tạo nhóm
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups.map((g) => {
+                          const on = aclGroups.has(g.id);
+                          return (
+                            <button
+                              key={g.id}
+                              type="button"
+                              onClick={() => toggleIn(aclGroups, setAclGroups, g.id)}
+                              className={`chip cursor-pointer inline-flex items-center gap-1.5 ${
+                                on ? "chip-accent" : ""
+                              }`}
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ background: g.color }}
+                              />
+                              {on ? "✓ " : ""}
+                              {g.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </FormField>
+
+                  {/* Người dùng cụ thể */}
+                  <FormField label={`Người dùng cụ thể (${aclUsers.size})`}>
+                    {members.length === 0 ? (
+                      <div className="text-xs text-muted">Không tải được danh sách người dùng.</div>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                        {members.map((m) => {
+                          const on = aclUsers.has(m.userId);
+                          return (
+                            <button
+                              key={m.userId}
+                              type="button"
+                              onClick={() => toggleIn(aclUsers, setAclUsers, m.userId)}
+                              className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors ${
+                                on ? "bg-accent/10" : "hover:bg-hover/40"
+                              }`}
+                            >
+                              <span
+                                className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center text-[10px] ${
+                                  on ? "bg-accent border-accent text-white" : "border-border"
+                                }`}
+                              >
+                                {on ? "✓" : ""}
+                              </span>
+                              <span className="truncate">
+                                {m.name || m.email}
+                                {m.name && (
+                                  <span className="text-muted text-xs ml-1">{m.email}</span>
+                                )}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </FormField>
+                </>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="ghost" onClick={() => setAclFor(null)}>
+                  Hủy
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={<I.Save size={13} />}
+                  disabled={busy}
+                  onClick={saveAcl}
+                >
+                  Lưu quyền
                 </Button>
               </div>
             </div>
