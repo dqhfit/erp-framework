@@ -2,6 +2,7 @@ import { createAgentChatClient, createKnowledgeClient } from "@erp-framework/cli
 import { useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { Markdown } from "@/components/Markdown";
 import { Button, Chip, Select, Textarea } from "@/components/ui";
 import { mcpToolsToToolDefs } from "@/core/agent-runner";
 import { llmRegistry } from "@/core/llm";
@@ -608,7 +609,7 @@ function MessageBubble({
       <div className="flex-1 min-w-0 max-w-[85%]">
         <div
           className={cn(
-            "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap wrap-break-word",
+            "rounded-lg px-3 py-2 text-sm wrap-break-word",
             msg.error
               ? "bg-danger/10 border border-danger/30 text-danger"
               : isUser
@@ -620,8 +621,12 @@ function MessageBubble({
             <span className="inline-flex items-center gap-1.5 text-muted">
               <I.Loader size={13} className="animate-spin" /> {t("agent.thinking")}
             </span>
+          ) : isUser || msg.error ? (
+            // Tin người dùng / lỗi: giữ văn bản thô (không diễn giải markdown).
+            <span className="whitespace-pre-wrap">{msg.content}</span>
           ) : (
-            msg.content
+            // Câu trả lời chatbot: render Markdown → UI (đậm, bảng, list…).
+            <Markdown text={msg.content} />
           )}
         </div>
         {msg.toolCall && (

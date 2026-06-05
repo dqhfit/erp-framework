@@ -11,6 +11,7 @@ import {
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
+import { Markdown } from "@/components/Markdown";
 import { Button, Card, Chip, FormField, Input, Select, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { useAuth } from "@/stores/auth";
@@ -154,7 +155,7 @@ function FeedbackDetailRoute() {
             <div className="text-xs uppercase text-accent font-semibold mb-1">
               ✨ {t("feedback.ai_summary_label")}
             </div>
-            <div className="text-sm">{fb.aiSummary}</div>
+            <Markdown text={fb.aiSummary} />
             {fb.aiTags && fb.aiTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {fb.aiTags.map((t) => (
