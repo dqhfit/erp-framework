@@ -1784,6 +1784,67 @@ export const feedbackMergeBatches = pgTable(
   }),
 );
 
+/* ─── Lộ trình nâng cấp / task-fix (roadmap_items) ─────────────────
+   Đích đến của đề xuất AI khi "thêm vào lộ trình". 1 mục có thể gom
+   nhiều feedback (feedback_ids). source=manual (admin tạo) | ai_proposal
+   (sinh khi duyệt 1 ai_proposals). created_by null = AI/hệ thống. */
+export const roadmapItems = pgTable(
+  "roadmap_items",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    area: text("area"), // entity|workflow|agent|settings|ui|performance|other
+    status: text("status").notNull().default("planned"), // planned|in_progress|done|dropped
+    priority: text("priority").notNull().default("normal"), // low|normal|high
+    targetQuarter: text("target_quarter"), // vd 2026-Q3
+    feedbackIds: jsonb("feedback_ids").notNull().default(sql`'[]'::jsonb`), // string[]
+    source: text("source").notNull().default("manual"), // manual|ai_proposal
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyStatusIdx: index("roadmap_items_company_status_idx").on(t.companyId, t.status),
+  }),
+);
+
+/* ─── Đề xuất AI chờ preview/duyệt (ai_proposals) ──────────────────
+   MCP server cho AI ĐỌC feedback + GHI đề xuất ở trạng thái pending.
+   AI KHÔNG mutate trực tiếp — admin duyệt trong UI rồi mới
+   applyProposalActions (đổi status / đánh dấu trùng / thêm lộ trình).
+   actions: ProposalAction[] (xem feedback-proposals.ts). */
+export const aiProposals = pgTable(
+  "ai_proposals",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary"), // markdown AI viết — nội dung preview
+    actions: jsonb("actions").notNull().default(sql`'[]'::jsonb`), // ProposalAction[]
+    feedbackIds: jsonb("feedback_ids").notNull().default(sql`'[]'::jsonb`), // string[]
+    status: text("status").notNull().default("pending"), // pending|approved|rejected|applied|superseded
+    createdByKind: text("created_by_kind").notNull().default("ai"), // ai|user
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    apiKeyId: uuid("api_key_id").references(() => apiKeys.id, { onDelete: "set null" }),
+    reviewNote: text("review_note"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at"),
+    appliedAt: timestamp("applied_at"),
+    applyResult: jsonb("apply_result"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyStatusIdx: index("ai_proposals_company_status_idx").on(t.companyId, t.status),
+  }),
+);
+
 /* ─── Lịch sử trò chuyện với Agent (per-user, có thể xoá) ─────────── */
 export const agentConversations = pgTable(
   "agent_conversations",

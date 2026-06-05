@@ -6,10 +6,13 @@
    ========================================================== */
 
 import {
+  aiProposals,
   feedbackComments,
   feedbackMergeBatches,
   feedbacks,
   feedbackVotes,
+  notifications,
+  roadmapItems,
   users,
 } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
@@ -18,6 +21,7 @@ import { z } from "zod";
 import { logActivity } from "./activity";
 import { embedTexts } from "./embeddings";
 import { enqueueFeedbackAi } from "./feedback-ai";
+import { applyProposalActions } from "./feedback-proposals";
 import { callLlmJson } from "./llm-json";
 import { notifyAdmins, notifyMentions } from "./notifications-router";
 import { rbacProcedure, router } from "./trpc";
@@ -778,6 +782,206 @@ export const feedbackRouter = router({
             eq(feedbackMergeBatches.companyId, ctx.user.companyId),
           ),
         );
+      return { ok: true };
+    }),
+
+  /* ── Đề xuất AI (ai_proposals) — admin preview & duyệt ────────────
+     MCP server (mcp-feedback.ts) cho AI tạo proposal pending; các thủ
+     tục dưới đây là cổng admin xem + DUYỆT (mới thực thi) / từ chối.
+     AI không tự mutate dữ liệu feedback. */
+  listProposals: rbacProcedure("view", "feedback")
+    .input(
+      z
+        .object({
+          status: z.enum(["pending", "approved", "rejected", "applied", "superseded"]).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin xem đề xuất AI" });
+      }
+      const conds = [eq(aiProposals.companyId, ctx.user.companyId)];
+      if (input?.status) conds.push(eq(aiProposals.status, input.status));
+      return ctx.db
+        .select({
+          id: aiProposals.id,
+          title: aiProposals.title,
+          status: aiProposals.status,
+          createdByKind: aiProposals.createdByKind,
+          feedbackIds: aiProposals.feedbackIds,
+          createdAt: aiProposals.createdAt,
+          reviewedAt: aiProposals.reviewedAt,
+          appliedAt: aiProposals.appliedAt,
+        })
+        .from(aiProposals)
+        .where(and(...conds))
+        .orderBy(desc(aiProposals.createdAt))
+        .limit(200);
+    }),
+
+  getProposal: rbacProcedure("view", "feedback")
+    .input(z.string().uuid())
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin xem đề xuất AI" });
+      }
+      const [row] = await ctx.db
+        .select()
+        .from(aiProposals)
+        .where(and(eq(aiProposals.id, input), eq(aiProposals.companyId, ctx.user.companyId)));
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Đề xuất không tồn tại" });
+      return row;
+    }),
+
+  /** DUYỆT 1 đề xuất pending → thực thi actions (đổi status / đánh dấu
+      trùng / thêm lộ trình) trong transaction, notify author, đánh dấu
+      applied. Đây là điểm DUY NHẤT dữ liệu feedback thật bị thay đổi từ
+      luồng AI — qua tay admin. */
+  approveProposal: rbacProcedure("edit", "feedback")
+    .input(z.object({ id: z.string().uuid(), reviewNote: z.string().max(2000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin duyệt đề xuất" });
+      }
+      const [row] = await ctx.db
+        .select()
+        .from(aiProposals)
+        .where(and(eq(aiProposals.id, input.id), eq(aiProposals.companyId, ctx.user.companyId)));
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Đề xuất không tồn tại" });
+      if (row.status !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Chỉ duyệt được đề xuất pending (hiện ${row.status})`,
+        });
+      }
+
+      let result: Awaited<ReturnType<typeof applyProposalActions>>;
+      try {
+        result = await applyProposalActions(ctx.db, {
+          companyId: ctx.user.companyId,
+          actorUserId: ctx.user.id,
+          actions: (row.actions ?? []) as never,
+        });
+      } catch (e) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Áp dụng đề xuất lỗi: ${(e as Error).message}`,
+        });
+      }
+
+      const now = new Date();
+      await ctx.db
+        .update(aiProposals)
+        .set({
+          status: "applied",
+          reviewedBy: ctx.user.id,
+          reviewedAt: now,
+          appliedAt: now,
+          reviewNote: input.reviewNote ?? null,
+          applyResult: result as never,
+          updatedAt: now,
+        })
+        .where(eq(aiProposals.id, input.id));
+
+      // Notify author các feedback bị đổi (bỏ qua chính admin).
+      const targets = result.notify.filter((n) => n.authorUserId !== ctx.user.id);
+      if (targets.length > 0) {
+        await ctx.db.insert(notifications).values(
+          targets.map((n) => ({
+            companyId: ctx.user.companyId,
+            userId: n.authorUserId,
+            kind: "feedback_status",
+            targetUrl: `/feedback/${n.feedbackId}`,
+            actorUserId: ctx.user.id,
+            body: `Feedback "${n.title}" đổi trạng thái → ${n.status}`,
+          })),
+        );
+      }
+      void logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "feedback.proposal_apply",
+        target: input.id,
+        detail: `status=${result.statusUpdated} dup=${result.duplicatesMarked} roadmap+${result.roadmapCreated.length}`,
+        actorUserId: ctx.user.id,
+      });
+      return { ok: true, result };
+    }),
+
+  rejectProposal: rbacProcedure("edit", "feedback")
+    .input(z.object({ id: z.string().uuid(), reviewNote: z.string().max(2000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin từ chối đề xuất" });
+      }
+      const res = await ctx.db
+        .update(aiProposals)
+        .set({
+          status: "rejected",
+          reviewedBy: ctx.user.id,
+          reviewedAt: new Date(),
+          reviewNote: input.reviewNote ?? null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(aiProposals.id, input.id),
+            eq(aiProposals.companyId, ctx.user.companyId),
+            eq(aiProposals.status, "pending"),
+          ),
+        )
+        .returning({ id: aiProposals.id });
+      if (res.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không có đề xuất pending để từ chối" });
+      }
+      return { ok: true };
+    }),
+
+  /* ── Lộ trình nâng cấp (roadmap_items) ───────────────────────────── */
+  listRoadmap: rbacProcedure("view", "feedback")
+    .input(
+      z
+        .object({ status: z.enum(["planned", "in_progress", "done", "dropped"]).optional() })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const conds = [eq(roadmapItems.companyId, ctx.user.companyId)];
+      if (input?.status) conds.push(eq(roadmapItems.status, input.status));
+      return ctx.db
+        .select()
+        .from(roadmapItems)
+        .where(and(...conds))
+        .orderBy(desc(roadmapItems.createdAt))
+        .limit(200);
+    }),
+
+  setRoadmapStatus: rbacProcedure("edit", "feedback")
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.enum(["planned", "in_progress", "done", "dropped"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin sửa lộ trình" });
+      }
+      await ctx.db
+        .update(roadmapItems)
+        .set({ status: input.status, updatedAt: new Date() })
+        .where(and(eq(roadmapItems.id, input.id), eq(roadmapItems.companyId, ctx.user.companyId)));
+      return { ok: true };
+    }),
+
+  deleteRoadmap: rbacProcedure("edit", "feedback")
+    .input(z.string().uuid())
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin xoá lộ trình" });
+      }
+      await ctx.db
+        .delete(roadmapItems)
+        .where(and(eq(roadmapItems.id, input), eq(roadmapItems.companyId, ctx.user.companyId)));
       return { ok: true };
     }),
 });

@@ -42,6 +42,7 @@ import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
+import { registerFeedbackMcp } from "./mcp-feedback";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
 import {
@@ -252,6 +253,11 @@ async function main(): Promise<void> {
   // (auth header X-API-Key, scopes per entity). Mobile/external/3rd-party
   // dùng được thẳng, không cần codegen tRPC.
   registerRestApi(app, db);
+
+  // MCP server cho module Phản hồi — POST /mcp (JSON-RPC), auth X-API-Key
+  // scope feedback:read|propose. AI ngoài (Claude) đọc feedback + ghi đề
+  // xuất PENDING; admin duyệt trong UI mới thực thi (xem mcp-feedback.ts).
+  registerFeedbackMcp(app, db);
 
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.

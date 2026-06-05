@@ -8,41 +8,12 @@
    hoặc "entity:*:read"/"entity:*:write" cho từng action.
    ========================================================== */
 
-import { createHash } from "node:crypto";
 import { type EntityFieldDef, validateRecord } from "@erp-framework/core";
-import { apiKeys, entities, entityRecords } from "@erp-framework/db";
+import { entities, entityRecords } from "@erp-framework/db";
 import { and, eq, sql } from "drizzle-orm";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { type ApiKeyContext, authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
-
-interface ApiKeyContext {
-  companyId: string;
-  scopes: string[];
-}
-
-/** Verify X-API-Key + load company + scopes. Trả null nếu invalid. */
-async function authApiKey(db: DB, req: FastifyRequest): Promise<ApiKeyContext | null> {
-  const key = req.headers["x-api-key"];
-  if (typeof key !== "string" || !key.startsWith("sk_")) return null;
-  const hash = createHash("sha256").update(key).digest("hex");
-  const [row] = await db
-    .select()
-    .from(apiKeys)
-    .where(and(eq(apiKeys.keyHash, hash), eq(apiKeys.enabled, true)));
-  if (!row) return null;
-  // Best-effort update lastUsedAt (không await).
-  void db
-    .update(apiKeys)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, row.id))
-    .catch(() => {
-      /* ignore */
-    });
-  return {
-    companyId: row.companyId,
-    scopes: (row.scopes ?? []) as string[],
-  };
-}
 
 /** Deny-by-default. Empty scopes = không được phép gì. Admin muốn cấp
  *  full access phải explicit thêm "*" vào scopes (xem api-keys-router).

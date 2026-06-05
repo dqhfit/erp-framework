@@ -8,7 +8,7 @@ import {
    /feedback — List feedback của công ty, filter status/area + tab Mine.
    Sort: voteCount desc → createdAt desc. AI summary hiển thị nếu có.
    ========================================================== */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MergeFeedbackModal } from "@/components/feedback/MergeFeedbackModal";
 import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
@@ -54,6 +54,7 @@ function FeedbackIndex() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const isAdmin = useAuth((s) => s.user?.role) === "admin";
+  const navigate = useNavigate();
 
   const filters = useMemo(
     () => ({
@@ -78,6 +79,15 @@ function FeedbackIndex() {
       <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl font-semibold flex-1">{t("feedback.title")}</h1>
+          {isAdmin && (
+            <Button
+              variant="default"
+              icon={<I.Sparkles size={14} />}
+              onClick={() => navigate({ to: "/feedback/proposals" })}
+            >
+              {t("feedback.proposals_btn")}
+            </Button>
+          )}
           {isAdmin && (
             <Button
               variant="default"

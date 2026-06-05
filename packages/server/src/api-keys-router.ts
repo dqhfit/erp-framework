@@ -15,8 +15,9 @@ import { rbacProcedure, router } from "./trpc";
 /** Scope format hợp lệ:
  *  - "*" (full access)
  *  - "entity:<name>:read" | "entity:<name>:write"
- *  - "entity:*:read" | "entity:*:write" (mọi entity, 1 action) */
-const SCOPE_RE = /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write))$/;
+ *  - "entity:*:read" | "entity:*:write" (mọi entity, 1 action)
+ *  - "feedback:read" | "feedback:propose" | "feedback:*" (MCP /mcp) */
+const SCOPE_RE = /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write)|feedback:(read|propose|\*))$/;
 function validateScopes(scopes: string[]): void {
   if (scopes.length === 0) {
     throw new TRPCError({

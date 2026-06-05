@@ -3,8 +3,9 @@
    User submit bất cập + đề xuất; admin triage qua status pipeline;
    AI summary + tags + similar-detection enrich từ server.
    ========================================================== */
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
 import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 export type FeedbackArea =
   | "entity"
@@ -56,6 +57,65 @@ export interface SimilarHit {
   status: string;
   vote_count: number;
   similarity: number;
+}
+
+/* ── Đề xuất AI (ai_proposals) + Lộ trình (roadmap_items) ─────────── */
+export type ProposalStatus = "pending" | "approved" | "rejected" | "applied" | "superseded";
+export type RoadmapStatus = "planned" | "in_progress" | "done" | "dropped";
+
+export type ProposalAction =
+  | { type: "set_status"; feedbackIds: string[]; status: FeedbackStatus; resolutionNote?: string }
+  | {
+      type: "mark_duplicate";
+      primaryId: string;
+      duplicateIds: string[];
+      status?: FeedbackStatus;
+      resolutionNote?: string;
+    }
+  | {
+      type: "add_to_roadmap";
+      feedbackIds?: string[];
+      roadmapId?: string;
+      roadmap?: {
+        title: string;
+        description?: string;
+        area?: string;
+        priority?: "low" | "normal" | "high";
+        targetQuarter?: string;
+      };
+      setStatus?: FeedbackStatus;
+    };
+
+export interface ProposalListItem {
+  id: string;
+  title: string;
+  status: ProposalStatus;
+  createdByKind: string;
+  feedbackIds: string[] | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  appliedAt: string | null;
+}
+
+export interface ProposalDetail extends ProposalListItem {
+  summary: string | null;
+  actions: ProposalAction[];
+  reviewNote: string | null;
+  applyResult: unknown;
+}
+
+export interface RoadmapItem {
+  id: string;
+  title: string;
+  description: string | null;
+  area: string | null;
+  status: RoadmapStatus;
+  priority: "low" | "normal" | "high";
+  targetQuarter: string | null;
+  feedbackIds: string[] | null;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FeedbackCreateInput {
@@ -158,6 +218,32 @@ export function createFeedbackClient(baseUrl: string) {
       }>,
     deleteMergeBatch: (id: string) =>
       trpc.feedback.deleteMergeBatch.mutate(id) as unknown as Promise<{ ok: boolean }>,
+
+    /* ── Đề xuất AI ── */
+    listProposals: (input?: { status?: ProposalStatus }) =>
+      trpc.feedback.listProposals.query(input) as unknown as Promise<ProposalListItem[]>,
+    getProposal: (id: string) =>
+      trpc.feedback.getProposal.query(id) as unknown as Promise<ProposalDetail>,
+    approveProposal: (input: { id: string; reviewNote?: string }) =>
+      trpc.feedback.approveProposal.mutate(input) as unknown as Promise<{
+        ok: boolean;
+        result: {
+          statusUpdated: number;
+          duplicatesMarked: number;
+          roadmapCreated: { id: string; title: string }[];
+          roadmapLinked: { id: string; added: number }[];
+        };
+      }>,
+    rejectProposal: (input: { id: string; reviewNote?: string }) =>
+      trpc.feedback.rejectProposal.mutate(input) as unknown as Promise<{ ok: boolean }>,
+
+    /* ── Lộ trình ── */
+    listRoadmap: (input?: { status?: RoadmapStatus }) =>
+      trpc.feedback.listRoadmap.query(input) as unknown as Promise<RoadmapItem[]>,
+    setRoadmapStatus: (input: { id: string; status: RoadmapStatus }) =>
+      trpc.feedback.setRoadmapStatus.mutate(input) as unknown as Promise<{ ok: boolean }>,
+    deleteRoadmap: (id: string) =>
+      trpc.feedback.deleteRoadmap.mutate(id) as unknown as Promise<{ ok: boolean }>,
   };
 }
 

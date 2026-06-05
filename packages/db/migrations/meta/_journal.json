@@ -484,6 +484,13 @@
       "when": 1783702500000,
       "tag": "0068_knowledge_acl",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1783702600000,
+      "tag": "0069_feedback_ai_proposals",
+      "breakpoints": true
     }
   ]
 }

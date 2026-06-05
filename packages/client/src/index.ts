@@ -70,6 +70,12 @@ export {
   type FeedbackListItem,
   type FeedbackSeverity,
   type FeedbackStatus,
+  type ProposalAction,
+  type ProposalDetail,
+  type ProposalListItem,
+  type ProposalStatus,
+  type RoadmapItem,
+  type RoadmapStatus,
   type SimilarHit,
 } from "./feedback";
 export {
@@ -132,6 +138,7 @@ export {
   type MssqlConnectionView,
   type MssqlTestResult,
 } from "./mssql-connections";
+export { createNavClient, type NavClient, type NavItem, type NavKind } from "./nav";
 export {
   type AgentMemberRole,
   type AgentMemberRow,
@@ -144,7 +151,6 @@ export {
   type ScheduleSaveInput,
   type WorkflowSaveInput,
 } from "./objects";
-export { createNavClient, type NavClient, type NavItem, type NavKind } from "./nav";
 export { createOrgClient, type OrgClient } from "./org";
 export {
   createPluginsClient,
