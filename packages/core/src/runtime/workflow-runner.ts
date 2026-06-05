@@ -142,6 +142,13 @@ export interface RunWorkflowOptions {
    * assertWithinBudget; thiếu callback → bỏ qua (không chặn giữa chừng).
    */
   assertBudget?: () => Promise<void>;
+  /**
+   * Tiếp tục một run đã tạm dừng (vd approval): các step đã chạy (ok/skipped)
+   * được seed là "đã xong" — KHÔNG chạy lại (chống side-effect trùng như gửi
+   * mail/tạo record); node "paused" được đưa lại vào hàng đợi để chạy tiếp với
+   * quyết định mới truyền qua initialVars (vd approval_<id>="approved").
+   */
+  checkpoint?: { steps: RunStep[] };
 }
 
 /** Cap số phần tử lặp của node foreach — chống mảng khổng lồ treo runner. */
@@ -279,6 +286,28 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
   const visited = new Set<string>();
   const queue: string[] = triggers.map((t) => t.id);
   let overallStatus: RunResult["status"] = "completed";
+
+  // Resume từ checkpoint: seed node đã chạy (ok/skipped) làm "đã xong" + dựng
+  // lại nodeOutputs/portValues cho data-edge; hàng đợi = node "paused" (chạy
+  // lại với quyết định mới). Descendant sẽ tự nối vào queue khi paused chạy.
+  if (opt.checkpoint) {
+    for (const s of opt.checkpoint.steps) {
+      if (s.status !== "ok" && s.status !== "skipped") continue;
+      visited.add(s.nodeId);
+      nodeOutputs.set(s.nodeId, s.output);
+      for (const p of portsOf(byId.get(s.nodeId), "outputs")) {
+        const v =
+          typeof p.formula === "string" && p.formula.trim()
+            ? evaluate(p.formula, { ...vars }).value
+            : resolvePath(s.output, p.path);
+        portValues.set(`${s.nodeId}:${p.id}`, v);
+      }
+    }
+    queue.length = 0;
+    for (const s of opt.checkpoint.steps) {
+      if (s.status === "paused" && !visited.has(s.nodeId)) queue.push(s.nodeId);
+    }
+  }
 
   while (queue.length && steps.length < maxSteps) {
     // Topo theo data-dependency: ưu tiên node CHƯA chạy đã đủ nguồn dữ

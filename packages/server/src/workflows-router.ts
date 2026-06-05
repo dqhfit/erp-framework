@@ -9,7 +9,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { logActivity } from "./activity";
 import { workflowInput } from "./router-helpers";
-import { executeWorkflow, recentRuns } from "./run-workflow";
+import { executeWorkflow, recentRuns, resumeWorkflowRun } from "./run-workflow";
 import { rbacProcedure, router } from "./trpc";
 
 export const workflowsRouter = router({
@@ -193,6 +193,26 @@ export const workflowsRouter = router({
         actorRole: ctx.user.role,
       });
       return { runId: r.runId, status: r.status, stepCount: r.stepCount, replayedFrom: idx };
+    }),
+
+  /* Tiếp tục run đang chờ duyệt (node approval): đặt quyết định cho node rồi
+     chạy tiếp từ checkpoint — node đã chạy KHÔNG lặp lại (chống side-effect
+     trùng). decision "approved"/"rejected" → runner đi nhánh tương ứng. */
+  resumeApproval: rbacProcedure("run", "workflow")
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        nodeId: z.string().min(1),
+        decision: z.enum(["approved", "rejected"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const r = await resumeWorkflowRun(ctx.db, input.runId, {
+        companyId: ctx.user.companyId,
+        actorRole: ctx.user.role,
+        decisions: { [`approval_${input.nodeId}`]: input.decision },
+      });
+      return { runId: r.runId, status: r.status, stepCount: r.stepCount };
     }),
 
   // Chạy workflow ngay (đồng bộ). pg-boss để chạy nền/cron là bước kế.

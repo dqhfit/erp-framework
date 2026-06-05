@@ -15,6 +15,7 @@ import { isIP } from "node:net";
 import {
   pluginRegistry,
   type Role,
+  type RunStep,
   type RunWorkflowOptions,
   roleCan,
   runWorkflow,
@@ -246,6 +247,115 @@ function assertNodeRoleRequirements(nodes: WfNode[], actorRole: Role): void {
 // roleCan unused for now — giữ import nếu cần check phức tạp hơn sau này.
 void roleCan;
 
+/** Map graph JSONB (ReactFlow) → nodes/edges của runner. */
+function mapGraph(graph: RawGraph): { nodes: WfNode[]; edges: WfEdge[] } {
+  const nodes: WfNode[] = (graph.nodes ?? []).map((n) => ({
+    id: n.id,
+    type: n.data?.kind ?? n.type ?? "action",
+    label: n.data?.label ?? n.id,
+    config: n.data?.config,
+  }));
+  const edges: WfEdge[] = (graph.edges ?? []).map((e) => ({
+    source: e.source,
+    target: e.target,
+    label: typeof e.label === "string" ? e.label : undefined,
+    // Giữ handle để runner phân biệt data-edge (cổng) vs control-flow.
+    sourceHandle: typeof e.sourceHandle === "string" ? e.sourceHandle : undefined,
+    targetHandle: typeof e.targetHandle === "string" ? e.targetHandle : undefined,
+  }));
+  return { nodes, edges };
+}
+
+type RunnerCallbacks = Pick<
+  RunWorkflowOptions,
+  | "callTool"
+  | "callAgent"
+  | "registry"
+  | "runCode"
+  | "invokeProcedure"
+  | "runSubWorkflow"
+  | "runHttp"
+  | "searchKnowledge"
+  | "assertBudget"
+>;
+
+/** Bộ callback runner dùng chung cho execute + resume (tránh lặp 9 callback). */
+function makeRunnerCallbacks(
+  db: DB,
+  wf: { id: string; name: string; companyId: string },
+  depth: number,
+  override: {
+    callTool?: ExecuteOptions["callTool"];
+    callAgent?: ExecuteOptions["callAgent"];
+    actorRole?: Role;
+  } = {},
+): RunnerCallbacks {
+  const callTool = override.callTool ?? makeCallTool(db, wf.companyId);
+  return {
+    callTool,
+    callAgent: override.callAgent ?? makeCallAgent(db),
+    registry: pluginRegistry,
+    runCode: makeRunCode({ callTool, companyId: wf.companyId }),
+    invokeProcedure: makeInvokeProcedure({
+      db,
+      companyId: wf.companyId,
+      callTool,
+      actorUserId: null,
+    }),
+    // Node subworkflow/foreach: chạy workflow con qua chính executeWorkflow
+    // (tăng _depth guard đệ quy). Truyền actorRole xuống để gate requiresRole
+    // áp cả node con. Mỗi sub-run ghi workflow_runs riêng → giữ observability.
+    runSubWorkflow: async (subId, initialVars) => {
+      const r = await executeWorkflow(db, subId, {
+        companyId: wf.companyId,
+        context: initialVars,
+        actorRole: override.actorRole,
+        _depth: depth + 1,
+      });
+      const [subRun] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, r.runId));
+      return { status: r.status, vars: (subRun?.vars ?? {}) as Record<string, unknown> };
+    },
+    runHttp: defaultRunHttp,
+    // Ngân sách giữa chừng: chặn trước mỗi node agent/llm/agent_chain.
+    assertBudget: () => assertWithinBudget(db, wf.companyId),
+    // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
+    searchKnowledge: async (query, kopt) => {
+      const sk =
+        kopt.sourceKind === "file" || kopt.sourceKind === "entity" || kopt.sourceKind === "text"
+          ? kopt.sourceKind
+          : undefined;
+      const hits = await knowledgeSearch(db, wf.companyId, query, {
+        limit: kopt.limit,
+        sourceKind: sk,
+      });
+      return hits.map((h) => ({ content: h.content, sourceTitle: h.sourceTitle, score: h.score }));
+    },
+  };
+}
+
+/** Chạy runner với timeout cứng — bảo vệ pg-boss pool khỏi loop/agent hang. */
+function runWithTimeout(runnerOpts: RunWorkflowOptions, wfName: string) {
+  const timeoutMs = Number(process.env.WORKFLOW_TIMEOUT_MS ?? 300_000);
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  return Promise.race([
+    runWorkflow(runnerOpts),
+    new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Workflow "${wfName}" timeout sau ${timeoutMs}ms — có thể loop vô hạn ` +
+                "hoặc agent LLM hang. Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu.",
+            ),
+          ),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  });
+}
+
 /** Chạy một workflow theo id, ghi 1 bản ghi workflow_runs. */
 export async function executeWorkflow(
   db: DB,
@@ -269,21 +379,7 @@ export async function executeWorkflow(
   await assertWithinBudget(db, wf.companyId);
 
   // Runner chạy bản ĐÃ PUBLISH; chưa publish thì tạm dùng bản nháp.
-  const graph = (wf.publishedGraph ?? wf.graph ?? {}) as RawGraph;
-  const nodes: WfNode[] = (graph.nodes ?? []).map((n) => ({
-    id: n.id,
-    type: n.data?.kind ?? n.type ?? "action",
-    label: n.data?.label ?? n.id,
-    config: n.data?.config,
-  }));
-  const edges: WfEdge[] = (graph.edges ?? []).map((e) => ({
-    source: e.source,
-    target: e.target,
-    label: typeof e.label === "string" ? e.label : undefined,
-    // Giữ handle để runner phân biệt data-edge (cổng) vs control-flow.
-    sourceHandle: typeof e.sourceHandle === "string" ? e.sourceHandle : undefined,
-    targetHandle: typeof e.targetHandle === "string" ? e.targetHandle : undefined,
-  }));
+  const { nodes, edges } = mapGraph((wf.publishedGraph ?? wf.graph ?? {}) as RawGraph);
 
   // P3.3 — field-level RBAC trên workflow step. Fail-closed nếu có
   // node yêu cầu role cao hơn user trigger.
@@ -304,88 +400,22 @@ export async function executeWorkflow(
     .returning();
   if (!run) throw new Error("Không tạo được bản ghi workflow_run");
 
-  // Chạy lõi runtime — truyền registry để runner thực thi được
-  // node do plugin định nghĩa (xem nhánh default trong runWorkflow).
-  const callTool = opts.callTool ?? makeCallTool(db, wf.companyId);
-  /* Timeout cứng: bảo vệ pg-boss pool (5 worker) khỏi loop vô hạn
-     trong subworkflow recursive hoặc agent gọi LLM hang.
-     Default 5 phút; override qua env WORKFLOW_TIMEOUT_MS. */
-  const timeoutMs = Number(process.env.WORKFLOW_TIMEOUT_MS ?? 300_000);
-  let timeoutHandle: NodeJS.Timeout | undefined;
   try {
-    const result = await Promise.race([
-      runWorkflow({
+    const result = await runWithTimeout(
+      {
         workflowId,
         workflowName: wf.name,
         nodes,
         edges,
-        callTool,
-        callAgent: opts.callAgent ?? makeCallAgent(db),
         initialVars: opts.context,
-        registry: pluginRegistry,
-        runCode: makeRunCode({ callTool, companyId: wf.companyId }),
-        invokeProcedure: makeInvokeProcedure({
-          db,
-          companyId: wf.companyId,
-          callTool,
-          actorUserId: null,
+        ...makeRunnerCallbacks(db, wf, depth, {
+          callTool: opts.callTool,
+          callAgent: opts.callAgent,
+          actorRole: opts.actorRole,
         }),
-        // Node subworkflow/foreach: chạy workflow con qua chính executeWorkflow
-        // (tăng _depth để guard đệ quy). Mỗi sub-run vẫn ghi workflow_runs riêng
-        // → giữ observability + scope companyId. Đọc lại vars đã ghi để trả về.
-        runSubWorkflow: async (subId, initialVars) => {
-          const r = await executeWorkflow(db, subId, {
-            companyId: wf.companyId,
-            context: initialVars,
-            // Truyền actorRole xuống workflow con để gate requiresRole áp cả
-            // node trong sub-workflow (nếu không, viewer trigger cha → bypass
-            // gate của node con). undefined (scheduler/system) → bỏ qua như cũ.
-            actorRole: opts.actorRole,
-            _depth: depth + 1,
-          });
-          const [subRun] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, r.runId));
-          return {
-            status: r.status,
-            vars: (subRun?.vars ?? {}) as Record<string, unknown>,
-          };
-        },
-        runHttp: defaultRunHttp,
-        // Ngân sách giữa chừng: chặn trước mỗi node agent/llm/agent_chain để
-        // workflow phẳng nhiều node LLM không vượt xa hạn mức trong 1 run.
-        assertBudget: () => assertWithinBudget(db, wf.companyId),
-        // Node "knowledge": tra Knowledge Base công ty (hybrid vector+FTS).
-        searchKnowledge: async (query, kopt) => {
-          const sk =
-            kopt.sourceKind === "file" || kopt.sourceKind === "entity" || kopt.sourceKind === "text"
-              ? kopt.sourceKind
-              : undefined;
-          const hits = await knowledgeSearch(db, wf.companyId, query, {
-            limit: kopt.limit,
-            sourceKind: sk,
-          });
-          return hits.map((h) => ({
-            content: h.content,
-            sourceTitle: h.sourceTitle,
-            score: h.score,
-          }));
-        },
-      }),
-      new Promise<never>((_, reject) => {
-        timeoutHandle = setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Workflow "${wf.name}" timeout sau ${timeoutMs}ms — ` +
-                  "có thể loop vô hạn hoặc agent LLM hang. " +
-                  "Tăng WORKFLOW_TIMEOUT_MS nếu cần workflow lâu.",
-              ),
-            ),
-          timeoutMs,
-        );
-      }),
-    ]).finally(() => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-    });
+      },
+      wf.name,
+    );
 
     // Ghi kết quả cuối
     await db
@@ -420,6 +450,82 @@ export async function executeWorkflow(
     await db
       .update(workflowRuns)
       .set({ status: "error", finishedAt: new Date(), vars: { _error: (e as Error).message } })
+      .where(eq(workflowRuns.id, run.id))
+      .catch(() => {});
+    throw e;
+  }
+}
+
+/** Tiếp tục một run đã tạm dừng (node approval). Seed step đã chạy làm
+ *  checkpoint (không chạy lại → chống side-effect trùng) + đưa quyết định
+ *  vào vars (vd approval_<nodeId>="approved") rồi chạy tiếp. Lookup scope
+ *  companyId (chống đọc chéo tenant). */
+export async function resumeWorkflowRun(
+  db: DB,
+  runId: string,
+  opts: { companyId: string; actorRole?: Role; decisions?: Record<string, unknown> },
+): Promise<{ runId: string; status: "completed" | "paused" | "error"; stepCount: number }> {
+  const [run] = await db
+    .select()
+    .from(workflowRuns)
+    .where(and(eq(workflowRuns.id, runId), eq(workflowRuns.companyId, opts.companyId)));
+  if (!run) throw new Error(`Run không tồn tại: ${runId}`);
+  if (run.status !== "paused") {
+    throw new Error(`Run đang "${run.status}" — chỉ tiếp tục được run ở trạng thái "paused".`);
+  }
+  const [wf] = await db.select().from(workflows).where(eq(workflows.id, run.workflowId));
+  if (!wf) throw new Error(`Workflow không tồn tại: ${run.workflowId}`);
+  await assertWithinBudget(db, wf.companyId);
+
+  const { nodes, edges } = mapGraph((wf.publishedGraph ?? wf.graph ?? {}) as RawGraph);
+  if (opts.actorRole) assertNodeRoleRequirements(nodes, opts.actorRole);
+
+  const prevSteps = (run.steps ?? []) as RunStep[];
+  // vars cũ + quyết định mới (approval_<nodeId>=...). Node paused chạy lại sẽ
+  // đọc quyết định này; node paused khác không có quyết định → tạm dừng tiếp.
+  const vars = { ...((run.vars as Record<string, unknown>) ?? {}), ...(opts.decisions ?? {}) };
+
+  await db.update(workflowRuns).set({ status: "running" }).where(eq(workflowRuns.id, run.id));
+  try {
+    const result = await runWithTimeout(
+      {
+        workflowId: wf.id,
+        workflowName: wf.name,
+        nodes,
+        edges,
+        initialVars: vars,
+        checkpoint: { steps: prevSteps },
+        ...makeRunnerCallbacks(db, wf, 0, { actorRole: opts.actorRole }),
+      },
+      wf.name,
+    );
+    // Gộp lịch sử: giữ step cũ KHÔNG phải paused + step mới của lần tiếp tục.
+    const merged = [...prevSteps.filter((s) => s.status !== "paused"), ...result.steps];
+    await db
+      .update(workflowRuns)
+      .set({
+        status: result.status,
+        steps: merged,
+        vars: result.vars,
+        finishedAt: result.status === "paused" ? null : new Date(),
+      })
+      .where(eq(workflowRuns.id, run.id));
+    await logActivity(db, {
+      companyId: wf.companyId,
+      kind: "resume_workflow",
+      objectType: "workflow",
+      target: wf.name,
+      detail: `Tiếp tục workflow — ${result.status} (${merged.length} bước)`,
+    });
+    return { runId: run.id, status: result.status, stepCount: merged.length };
+  } catch (e) {
+    await db
+      .update(workflowRuns)
+      .set({
+        status: "error",
+        finishedAt: new Date(),
+        vars: { ...vars, _error: (e as Error).message },
+      })
       .where(eq(workflowRuns.id, run.id))
       .catch(() => {});
     throw e;

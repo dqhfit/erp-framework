@@ -721,3 +721,80 @@ describe("workflow-runner budget + foreach concurrency", () => {
     expect(budgetChecks).toBe(0);
   });
 });
+
+describe("workflow-runner resume checkpoint", () => {
+  const nodes: WfNode[] = [
+    { id: "t", type: "trigger", label: "T" },
+    { id: "a1", type: "action", label: "A1", config: { tool: "side1" } },
+    { id: "ap", type: "approval", label: "Duyệt" },
+    { id: "a2", type: "action", label: "A2", config: { tool: "side2" } },
+  ];
+  const edges: WfEdge[] = [
+    { source: "t", target: "a1" },
+    { source: "a1", target: "ap" },
+    { source: "ap", target: "a2", label: "approved" },
+  ];
+
+  it("approval dừng rồi resume: KHÔNG chạy lại node đã xong, đi tiếp nhánh approved", async () => {
+    let act1 = 0;
+    let act2 = 0;
+    const callTool = async (name: string) => {
+      if (name === "side1") act1++;
+      if (name === "side2") act2++;
+      return {};
+    };
+    // Lần 1: chưa có quyết định → dừng ở approval, A1 đã chạy, A2 chưa.
+    const r1 = await runWorkflow({ workflowId: "w", workflowName: "t", nodes, edges, callTool });
+    expect(r1.status).toBe("paused");
+    expect(act1).toBe(1);
+    expect(act2).toBe(0);
+
+    // Lần 2 (resume): checkpoint = steps lần 1 + quyết định approved.
+    const r2 = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes,
+      edges,
+      callTool,
+      initialVars: { approval_ap: "approved" },
+      checkpoint: { steps: r1.steps },
+    });
+    expect(r2.status).toBe("completed");
+    expect(act1).toBe(1); // A1 KHÔNG chạy lại (chống side-effect trùng)
+    expect(act2).toBe(1); // A2 chạy tiếp
+  });
+
+  it("resume với rejected: đi nhánh rejected, KHÔNG chạy node approved", async () => {
+    let act2 = 0;
+    const nodes2: WfNode[] = [
+      ...nodes,
+      { id: "a3", type: "action", label: "A3", config: { tool: "side3" } },
+    ];
+    const edges2: WfEdge[] = [...edges, { source: "ap", target: "a3", label: "rejected" }];
+    let act3 = 0;
+    const callTool = async (name: string) => {
+      if (name === "side2") act2++;
+      if (name === "side3") act3++;
+      return {};
+    };
+    const r1 = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes: nodes2,
+      edges: edges2,
+      callTool,
+    });
+    const r2 = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes: nodes2,
+      edges: edges2,
+      callTool,
+      initialVars: { approval_ap: "rejected" },
+      checkpoint: { steps: r1.steps },
+    });
+    expect(r2.status).toBe("completed");
+    expect(act2).toBe(0); // nhánh approved không chạy
+    expect(act3).toBe(1); // nhánh rejected chạy
+  });
+});
