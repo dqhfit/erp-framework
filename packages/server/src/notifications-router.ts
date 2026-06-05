@@ -5,7 +5,7 @@
    ========================================================== */
 
 import { companyMembers, notifications, users } from "@erp-framework/db";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "./db";
 import { protectedProcedure, rbacProcedure, router } from "./trpc";
@@ -163,5 +163,53 @@ export async function notifyAdmins(
     }
   } catch (e) {
     console.error("[notifyAdmins] lỗi:", (e as Error).message);
+  }
+}
+
+/** Notify "approver" (admin + editor) — vd workflow tạm dừng chờ duyệt.
+ *  Viewer cũng run:workflow được nhưng không phải approver mặc định → bỏ
+ *  để tránh nhiễu. actorUserId (nếu có) bị loại để không tự ping. Best-effort. */
+export async function notifyApprovers(
+  db: DB,
+  args: {
+    companyId: string;
+    actorUserId?: string;
+    body: string;
+    targetUrl?: string;
+    kind?: string;
+  },
+): Promise<void> {
+  try {
+    const rows = await db
+      .select({ userId: companyMembers.userId })
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.companyId, args.companyId),
+          inArray(companyMembers.role, ["admin", "editor"]),
+        ),
+      );
+    const targets = [...new Set(rows.map((r) => r.userId))].filter(
+      (uid) => uid !== args.actorUserId,
+    );
+    if (targets.length === 0) return;
+    const inserted = await db
+      .insert(notifications)
+      .values(
+        targets.map((uid) => ({
+          companyId: args.companyId,
+          userId: uid,
+          kind: args.kind ?? "workflow_approval",
+          targetUrl: args.targetUrl ?? null,
+          actorUserId: args.actorUserId ?? null,
+          body: args.body.slice(0, 500),
+        })),
+      )
+      .returning();
+    for (const n of inserted) {
+      publish(`notifications:${n.userId}`, { type: "new", notification: n });
+    }
+  } catch (e) {
+    console.error("[notifyApprovers] lỗi:", (e as Error).message);
   }
 }

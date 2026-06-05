@@ -31,6 +31,7 @@ import type { DB } from "./db";
 import { knowledgeSearch } from "./knowledge-search";
 import { makeCallAgent } from "./llm-client";
 import { makeCallTool } from "./mcp-client";
+import { notifyApprovers } from "./notifications-router";
 import { makeInvokeProcedure } from "./procedure-runner";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
@@ -60,6 +61,9 @@ export interface ExecuteOptions {
    *  cao hơn → fail-closed trước khi chạy (P3.3). Caller scheduler không
    *  truyền → bỏ qua check (auto-run = system, trusted). */
   actorRole?: Role;
+  /** User trigger workflow — dùng để loại khỏi danh sách nhận thông báo
+   *  "chờ duyệt" (không tự ping mình) + ghi actor cho notification. */
+  actorUserId?: string;
   /** Độ sâu lồng workflow (node subworkflow/foreach gọi executeWorkflow).
    *  Guard chống đệ quy vô hạn — vượt MAX_WF_DEPTH thì ném lỗi. */
   _depth?: number;
@@ -356,6 +360,25 @@ function runWithTimeout(runnerOpts: RunWorkflowOptions, wfName: string) {
   });
 }
 
+/** Nếu run dừng ở node approval → báo approver (admin+editor) để vào duyệt.
+ *  Best-effort (notifyApprovers tự nuốt lỗi). */
+async function notifyIfPaused(
+  db: DB,
+  wf: { id: string; name: string; companyId: string },
+  steps: RunStep[],
+  actorUserId?: string,
+): Promise<void> {
+  const pausedLabels = steps.filter((s) => s.status === "paused").map((s) => s.label);
+  if (pausedLabels.length === 0) return;
+  await notifyApprovers(db, {
+    companyId: wf.companyId,
+    actorUserId,
+    body: `Workflow "${wf.name}" đang chờ duyệt: ${pausedLabels.join(", ")}`,
+    targetUrl: `/workflows/${wf.id}`,
+    kind: "workflow_approval",
+  });
+}
+
 /** Chạy một workflow theo id, ghi 1 bản ghi workflow_runs. */
 export async function executeWorkflow(
   db: DB,
@@ -442,6 +465,9 @@ export async function executeWorkflow(
       model: result.steps.find((s) => s.model)?.model,
     });
 
+    // Dừng chờ duyệt → báo approver vào duyệt (best-effort).
+    await notifyIfPaused(db, wf, result.steps, opts.actorUserId);
+
     return { runId: run.id, status: result.status, stepCount: result.steps.length };
   } catch (e) {
     // #1: đừng để run kẹt "running" khi throw (timeout WORKFLOW_TIMEOUT_MS,
@@ -463,7 +489,12 @@ export async function executeWorkflow(
 export async function resumeWorkflowRun(
   db: DB,
   runId: string,
-  opts: { companyId: string; actorRole?: Role; decisions?: Record<string, unknown> },
+  opts: {
+    companyId: string;
+    actorRole?: Role;
+    actorUserId?: string;
+    decisions?: Record<string, unknown>;
+  },
 ): Promise<{ runId: string; status: "completed" | "paused" | "error"; stepCount: number }> {
   const [run] = await db
     .select()
@@ -517,6 +548,8 @@ export async function resumeWorkflowRun(
       target: wf.name,
       detail: `Tiếp tục workflow — ${result.status} (${merged.length} bước)`,
     });
+    // Resume có thể dừng ở node approval KẾ TIẾP → báo approver lần nữa.
+    await notifyIfPaused(db, wf, result.steps, opts.actorUserId);
     return { runId: run.id, status: result.status, stepCount: merged.length };
   } catch (e) {
     await db

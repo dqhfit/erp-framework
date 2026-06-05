@@ -191,6 +191,7 @@ export const workflowsRouter = router({
         context: replayVars,
         companyId: ctx.user.companyId,
         actorRole: ctx.user.role,
+        actorUserId: ctx.user.id,
       });
       return { runId: r.runId, status: r.status, stepCount: r.stepCount, replayedFrom: idx };
     }),
@@ -210,6 +211,7 @@ export const workflowsRouter = router({
       const r = await resumeWorkflowRun(ctx.db, input.runId, {
         companyId: ctx.user.companyId,
         actorRole: ctx.user.role,
+        actorUserId: ctx.user.id,
         decisions: { [`approval_${input.nodeId}`]: input.decision },
       });
       return { runId: r.runId, status: r.status, stepCount: r.stepCount };
@@ -228,6 +230,7 @@ export const workflowsRouter = router({
         context: input.context,
         companyId: ctx.user.companyId,
         actorRole: ctx.user.role,
+        actorUserId: ctx.user.id,
       });
       return { runId: r.runId, status: r.status };
     }),
