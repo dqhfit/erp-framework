@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { filterUsable, mergeHits } from "./knowledge-agentic";
+import { filterUsable, mergeContiguous, mergeHits } from "./knowledge-agentic";
 import type { KnowledgeHit } from "./knowledge-search";
+
+/** Hit có kiểm soát sourceId + seq + content (cho test mergeContiguous). */
+function chunk(
+  sourceId: string,
+  seq: number,
+  score: number,
+  content = `${sourceId}#${seq}`,
+): KnowledgeHit {
+  return {
+    chunkId: `${sourceId}:${seq}`,
+    sourceId,
+    sourceTitle: sourceId,
+    sourceKind: "text",
+    seq,
+    content,
+    score,
+  };
+}
 
 function hit(chunkId: string, score: number): KnowledgeHit {
   return {
@@ -46,5 +64,45 @@ describe("filterUsable", () => {
 
   it("id lạ (lọc ra rỗng) → giữ nguyên để an toàn recall", () => {
     expect(filterUsable(hits, ["x", "y"])).toBe(hits);
+  });
+});
+
+describe("mergeContiguous", () => {
+  it("gộp các đoạn seq liên tiếp cùng nguồn thành 1 khối (nối nội dung)", () => {
+    const out = mergeContiguous([
+      chunk("s", 0, 0.5, "A"),
+      chunk("s", 1, 0.9, "B"),
+      chunk("s", 2, 0, "C"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.content).toBe("A\nB\nC");
+    // score = max của run.
+    expect(out[0]?.score).toBe(0.9);
+  });
+
+  it("seq KHÔNG liên tiếp → tách khối; sắp theo score giảm dần", () => {
+    const out = mergeContiguous([chunk("s", 0, 0.3, "A"), chunk("s", 5, 0.8, "B")]);
+    expect(out.map((h) => h.content)).toEqual(["B", "A"]);
+  });
+
+  it("khác nguồn → không gộp dù seq trùng", () => {
+    const out = mergeContiguous([chunk("s1", 0, 0.4), chunk("s2", 1, 0.6)]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("khử trùng chunkId trước khi gộp (giữ score cao)", () => {
+    const out = mergeContiguous([chunk("s", 0, 0.2, "A"), chunk("s", 0, 0.7, "A")]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.score).toBe(0.7);
+  });
+
+  it("cắt theo ngân sách ký tự nhưng luôn giữ khối đầu (liên quan nhất)", () => {
+    const big = "x".repeat(100);
+    const out = mergeContiguous(
+      [chunk("a", 0, 0.9, big), chunk("b", 0, 0.5, big), chunk("c", 0, 0.4, big)],
+      150,
+    );
+    // Khối đầu luôn giữ; khối sau vượt ngân sách 150 → loại.
+    expect(out.map((h) => h.sourceId)).toEqual(["a"]);
   });
 });

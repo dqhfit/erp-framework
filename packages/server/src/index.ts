@@ -452,6 +452,9 @@ async function main(): Promise<void> {
             userId: s.userId,
             plan: body.deepSearch === true,
             grade: body.deepSearch === true,
+            // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
+            expand: body.deepSearch === true,
+            rerank: body.deepSearch === true,
             sourceIds: agentSourceIds,
           });
           if (hits.length && !gradedOut) {
