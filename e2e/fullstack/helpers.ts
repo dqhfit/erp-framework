@@ -19,7 +19,10 @@ export const STUB_URL = "http://127.0.0.1:9100";
    trong auth.setup hoặc khi chạy lẻ chưa có state). */
 export async function ensureLoggedIn(page: Page): Promise<void> {
   await page.goto("/");
-  const inApp = page.getByRole("link", { name: "Khách hàng", exact: true });
+  // Tín hiệu "đã ở trong app" = nút Đăng xuất ở app-shell (LUÔN có khi đăng
+  // nhập, render ngay cùng shell). KHÔNG dùng link entity seed ("Khách hàng")
+  // — vừa phụ thuộc dữ liệu seed, vừa render chậm (cold-start) gây timeout.
+  const inApp = page.getByTitle("Đăng xuất");
   const emailField = page.getByPlaceholder("ban@congty.com");
 
   // Chờ MỘT trong hai trạng thái ổn định: form đăng nhập HOẶC app đã vào.
