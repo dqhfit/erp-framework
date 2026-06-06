@@ -359,7 +359,20 @@ async function loadEntity(db: DB, companyId: string, entityName: string) {
     .select()
     .from(entities)
     .where(and(eq(entities.companyId, companyId), eq(entities.name, entityName)));
-  if (!row) throw new Error(`Entity không tồn tại: ${entityName}`);
+  if (!row) {
+    // Liệt kê entity hợp lệ để người dùng/AI tự sửa tham chiếu (chỉ chạy
+    // ở nhánh lỗi nên không tốn query lúc bình thường).
+    const all = await db
+      .select({ name: entities.name })
+      .from(entities)
+      .where(eq(entities.companyId, companyId))
+      .orderBy(entities.name);
+    const names = all.map((a) => a.name);
+    const hint = names.length
+      ? ` Entity hợp lệ: ${names.slice(0, 50).join(", ")}${names.length > 50 ? ", …" : ""}`
+      : " (công ty chưa có entity nào)";
+    throw new Error(`Entity không tồn tại: ${entityName}.${hint}`);
+  }
   return row;
 }
 

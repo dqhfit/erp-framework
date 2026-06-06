@@ -7,8 +7,8 @@
    - invoke    : chạy procedure đã lưu với args, trả output
    - test      : chạy ad-hoc code (chưa lưu) để preview trong designer
    ========================================================== */
-import { fieldCan, type Role } from "@erp-framework/core";
-import { procedures } from "@erp-framework/db";
+import { type EntityFieldDef, fieldCan, type Role } from "@erp-framework/core";
+import { entities, procedures } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -40,6 +40,47 @@ function stripArgsByRbac(
 }
 
 const NAME_RE = /^[a-z][a-z0-9_]*$/;
+
+/** Constructor của async function. Code thủ tục là 1 *async function body*
+ *  (dùng top-level await; runtime wrap trong `(async () => { ... })()`).
+ *  Validate bằng `new Function` (đồng bộ) sẽ ném "await is only valid in
+ *  async functions..." với code hợp lệ → phải dùng AsyncFunction để khớp. */
+const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
+  ...args: string[]
+) => unknown;
+
+/** Validate code parse được (chỉ syntax, KHÔNG exec), cho phép await/return
+ *  ở top level đúng như runtime. Trả message lỗi, hoặc null nếu hợp lệ. */
+function procedureSyntaxError(code: string): string | null {
+  try {
+    new AsyncFunction(code);
+    return null;
+  } catch (e) {
+    return (e as Error).message;
+  }
+}
+
+/** Danh mục entity của công ty cho AI codegen — để AI chỉ tham chiếu entity
+ *  CÓ THẬT, tránh lỗi runtime "Entity không tồn tại". Cắt bớt để khỏi phình
+ *  prompt (≤80 entity, ≤40 field/entity). */
+function buildEntityCatalog(
+  rows: Array<{ name: string; label: string | null; fields: unknown }>,
+): string {
+  if (rows.length === 0) {
+    return "(Công ty CHƯA có entity nào — KHÔNG gọi db.*/entity.* với entity không tồn tại.)";
+  }
+  const lines = rows.slice(0, 80).map((e) => {
+    const fs = Array.isArray(e.fields) ? (e.fields as EntityFieldDef[]) : [];
+    const fieldStr =
+      fs
+        .slice(0, 40)
+        .map((f) => `${f.name}:${f.type}`)
+        .join(", ") + (fs.length > 40 ? ", …" : "");
+    return `- ${e.name}${e.label ? ` (${e.label})` : ""}: ${fieldStr || "(chưa có field)"}`;
+  });
+  if (rows.length > 80) lines.push(`… và ${rows.length - 80} entity khác`);
+  return lines.join("\n");
+}
 
 const procInput = z.object({
   name: z.string().regex(NAME_RE, "name phải snake_case bắt đầu bằng chữ"),
@@ -73,13 +114,13 @@ export const proceduresRouter = router({
   save: rbacProcedure("edit", "procedure")
     .input(procInput)
     .mutation(async ({ ctx, input }) => {
-      // Validate parse được (chỉ check syntax, không exec).
-      try {
-        new Function(input.code);
-      } catch (e) {
+      // Validate parse được (chỉ check syntax, không exec) — cho phép
+      // top-level await đúng như runtime wrap async.
+      const synErr = procedureSyntaxError(input.code);
+      if (synErr) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Code lỗi syntax: ${(e as Error).message}`,
+          message: `Code lỗi syntax: ${synErr}`,
         });
       }
       const values = {
@@ -225,6 +266,15 @@ export const proceduresRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Nạp danh mục entity thật của công ty để AI KHÔNG bịa tên entity
+      // (nguyên nhân lỗi runtime "Entity không tồn tại").
+      const entRows = await ctx.db
+        .select({ name: entities.name, label: entities.label, fields: entities.fields })
+        .from(entities)
+        .where(eq(entities.companyId, ctx.user.companyId))
+        .orderBy(entities.name);
+      const entityCatalog = buildEntityCatalog(entRows);
+
       const r = await callLlmJson<{
         name?: string;
         label?: string;
@@ -260,7 +310,11 @@ export const proceduresRouter = router({
           "}\n\n" +
           "code là 1 async function body (KHÔNG bọc `async function() {}` ngoài) — " +
           "server tự wrap. Dùng async/await. Return data hoặc throw new Error(msg). " +
-          "KHÔNG kèm markdown, KHÔNG giải thích.",
+          "KHÔNG kèm markdown, KHÔNG giải thích.\n\n" +
+          "DANH SÁCH ENTITY CỦA CÔNG TY (entityName + field). CHỈ dùng entity " +
+          "trong danh sách này, TUYỆT ĐỐI KHÔNG bịa tên; nếu yêu cầu cần entity " +
+          "chưa có thì throw new Error mô tả rõ entity còn thiếu:\n" +
+          entityCatalog,
         user: input.prompt,
         maxTokens: 2500,
         temperature: 0.2,
@@ -274,13 +328,12 @@ export const proceduresRouter = router({
         });
       }
 
-      // Validate code parse được (chỉ syntax, không exec).
-      try {
-        new Function(r.code);
-      } catch (e) {
+      // Validate code parse được (chỉ syntax, không exec) — async wrapper.
+      const aiSynErr = procedureSyntaxError(r.code);
+      if (aiSynErr) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: `AI sinh code lỗi syntax: ${(e as Error).message}. Thử lại hoặc viết tay.`,
+          message: `AI sinh code lỗi syntax: ${aiSynErr}. Thử lại hoặc viết tay.`,
         });
       }
 
