@@ -10,9 +10,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
-import {
-  entities, entityRecords, pages, workflows, agents, companies,
-} from "@erp-framework/db";
+import { entities, entityRecords, pages, workflows, agents, companies } from "@erp-framework/db";
 import { db } from "./db";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,7 +18,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
    theo vị trí seed.ts (packages/server/src) → repo root. */
 const CEO_DOCS_DIR = join(__dirname, "..", "..", "..", "docs", "CEO");
 const MEMORY_FILES = [
-  "IDENTITY", "SOUL", "USER", "TOOLS", "AGENTS", "HEARTBEAT", "BOOTSTRAP",
+  "IDENTITY",
+  "SOUL",
+  "USER",
+  "TOOLS",
+  "AGENTS",
+  "HEARTBEAT",
+  "BOOTSTRAP",
 ] as const;
 
 interface SeedEntity {
@@ -28,15 +32,23 @@ interface SeedEntity {
   label: string;
   icon: string;
   fields: Array<{
-    name: string; label: string; type: string;
-    required?: boolean; options?: string[];
+    name: string;
+    label: string;
+    type: string;
+    required?: boolean;
+    options?: string[];
   }>;
   records: Array<Record<string, unknown>>;
 }
 
+/* Chỉ seed 1 entity mẫu khi redeploy — đủ minh hoạ low-code, tránh
+   nhồi dữ liệu demo vào tenant thật. Thêm entity khác thì người dùng
+   tự tạo qua designer. */
 const SEED: SeedEntity[] = [
   {
-    name: "khach_hang", label: "Khách hàng", icon: "Users",
+    name: "khach_hang",
+    label: "Khách hàng",
+    icon: "Users",
     fields: [
       { name: "ten", label: "Tên", type: "text", required: true },
       { name: "email", label: "Email", type: "text" },
@@ -44,46 +56,33 @@ const SEED: SeedEntity[] = [
       { name: "dia_chi", label: "Địa chỉ", type: "text" },
     ],
     records: [
-      { ten: "Công ty Gỗ Việt", email: "lh@goviet.vn", dien_thoai: "0901234567", dia_chi: "Bình Dương" },
-      { ten: "Nội thất An Phú", email: "info@anphu.vn", dien_thoai: "0912345678", dia_chi: "TP.HCM" },
-    ],
-  },
-  {
-    name: "san_pham", label: "Sản phẩm", icon: "Package",
-    fields: [
-      { name: "ten", label: "Tên sản phẩm", type: "text", required: true },
-      { name: "ma_sp", label: "Mã SP", type: "text" },
-      { name: "gia", label: "Giá", type: "number" },
-      { name: "ton_kho", label: "Tồn kho", type: "number" },
-    ],
-    records: [
-      { ten: "Bàn ăn gỗ sồi 1m6", ma_sp: "BA-016", gia: 4500000, ton_kho: 12 },
-      { ten: "Ghế gỗ óc chó", ma_sp: "GH-OC", gia: 1200000, ton_kho: 48 },
-    ],
-  },
-  {
-    name: "don_hang", label: "Đơn hàng", icon: "Cart",
-    fields: [
-      { name: "so_don", label: "Số đơn", type: "text", required: true },
-      { name: "khach", label: "Khách hàng", type: "text" },
-      { name: "tong_tien", label: "Tổng tiền", type: "number" },
-      { name: "trang_thai", label: "Trạng thái", type: "select",
-        options: ["moi", "dang_giao", "hoan_thanh"] },
-    ],
-    records: [
-      { so_don: "DH-2026-001", khach: "Công ty Gỗ Việt", tong_tien: 54000000, trang_thai: "dang_giao" },
-      { so_don: "DH-2026-002", khach: "Nội thất An Phú", tong_tien: 12000000, trang_thai: "moi" },
+      {
+        ten: "Công ty Gỗ Việt",
+        email: "lh@goviet.vn",
+        dien_thoai: "0901234567",
+        dia_chi: "Bình Dương",
+      },
+      {
+        ten: "Nội thất An Phú",
+        email: "info@anphu.vn",
+        dien_thoai: "0912345678",
+        dia_chi: "TP.HCM",
+      },
     ],
   },
 ];
 
 /** Lấy id "Công ty mặc định" — tạo nếu chưa có. */
 async function defaultCompanyId(): Promise<string> {
-  const [ex] = await db.select({ id: companies.id }).from(companies)
+  const [ex] = await db
+    .select({ id: companies.id })
+    .from(companies)
     .where(eq(companies.slug, "default"));
   if (ex) return ex.id;
-  const [co] = await db.insert(companies)
-    .values({ name: "Công ty mặc định", slug: "default" }).returning();
+  const [co] = await db
+    .insert(companies)
+    .values({ name: "Công ty mặc định", slug: "default" })
+    .returning();
   if (!co) throw new Error("Không tạo được công ty mặc định");
   console.log(`✓ Công ty mặc định`);
   return co.id;
@@ -93,16 +92,25 @@ async function defaultCompanyId(): Promise<string> {
 async function seedEntities(companyId: string): Promise<Record<string, string>> {
   const ids: Record<string, string> = {};
   for (const s of SEED) {
-    const [exist] = await db.select({ id: entities.id }).from(entities)
+    const [exist] = await db
+      .select({ id: entities.id })
+      .from(entities)
       .where(and(eq(entities.name, s.name), eq(entities.companyId, companyId)));
     if (exist) {
       ids[s.name] = exist.id;
       console.log(`• Bỏ qua entity "${s.name}" — đã tồn tại`);
       continue;
     }
-    const [ent] = await db.insert(entities).values({
-      companyId, name: s.name, label: s.label, icon: s.icon, fields: s.fields,
-    }).returning();
+    const [ent] = await db
+      .insert(entities)
+      .values({
+        companyId,
+        name: s.name,
+        label: s.label,
+        icon: s.icon,
+        fields: s.fields,
+      })
+      .returning();
     if (!ent) throw new Error(`Không tạo được entity ${s.name}`);
     ids[s.name] = ent.id;
     for (const r of s.records) {
@@ -114,28 +122,51 @@ async function seedEntities(companyId: string): Promise<Record<string, string>> 
 }
 
 /** Trang dashboard mẫu — list trỏ vào entity Đơn hàng. */
-async function seedPage(
-  companyId: string,
-  entityIds: Record<string, string>,
-): Promise<void> {
+async function seedPage(companyId: string, entityIds: Record<string, string>): Promise<void> {
   const name = "tong_quan";
-  const [exist] = await db.select({ id: pages.id }).from(pages)
+  const [exist] = await db
+    .select({ id: pages.id })
+    .from(pages)
     .where(and(eq(pages.name, name), eq(pages.companyId, companyId)));
-  if (exist) { console.log(`• Bỏ qua page "${name}" — đã tồn tại`); return; }
+  if (exist) {
+    console.log(`• Bỏ qua page "${name}" — đã tồn tại`);
+    return;
+  }
   const content = [
-    { id: "k1", kind: "kpi", x: 0, y: 0, w: 3, h: 2,
-      config: { label: "Đơn hàng", value: "2", trend: "+2" } },
-    { id: "k2", kind: "kpi", x: 3, y: 0, w: 3, h: 2,
-      config: { label: "Khách hàng", value: "2" } },
-    { id: "k3", kind: "kpi", x: 6, y: 0, w: 3, h: 2,
-      config: { label: "Sản phẩm", value: "2" } },
-    { id: "c1", kind: "chart", x: 0, y: 2, w: 8, h: 3,
-      config: { kind: "bar", title: "Doanh số theo tháng" } },
-    { id: "l1", kind: "list", x: 8, y: 2, w: 4, h: 3,
-      config: { entity: entityIds.don_hang ?? "" } },
+    {
+      id: "k1",
+      kind: "kpi",
+      x: 0,
+      y: 0,
+      w: 3,
+      h: 2,
+      config: { label: "Khách hàng", value: "2", trend: "+2" },
+    },
+    {
+      id: "c1",
+      kind: "chart",
+      x: 0,
+      y: 2,
+      w: 8,
+      h: 3,
+      config: { kind: "bar", title: "Doanh số theo tháng" },
+    },
+    {
+      id: "l1",
+      kind: "list",
+      x: 8,
+      y: 2,
+      w: 4,
+      h: 3,
+      config: { entity: entityIds.khach_hang ?? "" },
+    },
   ];
   await db.insert(pages).values({
-    companyId, name, label: "Tổng quan kinh doanh", icon: "BarChart", content,
+    companyId,
+    name,
+    label: "Tổng quan kinh doanh",
+    icon: "BarChart",
+    content,
   });
   console.log(`✓ Page "Tổng quan kinh doanh"`);
 }
@@ -143,11 +174,19 @@ async function seedPage(
 /** Workflow mẫu — trigger thủ công, graph rỗng để designer điền sau. */
 async function seedWorkflow(companyId: string): Promise<void> {
   const name = "Duyệt đơn hàng lớn";
-  const [exist] = await db.select({ id: workflows.id }).from(workflows)
+  const [exist] = await db
+    .select({ id: workflows.id })
+    .from(workflows)
     .where(and(eq(workflows.name, name), eq(workflows.companyId, companyId)));
-  if (exist) { console.log(`• Bỏ qua workflow "${name}" — đã tồn tại`); return; }
+  if (exist) {
+    console.log(`• Bỏ qua workflow "${name}" — đã tồn tại`);
+    return;
+  }
   await db.insert(workflows).values({
-    companyId, name, triggerType: "manual", isActive: true,
+    companyId,
+    name,
+    triggerType: "manual",
+    isActive: true,
     graph: { nodes: [], edges: [] },
   });
   console.log(`✓ Workflow "${name}"`);
@@ -156,11 +195,18 @@ async function seedWorkflow(companyId: string): Promise<void> {
 /** Agent mẫu — trợ lý bán hàng. */
 async function seedAgent(companyId: string): Promise<void> {
   const name = "Trợ lý bán hàng";
-  const [exist] = await db.select({ id: agents.id }).from(agents)
+  const [exist] = await db
+    .select({ id: agents.id })
+    .from(agents)
     .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
-  if (exist) { console.log(`• Bỏ qua agent "${name}" — đã tồn tại`); return; }
+  if (exist) {
+    console.log(`• Bỏ qua agent "${name}" — đã tồn tại`);
+    return;
+  }
   await db.insert(agents).values({
-    companyId, name, model: "claude-sonnet-4-6",
+    companyId,
+    name,
+    model: "claude-sonnet-4-6",
     config: {
       name,
       model: "claude-sonnet-4-6",
@@ -214,7 +260,9 @@ async function seedCEO(companyId: string): Promise<void> {
   const memory = loadCEOMemory();
   const memCount = Object.keys(memory).length;
 
-  const [exist] = await db.select().from(agents)
+  const [exist] = await db
+    .select()
+    .from(agents)
     .where(and(eq(agents.name, name), eq(agents.companyId, companyId)));
   if (exist) {
     const cfg = (exist.config ?? {}) as { memory?: Record<string, unknown> };
@@ -224,23 +272,29 @@ async function seedCEO(companyId: string): Promise<void> {
       return;
     }
     // CEO tồn tại nhưng memory rỗng → backfill từ docs/CEO/.
-    await db.update(agents).set({
-      config: { ...(exist.config as object), memory },
-      updatedAt: new Date(),
-    }).where(eq(agents.id, exist.id));
+    await db
+      .update(agents)
+      .set({
+        config: { ...(exist.config as object), memory },
+        updatedAt: new Date(),
+      })
+      .where(eq(agents.id, exist.id));
     console.log(`✓ Agent "${name}" — backfill ${memCount}/7 memory file`);
     return;
   }
 
   await db.insert(agents).values({
-    companyId, name, model: "claude-sonnet-4-6",
+    companyId,
+    name,
+    model: "claude-sonnet-4-6",
     config: {
-      name, model: "claude-sonnet-4-6",
+      name,
+      model: "claude-sonnet-4-6",
       systemPrompt:
         "Bạn là Giám đốc điều hành (CEO) của công ty. Tuân theo IDENTITY/" +
         "SOUL/USER trong memory. Khi xung đột giữa các file, SOUL.md ưu " +
         "tiên cao nhất. Trước khi quyết định lớn, đọc lại BOOTSTRAP.md.",
-      temperature: 0.5,  // CEO thận trọng hơn assistant thông thường.
+      temperature: 0.5, // CEO thận trọng hơn assistant thông thường.
       tools: [],
       memory,
     },
