@@ -72,6 +72,18 @@ export interface ExecuteOptions {
 /** Giới hạn lồng sub-workflow (giống MAX_DEPTH của procedure-runner). */
 const MAX_WF_DEPTH = 5;
 
+/** DI: jobs.ts đăng ký hàm enqueue pg-boss delayed-job để resume node delay
+ *  dài (tránh import vòng jobs.ts ↔ run-workflow). null = chưa start jobs
+ *  (vd test) → delay dài sẽ ở "paused" cho tới khi có runner lên lịch. */
+let delayResumeEnqueuer:
+  | ((runId: string, nodeId: string, companyId: string, delayMs: number) => Promise<void>)
+  | null = null;
+export function registerDelayResumeEnqueuer(
+  fn: (runId: string, nodeId: string, companyId: string, delayMs: number) => Promise<void>,
+): void {
+  delayResumeEnqueuer = fn;
+}
+
 /** IPv4 nội bộ/đặc biệt: loopback, RFC1918, link-local, CGNAT, "this host". */
 function isPrivateIpv4(ip: string): boolean {
   const p = ip.split(".").map(Number);
@@ -368,7 +380,11 @@ async function notifyIfPaused(
   steps: RunStep[],
   actorUserId?: string,
 ): Promise<void> {
-  const pausedLabels = steps.filter((s) => s.status === "paused").map((s) => s.label);
+  // CHỈ node approval (đợi NGƯỜI) mới báo; node delay (đợi THỜI GIAN) tự lên
+  // lịch resume, không phiền approver.
+  const pausedLabels = steps
+    .filter((s) => s.status === "paused" && s.kind === "approval")
+    .map((s) => s.label);
   if (pausedLabels.length === 0) return;
   await notifyApprovers(db, {
     companyId: wf.companyId,
@@ -377,6 +393,26 @@ async function notifyIfPaused(
     targetUrl: `/workflows/${wf.id}`,
     kind: "workflow_approval",
   });
+}
+
+/** Lên lịch resume cho node delay đang "paused" (đợi thời gian). Best-effort:
+ *  chưa có enqueuer (jobs chưa start) → bỏ qua, delay ở paused tới khi có. */
+async function scheduleDelayResumes(
+  wf: { id: string; companyId: string },
+  runId: string,
+  steps: RunStep[],
+): Promise<void> {
+  if (!delayResumeEnqueuer) return;
+  for (const s of steps) {
+    if (s.status !== "paused" || s.kind !== "delay") continue;
+    const ms = Number((s.output as { __delayMs?: unknown } | null)?.__delayMs);
+    if (!Number.isFinite(ms) || ms <= 0) continue;
+    try {
+      await delayResumeEnqueuer(runId, s.nodeId, wf.companyId, ms);
+    } catch (e) {
+      console.error("[workflow] lên lịch delay resume lỗi:", (e as Error).message);
+    }
+  }
 }
 
 /** Chạy một workflow theo id, ghi 1 bản ghi workflow_runs. */
@@ -465,8 +501,9 @@ export async function executeWorkflow(
       model: result.steps.find((s) => s.model)?.model,
     });
 
-    // Dừng chờ duyệt → báo approver vào duyệt (best-effort).
+    // Dừng chờ duyệt → báo approver; dừng vì delay dài → lên lịch tự resume.
     await notifyIfPaused(db, wf, result.steps, opts.actorUserId);
+    await scheduleDelayResumes(wf, run.id, result.steps);
 
     return { runId: run.id, status: result.status, stepCount: result.steps.length };
   } catch (e) {
@@ -548,8 +585,9 @@ export async function resumeWorkflowRun(
       target: wf.name,
       detail: `Tiếp tục workflow — ${result.status} (${merged.length} bước)`,
     });
-    // Resume có thể dừng ở node approval KẾ TIẾP → báo approver lần nữa.
+    // Resume có thể dừng ở approval/delay KẾ TIẾP → báo / lên lịch tiếp.
     await notifyIfPaused(db, wf, result.steps, opts.actorUserId);
+    await scheduleDelayResumes(wf, run.id, result.steps);
     return { runId: run.id, status: result.status, stepCount: merged.length };
   } catch (e) {
     await db

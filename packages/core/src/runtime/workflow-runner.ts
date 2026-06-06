@@ -507,14 +507,25 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
             case "delay": {
               // Cổng input "minutes" ghi đè config.minutes.
               const mins = Number(inputs.minutes ?? cfg.minutes ?? 0);
-              const realWait = Math.min(mins * 60_000, maxDelayMs);
-              await sleep(realWait);
-              step = mkStep(
-                node,
-                "ok",
-                `Chờ ${mins} phút (thực chờ ${(realWait / 1000).toFixed(1)}s)`,
-                t0,
-              );
+              const ms = Math.max(0, mins * 60_000);
+              // Đã được lên lịch resume sau khi hết hạn (server set
+              // delay_done_<id> khi pg-boss job tới giờ) → đi tiếp.
+              if (vars[`delay_done_${node.id}`]) {
+                step = mkStep(node, "ok", `Đã chờ xong ${mins} phút`, t0);
+                break;
+              }
+              if (ms <= maxDelayMs) {
+                // Delay ngắn → chờ thật trong tiến trình (không chặn lâu).
+                await sleep(ms);
+                step = mkStep(node, "ok", `Chờ ${mins} phút`, t0);
+                break;
+              }
+              // Delay dài hơn cap → KHÔNG sleep chặn worker; tạm dừng để server
+              // lên lịch (pg-boss) resume sau `ms`. output.__delayMs cho server
+              // biết thời lượng; resume set delay_done_<id> để node đi tiếp.
+              step = mkStep(node, "paused", `Chờ ${mins} phút — đã lên lịch tiếp tục`, t0, {
+                __delayMs: ms,
+              });
               break;
             }
             case "approval": {

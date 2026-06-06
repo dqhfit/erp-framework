@@ -798,3 +798,57 @@ describe("workflow-runner resume checkpoint", () => {
     expect(act3).toBe(1); // nhánh rejected chạy
   });
 });
+
+describe("workflow-runner delay (lên lịch)", () => {
+  const nodes: WfNode[] = [
+    { id: "t", type: "trigger", label: "T" },
+    { id: "d", type: "delay", label: "Chờ", config: { minutes: 60 } },
+    { id: "a", type: "action", label: "A", config: { tool: "x" } },
+  ];
+  const edges: WfEdge[] = [
+    { source: "t", target: "d" },
+    { source: "d", target: "a" },
+  ];
+
+  it("delay dài hơn cap → paused + output.__delayMs (không sleep chặn)", async () => {
+    let acted = 0;
+    const callTool = async () => {
+      acted++;
+      return {};
+    };
+    const r1 = await runWorkflow({ workflowId: "w", workflowName: "t", nodes, edges, callTool });
+    expect(r1.status).toBe("paused");
+    expect(acted).toBe(0); // node sau delay CHƯA chạy
+    const delayStep = r1.steps.find((s) => s.nodeId === "d");
+    expect(delayStep?.status).toBe("paused");
+    expect((delayStep?.output as { __delayMs?: number })?.__delayMs).toBe(60 * 60_000);
+
+    // Giả lập pg-boss tới giờ → resume với delay_done_d.
+    const r2 = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes,
+      edges,
+      callTool,
+      initialVars: { delay_done_d: true },
+      checkpoint: { steps: r1.steps },
+    });
+    expect(r2.status).toBe("completed");
+    expect(acted).toBe(1); // node sau delay chạy tiếp
+  });
+
+  it("delay ngắn (≤ cap) → chờ inline, ok ngay (không paused)", async () => {
+    const r = await runWorkflow({
+      workflowId: "w",
+      workflowName: "t",
+      nodes: [
+        { id: "t", type: "trigger", label: "T" },
+        { id: "d", type: "delay", label: "Chờ", config: { minutes: 0 } },
+      ],
+      edges: [{ source: "t", target: "d" }],
+      callTool: async () => ({}),
+    });
+    expect(r.status).toBe("completed");
+    expect(r.steps.find((s) => s.nodeId === "d")?.status).toBe("ok");
+  });
+});

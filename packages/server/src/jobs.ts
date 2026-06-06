@@ -5,34 +5,37 @@
      schedule nào tới hạn (cronMatches) thì enqueue workflow-run.
    pg-boss dùng pool RIÊNG (max 5) — xem UPGRADE-PLAN 3.2.1.
    ========================================================== */
-import PgBoss from "pg-boss";
-import { eq, sql, lt, isNotNull } from "drizzle-orm";
+
+import { cronMatches } from "@erp-framework/core";
 import {
-  schedules,
   agentHeartbeats,
-  entitySyncs,
-  sessions,
-  knowledgeSources,
   backupConfig,
   backupRuns,
+  entitySyncs,
+  knowledgeSources,
+  schedules,
+  sessions,
 } from "@erp-framework/db";
-import { cronMatches } from "@erp-framework/core";
-import { db } from "./db";
-import { executeWorkflow } from "./run-workflow";
-import { runHeartbeat } from "./run-heartbeat";
-import { runEntitySync } from "./run-entity-sync";
-import { runKbIngest } from "./run-kb-ingest";
+import { eq, isNotNull, lt, sql } from "drizzle-orm";
+import PgBoss from "pg-boss";
 import { runBackup } from "./backup";
+import { db } from "./db";
 import {
-  QUEUE_FEEDBACK_AI,
-  runFeedbackAi,
-  registerEnqueueFeedbackAi,
   type FeedbackAiJobData,
+  QUEUE_FEEDBACK_AI,
+  registerEnqueueFeedbackAi,
+  runFeedbackAi,
 } from "./feedback-ai";
-import { registerMigrationWorker, enqueueMigrationJob, QUEUE_MIGRATION } from "./migration-worker";
 import { resumeStaleFullJobs } from "./migration-full-import";
+import { enqueueMigrationJob, QUEUE_MIGRATION, registerMigrationWorker } from "./migration-worker";
+import { runEntitySync } from "./run-entity-sync";
+import { runHeartbeat } from "./run-heartbeat";
+import { runKbIngest } from "./run-kb-ingest";
+import { executeWorkflow, registerDelayResumeEnqueuer, resumeWorkflowRun } from "./run-workflow";
 
 const QUEUE_RUN = "workflow-run";
+/** Queue resume node delay dài sau khi hết hạn (pg-boss startAfter). */
+const QUEUE_WF_DELAY = "workflow-delay-resume";
 const QUEUE_TICK = "scheduler-tick";
 const QUEUE_HEARTBEAT = "agent-heartbeat-run";
 const QUEUE_ENTITY_SYNC = "entity-sync-run";
@@ -72,6 +75,7 @@ export async function startJobs(): Promise<void> {
   await boss.start();
 
   await boss.createQueue(QUEUE_RUN);
+  await boss.createQueue(QUEUE_WF_DELAY);
   await boss.createQueue(QUEUE_TICK);
   await boss.createQueue(QUEUE_HEARTBEAT);
   await boss.createQueue(QUEUE_ENTITY_SYNC);
@@ -100,6 +104,34 @@ export async function startJobs(): Promise<void> {
           .where(eq(schedules.id, scheduleId));
       }
     }
+  });
+
+  // Worker: resume workflow đang chờ node delay dài (tới giờ pg-boss phát).
+  await boss.work<{ runId: string; nodeId: string; companyId: string }>(
+    QUEUE_WF_DELAY,
+    async (jobs) => {
+      for (const job of jobs) {
+        try {
+          await resumeWorkflowRun(db, job.data.runId, {
+            companyId: job.data.companyId,
+            // System-scheduled (không actorRole) → bỏ qua RBAC như cron.
+            decisions: { [`delay_done_${job.data.nodeId}`]: true },
+          });
+        } catch (e) {
+          console.error("[workflow-delay] lỗi:", (e as Error).message);
+        }
+      }
+    },
+  );
+
+  // DI: run-workflow lên lịch resume delay qua pg-boss (startAfter giây).
+  registerDelayResumeEnqueuer(async (runId, nodeId, companyId, delayMs) => {
+    if (!boss) throw new Error("Job runner chưa sẵn sàng");
+    await boss.send(
+      QUEUE_WF_DELAY,
+      { runId, nodeId, companyId },
+      { startAfter: Math.max(1, Math.ceil(delayMs / 1000)) },
+    );
   });
 
   // Worker: chạy một nhịp heartbeat (agent tự thức dậy & hành động).
