@@ -14,30 +14,159 @@ import { type Role, roleCan } from "@erp-framework/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input } from "@/components/ui";
+import { Button, Card, Chip, Input, Select } from "@/components/ui";
 import { Modal } from "@/components/ui/modal";
 import { dialog } from "@/lib/dialog";
 import { useAuth } from "@/stores/auth";
 
 const apiKeys = createApiKeysClient("");
 
-const SCOPE_HINTS = [
-  "*",
-  "entity:*:read",
-  "entity:*:write",
-  "entity:orders:read",
-  "entity:orders:write",
-  // MCP /mcp — module Phản hồi (2 phần, KHÔNG có :name: như entity).
-  "feedback:read",
-  "feedback:propose",
-];
+/* Bộ dựng scope trực quan — chọn loại → điền → "Thêm quyền". Sinh đúng
+   định dạng SCOPE_RE phía server, tránh gõ tay sai (vd feedback:*:propose).
+   Quyền đã chọn hiện dạng chip xoá được. Dùng chung cho tạo mới + sửa. */
+function ScopeEditor({
+  scopes,
+  onChange,
+  disabled,
+}: {
+  scopes: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const [kind, setKind] = useState<"entity" | "feedback" | "all">("entity");
+  const [entityName, setEntityName] = useState("*");
+  const [read, setRead] = useState(true);
+  const [write, setWrite] = useState(false);
+  const [fbLevel, setFbLevel] = useState<"read" | "propose">("propose");
+
+  const addScopes = (vals: string[]) => {
+    const next = [...scopes];
+    for (const v of vals) if (v && !next.includes(v)) next.push(v);
+    onChange(next);
+  };
+  const remove = (s: string) => onChange(scopes.filter((x) => x !== s));
+
+  const addCurrent = () => {
+    if (kind === "all") return addScopes(["*"]);
+    if (kind === "feedback") return addScopes([`feedback:${fbLevel}`]);
+    const name = entityName.trim() || "*";
+    const out: string[] = [];
+    if (read) out.push(`entity:${name}:read`);
+    if (write) out.push(`entity:${name}:write`);
+    addScopes(out.length ? out : [`entity:${name}:read`]);
+  };
+
+  return (
+    <div className="space-y-2">
+      {scopes.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {scopes.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 text-[11px] font-mono bg-bg-soft border border-border rounded-md px-1.5 py-0.5"
+            >
+              {s}
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => remove(s)}
+                className="text-muted hover:text-danger"
+                title="Xoá quyền"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs text-muted">
+          Chưa có quyền nào — thêm bên dưới (deny-by-default).
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-bg-soft p-2">
+        <label className="text-xs text-muted flex flex-col gap-1">
+          Loại quyền
+          <Select
+            value={kind}
+            disabled={disabled}
+            onChange={(e) => setKind(e.target.value as typeof kind)}
+            className="w-40"
+          >
+            <option value="entity">Dữ liệu (entity)</option>
+            <option value="feedback">Phản hồi (MCP)</option>
+            <option value="all">Toàn quyền (*)</option>
+          </Select>
+        </label>
+
+        {kind === "entity" && (
+          <>
+            <label className="text-xs text-muted flex flex-col gap-1">
+              Entity
+              <Input
+                value={entityName}
+                disabled={disabled}
+                onChange={(e) => setEntityName(e.target.value)}
+                placeholder="* hoặc tên, vd orders"
+                className="w-44"
+              />
+            </label>
+            <div className="flex gap-1 pb-1">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setRead((v) => !v)}
+                className={`chip cursor-pointer ${read ? "chip-accent" : ""}`}
+              >
+                {read ? "✓ " : ""}read
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setWrite((v) => !v)}
+                className={`chip cursor-pointer ${write ? "chip-accent" : ""}`}
+              >
+                {write ? "✓ " : ""}write
+              </button>
+            </div>
+          </>
+        )}
+
+        {kind === "feedback" && (
+          <label className="text-xs text-muted flex flex-col gap-1">
+            Mức
+            <Select
+              value={fbLevel}
+              disabled={disabled}
+              onChange={(e) => setFbLevel(e.target.value as typeof fbLevel)}
+              className="w-56"
+            >
+              <option value="read">read — chỉ đọc</option>
+              <option value="propose">propose — đọc + tạo đề xuất</option>
+            </Select>
+          </label>
+        )}
+
+        <Button
+          size="sm"
+          variant="default"
+          icon={<I.Plus size={12} />}
+          disabled={disabled}
+          onClick={addCurrent}
+        >
+          Thêm quyền
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function ApiKeysSettings() {
   const userRole = useAuth((s) => (s.user?.role ?? "viewer") as Role);
   const canEdit = roleCan(userRole, "edit", "settings");
   const [list, setList] = useState<ApiKeyListItem[]>([]);
   const [label, setLabel] = useState("");
-  const [scopesInput, setScopesInput] = useState("");
+  const [scopes, setScopes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -45,7 +174,7 @@ function ApiKeysSettings() {
   const [createdKey, setCreatedKey] = useState<ApiKeyCreateResult | null>(null);
   /** Key đang ở chế độ edit scope (id) */
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editScopes, setEditScopes] = useState("");
+  const [editScopesArr, setEditScopesArr] = useState<string[]>([]);
 
   const load = () => {
     apiKeys
@@ -59,12 +188,6 @@ function ApiKeysSettings() {
   useEffect(() => {
     load();
   }, []);
-
-  const parseScopes = (s: string): string[] =>
-    s
-      .split(/[,\n\s]+/)
-      .map((x) => x.trim())
-      .filter(Boolean);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -82,20 +205,19 @@ function ApiKeysSettings() {
   };
 
   const create = () => {
-    const scopes = parseScopes(scopesInput);
     if (!label.trim()) {
       setErr("Nhãn không được rỗng");
       return;
     }
     if (scopes.length === 0) {
-      setErr('Phải chỉ định ít nhất 1 scope (vd "*" hoặc "entity:orders:read")');
+      setErr("Phải thêm ít nhất 1 quyền.");
       return;
     }
     void run(async () => {
       const r = await apiKeys.create(label.trim(), scopes);
       setCreatedKey(r);
       setLabel("");
-      setScopesInput("");
+      setScopes([]);
     }, "✓ Đã tạo key. Sao chép plaintext ngay — sẽ không hiện lại.");
   };
 
@@ -117,20 +239,19 @@ function ApiKeysSettings() {
 
   const startEditScopes = (k: ApiKeyListItem) => {
     setEditingId(k.id);
-    setEditScopes(k.scopes.join("\n"));
+    setEditScopesArr(k.scopes);
   };
   const saveEditScopes = () => {
     if (!editingId) return;
     const id = editingId;
-    const scopes = parseScopes(editScopes);
-    if (scopes.length === 0) {
-      setErr('Phải chỉ định ít nhất 1 scope (vd "*").');
+    if (editScopesArr.length === 0) {
+      setErr("Phải thêm ít nhất 1 quyền.");
       return;
     }
     void run(async () => {
-      await apiKeys.updateScopes(id, scopes);
+      await apiKeys.updateScopes(id, editScopesArr);
       setEditingId(null);
-      setEditScopes("");
+      setEditScopesArr([]);
     }, "✓ Đã cập nhật scope.");
   };
 
@@ -162,28 +283,8 @@ function ApiKeysSettings() {
             disabled={busy || !canEdit}
             onChange={(e) => setLabel(e.target.value)}
           />
-          <div className="text-xs text-muted">Scope — mỗi dòng 1 quyền:</div>
-          <textarea
-            className="w-full min-h-[80px] rounded-md border border-border bg-bg-soft p-2 text-sm font-mono"
-            placeholder={"vd:\nentity:orders:read\nentity:orders:write"}
-            value={scopesInput}
-            disabled={busy || !canEdit}
-            onChange={(e) => setScopesInput(e.target.value)}
-          />
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-xs text-muted">Gợi ý:</span>
-            {SCOPE_HINTS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                disabled={busy || !canEdit}
-                onClick={() => setScopesInput((prev) => (prev ? `${prev}\n${s}` : s))}
-                className="text-[11px] px-2 py-0.5 rounded-md border border-border hover:bg-bg-soft font-mono"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+          <div className="text-xs text-muted">Quyền (scope):</div>
+          <ScopeEditor scopes={scopes} onChange={setScopes} disabled={busy || !canEdit} />
           <div className="flex justify-end">
             <Button
               variant="primary"
@@ -218,11 +319,7 @@ function ApiKeysSettings() {
               </div>
               {editingId === k.id ? (
                 <div className="space-y-1">
-                  <textarea
-                    className="w-full min-h-[60px] rounded-md border border-border bg-bg-soft p-2 text-xs font-mono"
-                    value={editScopes}
-                    onChange={(e) => setEditScopes(e.target.value)}
-                  />
+                  <ScopeEditor scopes={editScopesArr} onChange={setEditScopesArr} disabled={busy} />
                   <div className="flex gap-1">
                     <Button size="sm" variant="primary" disabled={busy} onClick={saveEditScopes}>
                       Lưu
@@ -231,7 +328,7 @@ function ApiKeysSettings() {
                       size="sm"
                       onClick={() => {
                         setEditingId(null);
-                        setEditScopes("");
+                        setEditScopesArr([]);
                       }}
                     >
                       Huỷ
