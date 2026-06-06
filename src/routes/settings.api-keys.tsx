@@ -2,6 +2,7 @@
    settings.api-keys — Quản lý REST API key (sk_xxx) cho mobile
    /external/3rd-party. Scope deny-by-default (P1.3).
    Format scope: "*" | "entity:<name>:read|write" | "entity:*:read|write"
+                 | "feedback:read|propose|*" (MCP /mcp — module Phản hồi)
    ========================================================== */
 
 import {
@@ -26,6 +27,9 @@ const SCOPE_HINTS = [
   "entity:*:write",
   "entity:orders:read",
   "entity:orders:write",
+  // MCP /mcp — module Phản hồi (2 phần, KHÔNG có :name: như entity).
+  "feedback:read",
+  "feedback:propose",
 ];
 
 function ApiKeysSettings() {
