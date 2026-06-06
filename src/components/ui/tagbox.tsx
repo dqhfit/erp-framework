@@ -12,7 +12,9 @@
    ========================================================== */
 
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -60,6 +62,9 @@ export function TagBox({
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Dropdown gợi ý render qua portal ra <body> để không bị card/transform cắt.
+  const pos = useDropdownPosition(wrapRef, open);
 
   const resolvedPh = placeholder ?? t("tagbox.placeholder");
   const resolvedPickerTitle = pickerTitle ?? t("tagbox.picker_title");
@@ -78,7 +83,11 @@ export function TagBox({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+      const tgt = e.target as Node;
+      // Panel ở portal (ngoài wrapRef) → loại trừ panelRef, nếu không click
+      // chọn gợi ý sẽ bị coi là "click ngoài" → đóng trước khi addTag chạy
+      // → chỉ thêm được 1 tag (đúng lỗi người dùng báo).
+      if (wrapRef.current && !wrapRef.current.contains(tgt) && !panelRef.current?.contains(tgt)) {
         setOpen(false);
       }
     };
@@ -204,41 +213,49 @@ export function TagBox({
         )}
       </div>
 
-      {open && (filtered.length > 0 || (q.trim() && !strict)) && (
-        <div className="absolute z-10 mt-1 left-0 right-0 max-h-56 overflow-auto bg-bg border border-border rounded shadow">
-          {q.trim() &&
-            !strict &&
-            !filtered.some((s) => s.toLowerCase() === q.trim().toLowerCase()) && (
+      {open &&
+        pos &&
+        (filtered.length > 0 || (q.trim() && !strict)) &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
+            className="z-[1000] max-h-56 overflow-auto bg-bg border border-border rounded shadow"
+          >
+            {q.trim() &&
+              !strict &&
+              !filtered.some((s) => s.toLowerCase() === q.trim().toLowerCase()) && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addTag(q);
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-sm text-muted hover:bg-surface"
+                >
+                  {t("tagbox.add_custom", { value: q.trim() })}
+                </button>
+              )}
+            {filtered.map((s, i) => (
               <button
                 type="button"
+                key={s}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  addTag(q);
+                  addTag(s);
                 }}
-                className="w-full text-left px-2 py-1.5 text-sm text-muted hover:bg-surface"
+                onMouseEnter={() => setHighlight(i)}
+                className={cn(
+                  "w-full text-left px-2 py-1.5 text-sm",
+                  i === highlight ? "bg-surface" : "hover:bg-surface",
+                )}
               >
-                {t("tagbox.add_custom", { value: q.trim() })}
+                {s}
               </button>
-            )}
-          {filtered.map((s, i) => (
-            <button
-              type="button"
-              key={s}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                addTag(s);
-              }}
-              onMouseEnter={() => setHighlight(i)}
-              className={cn(
-                "w-full text-left px-2 py-1.5 text-sm",
-                i === highlight ? "bg-surface" : "hover:bg-surface",
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>,
+          document.body,
+        )}
       {error && <div className="text-xs text-danger mt-1">{error}</div>}
 
       {showPicker && (

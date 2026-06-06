@@ -9,7 +9,9 @@
    ========================================================== */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { cn } from "@/lib/utils";
 
 export interface SearchableSelectOption {
@@ -54,6 +56,9 @@ export function SearchableSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Dropdown render qua portal ra <body> để không bị card/transform cắt.
+  const pos = useDropdownPosition(triggerRef, open);
 
   // Chèn mục rỗng "— chọn —" lên đầu nếu có emptyOption.
   const allOptions = useMemo(
@@ -73,7 +78,12 @@ export function SearchableSelect({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const tgt = e.target as Node;
+      // Panel nằm trong portal (ngoài rootRef) → phải loại trừ panelRef,
+      // nếu không click chọn item sẽ bị coi là "click ngoài" và đóng trước.
+      if (rootRef.current && !rootRef.current.contains(tgt) && !panelRef.current?.contains(tgt)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -147,50 +157,57 @@ export function SearchableSelect({
         <I.ChevronDown size={14} className="shrink-0 text-muted" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 z-50 mt-1 min-w-full w-max max-w-[280px] rounded-md border border-border bg-panel shadow-lg">
-          <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
-            <I.Search size={13} className="shrink-0 text-muted" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setActiveIdx(0);
-              }}
-              onKeyDown={onKeyDown}
-              placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
-            />
-          </div>
-          <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted italic">{emptyText}</li>
-            ) : (
-              filtered.map((o, i) => {
-                const isSel = o.value === value;
-                const isActive = i === activeIdx;
-                return (
-                  <li key={o.value}>
-                    <button
-                      type="button"
-                      onClick={() => pick(o.value)}
-                      onMouseEnter={() => setActiveIdx(i)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
-                        isActive ? "bg-accent/10 text-text" : "text-text/90 hover:bg-hover/40",
-                      )}
-                    >
-                      <span className="truncate">{o.label}</span>
-                      {isSel && <I.Check size={13} className="shrink-0 text-accent" />}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </div>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
+            className="z-[1000] w-max max-w-[280px] rounded-md border border-border bg-panel shadow-lg"
+          >
+            <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+              <I.Search size={13} className="shrink-0 text-muted" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIdx(0);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={searchPlaceholder}
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+              />
+            </div>
+            <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-muted italic">{emptyText}</li>
+              ) : (
+                filtered.map((o, i) => {
+                  const isSel = o.value === value;
+                  const isActive = i === activeIdx;
+                  return (
+                    <li key={o.value}>
+                      <button
+                        type="button"
+                        onClick={() => pick(o.value)}
+                        onMouseEnter={() => setActiveIdx(i)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
+                          isActive ? "bg-accent/10 text-text" : "text-text/90 hover:bg-hover/40",
+                        )}
+                      >
+                        <span className="truncate">{o.label}</span>
+                        {isSel && <I.Check size={13} className="shrink-0 text-accent" />}
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
