@@ -133,6 +133,33 @@
 - Toast/dialog: `src/lib/dialog.ts` `dialog.confirm`, `dialog.prompt`,
   `dialog.alert`.
 
+### Màu sáng/tối — QUY TẮC BẮT BUỘC
+
+- **Mọi màu UI PHẢI đi qua token semantic**, không hardcode màu palette.
+  Token khai báo ở `src/styles/index.css`: `:root` = **dark (mặc định)**,
+  `:root.light` ghi đè cho sáng. `useApplyTheme` gắn cả `.dark` lẫn
+  `.light` lên `<html>`.
+- Token dùng được (Tailwind class + biến CSS): nền `bg-bg / bg-bg-soft /
+  bg-panel / bg-panel-2 / bg-hover`, chữ `text-text / text-muted`, viền
+  `border-border`, nhấn `accent / accent-2`, trạng thái `success /
+  warning / danger`. Cần opacity → `hsl(var(--accent)/0.15)` hoặc
+  `bg-accent/15`. Class dựng sẵn: `.btn-*`, `.input`, `.chip-*`, `.card`,
+  `.panel`, `.sidebar-item`.
+- **CẤM** cho màu ngữ nghĩa (chữ/nền/viền/icon trạng thái, màu loại đối
+  tượng): màu palette Tailwind cố định (`text-amber-500`, `bg-white`,
+  `text-gray-700`, `text-sky-400`…) và `#hex`/`text-[#…]` inline. Chúng
+  KHÔNG đổi theo theme → ở nền sáng bị chìm/nhạt, nền tối bị chói. Đây là
+  lỗi "màu chưa chuẩn sáng tối" hay gặp. Map loại đối tượng dùng token:
+  vd entity/datasource→`accent`, page→`accent-2`, workflow→`warning`,
+  agent/group→`success`/`warning` — KHÔNG `*-500`.
+- `dark:` variant CÓ hoạt động (vì `.dark` được gắn) nhưng **ưu tiên
+  token** để khỏi nuôi 2 nhánh màu; chỉ dùng `dark:` khi token không diễn
+  đạt nổi.
+- **Ngoại lệ hợp lệ** (màu là *dữ liệu*, không phải chrome): bảng màu chart
+  `renderer/Chart.tsx`, swatch chọn accent `TweaksPanel.tsx`, preset màu
+  nhóm `settings.viewer-groups.tsx`, màn lỗi tách-theme `ErrorBoundary.tsx`.
+  Ngoài các chỗ này, thấy `#hex`/`*-500` cho màu UI là cần sửa về token.
+
 ## 8. Cấu trúc test
 
 - Unit: `*.test.ts` cạnh source. Chạy `pnpm test` (vitest).

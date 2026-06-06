@@ -15,9 +15,10 @@ const navApi = createNavClient("");
 const KIND_LABEL: Record<NavKind, string> = { group: "Nhóm", page: "Trang", link: "Liên kết" };
 
 function kindIcon(kind: NavKind) {
-  if (kind === "group") return <I.Folder size={14} className="shrink-0 text-amber-500" />;
-  if (kind === "page") return <I.File size={14} className="shrink-0 text-sky-500" />;
-  return <I.Link size={14} className="shrink-0 text-violet-500" />;
+  // Màu loại đối tượng dùng token semantic (đổi theo sáng/tối), KHÔNG palette cứng.
+  if (kind === "group") return <I.Folder size={14} className="shrink-0 text-warning" />;
+  if (kind === "page") return <I.File size={14} className="shrink-0 text-accent-2" />;
+  return <I.Link size={14} className="shrink-0 text-accent" />;
 }
 
 function NavBuilderPage() {

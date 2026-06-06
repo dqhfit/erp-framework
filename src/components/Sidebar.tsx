@@ -270,8 +270,8 @@ function SidebarItem({
                   className={cn(
                     "w-5 h-5 rounded-sm flex items-center justify-center transition-colors",
                     isFavorited
-                      ? "text-amber-400 hover:text-amber-300"
-                      : "text-muted/40 hover:bg-hover/80 hover:text-amber-400",
+                      ? "text-warning hover:brightness-110"
+                      : "text-muted/40 hover:bg-hover/80 hover:text-warning",
                   )}
                   title={isFavorited ? t("sidebar.remove_favorite") : t("sidebar.add_favorite")}
                 >
@@ -609,7 +609,7 @@ function FavoritesSection({
             size={9}
             className={cn("transition-transform shrink-0", open && "rotate-90")}
           />
-          <I.Star size={9} className="shrink-0 text-amber-400/70" />
+          <I.Star size={9} className="shrink-0 text-warning/70" />
           <span>{t("sidebar.favorites")}</span>
         </button>
       )}
