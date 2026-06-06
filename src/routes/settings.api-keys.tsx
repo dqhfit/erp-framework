@@ -21,6 +21,34 @@ import { useAuth } from "@/stores/auth";
 
 const apiKeys = createApiKeysClient("");
 
+/* `a` có BAO TRÙM `b` không (b thừa nếu đã có a)? Khớp đúng logic kiểm tra
+   scope phía server: hasScope (rest-api) + hasFeedbackScope (mcp-feedback).
+   - "*" bao mọi thứ.
+   - entity:*:<act> bao entity:<tên>:<act> (cùng action).
+   - feedback:* bao read+propose; feedback:propose bao read. */
+function scopeCovers(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a === "*") return true;
+  const pa = a.split(":");
+  const pb = b.split(":");
+  if (pa[0] === "entity" && pb[0] === "entity") {
+    // entity:<name>:<action> — action phải khớp, name "*" bao mọi tên.
+    return pa[2] === pb[2] && (pa[1] === "*" || pa[1] === pb[1]);
+  }
+  if (pa[0] === "feedback" && pb[0] === "feedback") {
+    if (pa[1] === "*") return true;
+    if (pa[1] === "propose") return pb[1] === "read" || pb[1] === "propose";
+    return false; // feedback:read chỉ bao chính nó (đã xử lý a===b)
+  }
+  return false;
+}
+
+/** Khử trùng + bỏ scope thừa (đã được scope rộng hơn bao). Giữ tập tối giản. */
+function normalizeScopes(list: string[]): string[] {
+  const uniq = [...new Set(list.filter(Boolean))];
+  return uniq.filter((b) => !uniq.some((a) => a !== b && scopeCovers(a, b)));
+}
+
 /* Bộ dựng scope trực quan — chọn loại → điền → "Thêm quyền". Sinh đúng
    định dạng SCOPE_RE phía server, tránh gõ tay sai (vd feedback:*:propose).
    Quyền đã chọn hiện dạng chip xoá được. Dùng chung cho tạo mới + sửa. */
@@ -39,10 +67,10 @@ function ScopeEditor({
   const [write, setWrite] = useState(false);
   const [fbLevel, setFbLevel] = useState<"read" | "propose">("propose");
 
+  // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
+  // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
   const addScopes = (vals: string[]) => {
-    const next = [...scopes];
-    for (const v of vals) if (v && !next.includes(v)) next.push(v);
-    onChange(next);
+    onChange(normalizeScopes([...scopes, ...vals]));
   };
   const remove = (s: string) => onChange(scopes.filter((x) => x !== s));
 
@@ -214,7 +242,7 @@ function ApiKeysSettings() {
       return;
     }
     void run(async () => {
-      const r = await apiKeys.create(label.trim(), scopes);
+      const r = await apiKeys.create(label.trim(), normalizeScopes(scopes));
       setCreatedKey(r);
       setLabel("");
       setScopes([]);
@@ -249,7 +277,7 @@ function ApiKeysSettings() {
       return;
     }
     void run(async () => {
-      await apiKeys.updateScopes(id, editScopesArr);
+      await apiKeys.updateScopes(id, normalizeScopes(editScopesArr));
       setEditingId(null);
       setEditScopesArr([]);
     }, "✓ Đã cập nhật scope.");
