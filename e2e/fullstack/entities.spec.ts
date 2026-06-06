@@ -5,18 +5,16 @@ import { ensureLoggedIn, switchToConsumer, openSidebarLink } from "./helpers";
 
 test("mở entity đã seed → vào trang designer", async ({ page }) => {
   await ensureLoggedIn(page);
-  await openSidebarLink(page, "Sản phẩm");
+  await openSidebarLink(page, "Khách hàng");
   await expect(page).toHaveURL(/\/entities\//);
 });
 
 test("chế độ Người dùng — màn hình Dữ liệu hiện nút thêm bản ghi", async ({ page }) => {
   await ensureLoggedIn(page);
-  await openSidebarLink(page, "Sản phẩm");
+  await openSidebarLink(page, "Khách hàng");
   await expect(page).toHaveURL(/\/entities\//);
   await switchToConsumer(page);
-  await expect(
-    page.getByRole("button", { name: /Thêm bản ghi/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Thêm bản ghi/ })).toBeVisible();
 });
 
 test("chế độ Người dùng — mở được form thêm bản ghi", async ({ page }) => {
@@ -27,9 +25,7 @@ test("chế độ Người dùng — mở được form thêm bản ghi", async 
   await addBtn.waitFor({ state: "visible", timeout: 8000 });
   await addBtn.click();
   // Drawer "Thêm …" mở ra — kiểm nút Lưu của form.
-  await expect(
-    page.getByRole("button", { name: "Lưu", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeVisible();
 });
 
 test("danh sách Entities hiển thị", async ({ page }) => {
