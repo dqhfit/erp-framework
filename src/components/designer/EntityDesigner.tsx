@@ -430,7 +430,7 @@ export function EntityDesigner({ entityId }: Props) {
         >
           AI Assist
         </Button>
-        {entity.id ? (
+        {entity.id && !entity.isTableBacked ? (
           <button
             type="button"
             className="btn btn-sm flex items-center gap-1.5"
@@ -444,6 +444,7 @@ export function EntityDesigner({ entityId }: Props) {
               if (!ok) return;
               try {
                 const r = await createApiDataSource("").promoteEntityToTable(id);
+                if (!r.alreadyTable) setEntity({ ...entity, isTableBacked: true }); // ẩn nút
                 await dialog.alert(
                   r.alreadyTable
                     ? "Entity đã ở bảng thật."

@@ -85,6 +85,9 @@ export interface MockEntity {
   /** Override per-op sang native procedure: { list?: "proc_name", ... }.
    *  Khi set, server records.* dispatch sang procedure-runner thay vì native CRUD. */
   procBindings?: Partial<Record<"list" | "get" | "create" | "update" | "delete", string>>;
+  /** HYBRID: entity đã lưu ở bảng Postgres thật (meta.storage.tier='table').
+   *  Chỉ-đọc (suy từ meta server) — ẩn nút "Bảng thật" khi đã promote. */
+  isTableBacked?: boolean;
 }
 
 export interface MockPage {

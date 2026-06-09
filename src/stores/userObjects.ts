@@ -76,6 +76,8 @@ function rowToEntity(r: Row): MockEntity {
     mcpBindings: meta.mcpBindings as MockEntity["mcpBindings"],
     procBindings,
     primaryKey: (meta.primaryKey as string) || undefined,
+    // HYBRID: entity đã ở bảng thật (meta.storage.tier='table') → ẩn nút "Bảng thật".
+    isTableBacked: (meta.storage as { tier?: string } | undefined)?.tier === "table",
   };
 }
 function entityToInput(e: MockEntity) {
