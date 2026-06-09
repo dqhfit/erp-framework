@@ -224,7 +224,8 @@ describe("feedback-router", () => {
 
   describe("vote / unvote", () => {
     it("vote insert + update voteCount", async () => {
-      const { db, ops } = makeMockDb();
+      const { db, ops, enqueueSelect } = makeMockDb();
+      enqueueSelect([{ id: VALID_UUID }]); // assertFeedbackInCompany — guard cross-tenant
       const ctx = makeMockCtx({ db });
       const r = await caller(ctx).vote(VALID_UUID);
       expect(r).toEqual({ ok: true });
@@ -234,11 +235,19 @@ describe("feedback-router", () => {
     });
 
     it("unvote delete + update voteCount", async () => {
-      const { db, ops } = makeMockDb();
+      const { db, ops, enqueueSelect } = makeMockDb();
+      enqueueSelect([{ id: VALID_UUID }]); // assertFeedbackInCompany — guard cross-tenant
       const ctx = makeMockCtx({ db });
       await caller(ctx).unvote(VALID_UUID);
       expect(ops.some((o) => o.kind === "delete")).toBe(true);
       expect(ops.some((o) => o.kind === "execute")).toBe(true);
+    });
+
+    it("vote: feedback công ty khác → NOT_FOUND (guard cross-tenant)", async () => {
+      const { db, enqueueSelect } = makeMockDb();
+      enqueueSelect([]); // assertFeedbackInCompany không thấy → chặn
+      const ctx = makeMockCtx({ db });
+      await assertThrowsTRPCError(() => caller(ctx).vote(VALID_UUID), "NOT_FOUND");
     });
   });
 

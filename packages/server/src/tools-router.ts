@@ -59,6 +59,26 @@ async function getEnabledMap(
   return map;
 }
 
+/** Fail-closed: tool phải được bật cho công ty (company_tools.enabled) trước
+ *  khi spawn/invoke — chống công ty dùng tool global chưa được admin cấp cho
+ *  công ty mình (CLAUDE.md §4 P4.2). */
+async function assertToolEnabled(
+  db: import("./db").DB,
+  companyId: string,
+  toolId: string,
+): Promise<void> {
+  const [ct] = await db
+    .select({ enabled: companyTools.enabled })
+    .from(companyTools)
+    .where(and(eq(companyTools.companyId, companyId), eq(companyTools.toolId, toolId)));
+  if (!ct?.enabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tool chưa được bật cho công ty này — admin bật ở Cài đặt → Tools trước.",
+    });
+  }
+}
+
 export const toolsRouter = router({
   list: rbacProcedure("view", "tool").query(async ({ ctx }) => {
     const rows = await ctx.db.select().from(toolsTable).orderBy(desc(toolsTable.createdAt));
@@ -222,6 +242,7 @@ export const toolsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertToolEnabled(ctx.db, ctx.user.companyId, input);
       const manifest = row.manifest as ToolManifest;
       if (manifest.runtime !== "spawn") {
         throw new TRPCError({
@@ -257,6 +278,7 @@ export const toolsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db.select().from(toolsTable).where(eq(toolsTable.id, input.toolId));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertToolEnabled(ctx.db, ctx.user.companyId, input.toolId);
       const manifest = row.manifest as ToolManifest;
       switch (manifest.kind) {
         case "cli": {
