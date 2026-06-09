@@ -498,6 +498,13 @@
       "when": 1783702700000,
       "tag": "0070_record_locator",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1783702800000,
+      "tag": "0071_record_aux_drop_fk",
+      "breakpoints": true
     }
   ]
 }

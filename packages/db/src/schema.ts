@@ -284,9 +284,10 @@ export const entityRecordEmbeddings = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    recordId: uuid("record_id")
-      .notNull()
-      .references(() => entityRecords.id, { onDelete: "cascade" }),
+    // FK record_id -> entity_records.id BỎ ở migration 0071 (HYBRID Phase 4b):
+    // record entity tier='table' sống ở er_<id>, không ở entity_records; company_id
+    // FK giữ nguyên nên xoá công ty vẫn cascade dọn. Xem docs/HYBRID-STORAGE.md.
+    recordId: uuid("record_id").notNull(),
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entities.id, { onDelete: "cascade" }),
@@ -332,9 +333,10 @@ export const recordFieldOps = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    recordId: uuid("record_id")
-      .notNull()
-      .references(() => entityRecords.id, { onDelete: "cascade" }),
+    // FK record_id -> entity_records.id BỎ ở migration 0071 (HYBRID Phase 4b):
+    // record entity tier='table' sống ở er_<id>, không ở entity_records; company_id
+    // FK giữ nguyên nên xoá công ty vẫn cascade dọn. Xem docs/HYBRID-STORAGE.md.
+    recordId: uuid("record_id").notNull(),
     fieldName: text("field_name").notNull(),
     seq: integer("seq").notNull(),
     baseSeq: integer("base_seq").notNull(),
@@ -380,9 +382,10 @@ export const notifications = pgTable(
 export const recordPresence = pgTable(
   "record_presence",
   {
-    recordId: uuid("record_id")
-      .notNull()
-      .references(() => entityRecords.id, { onDelete: "cascade" }),
+    // FK record_id -> entity_records.id BỎ ở migration 0071 (HYBRID Phase 4b):
+    // record entity tier='table' sống ở er_<id>, không ở entity_records; company_id
+    // FK giữ nguyên nên xoá công ty vẫn cascade dọn. Xem docs/HYBRID-STORAGE.md.
+    recordId: uuid("record_id").notNull(),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -504,9 +507,10 @@ export const entityRecordVersions = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    recordId: uuid("record_id")
-      .notNull()
-      .references(() => entityRecords.id, { onDelete: "cascade" }),
+    // FK record_id -> entity_records.id BỎ ở migration 0071 (HYBRID Phase 4b):
+    // record entity tier='table' sống ở er_<id>, không ở entity_records; company_id
+    // FK giữ nguyên nên xoá công ty vẫn cascade dọn. Xem docs/HYBRID-STORAGE.md.
+    recordId: uuid("record_id").notNull(),
     version: integer("version").notNull(),
     data: jsonb("data").notNull(),
     diff: jsonb("diff").notNull().default(sql`'{}'::jsonb`),
@@ -1107,9 +1111,10 @@ export const entityRecordTimeseries = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    recordId: uuid("record_id")
-      .notNull()
-      .references(() => entityRecords.id, { onDelete: "cascade" }),
+    // FK record_id -> entity_records.id BỎ ở migration 0071 (HYBRID Phase 4b):
+    // record entity tier='table' sống ở er_<id>, không ở entity_records; company_id
+    // FK giữ nguyên nên xoá công ty vẫn cascade dọn. Xem docs/HYBRID-STORAGE.md.
+    recordId: uuid("record_id").notNull(),
     fieldName: text("field_name").notNull(),
     ts: timestamp("ts").defaultNow().notNull(),
     value: doublePrecision("value").notNull(),

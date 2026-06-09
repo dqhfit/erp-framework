@@ -44,22 +44,31 @@ field cốt lõi + cột **`ext jsonb`** cho field mở rộng.
 - ✅ Entity lifecycle: tạo entity mới (tạo bảng), `save` (ADD/DROP cột),
   `renameField`, `changeFieldType` (type / column↔ext), `promoteToTable`.
 
-## 4. ⚠️ CÒN EAV-ONLY — phải xử lý TRƯỚC khi bật cờ ở production
+## 4. Phase 4b — cross-entity/peripheral
 
-Khi cờ bật + có entity tier='table', các vùng sau đọc/ghi thẳng `entity_records`
-→ **bỏ sót / sai** với record ở bảng thật. Đánh dấu `TODO(hybrid Phase 4)` trong code.
+### ✅ Đã xử lý + verify
+- **scanBackRefs / applyCascadeOnDelete** (`router-helpers.ts`) — detection
+  backend-aware (`refRecordIds` quét `er_*`: cột FK / `ext @>` cho multilookup);
+  GHI qua `RecordStore` (truyền store vào → tránh import cycle). Delete-protection
+  (restrict/setnull/cascade) chạy đúng cho entity bảng thật. Integration test 4/4.
+- **Aux-table FK** (migration `0071`) — bỏ FK `record_id → entity_records.id` ở 5 bảng
+  (`entity_record_embeddings`, `record_field_ops`, `record_presence`,
+  `entity_record_versions`, `entity_record_timeseries`) → record bảng thật ghi được
+  (embeddings/version/timeseries/presence/co-edit không còn vi phạm FK); `company_id`
+  FK giữ → xoá công ty vẫn cascade dọn. Đánh đổi: hard-delete 1 record không auto-
+  cascade bảng phụ (soft-delete không ảnh hưởng; hard-delete là op admin hiếm).
+- **Backup** (`backup.ts`) — `pg_dump -Fc` toàn DB → `er_*` + `record_locator` tự gồm.
 
+### ⚠️ CÒN LẠI — xử lý TRƯỚC khi bật cờ ở production
 | Vùng | File | Hậu quả khi bật cờ | Hướng sửa |
 |---|---|---|---|
-| **scanBackRefs / applyCascadeOnDelete** | `router-helpers.ts` | Lookup từ/đến entity table-backed KHÔNG bị phát hiện → xoá nhầm (restrict bỏ qua) / orphan ref (setnull/cascade không chạy). **Integrity.** | Quét cả `er_*` (cột FK / `ext->field @>` cho multilookup); setnull/cascade UPDATE er_*. |
-| **descendants / ancestors** (tree CTE) | `records-router.ts` | CTE chạy trên `entity_records` → entity table-backed trả rỗng. | CTE biến thể trên `er_<id>` dùng cột FK. |
-| **REST API** | `rest-api.ts` | list/get/create/patch trên `entity_records` → entity table-backed sai/rỗng. | Route qua `RecordStore`. |
+| **descendants / ancestors** (tree CTE) | `records-router.ts` | CTE trên `entity_records` → entity table-backed trả rỗng. | CTE biến thể trên `er_<id>` (cột FK) + reconstruct `data` qua store. |
+| **REST API** | `rest-api.ts` | list/get/create/patch trên `entity_records` → table-backed sai/rỗng. | Route qua `RecordStore`. |
 | **GraphQL** | `graphql.ts` | Như REST. | Route qua `RecordStore`. |
-| **Procedure runner** (`db.queryRecords` isolated-vm) | `procedure-runner.ts` | `data @> filter` trên entity_records → sai cho table. | Dịch filter qua store / column. |
-| **Duplicate detection** | `duplicate-detection.ts` | `similarity(data::text,...)` + field lookup trên entity_records → sai. | Ghép `data` từ cột+ext / chạy trên er_*. |
-| **Embeddings** | `record-embedding.ts` | `entity_record_embeddings.record_id` FK→`entity_records.id` → record table-backed **vi phạm FK** (best-effort nên nuốt lỗi, embedding không index). | Bỏ FK (cột uuid trơn) hoặc skip cho entity table-backed. |
-| **Backup / Transfer** | `backup.ts`, `transfer.ts` | KHÔNG gồm `er_*` → **mất dữ liệu khi restore**. Nguy hiểm nhất. | Liệt kê + dump/restore mọi bảng `er_*` + `record_locator`. |
-| **Migration full-import** | `migration-full-import.ts` | `data->>pk` lookup + insert trên entity_records → sai cho table. | Route qua store. |
+| **Procedure runner** (`db.queryRecords`) | `procedure-runner.ts` | `data @> filter` → sai cho table. | Route qua `store.list`. |
+| **Duplicate detection** | `duplicate-detection.ts` | `similarity(data::text,…)` → sai. | Ghép `data` từ cột+ext / chạy `er_*`. |
+| **Migration full-import** | `migration-full-import.ts` | `data->>pk` + insert → sai cho table. | Route qua store. |
+| **Transfer** | `transfer.ts` | có thể không gồm `er_*`. | Kiểm + gồm `er_*` + `record_locator` nếu cần. |
 
 Ngoài ra: **search_tsv** cho `er_*` chưa dựng (trigger) → full-text `q` trên
 table-base bị bỏ qua (resolver fallback). `resolveGet` (1 record, write-back) vẫn
