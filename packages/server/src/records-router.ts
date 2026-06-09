@@ -29,6 +29,7 @@ import { makeInvokeProcedure } from "./procedure-runner";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { applyRollups, invalidateRollupsFor } from "./rollup";
 import { getRecordStore } from "./record-store";
+import { recordTree } from "./record-tree";
 import {
   applyCascadeOnDelete,
   assertUnique,
@@ -346,26 +347,16 @@ export const recordsRouter = router({
         maxDepth: z.number().int().positive().max(20).optional(),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const maxD = input.maxDepth ?? 10;
-      const rows = (await ctx.db.execute(sql`
-          WITH RECURSIVE tree AS (
-            SELECT id, data, 0 AS level FROM entity_records
-            WHERE id = ${input.recordId}::uuid
-              AND company_id = ${ctx.user.companyId}::uuid
-              AND deleted_at IS NULL
-            UNION ALL
-            SELECT er.id, er.data, tree.level + 1
-            FROM entity_records er
-            JOIN tree ON er.data->>${input.fkField} = tree.id::text
-            WHERE er.company_id = ${ctx.user.companyId}::uuid
-              AND er.deleted_at IS NULL
-              AND tree.level < ${sql.raw(String(maxD))}
-          )
-          SELECT id, data, level FROM tree WHERE level > 0 ORDER BY level
-        `)) as unknown as Array<{ id: string; data: unknown; level: number }>;
-      return rows;
-    }),
+    .query(({ ctx, input }) =>
+      recordTree(
+        ctx.db,
+        ctx.user.companyId,
+        input.recordId,
+        input.fkField,
+        input.maxDepth ?? 10,
+        "descendants",
+      ),
+    ),
 
   ancestors: rbacProcedure("view", "entity")
     .input(
@@ -375,26 +366,16 @@ export const recordsRouter = router({
         maxDepth: z.number().int().positive().max(20).optional(),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const maxD = input.maxDepth ?? 10;
-      const rows = (await ctx.db.execute(sql`
-          WITH RECURSIVE tree AS (
-            SELECT id, data, 0 AS level FROM entity_records
-            WHERE id = ${input.recordId}::uuid
-              AND company_id = ${ctx.user.companyId}::uuid
-              AND deleted_at IS NULL
-            UNION ALL
-            SELECT er.id, er.data, tree.level + 1
-            FROM entity_records er
-            JOIN tree ON tree.data->>${input.fkField} = er.id::text
-            WHERE er.company_id = ${ctx.user.companyId}::uuid
-              AND er.deleted_at IS NULL
-              AND tree.level < ${sql.raw(String(maxD))}
-          )
-          SELECT id, data, level FROM tree WHERE level > 0 ORDER BY level
-        `)) as unknown as Array<{ id: string; data: unknown; level: number }>;
-      return rows;
-    }),
+    .query(({ ctx, input }) =>
+      recordTree(
+        ctx.db,
+        ctx.user.companyId,
+        input.recordId,
+        input.fkField,
+        input.maxDepth ?? 10,
+        "ancestors",
+      ),
+    ),
 
   /* Time-series endpoints — ghi/đọc giá trị theo thời gian cho field
        type "timeseries" (sensor/telemetry/price). Tách bảng riêng để

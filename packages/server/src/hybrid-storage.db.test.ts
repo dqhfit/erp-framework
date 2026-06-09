@@ -22,6 +22,7 @@ import { resolveList } from "./datasource-resolver";
 import { promoteEntityToTable } from "./entity-promote";
 import { ensureEntityTable, tableNameForEntity } from "./entity-table-ddl";
 import { getRecordStore } from "./record-store";
+import { recordTree } from "./record-tree";
 import { applyCascadeOnDelete, scanBackRefs } from "./router-helpers";
 
 const RUN = process.env.HYBRID_DB === "1";
@@ -232,5 +233,24 @@ describe.skipIf(!RUN)("HYBRID storage (Postgres thật)", () => {
     const c2 = await cs.insert(companyId, custId, { ten: "Y" }, null);
     await cs.insert(companyId, ordRes, { so: "OB", kh_id: c2!.id }, null);
     await expect(applyCascadeOnDelete(db, cs, companyId, c2!.id, "u")).rejects.toThrow();
+  });
+
+  it("Phase 4b — tree CTE (descendants/ancestors) trên bảng thật self-ref", async () => {
+    const folderId = await makeTableEntity("hyb_folder", [
+      { name: "ten", label: "Tên", type: "text" },
+      { name: "parent_id", label: "Cha", type: "lookup", filterable: true },
+    ]);
+    const fs = getRecordStore(db);
+    const root = await fs.insert(companyId, folderId, { ten: "root" }, null);
+    const a = await fs.insert(companyId, folderId, { ten: "A", parent_id: root!.id }, null);
+    const b = await fs.insert(companyId, folderId, { ten: "B", parent_id: a!.id }, null);
+
+    const desc = await recordTree(db, companyId, root!.id, "parent_id", 10, "descendants");
+    expect(desc.map((r) => (r.data as Record<string, unknown>).ten)).toEqual(["A", "B"]);
+    expect(desc.map((r) => r.level)).toEqual([1, 2]);
+
+    const anc = await recordTree(db, companyId, b!.id, "parent_id", 10, "ancestors");
+    expect(anc.map((r) => (r.data as Record<string, unknown>).ten)).toEqual(["A", "root"]);
+    expect(anc.map((r) => r.level)).toEqual([1, 2]);
   });
 });

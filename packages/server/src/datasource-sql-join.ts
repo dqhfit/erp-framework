@@ -29,7 +29,7 @@ import {
   fieldCan,
   type Role,
 } from "@erp-framework/core";
-import { type SQL, sql } from "drizzle-orm";
+import { inArray, type SQL, sql } from "drizzle-orm";
 import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import { decryptField } from "./router-helpers";
 
@@ -220,7 +220,7 @@ function filterFrag(expr: SQL, op: string, value: unknown): SQL | null {
       return sql`${expr}::numeric <= ${Number(value)}`;
     case "in": {
       const arr = Array.isArray(value) ? value.map(String) : [];
-      return sql`${expr}::text = ANY(${arr})`;
+      return arr.length > 0 ? inArray(sql`${expr}::text`, arr) : sql`1 = 0`;
     }
     default:
       return null;

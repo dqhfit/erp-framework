@@ -17,12 +17,13 @@
    Tất cả ops scope `companyId` trong closure — code không thoát được công ty.
    ========================================================== */
 import ivm from "isolated-vm";
-import { eq, and, sql } from "drizzle-orm";
-import { entities, entityRecords, procedures } from "@erp-framework/db";
+import { eq, and } from "drizzle-orm";
+import { entities, procedures } from "@erp-framework/db";
 import { validateRecord, type EntityFieldDef } from "@erp-framework/core";
 import type { DB } from "./db";
 import { logActivity } from "./activity";
 import { getModuleProcByName } from "./module-procs";
+import { getRecordStore } from "./record-store";
 
 const MAX_DEPTH = 8;
 const MEM_MB = Number(process.env.CODE_NODE_MEM_MB ?? 128);
@@ -386,21 +387,20 @@ async function queryRecords(
   const ent = await loadEntity(db, companyId, entityName);
   const limit = Math.min(Math.max(opts?.limit ?? 200, 1), 1000);
   const offset = Math.max(opts?.offset ?? 0, 0);
-  let q = db
-    .select()
-    .from(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.companyId, companyId),
-        eq(entityRecords.entityId, ent.id),
-        filter && Object.keys(filter).length > 0
-          ? sql`${entityRecords.data} @> ${JSON.stringify(filter)}::jsonb`
-          : sql`true`,
-      ),
-    )
-    .$dynamic();
-  q = q.limit(limit).offset(offset);
-  const rows = await q;
+  // Containment {field:value} → filter equality (đủ cho filter scalar) + qua store
+  // → dispatch EAV/bảng thật.
+  const filters =
+    filter && Object.keys(filter).length > 0
+      ? Object.fromEntries(
+          Object.entries(filter).map(([k, v]) => [k, { op: "=" as const, value: v }]),
+        )
+      : undefined;
+  const { rows } = await getRecordStore(db).list(companyId, ent.id, {
+    filters,
+    limit,
+    offset,
+    withTotal: false,
+  });
   return rows.map((r) => ({
     id: r.id,
     data: r.data,
@@ -411,17 +411,10 @@ async function queryRecords(
 
 async function findById(db: DB, companyId: string, entityName: string, id: string) {
   const ent = await loadEntity(db, companyId, entityName);
-  const [r] = await db
-    .select()
-    .from(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.companyId, companyId),
-        eq(entityRecords.entityId, ent.id),
-        eq(entityRecords.id, id),
-      ),
-    );
-  return r ? { id: r.id, data: r.data, createdAt: r.createdAt, updatedAt: r.updatedAt } : null;
+  const r = await getRecordStore(db).getById(companyId, id);
+  return r && r.entityId === ent.id
+    ? { id: r.id, data: r.data, createdAt: r.createdAt, updatedAt: r.updatedAt }
+    : null;
 }
 
 /* Helper write nhan `db` rieng (khac voi deps.db) — de tx scope:
@@ -440,15 +433,12 @@ async function insertRecord(
     throw new Error(
       `Dữ liệu không hợp lệ: ${v.errors.map((e) => `${e.field}: ${e.message}`).join("; ")}`,
     );
-  const [row] = await db
-    .insert(entityRecords)
-    .values({
-      companyId: deps.companyId,
-      entityId: ent.id,
-      data: v.data,
-      createdBy: deps.actorUserId ?? null,
-    })
-    .returning();
+  const row = await getRecordStore(db).insert(
+    deps.companyId,
+    ent.id,
+    v.data as Record<string, unknown>,
+    deps.actorUserId ?? null,
+  );
   await logActivity(db, {
     companyId: deps.companyId,
     kind: "procedure_write",
@@ -474,24 +464,11 @@ async function updateRecord(
     throw new Error(
       `Dữ liệu không hợp lệ: ${v.errors.map((e) => `${e.field}: ${e.message}`).join("; ")}`,
     );
-  // Merge JSONB ở app layer — đọc, hợp nhất, ghi.
-  const [cur] = await db
-    .select({ data: entityRecords.data })
-    .from(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.companyId, deps.companyId),
-        eq(entityRecords.entityId, ent.id),
-        eq(entityRecords.id, id),
-      ),
-    );
-  if (!cur) throw new Error(`Record không tồn tại: ${id}`);
-  const merged = { ...(cur.data as Record<string, unknown>), ...v.data };
-  const [row] = await db
-    .update(entityRecords)
-    .set({ data: merged, updatedAt: new Date() })
-    .where(and(eq(entityRecords.companyId, deps.companyId), eq(entityRecords.id, id)))
-    .returning();
+  // Merge qua store (dispatch EAV/bảng thật). Giữ version (procedure không bump).
+  const store = getRecordStore(db);
+  const cur = await store.loadState(deps.companyId, id);
+  if (!cur || cur.entityId !== ent.id) throw new Error(`Record không tồn tại: ${id}`);
+  const row = await store.merge(deps.companyId, id, v.data as Record<string, unknown>, cur.version);
   await logActivity(db, {
     companyId: deps.companyId,
     kind: "procedure_write",
@@ -505,15 +482,9 @@ async function updateRecord(
 
 async function deleteRecord(db: DB, deps: MakeInvokeProcedureDeps, entityName: string, id: string) {
   const ent = await loadEntity(db, deps.companyId, entityName);
-  await db
-    .delete(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.companyId, deps.companyId),
-        eq(entityRecords.entityId, ent.id),
-        eq(entityRecords.id, id),
-      ),
-    );
+  const store = getRecordStore(db);
+  const cur = await store.loadState(deps.companyId, id);
+  if (cur && cur.entityId === ent.id) await store.hardDelete(deps.companyId, id);
   await logActivity(db, {
     companyId: deps.companyId,
     kind: "procedure_write",

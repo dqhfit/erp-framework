@@ -107,31 +107,34 @@ export function makeMockDb(): MockDbController {
     return Promise.resolve(v as T[]);
   };
 
+  // limit() trả Promise (await được) KÈM .offset() (cùng resolve 1 kết quả đã
+  // dequeue) — hỗ trợ chuỗi `.limit().offset()` của RecordStore.list.
+  const limitResult = () => {
+    const p = dequeue(selectQueue);
+    return Object.assign(p, { offset: (_n: number) => p });
+  };
+
   const selectChain = () => ({
     from: (_table: unknown) => {
       ops.push({ kind: "select" });
       const next = {
         where: (_cond?: unknown) => ({
           ...next,
-          limit: (_n: number) => dequeue(selectQueue),
+          limit: (_n: number) => limitResult(),
           orderBy: (..._a: unknown[]) => ({
             ...next,
-            limit: (_n: number) => dequeue(selectQueue),
-            then: (r: (v: unknown[]) => unknown) =>
-              dequeue(selectQueue).then(r),
+            limit: (_n: number) => limitResult(),
+            then: (r: (v: unknown[]) => unknown) => dequeue(selectQueue).then(r),
           }),
-          then: (r: (v: unknown[]) => unknown) =>
-            dequeue(selectQueue).then(r),
+          then: (r: (v: unknown[]) => unknown) => dequeue(selectQueue).then(r),
         }),
-        limit: (_n: number) => dequeue(selectQueue),
+        limit: (_n: number) => limitResult(),
         orderBy: (..._a: unknown[]) => ({
           ...next,
-          limit: (_n: number) => dequeue(selectQueue),
-          then: (r: (v: unknown[]) => unknown) =>
-            dequeue(selectQueue).then(r),
+          limit: (_n: number) => limitResult(),
+          then: (r: (v: unknown[]) => unknown) => dequeue(selectQueue).then(r),
         }),
-        then: (r: (v: unknown[]) => unknown) =>
-          dequeue(selectQueue).then(r),
+        then: (r: (v: unknown[]) => unknown) => dequeue(selectQueue).then(r),
         innerJoin: (..._a: unknown[]) => next,
         leftJoin: (..._a: unknown[]) => next,
         $dynamic: () => next,

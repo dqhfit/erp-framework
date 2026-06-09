@@ -1,11 +1,11 @@
 # Lưu trữ HYBRID (bảng thật + JSONB) — kiến trúc & checklist bật cờ
 
-> Trạng thái: Phase 0–3 XONG + đã **verify trên Postgres thật** qua integration
-> test `hybrid-storage.db.test.ts` (3/3 pass: CRUD bảng thật, promote EAV→table,
-> JOIN SQL gỡ giới hạn v1). Phase 4 một phần (xem §4). **Mặc định TẮT**
-> (`ERP_HYBRID_TABLES` không set / ≠ `1`) → toàn bộ chạy EAV như cũ.
-> ⚠️ Vẫn cần xử lý §4 (cross-entity/peripheral) + kiểm tra UI/bảo mật (§5)
-> trước khi bật cờ ở production.
+> Trạng thái: Phase 0–4b XONG, **verify trên Postgres thật** qua integration test
+> `hybrid-storage.db.test.ts` (5/5: CRUD bảng thật, promote EAV→table, JOIN SQL gỡ
+> giới hạn v1, scanBackRefs/cascade, tree CTE). Mọi vùng cross-entity/peripheral đã
+> table-aware (§4); còn 2 giới hạn đã biết (migration re-import sau promote, search_tsv
+> cho er_*) — không chặn bật cờ. **Mặc định TẮT** (`ERP_HYBRID_TABLES` không set/≠`1`)
+> → toàn bộ chạy EAV như cũ. ⚠️ Trước khi bật cờ production: kiểm UI + bảo mật (§5).
 
 ## 1. Mục tiêu
 
@@ -58,21 +58,29 @@ field cốt lõi + cột **`ext jsonb`** cho field mở rộng.
   FK giữ → xoá công ty vẫn cascade dọn. Đánh đổi: hard-delete 1 record không auto-
   cascade bảng phụ (soft-delete không ảnh hưởng; hard-delete là op admin hiếm).
 - **Backup** (`backup.ts`) — `pg_dump -Fc` toàn DB → `er_*` + `record_locator` tự gồm.
+- **REST API** (`rest-api.ts`), **GraphQL** (`graphql.ts`), **Procedure runner**
+  (`procedure-runner.ts`: queryRecords/findById/insert/update/delete) — list/get/
+  create/update/delete record route qua `RecordStore` (dispatch EAV/bảng thật);
+  get/update/delete kiểm `entityId` scope qua row trả về. (q full-text trên bảng thật
+  bỏ qua; containment filter của procedure → equality, đủ cho scalar.) Mock test bổ
+  sung `.limit().offset()` để test store-based list. 322 unit test xanh.
 
-### ⚠️ CÒN LẠI — xử lý TRƯỚC khi bật cờ ở production
-| Vùng | File | Hậu quả khi bật cờ | Hướng sửa |
-|---|---|---|---|
-| **descendants / ancestors** (tree CTE) | `records-router.ts` | CTE trên `entity_records` → entity table-backed trả rỗng. | CTE biến thể trên `er_<id>` (cột FK) + reconstruct `data` qua store. |
-| **REST API** | `rest-api.ts` | list/get/create/patch trên `entity_records` → table-backed sai/rỗng. | Route qua `RecordStore`. |
-| **GraphQL** | `graphql.ts` | Như REST. | Route qua `RecordStore`. |
-| **Procedure runner** (`db.queryRecords`) | `procedure-runner.ts` | `data @> filter` → sai cho table. | Route qua `store.list`. |
-| **Duplicate detection** | `duplicate-detection.ts` | `similarity(data::text,…)` → sai. | Ghép `data` từ cột+ext / chạy `er_*`. |
-| **Migration full-import** | `migration-full-import.ts` | `data->>pk` + insert → sai cho table. | Route qua store. |
-| **Transfer** | `transfer.ts` | có thể không gồm `er_*`. | Kiểm + gồm `er_*` + `record_locator` nếu cần. |
+- **Tree** (`record-tree.ts`) — descendants/ancestors: EAV CTE trên `entity_records`;
+  table → CTE trên `er_<id>` (cột FK/ext) lấy id+level + reconstruct `data` qua store.
+  `records-router` gọi `recordTree`. Integration test 5/5.
+- **Duplicate detection** (`duplicate-detection.ts`) — entity table-backed: full-scan
+  cap 2000 qua store (reconstruct data) + Levenshtein JS (không trigram); EAV giữ trigram.
+- **Transfer** (`transfer.ts`) — CHỈ bundle metadata (entities/pages/workflows/agents),
+  KHÔNG gồm record data → không bị ảnh hưởng (no-op).
 
-Ngoài ra: **search_tsv** cho `er_*` chưa dựng (trigger) → full-text `q` trên
-table-base bị bỏ qua (resolver fallback). `resolveGet` (1 record, write-back) vẫn
-batch-stitch (giữ `__ids`).
+### ⚠️ Giới hạn đã biết (không chặn bật cờ, nhưng cần biết)
+- **Migration full-import** (`migration-full-import.ts`) — tạo entity qua insert trực
+  tiếp (KHÔNG set `meta.storage`) → entity import luôn EAV → thao tác `entity_records`
+  ĐÚNG. Giới hạn: promote entity đó lên bảng thật rồi re-import → cần route qua store
+  (chưa làm; hiếm).
+- **search_tsv cho `er_*`** — CHƯA dựng (trigger/app-tsv) → full-text `q` trên
+  table-base bị bỏ qua (resolver + rest/graphql fallback, KHÔNG lỗi). `resolveGet`
+  (1 record, write-back) vẫn batch-stitch (giữ `__ids`).
 
 ## 5. Kiểm thử trên Postgres
 

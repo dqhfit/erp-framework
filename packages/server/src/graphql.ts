@@ -17,12 +17,13 @@
    ========================================================== */
 import type { FastifyInstance } from "fastify";
 import { createSchema, createYoga } from "graphql-yoga";
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { entities, entityRecords, apiKeys } from "@erp-framework/db";
+import { entities, apiKeys } from "@erp-framework/db";
 import { validateRecord, type EntityFieldDef } from "@erp-framework/core";
 import { authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
+import { getRecordStore } from "./record-store";
 import { hasScope } from "./rest-api";
 
 interface YogaContext {
@@ -233,17 +234,8 @@ async function fetchOne(
 ) {
   if (!ctx.companyId) throw new Error("Unauthorized");
   ensureScope(ctx, name, "read");
-  const [row] = await ctx.db
-    .select()
-    .from(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.id, id),
-        eq(entityRecords.companyId, ctx.companyId),
-        eq(entityRecords.entityId, entityId),
-      ),
-    );
-  return row ? rowToTyped(row, fields) : null;
+  const row = await getRecordStore(ctx.db).getById(ctx.companyId, id);
+  return row && row.entityId === entityId ? rowToTyped(row, fields) : null;
 }
 
 async function fetchList(
@@ -255,22 +247,13 @@ async function fetchList(
 ) {
   if (!ctx.companyId) throw new Error("Unauthorized");
   ensureScope(ctx, name, "read");
-  const conds = [
-    eq(entityRecords.companyId, ctx.companyId),
-    eq(entityRecords.entityId, entityId),
-    sql`${entityRecords.deletedAt} IS NULL`,
-  ];
-  if (args.q?.trim()) {
-    conds.push(
-      sql`${entityRecords.searchTsv}::tsvector @@ websearch_to_tsquery('simple', ${args.q.trim()})`,
-    );
-  }
-  const rows = await ctx.db
-    .select()
-    .from(entityRecords)
-    .where(and(...conds))
-    .limit(Math.min(args.limit ?? 100, 500))
-    .offset(args.offset ?? 0);
+  // Qua RecordStore → dispatch EAV/bảng thật. (q full-text trên bảng thật bỏ qua.)
+  const { rows } = await getRecordStore(ctx.db).list(ctx.companyId, entityId, {
+    q: args.q,
+    limit: Math.min(args.limit ?? 100, 500),
+    offset: args.offset ?? 0,
+    withTotal: false,
+  });
   return rows.map((r) => rowToTyped(r, fields));
 }
 
@@ -286,14 +269,12 @@ async function createOne(
   const v = validateRecord(fields, input);
   if (!v.ok)
     throw new Error("Validation: " + v.errors.map((e) => `${e.field}: ${e.message}`).join("; "));
-  const [row] = await ctx.db
-    .insert(entityRecords)
-    .values({
-      companyId: ctx.companyId,
-      entityId,
-      data: v.data,
-    })
-    .returning();
+  const row = await getRecordStore(ctx.db).insert(
+    ctx.companyId,
+    entityId,
+    v.data as Record<string, unknown>,
+    null,
+  );
   return row ? rowToTyped(row, fields) : null;
 }
 

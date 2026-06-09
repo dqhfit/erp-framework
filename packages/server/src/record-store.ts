@@ -413,7 +413,7 @@ class TableRecordStore implements RecordStore {
           break;
         case "in": {
           const arr = Array.isArray(cond.value) ? cond.value.map(String) : [];
-          conds.push(sql`${e} = ANY(${arr})`);
+          conds.push(arr.length > 0 ? inArray(e, arr) : sql`1 = 0`);
           break;
         }
       }
@@ -466,7 +466,7 @@ class TableRecordStore implements RecordStore {
     if (values.length === 0) return [];
     const e = field == null ? sql`id::text` : this.textExpr(field);
     const rows = await this.rows(
-      sql`SELECT * FROM ${this.tbl} WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL AND ${e} = ANY(${values})`,
+      sql`SELECT * FROM ${this.tbl} WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL AND ${inArray(e, values)}`,
     );
     return rows.map((r) => this.toRecord(r));
   }
