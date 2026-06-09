@@ -10,6 +10,7 @@ import { entityWebhooks } from "@erp-framework/db";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "./db";
+import { defaultRunHttp } from "./run-workflow";
 import { rbacProcedure, router } from "./trpc";
 
 /** Chặn SSRF: reject URL trỏ vào localhost / private RFC1918 range.
@@ -157,9 +158,10 @@ export function fireEntityWebhooks(
           ...((h.headers ?? {}) as Record<string, string>),
         };
         try {
-          // redirect: "error" chặn server không follow redirect sang IP nội bộ
-          // (giảm thiểu DNS-rebinding — hostname được validate lúc save).
-          const res = await fetch(h.url, { method: "POST", headers, body, redirect: "error" });
+          // SSRF-safe: defaultRunHttp resolve + GHIM IP công khai mỗi hop
+          // (chống DNS-rebinding lúc fire), thay cho fetch thuần chỉ chặn
+          // redirect. Dùng chung primitive với node "http" của workflow.
+          const res = await defaultRunHttp({ url: h.url, method: "POST", headers, body });
           await db
             .update(entityWebhooks)
             .set({

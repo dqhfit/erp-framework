@@ -201,7 +201,7 @@ function pinnedRequest(
  *  DNS-rebinding) + timeout. Body object → JSON; response JSON parse được →
  *  object, không thì giữ text. Redirect thủ công ≤3 hop, resolve+validate+pin
  *  lại mỗi hop (chống bypass qua Location). */
-async function defaultRunHttp(req: {
+export async function defaultRunHttp(req: {
   url: string;
   method: string;
   headers: Record<string, unknown>;
@@ -262,6 +262,15 @@ function assertNodeRoleRequirements(nodes: WfNode[], actorRole: Role): void {
 }
 // roleCan unused for now — giữ import nếu cần check phức tạp hơn sau này.
 void roleCan;
+
+/** Public: kiểm requiresRole của TOÀN graph ≤ actorRole. Dùng ở
+ *  workflows-router lúc SAVE/PUBLISH — run từ trigger (webhook/cron/iot)
+ *  KHÔNG có actorRole nên gate run-time bị bỏ; phải chặn ngay lúc người
+ *  (role thật) lưu/kích hoạt graph chứa node yêu cầu role cao hơn họ. */
+export function assertGraphRoleRequirements(graph: unknown, actorRole: Role): void {
+  const { nodes } = mapGraph((graph ?? {}) as RawGraph);
+  assertNodeRoleRequirements(nodes, actorRole);
+}
 
 /** Map graph JSONB (ReactFlow) → nodes/edges của runner. */
 function mapGraph(graph: RawGraph): { nodes: WfNode[]; edges: WfEdge[] } {

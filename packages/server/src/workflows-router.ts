@@ -9,8 +9,26 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { logActivity } from "./activity";
 import { workflowInput } from "./router-helpers";
-import { executeWorkflow, recentRuns, resumeWorkflowRun } from "./run-workflow";
+import {
+  assertGraphRoleRequirements,
+  executeWorkflow,
+  recentRuns,
+  resumeWorkflowRun,
+} from "./run-workflow";
 import { rbacProcedure, router } from "./trpc";
+
+/** Chặn lưu/publish graph có node requiresRole cao hơn role người thao tác —
+ *  ném FORBIDDEN thân thiện thay vì Error thô. */
+function assertGraphRoleOrForbid(
+  graph: unknown,
+  actorRole: Parameters<typeof assertGraphRoleRequirements>[1],
+): void {
+  try {
+    assertGraphRoleRequirements(graph, actorRole);
+  } catch (e) {
+    throw new TRPCError({ code: "FORBIDDEN", message: (e as Error).message });
+  }
+}
 
 export const workflowsRouter = router({
   list: rbacProcedure("view", "workflow").query(({ ctx }) =>
@@ -30,6 +48,11 @@ export const workflowsRouter = router({
   save: rbacProcedure("edit", "workflow")
     .input(workflowInput)
     .mutation(async ({ ctx, input }) => {
+      // Chống leo thang qua trigger: không cho người role thấp LƯU graph chứa
+      // node requiresRole cao hơn họ (trigger run sau đó bỏ qua gate run-time).
+      if (input.graph !== undefined) {
+        assertGraphRoleOrForbid(input.graph, ctx.user.role);
+      }
       const values = {
         name: input.name,
         triggerType: input.triggerType ?? "manual",
@@ -85,6 +108,9 @@ export const workflowsRouter = router({
         .from(workflows)
         .where(and(eq(workflows.id, input.id), eq(workflows.companyId, ctx.user.companyId)));
       if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
+      // Publish = chốt graph cho runner (trigger chạy bản này, không gate run-time)
+      // → người publish phải đủ role cho mọi node requiresRole.
+      assertGraphRoleOrForbid(wf.graph, ctx.user.role);
       await ctx.db
         .update(workflows)
         .set({ publishedGraph: wf.graph, updatedAt: new Date() })

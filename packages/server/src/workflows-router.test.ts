@@ -4,9 +4,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { workflowsRouter } from "./workflows-router";
 import { createCallerFactory } from "./trpc";
-import {
-  makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError,
-} from "./test-helpers";
+import { makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError } from "./test-helpers";
 
 const caller = createCallerFactory(workflowsRouter);
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -18,6 +16,8 @@ vi.mock("./run-workflow", () => ({
     stepCount: 3,
   }),
   recentRuns: vi.fn().mockResolvedValue([]),
+  // No-op: graph test không có node requiresRole nên gate luôn pass.
+  assertGraphRoleRequirements: vi.fn(),
 }));
 vi.mock("./activity", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
@@ -41,10 +41,7 @@ describe("workflows-router", () => {
 
     it("delete: viewer FORBIDDEN", async () => {
       const ctx = makeMockCtx({ user: makeMockUser({ role: "viewer" }) });
-      await assertThrowsTRPCError(
-        () => caller(ctx).delete(VALID_UUID),
-        "FORBIDDEN",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).delete(VALID_UUID), "FORBIDDEN");
     });
   });
 
@@ -60,12 +57,14 @@ describe("workflows-router", () => {
 
     it("update + NOT_FOUND khi id không tồn tại", async () => {
       const { db, enqueueUpdate } = makeMockDb();
-      enqueueUpdate([]);  // update returning empty → not found
+      enqueueUpdate([]); // update returning empty → not found
       const ctx = makeMockCtx({ db });
       await assertThrowsTRPCError(
-        () => caller(ctx).save({
-          id: VALID_UUID, name: "n",
-        }),
+        () =>
+          caller(ctx).save({
+            id: VALID_UUID,
+            name: "n",
+          }),
         "NOT_FOUND",
       );
     });
@@ -76,28 +75,27 @@ describe("workflows-router", () => {
       const { db, enqueueSelect } = makeMockDb();
       enqueueSelect([]);
       const ctx = makeMockCtx({ db });
-      await assertThrowsTRPCError(
-        () => caller(ctx).publish(VALID_UUID),
-        "NOT_FOUND",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).publish(VALID_UUID), "NOT_FOUND");
     });
 
     it("publish + snapshot vào workflow_versions", async () => {
       const { db, enqueueSelect } = makeMockDb();
       enqueueSelect([{ name: "wf1", graph: { nodes: [], edges: [] } }]);
-      enqueueSelect([{ version: 2 }]);  // last version
+      enqueueSelect([{ version: 2 }]); // last version
       const r = await caller(makeMockCtx({ db })).publish(VALID_UUID);
       expect(r.ok).toBe(true);
-      expect(r.version).toBe(3);  // nextVersion = 2 + 1
+      expect(r.version).toBe(3); // nextVersion = 2 + 1
     });
 
     it("log activity khi publish có code-node", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        name: "wf1",
-        graph: { nodes: [{ data: { kind: "code" } }], edges: [] },
-      }]);
-      enqueueSelect([]);  // no prior version
+      enqueueSelect([
+        {
+          name: "wf1",
+          graph: { nodes: [{ data: { kind: "code" } }], edges: [] },
+        },
+      ]);
+      enqueueSelect([]); // no prior version
       await caller(makeMockCtx({ db })).publish(VALID_UUID);
       const { logActivity } = await import("./activity");
       expect(logActivity).toHaveBeenCalled();
@@ -126,7 +124,9 @@ describe("workflows-router", () => {
     it("update weight + active", async () => {
       const { db, ops } = makeMockDb();
       const r = await caller(makeMockCtx({ db })).setVersionWeight({
-        versionId: VALID_UUID, weight: 50, active: true,
+        versionId: VALID_UUID,
+        weight: 50,
+        active: true,
       });
       expect(r.ok).toBe(true);
       expect(ops.some((o) => o.kind === "update")).toBe(true);
@@ -135,9 +135,11 @@ describe("workflows-router", () => {
     it("validation: weight 0-100", async () => {
       const ctx = makeMockCtx();
       await assertThrowsTRPCError(
-        () => caller(ctx).setVersionWeight({
-          versionId: VALID_UUID, weight: 150,
-        }),
+        () =>
+          caller(ctx).setVersionWeight({
+            versionId: VALID_UUID,
+            weight: 150,
+          }),
         "BAD_REQUEST",
       );
     });
@@ -148,20 +150,22 @@ describe("workflows-router", () => {
       const { db, enqueueSelect } = makeMockDb();
       enqueueSelect([]);
       const ctx = makeMockCtx({ db });
-      await assertThrowsTRPCError(
-        () => caller(ctx).replay({ runId: VALID_UUID }),
-        "NOT_FOUND",
-      );
+      await assertThrowsTRPCError(() => caller(ctx).replay({ runId: VALID_UUID }), "NOT_FOUND");
     });
 
     it("replay từ snapshot vars", async () => {
       const { db, enqueueSelect } = makeMockDb();
-      enqueueSelect([{
-        id: VALID_UUID, workflowId: VALID_UUID,
-        vars: { x: 1 }, companyId: "co_test_1",
-      }]);
+      enqueueSelect([
+        {
+          id: VALID_UUID,
+          workflowId: VALID_UUID,
+          vars: { x: 1 },
+          companyId: "co_test_1",
+        },
+      ]);
       const r = await caller(makeMockCtx({ db })).replay({
-        runId: VALID_UUID, fromStep: 2,
+        runId: VALID_UUID,
+        fromStep: 2,
       });
       expect(r.replayedFrom).toBe(2);
     });

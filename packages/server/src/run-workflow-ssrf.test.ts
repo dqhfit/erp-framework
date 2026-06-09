@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertPublicUrl } from "./run-workflow";
+import { assertGraphRoleRequirements, assertPublicUrl } from "./run-workflow";
 
 /* Guard SSRF cho node HTTP — chặn scheme lạ + IP nội bộ/link-local. */
 describe("assertPublicUrl (SSRF guard)", () => {
@@ -31,5 +31,30 @@ describe("assertPublicUrl (SSRF guard)", () => {
 
   it("URL không hợp lệ → lỗi", async () => {
     await expect(assertPublicUrl("không-phải-url")).rejects.toThrow();
+  });
+});
+
+/* Gate requiresRole lúc SAVE/PUBLISH — chống editor leo thang qua trigger
+   (trigger run bỏ qua gate run-time vì không có actorRole). */
+describe("assertGraphRoleRequirements (trigger escalation gate)", () => {
+  const graphWithAdminNode = {
+    nodes: [
+      { id: "n1", data: { kind: "http", label: "Gọi API", config: { requiresRole: "admin" } } },
+    ],
+    edges: [],
+  };
+
+  it("editor LƯU graph có node requiresRole=admin → bị chặn", () => {
+    expect(() => assertGraphRoleRequirements(graphWithAdminNode, "editor")).toThrow(/admin/);
+  });
+
+  it("admin thì qua được node requiresRole=admin", () => {
+    expect(() => assertGraphRoleRequirements(graphWithAdminNode, "admin")).not.toThrow();
+  });
+
+  it("graph không có requiresRole → mọi role đều qua", () => {
+    const plain = { nodes: [{ id: "n1", data: { kind: "http", config: {} } }], edges: [] };
+    expect(() => assertGraphRoleRequirements(plain, "viewer")).not.toThrow();
+    expect(() => assertGraphRoleRequirements({}, "viewer")).not.toThrow();
   });
 });
