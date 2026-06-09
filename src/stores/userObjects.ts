@@ -37,8 +37,9 @@ export function slugify(name: string): string {
   );
 }
 
-/** Tên máy duy nhất cho cột UNIQUE (slug + 6 ký tự id). */
-function machineName(displayName: string, id: string): string {
+/** Tên máy duy nhất cho cột UNIQUE (slug + 6 ký tự id). Export để designer
+ *  hiển thị preview tên kỹ thuật sẽ tự sinh khi để trống. */
+export function machineName(displayName: string, id: string): string {
   return `${slugify(displayName)}_${id.replace(/-/g, "").slice(0, 6)}`;
 }
 
@@ -64,6 +65,8 @@ function rowToEntity(r: Row): MockEntity {
   return {
     id: r.id as string,
     name: (r.label as string) || (r.name as string) || "",
+    // Tên kỹ thuật thật từ cột DB `name` — cho phép sửa ở designer.
+    techName: (r.name as string) || undefined,
     icon: ((r.icon as string) || "Database") as IconName,
     mcp: (meta.mcp as string) || "",
     fields: ((r.fields ?? []) as MockEntity["fields"]).map((f, i) => ({
@@ -86,7 +89,8 @@ function entityToInput(e: MockEntity) {
     : {};
   return {
     id: e.id,
-    name: machineName(e.name, e.id),
+    // Ưu tiên tên kỹ thuật do user đặt; trống → tự sinh từ nhãn (như cũ).
+    name: e.techName?.trim() || machineName(e.name, e.id),
     label: e.name,
     icon: e.icon,
     fields: e.fields,

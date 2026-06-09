@@ -22,6 +22,7 @@ import { resolveList } from "./datasource-resolver";
 import { promoteEntityToTable } from "./entity-promote";
 import { ensureEntityTable, tableNameForEntity } from "./entity-table-ddl";
 import { getRecordStore } from "./record-store";
+import { applyCascadeOnDelete, scanBackRefs } from "./router-helpers";
 
 const RUN = process.env.HYBRID_DB === "1";
 
@@ -189,5 +190,47 @@ describe.skipIf(!RUN)("HYBRID storage (Postgres thật)", () => {
     expect(r.total).toBe(2);
     expect(r.rows.every((row) => row.kh_ten === "An")).toBe(true);
     expect(r.rows.map((x) => x.so).sort()).toEqual(["O1", "O4"]);
+  });
+
+  it("Phase 4b — scanBackRefs/cascade table-aware (setnull + restrict)", async () => {
+    const custId = await makeTableEntity("hyb_c2", [{ name: "ten", label: "Tên", type: "text" }]);
+    // setnull: field kh_id onDelete='setnull'
+    const ordSet = await makeTableEntity("hyb_o_setnull", [
+      { name: "so", label: "Số", type: "text" },
+      {
+        name: "kh_id",
+        label: "KH",
+        type: "lookup",
+        relationEntityId: custId,
+        onDelete: "setnull",
+        filterable: true,
+      },
+    ]);
+    const cs = getRecordStore(db);
+    const c1 = await cs.insert(companyId, custId, { ten: "X" }, null);
+    const o1 = await cs.insert(companyId, ordSet, { so: "OA", kh_id: c1!.id }, null);
+
+    // scanBackRefs phát hiện ref từ entity bảng thật (quét er_, cột FK).
+    const refs = await scanBackRefs(db, companyId, c1!.id);
+    expect(
+      refs.some((rf) => rf.entityId === ordSet && rf.fieldKey === "kh_id" && rf.count === 1),
+    ).toBe(true);
+
+    // setnull → ref bị gỡ. (Cột null → toRecord bỏ key, nên empty = null|undefined;
+    // kiểm bằng ngữ nghĩa: scanBackRefs sau đó không còn thấy ref.)
+    await applyCascadeOnDelete(db, cs, companyId, c1!.id, "u");
+    const after = await cs.getById(companyId, o1!.id);
+    expect((after!.data as Record<string, unknown>).kh_id ?? null).toBeNull();
+    const refsAfter = await scanBackRefs(db, companyId, c1!.id);
+    expect(refsAfter.some((rf) => rf.entityId === ordSet)).toBe(false);
+
+    // restrict (mặc định): xoá customer còn ref → throw.
+    const ordRes = await makeTableEntity("hyb_o_restrict", [
+      { name: "so", label: "Số", type: "text" },
+      { name: "kh_id", label: "KH", type: "lookup", relationEntityId: custId, filterable: true },
+    ]);
+    const c2 = await cs.insert(companyId, custId, { ten: "Y" }, null);
+    await cs.insert(companyId, ordRes, { so: "OB", kh_id: c2!.id }, null);
+    await expect(applyCascadeOnDelete(db, cs, companyId, c2!.id, "u")).rejects.toThrow();
   });
 });

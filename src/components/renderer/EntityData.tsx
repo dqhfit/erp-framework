@@ -254,6 +254,8 @@ export function EntityData({ entityId }: { entityId: string }) {
         .map((f) => ({
           accessorKey: f.name,
           header: pickFieldLabel(f, lang),
+          // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
+          meta: { techName: f.name },
           cell: (c: { getValue: () => unknown }) => applyFieldFormat(f, c.getValue()),
         })),
       {

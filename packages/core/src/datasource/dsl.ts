@@ -97,9 +97,24 @@ export interface DataSourceDsl {
 /** Catalog đối tượng tối thiểu compiler cần (id ↔ tên ↔ field). */
 export interface DslEntity {
   id: string;
+  /** Nhãn hiển thị (đổi được). */
   name: string;
+  /** Tên kỹ thuật (snake_case, ổn định qua đổi nhãn) — tham chiếu bền vững. */
+  techName?: string;
   fields: Array<{ name: string; type: string; ref?: string }>;
   primaryKey?: string;
+}
+
+/** Index entity theo TÊN: nhãn (name) ưu tiên, techName lấp chỗ trống.
+ *  → tham chiếu được bằng cả nhãn lẫn tên kỹ thuật; nhãn giữ hành vi cũ. */
+export function indexEntitiesByName(entities: DslEntity[]): Map<string, DslEntity> {
+  const m = new Map<string, DslEntity>();
+  for (const e of entities) m.set(e.name.toLowerCase(), e);
+  for (const e of entities) {
+    const tn = e.techName?.trim().toLowerCase();
+    if (tn && !m.has(tn)) m.set(tn, e);
+  }
+  return m;
 }
 
 export interface CompileResult {
@@ -130,7 +145,7 @@ export function compileDataSourceDsl(dsl: DataSourceDsl, entities: DslEntity[]):
   const warnings: string[] = [];
   const empty: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
 
-  const byName = new Map(entities.map((e) => [e.name.toLowerCase(), e]));
+  const byName = indexEntitiesByName(entities);
   const baseEnt = byName.get((dsl.base || "").toLowerCase());
   if (!baseEnt) {
     errors.push(`Không tìm thấy đối tượng gốc "${dsl.base}".`);
@@ -155,7 +170,12 @@ export function compileDataSourceDsl(dsl: DataSourceDsl, entities: DslEntity[]):
   const resolveNode = (ref: string): string | null => {
     const low = (ref || "").toLowerCase();
     if (!low) return null;
-    if (low === "base" || low === baseEnt.name.toLowerCase()) return "base";
+    if (
+      low === "base" ||
+      low === baseEnt.name.toLowerCase() ||
+      low === baseEnt.techName?.trim().toLowerCase()
+    )
+      return "base";
     return aliasToRid.get(low) ?? null;
   };
   const entityOfNode = (rid: string): DslEntity | undefined => {

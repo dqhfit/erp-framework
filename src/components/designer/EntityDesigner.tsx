@@ -23,7 +23,7 @@ import { inferPkField, syncEntityFromMcp } from "@/lib/mcp-sync";
 import type { EntityField, MockEntity } from "@/lib/object-types";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
-import { useUserObjects } from "@/stores/userObjects";
+import { machineName, useUserObjects } from "@/stores/userObjects";
 
 interface Props {
   entityId: string;
@@ -391,13 +391,30 @@ export function EntityDesigner({ entityId }: Props) {
             <IconC size={14} />
           </div>
           <div className="flex flex-col leading-tight">
+            {/* Nhãn hiển thị (label) */}
             <InlineEdit
               value={entity.name}
               onChange={(v) => setEntity({ ...entity, name: v })}
               className="font-semibold text-base"
+              placeholder={t("entity.label_placeholder")}
             />
-            <div className="text-[11px] text-muted font-mono">
-              {entity.mcp} · {entity.fields.length} fields
+            {/* Tên kỹ thuật (name) — như field; trống thì hiện tên tự sinh */}
+            <div
+              className="flex items-center gap-1.5 text-[11px] text-muted"
+              title={t("entity.tech_name_hint")}
+            >
+              <I.Hash size={10} className="shrink-0 opacity-70" />
+              <InlineEdit
+                value={entity.techName ?? ""}
+                onChange={(v) => setEntity({ ...entity, techName: v.trim() })}
+                placeholder={machineName(entity.name, entity.id)}
+                className="font-mono"
+              />
+              <span className="opacity-50">·</span>
+              <span className="font-mono">
+                {entity.mcp ? `${entity.mcp} · ` : ""}
+                {entity.fields.length} fields
+              </span>
             </div>
           </div>
         </div>

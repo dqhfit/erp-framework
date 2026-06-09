@@ -16,9 +16,23 @@ import { logActivity } from "./activity";
 
 type SourceRow = typeof knowledgeSources.$inferSelect;
 
-/* Render toàn bộ entity_records của một entity thành văn bản —
-   mỗi bản ghi một khối "Nhãn: giá trị". */
-async function renderEntity(db: DB, companyId: string, entityId: string): Promise<string> {
+/** Văn bản thô + cảnh báo (nếu bị giới hạn). */
+interface LoadResult {
+  text: string;
+  warn: string | null;
+}
+
+/* Trần an toàn khi nạp tri thức — chống "treo vì dữ liệu quá nhiều":
+   - Embed chạy tuần tự (~0.5-2 đoạn/s) nên entity/file lớn = hàng giờ, nhìn
+     như treo. Giới hạn số bản ghi entity + tổng số đoạn cho 1 nguồn.
+   - Với dữ liệu lớn, hướng đúng là TRA CỨU TRỰC TIẾP (records_search /
+     SQL on-demand) thay vì embed toàn bộ — xem cảnh báo trả về. */
+const MAX_ENTITY_RECORDS = 2000;
+const MAX_CHUNKS = 3000;
+
+/* Render entity_records của một entity thành văn bản — mỗi bản ghi một khối
+   "Nhãn: giá trị". Giới hạn MAX_ENTITY_RECORDS bản ghi để tránh OOM/treo. */
+async function renderEntity(db: DB, companyId: string, entityId: string): Promise<LoadResult> {
   const [entity] = await db
     .select()
     .from(entities)
@@ -26,13 +40,24 @@ async function renderEntity(db: DB, companyId: string, entityId: string): Promis
   if (!entity) throw new Error("Entity không tồn tại hoặc khác công ty.");
 
   const fields = (entity.fields ?? []) as Array<{ name: string; label?: string }>;
+  // Lấy dư 1 bản ghi để biết có vượt trần không (không SELECT toàn bộ → tránh OOM).
   const recs = await db
     .select()
     .from(entityRecords)
-    .where(and(eq(entityRecords.entityId, entityId), eq(entityRecords.companyId, companyId)));
+    .where(and(eq(entityRecords.entityId, entityId), eq(entityRecords.companyId, companyId)))
+    .limit(MAX_ENTITY_RECORDS + 1);
+
+  let warn: string | null = null;
+  const used = recs.length > MAX_ENTITY_RECORDS ? recs.slice(0, MAX_ENTITY_RECORDS) : recs;
+  if (recs.length > MAX_ENTITY_RECORDS) {
+    warn =
+      `Entity có hơn ${MAX_ENTITY_RECORDS} bản ghi — chỉ nạp ${MAX_ENTITY_RECORDS} bản ghi đầu ` +
+      `vào tri thức (embed toàn bộ sẽ rất chậm/treo). Với dữ liệu lớn nên dùng tra cứu trực tiếp: ` +
+      `bật "Agent tra cứu" cho entity (records_search) để hỏi theo nhu cầu thay vì nạp tất cả.`;
+  }
 
   const blocks: string[] = [];
-  for (const r of recs) {
+  for (const r of used) {
     const data = (r.data ?? {}) as Record<string, unknown>;
     const lines: string[] = [];
     for (const f of fields) {
@@ -42,14 +67,14 @@ async function renderEntity(db: DB, companyId: string, entityId: string): Promis
     }
     if (lines.length) blocks.push(lines.join("\n"));
   }
-  return blocks.join("\n\n");
+  return { text: blocks.join("\n\n"), warn };
 }
 
 /* Lấy văn bản thô của một nguồn theo kind. */
-async function loadText(db: DB, src: SourceRow): Promise<string> {
+async function loadText(db: DB, src: SourceRow): Promise<LoadResult> {
   const meta = (src.meta ?? {}) as Record<string, unknown>;
   if (src.kind === "text") {
-    return String(meta.text ?? "");
+    return { text: String(meta.text ?? ""), warn: null };
   }
   if (src.kind === "entity") {
     const entityId = String(meta.entityId ?? "");
@@ -60,7 +85,10 @@ async function loadText(db: DB, src: SourceRow): Promise<string> {
     const path = String(meta.path ?? "");
     if (!path) throw new Error("Nguồn file thiếu đường dẫn.");
     const buf = await readFile(path);
-    return extractText(buf, typeof meta.mime === "string" ? meta.mime : undefined);
+    return {
+      text: await extractText(buf, typeof meta.mime === "string" ? meta.mime : undefined),
+      warn: null,
+    };
   }
   throw new Error(`Loại nguồn không hỗ trợ: ${src.kind}`);
 }
@@ -70,6 +98,16 @@ async function loadText(db: DB, src: SourceRow): Promise<string> {
 export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
   const [src] = await db.select().from(knowledgeSources).where(eq(knowledgeSources.id, sourceId));
   if (!src) throw new Error(`Knowledge source không tồn tại: ${sourceId}`);
+
+  // Nguồn entity "live" (on-demand) — KHÔNG embed; chỉ đánh dấu sẵn sàng.
+  // Search truy vấn entity_records trực tiếp (xem knowledge-search.ts).
+  if ((src.meta as Record<string, unknown> | null)?.mode === "live") {
+    await db
+      .update(knowledgeSources)
+      .set({ status: "ready", chunkCount: 0, error: null, updatedAt: new Date() })
+      .where(eq(knowledgeSources.id, sourceId));
+    return;
+  }
 
   // Đo thời gian + tiến độ embedding, lưu vào meta.ingest (giữ nguyên config
   // gốc trong meta — text/entityId/path). UI poll đọc để hiện X/Y đoạn + đoạn/s.
@@ -85,13 +123,21 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
   await setIngest({ total: 0, embedded: 0, startedAt }, { status: "processing", error: null });
 
   try {
-    const text = await loadText(db, src);
-    const chunks = chunkText(text);
+    const { text, warn: loadWarn } = await loadText(db, src);
+    let chunks = chunkText(text);
     if (chunks.length === 0) {
       throw new Error("Không trích được nội dung nào từ nguồn.");
     }
-    // Đã biết tổng số đoạn → UI hiện 0/total ngay.
-    await setIngest({ total: chunks.length, embedded: 0, startedAt });
+    // Trần số đoạn cho 1 nguồn — embed tuần tự nên nguồn quá lớn sẽ "treo".
+    let warn = loadWarn;
+    if (chunks.length > MAX_CHUNKS) {
+      warn =
+        `${warn ? `${warn} ` : ""}Nguồn tạo ${chunks.length} đoạn — chỉ nạp ${MAX_CHUNKS} đoạn ` +
+        `đầu (giới hạn để tránh treo do embed tuần tự).`;
+      chunks = chunks.slice(0, MAX_CHUNKS);
+    }
+    // Đã biết tổng số đoạn → UI hiện 0/total ngay (kèm cảnh báo nếu bị giới hạn).
+    await setIngest({ total: chunks.length, embedded: 0, startedAt, warn });
 
     // Sinh embedding theo lô; cập nhật tiến độ mỗi lô. Lô nhỏ (16) → progress
     // nhích thường xuyên hơn (embed CPU chậm ~0.5 đoạn/s, lô 64 = ~2 phút mới
@@ -142,6 +188,7 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
             perSec,
             startedAt,
             finishedAt: new Date().toISOString(),
+            warn: warn ?? null,
           },
         },
         updatedAt: new Date(),
@@ -154,7 +201,7 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
       objectType: "knowledge",
       target: sourceId,
       detail:
-        `Nạp tri thức "${src.title}" — ${chunks.length} đoạn trong ${(durationMs / 1000).toFixed(1)}s (${perSec} đoạn/s).`.slice(
+        `Nạp tri thức "${src.title}" — ${chunks.length} đoạn trong ${(durationMs / 1000).toFixed(1)}s (${perSec} đoạn/s).${warn ? ` ⚠ ${warn}` : ""}`.slice(
           0,
           480,
         ),

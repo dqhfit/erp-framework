@@ -22,18 +22,27 @@ import { z } from "zod";
 import { type ApiKeyContext, authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
 import { embedTexts } from "./embeddings";
-import { FEEDBACK_STATUSES, ZProposalActions } from "./feedback-proposals";
+import { FEEDBACK_STATUSES, setFeedbackStatusDirect, ZProposalActions } from "./feedback-proposals";
 
 const SERVER_NAME = "erp-feedback";
 const SERVER_VERSION = "1.0.0";
 const PROTOCOL_VERSION = "2024-11-05";
 
 /* ── Scope helper ───────────────────────────────────────────── */
-export function hasFeedbackScope(scopes: string[], level: "read" | "propose"): boolean {
+export function hasFeedbackScope(scopes: string[], level: "read" | "propose" | "apply"): boolean {
   if (scopes.includes("*") || scopes.includes("feedback:*")) return true;
-  if (scopes.includes("feedback:propose")) return true; // propose ⊇ read
-  if (level === "read") return scopes.includes("feedback:read");
-  return false;
+  // apply = áp trạng thái trực tiếp (cao nhất) → chỉ feedback:apply (hoặc *).
+  if (level === "apply") return scopes.includes("feedback:apply");
+  // read = mọi scope ghi đều đọc được (propose + apply ⊇ read).
+  if (level === "read") {
+    return (
+      scopes.includes("feedback:read") ||
+      scopes.includes("feedback:propose") ||
+      scopes.includes("feedback:apply")
+    );
+  }
+  // propose
+  return scopes.includes("feedback:propose");
 }
 
 /* ── Lỗi tool có mã JSON-RPC ────────────────────────────────── */
@@ -49,7 +58,7 @@ class McpError extends Error {
 interface ToolDef {
   name: string;
   description: string;
-  level: "read" | "propose";
+  level: "read" | "propose" | "apply";
   inputSchema: Record<string, unknown>;
 }
 
@@ -197,6 +206,28 @@ const TOOLS: ToolDef[] = [
       type: "object",
       properties: { id: { type: "string" } },
       required: ["id"],
+    },
+  },
+  {
+    name: "feedback_set_status",
+    description:
+      "ÁP TRỰC TIẾP trạng thái cho 1 nhóm phản hồi (KHÔNG qua duyệt): đánh dấu " +
+      "in_progress khi bắt đầu xử lý, done khi đã fix xong (hoặc new|wontfix). " +
+      "Chỉ đổi mục khác trạng thái hiện tại; trả số mục đã đổi. Cần scope " +
+      "feedback:apply. Dùng resolutionNote để ghi tóm tắt cách xử lý (vd commit/PR).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        feedbackIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Danh sách UUID feedback (1-200).",
+        },
+        status: { type: "string", enum: [...FEEDBACK_STATUSES] },
+        resolutionNote: { type: "string", description: "Ghi chú cách xử lý (tùy chọn)." },
+      },
+      required: ["feedbackIds", "status"],
     },
   },
 ];
@@ -512,6 +543,28 @@ export async function callFeedbackTool(
         throw new McpError("Không tìm thấy đề xuất pending để rút", -32004);
       }
       return { ok: true };
+    }
+
+    case "feedback_set_status": {
+      const status = z.enum(FEEDBACK_STATUSES).parse(args.status);
+      const ids = z.array(z.string().uuid()).min(1).max(200).parse(args.feedbackIds);
+      const resolutionNote = args.resolutionNote
+        ? z.string().max(2000).parse(args.resolutionNote)
+        : undefined;
+      const { updated } = await setFeedbackStatusDirect(db, {
+        companyId,
+        ids,
+        status,
+        resolutionNote,
+      });
+      return {
+        updated,
+        status,
+        message:
+          updated > 0
+            ? `Đã đổi ${updated} phản hồi sang "${status}".`
+            : "Không có phản hồi nào đổi (đã đúng trạng thái hoặc không tìm thấy).",
+      };
     }
 
     default:

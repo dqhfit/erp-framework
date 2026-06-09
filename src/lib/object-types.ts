@@ -70,7 +70,11 @@ export interface EntityField {
 }
 export interface MockEntity {
   id: string;
+  /** Nhãn hiển thị (label) — tên người dùng đọc, dùng khắp UI. */
   name: string;
+  /** Tên kỹ thuật (snake_case) — map xuống cột DB `name`, dùng cho API
+   *  scope (entity:<name>) + biểu thức. Trống = server tự sinh từ nhãn. */
+  techName?: string;
   icon: IconName;
   mcp: string;
   fields: EntityField[];

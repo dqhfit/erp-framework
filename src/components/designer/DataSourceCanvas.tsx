@@ -22,6 +22,7 @@ import type {
 } from "@erp-framework/core";
 import {
   Background,
+  type Connection,
   Controls,
   type Edge,
   Handle,
@@ -58,6 +59,16 @@ import {
 const dsApi = createObjectsClient("");
 const EMPTY: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
 
+/** Field lookup/multi-lookup của `ent` trỏ tới entity `toEntityId` (= khoá ngoại). */
+function lookupTo(
+  ent: { fields: EntityField[] } | undefined,
+  toEntityId: string,
+): EntityField | undefined {
+  return ent?.fields.find(
+    (f) => (f.type === "lookup" || f.type === "multi-lookup") && f.ref === toEntityId,
+  );
+}
+
 /* ── Custom node ──────────────────────────────────────────── */
 interface DSNodeData extends Record<string, unknown> {
   nodeId: string;
@@ -86,13 +97,13 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         selected ? "border-accent" : "border-border",
       )}
     >
-      {/* Handle "id" (record id) cho join cổ điển lookup → id */}
+      {/* Handle "id" (record id) cho join cổ điển lookup → id (thả vào để khớp record id) */}
       <Handle
         type="target"
         id="tgt-id"
         position={Position.Left}
-        isConnectable={false}
-        className="!w-2 !h-2 !bg-warning !border-0 !top-[18px]"
+        title="Khớp theo record id (thả cột nguồn vào đây)"
+        className="!w-2.5 !h-2.5 !bg-warning !border-0 !top-[18px] hover:!scale-125"
       />
       {/* Handle phát aggregate (1-N / N-N) — đáy node */}
       <Handle
@@ -103,22 +114,25 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         className="!w-2 !h-2 !bg-accent !border-0"
       />
 
-      {/* Header */}
-      <button
-        type="button"
-        onClick={() => data.onSelect(data.nodeId)}
-        className="w-full flex items-center gap-2 px-3 py-2 border-b border-border rounded-t-xl hover:bg-hover/30 transition-colors text-left"
-      >
-        <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-accent shrink-0">
-          {(() => {
-            const IC = ent ? (I[ent.icon] ?? I.Database) : I.Database;
-            return <IC size={11} />;
-          })()}
-        </div>
-        <span className="font-semibold flex-1 truncate text-[13px]">
-          {data.alias}
-          {data.isBase && <span className="ml-1 text-[10px] text-accent">(gốc)</span>}
-        </span>
+      {/* Header — KHÔNG lồng button trong button (HTML không hợp lệ → DOM lệch → nháy).
+          Nút tiêu đề + nút hành động là anh em ngang hàng trong 1 div. */}
+      <div className="w-full flex items-center gap-2 px-3 py-2 border-b border-border rounded-t-xl hover:bg-hover/30 transition-colors">
+        <button
+          type="button"
+          onClick={() => data.onSelect(data.nodeId)}
+          className="flex flex-1 min-w-0 items-center gap-2 text-left"
+        >
+          <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-accent shrink-0">
+            {(() => {
+              const IC = ent ? (I[ent.icon] ?? I.Database) : I.Database;
+              return <IC size={11} />;
+            })()}
+          </div>
+          <span className="font-semibold flex-1 truncate text-[13px]">
+            {data.alias}
+            {data.isBase && <span className="ml-1 text-[10px] text-accent">(gốc)</span>}
+          </span>
+        </button>
         {data.entityId && data.onAddField && (
           <button
             type="button"
@@ -126,7 +140,7 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
               e.stopPropagation();
               data.onAddField?.(data.entityId as string);
             }}
-            className="w-5 h-5 rounded hover:bg-accent/15 flex items-center justify-center text-muted hover:text-accent"
+            className="w-5 h-5 rounded hover:bg-accent/15 flex items-center justify-center text-muted hover:text-accent shrink-0"
             title="Thêm trường vào entity"
           >
             <I.Plus size={11} />
@@ -139,13 +153,13 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
               e.stopPropagation();
               data.onRemove(data.nodeId);
             }}
-            className="w-5 h-5 rounded hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger"
+            className="w-5 h-5 rounded hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger shrink-0"
             title="Xoá quan hệ"
           >
             <I.X size={11} />
           </button>
         )}
-      </button>
+      </div>
 
       {/* Fields */}
       <div className="py-1 max-h-[240px] overflow-y-auto">
@@ -162,40 +176,45 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
               key={f.id}
               className="relative flex items-center gap-1.5 px-3 py-[3px] hover:bg-hover/20"
             >
-              {/* target handle (trái) — node này là con, nối trên cột này */}
+              {/* target handle (trái) — node này là con, khớp trên cột này */}
               <Handle
                 type="target"
                 id={`tgt-${f.name}`}
                 position={Position.Left}
-                isConnectable={false}
-                className="!w-1.5 !h-1.5 !bg-warning/60 !border-0 !left-[-3px]"
+                title="Khớp vào cột này (thả cột nguồn vào đây)"
+                className="!w-2.5 !h-2.5 !bg-warning/70 !border-0 !left-[-4px] hover:!scale-125 hover:!bg-warning"
               />
-              {/* source handle (phải) — node này là cha, phát từ cột này */}
+              {/* source handle (phải) — node này là cha, kéo từ cột này sang cột bảng khác để nối */}
               <Handle
                 type="source"
                 id={`src-${f.name}`}
                 position={Position.Right}
-                isConnectable={false}
-                className="!w-1.5 !h-1.5 !bg-accent/60 !border-0 !right-[-3px]"
+                title="Kéo từ cột này sang cột bảng khác để tạo liên kết"
+                className="!w-2.5 !h-2.5 !bg-accent/70 !border-0 !right-[-4px] hover:!scale-125 hover:!bg-accent"
               />
-              <input
-                type="checkbox"
-                className="accent-accent shrink-0"
-                checked={on}
-                onChange={() => data.onToggleField(data.nodeId, f.name)}
-                title="Đưa cột vào bảng phẳng"
-              />
-              <span
-                className={cn(
-                  "flex-1 truncate text-xs",
-                  data.fieldMode === "label" ? "" : "font-mono",
-                  on ? "text-text" : "text-muted",
-                )}
-                title={alt}
+              {/* Bấm vào cả label (checkbox + tên + kiểu) đều toggle chọn cột vào bảng phẳng. */}
+              <label
+                className="flex flex-1 min-w-0 items-center gap-1.5 cursor-pointer"
+                title="Bấm để chọn/bỏ chọn cột vào bảng phẳng"
               >
-                {disp}
-              </span>
-              <span className="text-[10px] text-muted shrink-0">{f.type}</span>
+                <input
+                  type="checkbox"
+                  className="accent-accent shrink-0"
+                  checked={on}
+                  onChange={() => data.onToggleField(data.nodeId, f.name)}
+                />
+                <span
+                  className={cn(
+                    "flex-1 truncate text-xs",
+                    data.fieldMode === "label" ? "" : "font-mono",
+                    on ? "text-text" : "text-muted",
+                  )}
+                  title={alt}
+                >
+                  {disp}
+                </span>
+                <span className="text-[10px] text-muted shrink-0">{f.type}</span>
+              </label>
             </div>
           );
         })}
@@ -268,25 +287,40 @@ function AggGhostNode({ data, selected }: NodeProps<AggNodeType>) {
 
 const nodeTypes = { dsNode: DSNode, aggNode: AggGhostNode } as const;
 
+/** Chữ ký phần dữ liệu HIỂN THỊ của 1 node (bỏ qua callback ổn định). Dùng để
+ *  tái dùng node cũ khi tick cột: chỉ node có chữ ký đổi mới dựng lại → ReactFlow
+ *  không re-render mọi node mỗi lần chọn cột (tránh lag khi chọn nhiều cột). */
+function nodeDataSig(n: Node): string {
+  const d = n.data as Partial<DSNodeData & AggNodeData>;
+  if (n.type === "aggNode") {
+    return `agg|${d.entityName ?? ""}|${d.badge ?? ""}|${d.fn ?? ""}|${d.byField ?? ""}|${d.valueField ?? ""}`;
+  }
+  const proj = d.projected ? [...d.projected].sort().join(",") : "";
+  return `ds|${d.entityId ?? ""}|${d.alias ?? ""}|${d.isBase ? 1 : 0}|${d.fieldMode ?? ""}|${proj}`;
+}
+
 /* ── Add-object dialog state ──────────────────────────────── */
-interface AddState {
-  open: boolean;
-  parentNodeId: string;
+/** 1 đối tượng đích trong danh sách "thêm cùng lúc" — mỗi dòng 1 liên kết.
+ *  KHÔNG có "node cha" chung: mỗi dòng tự chọn `fromRid` (nối từ đâu) —
+ *  có thể là node đã có trên canvas HOẶC một bảng khác đang được chọn (rid tạm). */
+interface AddRow {
+  /** id tạm (key React + remove + tham chiếu chéo giữa các dòng); KHÔNG phải relation id. */
+  rid: string;
   targetEntityId: string;
+  /** Nối từ: node canvas ("base" | relationId) HOẶC rid tạm của 1 dòng khác. */
+  fromRid: string;
   fromField: string;
   toField: string; // "id" hoặc tên cột đích
   joinKind: "left" | "inner";
   alias: string;
+  /** Liên kết được suy ra tự động từ FK (lookup) — chỉ để hiển thị badge. */
+  autoLinked: boolean;
 }
-const ADD_CLOSED: AddState = {
-  open: false,
-  parentNodeId: "base",
-  targetEntityId: "",
-  fromField: "",
-  toField: "id",
-  joinKind: "left",
-  alias: "",
-};
+interface AddState {
+  open: boolean;
+  rows: AddRow[];
+}
+const ADD_CLOSED: AddState = { open: false, rows: [] };
 
 /* ── Inner canvas ─────────────────────────────────────────── */
 function Canvas({ id }: { id: string }) {
@@ -385,12 +419,68 @@ function Canvas({ id }: { id: string }) {
     [cfg.relations, update],
   );
 
+  /* ── Kéo cột → cột để tạo/đổi liên kết (ERD-style) ──────────── */
+  // Đặt parent của `target` = `source` có tạo vòng lặp không? (source là con-cháu của target)
+  const wouldCycle = useCallback(
+    (sourceId: string, targetId: string): boolean => {
+      if (sourceId === targetId) return true;
+      let cur: string | null = sourceId;
+      const seen = new Set<string>();
+      while (cur && cur !== "base" && !seen.has(cur)) {
+        if (cur === targetId) return true;
+        seen.add(cur);
+        cur = cfg.relations.find((r) => r.id === cur)?.fromRelationId ?? "base";
+      }
+      return false;
+    },
+    [cfg.relations],
+  );
+  // Thả 1 connection: source.<cột nguồn> → target.<cột đích>. Gán join cho relation đích.
+  const onConnect = useCallback(
+    (conn: Connection) => {
+      const { source, sourceHandle, target, targetHandle } = conn;
+      if (!source || !target || source === target) return;
+      if (target === "base") {
+        dialog.alert("Không thể nối VÀO đối tượng gốc — kéo theo chiều cha → con.");
+        return;
+      }
+      const rel = cfg.relations.find((r) => r.id === target);
+      if (!rel) {
+        dialog.alert("Đích phải là một đối tượng đã thêm trên canvas.");
+        return;
+      }
+      // Nguồn phải là node thật (base | relation), không phải ghost aggregate.
+      if (source !== "base" && !cfg.relations.some((r) => r.id === source)) return;
+      const fromField = sourceHandle?.startsWith("src-") ? sourceHandle.slice(4) : "";
+      const toRaw =
+        targetHandle === "tgt-id"
+          ? "id"
+          : targetHandle?.startsWith("tgt-")
+            ? targetHandle.slice(4)
+            : "";
+      if (!fromField || !toRaw) return;
+      if (wouldCycle(source, target)) {
+        dialog.alert("Liên kết này tạo vòng lặp — chọn hướng cha → con khác.");
+        return;
+      }
+      patchRelation(target, {
+        fromRelationId: source === "base" ? null : source,
+        fromField,
+        toField: toRaw === "id" ? undefined : toRaw,
+      });
+      setSelectedNodeId(target);
+    },
+    [cfg.relations, patchRelation, wouldCycle],
+  );
+
   /* ── Selection + UI state ─────────────────────────────────── */
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<"config" | "agg" | "computed" | "addfield">("config");
   const [computedPanelOpen, setComputedPanelOpen] = useState(false);
   const [addFieldEntityId, setAddFieldEntityId] = useState<string | null>(null);
   const [add, setAdd] = useState<AddState>(ADD_CLOSED);
+  // Lọc danh sách đối tượng trong popup "Thêm đối tượng".
+  const [addSearch, setAddSearch] = useState("");
   const [preview, setPreview] = useState<DataSourceRow[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
   // Auto-link: panel đề xuất liên kết + tập id đã bỏ qua (ẩn trong phiên).
@@ -436,6 +526,18 @@ function Canvas({ id }: { id: string }) {
     return m;
   }, [cfg.fields]);
 
+  // Callback ổn định (qua ref) — node tái dùng KHÔNG bị stale-closure mà identity
+  // vẫn cố định, nhờ đó node không-đổi giữ nguyên data reference → bỏ qua re-render.
+  const toggleFieldRef = useRef(toggleField);
+  toggleFieldRef.current = toggleField;
+  const removeRelationRef = useRef(removeRelation);
+  removeRelationRef.current = removeRelation;
+  const onToggleFieldStable = useCallback(
+    (rid: string, fname: string) => toggleFieldRef.current(rid, fname),
+    [],
+  );
+  const onRemoveStable = useCallback((rid: string) => removeRelationRef.current(rid), []);
+
   const buildNodes = useCallback((): Node[] => {
     const joinNodes: Node[] = nodeIds.map((rid, i) => ({
       id: rid,
@@ -448,9 +550,9 @@ function Canvas({ id }: { id: string }) {
         isBase: rid === "base",
         projected: projectedByNode.get(rid) ?? new Set<string>(),
         fieldMode,
-        onToggleField: toggleField,
+        onToggleField: onToggleFieldStable,
         onSelect: setSelectedNodeId,
-        onRemove: removeRelation,
+        onRemove: onRemoveStable,
         onAddField: setAddFieldEntityId,
       } as DSNodeData,
     }));
@@ -495,8 +597,8 @@ function Canvas({ id }: { id: string }) {
     projectedByNode,
     fieldMode,
     colDisp,
-    toggleField,
-    removeRelation,
+    onToggleFieldStable,
+    onRemoveStable,
     cfg.aggregates,
     entById,
   ]);
@@ -511,8 +613,18 @@ function Canvas({ id }: { id: string }) {
       return;
     }
     setNodes((prev) => {
-      const posOf = new Map(prev.map((n) => [n.id, n.position]));
-      return buildNodes().map((n) => ({ ...n, position: posOf.get(n.id) ?? n.position }));
+      const prevById = new Map(prev.map((n) => [n.id, n]));
+      return buildNodes().map((n) => {
+        const old = prevById.get(n.id);
+        if (!old) return n; // node mới
+        // Chữ ký dữ liệu KHÔNG đổi → tái dùng node CŨ (cùng reference) để ReactFlow
+        // bỏ qua re-render node đó.
+        if (old.type === n.type && nodeDataSig(old) === nodeDataSig(n)) return old;
+        // Data đổi → GIỮ nguyên node cũ (measured/width/height/position/selected) và chỉ
+        // thay `data`. Nếu dựng node mới thiếu `measured` → ReactFlow ẩn (visibility:hidden)
+        // rồi đo lại = nháy. Giữ internals cũ để chỉ re-render nội dung.
+        return { ...old, type: n.type, data: n.data };
+      });
     });
   }, [buildNodes, setNodes]);
 
@@ -524,33 +636,36 @@ function Canvas({ id }: { id: string }) {
     };
     const labelBgStyle = { fill: "hsl(var(--panel))", fillOpacity: 0.95 };
 
-    const relEdges: Edge[] = cfg.relations.map((rel) => {
-      const to = rel.toField && rel.toField !== "id" ? rel.toField : "id";
-      return {
-        id: rel.id,
-        source: rel.fromRelationId ?? "base",
-        sourceHandle: `src-${rel.fromField}`,
-        target: rel.id,
-        targetHandle: `tgt-${to}`,
-        label: `${colDisp(nodeEntityId(rel.fromRelationId ?? "base"), rel.fromField)} = ${colDisp(nodeEntityId(rel.id), to)}`,
-        labelStyle,
-        labelBgStyle,
-        labelBgPadding: [3, 2] as [number, number],
-        labelBgBorderRadius: 3,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 10,
-          height: 10,
-          color: "hsl(var(--accent))",
-        },
-        style: {
-          stroke: "hsl(var(--accent))",
-          strokeWidth: 1,
-          strokeDasharray: rel.joinKind === "inner" ? undefined : "5,3",
-        },
-        type: "smoothstep",
-      };
-    });
+    // Relation chưa nối (fromField rỗng) → node hiện nhưng KHÔNG vẽ cạnh; kéo cột để nối.
+    const relEdges: Edge[] = cfg.relations
+      .filter((rel) => rel.fromField)
+      .map((rel) => {
+        const to = rel.toField && rel.toField !== "id" ? rel.toField : "id";
+        return {
+          id: rel.id,
+          source: rel.fromRelationId ?? "base",
+          sourceHandle: `src-${rel.fromField}`,
+          target: rel.id,
+          targetHandle: `tgt-${to}`,
+          label: `${colDisp(nodeEntityId(rel.fromRelationId ?? "base"), rel.fromField)} = ${colDisp(nodeEntityId(rel.id), to)}`,
+          labelStyle,
+          labelBgStyle,
+          labelBgPadding: [3, 2] as [number, number],
+          labelBgBorderRadius: 3,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 10,
+            height: 10,
+            color: "hsl(var(--accent))",
+          },
+          style: {
+            stroke: "hsl(var(--accent))",
+            strokeWidth: 1,
+            strokeDasharray: rel.joinKind === "inner" ? undefined : "5,3",
+          },
+          type: "smoothstep",
+        };
+      });
 
     // Cạnh aggregate (nét đứt, màu accent-2): node nguồn → đối tượng "nhiều"; N-N thêm junction → far.
     const aggEdges: Edge[] = [];
@@ -626,51 +741,217 @@ function Canvas({ id }: { id: string }) {
     [onNodesChange, setNodes, STORAGE_KEY],
   );
 
-  /* ── Thêm đối tượng (popup) ───────────────────────────────── */
+  /* ── Thêm đối tượng (popup, chọn NHIỀU đối tượng cùng lúc) ──── */
   const openAdd = () => {
-    setAdd({ ...ADD_CLOSED, open: true, parentNodeId: "base" });
+    setAddSearch("");
+    setAdd({ open: true, rows: [] });
   };
-  const onPickTarget = (targetEntityId: string) => {
-    const tgt = entById(targetEntityId);
-    setAdd((prev) => {
-      // Gợi ý: nếu node cha có lookup trỏ tới target → prefill lookup→id.
-      const parentFields = nodeFields(prev.parentNodeId);
-      const lookup = parentFields.find(
-        (f) => (f.type === "lookup" || f.type === "multi-lookup") && f.ref === targetEntityId,
-      );
-      const pkName = tgt?.primaryKey
-        ? (tgt.fields.find((f) => f.id === tgt.primaryKey)?.name ?? "id")
-        : "id";
+  const pkOf = useCallback(
+    (entityId: string): string => {
+      const e = entById(entityId);
+      return e?.primaryKey ? (e.fields.find((f) => f.id === e.primaryKey)?.name ?? "id") : "id";
+    },
+    [entById],
+  );
+  // entityId của 1 fromRid: node canvas (nodeEntityId) HOẶC bảng đang chọn (rid tạm trong rows).
+  const fromEntityIdOf = useCallback(
+    (fromRid: string, rows: AddRow[]): string | undefined =>
+      rows.find((r) => r.rid === fromRid)?.targetEntityId ?? nodeEntityId(fromRid),
+    [nodeEntityId],
+  );
+
+  /** Suy liên kết của 1 dòng theo nguồn `fromRid`:
+   *  - nguồn có lookup trỏ tới target → nguồn.lookup = target.id (many-to-one);
+   *  - nếu không → để user chọn cột nguồn, khớp PK đích. */
+  const linkFor = useCallback(
+    (fromRid: string, targetEntityId: string, rows: AddRow[]) => {
+      const fromEnt = entById(fromEntityIdOf(fromRid, rows));
+      const lk = lookupTo(fromEnt, targetEntityId);
+      return lk
+        ? { fromField: lk.name, toField: "id", autoLinked: true }
+        : { fromField: "", toField: pkOf(targetEntityId), autoLinked: false };
+    },
+    [entById, fromEntityIdOf, pkOf],
+  );
+
+  /** Dựng dòng mới + TỰ tìm nguồn cha trong mọi ứng viên (node có sẵn + bảng
+   *  khác đang chọn): ưu tiên nguồn nào có lookup trỏ tới target. Không có →
+   *  mặc định nối từ "base", để user tự chọn cột. */
+  const buildAddRow = useCallback(
+    (targetEntityId: string, siblings: AddRow[]): AddRow => {
+      const rid = crypto.randomUUID();
+      const alias = slugify(entById(targetEntityId)?.name || "");
+      // Ứng viên nguồn: node canvas trước (cụ thể), rồi tới bảng đang chọn khác.
+      const candidates: string[] = [
+        ...nodeIds,
+        ...siblings.filter((s) => s.targetEntityId !== targetEntityId).map((s) => s.rid),
+      ];
+      for (const c of candidates) {
+        const lk = lookupTo(entById(fromEntityIdOf(c, siblings)), targetEntityId);
+        if (lk) {
+          return {
+            rid,
+            targetEntityId,
+            fromRid: c,
+            alias,
+            fromField: lk.name,
+            toField: "id",
+            joinKind: "left",
+            autoLinked: true,
+          };
+        }
+      }
       return {
-        ...prev,
+        rid,
         targetEntityId,
-        alias: slugify(tgt?.name || ""),
-        fromField: lookup ? lookup.name : prev.fromField,
-        toField: lookup ? "id" : pkName,
+        fromRid: "base",
+        alias,
+        fromField: "",
+        toField: pkOf(targetEntityId),
+        joinKind: "left",
+        autoLinked: false,
+      };
+    },
+    [entById, nodeIds, fromEntityIdOf, pkOf],
+  );
+  // Bỏ 1 dòng + trỏ lại nguồn cho dòng nào đang "Nối từ" bảng vừa bỏ (tránh kẹt rid mồ côi).
+  const dropRow = (rows: AddRow[], gone: AddRow): AddRow[] => {
+    const left = rows.filter((r) => r.rid !== gone.rid);
+    return left.map((r) => {
+      if (r.fromRid !== gone.rid) return r;
+      const d = buildAddRow(r.targetEntityId, left); // suy lại nguồn (node/bảng khác) hoặc về base
+      return {
+        ...r,
+        fromRid: d.fromRid,
+        fromField: d.fromField,
+        toField: d.toField,
+        autoLinked: d.autoLinked,
       };
     });
   };
+  // Tick/bỏ tick 1 bảng trong danh sách checkbox: chưa có → thêm, đã có → gỡ.
+  const toggleRow = (targetEntityId: string) =>
+    setAdd((p) => {
+      const existing = p.rows.find((r) => r.targetEntityId === targetEntityId);
+      if (existing) return { ...p, rows: dropRow(p.rows, existing) };
+      const next = [...p.rows, buildAddRow(targetEntityId, p.rows)];
+      // Bảng mới có thể là nguồn của dòng còn bỏ ngỏ (chưa khớp + chưa sửa tay) → suy lại.
+      const relinked = next.map((r) => {
+        if (r.autoLinked || r.fromField) return r;
+        const d = buildAddRow(r.targetEntityId, next);
+        return d.autoLinked
+          ? {
+              ...r,
+              fromRid: d.fromRid,
+              fromField: d.fromField,
+              toField: d.toField,
+              autoLinked: true,
+            }
+          : r;
+      });
+      return { ...p, rows: relinked };
+    });
+  // Đổi nguồn "Nối từ" của 1 dòng → suy lại cột nối theo nguồn mới.
+  const relinkRow = (rid: string, fromRid: string) =>
+    setAdd((p) => ({
+      ...p,
+      rows: p.rows.map((r) => {
+        if (r.rid !== rid) return r;
+        const lk = linkFor(fromRid, r.targetEntityId, p.rows);
+        return { ...r, fromRid, ...lk };
+      }),
+    }));
+  const patchRow = (rid: string, patch: Partial<AddRow>) =>
+    setAdd((p) => ({
+      ...p,
+      rows: p.rows.map((r) => (r.rid === rid ? { ...r, ...patch } : r)),
+    }));
+  const removeRow = (rid: string) =>
+    setAdd((p) => {
+      const gone = p.rows.find((r) => r.rid === rid);
+      return gone ? { ...p, rows: dropRow(p.rows, gone) } : p;
+    });
+
+  // Không bắt buộc chọn cột liên kết: chỉ cần tick ≥1 bảng (nối sau bằng kéo cột trên canvas).
+  const addRowsComplete = add.rows.length > 0;
   const confirmAdd = () => {
-    if (!add.targetEntityId || !add.fromField) {
-      dialog.alert("Chọn đối tượng đích và cột nối (từ node cha).");
+    const ready = add.rows.filter((r) => r.targetEntityId);
+    if (ready.length === 0) {
+      dialog.alert("Chọn ít nhất một đối tượng (tick ở danh sách).");
       return;
     }
-    const rid = crypto.randomUUID();
-    const rel: DataSourceRelation = {
-      id: rid,
-      alias: add.alias.trim() || slugify(entById(add.targetEntityId)?.name || rid),
-      fromRelationId: add.parentNodeId === "base" ? null : add.parentNodeId,
-      fromField: add.fromField,
-      toField: add.toField === "id" ? undefined : add.toField,
-      targetEntityId: add.targetEntityId,
-      joinKind: add.joinKind,
+    const readyRids = new Set(ready.map((r) => r.rid));
+    const existingNodeIds = new Set(nodeIds); // node đã có trên canvas
+    // Alias phải UNIQUE (mkKey projection dùng alias) — tránh đụng alias đã có.
+    const usedAlias = new Set(cfg.relations.map((r) => r.alias));
+    const newRels: DataSourceRelation[] = [];
+    const newIdByRid = new Map<string, string>(); // rid tạm → relation id thật vừa tạo
+    let created = 0;
+    let lastRid = "";
+
+    // Tạo 1 dòng → relation (nguồn đã giải được). Trả relation id.
+    const emit = (row: AddRow, fromRelationId: string | null): string => {
+      const rid = crypto.randomUUID();
+      let alias = row.alias.trim() || slugify(entById(row.targetEntityId)?.name || rid);
+      const baseAlias = alias;
+      let n = 2;
+      while (usedAlias.has(alias)) alias = `${baseAlias}_${n++}`;
+      usedAlias.add(alias);
+      newRels.push({
+        id: rid,
+        alias,
+        fromRelationId,
+        fromField: row.fromField,
+        toField: row.toField === "id" ? undefined : row.toField,
+        targetEntityId: row.targetEntityId,
+        joinKind: row.joinKind,
+      });
+      newIdByRid.set(row.rid, rid);
+      // Toả node mới quanh node nguồn cho dễ nhìn.
+      const fromPos = layoutRef.current[fromRelationId ?? "base"] ?? { x: 0, y: 0 };
+      layoutRef.current[rid] = { x: fromPos.x + 320, y: fromPos.y + (created % 4) * 120 + 40 };
+      created++;
+      lastRid = rid;
+      return rid;
     };
-    // Đặt node mới cạnh node cha cho dễ nhìn.
-    const parentPos = layoutRef.current[add.parentNodeId] ?? { x: 0, y: 0 };
-    layoutRef.current[rid] = { x: parentPos.x + 320, y: parentPos.y + 40 };
-    update({ relations: [...cfg.relations, rel] });
+
+    // Sắp xếp tô-pô: dòng nối từ bảng-anh-em phải đợi bảng đó tạo xong trước.
+    const remaining = [...ready];
+    let progressed = true;
+    while (remaining.length > 0 && progressed) {
+      progressed = false;
+      for (let idx = 0; idx < remaining.length; ) {
+        const row = remaining[idx];
+        if (!row) {
+          idx++;
+          continue;
+        }
+        if (existingNodeIds.has(row.fromRid)) {
+          // Nối từ node đã có trên canvas.
+          emit(row, row.fromRid === "base" ? null : row.fromRid);
+        } else if (readyRids.has(row.fromRid) && newIdByRid.has(row.fromRid)) {
+          // Nối từ 1 bảng-anh-em đã được tạo ở vòng trước.
+          emit(row, newIdByRid.get(row.fromRid) as string);
+        } else {
+          idx++; // nguồn chưa sẵn sàng → để vòng sau
+          continue;
+        }
+        remaining.splice(idx, 1);
+        progressed = true;
+      }
+    }
+    // Còn dòng kẹt (vòng phụ thuộc, hoặc nối từ bảng-anh-em bị bỏ/chưa hợp lệ)
+    // → nối tạm về base để không mất đối tượng; user chỉnh lại nguồn sau.
+    for (const row of remaining) emit(row, null);
+    if (remaining.length > 0) {
+      dialog.alert(
+        `${remaining.length} đối tượng có nguồn nối chưa hợp lệ (vòng lặp hoặc nguồn bị bỏ) — tạm nối về gốc, hãy chỉnh lại 'Nối từ'.`,
+      );
+    }
+
+    update({ relations: [...cfg.relations, ...newRels] });
     setAdd(ADD_CLOSED);
-    setSelectedNodeId(rid);
+    if (lastRid) setSelectedNodeId(lastRid);
   };
 
   /* ── Auto-link: đề xuất liên kết (Tier 1-3, deterministic, không LLM) ── */
@@ -754,8 +1035,19 @@ function Canvas({ id }: { id: string }) {
   const selFields = selectedNodeId
     ? cfg.fields.filter((f) => f.sourceRelationId === selectedNodeId)
     : [];
-  const addParentFields = nodeFields(add.parentNodeId);
-  const addTargetEnt = entById(add.targetEntityId);
+  // Cột nguồn của 1 dòng = field của entity mà fromRid trỏ tới (node canvas hoặc bảng-anh-em).
+  const rowFromFields = (fromRid: string): EntityField[] =>
+    entById(fromEntityIdOf(fromRid, add.rows))?.fields ?? [];
+  // Options "Nối từ" cho 1 dòng: node canvas + các bảng khác đang chọn (trừ chính nó).
+  const fromOptions = (selfRid: string) => [
+    ...nodeIds.map((rid) => ({ value: rid, label: nodeAlias(rid) })),
+    ...add.rows
+      .filter((r) => r.rid !== selfRid)
+      .map((r) => ({
+        value: r.rid,
+        label: `${entById(r.targetEntityId)?.name ?? r.targetEntityId} (mới)`,
+      })),
+  ];
   const aggregates = cfg.aggregates ?? [];
   const computed = cfg.computed ?? [];
   const previewKeys =
@@ -840,7 +1132,11 @@ function Canvas({ id }: { id: string }) {
                 setPanelTab("config");
               }
             }}
-            nodesConnectable={false}
+            nodesConnectable={!isMobile}
+            onConnect={onConnect}
+            // Tắt auto-pan khi focus/click node — nếu node chạm mép viewport, ReactFlow
+            // sẽ setCenter → pan cả canvas một nhịp, trông như "nháy" mỗi lần bấm.
+            autoPanOnNodeFocus={false}
             fitView
             fitViewOptions={{ padding: 0.2 }}
             minZoom={0.2}
@@ -935,6 +1231,12 @@ function Canvas({ id }: { id: string }) {
               <I.Database size={12} />
               {nodeIds.length} đối tượng · {cfg.relations.length} join · {cfg.fields.length} cột
             </div>
+            {!isMobile && (
+              <div className="h-8 px-3 rounded-lg bg-accent/10 border border-accent/30 text-xs flex items-center gap-1.5 shadow-sm text-accent">
+                <I.Link size={12} />
+                Mẹo: kéo chấm cột → cột (bảng khác) để nối
+              </div>
+            )}
           </div>
 
           {/* Preview overlay */}
@@ -1366,7 +1668,7 @@ function Canvas({ id }: { id: string }) {
           </div>
         )}
 
-        {/* ── Add-object dialog ──────────────────────────────── */}
+        {/* ── Add-object dialog (chọn NHIỀU đối tượng cùng lúc) ── */}
         {add.open && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -1374,8 +1676,9 @@ function Canvas({ id }: { id: string }) {
               if (e.target === e.currentTarget) setAdd(ADD_CLOSED);
             }}
           >
-            <div className="w-[460px] max-w-full bg-panel border border-border rounded-xl shadow-2xl p-5 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+            <div className="w-[680px] max-w-full max-h-[88vh] bg-panel border border-border rounded-xl shadow-2xl flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
                 <span className="font-semibold text-sm">Thêm đối tượng vào canvas</span>
                 <button
                   type="button"
@@ -1386,83 +1689,188 @@ function Canvas({ id }: { id: string }) {
                 </button>
               </div>
 
-              <FormField label="Nối từ node (cha)">
-                <SearchableSelect
-                  className="w-full"
-                  value={add.parentNodeId}
-                  onChange={(v) => setAdd((p) => ({ ...p, parentNodeId: v, fromField: "" }))}
-                  options={nodeIds.map((n) => ({ value: n, label: nodeAlias(n) }))}
-                />
-              </FormField>
-
-              <FormField label="Đối tượng đích (thêm vào canvas)">
-                <SearchableSelect
-                  className="w-full"
-                  value={add.targetEntityId}
-                  onChange={onPickTarget}
-                  options={entities.map((e) => ({ value: e.id, label: e.name }))}
-                  placeholder="Chọn đối tượng…"
-                  searchPlaceholder="Tìm đối tượng…"
-                />
-              </FormField>
-
-              <div className="grid grid-cols-2 gap-2">
-                <FormField label="Cột nguồn (node cha)">
-                  <SearchableSelect
-                    className="w-full"
-                    value={add.fromField}
-                    onChange={(v) => setAdd((p) => ({ ...p, fromField: v }))}
-                    options={addParentFields.map((f) => ({
-                      value: f.name,
-                      label: fieldDisp(f),
-                    }))}
-                    placeholder="Chọn cột…"
-                  />
-                </FormField>
-                <FormField label="Cột đích (khớp)">
-                  <SearchableSelect
-                    className="w-full"
-                    value={add.toField}
-                    onChange={(v) => setAdd((p) => ({ ...p, toField: v }))}
-                    options={[
-                      { value: "id", label: "id (record id)" },
-                      ...(addTargetEnt?.fields.map((f) => ({
-                        value: f.name,
-                        label: fieldDisp(f),
-                      })) ?? []),
-                    ]}
-                  />
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <FormField label="Alias">
+              {/* Body (cuộn) */}
+              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+                {/* Danh sách bảng — tick checkbox để chọn NHIỀU bảng cùng lúc */}
+                <FormField label="Chọn đối tượng (tick nhiều bảng để thêm cùng lúc)">
                   <Input
-                    className="h-8"
-                    value={add.alias}
-                    onChange={(e) => setAdd((p) => ({ ...p, alias: e.target.value }))}
-                    placeholder="vd: khach_hang"
+                    className="h-8 mb-2"
+                    value={addSearch}
+                    onChange={(e) => setAddSearch(e.target.value)}
+                    placeholder="Tìm đối tượng…"
                   />
+                  {(() => {
+                    const q = addSearch.trim().toLowerCase();
+                    const list = entities.filter((e) => !q || e.name.toLowerCase().includes(q));
+                    if (list.length === 0) {
+                      return (
+                        <div className="rounded-lg border border-border px-3 py-4 text-center text-[12px] text-muted italic">
+                          Không tìm thấy đối tượng nào.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+                        {list.map((e) => {
+                          const checked = add.rows.some((r) => r.targetEntityId === e.id);
+                          const IC = I[e.icon] ?? I.Database;
+                          return (
+                            <label
+                              key={e.id}
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-hover/30 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                className="accent-accent shrink-0"
+                                checked={checked}
+                                onChange={() => toggleRow(e.id)}
+                              />
+                              <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-accent shrink-0">
+                                <IC size={11} />
+                              </div>
+                              <span
+                                className={cn(
+                                  "flex-1 truncate",
+                                  checked && "text-accent font-medium",
+                                )}
+                              >
+                                {e.name}
+                              </span>
+                              {checked && <I.Check size={13} className="text-accent shrink-0" />}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </FormField>
-                <FormField label="Kiểu join">
-                  <SearchableSelect
-                    className="w-full"
-                    value={add.joinKind}
-                    onChange={(v) => setAdd((p) => ({ ...p, joinKind: v as "left" | "inner" }))}
-                    options={[
-                      { value: "left", label: "left (giữ)" },
-                      { value: "inner", label: "inner (lọc)" },
-                    ]}
-                  />
-                </FormField>
+
+                {/* Thiết lập liên kết cho mỗi bảng đã tick — mỗi dòng 1 liên kết, sửa được */}
+                {add.rows.length === 0 ? (
+                  <div className="text-[12px] text-muted italic text-center py-6 border border-dashed border-border rounded-lg">
+                    Chưa chọn đối tượng nào. Tick các bảng ở danh sách trên — liên kết mặc định tự
+                    suy theo khoá ngoại, có thể sửa bên dưới.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {add.rows.map((row) => {
+                      const tgt = entById(row.targetEntityId);
+                      const IC = tgt ? (I[tgt.icon] ?? I.Database) : I.Database;
+                      return (
+                        <Card key={row.rid} className="p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-accent shrink-0">
+                              <IC size={11} />
+                            </div>
+                            <span className="font-semibold text-sm flex-1 truncate">
+                              {tgt?.name ?? row.targetEntityId}
+                            </span>
+                            {row.autoLinked ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success shrink-0">
+                                Liên kết mặc định
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-soft text-muted shrink-0">
+                                Tự đặt liên kết
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeRow(row.rid)}
+                              className="w-5 h-5 rounded hover:bg-danger/15 flex items-center justify-center text-muted hover:text-danger shrink-0"
+                              title="Bỏ khỏi danh sách"
+                            >
+                              <I.X size={12} />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <FormField label="Nối từ (node nguồn)">
+                              <SearchableSelect
+                                className="w-full"
+                                value={row.fromRid}
+                                onChange={(v) => relinkRow(row.rid, v)}
+                                options={fromOptions(row.rid)}
+                                placeholder="Chọn node nguồn…"
+                                searchPlaceholder="Tìm node…"
+                              />
+                            </FormField>
+                            <FormField label="Cột nguồn (ở node nối từ)">
+                              <SearchableSelect
+                                className="w-full"
+                                value={row.fromField}
+                                onChange={(v) => patchRow(row.rid, { fromField: v })}
+                                options={rowFromFields(row.fromRid).map((f) => ({
+                                  value: f.name,
+                                  label: fieldDisp(f),
+                                }))}
+                                placeholder="Chọn cột…"
+                              />
+                            </FormField>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <FormField label="Cột đích (khớp)">
+                              <SearchableSelect
+                                className="w-full"
+                                value={row.toField}
+                                onChange={(v) => patchRow(row.rid, { toField: v })}
+                                options={[
+                                  { value: "id", label: "id (record id)" },
+                                  ...(tgt?.fields.map((f) => ({
+                                    value: f.name,
+                                    label: fieldDisp(f),
+                                  })) ?? []),
+                                ]}
+                              />
+                            </FormField>
+                            <FormField label="Kiểu join">
+                              <SearchableSelect
+                                className="w-full"
+                                value={row.joinKind}
+                                onChange={(v) =>
+                                  patchRow(row.rid, { joinKind: v as "left" | "inner" })
+                                }
+                                options={[
+                                  { value: "left", label: "left (giữ)" },
+                                  { value: "inner", label: "inner (lọc)" },
+                                ]}
+                              />
+                            </FormField>
+                          </div>
+                          <FormField label="Alias">
+                            <Input
+                              className="h-8"
+                              value={row.alias}
+                              onChange={(e) => patchRow(row.rid, { alias: e.target.value })}
+                              placeholder="vd: khach_hang"
+                            />
+                          </FormField>
+                          {!row.fromField && (
+                            <p className="text-[11px] text-muted">
+                              Chưa nối — có thể thêm trước rồi <b>kéo cột này sang cột bảng khác</b>{" "}
+                              trên canvas để tạo liên kết, hoặc chọn "Nối từ" + "Cột nguồn" ngay
+                              đây.
+                            </p>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted">
+                  Không có "node cha" cố định: mỗi bảng tự chọn "Nối từ" — node nào (kể cả bảng khác
+                  đang chọn) cũng có thể làm nguồn. Liên kết mặc định tự suy theo khoá ngoại (field
+                  lookup); <b>không bắt buộc chọn cột</b> — có thể thêm bảng rồi kéo cột↔cột trên
+                  canvas để nối sau. Join cột↔cột giả định many-to-one (lấy record đích đầu tiên
+                  khớp). Cột nối phải là plaintext (không mã hoá) ở cả 2 phía.
+                </p>
               </div>
 
-              <p className="text-[11px] text-muted">
-                Join cột↔cột giả định many-to-one (lấy record đích đầu tiên khớp). Cột nối phải là
-                plaintext (không mã hoá) ở cả 2 phía.
-              </p>
-
-              <div className="flex gap-2 justify-end pt-1">
+              {/* Footer */}
+              <div className="flex items-center gap-2 px-5 py-3 border-t border-border shrink-0">
+                <span className="text-[11px] text-muted mr-auto">
+                  {add.rows.length} đối tượng trong danh sách
+                </span>
                 <button
                   type="button"
                   onClick={() => setAdd(ADD_CLOSED)}
@@ -1473,10 +1881,10 @@ function Canvas({ id }: { id: string }) {
                 <button
                   type="button"
                   onClick={confirmAdd}
-                  disabled={!add.targetEntityId || !add.fromField}
+                  disabled={!addRowsComplete}
                   className="h-8 px-4 text-sm rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
                 >
-                  Thêm
+                  Thêm{add.rows.length > 0 ? ` ${add.rows.length} đối tượng` : ""}
                 </button>
               </div>
             </div>

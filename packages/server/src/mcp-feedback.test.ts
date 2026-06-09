@@ -36,6 +36,17 @@ describe("hasFeedbackScope", () => {
     expect(hasFeedbackScope([], "propose")).toBe(false);
     expect(hasFeedbackScope(["entity:foo:read"], "read")).toBe(false);
   });
+  it('"feedback:apply" áp được + bao đọc, nhưng KHÔNG propose', () => {
+    expect(hasFeedbackScope(["feedback:apply"], "apply")).toBe(true);
+    expect(hasFeedbackScope(["feedback:apply"], "read")).toBe(true);
+    expect(hasFeedbackScope(["feedback:apply"], "propose")).toBe(false);
+  });
+  it("read/propose KHÔNG đủ để apply; * và feedback:* thì đủ", () => {
+    expect(hasFeedbackScope(["feedback:read"], "apply")).toBe(false);
+    expect(hasFeedbackScope(["feedback:propose"], "apply")).toBe(false);
+    expect(hasFeedbackScope(["*"], "apply")).toBe(true);
+    expect(hasFeedbackScope(["feedback:*"], "apply")).toBe(true);
+  });
 });
 
 describe("callFeedbackTool — scope gate", () => {
@@ -54,6 +65,14 @@ describe("callFeedbackTool — scope gate", () => {
     await expect(callFeedbackTool(fakeDb, ctx(["*"]), "rm_rf", {})).rejects.toThrow(
       /không tồn tại/i,
     );
+  });
+  it("chặn feedback_set_status khi chỉ có propose (cần apply)", async () => {
+    await expect(
+      callFeedbackTool(fakeDb, ctx(["feedback:propose"]), "feedback_set_status", {
+        feedbackIds: ["00000000-0000-0000-0000-000000000001"],
+        status: "done",
+      }),
+    ).rejects.toThrow(/scope/i);
   });
 });
 

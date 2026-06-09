@@ -393,6 +393,11 @@ export function DataGrid<T>({
                   {hg.headers.map((header) => {
                     const sorted = header.column.getIsSorted();
                     const sortIndex = header.column.getSortIndex();
+                    // Tên cột kỹ thuật (tuỳ chọn) — cột nào set meta.techName thì
+                    // hiện thêm dòng mono dưới nhãn (vd lưới dữ liệu entity).
+                    const techName = (
+                      header.column.columnDef.meta as { techName?: string } | undefined
+                    )?.techName;
                     return (
                       <th
                         key={header.id}
@@ -407,13 +412,20 @@ export function DataGrid<T>({
                             "cursor-pointer hover:text-text select-none",
                         )}
                       >
-                        <span className="inline-flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {sorted === "asc" && <I.ChevronUp size={11} />}
-                          {sorted === "desc" && <I.ChevronDown size={11} />}
-                          {sorted && sorting.length > 1 && (
-                            <span className="text-[9px] text-muted/70 font-normal">
-                              {sortIndex + 1}
+                        <span className="inline-flex flex-col leading-tight">
+                          <span className="inline-flex items-center gap-1">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {sorted === "asc" && <I.ChevronUp size={11} />}
+                            {sorted === "desc" && <I.ChevronDown size={11} />}
+                            {sorted && sorting.length > 1 && (
+                              <span className="text-[9px] text-muted/70 font-normal">
+                                {sortIndex + 1}
+                              </span>
+                            )}
+                          </span>
+                          {techName && (
+                            <span className="font-mono text-[9px] normal-case tracking-normal font-normal text-muted/60">
+                              {techName}
                             </span>
                           )}
                         </span>

@@ -6,7 +6,7 @@
    chưa chọn công ty hợp lệ → dùng công ty đầu tiên user là thành viên. */
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import type { FastifyReply } from "fastify";
-import "@fastify/cookie";  // mang augmentation cookies/setCookie vào kiểu Fastify
+import "@fastify/cookie"; // mang augmentation cookies/setCookie vào kiểu Fastify
 import { and, eq, gt } from "drizzle-orm";
 import { sessions, users, companyMembers } from "@erp-framework/db";
 import type { Role } from "@erp-framework/core";
@@ -53,15 +53,17 @@ export async function resolveActiveCompany(
     })
     .from(companyMembers)
     .where(eq(companyMembers.userId, userId));
-  const picked =
-    memberships.find((m) => m.companyId === preferredCompanyId) ?? memberships[0];
+  const picked = memberships.find((m) => m.companyId === preferredCompanyId) ?? memberships[0];
   if (!picked) return null;
-  return { companyId: picked.companyId, role: picked.role as Role, approved: picked.approved, disabled: picked.disabled };
+  return {
+    companyId: picked.companyId,
+    role: picked.role as Role,
+    approved: picked.approved,
+    disabled: picked.disabled,
+  };
 }
 
-export async function createContext(
-  { req, res }: CreateFastifyContextOptions,
-): Promise<Context> {
+export async function createContext({ req, res }: CreateFastifyContextOptions): Promise<Context> {
   let user: SessionUser | null = null;
   const token = req.cookies?.[SESSION_COOKIE] ?? null;
 
@@ -80,15 +82,20 @@ export async function createContext(
     const row = rows[0];
     if (row) {
       const active = await resolveActiveCompany(db, row.id, row.activeCompanyId);
-      user = {
-        id: row.id,
-        email: row.email,
-        name: row.name,
-        role: active?.role ?? (row.defaultRole as Role),
-        companyId: active?.companyId ?? null,
-        companyApproved: active?.approved ?? true,
-        companyDisabled: active?.disabled ?? false,
-      };
+      // User đã bị gỡ khỏi MỌI công ty (không còn membership) → coi như chưa
+      // đăng nhập, chặn phiên cũ còn sót truy cập hệ thống. User hợp lệ luôn
+      // có ít nhất 1 membership (kể cả pending/disabled — active vẫn != null).
+      if (active) {
+        user = {
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          role: active.role,
+          companyId: active.companyId,
+          companyApproved: active.approved,
+          companyDisabled: active.disabled,
+        };
+      }
     }
   }
 

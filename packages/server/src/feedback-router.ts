@@ -112,6 +112,22 @@ export function buildMergeMarkdown(rows: MergeRow[], authorMap: Map<string, stri
   return lines.join("\n");
 }
 
+/** Đảm bảo feedback thuộc công ty đang chọn (chống thao tác chéo tenant —
+ *  vd vote/unvote bằng UUID đoán được của công ty khác). */
+async function assertFeedbackInCompany(
+  db: Parameters<typeof applyProposalActions>[0],
+  id: string,
+  companyId: string,
+): Promise<void> {
+  const [fb] = await db
+    .select({ id: feedbacks.id })
+    .from(feedbacks)
+    .where(
+      and(eq(feedbacks.id, id), eq(feedbacks.companyId, companyId), isNull(feedbacks.deletedAt)),
+    );
+  if (!fb) throw new TRPCError({ code: "NOT_FOUND", message: "Phản hồi không tồn tại" });
+}
+
 export const feedbackRouter = router({
   list: rbacProcedure("view", "feedback")
     .input(
@@ -358,6 +374,8 @@ export const feedbackRouter = router({
   vote: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
+      // Chặn vote chéo tenant: feedback phải thuộc công ty đang chọn.
+      await assertFeedbackInCompany(ctx.db, input, ctx.user.companyId);
       // ON CONFLICT DO NOTHING — idempotent.
       await ctx.db
         .insert(feedbackVotes)
@@ -369,7 +387,7 @@ export const feedbackRouter = router({
       await ctx.db.execute(sql`
         UPDATE feedbacks SET vote_count = (
           SELECT count(*) FROM feedback_votes WHERE feedback_id = ${input}
-        ) WHERE id = ${input}
+        ) WHERE id = ${input} AND company_id = ${ctx.user.companyId}
       `);
       return { ok: true };
     }),
@@ -377,13 +395,14 @@ export const feedbackRouter = router({
   unvote: rbacProcedure("view", "feedback")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
+      await assertFeedbackInCompany(ctx.db, input, ctx.user.companyId);
       await ctx.db
         .delete(feedbackVotes)
         .where(and(eq(feedbackVotes.feedbackId, input), eq(feedbackVotes.userId, ctx.user.id)));
       await ctx.db.execute(sql`
         UPDATE feedbacks SET vote_count = (
           SELECT count(*) FROM feedback_votes WHERE feedback_id = ${input}
-        ) WHERE id = ${input}
+        ) WHERE id = ${input} AND company_id = ${ctx.user.companyId}
       `);
       return { ok: true };
     }),

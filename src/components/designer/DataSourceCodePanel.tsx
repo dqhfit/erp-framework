@@ -30,6 +30,7 @@ function toDslEntities(entities: MockEntity[]): DslEntity[] {
   return entities.map((e) => ({
     id: e.id,
     name: e.name,
+    techName: e.techName,
     primaryKey: e.primaryKey
       ? (e.fields.find((f) => f.id === e.primaryKey)?.name ?? undefined)
       : undefined,

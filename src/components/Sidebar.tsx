@@ -1064,6 +1064,16 @@ export function Sidebar() {
               onRename={can("edit", "datasource") ? handleRenameDataSource : undefined}
               sectionKey="datasources"
               onNavigate={collapseOpsSettings}
+              extraButtons={
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/datasources/$id", params: { id: "__sql__" } })}
+                  className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-muted hover:text-accent"
+                  title="Mở màn hình SQL (soạn → lưu thành / áp dụng vào nguồn dữ liệu)"
+                >
+                  <I.Terminal size={11} />
+                </button>
+              }
               items={filterBySearch(userDataSources).map((d) => ({
                 id: d.id,
                 name: d.name,

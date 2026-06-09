@@ -541,6 +541,9 @@ const VI: Dict = {
   "entity.md_page_hint_short": "Đầy đủ nhất — phát hiện child entity",
   "entity.md_page_title": "Tạo trang Master-Detail",
   "entity.md_page_open": "Mở trang",
+  "entity.label_placeholder": "Tên đối tượng",
+  "entity.tech_name_hint":
+    "Tên kỹ thuật (snake_case) — dùng cho API và biểu thức. Trống = tự sinh từ nhãn.",
   // portal
   "portal.title": "Cổng người dùng",
   "portal.pages_heading": "Trang",
@@ -1081,6 +1084,9 @@ const EN: Dict = {
   "entity.md_page_hint_short": "Most complete — detects child entities",
   "entity.md_page_title": "Create Master-Detail Page",
   "entity.md_page_open": "Open Page",
+  "entity.label_placeholder": "Object name",
+  "entity.tech_name_hint":
+    "Technical name (snake_case) — used for API and expressions. Empty = auto-generated from label.",
   // field inspector (new keys)
   "field.delete": "Delete field",
   "field.duplicate": "Duplicate",

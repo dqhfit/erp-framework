@@ -89,6 +89,14 @@ export const appRouter = router({
      logout. login_failed có thể không có companyId nếu email lạ — fallback
      skip log (chỉ console.warn ở activity.ts catch). */
   auth: router({
+    /** Đăng ký có mở không — chỉ true khi hệ thống CHƯA có user nào (cho phép
+       tạo admin đầu tiên). Đã có admin → false để frontend ẩn màn đăng ký
+       (tránh nhầm lẫn; register sẽ FORBIDDEN dù sao). */
+    registrationOpen: publicProcedure.query(async ({ ctx }) => {
+      const existing = await ctx.db.select({ id: users.id }).from(users).limit(1);
+      return { open: existing.length === 0 };
+    }),
+
     register: publicProcedure
       .use(rateLimit("auth.register", 5, 15 * 60 * 1000))
       .input(
@@ -177,17 +185,26 @@ export const appRouter = router({
               "Email hoặc mật khẩu không đúng. Nếu bạn vừa được mời, hãy mở link mời trong email để đặt mật khẩu trước khi đăng nhập.",
           });
         }
-        const token = newSessionToken();
         // Công ty mặc định của phiên = công ty đầu tiên user là thành viên.
         const [m] = await ctx.db
           .select({ companyId: companyMembers.companyId })
           .from(companyMembers)
           .where(eq(companyMembers.userId, u.id))
           .limit(1);
+        // Chặn đăng nhập nếu tài khoản đã bị gỡ khỏi MỌI công ty — nếu không
+        // user "đã xoá" vẫn tạo được phiên mới và vào hệ thống.
+        if (!m) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message:
+              "Tài khoản của bạn không còn thuộc công ty nào. Liên hệ quản trị viên để được thêm lại.",
+          });
+        }
+        const token = newSessionToken();
         await ctx.db.insert(sessions).values({
           id: token,
           userId: u.id,
-          activeCompanyId: m?.companyId ?? null,
+          activeCompanyId: m.companyId,
           expiresAt: new Date(Date.now() + SESSION_TTL_MS),
         });
         ctx.reply.setCookie(SESSION_COOKIE, token, {

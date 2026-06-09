@@ -72,10 +72,20 @@ function IngestInfo({ s }: { s: KnowledgeSource }) {
     );
   }
   if (s.status === "ready") {
+    if (s.meta?.mode === "live") {
+      return <span className="text-xs text-muted">truy vấn trực tiếp</span>;
+    }
     return (
-      <span className="text-xs text-muted whitespace-nowrap tabular-nums">
-        {s.chunkCount} đoạn
-        {ing?.ms != null ? ` · ${(ing.ms / 1000).toFixed(1)}s · ${ing.perSec ?? "?"} đoạn/s` : ""}
+      <span className="inline-flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs text-muted whitespace-nowrap tabular-nums">
+          {s.chunkCount} đoạn
+          {ing?.ms != null ? ` · ${(ing.ms / 1000).toFixed(1)}s · ${ing.perSec ?? "?"} đoạn/s` : ""}
+        </span>
+        {ing?.warn && (
+          <Chip variant="warning" className="text-[10px]!" title={ing.warn}>
+            ⚠ đã giới hạn
+          </Chip>
+        )}
       </span>
     );
   }
@@ -98,6 +108,8 @@ function KnowledgePage() {
   const [textTitle, setTextTitle] = useState("");
   const [textBody, setTextBody] = useState("");
   const [entityId, setEntityId] = useState("");
+  // Live = truy vấn trực tiếp (on-demand), không embed — hợp dữ liệu lớn.
+  const [entityLive, setEntityLive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Sửa nguồn
@@ -194,11 +206,17 @@ function KnowledgePage() {
     }, "Đã thêm nguồn văn bản — đang nạp nền.");
 
   const addEntity = () =>
-    void run(async () => {
-      if (!entityId) throw new Error("Hãy chọn một entity.");
-      await kb.addEntity(entityId);
-      setEntityId("");
-    }, "Đã thêm nguồn entity — đang nạp nền.");
+    void run(
+      async () => {
+        if (!entityId) throw new Error("Hãy chọn một entity.");
+        await kb.addEntity(entityId, undefined, entityLive ? "live" : "embed");
+        setEntityId("");
+        setEntityLive(false);
+      },
+      entityLive
+        ? "Đã thêm nguồn entity (truy vấn trực tiếp)."
+        : "Đã thêm nguồn entity — đang nạp nền.",
+    );
 
   const onPickFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -379,6 +397,15 @@ function KnowledgePage() {
                   ))}
                 </Select>
               </FormField>
+              <label className="mt-1.5 flex items-center gap-2 text-xs text-muted cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={entityLive}
+                  disabled={busy}
+                  onChange={(e) => setEntityLive(e.target.checked)}
+                />
+                Truy vấn trực tiếp (không embed) — hợp dữ liệu lớn, tra cứu on-demand
+              </label>
             </div>
             <Button
               variant="primary"
@@ -426,6 +453,15 @@ function KnowledgePage() {
             <div key={s.id} className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
                 <Chip className="text-[10px]!">{KIND_LABEL[s.kind] ?? s.kind}</Chip>
+                {s.meta?.mode === "live" && (
+                  <Chip
+                    variant="accent"
+                    className="text-[10px]!"
+                    title="Truy vấn trực tiếp, không embed"
+                  >
+                    <I.Zap size={9} /> live
+                  </Chip>
+                )}
                 <span className="font-medium truncate flex-1">{s.title}</span>
                 {s.reindexCron && (
                   <Chip variant="accent" className="text-[10px]!">

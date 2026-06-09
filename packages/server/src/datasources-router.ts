@@ -214,6 +214,21 @@ export const dataSourcesRouter = router({
       return resolveList(ctx.db, ctx.user.companyId, ctx.user.role, cfg.config, input.query ?? {});
     }),
 
+  /* ── Chạy thử 1 config TUỲ Ý (chưa lưu) — cho editor SQL "chạy vùng chọn".
+       An toàn: vẫn qua resolveList nên scope companyId + strip field theo role;
+       entity_records company-scoped → entityId lạ trả 0 dòng. KHÔNG ghi gì. */
+  preview: rbacProcedure("view", "datasource")
+    .input(z.object({ config: dsConfig, query: dsQuery.optional() }))
+    .query(({ ctx, input }) =>
+      resolveList(
+        ctx.db,
+        ctx.user.companyId,
+        ctx.user.role,
+        normCfg(input.config),
+        input.query ?? {},
+      ),
+    ),
+
   getRecord: rbacProcedure("view", "datasource")
     .input(z.object({ dataSourceId: z.string().uuid(), recordId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {

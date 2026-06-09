@@ -32,6 +32,7 @@ const NON_SCALABLE_KINDS = new Set([
   "pivot",
   "action",
   "actionbar",
+  "note",
 ]);
 
 /** Loại widget có nên co giãn theo khung không (false = giữ nguyên + cuộn). */

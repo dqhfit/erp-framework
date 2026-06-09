@@ -22,6 +22,8 @@ export interface KnowledgeSource {
   /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. ingest =
    *  thống kê tiến độ/tốc độ embedding lần nạp gần nhất (worker ghi). */
   meta?: Record<string, unknown> & {
+    /** "live" = nguồn entity on-demand (không embed, truy vấn trực tiếp). */
+    mode?: "embed" | "live";
     ingest?: {
       total?: number;
       embedded?: number;
@@ -29,6 +31,8 @@ export interface KnowledgeSource {
       perSec?: number;
       startedAt?: string;
       finishedAt?: string;
+      /** Cảnh báo khi nguồn bị giới hạn (entity/đoạn quá lớn) — null nếu không. */
+      warn?: string | null;
     };
   };
   createdAt: string;
@@ -72,8 +76,8 @@ export function createKnowledgeClient(baseUrl: string) {
     /** Thêm nguồn từ văn bản dán tay. */
     addText: (title: string, text: string) => trpc.knowledge.addText.mutate({ title, text }),
     /** Thêm nguồn từ dữ liệu một entity. */
-    addEntity: (entityId: string, title?: string) =>
-      trpc.knowledge.addEntity.mutate({ entityId, title }),
+    addEntity: (entityId: string, title?: string, mode?: "embed" | "live") =>
+      trpc.knowledge.addEntity.mutate({ entityId, title, mode }),
     /** Nạp lại một nguồn. */
     reindex: (id: string) => trpc.knowledge.reindex.mutate(id),
     /** Sửa nguồn: tiêu đề / nội dung văn bản / lịch tự nạp lại

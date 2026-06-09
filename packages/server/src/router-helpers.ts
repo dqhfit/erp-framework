@@ -26,6 +26,7 @@ import { and, eq, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { decryptSecret, encryptSecret } from "./crypto";
 import type { DB } from "./db";
+import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import type { RecordStore } from "./record-store";
 import { upsertResourceMember } from "./resource-acl";
 
@@ -264,8 +265,63 @@ export function assertValid(
   return v.data;
 }
 
+/** storage (tier='table') từ entities.meta, hoặc null nếu entity còn EAV. */
+function storageOfMeta(meta: unknown): EntityStorage | null {
+  const s = (meta as { storage?: EntityStorage } | null)?.storage;
+  return s?.tier === "table" ? s : null;
+}
+
+/** Field type có phải lookup/relation? + có phải multi (đa-trị, lưu ở ext). */
+function lookupKind(t: string): { lookup: boolean; multi: boolean } {
+  const multi = t === "multilookup" || t === "multi-lookup";
+  return { lookup: multi || t === "lookup" || t === "relation", multi };
+}
+
+/** Id các record active của 1 entity đang trỏ tới targetRecordId qua field.
+ *  Backend-aware: entity tier='table' → quét bảng er_ (cột FK / ext); else EAV. */
+async function refRecordIds(
+  db: DB,
+  companyId: string,
+  entityId: string,
+  storage: EntityStorage | null,
+  fieldName: string,
+  isMulti: boolean,
+  targetRecordId: string,
+  limit: number,
+): Promise<string[]> {
+  if (storage) {
+    const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+    const col = storage.columns[fieldName]?.col;
+    const cond = isMulti
+      ? sql`ext->${fieldName} @> ${JSON.stringify(targetRecordId)}::jsonb`
+      : col
+        ? sql`(${sql.raw(`"${assertIdent(col)}"`)})::text = ${targetRecordId}`
+        : sql`ext->>${fieldName} = ${targetRecordId}`;
+    const rows = (await db.execute(
+      sql`SELECT id FROM ${tbl} WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL AND ${cond} LIMIT ${limit}`,
+    )) as unknown as Array<{ id: string }>;
+    return rows.map((r) => r.id);
+  }
+  const cond = isMulti
+    ? sql`${entityRecords.data}->${fieldName} @> ${JSON.stringify(targetRecordId)}::jsonb`
+    : sql`${entityRecords.data}->>${fieldName} = ${targetRecordId}`;
+  const rows = await db
+    .select({ id: entityRecords.id })
+    .from(entityRecords)
+    .where(
+      and(
+        eq(entityRecords.companyId, companyId),
+        eq(entityRecords.entityId, entityId),
+        sql`${entityRecords.deletedAt} IS NULL`,
+        cond,
+      ),
+    )
+    .limit(limit);
+  return rows.map((r) => r.id);
+}
+
 /** Quét tất cả entity trong công ty có field lookup/multi-lookup, tìm các
- *  record active đang trỏ tới targetRecordId. */
+ *  record active đang trỏ tới targetRecordId. Backend-aware (EAV + bảng thật). */
 export async function scanBackRefs(
   db: DB,
   companyId: string,
@@ -287,6 +343,7 @@ export async function scanBackRefs(
       name: entities.name,
       label: entities.label,
       fields: entities.fields,
+      meta: entities.meta,
     })
     .from(entities)
     .where(eq(entities.companyId, companyId));
@@ -302,44 +359,30 @@ export async function scanBackRefs(
   }> = [];
 
   for (const ent of ents) {
-    const fields = (ent.fields ?? []) as Array<{
-      name: string;
-      type: string;
-      relationEntityId?: string;
-    }>;
+    const storage = storageOfMeta(ent.meta);
+    const fields = (ent.fields ?? []) as Array<{ name: string; type: string }>;
     for (const f of fields) {
-      if (
-        f.type !== "lookup" &&
-        f.type !== "multilookup" &&
-        f.type !== "multi-lookup" &&
-        f.type !== "relation"
-      )
-        continue;
-      const isMulti = f.type === "multilookup" || f.type === "multi-lookup";
-      const filter = isMulti
-        ? sql`${entityRecords.data}->${f.name} @> ${JSON.stringify(targetRecordId)}::jsonb`
-        : sql`${entityRecords.data}->>${f.name} = ${targetRecordId}`;
-      const rows = await db
-        .select({ id: entityRecords.id })
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.companyId, companyId),
-            eq(entityRecords.entityId, ent.id),
-            sql`${entityRecords.deletedAt} IS NULL`,
-            filter,
-          ),
-        )
-        .limit(50);
-      if (rows.length > 0) {
+      const { lookup, multi } = lookupKind(f.type);
+      if (!lookup) continue;
+      const ids = await refRecordIds(
+        db,
+        companyId,
+        ent.id,
+        storage,
+        f.name,
+        multi,
+        targetRecordId,
+        50,
+      );
+      if (ids.length > 0) {
         out.push({
           entityId: ent.id,
           entityName: ent.name,
           entityLabel: ent.label,
           fieldKey: f.name,
           fieldType: f.type,
-          count: rows.length,
-          sampleIds: rows.slice(0, 5).map((r) => r.id),
+          count: ids.length,
+          sampleIds: ids.slice(0, 5),
         });
       }
     }
@@ -348,9 +391,11 @@ export async function scanBackRefs(
 }
 
 /** Áp dụng hành vi onDelete (restrict/setnull/cascade) cho mọi back-ref.
- *  Default = restrict (an toàn nhất). */
+ *  Default = restrict (an toàn nhất). Detection backend-aware; GHI qua `store`
+ *  (dispatch EAV/bảng thật) nên không cần biết backend ở đây. */
 export async function applyCascadeOnDelete(
   db: DB,
+  store: RecordStore,
   companyId: string,
   targetRecordId: string,
   actorUserId: string,
@@ -359,22 +404,16 @@ export async function applyCascadeOnDelete(
   if (backRefs.length === 0) return;
 
   const ents = await db
-    .select({
-      id: entities.id,
-      fields: entities.fields,
-    })
+    .select({ id: entities.id, fields: entities.fields, meta: entities.meta })
     .from(entities)
     .where(eq(entities.companyId, companyId));
   const entFields = new Map(
     ents.map((e) => [
       e.id,
-      (e.fields ?? []) as Array<{
-        name: string;
-        type: string;
-        onDelete?: OnDeleteBehavior;
-      }>,
+      (e.fields ?? []) as Array<{ name: string; type: string; onDelete?: OnDeleteBehavior }>,
     ]),
   );
+  const entStorage = new Map(ents.map((e) => [e.id, storageOfMeta(e.meta)]));
 
   for (const ref of backRefs) {
     const f = entFields.get(ref.entityId)?.find((ff) => ff.name === ref.fieldKey);
@@ -387,52 +426,32 @@ export async function applyCascadeOnDelete(
       });
     }
 
-    const allRefs = await db
-      .select({
-        id: entityRecords.id,
-        data: entityRecords.data,
-        version: entityRecords.version,
-      })
-      .from(entityRecords)
-      .where(
-        and(
-          eq(entityRecords.companyId, companyId),
-          eq(entityRecords.entityId, ref.entityId),
-          sql`${entityRecords.deletedAt} IS NULL`,
-          ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup"
-            ? sql`${entityRecords.data}->${ref.fieldKey} @> ${JSON.stringify(targetRecordId)}::jsonb`
-            : sql`${entityRecords.data}->>${ref.fieldKey} = ${targetRecordId}`,
-        ),
-      );
+    const { multi } = lookupKind(ref.fieldType);
+    const ids = await refRecordIds(
+      db,
+      companyId,
+      ref.entityId,
+      entStorage.get(ref.entityId) ?? null,
+      ref.fieldKey,
+      multi,
+      targetRecordId,
+      10_000,
+    );
 
     if (behavior === "setnull") {
-      for (const r of allRefs) {
-        const data = { ...(r.data as Record<string, unknown>) };
-        if (ref.fieldType === "multilookup" || ref.fieldType === "multi-lookup") {
-          const arr = (data[ref.fieldKey] as string[] | undefined) ?? [];
-          data[ref.fieldKey] = arr.filter((id) => id !== targetRecordId);
-        } else {
-          data[ref.fieldKey] = null;
-        }
-        await db
-          .update(entityRecords)
-          .set({
-            data,
-            version: r.version + 1,
-            updatedAt: new Date(),
-          })
-          .where(eq(entityRecords.id, r.id));
+      for (const id of ids) {
+        const rec = await store.getById(companyId, id);
+        if (!rec) continue;
+        const data = rec.data as Record<string, unknown>;
+        const newVal = multi
+          ? ((data[ref.fieldKey] as string[] | undefined) ?? []).filter((x) => x !== targetRecordId)
+          : null;
+        await store.merge(companyId, id, { [ref.fieldKey]: newVal }, rec.version + 1);
       }
     } else if (behavior === "cascade") {
-      for (const r of allRefs) {
-        await applyCascadeOnDelete(db, companyId, r.id, actorUserId);
-        await db
-          .update(entityRecords)
-          .set({
-            deletedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(entityRecords.id, r.id));
+      for (const id of ids) {
+        await applyCascadeOnDelete(db, store, companyId, id, actorUserId);
+        await store.softDelete(companyId, id);
       }
     }
   }

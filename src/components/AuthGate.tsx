@@ -22,6 +22,8 @@ function LoginScreen() {
   const error = useAuth((s) => s.error);
   const errorCode = useAuth((s) => s.errorCode);
   const clearError = useAuth((s) => s.clearError);
+  // Đăng ký chỉ mở khi hệ thống chưa có admin. Đã có admin → ẩn nút đăng ký.
+  const registrationOpen = useAuth((s) => s.registrationOpen);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -51,6 +53,12 @@ function LoginScreen() {
       clearError();
     }
   }, [mode, errorCode, clearError]);
+
+  // Đã có admin (đăng ký đóng) → luôn ở chế độ đăng nhập (phòng khi đang dở
+  // chế độ đăng ký lúc trạng thái về false).
+  useEffect(() => {
+    if (registrationOpen === false && mode === "register") setMode("login");
+  }, [registrationOpen, mode]);
 
   // Friendly text cho TOO_MANY_REQUESTS — server đã kèm số giây cụ thể
   // trong message; chỉ thay khi rỗng.
@@ -124,17 +132,19 @@ function LoginScreen() {
               : t("auth.submit_register")}
         </Button>
 
-        <button
-          type="button"
-          className="text-xs text-muted hover:text-text w-full text-center"
-          onClick={() => {
-            setMode(mode === "login" ? "register" : "login");
-            setFirstAdminBanner(false);
-            clearError();
-          }}
-        >
-          {mode === "login" ? t("auth.to_register") : t("auth.to_login")}
-        </button>
+        {registrationOpen === true && (
+          <button
+            type="button"
+            className="text-xs text-muted hover:text-text w-full text-center"
+            onClick={() => {
+              setMode(mode === "login" ? "register" : "login");
+              setFirstAdminBanner(false);
+              clearError();
+            }}
+          >
+            {mode === "login" ? t("auth.to_register") : t("auth.to_login")}
+          </button>
+        )}
       </Card>
     </div>
   );

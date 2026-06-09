@@ -49,7 +49,13 @@ export function FilterBuilder({ value, onChange, sources, entityFields, onPickSo
   if (!value) {
     return (
       <div className="rounded-md border border-dashed border-border p-3 text-center space-y-2">
-        <div className="text-xs text-muted">Chưa có filter nâng cao nào.</div>
+        <div className="text-[11px] text-muted leading-snug text-left">
+          Lọc dữ liệu của widget theo giá trị lấy từ widget khác (Combobox, Search, dòng đang
+          chọn…). Mỗi điều kiện so sánh{" "}
+          <span className="font-medium text-text">field của widget này</span> với{" "}
+          <span className="font-medium text-text">giá trị từ một nguồn</span>; gộp nhiều điều kiện
+          bằng AND/OR.
+        </div>
         <button
           type="button"
           onClick={() => onChange(defaultGroup())}
@@ -209,6 +215,11 @@ function LeafNode({
             </option>
           ))}
         </select>
+        {entityFields.length === 0 && (
+          <span className="text-[10px] text-warning shrink-0" title="Không có field để chọn">
+            chọn Entity có field
+          </span>
+        )}
         {/* Operator */}
         <select
           value={node.op}

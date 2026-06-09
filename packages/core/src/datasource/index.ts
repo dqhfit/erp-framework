@@ -221,4 +221,7 @@ export type {
   DslEntity,
 } from "./dsl";
 /* DSL "code" + compiler (tên-based ↔ config id-based). */
-export { compileDataSourceDsl, decompileToDsl } from "./dsl";
+export { compileDataSourceDsl, decompileToDsl, indexEntitiesByName } from "./dsl";
+/* SQL "code" cho người quen T-SQL (parse SELECT/JOIN ↔ config, không chạy SQL thô). */
+export type { SqlCompileResult } from "./sql";
+export { dataSourceToSql, sqlToDataSource } from "./sql";

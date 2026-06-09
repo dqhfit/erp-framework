@@ -361,7 +361,11 @@ textarea.input {
   outline-offset: -2px;
   background: hsl(var(--accent-2) / 0.05);
 }
-.dragging {
+/* Mờ phần tử đang kéo (palette/field-row trong các designer). LOẠI TRỪ phần tử
+   ReactFlow: ReactFlow tự gắn class .dragging lên .react-flow__pane (khi nhấn-giữ
+   canvas) và lên node đang kéo → nếu không loại trừ sẽ làm MỜ cả sơ đồ ERD khi
+   bấm-giữ vùng trống (đụng tên class). */
+.dragging:not(.react-flow__pane):not(.react-flow__node) {
   opacity: 0.4;
 }
 

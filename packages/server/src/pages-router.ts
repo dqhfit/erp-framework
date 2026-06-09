@@ -138,11 +138,13 @@ export const pagesRouter = router({
     const [row] = await ctx.db
       .select()
       .from(pages)
-      .where(and(eq(pages.id, input), eq(pages.published, true)));
+      // Chỉ trang published=true VÀ publishMode='public' mới lộ ra cho ẩn danh.
+      // Trang 'private' (chỉ cho thành viên đăng nhập) KHÔNG trả ở endpoint này.
+      .where(and(eq(pages.id, input), eq(pages.published, true), eq(pages.publishMode, "public")));
     if (!row) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "Trang không tồn tại hoặc chưa được xuất bản",
+        message: "Trang không tồn tại hoặc chưa được xuất bản công khai",
       });
     }
     return row;

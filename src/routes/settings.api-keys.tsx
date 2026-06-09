@@ -2,7 +2,7 @@
    settings.api-keys — Quản lý REST API key (sk_xxx) cho mobile
    /external/3rd-party. Scope deny-by-default (P1.3).
    Format scope: "*" | "entity:<name>:read|write" | "entity:*:read|write"
-                 | "feedback:read|propose|*" (MCP /mcp — module Phản hồi)
+                 | "feedback:read|propose|apply|*" (MCP /mcp — module Phản hồi)
    ========================================================== */
 
 import {
@@ -25,7 +25,7 @@ const apiKeys = createApiKeysClient("");
    scope phía server: hasScope (rest-api) + hasFeedbackScope (mcp-feedback).
    - "*" bao mọi thứ.
    - entity:*:<act> bao entity:<tên>:<act> (cùng action).
-   - feedback:* bao read+propose; feedback:propose bao read. */
+   - feedback:* bao read+propose+apply; feedback:propose bao read; feedback:apply bao read. */
 function scopeCovers(a: string, b: string): boolean {
   if (a === b) return true;
   if (a === "*") return true;
@@ -38,6 +38,8 @@ function scopeCovers(a: string, b: string): boolean {
   if (pa[0] === "feedback" && pb[0] === "feedback") {
     if (pa[1] === "*") return true;
     if (pa[1] === "propose") return pb[1] === "read" || pb[1] === "propose";
+    // apply (áp trạng thái trực tiếp) bao luôn read — khớp hasFeedbackScope.
+    if (pa[1] === "apply") return pb[1] === "read" || pb[1] === "apply";
     return false; // feedback:read chỉ bao chính nó (đã xử lý a===b)
   }
   return false;
@@ -65,7 +67,7 @@ function ScopeEditor({
   const [entityName, setEntityName] = useState("*");
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(false);
-  const [fbLevel, setFbLevel] = useState<"read" | "propose">("propose");
+  const [fbLevel, setFbLevel] = useState<"read" | "propose" | "apply">("propose");
 
   // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
   // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
@@ -171,6 +173,7 @@ function ScopeEditor({
             >
               <option value="read">read — chỉ đọc</option>
               <option value="propose">propose — đọc + tạo đề xuất</option>
+              <option value="apply">apply — đọc + áp trạng thái trực tiếp (AI tự set)</option>
             </Select>
           </label>
         )}

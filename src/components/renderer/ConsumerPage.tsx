@@ -465,7 +465,12 @@ function EditableListWidget({
                     key={f.name}
                     className="border border-border bg-panel-2 px-2 py-1 text-left font-semibold text-[10px] whitespace-nowrap"
                   >
-                    {f.label}
+                    <span className="flex flex-col leading-tight">
+                      <span>{f.label}</span>
+                      <span className="font-mono text-[9px] font-normal text-muted/60">
+                        {f.name}
+                      </span>
+                    </span>
                   </th>
                 ))}
                 <th className="border border-border bg-panel-2 w-8" />
@@ -560,13 +565,16 @@ function ListWidget({
   pageSize,
   loadFilters,
   loadGate,
+  emptyStateShowsAll,
 }: {
   entityId?: string;
   stateKey?: string;
   fields?: string[];
   /** Phase V: khi click row, set page-state[selectionStateKey] = row.id. */
   selectionStateKey?: string;
-  /** Legacy single-equality filter. Khi state rỗng → hide all rows. */
+  /** Legacy single-equality filter. Khi state rỗng → hide all rows
+   *  (master-detail), TRỪ KHI emptyStateShowsAll=true (combobox lọc:
+   *  "tất cả" = rỗng → hiện hết). */
   filterFromState?: { field: string; stateKey: string };
   /** V2: cây filter nâng cao. Ưu tiên hơn filterFromState. Pass-through khi
    *  state rỗng (page mới mở vẫn show full list). */
@@ -596,6 +604,10 @@ function ListWidget({
   loadGate?: string;
   /** Bind tới nguồn dữ liệu (datasource) thay entity. */
   dataSourceId?: string;
+  /** Khi filterFromState rỗng → hiện TẤT CẢ thay vì ẩn hết. Dùng cho list
+   *  bị lái bởi combobox/listbox lọc (mục "tất cả"). Mặc định false để giữ
+   *  hành vi master-detail. */
+  emptyStateShowsAll?: boolean;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -640,7 +652,8 @@ function ListWidget({
         }
         return v === stateVal || String(v) === String(stateVal);
       });
-    } else if (!Array.isArray(stateVal)) {
+    } else if (!emptyStateShowsAll && !Array.isArray(stateVal)) {
+      // Rỗng + không bật emptyStateShowsAll → ẩn hết (master-detail).
       filteredRows = [];
     }
   }
@@ -694,6 +707,8 @@ function ListWidget({
   const fieldColumns = visibleFields.map((f) => ({
     accessorKey: f.name,
     header: f.label,
+    // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
+    meta: { techName: f.name },
     cell: (c: { getValue: () => unknown }) => applyFieldFormat(f, c.getValue()),
   }));
 
@@ -1158,7 +1173,10 @@ function CollectionSection({
             <tr>
               {displayFields.map((f) => (
                 <th key={f.name} className="text-left px-2 py-1 font-medium">
-                  {f.label}
+                  <span className="flex flex-col leading-tight">
+                    <span>{f.label}</span>
+                    <span className="font-mono text-[9px] font-normal text-muted/60">{f.name}</span>
+                  </span>
                 </th>
               ))}
               <th className="w-12 px-2" />
@@ -2493,6 +2511,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         pageSize={cfg.pageSize as number | undefined}
         loadFilters={cfg.loadFilters as LoadFilters | undefined}
         loadGate={cfg.loadGate as string | undefined}
+        emptyStateShowsAll={cfg.emptyStateShowsAll === true}
       />,
       embActs,
       pageState,

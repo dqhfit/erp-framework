@@ -29,6 +29,9 @@ export interface AuthUser {
 interface AuthState {
   status: "checking" | "out" | "in";
   user: AuthUser | null;
+  /** Đăng ký có mở không (chưa có admin nào). null = chưa biết. Khi false,
+   *  màn đăng nhập ẩn nút chuyển sang đăng ký. */
+  registrationOpen: boolean | null;
   error: string;
   /** Code TRPCError gần nhất (FORBIDDEN, UNAUTHORIZED, TOO_MANY_REQUESTS…)
      — UI dùng để rẽ nhánh (vd auto-switch register→login khi first-admin-only). */
@@ -70,12 +73,20 @@ function extractTrpcError(e: unknown): { message: string; code: string } {
 export const useAuth = create<AuthState>()((set, get) => ({
   status: "checking",
   user: null,
+  registrationOpen: null,
   error: "",
   errorCode: null,
   primaryAgentId: null,
   myAgentRoles: {},
 
   check: async () => {
+    // Trạng thái đăng ký (mở khi chưa có admin) — độc lập phiên, chạy song song.
+    void auth
+      .registrationOpen()
+      .then((r) => set({ registrationOpen: r.open }))
+      .catch(() => {
+        /* server cũ / lỗi mạng — giữ null, UI mặc định ẩn đăng ký */
+      });
     try {
       const u = (await auth.me()) as AuthUser;
       enter(set, get, u);

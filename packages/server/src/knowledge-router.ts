@@ -251,6 +251,9 @@ export const knowledgeRouter = router({
       z.object({
         entityId: z.string().uuid(),
         title: z.string().optional(),
+        // "embed" (mặc định): nhúng toàn bộ record vào KB. "live": KHÔNG nhúng,
+        // truy vấn trực tiếp lúc tra cứu (on-demand) — hợp dữ liệu lớn.
+        mode: z.enum(["embed", "live"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -261,19 +264,22 @@ export const knowledgeRouter = router({
       if (!ent) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại" });
       }
+      const live = input.mode === "live";
       const [row] = await ctx.db
         .insert(knowledgeSources)
         .values({
           companyId: ctx.user.companyId,
           kind: "entity",
           title: input.title?.trim() || `Dữ liệu: ${ent.label}`,
-          status: "pending",
-          meta: { entityId: input.entityId },
+          // Live: sẵn sàng ngay (không cần nạp/embed). Embed: pending → worker nạp.
+          status: live ? "ready" : "pending",
+          chunkCount: 0,
+          meta: live ? { entityId: input.entityId, mode: "live" } : { entityId: input.entityId },
           createdBy: ctx.user.id,
         })
         .returning();
       if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await enqueueKbIngest(row.id);
+      if (!live) await enqueueKbIngest(row.id);
       return row;
     }),
 

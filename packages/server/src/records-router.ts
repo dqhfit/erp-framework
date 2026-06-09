@@ -512,9 +512,8 @@ export const recordsRouter = router({
       const before = await store.getById(ctx.user.companyId, input);
       // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
       // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
-      // TODO(hybrid Phase 4): applyCascadeOnDelete còn quét thẳng entity_records
-      // (cross-entity) — phải store-aware khi có entity tier='table'.
-      await applyCascadeOnDelete(ctx.db, ctx.user.companyId, input, ctx.user.id);
+      // Backend-aware (EAV + bảng thật); ghi qua store.
+      await applyCascadeOnDelete(ctx.db, store, ctx.user.companyId, input, ctx.user.id);
       // SOFT delete bản thân: set deleted_at; data còn nguyên cho restore.
       await store.softDelete(ctx.user.companyId, input);
       if (before) {
@@ -766,15 +765,13 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const store = getRecordStore(ctx.db);
       let deleted = 0;
       const errors: Array<{ id: string; message: string }> = [];
       for (const id of input.ids) {
         try {
-          await applyCascadeOnDelete(ctx.db, ctx.user.companyId, id, ctx.user.id);
-          await ctx.db
-            .update(entityRecords)
-            .set({ deletedAt: new Date(), updatedAt: new Date() })
-            .where(and(eq(entityRecords.id, id), eq(entityRecords.companyId, ctx.user.companyId)));
+          await applyCascadeOnDelete(ctx.db, store, ctx.user.companyId, id, ctx.user.id);
+          await store.softDelete(ctx.user.companyId, id);
           deleted += 1;
         } catch (e) {
           errors.push({ id, message: (e as Error).message });

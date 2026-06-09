@@ -81,6 +81,120 @@ function toHits(rows: Row[]): KnowledgeHit[] {
   );
 }
 
+/* ── On-demand: nguồn entity "live" (không embed) ─────────────
+   Thay vì nhúng toàn bộ entity vào KB (chậm/treo với dữ liệu lớn — xem
+   feedback Tri thức), nguồn live được TRUY VẤN TRỰC TIẾP lúc search bằng
+   FTS trên entity_records.search_tsv. Trả mỗi bản ghi khớp thành 1 hit. */
+type LiveSrcRow = { id: string; title: string; entity_id: string | null };
+type LiveRecRow = { id: string; data: Record<string, unknown> | null; rank: number | string };
+
+async function searchLiveEntities(
+  db: DB,
+  companyId: string,
+  q: string,
+  opts: KnowledgeSearchOpts,
+  limit: number,
+): Promise<KnowledgeHit[]> {
+  // Chỉ áp khi không lọc kind, hoặc lọc đúng "entity".
+  if (opts.sourceKind && opts.sourceKind !== "entity") return [];
+
+  const conds: SQL[] = [
+    sql`company_id = ${companyId}::uuid`,
+    sql`kind = 'entity'`,
+    sql`meta->>'mode' = 'live'`,
+  ];
+  if (opts.acl) conds.push(knowledgeAccessibleSql(opts.acl));
+  if (opts.sourceIds && opts.sourceIds.length > 0) {
+    conds.push(
+      sql`id IN (${sql.join(
+        opts.sourceIds.map((sid) => sql`${sid}::uuid`),
+        sql`, `,
+      )})`,
+    );
+  }
+  const sources = (await db.execute(sql`
+    SELECT id, title, meta->>'entityId' AS entity_id
+    FROM knowledge_sources
+    WHERE ${sql.join(conds, sql` AND `)}
+  `)) as unknown as LiveSrcRow[];
+  const srcList = (Array.isArray(sources) ? sources : []).filter((s) => s.entity_id);
+  if (srcList.length === 0) return [];
+
+  // Nhãn field để render bản ghi → "Nhãn: giá trị".
+  const entityIds = [...new Set(srcList.map((s) => s.entity_id as string))];
+  const ents = (await db.execute(sql`
+    SELECT id, fields FROM entities
+    WHERE company_id = ${companyId}::uuid
+      AND id IN (${sql.join(
+        entityIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})
+  `)) as unknown as Array<{ id: string; fields: Array<{ name: string; label?: string }> | null }>;
+  const fieldsById = new Map(ents.map((e) => [e.id, e.fields ?? []]));
+
+  const perSource = Math.min(limit, 5);
+  const hits: KnowledgeHit[] = [];
+  for (const s of srcList) {
+    const entityId = s.entity_id as string;
+    const recs = (await db.execute(sql`
+      SELECT id, data, ts_rank(search_tsv, websearch_to_tsquery('simple', ${q})) AS rank
+      FROM entity_records
+      WHERE entity_id = ${entityId}::uuid
+        AND company_id = ${companyId}::uuid
+        AND deleted_at IS NULL
+        AND search_tsv @@ websearch_to_tsquery('simple', ${q})
+      ORDER BY rank DESC
+      LIMIT ${perSource}
+    `)) as unknown as LiveRecRow[];
+    const fields = fieldsById.get(entityId) ?? [];
+    for (const r of Array.isArray(recs) ? recs : []) {
+      const data = (r.data ?? {}) as Record<string, unknown>;
+      const lines: string[] = [];
+      for (const f of fields) {
+        const v = data[f.name];
+        if (v === undefined || v === null || v === "") continue;
+        lines.push(
+          `${f.label || f.name}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`,
+        );
+      }
+      if (lines.length === 0) continue;
+      hits.push({
+        chunkId: `live:${r.id}`,
+        sourceId: s.id,
+        sourceTitle: s.title,
+        sourceKind: "entity",
+        seq: 0,
+        content: lines.join("\n"),
+        score: Number(r.rank) || 0,
+      });
+    }
+  }
+  hits.sort((a, b) => b.score - a.score);
+  return hits.slice(0, limit);
+}
+
+/** Gộp hit từ chunk (embed) + hit live (entity on-demand). Dành ~1/3 số ô
+ *  cho live khi có (để dữ liệu trực tiếp luôn nổi lên dù thang điểm khác),
+ *  phần còn lại lấp bằng chunk, dư thì thêm live. */
+function mergeHits(
+  chunkHits: KnowledgeHit[],
+  liveHits: KnowledgeHit[],
+  limit: number,
+): KnowledgeHit[] {
+  if (liveHits.length === 0) return chunkHits.slice(0, limit);
+  const liveSlots = Math.min(liveHits.length, Math.max(1, Math.floor(limit / 3)));
+  const picked: KnowledgeHit[] = [...liveHits.slice(0, liveSlots)];
+  for (const h of chunkHits) {
+    if (picked.length >= limit) break;
+    picked.push(h);
+  }
+  for (const h of liveHits.slice(liveSlots)) {
+    if (picked.length >= limit) break;
+    picked.push(h);
+  }
+  return picked.slice(0, limit);
+}
+
 /** Tìm các đoạn liên quan nhất với `query` trong phạm vi công ty. */
 export async function knowledgeSearch(
   db: DB,
@@ -138,7 +252,8 @@ export async function knowledgeSearch(
       ORDER BY sim DESC
       LIMIT ${limit}
     `)) as unknown as Row[];
-    return toHits(rows);
+    const chunkHits = toHits(rows);
+    return mergeHits(chunkHits, await searchLiveEntities(db, companyId, q, opts, limit), limit);
   }
 
   // ── Hybrid: vec CTE (cosine) + fts CTE, hoà bằng RRF. ──
@@ -180,5 +295,6 @@ export async function knowledgeSearch(
     LIMIT ${limit}
   `)) as unknown as Row[];
 
-  return toHits(rows);
+  const chunkHits = toHits(rows);
+  return mergeHits(chunkHits, await searchLiveEntities(db, companyId, q, opts, limit), limit);
 }

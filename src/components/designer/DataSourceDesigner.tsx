@@ -33,6 +33,16 @@ export interface FlatCol {
   type?: string;
 }
 
+/** 1 quan hệ cần thêm (AddRelation → addRelations). */
+interface RelationSpec {
+  fromRid: string;
+  fromField: string;
+  targetEntityId: string;
+  toField: string; // "id" = khớp record id; khác = join cột↔cột
+  joinKind: "left" | "inner";
+  alias: string;
+}
+
 const dsApi = createObjectsClient("");
 const EMPTY: DataSourceConfig = { baseEntityId: "", relations: [], fields: [] };
 
@@ -82,24 +92,28 @@ export function DataSourceDesigner({ id }: { id: string }) {
   };
 
   /* ── Relations ── */
-  const addRelation = (spec: {
-    fromRid: string;
-    fromField: string;
-    targetEntityId: string;
-    toField: string; // "id" = khớp record id; khác = join cột↔cột
-    joinKind: "left" | "inner";
-    alias: string;
-  }) => {
-    const rel: DataSourceRelation = {
-      id: crypto.randomUUID(),
-      alias: spec.alias.trim() || slugify(entById(spec.targetEntityId)?.name || ""),
-      fromRelationId: spec.fromRid === "base" ? null : spec.fromRid,
-      fromField: spec.fromField,
-      toField: spec.toField === "id" ? undefined : spec.toField,
-      targetEntityId: spec.targetEntityId,
-      joinKind: spec.joinKind,
-    };
-    update({ relations: [...cfg.relations, rel] });
+  // Thêm NHIỀU quan hệ cùng lúc — 1 lần update (tránh stale-closure khi loop).
+  const addRelations = (specs: RelationSpec[]) => {
+    if (specs.length === 0) return;
+    // Alias phải UNIQUE (mkKey projection dùng alias) — khử trùng so với relation đã có + trong lô.
+    const usedAlias = new Set(cfg.relations.map((r) => r.alias));
+    const newRels: DataSourceRelation[] = specs.map((spec) => {
+      let alias = spec.alias.trim() || slugify(entById(spec.targetEntityId)?.name || "");
+      const baseAlias = alias || "rel";
+      let n = 2;
+      while (!alias || usedAlias.has(alias)) alias = `${baseAlias}_${n++}`;
+      usedAlias.add(alias);
+      return {
+        id: crypto.randomUUID(),
+        alias,
+        fromRelationId: spec.fromRid === "base" ? null : spec.fromRid,
+        fromField: spec.fromField,
+        toField: spec.toField === "id" ? undefined : spec.toField,
+        targetEntityId: spec.targetEntityId,
+        joinKind: spec.joinKind,
+      };
+    });
+    update({ relations: [...cfg.relations, ...newRels] });
   };
   const removeRelation = (rid: string) => {
     // Xoá đệ quy cả relation con + field tham chiếu các node bị xoá.
@@ -299,14 +313,14 @@ export function DataSourceDesigner({ id }: { id: string }) {
                 </button>
               </div>
             ))}
-            {/* Thêm quan hệ: chọn node nguồn + cột nguồn + entity đích + cột đích */}
+            {/* Thêm quan hệ: chọn node cha + nhiều đối tượng đích (liên kết mặc định, sửa được) */}
             <AddRelation
               nodes={nodes}
               nodeAlias={nodeAlias}
               nodeFields={nodeFields}
               entities={entities}
               entById={entById}
-              onAdd={addRelation}
+              onAdd={addRelations}
               fieldDisp={fieldDisp}
             />
           </Card>
@@ -567,10 +581,23 @@ export function DataSourceDesigner({ id }: { id: string }) {
   );
 }
 
-/* ── Sub: thêm quan hệ (node nguồn + cột nguồn + entity đích + cột đích) ──
-   Hỗ trợ cả lookup (khớp record id) lẫn join cột↔cột (khớp cột bất kỳ). Khi
-   chọn entity đích, nếu node cha có field lookup trỏ tới nó → tự điền cột
-   nguồn = lookup đó + cột đích = id (lối tắt cho quan hệ lookup cổ điển). */
+/* ── Sub: thêm quan hệ (chọn NHIỀU đối tượng đích cùng lúc) ──
+   Chọn node cha → thêm nhiều đối tượng vào danh sách; mỗi đối tượng tự suy
+   LIÊN KẾT MẶC ĐỊNH (node cha có lookup trỏ tới nó → cột nguồn = lookup,
+   cột đích = id; nếu không → khớp PK đích, cột nguồn để user chọn). Mỗi dòng
+   sửa được cột nguồn/đích, alias, join. Bấm "Thêm" tạo tất cả 1 lần. */
+interface AddRelRow {
+  /** id tạm (key React + remove); KHÔNG phải relation id. */
+  rid: string;
+  targetEntityId: string;
+  fromField: string;
+  toField: string;
+  joinKind: "left" | "inner";
+  alias: string;
+  /** Liên kết suy tự động từ FK (lookup) — để hiển thị badge. */
+  autoLinked: boolean;
+}
+
 function AddRelation({
   nodes,
   nodeAlias,
@@ -585,119 +612,186 @@ function AddRelation({
   nodeFields: (rid: string) => EntityField[];
   entities: ReturnType<typeof useUserObjects.getState>["entities"];
   entById: (eid?: string) => (typeof entities)[number] | undefined;
-  onAdd: (spec: {
-    fromRid: string;
-    fromField: string;
-    targetEntityId: string;
-    toField: string;
-    joinKind: "left" | "inner";
-    alias: string;
-  }) => void;
+  onAdd: (specs: RelationSpec[]) => void;
   /** Cách hiển thị tên trường (nhãn ↔ tên cột); mặc định tên cột. */
   fieldDisp?: (f: { name: string; label?: string }) => string;
 }) {
   const [fromRid, setFromRid] = useState("base");
-  const [targetEntityId, setTargetEntityId] = useState("");
-  const [fromField, setFromField] = useState("");
-  const [toField, setToField] = useState("id");
-  const [joinKind, setJoinKind] = useState<"left" | "inner">("left");
-  const [alias, setAlias] = useState("");
+  const [rows, setRows] = useState<AddRelRow[]>([]);
 
   const parentFields = nodeFields(fromRid);
-  const targetEnt = entById(targetEntityId);
 
-  const pickTarget = (eid: string) => {
-    setTargetEntityId(eid);
-    const tgt = entById(eid);
-    setAlias(slugify(tgt?.name || ""));
-    // Gợi ý lookup→id nếu node cha có lookup trỏ tới target.
-    const lookup = parentFields.find((f) => isLookup(f) && f.ref === eid);
-    if (lookup) {
-      setFromField(lookup.name);
-      setToField("id");
-    } else {
-      const pkName = tgt?.primaryKey
-        ? (tgt.fields.find((f) => f.id === tgt.primaryKey)?.name ?? "id")
-        : "id";
-      setToField(pkName);
-    }
+  /** Dựng dòng với liên kết mặc định theo node cha. */
+  const buildRow = (parentRid: string, targetEntityId: string): AddRelRow => {
+    const tgt = entById(targetEntityId);
+    const lookup = nodeFields(parentRid).find((f) => isLookup(f) && f.ref === targetEntityId);
+    const pkName = tgt?.primaryKey
+      ? (tgt.fields.find((f) => f.id === tgt.primaryKey)?.name ?? "id")
+      : "id";
+    return {
+      rid: crypto.randomUUID(),
+      targetEntityId,
+      alias: slugify(tgt?.name || ""),
+      fromField: lookup ? lookup.name : "",
+      toField: lookup ? "id" : pkName,
+      joinKind: "left",
+      autoLinked: !!lookup,
+    };
   };
 
+  // Đổi node cha → suy lại liên kết mặc định cho mọi dòng (giữ alias + join đã sửa).
+  const changeParent = (rid: string) => {
+    setFromRid(rid);
+    setRows((rs) =>
+      rs.map((r) => {
+        const d = buildRow(rid, r.targetEntityId);
+        return { ...d, rid: r.rid, alias: r.alias, joinKind: r.joinKind };
+      }),
+    );
+  };
+  const addRow = (eid: string) =>
+    setRows((rs) =>
+      rs.some((r) => r.targetEntityId === eid) ? rs : [...rs, buildRow(fromRid, eid)],
+    );
+  const patchRow = (rid: string, patch: Partial<AddRelRow>) =>
+    setRows((rs) => rs.map((r) => (r.rid === rid ? { ...r, ...patch } : r)));
+  const removeRow = (rid: string) => setRows((rs) => rs.filter((r) => r.rid !== rid));
+
+  const complete = rows.length > 0 && rows.every((r) => !!r.fromField);
   const submit = () => {
-    if (!targetEntityId || !fromField) return;
-    onAdd({ fromRid, fromField, targetEntityId, toField, joinKind, alias });
-    // reset (giữ fromRid để thêm tiếp nhiều quan hệ cùng node).
-    setTargetEntityId("");
-    setFromField("");
-    setToField("id");
-    setAlias("");
+    const ready = rows.filter((r) => r.targetEntityId && r.fromField);
+    if (ready.length === 0) return;
+    onAdd(
+      ready.map((r) => ({
+        fromRid,
+        fromField: r.fromField,
+        targetEntityId: r.targetEntityId,
+        toField: r.toField,
+        joinKind: r.joinKind,
+        alias: r.alias,
+      })),
+    );
+    setRows([]); // reset danh sách, giữ fromRid để thêm tiếp lô khác.
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-2 border-t border-border pt-2">
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Từ node</p>
-        <SearchableSelect
-          className="w-36"
-          value={fromRid}
-          onChange={(v) => {
-            setFromRid(v);
-            setFromField("");
-          }}
-          options={nodes.map((n) => ({ value: n, label: nodeAlias(n) }))}
-        />
+    <div className="space-y-2 border-t border-border pt-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <p className="mb-1 text-[11px] text-muted">Nối từ node (cha)</p>
+          <SearchableSelect
+            className="w-40"
+            value={fromRid}
+            onChange={changeParent}
+            options={nodes.map((n) => ({ value: n, label: nodeAlias(n) }))}
+          />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <p className="mb-1 text-[11px] text-muted">
+            Đối tượng đích (chọn nhiều — mỗi lần chọn thêm 1 vào danh sách)
+          </p>
+          <SearchableSelect
+            className="w-full"
+            value=""
+            onChange={addRow}
+            options={entities
+              .filter((e) => !rows.some((r) => r.targetEntityId === e.id))
+              .map((e) => ({ value: e.id, label: e.name }))}
+            placeholder="Thêm đối tượng vào danh sách…"
+            searchPlaceholder="Tìm entity…"
+          />
+        </div>
       </div>
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Cột nguồn</p>
-        <SearchableSelect
-          className="w-40"
-          value={fromField}
-          onChange={setFromField}
-          options={parentFields.map((f) => ({ value: f.name, label: fieldDisp(f) }))}
-          placeholder="Chọn cột…"
-        />
-      </div>
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Đối tượng đích</p>
-        <SearchableSelect
-          className="w-40"
-          value={targetEntityId}
-          onChange={pickTarget}
-          options={entities.map((e) => ({ value: e.id, label: e.name }))}
-          placeholder="Chọn entity…"
-          searchPlaceholder="Tìm entity…"
-        />
-      </div>
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Cột đích (khớp)</p>
-        <SearchableSelect
-          className="w-40"
-          value={toField}
-          onChange={setToField}
-          options={[
-            { value: "id", label: "id (record id)" },
-            ...(targetEnt?.fields.map((f) => ({ value: f.name, label: fieldDisp(f) })) ?? []),
-          ]}
-        />
-      </div>
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Alias</p>
-        <Input className="h-9 w-32" value={alias} onChange={(e) => setAlias(e.target.value)} />
-      </div>
-      <div>
-        <p className="mb-1 text-[11px] text-muted">Join</p>
-        <SearchableSelect
-          className="w-24"
-          value={joinKind}
-          onChange={(v) => setJoinKind(v as "left" | "inner")}
-          options={[
-            { value: "left", label: "left" },
-            { value: "inner", label: "inner" },
-          ]}
-        />
-      </div>
-      <Button onClick={submit} disabled={!targetEntityId || !fromField} className="h-9">
-        Thêm quan hệ
+
+      {rows.length === 0 ? (
+        <p className="text-[11px] text-muted italic">
+          Chọn đối tượng ở ô trên để thêm vào danh sách — liên kết mặc định tự suy theo khoá ngoại,
+          sửa được bên dưới.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {rows.map((row) => {
+            const tgt = entById(row.targetEntityId);
+            return (
+              <div
+                key={row.rid}
+                className="flex flex-wrap items-end gap-2 rounded border border-border p-2"
+              >
+                <span className="flex items-center gap-1.5 self-center text-xs font-medium text-accent min-w-[100px]">
+                  {tgt?.name ?? row.targetEntityId}
+                  {row.autoLinked ? (
+                    <span className="text-[9px] px-1 py-0.5 rounded-full bg-success/15 text-success">
+                      mặc định
+                    </span>
+                  ) : (
+                    <span className="text-[9px] px-1 py-0.5 rounded-full bg-bg-soft text-muted">
+                      tự đặt
+                    </span>
+                  )}
+                </span>
+                <div>
+                  <p className="mb-1 text-[10px] text-muted">Cột nguồn</p>
+                  <SearchableSelect
+                    className="w-36"
+                    value={row.fromField}
+                    onChange={(v) => patchRow(row.rid, { fromField: v })}
+                    options={parentFields.map((f) => ({ value: f.name, label: fieldDisp(f) }))}
+                    placeholder="Chọn cột…"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-[10px] text-muted">Cột đích (khớp)</p>
+                  <SearchableSelect
+                    className="w-36"
+                    value={row.toField}
+                    onChange={(v) => patchRow(row.rid, { toField: v })}
+                    options={[
+                      { value: "id", label: "id (record id)" },
+                      ...(tgt?.fields.map((f) => ({ value: f.name, label: fieldDisp(f) })) ?? []),
+                    ]}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-[10px] text-muted">Alias</p>
+                  <Input
+                    className="h-9 w-28"
+                    value={row.alias}
+                    onChange={(e) => patchRow(row.rid, { alias: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-[10px] text-muted">Join</p>
+                  <SearchableSelect
+                    className="w-24"
+                    value={row.joinKind}
+                    onChange={(v) => patchRow(row.rid, { joinKind: v as "left" | "inner" })}
+                    options={[
+                      { value: "left", label: "left" },
+                      { value: "inner", label: "inner" },
+                    ]}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeRow(row.rid)}
+                  className="ml-auto self-center text-muted hover:text-danger"
+                  title="Bỏ khỏi danh sách"
+                >
+                  <I.X size={14} />
+                </button>
+                {!row.fromField && (
+                  <p className="basis-full text-[10px] text-warning">
+                    Chưa suy ra được liên kết mặc định — chọn "Cột nguồn" để nối.
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Button onClick={submit} disabled={!complete} className="h-9">
+        Thêm{rows.length > 0 ? ` ${rows.length} quan hệ` : " quan hệ"}
       </Button>
     </div>
   );

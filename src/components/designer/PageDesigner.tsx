@@ -8,7 +8,16 @@ import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayTo
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
-import { Button, Chip, EmptyState, FormField, Input, Select, Switch } from "@/components/ui";
+import {
+  Button,
+  Chip,
+  EmptyState,
+  FormField,
+  Input,
+  Select,
+  Switch,
+  Textarea,
+} from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
@@ -1244,6 +1253,24 @@ export function PageDesigner({ pageId }: Props) {
                           }
                         />
                       </FormField>
+                      {/* Widget HTML / Ghi chú — ô nhập nội dung (trước đây
+                          thiếu inspector nên "không ghi chú được"). */}
+                      {sel.kind === "html" && (
+                        <FormField
+                          label="Nội dung HTML / Ghi chú"
+                          hint="Nhập HTML hoặc ghi chú; hiển thị trong khung sandbox ở trang."
+                        >
+                          <Textarea
+                            className="font-mono"
+                            rows={8}
+                            placeholder={"<h3>Ghi chú</h3>\n<p>Nội dung…</p>"}
+                            value={(sel.config.html as string) ?? ""}
+                            onChange={(e) =>
+                              update(sel.id, { config: { ...sel.config, html: e.target.value } })
+                            }
+                          />
+                        </FormField>
+                      )}
                       <div className="grid grid-cols-2 gap-2">
                         <FormField label={t("field.width")}>
                           <Input
@@ -1500,6 +1527,26 @@ export function PageDesigner({ pageId }: Props) {
                                   />
                                 </div>
                               </details>
+                            </div>
+                          )}
+
+                          {sel.kind === "list" && sel.config.filterFromState != null && (
+                            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm">Rỗng = hiện tất cả</span>
+                                <span className="text-[11px] text-muted">
+                                  Khi "Lọc theo" chưa chọn gì (vd Combobox để "— tất cả —") thì hiện
+                                  toàn bộ thay vì ẩn hết. Tắt = master-detail (ẩn khi chưa chọn).
+                                </span>
+                              </div>
+                              <Switch
+                                checked={sel.config.emptyStateShowsAll === true}
+                                onChange={(v) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, emptyStateShowsAll: v },
+                                  })
+                                }
+                              />
                             </div>
                           )}
 

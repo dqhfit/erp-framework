@@ -134,6 +134,26 @@ async function setStatusGroup(
   return updIds.length;
 }
 
+/** Áp TRỰC TIẾP một trạng thái cho nhóm feedback — dùng cho MCP apply tool
+ *  (AI set in_progress/done ngay, KHÔNG qua proposal/duyệt). Scope companyId,
+ *  chỉ đổi mục khác status hiện tại, bỏ mục đã xoá. Trả số mục thực sự đổi
+ *  kèm danh sách cần notify (caller tự gửi nếu muốn). */
+export async function setFeedbackStatusDirect(
+  db: DB,
+  opts: {
+    companyId: string;
+    ids: string[];
+    status: (typeof FEEDBACK_STATUSES)[number];
+    resolutionNote?: string;
+  },
+): Promise<{ updated: number; notify: NotifyTarget[] }> {
+  const notify: NotifyTarget[] = [];
+  const updated = await db.transaction((tx) =>
+    setStatusGroup(tx, opts.companyId, opts.ids, opts.status, opts.resolutionNote, notify),
+  );
+  return { updated, notify };
+}
+
 /**
  * Thực thi danh sách hành động của 1 proposal trong 1 transaction.
  * Mọi truy vấn scope theo companyId (chống chéo tenant). Idempotent ở

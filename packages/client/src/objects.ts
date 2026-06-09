@@ -186,6 +186,9 @@ export function createObjectsClient(baseUrl: string) {
       /** Đọc dữ liệu joined (bảng phẳng). */
       listRecords: (dataSourceId: string, query?: DataSourceQuery) =>
         trpc.dataSources.listRecords.query({ dataSourceId, query }),
+      /** Chạy thử 1 config tuỳ ý (chưa lưu) — cho editor SQL "chạy vùng chọn". */
+      preview: (config: DataSourceConfig, query?: DataSourceQuery) =>
+        trpc.dataSources.preview.query({ config, query }),
       getRecord: (dataSourceId: string, recordId: string) =>
         trpc.dataSources.getRecord.query({ dataSourceId, recordId }),
       createRecord: (dataSourceId: string, data: Record<string, unknown>) =>

@@ -3,8 +3,15 @@
    Admin/Editor quan ly nhom, gan user va trang vao nhom.
    Viewer chi thay trang co nhom khop hoac khong han che nhom.
    ========================================================== */
-import { pageViewerGroups, userViewerGroups, viewerGroups } from "@erp-framework/db";
-import { and, eq } from "drizzle-orm";
+import {
+  companyMembers,
+  pages,
+  pageViewerGroups,
+  userViewerGroups,
+  viewerGroups,
+} from "@erp-framework/db";
+import { TRPCError } from "@trpc/server";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { approvedProcedure, protectedProcedure, rbacProcedure, router } from "./trpc";
 
@@ -69,11 +76,33 @@ export const viewerGroupsRouter = router({
   setMembers: rbacProcedure("edit", "page")
     .input(z.object({ groupId: z.string().uuid(), userIds: z.array(z.string().uuid()) }))
     .mutation(async ({ ctx, input }) => {
+      // Nhóm PHẢI thuộc công ty đang chọn (chống editor tenant A ghi đè nhóm tenant B).
+      const [grp] = await ctx.db
+        .select({ id: viewerGroups.id })
+        .from(viewerGroups)
+        .where(
+          and(eq(viewerGroups.id, input.groupId), eq(viewerGroups.companyId, ctx.user.companyId)),
+        );
+      if (!grp) throw new TRPCError({ code: "NOT_FOUND", message: "Nhóm không tồn tại" });
+      // Chỉ nhận user là thành viên công ty (chống thêm user ngoài tenant → lộ trang).
+      const validUserIds = input.userIds.length
+        ? (
+            await ctx.db
+              .select({ userId: companyMembers.userId })
+              .from(companyMembers)
+              .where(
+                and(
+                  eq(companyMembers.companyId, ctx.user.companyId),
+                  inArray(companyMembers.userId, input.userIds),
+                ),
+              )
+          ).map((m) => m.userId)
+        : [];
       await ctx.db.delete(userViewerGroups).where(eq(userViewerGroups.groupId, input.groupId));
-      if (input.userIds.length > 0) {
+      if (validUserIds.length > 0) {
         await ctx.db
           .insert(userViewerGroups)
-          .values(input.userIds.map((userId) => ({ userId, groupId: input.groupId })));
+          .values(validUserIds.map((userId) => ({ userId, groupId: input.groupId })));
       }
     }),
 
@@ -81,11 +110,31 @@ export const viewerGroupsRouter = router({
   setPageGroups: rbacProcedure("edit", "page")
     .input(z.object({ pageId: z.string().uuid(), groupIds: z.array(z.string().uuid()) }))
     .mutation(async ({ ctx, input }) => {
+      // Trang PHẢI thuộc công ty (chống sửa cấu hình visibility trang tenant khác).
+      const [pg] = await ctx.db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)));
+      if (!pg) throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại" });
+      // Chỉ nhận nhóm thuộc công ty (chống gắn nhóm chéo tenant vào trang).
+      const validGroupIds = input.groupIds.length
+        ? (
+            await ctx.db
+              .select({ id: viewerGroups.id })
+              .from(viewerGroups)
+              .where(
+                and(
+                  eq(viewerGroups.companyId, ctx.user.companyId),
+                  inArray(viewerGroups.id, input.groupIds),
+                ),
+              )
+          ).map((g) => g.id)
+        : [];
       await ctx.db.delete(pageViewerGroups).where(eq(pageViewerGroups.pageId, input.pageId));
-      if (input.groupIds.length > 0) {
+      if (validGroupIds.length > 0) {
         await ctx.db
           .insert(pageViewerGroups)
-          .values(input.groupIds.map((groupId) => ({ pageId: input.pageId, groupId })));
+          .values(validGroupIds.map((groupId) => ({ pageId: input.pageId, groupId })));
       }
     }),
 
