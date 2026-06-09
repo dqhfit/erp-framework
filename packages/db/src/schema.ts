@@ -255,6 +255,26 @@ export const entityRecords = pgTable(
   }),
 );
 
+/* Locator record->entity cho lưu trữ HYBRID (Phase 1). CHỈ chứa record của
+   entity tier='table' (sống ở bảng er_<entityId>, KHÔNG ở entity_records).
+   Cho phép thao tác chỉ có recordId (get/update/delete) định tuyến đúng bảng.
+   Xem memory project_hybrid_storage_migration. */
+export const recordLocator = pgTable(
+  "record_locator",
+  {
+    id: uuid("id").primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    companyIdx: index("record_locator_company_idx").on(t.companyId),
+  }),
+);
+
 /* Embedding semantic search per record — gom field marked embedSearchable
    thành 1 chuỗi → embed → index. 768 chiều cho nomic-embed-text. */
 export const entityRecordEmbeddings = pgTable(

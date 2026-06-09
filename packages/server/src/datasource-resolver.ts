@@ -26,15 +26,17 @@ import {
   type FilterOp,
   type Role,
 } from "@erp-framework/core";
-import { entityRecords } from "@erp-framework/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { entities } from "@erp-framework/db";
+import { and, eq, inArray } from "drizzle-orm";
 import type { DB } from "./db";
 import {
-  buildRecordWhere,
-  decryptDataOut,
-  loadEntityFields,
-  stripUnreadableFields,
-} from "./router-helpers";
+  entityByRidOf,
+  projectJoinRow,
+  type StorageByEntity,
+  tryBuildJoinQuery,
+} from "./datasource-sql-join";
+import { getRecordStore, isHybridTablesEnabled } from "./record-store";
+import { decryptDataOut, loadEntityFields, stripUnreadableFields } from "./router-helpers";
 
 type Cond = { op: FilterOp; value: unknown };
 type FilterMap = Record<string, Cond>;
@@ -143,6 +145,7 @@ async function stitchAndProject(
   baseRows: BaseRow[],
   baseFields: EntityFieldDef[],
 ): Promise<DataSourceRow[]> {
+  const store = getRecordStore(db);
   // node data + target id theo từng base row
   const nodes: Record<string, Record<string, unknown> | null>[] = baseRows.map((r) => ({
     base: stripUnreadableFields(baseFields, decryptDataOut(baseFields, r.data), role),
@@ -171,26 +174,9 @@ async function stitchAndProject(
     // Map khoá → { id record thật, data đã decrypt+strip }. First-match wins.
     const entryMap = new Map<string, { id: string; data: Record<string, unknown> }>();
     if (distinct.length > 0) {
-      // Khớp theo field JSON non-PK, hoặc theo id (cast ::text). Tách 2 lời gọi
-      // inArray thay vì ternary chung — ternary làm TS suy kiểu lẫn PgColumn
-      // (xung đột type-identity drizzle qua ranh giới package).
-      // Cast id sang text: vừa khớp lookup uuid (text canonical == param), vừa
-      // KHÔNG ném lỗi "invalid input syntax for type uuid" khi join cột↔cột
-      // nhầm về id mà giá trị là mã nghiệp vụ (vd "DH-2026-001") → trả 0 match.
-      const keyMatch = toField
-        ? inArray(sql`(${entityRecords.data} ->> ${toField})`, distinct)
-        : inArray(sql`(${entityRecords.id})::text`, distinct);
-      const recs = await db
-        .select()
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.companyId, companyId),
-            eq(entityRecords.entityId, rel.targetEntityId),
-            keyMatch,
-            sql`${entityRecords.deletedAt} IS NULL`,
-          ),
-        );
+      // findByKeyIn: toField null → khớp id::text (lookup cổ điển); else data->>toField.
+      // (Store xử lý cast id::text → không throw khi giá trị là mã nghiệp vụ.)
+      const recs = await store.findByKeyIn(companyId, rel.targetEntityId, toField, distinct);
       for (const rec of recs) {
         const data = rec.data as Record<string, unknown>;
         const key = toField
@@ -251,17 +237,12 @@ async function stitchAndProject(
       targetFields = await loadEntityFields(db, companyId, agg.targetEntityId);
       fieldCache.set(agg.targetEntityId, targetFields);
     }
-    const targetRecs = (await db
-      .select()
-      .from(entityRecords)
-      .where(
-        and(
-          eq(entityRecords.companyId, companyId),
-          eq(entityRecords.entityId, agg.targetEntityId),
-          inArray(sql`(${entityRecords.data} ->> ${agg.targetField})`, distinct),
-          sql`${entityRecords.deletedAt} IS NULL`,
-        ),
-      )) as Array<{ id: string; data: Record<string, unknown> }>;
+    const targetRecs = (await store.findByKeyIn(
+      companyId,
+      agg.targetEntityId,
+      agg.targetField,
+      distinct,
+    )) as Array<{ id: string; data: Record<string, unknown> }>;
 
     // N-N: nạp record far (entity thật) để đọc valueField — trừ count.
     let farMap: Map<string, Record<string, unknown>> | null = null;
@@ -283,19 +264,12 @@ async function stitchAndProject(
       }
       farMap = new Map();
       if (farIds.length > 0) {
-        const farRecs = (await db
-          .select()
-          .from(entityRecords)
-          .where(
-            and(
-              eq(entityRecords.companyId, companyId),
-              eq(entityRecords.entityId, via.farEntityId),
-              farKey
-                ? inArray(sql`(${entityRecords.data} ->> ${farKey})`, farIds)
-                : inArray(sql`(${entityRecords.id})::text`, farIds),
-              sql`${entityRecords.deletedAt} IS NULL`,
-            ),
-          )) as Array<{ id: string; data: Record<string, unknown> }>;
+        const farRecs = (await store.findByKeyIn(
+          companyId,
+          via.farEntityId,
+          farKey,
+          farIds,
+        )) as Array<{ id: string; data: Record<string, unknown> }>;
         for (const fr of farRecs) {
           const k = farKey ? String(fr.data[farKey] ?? "") : String(fr.id);
           if (k && !farMap.has(k)) {
@@ -374,6 +348,46 @@ async function stitchAndProject(
   });
 }
 
+/**
+ * Phase 3 — nhánh JOIN SQL thật khi base + mọi relation đều tier='table'.
+ * Trả null nếu không đủ điều kiện (caller dùng batch-stitch). Postgres lo
+ * join/filter/sort/paginate → filter/sort field JOIN đúng trên TOÀN tập (gỡ
+ * giới hạn v1). Decrypt/RBAC-strip/computed làm ở JS sau fetch.
+ */
+async function tryJoinResolveList(
+  db: DB,
+  companyId: string,
+  role: Role,
+  cfg: DataSourceConfig,
+  query: ResolveQuery,
+): Promise<{ rows: DataSourceRow[]; total: number } | null> {
+  const eids = [...new Set([cfg.baseEntityId, ...cfg.relations.map((r) => r.targetEntityId)])];
+  const rows = await db
+    .select({ id: entities.id, fields: entities.fields, meta: entities.meta })
+    .from(entities)
+    .where(and(eq(entities.companyId, companyId), inArray(entities.id, eids)));
+  const storages: StorageByEntity = {};
+  const fieldsByEntity: Record<string, EntityFieldDef[]> = {};
+  for (const r of rows) {
+    const storage = (r.meta as { storage?: { tier?: string } } | null)?.storage;
+    storages[r.id] = storage?.tier === "table" ? (storage as StorageByEntity[string]) : null;
+    fieldsByEntity[r.id] = (r.fields ?? []) as EntityFieldDef[];
+  }
+  const built = tryBuildJoinQuery(cfg, storages, companyId, {
+    filters: query.filters,
+    q: query.q,
+    sort: query.sort,
+    limit: query.limit ?? cfg.defaultLimit ?? 100,
+    offset: query.offset ?? 0,
+  });
+  if (!built) return null;
+  const ebr = entityByRidOf(cfg);
+  const flat = (await db.execute(built.rowsSql)) as unknown as Record<string, unknown>[];
+  const out = flat.map((fr) => projectJoinRow(cfg, fr, role, ebr, fieldsByEntity));
+  const counted = (await db.execute(built.countSql)) as unknown as Array<{ count: number }>;
+  return { rows: out, total: Number(counted[0]?.count ?? 0) };
+}
+
 export async function resolveList(
   db: DB,
   companyId: string,
@@ -382,6 +396,12 @@ export async function resolveList(
   query: ResolveQuery,
 ): Promise<{ rows: DataSourceRow[]; total: number }> {
   if (!cfg.baseEntityId) return { rows: [], total: 0 };
+
+  // Phase 3: ưu tiên JOIN SQL thật (chỉ khi HYBRID bật + đủ điều kiện).
+  if (isHybridTablesEnabled()) {
+    const joined = await tryJoinResolveList(db, companyId, role, cfg, query);
+    if (joined) return joined;
+  }
 
   const fieldByKey = new Map(cfg.fields.map((f) => [f.key, f]));
 
@@ -404,27 +424,25 @@ export async function resolveList(
       : undefined;
 
   const baseFields = await loadEntityFields(db, companyId, cfg.baseEntityId);
-  const where = buildRecordWhere(
-    companyId,
-    cfg.baseEntityId,
-    { filters: baseFilters, q: query.q },
-    false,
-  );
-  let q = db.select().from(entityRecords).where(where).$dynamic();
-  if (baseSort) {
-    const dir = baseSort.dir === "desc" ? sql`desc` : sql`asc`;
-    q = q.orderBy(sql`(${entityRecords.data}->>${baseSort.field}) ${dir}`);
-  }
   const limit = query.limit ?? cfg.defaultLimit ?? 100;
   const offset = query.offset ?? 0;
-  const baseRows = (await q.limit(limit).offset(offset)) as unknown as BaseRow[];
-  const [cnt] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(entityRecords)
-    .where(where);
-  const total = cnt?.count ?? 0;
+  // Đọc base rows + total qua store (EAV: where data->>field; bảng thật: cột).
+  const { rows: baseRows, total } = await getRecordStore(db).list(companyId, cfg.baseEntityId, {
+    filters: baseFilters,
+    q: query.q,
+    sort: baseSort,
+    limit,
+    offset,
+  });
 
-  let rows = await stitchAndProject(db, companyId, role, cfg, baseRows, baseFields);
+  let rows = await stitchAndProject(
+    db,
+    companyId,
+    role,
+    cfg,
+    baseRows as unknown as BaseRow[],
+    baseFields,
+  );
 
   // Post-stitch (giới hạn v1: trên trang đã limit)
   for (const pf of postFilters) rows = rows.filter((r) => matchOp(r[pf.key], pf.op, pf.value));
@@ -478,19 +496,16 @@ export async function resolveGet(
 ): Promise<DataSourceRow | null> {
   if (!cfg.baseEntityId) return null;
   const baseFields = await loadEntityFields(db, companyId, cfg.baseEntityId);
-  const baseRows = (await db
-    .select()
-    .from(entityRecords)
-    .where(
-      and(
-        eq(entityRecords.companyId, companyId),
-        eq(entityRecords.entityId, cfg.baseEntityId),
-        eq(entityRecords.id, baseId),
-        sql`${entityRecords.deletedAt} IS NULL`,
-      ),
-    )) as unknown as BaseRow[];
-  if (baseRows.length === 0) return null;
-  const rows = await stitchAndProject(db, companyId, role, cfg, baseRows, baseFields);
+  const baseRow = await getRecordStore(db).getActiveById(companyId, cfg.baseEntityId, baseId);
+  if (!baseRow) return null;
+  const rows = await stitchAndProject(
+    db,
+    companyId,
+    role,
+    cfg,
+    [baseRow] as unknown as BaseRow[],
+    baseFields,
+  );
   return rows[0] ?? null;
 }
 

@@ -9,6 +9,15 @@ import { entities, entityRecords } from "@erp-framework/db";
 import { validateRecord, pluginRegistry, type EntityFieldDef } from "@erp-framework/core";
 import { router, rbacProcedure } from "./trpc";
 import { entityInput } from "./router-helpers";
+import {
+  applyFieldChange,
+  ensureEntityTable,
+  type EntityStorage,
+  renameFieldOnTable,
+  syncEntityTableSchema,
+} from "./entity-table-ddl";
+import { promoteEntityToTable } from "./entity-promote";
+import { isHybridTablesEnabled } from "./record-store";
 
 export const entitiesRouter = router({
   list: rbacProcedure("view", "entity").query(({ ctx }) =>
@@ -42,6 +51,19 @@ export const entitiesRouter = router({
         fields: input.fields,
         ...(input.meta !== undefined ? { meta: input.meta } : {}),
       };
+      // Khi bật HYBRID: entity MỚI → tạo bảng thật er_<id> + ghi meta.storage.
+      // (Cờ tắt = bỏ qua, entity dùng EAV như cũ — hành vi không đổi.)
+      const finishNew = async (row: typeof entities.$inferSelect | undefined) => {
+        if (!row || !isHybridTablesEnabled()) return row;
+        const storage = await ensureEntityTable(ctx.db, row.id, input.fields as EntityFieldDef[]);
+        const meta = { ...((row.meta ?? {}) as Record<string, unknown>), storage };
+        const [updated] = await ctx.db
+          .update(entities)
+          .set({ meta, updatedAt: new Date() })
+          .where(eq(entities.id, row.id))
+          .returning();
+        return updated ?? row;
+      };
       // Chống trùng lặp: tìm entity cùng tên (case-insensitive, đã trim) trong
       // công ty. Nếu là entity KHÁC (id khác) → báo lỗi thân thiện thay vì để
       // DB ném "duplicate key" thô. DB unique (company_id, name) vẫn là backstop
@@ -63,7 +85,7 @@ export const entitiesRouter = router({
       }
       if (input.id) {
         const [ex] = await ctx.db
-          .select({ companyId: entities.companyId })
+          .select({ companyId: entities.companyId, meta: entities.meta })
           .from(entities)
           .where(eq(entities.id, input.id));
         if (ex && ex.companyId !== ctx.user.companyId) {
@@ -75,19 +97,35 @@ export const entitiesRouter = router({
             .set({ ...values, updatedAt: new Date() })
             .where(eq(entities.id, input.id))
             .returning();
+          // Entity tier='table' → đồng bộ cột (ADD/DROP field) + ghi meta.storage mới.
+          const oldStorage = (ex.meta as { storage?: EntityStorage } | null)?.storage;
+          if (row && oldStorage?.tier === "table") {
+            const next = await syncEntityTableSchema(
+              ctx.db,
+              oldStorage,
+              input.fields as EntityFieldDef[],
+            );
+            const meta = { ...((row.meta ?? {}) as Record<string, unknown>), storage: next };
+            const [r2] = await ctx.db
+              .update(entities)
+              .set({ meta, updatedAt: new Date() })
+              .where(eq(entities.id, input.id))
+              .returning();
+            return r2 ?? row;
+          }
           return row;
         }
         const [row] = await ctx.db
           .insert(entities)
           .values({ id: input.id, companyId: ctx.user.companyId, ...values })
           .returning();
-        return row;
+        return finishNew(row);
       }
       const [row] = await ctx.db
         .insert(entities)
         .values({ companyId: ctx.user.companyId, ...values })
         .returning();
-      return row;
+      return finishNew(row);
     }),
 
   delete: rbacProcedure("delete", "entity")
@@ -120,6 +158,13 @@ export const entitiesRouter = router({
       return { ok: true, agentSearchable: input.enabled };
     }),
 
+  /* Nâng cấp entity từ EAV sang bảng thật (HYBRID Phase 2). Tạo bảng er_<id>,
+     copy mọi record (giữ id + cột hệ thống + ext), ghi locator, flip meta.storage.
+     Yêu cầu ERP_HYBRID_TABLES=1. Trả số liệu migrate + lỗi từng record. */
+  promoteToTable: rbacProcedure("edit", "entity")
+    .input(z.string().uuid())
+    .mutation(({ ctx, input }) => promoteEntityToTable(ctx.db, ctx.user.companyId, input)),
+
   /* Safe field rename — cập nhật entities.fields[].name + di trú
        data: jsonb_set new key từ old key + xoá old key. Atomic per-row,
        không transaction lớn (giữ unblocked). */
@@ -148,11 +193,23 @@ export const entitiesRouter = router({
       const newFields = fields.map((f) =>
         f.name === input.oldKey ? { ...f, name: input.newKey } : f,
       );
+      // Entity tier='table': đổi key map (cột) / đổi key trong ext jsonb — KHÔNG
+      // đụng entity_records (record sống ở bảng thật).
+      const storage = (ent.meta as { storage?: EntityStorage } | null)?.storage;
+      if (storage?.tier === "table") {
+        const next = await renameFieldOnTable(ctx.db, storage, input.oldKey, input.newKey);
+        const meta = { ...((ent.meta ?? {}) as Record<string, unknown>), storage: next };
+        await ctx.db
+          .update(entities)
+          .set({ fields: newFields, meta, updatedAt: new Date() })
+          .where(eq(entities.id, input.entityId));
+        return { ok: true, migrated: newFields };
+      }
       await ctx.db
         .update(entities)
         .set({ fields: newFields, updatedAt: new Date() })
         .where(eq(entities.id, input.entityId));
-      // Migrate data: di chuyển value từ old key sang new key trong mỗi record.
+      // Migrate data (EAV): di chuyển value từ old key sang new key trong mỗi record.
       // jsonb_set(jsonb #- '{oldKey}', '{newKey}', data->'oldKey')
       await ctx.db.execute(sql`
           UPDATE entity_records SET
@@ -187,6 +244,22 @@ export const entitiesRouter = router({
       const oldField = fields.find((f) => f.name === input.fieldName);
       if (!oldField) throw new TRPCError({ code: "BAD_REQUEST", message: "Field không có" });
       const newField: EntityFieldDef = { ...oldField, type: input.newType };
+      // Entity tier='table': đổi pgType / chuyển column↔ext qua DDL (best-effort
+      // cast). KHÔNG coerce per-record kiểu EAV (record ở bảng thật).
+      const tblStorage = (ent.meta as { storage?: EntityStorage } | null)?.storage;
+      if (tblStorage?.tier === "table") {
+        const next = await applyFieldChange(ctx.db, tblStorage, input.fieldName, newField);
+        const newFields = fields.map((f) => (f.name === input.fieldName ? newField : f));
+        const meta = { ...((ent.meta ?? {}) as Record<string, unknown>), storage: next };
+        await ctx.db
+          .update(entities)
+          .set({ fields: newFields, meta, updatedAt: new Date() })
+          .where(eq(entities.id, input.entityId));
+        return {
+          migrated: 0,
+          errors: [] as Array<{ id: string; oldValue: unknown; message: string }>,
+        };
+      }
       // Coerce thử trên các record (chỉ 1 field) + report.
       const recs = await ctx.db
         .select({ id: entityRecords.id, data: entityRecords.data })

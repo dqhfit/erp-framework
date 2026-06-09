@@ -26,6 +26,7 @@ import { and, eq, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { decryptSecret, encryptSecret } from "./crypto";
 import type { DB } from "./db";
+import type { RecordStore } from "./record-store";
 import { upsertResourceMember } from "./resource-acl";
 
 /* ─── Crypto helpers ─────────────────────────────────────── */
@@ -497,9 +498,10 @@ export function stripUnreadableFields(
 
 /* ─── Validation ─────────────────────────────────────────── */
 
-/** Kiểm unique cho các field đánh `unique: true`. */
+/** Kiểm unique cho các field đánh `unique: true`. Đi qua RecordStore →
+ *  dispatch đúng backend (EAV `entity_records` hoặc bảng thật `er_<id>`). */
 export async function assertUnique(
-  db: DB,
+  store: RecordStore,
   companyId: string,
   entityId: string,
   fields: EntityFieldDef[],
@@ -511,20 +513,14 @@ export async function assertUnique(
     if (!(f.name in data)) continue;
     const val = data[f.name];
     if (val == null || val === "") continue;
-    const dup = await db
-      .select({ id: entityRecords.id })
-      .from(entityRecords)
-      .where(
-        and(
-          eq(entityRecords.companyId, companyId),
-          eq(entityRecords.entityId, entityId),
-          sql`${entityRecords.deletedAt} IS NULL`,
-          sql`${entityRecords.data}->>${f.name} = ${String(val)}`,
-          excludeRecordId ? sql`${entityRecords.id} <> ${excludeRecordId}::uuid` : sql`true`,
-        ),
-      )
-      .limit(1);
-    if (dup.length > 0) {
+    const dup = await store.existsWithFieldValue(
+      companyId,
+      entityId,
+      f.name,
+      String(val),
+      excludeRecordId,
+    );
+    if (dup) {
       throw new TRPCError({
         code: "CONFLICT",
         message: `Trùng giá trị unique: field "${f.label || f.name}" đã có record khác`,

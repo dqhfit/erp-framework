@@ -28,11 +28,11 @@ import { makeCallTool } from "./mcp-client";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { applyRollups, invalidateRollupsFor } from "./rollup";
+import { getRecordStore } from "./record-store";
 import {
   applyCascadeOnDelete,
   assertUnique,
   assertValid,
-  buildRecordWhere,
   decryptDataOut,
   deepEqual,
   encryptDataIn,
@@ -73,34 +73,21 @@ export const recordsRouter = router({
         const total = Array.isArray(out) ? rows.length : (out?.total ?? rows.length);
         return { rows, total };
       }
-      const where = buildRecordWhere(
-        ctx.user.companyId,
-        input.entityId,
-        input.query,
-        input.includeDeleted ?? false,
-      );
-      let q = ctx.db.select().from(entityRecords).where(where).$dynamic();
-      const sort = input.query?.sort;
-      if (sort) {
-        const dir = sort.dir === "desc" ? sql`desc` : sql`asc`;
-        q = q.orderBy(sql`(${entityRecords.data}->>${sort.field}) ${dir}`);
-      }
-      const rows = await q.limit(input.query?.limit ?? 100).offset(input.query?.offset ?? 0);
-      const [c] = await ctx.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(entityRecords)
-        .where(where);
-      return { rows, total: c?.count ?? 0 };
+      return getRecordStore(ctx.db).list(ctx.user.companyId, input.entityId, {
+        filters: input.query?.filters,
+        q: input.query?.q,
+        sort: input.query?.sort,
+        limit: input.query?.limit,
+        offset: input.query?.offset,
+        includeDeleted: input.includeDeleted ?? false,
+      });
     }),
 
   get: rbacProcedure("view", "entity")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
       // Trả cả khi soft-deleted để UI cho phép restore từ trang chi tiết.
-      const [row] = await ctx.db
-        .select()
-        .from(entityRecords)
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      const row = await getRecordStore(ctx.db).getById(ctx.user.companyId, input);
       if (!row) return null;
       // Procedure get-binding: cho phép procedure decorate/enrich row trả về.
       const proc = await resolveProcBinding(ctx.db, ctx.user.companyId, row.entityId, "get");
@@ -144,17 +131,10 @@ export const recordsRouter = router({
           data[f.name] = await nextSequence(ctx.db, ctx.user.companyId, entName, f);
         }
       }
-      await assertUnique(ctx.db, ctx.user.companyId, input.entityId, fields, data);
+      const store = getRecordStore(ctx.db);
+      await assertUnique(store, ctx.user.companyId, input.entityId, fields, data);
       const encrypted = encryptDataIn(fields, data);
-      const [row] = await ctx.db
-        .insert(entityRecords)
-        .values({
-          companyId: ctx.user.companyId,
-          entityId: input.entityId,
-          data: encrypted,
-          createdBy: ctx.user.id,
-        })
-        .returning();
+      const row = await store.insert(ctx.user.companyId, input.entityId, encrypted, ctx.user.id);
       if (!row) return row;
       // Fire outgoing webhooks (best-effort, không block).
       fireEntityWebhooks(ctx.db, {
@@ -201,20 +181,8 @@ export const recordsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Lấy state hiện tại để check version + tính diff.
-      const [rec] = await ctx.db
-        .select({
-          entityId: entityRecords.entityId,
-          data: entityRecords.data,
-          version: entityRecords.version,
-          deletedAt: entityRecords.deletedAt,
-        })
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        );
+      const store = getRecordStore(ctx.db);
+      const rec = await store.loadState(ctx.user.companyId, input.recordId);
       if (!rec) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       }
@@ -238,7 +206,7 @@ export const recordsRouter = router({
       for (const f of fields) {
         if (f.type === "sequence") delete data[f.name];
       }
-      await assertUnique(ctx.db, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
+      await assertUnique(store, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
 
       // Approval gate — nếu touch field requiresApproval, tạo approval
       // pending thay vì update thẳng. Editor trở lên có thể tự duyệt
@@ -275,20 +243,7 @@ export const recordsRouter = router({
       // Encrypt field marked encrypted trước khi merge.
       const encrypted = encryptDataIn(fields, data);
       // Merge JSONB + tăng version atomic. Audit version ghi sau khi update OK.
-      const [row] = await ctx.db
-        .update(entityRecords)
-        .set({
-          data: sql`${entityRecords.data} || ${JSON.stringify(encrypted)}::jsonb`,
-          version: rec.version + 1,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        )
-        .returning();
+      const row = await store.merge(ctx.user.companyId, input.recordId, encrypted, rec.version + 1);
 
       // Ghi audit version (best-effort: lỗi không rollback update).
       if (row && Object.keys(diff).length > 0) {
@@ -553,18 +508,15 @@ export const recordsRouter = router({
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
       // Lấy record trước khi xoá để gửi webhook.
-      const [before] = await ctx.db
-        .select()
-        .from(entityRecords)
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      const store = getRecordStore(ctx.db);
+      const before = await store.getById(ctx.user.companyId, input);
       // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
       // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
+      // TODO(hybrid Phase 4): applyCascadeOnDelete còn quét thẳng entity_records
+      // (cross-entity) — phải store-aware khi có entity tier='table'.
       await applyCascadeOnDelete(ctx.db, ctx.user.companyId, input, ctx.user.id);
       // SOFT delete bản thân: set deleted_at; data còn nguyên cho restore.
-      await ctx.db
-        .update(entityRecords)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      await store.softDelete(ctx.user.companyId, input);
       if (before) {
         fireEntityWebhooks(ctx.db, {
           companyId: ctx.user.companyId,
@@ -594,10 +546,7 @@ export const recordsRouter = router({
   restore: rbacProcedure("edit", "entity")
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(entityRecords)
-        .set({ deletedAt: null, updatedAt: new Date() })
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      await getRecordStore(ctx.db).restore(ctx.user.companyId, input);
       return { ok: true };
     }),
 
@@ -612,9 +561,7 @@ export const recordsRouter = router({
           message: "Chỉ admin được xoá vĩnh viễn (hardDelete)",
         });
       }
-      await ctx.db
-        .delete(entityRecords)
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      await getRecordStore(ctx.db).hardDelete(ctx.user.companyId, input);
     }),
 
   history: rbacProcedure("view", "entity")
@@ -723,18 +670,8 @@ export const recordsRouter = router({
           message: `Không tìm thấy version ${input.targetVersion}`,
         });
       }
-      const [cur] = await ctx.db
-        .select({
-          version: entityRecords.version,
-          data: entityRecords.data,
-        })
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        );
+      const store = getRecordStore(ctx.db);
+      const cur = await store.loadState(ctx.user.companyId, input.recordId);
       if (!cur) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
 
       // Replace toàn bộ data (không merge — revert là thay nguyên khối).
@@ -747,20 +684,12 @@ export const recordsRouter = router({
           diff[k] = { old: oldData[k] ?? null, new: targetData[k] ?? null };
         }
       }
-      const [row] = await ctx.db
-        .update(entityRecords)
-        .set({
-          data: targetData,
-          version: cur.version + 1,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        )
-        .returning();
+      const row = await store.replace(
+        ctx.user.companyId,
+        input.recordId,
+        targetData,
+        cur.version + 1,
+      );
 
       if (row) {
         try {
@@ -795,24 +724,12 @@ export const recordsRouter = router({
       // (field-level RBAC — áp dụng đồng nhất với records.update).
       const writable = stripUnwritableFields(fields, input.patch, ctx.user.role);
       const data = assertValid(fields, writable, true);
+      const store = getRecordStore(ctx.db);
       let updated = 0;
       const errors: Array<{ id: string; message: string }> = [];
       for (const id of input.ids) {
         try {
-          const [cur] = await ctx.db
-            .select({
-              data: entityRecords.data,
-              version: entityRecords.version,
-              deletedAt: entityRecords.deletedAt,
-            })
-            .from(entityRecords)
-            .where(
-              and(
-                eq(entityRecords.id, id),
-                eq(entityRecords.companyId, ctx.user.companyId),
-                eq(entityRecords.entityId, input.entityId),
-              ),
-            );
+          const cur = await store.loadState(ctx.user.companyId, id, input.entityId);
           if (!cur || cur.deletedAt) {
             errors.push({ id, message: "Không tồn tại hoặc đã xoá" });
             continue;
@@ -822,15 +739,7 @@ export const recordsRouter = router({
           for (const [k, v] of Object.entries(data)) {
             if (!deepEqual(oldData[k], v)) diff[k] = { old: oldData[k] ?? null, new: v };
           }
-          const [row] = await ctx.db
-            .update(entityRecords)
-            .set({
-              data: sql`${entityRecords.data} || ${JSON.stringify(data)}::jsonb`,
-              version: cur.version + 1,
-              updatedAt: new Date(),
-            })
-            .where(eq(entityRecords.id, id))
-            .returning();
+          const row = await store.merge(ctx.user.companyId, id, data, cur.version + 1);
           if (row && Object.keys(diff).length > 0) {
             await ctx.db.insert(entityRecordVersions).values({
               companyId: ctx.user.companyId,
@@ -883,6 +792,7 @@ export const recordsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      const store = getRecordStore(ctx.db);
       let imported = 0;
       const errors: Array<{ index: number; message: string }> = [];
       for (let i = 0; i < input.rows.length; i++) {
@@ -900,12 +810,12 @@ export const recordsRouter = router({
             });
             continue;
           }
-          await ctx.db.insert(entityRecords).values({
-            companyId: ctx.user.companyId,
-            entityId: input.entityId,
-            data: v.data,
-            createdBy: ctx.user.id,
-          });
+          await store.insert(
+            ctx.user.companyId,
+            input.entityId,
+            v.data as Record<string, unknown>,
+            ctx.user.id,
+          );
           imported += 1;
         } catch (e) {
           errors.push({ index: i, message: (e as Error).message });
@@ -924,8 +834,12 @@ export const recordsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
-      const where = buildRecordWhere(ctx.user.companyId, input.entityId, input.query, false);
-      const rows = await ctx.db.select().from(entityRecords).where(where).limit(5000);
+      const { rows } = await getRecordStore(ctx.db).list(ctx.user.companyId, input.entityId, {
+        filters: input.query?.filters,
+        q: input.query?.q,
+        limit: 5000,
+        withTotal: false,
+      });
       // Strip field unreadable + decrypt per row trước khi export
       // (field-level RBAC — viewer không thấy field admin-only kể cả
       // qua CSV/JSON download).
