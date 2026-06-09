@@ -369,6 +369,16 @@ textarea.input {
   opacity: 0.4;
 }
 
+/* Khối cuộn danh sách cột trong node ERD (DataSourceCanvas): ẩn thanh cuộn để nó
+   không chiếm chỗ/đè lên handle nối ở mép phải. Vẫn cuộn được bằng lăn chuột nhờ
+   class "nowheel" của ReactFlow. */
+.ds-fields-scroll {
+  scrollbar-width: none; /* Firefox */
+}
+.ds-fields-scroll::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
 .wf-edge {
   stroke: hsl(var(--accent));
   stroke-width: 2;

@@ -161,8 +161,12 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         )}
       </div>
 
-      {/* Fields */}
-      <div className="py-1 max-h-[240px] overflow-y-auto">
+      {/* Fields — cuộn dọc nhưng KHÔNG cắt handle ở mép:
+          • -mx-3 px-3: nới vùng cắt (clip box) ra 12px mỗi bên cho handle lọt vào,
+            nội dung (rows) vẫn đúng bề rộng node nhờ padding bù.
+          • nowheel + ẩn thanh cuộn (.ds-fields-scroll): cuộn bằng lăn chuột, thanh
+            cuộn không chiếm chỗ nên không đè lên handle bên phải. */}
+      <div className="py-1 -mx-3 px-3 max-h-[240px] overflow-y-auto nowheel ds-fields-scroll">
         {fields.length === 0 && (
           <div className="px-3 py-2 text-xs text-muted italic">Chưa có field</div>
         )}
