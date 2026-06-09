@@ -14,9 +14,10 @@ import {
   ensureEntityTable,
   type EntityStorage,
   renameFieldOnTable,
+  searchableFields,
   syncEntityTableSchema,
 } from "./entity-table-ddl";
-import { promoteEntityToTable } from "./entity-promote";
+import { demoteEntityToEav, promoteEntityToTable } from "./entity-promote";
 import { isHybridTablesEnabled } from "./record-store";
 
 export const entitiesRouter = router({
@@ -165,6 +166,12 @@ export const entitiesRouter = router({
     .input(z.string().uuid())
     .mutation(({ ctx, input }) => promoteEntityToTable(ctx.db, ctx.user.companyId, input)),
 
+  /* Rollback: bảng thật → EAV. Copy er_<id> ngược vào entity_records, xoá
+     meta.storage + locator + DROP bảng er_. Chạy khi cờ HYBRID còn bật. */
+  demoteToEav: rbacProcedure("edit", "entity")
+    .input(z.string().uuid())
+    .mutation(({ ctx, input }) => demoteEntityToEav(ctx.db, ctx.user.companyId, input)),
+
   /* Safe field rename — cập nhật entities.fields[].name + di trú
        data: jsonb_set new key từ old key + xoá old key. Atomic per-row,
        không transaction lớn (giữ unblocked). */
@@ -198,6 +205,7 @@ export const entitiesRouter = router({
       const storage = (ent.meta as { storage?: EntityStorage } | null)?.storage;
       if (storage?.tier === "table") {
         const next = await renameFieldOnTable(ctx.db, storage, input.oldKey, input.newKey);
+        next.searchable = searchableFields(newFields); // đổi tên field searchable → cập nhật
         const meta = { ...((ent.meta ?? {}) as Record<string, unknown>), storage: next };
         await ctx.db
           .update(entities)
@@ -250,6 +258,7 @@ export const entitiesRouter = router({
       if (tblStorage?.tier === "table") {
         const next = await applyFieldChange(ctx.db, tblStorage, input.fieldName, newField);
         const newFields = fields.map((f) => (f.name === input.fieldName ? newField : f));
+        next.searchable = searchableFields(newFields); // cờ searchable có thể đổi theo loại
         const meta = { ...((ent.meta ?? {}) as Record<string, unknown>), storage: next };
         await ctx.db
           .update(entities)

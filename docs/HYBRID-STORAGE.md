@@ -1,11 +1,13 @@
 # Lưu trữ HYBRID (bảng thật + JSONB) — kiến trúc & checklist bật cờ
 
 > Trạng thái: Phase 0–4b XONG, **verify trên Postgres thật** qua integration test
-> `hybrid-storage.db.test.ts` (5/5: CRUD bảng thật, promote EAV→table, JOIN SQL gỡ
-> giới hạn v1, scanBackRefs/cascade, tree CTE). Mọi vùng cross-entity/peripheral đã
-> table-aware (§4); còn 2 giới hạn đã biết (migration re-import sau promote, search_tsv
-> cho er_*) — không chặn bật cờ. **Mặc định TẮT** (`ERP_HYBRID_TABLES` không set/≠`1`)
-> → toàn bộ chạy EAV như cũ. ⚠️ Trước khi bật cờ production: kiểm UI + bảo mật (§5).
+> `hybrid-storage.db.test.ts` (7/7: CRUD bảng thật, promote EAV→table, JOIN SQL gỡ
+> giới hạn v1, scanBackRefs/cascade, tree CTE, search_tsv full-text, demote rollback).
+> Mọi vùng cross-entity/peripheral đã table-aware (§4). Vận hành: script
+> `promote-entity.ts`/`demote-entity.ts` + endpoint `entities.promoteToTable`/
+> `demoteToEav` + nút "Bảng thật" trong Entity Designer. Còn 1 giới hạn: migration
+> re-import SAU promote. **Mặc định TẮT** (`ERP_HYBRID_TABLES` không set/≠`1`) → chạy
+> EAV như cũ. ⚠️ Trước bật cờ production: kiểm UI + bảo mật (§5).
 
 ## 1. Mục tiêu
 
@@ -72,15 +74,20 @@ field cốt lõi + cột **`ext jsonb`** cho field mở rộng.
   cap 2000 qua store (reconstruct data) + Levenshtein JS (không trigram); EAV giữ trigram.
 - **Transfer** (`transfer.ts`) — CHỈ bundle metadata (entities/pages/workflows/agents),
   KHÔNG gồm record data → không bị ảnh hưởng (no-op).
+- **search_tsv cho `er_*`** — `meta.storage.searchable` (field searchable=true);
+  `TableRecordStore` set `search_tsv = to_tsvector` lúc insert/replace + recompute khi
+  merge chạm field searchable; `list(q)` dùng `search_tsv @@ websearch_to_tsquery`;
+  index GIN; promote copy cũng set tsv. Full-text q chạy trên bảng thật. Integration 7/7.
+- **Demote / rollback** (`entity-promote.ts:demoteEntityToEav`) — copy `er_<id>` ngược
+  vào `entity_records` (upsert giữ id/version/ts), xoá `meta.storage` + locator + DROP
+  `er_`. Endpoint `entities.demoteToEav` + script `demote-entity.ts`.
 
 ### ⚠️ Giới hạn đã biết (không chặn bật cờ, nhưng cần biết)
 - **Migration full-import** (`migration-full-import.ts`) — tạo entity qua insert trực
   tiếp (KHÔNG set `meta.storage`) → entity import luôn EAV → thao tác `entity_records`
   ĐÚNG. Giới hạn: promote entity đó lên bảng thật rồi re-import → cần route qua store
   (chưa làm; hiếm).
-- **search_tsv cho `er_*`** — CHƯA dựng (trigger/app-tsv) → full-text `q` trên
-  table-base bị bỏ qua (resolver + rest/graphql fallback, KHÔNG lỗi). `resolveGet`
-  (1 record, write-back) vẫn batch-stitch (giữ `__ids`).
+- `resolveGet` (1 record, write-back) vẫn batch-stitch (giữ `__ids`) — không ảnh hưởng.
 
 ## 5. Kiểm thử trên Postgres
 

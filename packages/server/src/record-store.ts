@@ -351,7 +351,19 @@ class TableRecordStore implements RecordStore {
     return m ? sql.raw(`"${assertIdent(m.col)}"::text`) : sql`ext->>${field}`;
   }
 
-  /** Ghép row bảng → StoredRecord (cột+ext → data; numeric về number). */
+  /** Text dựng search_tsv = nối giá trị các field searchable (rỗng nếu không có). */
+  private tsvText(data: Record<string, unknown>): string {
+    return (this.storage.searchable ?? [])
+      .map((f) => {
+        const v = data[f];
+        return v == null ? "" : String(v);
+      })
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  /** Ghép row bảng → StoredRecord (cột+ext → data; numeric về number;
+   *  timestamp về Date — db.execute thô có thể trả chuỗi). */
   private toRecord(row: Record<string, unknown>): StoredRecord {
     const data: Record<string, unknown> = { ...((row.ext as Record<string, unknown>) ?? {}) };
     for (const [field, m] of Object.entries(this.storage.columns)) {
@@ -359,6 +371,8 @@ class TableRecordStore implements RecordStore {
       if (v == null) continue;
       data[field] = m.pgType === "numeric" ? Number(v) : v;
     }
+    const toDate = (v: unknown): Date | null =>
+      v == null ? null : v instanceof Date ? v : new Date(v as string);
     return {
       id: row.id as string,
       companyId: row.company_id as string,
@@ -366,13 +380,13 @@ class TableRecordStore implements RecordStore {
       schemaVersion: "1",
       data,
       version: Number(row.version),
-      deletedAt: (row.deleted_at as Date | null) ?? null,
+      deletedAt: toDate(row.deleted_at),
       searchTsv: (row.search_tsv as string | null) ?? null,
       rollupCache: (row.rollup_cache as unknown) ?? null,
       rollupInvalidated: Boolean(row.rollup_invalidated),
       createdBy: (row.created_by as string | null) ?? null,
-      createdAt: row.created_at as Date,
-      updatedAt: row.updated_at as Date,
+      createdAt: toDate(row.created_at) as Date,
+      updatedAt: toDate(row.updated_at) as Date,
     } as StoredRecord;
   }
 
@@ -418,7 +432,10 @@ class TableRecordStore implements RecordStore {
         }
       }
     }
-    // q (full-text): search_tsv trigger cho bảng er_* dựng ở Phase 3 — bỏ qua.
+    // q (full-text) trên search_tsv (set khi insert/merge/replace từ field searchable).
+    if (params.q?.trim()) {
+      conds.push(sql`search_tsv @@ websearch_to_tsquery('simple', ${params.q.trim()})`);
+    }
     const whereSql = sql.join(conds, sql` AND `);
     let orderSql = sql``;
     if (params.sort) {
@@ -485,15 +502,20 @@ class TableRecordStore implements RecordStore {
     createdBy: string | null,
   ): Promise<StoredRecord | undefined> {
     const { cols, ext } = this.split(data);
-    const names = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"].join(", ");
+    const colList = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"];
     const vals = [
       sql`${companyId}::uuid`,
       createdBy == null ? sql`NULL` : sql`${createdBy}::uuid`,
       ...cols.map((c) => sql`${c.value}`),
       sql`${JSON.stringify(ext)}::jsonb`,
     ];
+    const tsv = this.tsvText(data);
+    if (tsv) {
+      colList.push("search_tsv");
+      vals.push(sql`to_tsvector('simple', ${tsv})`);
+    }
     const [row] = await this.rows(
-      sql`INSERT INTO ${this.tbl} (${sql.raw(names)}) VALUES (${sql.join(vals, sql`, `)}) RETURNING *`,
+      sql`INSERT INTO ${this.tbl} (${sql.raw(colList.join(", "))}) VALUES (${sql.join(vals, sql`, `)}) RETURNING *`,
     );
     return row ? this.toRecord(row) : undefined;
   }
@@ -514,6 +536,13 @@ class TableRecordStore implements RecordStore {
     const [row] = await this.rows(
       sql`UPDATE ${this.tbl} SET ${sql.join(sets, sql`, `)} WHERE id = ${recordId}::uuid AND company_id = ${companyId}::uuid RETURNING *`,
     );
+    // patch chạm field searchable → recompute search_tsv từ data đầy đủ (sau merge).
+    if (row && (this.storage.searchable ?? []).some((f) => f in patch)) {
+      const tsv = this.tsvText(this.toRecord(row).data as Record<string, unknown>);
+      await this.db.execute(
+        sql`UPDATE ${this.tbl} SET search_tsv = to_tsvector('simple', ${tsv}) WHERE id = ${recordId}::uuid`,
+      );
+    }
     return row ? this.toRecord(row) : undefined;
   }
 
@@ -534,6 +563,8 @@ class TableRecordStore implements RecordStore {
       sql`ext = ${JSON.stringify(ext)}::jsonb`,
       sql`version = ${version}`,
       sql`updated_at = now()`,
+      // replace = thay toàn bộ → recompute search_tsv từ data đầy đủ.
+      sql`search_tsv = to_tsvector('simple', ${this.tsvText(data)})`,
     );
     const [row] = await this.rows(
       sql`UPDATE ${this.tbl} SET ${sql.join(sets, sql`, `)} WHERE id = ${recordId}::uuid AND company_id = ${companyId}::uuid RETURNING *`,

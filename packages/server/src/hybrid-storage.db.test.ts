@@ -19,7 +19,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "./db";
 import { resolveList } from "./datasource-resolver";
-import { promoteEntityToTable } from "./entity-promote";
+import { demoteEntityToEav, promoteEntityToTable } from "./entity-promote";
 import { ensureEntityTable, tableNameForEntity } from "./entity-table-ddl";
 import { getRecordStore } from "./record-store";
 import { recordTree } from "./record-tree";
@@ -252,5 +252,48 @@ describe.skipIf(!RUN)("HYBRID storage (Postgres thật)", () => {
     const anc = await recordTree(db, companyId, b!.id, "parent_id", 10, "ancestors");
     expect(anc.map((r) => (r.data as Record<string, unknown>).ten)).toEqual(["A", "root"]);
     expect(anc.map((r) => r.level)).toEqual([1, 2]);
+  });
+
+  it("Phase 4b — search_tsv (full-text q) trên bảng thật", async () => {
+    const eid = await makeTableEntity("hyb_search", [
+      { name: "ten", label: "Tên", type: "text", searchable: true },
+      { name: "mota", label: "Mô tả", type: "text", searchable: true },
+    ]);
+    const s = getRecordStore(db);
+    await s.insert(companyId, eid, { ten: "Alpha", mota: "khach hang vip" }, null);
+    const beta = await s.insert(companyId, eid, { ten: "Beta", mota: "nha cung cap" }, null);
+
+    const r1 = await s.list(companyId, eid, { q: "vip", withTotal: false });
+    expect(r1.rows.map((x) => (x.data as Record<string, unknown>).ten)).toEqual(["Alpha"]);
+
+    // merge field searchable → recompute tsv → Beta cũng khớp "vip".
+    await s.merge(companyId, beta!.id, { mota: "khach hang vip moi" }, beta!.version + 1);
+    const r2 = await s.list(companyId, eid, { q: "vip", withTotal: false });
+    expect(r2.rows.length).toBe(2);
+  });
+
+  it("Phase 4b — demoteEntityToEav (rollback table→EAV)", async () => {
+    const eid = await makeTableEntity("hyb_demote", [
+      { name: "ma", label: "Mã", type: "text" },
+      { name: "tags", label: "Tags", type: "multiselect" }, // ext
+    ]);
+    const s = getRecordStore(db);
+    const rec = await s.insert(companyId, eid, { ma: "D1", tags: ["a", "b"] }, null);
+
+    const res = await demoteEntityToEav(db, companyId, eid);
+    expect(res.errors).toEqual([]);
+    expect(res.migrated).toBeGreaterThanOrEqual(1);
+
+    // Sau demote: meta.storage gỡ → đọc record từ entity_records (EAV).
+    const got = await getRecordStore(db).getById(companyId, rec!.id);
+    expect(got).not.toBeNull();
+    expect((got!.data as Record<string, unknown>).ma).toBe("D1");
+    expect((got!.data as Record<string, unknown>).tags).toEqual(["a", "b"]);
+
+    // Bảng er_ đã DROP.
+    const ex = (await db.execute(
+      sql`SELECT to_regclass(${`"${tableNameForEntity(eid)}"`})::text AS t`,
+    )) as unknown as Array<{ t: string | null }>;
+    expect(ex[0]?.t).toBeNull();
   });
 });

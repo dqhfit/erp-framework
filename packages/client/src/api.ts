@@ -104,6 +104,15 @@ export class ApiDataSource implements DataSource {
     await this.trpc.entities.delete.mutate(id);
   }
 
+  /* HYBRID storage (ngoài DataSource interface): nâng entity EAV → bảng thật,
+     hoặc rollback. Trả số liệu migrate (xem entity-promote ở server). */
+  promoteEntityToTable(id: string) {
+    return this.trpc.entities.promoteToTable.mutate(id);
+  }
+  demoteEntityToEav(id: string) {
+    return this.trpc.entities.demoteToEav.mutate(id);
+  }
+
   async getRecords(entityId: string, query?: QueryParams): Promise<Paginated<EntityRecord>> {
     // Tách includeDeleted ra cấp ngoài (server router nhận như input phẳng).
     const { includeDeleted, ...serverQuery } = query ?? {};

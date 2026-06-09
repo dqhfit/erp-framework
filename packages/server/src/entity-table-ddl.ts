@@ -131,8 +131,15 @@ export interface EntityStorage {
   tableName: string;
   /** fieldName → { col, pgType } cho field cột-tier. */
   columns: Record<string, { col: string; pgType: ColumnPgType }>;
+  /** Tên field có searchable=true → dựng search_tsv (full-text). */
+  searchable?: string[];
   /** Phiên bản schema cột (tăng mỗi lần đổi cấu trúc — phục vụ chẩn đoán). */
   version: number;
+}
+
+/** Field đánh searchable=true (chỉ tên) — nguồn dựng search_tsv. */
+export function searchableFields(fields: EntityFieldDef[]): string[] {
+  return fields.filter((f) => f.searchable === true).map((f) => f.name);
 }
 
 /** Tính danh sách cột typed + ext từ fields. Dedupe tên cột (append _2..). */
@@ -175,7 +182,13 @@ export function storageDescriptor(entityId: string, fields: EntityFieldDef[]): E
   const { columns } = buildColumnMap(fields);
   const map: Record<string, { col: string; pgType: ColumnPgType }> = {};
   for (const c of columns) map[c.field] = { col: c.col, pgType: c.pgType };
-  return { tier: "table", tableName: tableNameForEntity(entityId), columns: map, version: 1 };
+  return {
+    tier: "table",
+    tableName: tableNameForEntity(entityId),
+    columns: map,
+    searchable: searchableFields(fields),
+    version: 1,
+  };
 }
 
 /** Tên index có cap 63 (Postgres truncate > 63 → tránh va chạm ngầm). */
@@ -228,6 +241,7 @@ export function indexDDL(tableName: string, columns: ColumnDef[]): string[] {
     `CREATE INDEX IF NOT EXISTS "${ixName(tableName, "company_idx")}" ON "${tableName}" (company_id)`,
     `CREATE INDEX IF NOT EXISTS "${ixName(tableName, "deleted_idx")}" ON "${tableName}" (deleted_at)`,
     `CREATE INDEX IF NOT EXISTS "${ixName(tableName, "ext_gin")}" ON "${tableName}" USING gin (ext)`,
+    `CREATE INDEX IF NOT EXISTS "${ixName(tableName, "tsv_gin")}" ON "${tableName}" USING gin (search_tsv)`,
   ];
   for (const c of columns) out.push(...columnIndexDDL(tableName, c));
   return out;
@@ -312,7 +326,13 @@ export function planStorageSync(
     if (!nextCols[field]) dropColumns.push(m.col);
   }
   return {
-    next: { tier: "table", tableName: old.tableName, columns: nextCols, version: old.version + 1 },
+    next: {
+      tier: "table",
+      tableName: old.tableName,
+      columns: nextCols,
+      searchable: searchableFields(fields),
+      version: old.version + 1,
+    },
     addColumns,
     dropColumns,
   };
@@ -379,12 +399,8 @@ export function planFieldChange(
   }
   return {
     plan,
-    next: {
-      tier: "table",
-      tableName: storage.tableName,
-      columns: cols,
-      version: storage.version + 1,
-    },
+    // ...storage giữ `searchable` (recompute đầy đủ ở entities-router nếu cờ field đổi).
+    next: { ...storage, columns: cols, version: storage.version + 1 },
   };
 }
 

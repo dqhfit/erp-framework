@@ -430,6 +430,34 @@ export function EntityDesigner({ entityId }: Props) {
         >
           AI Assist
         </Button>
+        {entity.id ? (
+          <button
+            type="button"
+            className="btn btn-sm flex items-center gap-1.5"
+            title="Nâng cấp lưu trữ entity sang bảng Postgres thật (HYBRID). Cần bật ERP_HYBRID_TABLES."
+            onClick={async () => {
+              const id = entity.id;
+              if (!id) return;
+              const ok = await dialog.confirm(
+                `Nâng cấp "${entity.name}" sang bảng thật? Dữ liệu được chuyển (giữ id), KHÔNG xoá bản EAV. Hãy backup DB trước.`,
+              );
+              if (!ok) return;
+              try {
+                const r = await createApiDataSource("").promoteEntityToTable(id);
+                await dialog.alert(
+                  r.alreadyTable
+                    ? "Entity đã ở bảng thật."
+                    : `Đã nâng cấp ${r.migrated}/${r.total} record sang ${r.tableName}. Lỗi: ${r.errors.length}.`,
+                );
+              } catch (e) {
+                await dialog.alert(`Lỗi nâng cấp: ${(e as Error).message}`);
+              }
+            }}
+          >
+            <I.Database size={13} />
+            Bảng thật
+          </button>
+        ) : null}
         <div ref={mcpMenuRef} className="relative">
           <button
             type="button"
