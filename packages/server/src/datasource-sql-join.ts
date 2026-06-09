@@ -129,10 +129,13 @@ export function tryBuildJoinQuery(
     } else {
       toRef = `${alias}.id`;
     }
+    // So khớp ::text 2 vế: FK là cột text còn id là uuid → "text = uuid" sẽ lỗi;
+    // ::text cũng cho phép FK mang mã nghiệp vụ (giống batch-stitch cast id::text).
+    const onMatch = `(${parentAlias}."${assertIdent(fromCol)}")::text = (${toRef})::text`;
     const kw = r.joinKind === "inner" ? "INNER JOIN" : "LEFT JOIN";
     const childTbl = `"${assertIdent(childStorage.tableName)}"`;
     fromParts.push(
-      sql`${sql.raw(`${kw} ${childTbl} ${alias} ON ${parentAlias}."${assertIdent(fromCol)}" = ${toRef} AND ${alias}.company_id`)} = ${companyId}::uuid AND ${sql.raw(`${alias}.deleted_at`)} IS NULL`,
+      sql`${sql.raw(`${kw} ${childTbl} ${alias} ON ${onMatch} AND ${alias}.company_id`)} = ${companyId}::uuid AND ${sql.raw(`${alias}.deleted_at`)} IS NULL`,
     );
   }
   const fromSql = sql.join(fromParts, sql` `);

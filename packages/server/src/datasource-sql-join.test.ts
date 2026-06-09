@@ -134,7 +134,7 @@ describe("tryBuildJoinQuery — SQL sinh ra", () => {
     expect(built).not.toBeNull();
     const s = render(built!);
     expect(s).toContain('"er_o" b');
-    expect(s).toContain('LEFT JOIN "er_c" j0 ON b."f_kh_id" = j0.id');
+    expect(s).toContain('LEFT JOIN "er_c" j0 ON (b."f_kh_id")::text = (j0.id)::text');
     expect(s).toContain("j0.deleted_at"); // scope join trong ON (không phá LEFT)
     expect(s).toContain('b."f_ma" AS "ma"');
     expect(s).toContain('j0."f_ten" AS "kh_ten"');

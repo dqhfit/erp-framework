@@ -1,9 +1,11 @@
 # Lưu trữ HYBRID (bảng thật + JSONB) — kiến trúc & checklist bật cờ
 
-> Trạng thái: Phase 0–3 IMPL XONG + Phase 4 một phần. **Mặc định TẮT**
+> Trạng thái: Phase 0–3 XONG + đã **verify trên Postgres thật** qua integration
+> test `hybrid-storage.db.test.ts` (3/3 pass: CRUD bảng thật, promote EAV→table,
+> JOIN SQL gỡ giới hạn v1). Phase 4 một phần (xem §4). **Mặc định TẮT**
 > (`ERP_HYBRID_TABLES` không set / ≠ `1`) → toàn bộ chạy EAV như cũ.
-> ⚠️ **Nhánh bảng thật CHƯA verify trên Postgres** — đọc mục "Kiểm thử e2e"
-> trước khi bật cờ ở bất kỳ môi trường nào.
+> ⚠️ Vẫn cần xử lý §4 (cross-entity/peripheral) + kiểm tra UI/bảo mật (§5)
+> trước khi bật cờ ở production.
 
 ## 1. Mục tiêu
 
@@ -63,24 +65,28 @@ Ngoài ra: **search_tsv** cho `er_*` chưa dựng (trigger) → full-text `q` tr
 table-base bị bỏ qua (resolver fallback). `resolveGet` (1 record, write-back) vẫn
 batch-stitch (giữ `__ids`).
 
-## 5. Kiểm thử e2e trên Postgres (BẮT BUỘC trước khi bật cờ)
+## 5. Kiểm thử trên Postgres
 
-Toàn bộ nhánh bảng thật mới chỉ qua typecheck + unit test logic thuần (column map,
-DDL gen, eligibility, render SQL qua PgDialect). Chưa chạy DDL/CRUD thật. Trước khi
-`ERP_HYBRID_TABLES=1`:
+**Integration test tự động** `packages/server/src/hybrid-storage.db.test.ts` —
+verify core Phase 1–3 (Phase 1 CRUD bảng thật + reconstruct + locator + unique;
+Phase 2 promote EAV→table; Phase 3 JOIN SQL filter field-JOIN trên toàn tập). BỎ QUA
+mặc định; chạy khi có DB:
 
-1. Lên DB (`pnpm db:up`) + migrate (gồm 0070). `ERP_HYBRID_TABLES=1`.
-2. Tạo entity mới → kiểm `er_<id>` được tạo đúng cột (psql `\d`).
-3. CRUD record qua tRPC: create/get/list (filter+sort base)/update/soft-delete/restore.
-   So với hành vi EAV.
-4. `promoteToTable` một entity EAV có sẵn dữ liệu → so `count(*)` `entity_records`
-   vs `er_<id>`; so vài record (id/version/data giữ nguyên; encrypted vẫn ở ext).
-5. `save` thêm/xoá field; `renameField`; `changeFieldType` (text↔number, column↔ext)
-   → kiểm cột ALTER + dữ liệu.
-6. DataSource join 2 entity table-backed: filter/sort **field JOIN** trên tập > limit
-   → kết quả ĐÚNG (gỡ v1) + so thời gian vs batch-stitch.
-7. Bảo mật: viewer bị strip field → không lọt qua cả 2 backend; filter/sort field
-   encrypted → fallback (không SQL trên ciphertext).
+```
+pnpm db:up && pnpm --filter @erp-framework/db migrate   # hoặc 1 container throwaway
+HYBRID_DB=1 ERP_HYBRID_TABLES=1 \
+  DATABASE_URL=postgres://erp:erp@localhost:5433/erp_framework \
+  pnpm --filter @erp-framework/server exec vitest run hybrid-storage.db
+```
+
+✅ Đã chạy 3/3 pass trên pgvector pg18 (2026-06-09). Test tự tạo + dọn sạch
+company/entity/record + DROP bảng `er_*` (an toàn chạy trên DB chia sẻ).
+
+**Còn lại — kiểm thủ công trước production** (chưa tự động hoá):
+- `renameField` / `changeFieldType` (text↔number, column↔ext) trên bảng thật.
+- Bảo mật: viewer bị strip field → không lọt; filter/sort field `encrypted` → fallback
+  (không SQL trên ciphertext).
+- Các vùng §4 (cross-entity/peripheral) khi đã làm Phase 4b.
 
 ## 6. Lệnh hữu ích
 
