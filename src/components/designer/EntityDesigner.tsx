@@ -450,6 +450,21 @@ export function EntityDesigner({ entityId }: Props) {
                     ? "Entity đã ở bảng thật."
                     : `Đã nâng cấp ${r.migrated}/${r.total} record sang ${r.tableName}. Lỗi: ${r.errors.length}.`,
                 );
+                // Dọn EAV ngay (opt-in) — chỉ khi promote sạch (không lỗi record).
+                if (!r.alreadyTable && r.errors.length === 0) {
+                  const clean = await dialog.confirm(
+                    "Dọn luôn bản EAV cũ? Đã verify đếm khớp mới xoá; lịch sử (versions/embeddings) vẫn giữ. KHÔNG hoàn tác.",
+                    { title: "Dọn EAV", confirmText: "Dọn" },
+                  );
+                  if (clean) {
+                    const c = await createApiDataSource("").cleanupEavForEntity(id);
+                    await dialog.alert(
+                      c.deleted > 0
+                        ? `Đã dọn ${c.deleted} dòng EAV.`
+                        : (c.reason ?? "Không có gì để dọn."),
+                    );
+                  }
+                }
               } catch (e) {
                 await dialog.alert(`Lỗi nâng cấp: ${(e as Error).message}`);
               }
@@ -457,6 +472,34 @@ export function EntityDesigner({ entityId }: Props) {
           >
             <I.Database size={13} />
             Bảng thật
+          </button>
+        ) : entity.id && entity.isTableBacked ? (
+          <button
+            type="button"
+            className="btn btn-sm flex items-center gap-1.5"
+            title="Dọn bản EAV cũ (entity_records) — đã verify đếm khớp mới xoá. Không hoàn tác."
+            onClick={async () => {
+              const id = entity.id;
+              if (!id) return;
+              const ok = await dialog.confirm(
+                "Dọn bản EAV cũ của entity này? Đã verify đếm khớp (bảng thật ≥ EAV) mới xoá; lịch sử vẫn giữ. KHÔNG hoàn tác.",
+                { title: "Dọn EAV", confirmText: "Dọn", danger: true },
+              );
+              if (!ok) return;
+              try {
+                const c = await createApiDataSource("").cleanupEavForEntity(id);
+                await dialog.alert(
+                  c.deleted > 0
+                    ? `Đã dọn ${c.deleted} dòng EAV.`
+                    : (c.reason ?? "Không có gì để dọn."),
+                );
+              } catch (e) {
+                await dialog.alert(`Lỗi dọn EAV: ${(e as Error).message}`);
+              }
+            }}
+          >
+            <I.Trash size={13} />
+            Dọn EAV
           </button>
         ) : null}
         <div ref={mcpMenuRef} className="relative">

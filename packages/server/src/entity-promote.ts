@@ -6,10 +6,14 @@
    timestamp/deleted_at + ciphertext field encrypted ở ext) → ghi locator →
    verify count → flip entities.meta.storage atomic.
 
-   KHÔNG xoá entity_records cũ: entity_record_versions/embeddings còn FK trỏ
-   tới id đó (cascade) → giữ lại để bảo toàn lịch sử; chúng thành snapshot
-   đông lạnh (reads/writes sau đó đi vào bảng thật). Dọn EAV là bước sau,
-   thủ công/Phase later.
+   KHÔNG xoá entity_records cũ: giữ lại làm SNAPSHOT ĐÔNG LẠNH (reads/writes
+   sau đó đi vào bảng thật). LƯU Ý (cập nhật sau 0071): các bảng phụ
+   (entity_record_versions/embeddings/field_ops/presence/timeseries) đã BỎ FK
+   record_id→entity_records ở migration 0071 nên KHÔNG còn cascade khi xoá
+   entity_records — chúng trỏ theo id (id này giờ sống ở er_), history vẫn
+   nguyên. Vì vậy dọn EAV giờ AN TOÀN về lịch sử; chỉ mất khả năng demote
+   từ snapshot cho dòng đã hard-delete khỏi er_ (hiếm). Dọn EAV vẫn là bước
+   OPT-IN, thủ công.
 
    CHƯA verify runtime — cần Postgres e2e.
    ========================================================== */
@@ -17,15 +21,54 @@
 import type { EntityFieldDef } from "@erp-framework/core";
 import { entities, entityRecords, recordLocator } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import {
-  coerceColumnValue,
+  applyColumnLabels,
   ensureEntityTable,
   type EntityStorage,
+  safeTableIdent,
+  splitDataForStorage,
+  SYSTEM_TABLES,
   tableNameForEntity,
 } from "./entity-table-ddl";
 import { getRecordStore, isHybridTablesEnabled } from "./record-store";
+
+/**
+ * Chọn tên bảng thật cho entity. Ưu tiên TÊN BẢNG DB CŨ (meta.source.mssqlTable)
+ * để bảng thật mang đúng tên gốc; fallback er_<id> khi:
+ *   - không có nguồn,
+ *   - tên trùng BẢNG HỆ THỐNG (chống đè bảng lõi),
+ *   - tên đã được entity KHÁC dùng (bảng vật lý không chia sẻ được — chống
+ *     trộn 2 entity vào 1 bảng).
+ * Nếu tên hợp lệ và bảng đã tồn tại (re-run/đổi tên) → vẫn trả tên đó để adopt.
+ */
+export async function resolveTableName(
+  db: DB,
+  entityId: string,
+  sourceTable: string | undefined | null,
+): Promise<string> {
+  const fallback = tableNameForEntity(entityId);
+  if (!sourceTable) return fallback;
+  let desired: string;
+  try {
+    desired = safeTableIdent(sourceTable);
+  } catch {
+    return fallback;
+  }
+  if (desired === fallback) return desired;
+  if (SYSTEM_TABLES.has(desired)) return fallback;
+  // Tên đã thuộc entity KHÁC (bất kỳ công ty — bảng vật lý là global) → fallback.
+  const others = await db
+    .select({ id: entities.id })
+    .from(entities)
+    .where(
+      and(ne(entities.id, entityId), sql`(${entities.meta}->'storage'->>'tableName') = ${desired}`),
+    )
+    .limit(1);
+  if (others.length > 0) return fallback;
+  return desired;
+}
 
 export interface PromoteResult {
   tableName: string;
@@ -39,21 +82,6 @@ export interface PromoteResult {
 
 type EavRow = typeof entityRecords.$inferSelect;
 
-/** Tách data theo storage.columns → giá trị cột (coerce) + phần ext còn lại. */
-function split(
-  storage: EntityStorage,
-  data: Record<string, unknown>,
-): { cols: Array<{ col: string; value: unknown }>; ext: Record<string, unknown> } {
-  const cols: Array<{ col: string; value: unknown }> = [];
-  const ext: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(data)) {
-    const m = storage.columns[k];
-    if (m) cols.push({ col: m.col, value: coerceColumnValue(m.pgType, v) });
-    else ext[k] = v; // field encrypted → ciphertext giữ nguyên ở ext
-  }
-  return { cols, ext };
-}
-
 /** INSERT 1 record vào bảng thật, GIỮ id + cột hệ thống. ON CONFLICT id DO NOTHING. */
 async function insertCopy(
   db: DB,
@@ -63,7 +91,7 @@ async function insertCopy(
 ): Promise<void> {
   const tbl = sql.raw(`"${storage.tableName}"`);
   const data = (r.data ?? {}) as Record<string, unknown>;
-  const { cols, ext } = split(storage, data);
+  const { cols, ext } = splitDataForStorage(storage, data);
   const colList = [
     "id",
     "company_id",
@@ -116,7 +144,7 @@ export async function promoteEntityToTable(
     });
   }
   const [ent] = await db
-    .select({ fields: entities.fields, meta: entities.meta })
+    .select({ fields: entities.fields, meta: entities.meta, label: entities.label })
     .from(entities)
     .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
   if (!ent) throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại" });
@@ -127,7 +155,12 @@ export async function promoteEntityToTable(
   }
 
   const fields = (ent.fields ?? []) as EntityFieldDef[];
-  const storage = await ensureEntityTable(db, entityId, fields);
+  // Tên bảng thật theo BẢNG DB CŨ (meta.source.mssqlTable) nếu có — fallback er_<id>.
+  const sourceTable = (ent.meta as { source?: { mssqlTable?: string } } | null)?.source?.mssqlTable;
+  const tableName = await resolveTableName(db, entityId, sourceTable);
+  const storage = await ensureEntityTable(db, entityId, fields, tableName);
+  // Nhãn field → COMMENT ON COLUMN trên bảng thật (+ nhãn entity → COMMENT ON TABLE).
+  await applyColumnLabels(db, storage, fields, ent.label ?? undefined);
 
   const errors: Array<{ id: string; message: string }> = [];
   let migrated = 0;
@@ -254,7 +287,71 @@ export async function demoteEntityToEav(
   await db
     .delete(recordLocator)
     .where(and(eq(recordLocator.companyId, companyId), eq(recordLocator.entityId, entityId)));
-  await db.execute(sql.raw(`DROP TABLE IF EXISTS "${tableNameForEntity(entityId)}"`));
+  // DROP đúng bảng đang dùng (có thể là tên DB cũ, KHÔNG luôn là er_<id>).
+  await db.execute(sql.raw(`DROP TABLE IF EXISTS "${storage.tableName}"`));
 
   return { migrated, errors };
+}
+
+export interface CleanupEavResult {
+  /** Số dòng entity_records đã xoá. */
+  deleted: number;
+  /** true = GIỮ EAV (không xoá) vì chưa an toàn / không cần. */
+  kept: boolean;
+  reason?: string;
+}
+
+/**
+ * DỌN bản EAV (entity_records) sau khi entity đã ở BẢNG THẬT — hard delete.
+ * AN TOÀN có verify: chỉ xoá khi
+ *   (a) entity tier='table', và
+ *   (b) ĐẾM KHỚP: count bảng thật >= count EAV (mọi dòng đã sang bảng thật).
+ * Sau migration 0071 các bảng phụ (versions/embeddings/…) đã BỎ FK record_id
+ * → xoá entity_records KHÔNG cascade mất history. Đánh đổi: mất khả năng demote
+ * "sống lại" cho dòng đã hard-delete khỏi er_ (hiếm). Idempotent (EAV rỗng → no-op).
+ */
+export async function cleanupEavForEntity(
+  db: DB,
+  companyId: string,
+  entityId: string,
+): Promise<CleanupEavResult> {
+  const [ent] = await db
+    .select({ meta: entities.meta })
+    .from(entities)
+    .where(and(eq(entities.id, entityId), eq(entities.companyId, companyId)));
+  if (!ent) throw new TRPCError({ code: "NOT_FOUND", message: "Entity không tồn tại" });
+  const storage = (ent.meta as { storage?: EntityStorage } | null)?.storage;
+  if (storage?.tier !== "table") {
+    return { deleted: 0, kept: true, reason: "Entity chưa ở bảng thật — không dọn EAV." };
+  }
+
+  const countOf = async (q: ReturnType<typeof sql>): Promise<number> => {
+    const res = (await db.execute(q)) as unknown as
+      | Array<{ n: number }>
+      | { rows: Array<{ n: number }> };
+    const list = Array.isArray(res) ? res : (res.rows ?? []);
+    return Number(list[0]?.n ?? 0);
+  };
+
+  const eavCount = await countOf(
+    sql`SELECT count(*)::int AS n FROM entity_records WHERE company_id = ${companyId}::uuid AND entity_id = ${entityId}::uuid`,
+  );
+  if (eavCount === 0) return { deleted: 0, kept: false };
+
+  const realCount = await countOf(
+    sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${storage.tableName}"`)} WHERE company_id = ${companyId}::uuid`,
+  );
+  if (realCount < eavCount) {
+    return {
+      deleted: 0,
+      kept: true,
+      reason: `Bảng thật ${realCount} < EAV ${eavCount} dòng — GIỮ EAV (chưa khớp, có thể promote/import chưa xong).`,
+    };
+  }
+
+  const res = await db
+    .delete(entityRecords)
+    .where(and(eq(entityRecords.companyId, companyId), eq(entityRecords.entityId, entityId)))
+    .returning({ id: entityRecords.id });
+  return { deleted: res.length, kept: false };
 }

@@ -661,12 +661,29 @@ export function createMigrationClient(baseUrl: string) {
       }>;
       batchSize?: number;
       writeManifest?: boolean;
+      /** 'table' = import thẳng vào BẢNG THẬT (tên DB cũ); mặc định 'eav'. */
+      targetTier?: "eav" | "table";
     }) =>
       trpc.migration.startFullImport.mutate({
         batchSize: 5000,
         writeManifest: true,
+        targetTier: "eav",
         ...input,
       }) as Promise<{ jobId: string }>,
+
+    /** Đổi tên các bảng thật đã promote (er_<id>) sang đúng tên bảng DB cũ. */
+    renamePromotedTablesToSource: () =>
+      trpc.migration.renamePromotedTablesToSource.mutate() as Promise<{
+        renamed: number;
+        results: Array<{
+          entityId: string;
+          label: string;
+          from: string;
+          to: string;
+          status: "renamed" | "skip" | "error";
+          reason?: string;
+        }>;
+      }>,
 
     /** U4: List full jobs với progress summary. */
     listFullJobs: (filter?: {

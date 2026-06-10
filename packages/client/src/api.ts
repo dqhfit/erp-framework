@@ -112,6 +112,14 @@ export class ApiDataSource implements DataSource {
   demoteEntityToEav(id: string) {
     return this.trpc.entities.demoteToEav.mutate(id);
   }
+  /** Dọn bản EAV sau khi đã ở bảng thật (verify đếm khớp mới xoá). */
+  cleanupEavForEntity(id: string) {
+    return this.trpc.entities.cleanupEav.mutate(id) as Promise<{
+      deleted: number;
+      kept: boolean;
+      reason?: string;
+    }>;
+  }
 
   async getRecords(entityId: string, query?: QueryParams): Promise<Paginated<EntityRecord>> {
     // Tách includeDeleted ra cấp ngoài (server router nhận như input phẳng).

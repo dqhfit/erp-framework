@@ -4069,6 +4069,8 @@ function QuickMigratePreviewPane({
   const [writeManifest, setWriteManifest] = useState(true);
   const [fullMode, setFullMode] = useState(true);
   const [batchSize, setBatchSize] = useState(5000);
+  // Import THẲNG vào bảng thật (HYBRID) thay vì EAV — bảng mang tên DB cũ.
+  const [importToTable, setImportToTable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof migration.quickMigrateTables>
@@ -4265,6 +4267,7 @@ function QuickMigratePreviewPane({
           items,
           batchSize,
           writeManifest,
+          targetTier: importToTable ? "table" : "eav",
         });
         setFullJobResult(r);
         // Full mode: entity được prep ngay khi job tạo → reload migratedMap.
@@ -4620,6 +4623,49 @@ function QuickMigratePreviewPane({
               />
               <span>Lưu manifest</span>
             </label>
+            <label
+              className="flex items-center gap-1.5"
+              title="Cần bật ERP_HYBRID_TABLES=1 ở server"
+            >
+              <input
+                type="checkbox"
+                checked={importToTable}
+                onChange={(e) => setImportToTable(e.target.checked)}
+              />
+              <span>Import thẳng vào bảng thật (tên DB cũ)</span>
+            </label>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                const ok = await dialog.confirm(
+                  "Đổi tên TẤT CẢ bảng thật đã promote (er_…) sang đúng tên bảng DB cũ? Bỏ qua mục đã đúng tên hoặc bị trùng.",
+                  { title: "Đổi tên bảng thật", confirmText: "Đổi tên" },
+                );
+                if (!ok) return;
+                try {
+                  const r = await migration.renamePromotedTablesToSource();
+                  const lines = r.results
+                    .map(
+                      (x) =>
+                        `• ${x.label}: ${x.from} → ${x.to} [${x.status}${x.reason ? `: ${x.reason}` : ""}]`,
+                    )
+                    .join("\n");
+                  await dialog.alert(
+                    `Đã đổi tên ${r.renamed} bảng.\n\n${lines || "(không có bảng thật nào)"}`,
+                    {
+                      title: "Kết quả đổi tên",
+                    },
+                  );
+                } catch (e) {
+                  await dialog.alert((e as Error).message, { title: "Lỗi đổi tên bảng" });
+                }
+              }}
+              className="px-2 py-0.5 rounded border border-border hover:bg-hover/40 text-muted hover:text-text"
+              title="Đổi tên các bảng thật đã promote sang đúng tên bảng DB cũ"
+            >
+              Đổi tên bảng thật → tên DB cũ
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-3 text-xs flex-wrap">

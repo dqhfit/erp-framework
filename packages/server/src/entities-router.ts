@@ -10,6 +10,7 @@ import { validateRecord, pluginRegistry, type EntityFieldDef } from "@erp-framew
 import { router, rbacProcedure } from "./trpc";
 import { entityInput } from "./router-helpers";
 import {
+  applyColumnLabels,
   applyFieldChange,
   ensureEntityTable,
   type EntityStorage,
@@ -17,7 +18,7 @@ import {
   searchableFields,
   syncEntityTableSchema,
 } from "./entity-table-ddl";
-import { demoteEntityToEav, promoteEntityToTable } from "./entity-promote";
+import { cleanupEavForEntity, demoteEntityToEav, promoteEntityToTable } from "./entity-promote";
 import { isHybridTablesEnabled } from "./record-store";
 
 export const entitiesRouter = router({
@@ -57,6 +58,8 @@ export const entitiesRouter = router({
       const finishNew = async (row: typeof entities.$inferSelect | undefined) => {
         if (!row || !isHybridTablesEnabled()) return row;
         const storage = await ensureEntityTable(ctx.db, row.id, input.fields as EntityFieldDef[]);
+        // Nhãn field → COMMENT ON COLUMN (best-effort).
+        await applyColumnLabels(ctx.db, storage, input.fields as EntityFieldDef[], input.label);
         const meta = { ...((row.meta ?? {}) as Record<string, unknown>), storage };
         const [updated] = await ctx.db
           .update(entities)
@@ -171,6 +174,13 @@ export const entitiesRouter = router({
   demoteToEav: rbacProcedure("edit", "entity")
     .input(z.string().uuid())
     .mutation(({ ctx, input }) => demoteEntityToEav(ctx.db, ctx.user.companyId, input)),
+
+  /* Dọn bản EAV (entity_records) sau khi entity đã ở bảng thật — HARD DELETE,
+     có verify đếm khớp (bảng thật >= EAV) mới xoá. KHÔNG cascade versions/
+     embeddings (FK bỏ ở 0071). Mất khả năng demote-from-snapshot (hiếm). */
+  cleanupEav: rbacProcedure("edit", "entity")
+    .input(z.string().uuid())
+    .mutation(({ ctx, input }) => cleanupEavForEntity(ctx.db, ctx.user.companyId, input)),
 
   /* Safe field rename — cập nhật entities.fields[].name + di trú
        data: jsonb_set new key từ old key + xoá old key. Atomic per-row,

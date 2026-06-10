@@ -110,9 +110,67 @@ export function assertIdent(ident: string): string {
   return ident;
 }
 
-/** Tên bảng ổn định theo entityId (hex, bỏ gạch) — không đổi khi đổi nhãn. */
+/** Tên bảng ổn định theo entityId (hex, bỏ gạch) — không đổi khi đổi nhãn.
+ *  Dùng làm fallback khi KHÔNG đặt tên theo bảng DB cũ. */
 export function tableNameForEntity(entityId: string): string {
   return assertIdent(`er_${entityId.replace(/-/g, "").toLowerCase()}`);
+}
+
+/** Bảng HỆ THỐNG framework — KHÔNG bao giờ được dùng làm tên bảng dữ liệu
+ *  entity (chống đặt tên bảng thật trùng → đè bảng lõi). resolveTableName
+ *  thấy trùng set này sẽ fallback về er_<id>. */
+export const SYSTEM_TABLES = new Set<string>([
+  "companies",
+  "users",
+  "sessions",
+  "company_members",
+  "company_invites",
+  "api_keys",
+  "llm_profiles",
+  "embedding_profiles",
+  "entities",
+  "entity_records",
+  "entity_record_versions",
+  "record_locator",
+  "record_comments",
+  "saved_views",
+  "notifications",
+  "activity_log",
+  "feedbacks",
+  "feedback_votes",
+  "feedback_comments",
+  "roadmap_items",
+  "ai_proposals",
+  "client_errors",
+  "agents",
+  "agent_conversations",
+  "agent_messages",
+  "pages",
+  "workflows",
+  "workflow_runs",
+  "knowledge_sources",
+  "knowledge_chunks",
+  "data_sources",
+  "mssql_connections",
+  "migration_jobs",
+  "migration_full_jobs",
+  "migration_full_job_tables",
+  "resource_members",
+  "nav_items",
+  "print_templates",
+]);
+
+/** Tên bảng DB cũ (vd "dbo.mes_dinhmuc") → identifier Postgres an toàn
+ *  ("mes_dinhmuc"). Bỏ schema prefix, slug, ép bắt đầu bằng chữ, cap 63.
+ *  Ném nếu rỗng/không hợp lệ (caller fallback er_<id>). */
+export function safeTableIdent(sourceTable: string): string {
+  const bare = sourceTable.includes(".")
+    ? sourceTable.slice(sourceTable.lastIndexOf(".") + 1)
+    : sourceTable;
+  let s = slugIdent(bare);
+  if (!/^[a-z]/.test(s)) s = `t_${s}`; // identifier phải bắt đầu bằng chữ
+  if (s.length > 63) s = s.slice(0, 63);
+  return assertIdent(s);
 }
 
 export interface ColumnDef {
@@ -177,14 +235,19 @@ export function buildColumnMap(fields: EntityFieldDef[]): {
   return { columns, extFields };
 }
 
-/** Mô tả storage (pure) — entities-router lưu vào meta.storage. */
-export function storageDescriptor(entityId: string, fields: EntityFieldDef[]): EntityStorage {
+/** Mô tả storage (pure) — entities-router lưu vào meta.storage.
+ *  tableName mặc định er_<id>; truyền tên khác (vd tên DB cũ đã safeTableIdent). */
+export function storageDescriptor(
+  entityId: string,
+  fields: EntityFieldDef[],
+  tableName: string = tableNameForEntity(entityId),
+): EntityStorage {
   const { columns } = buildColumnMap(fields);
   const map: Record<string, { col: string; pgType: ColumnPgType }> = {};
   for (const c of columns) map[c.field] = { col: c.col, pgType: c.pgType };
   return {
     tier: "table",
-    tableName: tableNameForEntity(entityId),
+    tableName: assertIdent(tableName),
     columns: map,
     searchable: searchableFields(fields),
     version: 1,
@@ -264,20 +327,29 @@ export function renameColumnDDL(tableName: string, from: string, to: string): st
 /**
  * Tạo (idempotent) bảng + index cho entity. Advisory-lock theo tên bảng để
  * serialize 2 request tạo cùng entity. Trả EntityStorage để lưu meta.storage.
+ *
+ * tableName: mặc định er_<id>; truyền tên khác để đặt theo bảng DB cũ
+ * (đã qua safeTableIdent + resolveTableName ở caller). Khi bảng ĐÃ tồn tại
+ * (re-run / promote lại / đổi tên), CREATE IF NOT EXISTS bỏ qua + ADD COLUMN
+ * IF NOT EXISTS bù cột field mới → "cập nhật bảng có sẵn cho khớp schema".
  */
 export async function ensureEntityTable(
   db: DB,
   entityId: string,
   fields: EntityFieldDef[],
+  tableName: string = tableNameForEntity(entityId),
 ): Promise<EntityStorage> {
-  const tableName = tableNameForEntity(entityId);
+  assertIdent(tableName);
   const { columns } = buildColumnMap(fields);
   await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${tableName}))`);
     await tx.execute(sql.raw(createTableDDL(tableName, columns)));
+    // Adopt/đồng bộ: bù cột field còn thiếu trên bảng đã tồn tại (cột field
+    // đều nullable → an toàn ADD trên bảng có sẵn dữ liệu).
+    for (const c of columns) await tx.execute(sql.raw(addColumnDDL(tableName, c.col, c.pgType)));
     for (const ix of indexDDL(tableName, columns)) await tx.execute(sql.raw(ix));
   });
-  return storageDescriptor(entityId, fields);
+  return storageDescriptor(entityId, fields, tableName);
 }
 
 /* ─── Phase 2: đồng bộ schema khi sửa entity tier='table' ─── */
@@ -466,4 +538,78 @@ export async function renameFieldOnTable(
     sql`UPDATE ${tbl} SET ext = (ext - ${oldKey}) || jsonb_build_object(${newKey}, ext->${oldKey}), updated_at = now() WHERE ext ? ${oldKey}`,
   );
   return { ...storage, version: storage.version + 1 };
+}
+
+/* ─── Tách data → cột typed + ext (dùng cho copy/import sang bảng thật) ─── */
+
+/** Tách record.data theo storage.columns: field cột-tier → {col,value} (coerce);
+ *  field còn lại → ext jsonb (gồm encrypted ciphertext giữ nguyên). */
+export function splitDataForStorage(
+  storage: EntityStorage,
+  data: Record<string, unknown>,
+): { cols: Array<{ col: string; value: unknown }>; ext: Record<string, unknown> } {
+  const cols: Array<{ col: string; value: unknown }> = [];
+  const ext: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    const m = storage.columns[k];
+    if (m) cols.push({ col: m.col, value: coerceColumnValue(m.pgType, v) });
+    else ext[k] = v;
+  }
+  return { cols, ext };
+}
+
+/* ─── Đổi tên bảng + nhãn cột (COMMENT) ─── */
+
+export function renameTableDDL(from: string, to: string): string {
+  return `ALTER TABLE IF EXISTS "${assertIdent(from)}" RENAME TO "${assertIdent(to)}"`;
+}
+
+/**
+ * Index phục vụ DEDUP khi import / chạy lại vào bảng thật — KHỚP đúng truy vấn
+ * findExistingInTable: `WHERE company_id = ? AND (<cột pk>)::text IN (...)`.
+ * Là EXPRESSION index trên `(company_id, (<cột pk>)::text)` để dùng được khi
+ * truy vấn ép `::text`. CHỈ tạo cho PK cột-tier (ext-tier dùng key tham số →
+ * index biểu thức không ăn). Trả null nếu PK không phải cột-tier.
+ */
+export function importPkIndexDDL(storage: EntityStorage, pkField: string): string | null {
+  const colMap = storage.columns[pkField];
+  if (!colMap) return null;
+  const col = assertIdent(colMap.col);
+  const ix = ixName(storage.tableName, `${col}_imp`);
+  return `CREATE INDEX IF NOT EXISTS "${ix}" ON "${assertIdent(storage.tableName)}" (company_id, (("${col}")::text))`;
+}
+
+/** Escape literal cho COMMENT (utility statement không nhận bind param):
+ *  nhân đôi nháy đơn, bỏ NUL. standard_conforming_strings=on (mặc định). */
+function quoteLiteral(s: string): string {
+  return `'${s.replace(/\0/g, "").replace(/'/g, "''")}'`;
+}
+
+/**
+ * Ghi NHÃN field (entities.fields[].label) thành COMMENT ON COLUMN trên bảng
+ * thật (+ COMMENT ON TABLE = nhãn entity). Mở bảng bằng công cụ DB sẽ thấy
+ * nhãn tiếng Việt. Best-effort: lỗi 1 cột không vỡ cả mẻ.
+ */
+export async function applyColumnLabels(
+  db: DB,
+  storage: EntityStorage,
+  fields: EntityFieldDef[],
+  tableLabel?: string,
+): Promise<void> {
+  const tbl = `"${assertIdent(storage.tableName)}"`;
+  if (tableLabel?.trim()) {
+    await db
+      .execute(sql.raw(`COMMENT ON TABLE ${tbl} IS ${quoteLiteral(tableLabel.trim())}`))
+      .catch(() => undefined);
+  }
+  for (const f of fields) {
+    const m = storage.columns[f.name];
+    const label = f.label?.trim();
+    if (!m || !label) continue;
+    await db
+      .execute(
+        sql.raw(`COMMENT ON COLUMN ${tbl}."${assertIdent(m.col)}" IS ${quoteLiteral(label)}`),
+      )
+      .catch(() => undefined);
+  }
 }

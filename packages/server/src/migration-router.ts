@@ -49,6 +49,9 @@ import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { verifyProcAgainstGolden } from "./migration-verify";
 import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
+import { resolveTableName } from "./entity-promote";
+import { applyColumnLabels, type EntityStorage, renameTableDDL } from "./entity-table-ddl";
+import { isHybridTablesEnabled } from "./record-store";
 import {
   buildCombinedMigratedSet,
   findMigratedEntityBySourceTable,
@@ -3303,6 +3306,8 @@ export const migrationRouter = router({
           .max(200),
         batchSize: z.number().int().min(100).max(50_000).default(5_000),
         writeManifest: z.boolean().default(true),
+        // 'table' = import THẲNG vào bảng thật (tên DB cũ) — cần ERP_HYBRID_TABLES=1.
+        targetTier: z.enum(["eav", "table"]).default("eav"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -3318,6 +3323,7 @@ export const migrationRouter = router({
             items: input.items,
             batchSize: input.batchSize,
             writeManifest: input.writeManifest,
+            targetTier: input.targetTier,
           },
           totalTables: input.items.length,
           createdBy: ctx.user.id,
@@ -3336,6 +3342,7 @@ export const migrationRouter = router({
           input.connectionId,
           input.items as FullJobItem[],
           input.batchSize,
+          input.targetTier,
         );
       } catch (e) {
         await ctx.db
@@ -3368,6 +3375,108 @@ export const migrationRouter = router({
 
       return { jobId: job.id };
     }),
+
+  /** Đổi tên các bảng thật đã promote (er_<id>) sang ĐÚNG tên bảng DB cũ
+   *  (meta.source.mssqlTable). Bỏ qua mục đã đúng tên / không có nguồn / tên
+   *  trùng (system, entity khác, bảng vật lý đã tồn tại). Cập nhật
+   *  meta.storage.tableName + ghi lại COMMENT nhãn cột. */
+  renamePromotedTablesToSource: rbacProcedure("edit", "settings").mutation(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin được đổi tên bảng thật." });
+    }
+    if (!isHybridTablesEnabled()) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Cần bật ERP_HYBRID_TABLES=1.",
+      });
+    }
+    const rows = await ctx.db
+      .select({
+        id: entities.id,
+        label: entities.label,
+        fields: entities.fields,
+        meta: entities.meta,
+      })
+      .from(entities)
+      .where(eq(entities.companyId, ctx.user.companyId));
+
+    const results: Array<{
+      entityId: string;
+      label: string;
+      from: string;
+      to: string;
+      status: "renamed" | "skip" | "error";
+      reason?: string;
+    }> = [];
+
+    for (const e of rows) {
+      const meta = (e.meta ?? {}) as Record<string, unknown>;
+      const storage = (meta as { storage?: EntityStorage }).storage;
+      const source = (meta as { source?: { mssqlTable?: string } }).source?.mssqlTable;
+      if (storage?.tier !== "table" || !source) continue;
+      const from = storage.tableName;
+      const to = await resolveTableName(ctx.db, e.id, source);
+      if (to === from) {
+        results.push({
+          entityId: e.id,
+          label: e.label,
+          from,
+          to,
+          status: "skip",
+          reason: "đã đúng tên",
+        });
+        continue;
+      }
+      // Bảng đích đã tồn tại → RENAME sẽ lỗi; bỏ qua an toàn.
+      const reg = (await ctx.db.execute(sql`SELECT to_regclass(${to}) AS reg`)) as unknown as
+        | Array<{ reg: string | null }>
+        | { rows: Array<{ reg: string | null }> };
+      const regList = Array.isArray(reg) ? reg : (reg.rows ?? []);
+      if (regList[0]?.reg != null) {
+        results.push({
+          entityId: e.id,
+          label: e.label,
+          from,
+          to,
+          status: "skip",
+          reason: `bảng "${to}" đã tồn tại`,
+        });
+        continue;
+      }
+      try {
+        await ctx.db.execute(sql.raw(renameTableDDL(from, to)));
+        const nextStorage: EntityStorage = { ...storage, tableName: to };
+        await ctx.db
+          .update(entities)
+          .set({ meta: { ...meta, storage: nextStorage }, updatedAt: new Date() })
+          .where(eq(entities.id, e.id));
+        await applyColumnLabels(
+          ctx.db,
+          nextStorage,
+          e.fields as Parameters<typeof applyColumnLabels>[2],
+          e.label ?? undefined,
+        );
+        results.push({ entityId: e.id, label: e.label, from, to, status: "renamed" });
+      } catch (err) {
+        results.push({
+          entityId: e.id,
+          label: e.label,
+          from,
+          to,
+          status: "error",
+          reason: (err as Error).message,
+        });
+      }
+    }
+    void logActivity(ctx.db, {
+      companyId: ctx.user.companyId,
+      kind: "migration.rename_tables",
+      target: "",
+      detail: `Đổi tên ${results.filter((r) => r.status === "renamed").length} bảng thật theo DB cũ`,
+      actorUserId: ctx.user.id,
+    });
+    return { results, renamed: results.filter((r) => r.status === "renamed").length };
+  }),
 
   /** U4: List full jobs của company với progress summary. */
   listFullJobs: rbacProcedure("edit", "settings")

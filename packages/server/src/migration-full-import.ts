@@ -14,7 +14,7 @@
    tại — chỉ lấy data mới (pk > lastPk).
    ========================================================== */
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import {
   entities,
   entityRecords,
@@ -25,8 +25,98 @@ import {
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { db } from "./db";
 import { decryptSecret } from "./crypto";
+import { type EntityStorage, importPkIndexDDL, splitDataForStorage } from "./entity-table-ddl";
+import { promoteEntityToTable } from "./entity-promote";
 import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
+import { isHybridTablesEnabled } from "./record-store";
 import { publish as publishWs } from "./ws-hub";
+
+/* ─── Ghi batch vào BẢNG THẬT (targetTier='table') ─── */
+
+/** Đối tượng chạy SQL thô — db hoặc transaction tx đều thoả (cùng .execute). */
+type SqlExecutor = { execute: (query: SQL) => Promise<unknown> };
+
+/** Tìm id record đã có trong bảng thật theo giá trị PK nguồn (gom trùng khi
+ *  re-run/sync). pkField map sang cột typed (storage.columns) hoặc ext jsonb. */
+async function findExistingInTable(
+  storage: EntityStorage,
+  companyId: string,
+  pkField: string,
+  pkValues: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (pkValues.length === 0) return map;
+  const tbl = sql.raw(`"${storage.tableName}"`);
+  const colMap = storage.columns[pkField];
+  const pkExpr = colMap ? sql.raw(`"${colMap.col}"::text`) : sql`ext->>${pkField}`;
+  const inList = sql.join(
+    pkValues.map((v) => sql`${v}`),
+    sql`, `,
+  );
+  const res = (await db.execute(
+    sql`SELECT id, ${pkExpr} AS pk FROM ${tbl} WHERE company_id = ${companyId}::uuid AND ${pkExpr} IN (${inList})`,
+  )) as unknown as
+    | Array<{ id: string; pk: string | null }>
+    | { rows: Array<{ id: string; pk: string | null }> };
+  const list = Array.isArray(res) ? res : (res.rows ?? []);
+  for (const r of list) if (r.pk != null) map.set(String(r.pk), r.id);
+  return map;
+}
+
+/** tsvector từ field searchable (giữ FTS khi import vào bảng thật). */
+function tsvFor(storage: EntityStorage, data: Record<string, unknown>) {
+  const tsv = (storage.searchable ?? [])
+    .map((f) => (data[f] == null ? "" : String(data[f])))
+    .filter(Boolean)
+    .join(" ");
+  return tsv;
+}
+
+/** INSERT 1 row mới vào bảng thật (id uuidv7 mặc định, version 0, now). */
+async function insertRowToTable(
+  tx: SqlExecutor,
+  storage: EntityStorage,
+  companyId: string,
+  userId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const tbl = sql.raw(`"${storage.tableName}"`);
+  const { cols, ext } = splitDataForStorage(storage, data);
+  const colList = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"];
+  const vals = [
+    sql`${companyId}::uuid`,
+    sql`${userId}::uuid`,
+    ...cols.map((c) => sql`${c.value}`),
+    sql`${JSON.stringify(ext)}::jsonb`,
+  ];
+  const tsv = tsvFor(storage, data);
+  if (tsv) {
+    colList.push("search_tsv");
+    vals.push(sql`to_tsvector('simple', ${tsv})`);
+  }
+  await tx.execute(
+    sql`INSERT INTO ${tbl} (${sql.raw(colList.join(", "))}) VALUES (${sql.join(vals, sql`, `)})`,
+  );
+}
+
+/** UPDATE row có sẵn theo id (cập nhật cột + ext + tsv + updated_at). */
+async function updateRowInTable(
+  tx: SqlExecutor,
+  storage: EntityStorage,
+  id: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const tbl = sql.raw(`"${storage.tableName}"`);
+  const { cols, ext } = splitDataForStorage(storage, data);
+  const sets = [
+    ...cols.map((c) => sql`${sql.raw(`"${c.col}"`)} = ${c.value}`),
+    sql`ext = ${JSON.stringify(ext)}::jsonb`,
+  ];
+  const tsv = tsvFor(storage, data);
+  if (tsv) sets.push(sql`search_tsv = to_tsvector('simple', ${tsv})`);
+  sets.push(sql`updated_at = now()`);
+  await tx.execute(sql`UPDATE ${tbl} SET ${sql.join(sets, sql`, `)} WHERE id = ${id}::uuid`);
+}
 
 /* ─── Types ─── */
 
@@ -41,6 +131,9 @@ export interface FullJobConfig {
   items: FullJobItem[];
   batchSize?: number;
   writeManifest?: boolean;
+  /** 'eav' (mặc định): ghi vào entity_records. 'table': promote entity sang
+   *  BẢNG THẬT (tên DB cũ) rồi ghi thẳng vào đó. Cần ERP_HYBRID_TABLES=1. */
+  targetTier?: "eav" | "table";
 }
 
 export interface FullJobData {
@@ -59,6 +152,7 @@ export async function prepareFullJobTables(
   connectionId: string,
   items: FullJobItem[],
   batchSize: number,
+  targetTier: "eav" | "table" = "eav",
 ): Promise<void> {
   const client = await loadConn(companyId, connectionId);
   try {
@@ -124,6 +218,39 @@ export async function prepareFullJobTables(
         if (inserted) entityId = inserted.id;
       }
 
+      // targetTier='table': promote entity sang BẢNG THẬT (tên DB cũ) NGAY ở
+      // bước prepare, để worker ghi thẳng vào bảng thật. Cần HYBRID bật.
+      if (targetTier === "table" && entityId) {
+        if (!isHybridTablesEnabled()) {
+          await db.insert(migrationFullJobTables).values({
+            jobId,
+            tableName: it.tableName,
+            entityId,
+            entityName: resolvedEntityName,
+            pkColumn,
+            batchSize,
+            status: "failed",
+            error: "Import vào bảng thật cần bật ERP_HYBRID_TABLES=1.",
+          });
+          continue;
+        }
+        try {
+          await promoteEntityToTable(db, companyId, entityId);
+        } catch (e) {
+          await db.insert(migrationFullJobTables).values({
+            jobId,
+            tableName: it.tableName,
+            entityId,
+            entityName: resolvedEntityName,
+            pkColumn,
+            batchSize,
+            status: "failed",
+            error: `Promote bảng thật lỗi: ${(e as Error).message}`,
+          });
+          continue;
+        }
+      }
+
       await db.insert(migrationFullJobTables).values({
         jobId,
         tableName: it.tableName,
@@ -170,6 +297,9 @@ export async function runFullImportJob(data: FullJobData): Promise<{
   if (job.status === "canceled" || job.status === "completed") {
     return { succeededTables: 0, failedTables: 0, skippedTables: 0, totalRows: 0 };
   }
+  // Đích ghi: 'table' = ghi thẳng vào bảng thật (entity đã promote ở prepare).
+  const targetTier =
+    (job.config as { targetTier?: string } | null)?.targetTier === "table" ? "table" : "eav";
 
   // Đánh dấu running + startedAt nếu chưa có.
   await db
@@ -246,14 +376,41 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         .where(eq(migrationFullJobTables.id, t.id));
 
       const fieldsSet = new Set<string>();
-      // Đọc entity fields hiện tại để filter row data.
+      // Đọc entity fields + meta hiện tại để filter row data + biết storage.
       const [ent] = await db
-        .select({ fields: entities.fields })
+        .select({ fields: entities.fields, meta: entities.meta })
         .from(entities)
         .where(eq(entities.id, t.entityId))
         .limit(1);
       const entFields = (ent?.fields as Array<{ name: string }>) ?? [];
       for (const f of entFields) fieldsSet.add(f.name.toLowerCase());
+      // Ghi vào BẢNG THẬT khi targetTier='table'. SELF-HEAL khi chạy lại: nếu
+      // entity chưa promote (vd lần đầu prepare lúc HYBRID còn tắt) → promote
+      // NGAY tại đây (idempotent: đã table thì no-op) rồi đọc lại storage. Nhờ
+      // vậy resume/sync ĐỒNG NHẤT với lần chạy đầu, không kẹt.
+      let storage = (ent?.meta as { storage?: EntityStorage } | null)?.storage;
+      if (targetTier === "table" && storage?.tier !== "table") {
+        if (!isHybridTablesEnabled()) {
+          throw new Error("Import vào bảng thật cần bật ERP_HYBRID_TABLES=1.");
+        }
+        await promoteEntityToTable(db, job.companyId, t.entityId);
+        const [re] = await db
+          .select({ meta: entities.meta })
+          .from(entities)
+          .where(eq(entities.id, t.entityId))
+          .limit(1);
+        storage = (re?.meta as { storage?: EntityStorage } | null)?.storage;
+      }
+      const useTable = targetTier === "table" && storage?.tier === "table";
+      if (targetTier === "table" && !useTable) {
+        throw new Error("targetTier=table nhưng không promote được entity sang bảng thật.");
+      }
+      // Index dedup cho chạy lại nhanh (khớp findExistingInTable). Idempotent →
+      // áp cho cả lần đầu, resume lẫn self-heal. Best-effort: lỗi không chặn.
+      if (useTable && storage && t.pkColumn) {
+        const ixDdl = importPkIndexDDL(storage, t.pkColumn.toLowerCase());
+        if (ixDdl) await db.execute(sql.raw(ixDdl)).catch(() => undefined);
+      }
 
       try {
         let lastPk: string | null = t.lastPk;
@@ -289,23 +446,28 @@ export async function runFullImportJob(data: FullJobData): Promise<{
               const v = d[pkField];
               if (v != null) pkValues.push(String(v));
             }
-            const existingRows =
-              pkValues.length > 0
-                ? await db
-                    .select({ id: entityRecords.id, data: entityRecords.data })
-                    .from(entityRecords)
-                    .where(
-                      and(
-                        eq(entityRecords.companyId, job.companyId),
-                        eq(entityRecords.entityId, tableEntityId),
-                        inArray(sql`(${entityRecords.data}->>${pkField})`, pkValues),
-                      ),
-                    )
-                : [];
-            const existingMap = new Map<string, string>(); // pkValue → record.id
-            for (const r of existingRows) {
-              const pkVal = (r.data as Record<string, unknown>)[pkField];
-              if (pkVal != null) existingMap.set(String(pkVal), r.id);
+            let existingMap: Map<string, string>; // pkValue → record.id
+            if (useTable && storage) {
+              existingMap = await findExistingInTable(storage, job.companyId, pkField, pkValues);
+            } else {
+              const existingRows =
+                pkValues.length > 0
+                  ? await db
+                      .select({ id: entityRecords.id, data: entityRecords.data })
+                      .from(entityRecords)
+                      .where(
+                        and(
+                          eq(entityRecords.companyId, job.companyId),
+                          eq(entityRecords.entityId, tableEntityId),
+                          inArray(sql`(${entityRecords.data}->>${pkField})`, pkValues),
+                        ),
+                      )
+                  : [];
+              existingMap = new Map<string, string>();
+              for (const r of existingRows) {
+                const pkVal = (r.data as Record<string, unknown>)[pkField];
+                if (pkVal != null) existingMap.set(String(pkVal), r.id);
+              }
             }
 
             const toInsert: Array<Record<string, unknown>> = [];
@@ -344,21 +506,31 @@ export async function runFullImportJob(data: FullJobData): Promise<{
             // rowsImported) trong 1 transaction. Crash giữa chừng KHÔNG để
             // checkpoint lệch với data đã ghi → resume không over-count.
             await db.transaction(async (tx) => {
-              if (toInsert.length > 0) {
-                await tx.insert(entityRecords).values(
-                  toInsert.map((d) => ({
-                    companyId: job.companyId,
-                    entityId: tableEntityId,
-                    data: d,
-                    createdBy: data.userId,
-                  })),
-                );
-              }
-              for (const u of toUpdate) {
-                await tx
-                  .update(entityRecords)
-                  .set({ data: u.data, updatedAt: new Date() })
-                  .where(eq(entityRecords.id, u.id));
+              if (useTable && storage) {
+                // Ghi thẳng vào BẢNG THẬT (per-row — cột động + tsv).
+                for (const d of toInsert) {
+                  await insertRowToTable(tx, storage, job.companyId, data.userId, d);
+                }
+                for (const u of toUpdate) {
+                  await updateRowInTable(tx, storage, u.id, u.data);
+                }
+              } else {
+                if (toInsert.length > 0) {
+                  await tx.insert(entityRecords).values(
+                    toInsert.map((d) => ({
+                      companyId: job.companyId,
+                      entityId: tableEntityId,
+                      data: d,
+                      createdBy: data.userId,
+                    })),
+                  );
+                }
+                for (const u of toUpdate) {
+                  await tx
+                    .update(entityRecords)
+                    .set({ data: u.data, updatedAt: new Date() })
+                    .where(eq(entityRecords.id, u.id));
+                }
               }
               await tx
                 .update(migrationFullJobTables)
