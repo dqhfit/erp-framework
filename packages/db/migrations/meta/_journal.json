@@ -512,6 +512,20 @@
       "when": 1783702900000,
       "tag": "0072_client_errors",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1783703000000,
+      "tag": "0073_migration_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1783703100000,
+      "tag": "0074_migration_sync_created_by",
+      "breakpoints": true
     }
   ]
 }

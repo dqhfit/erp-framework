@@ -37,6 +37,7 @@ import { ActionJobsPanel } from "@/components/migration/ActionJobsPanel";
 import { ProceduresTab } from "@/components/migration/ProceduresTab";
 import { RelationsTab } from "@/components/migration/RelationsTab";
 import { RunAllProcsScreen } from "@/components/migration/RunAllProcsScreen";
+import { SyncPanel } from "@/components/migration/SyncPanel";
 import { SqlBlock } from "@/components/SqlHighlight";
 import {
   Button,
@@ -67,7 +68,8 @@ type TabId =
   | "data"
   | "review"
   | "relations"
-  | "audit";
+  | "audit"
+  | "sync-cutover";
 
 interface TabDef {
   id: TabId;
@@ -94,6 +96,7 @@ const TAB_DEFS: TabDef[] = [
     enabled: true,
     hintKey: "mig.tab_audit_hint",
   },
+  { id: "sync-cutover", labelKey: "mig.tab_sync_cutover", action: null, enabled: true },
 ];
 
 function fmtTime(d: string | null | undefined): string {
@@ -786,6 +789,13 @@ function ModuleDetailPane({
           />
         )}
         {activeTab === "generate" && <GenerateTab moduleName={moduleName} onChanged={onChanged} />}
+        {activeTab === "sync-cutover" && (
+          <SyncPanel
+            moduleName={moduleName}
+            manifestTables={(manifest?.tables ?? []).map((tbl) => tbl.name)}
+            onChanged={onChanged}
+          />
+        )}
         {/* tab audit đã enable + render ở trên qua <AuditTab /> */}
       </div>
     </div>

@@ -13,6 +13,7 @@ import {
   backupRuns,
   entitySyncs,
   knowledgeSources,
+  migrationSyncModules,
   schedules,
   sessions,
 } from "@erp-framework/db";
@@ -285,6 +286,32 @@ export async function startJobs(): Promise<void> {
         await b.send(QUEUE_ENTITY_SYNC, { syncId: sy.id });
       }
     }
+    // Delta-sync MSSQL→PG — module enabled + cron tới hạn → enqueue.
+    const syncMods = await db
+      .select()
+      .from(migrationSyncModules)
+      .where(eq(migrationSyncModules.enabled, true));
+    for (const sm of syncMods) {
+      if (cronMatches(sm.cronExpr, now)) {
+        // created_by phải là uuid user thật (làm created_by khi insert row
+        // mới — chuỗi "system" vỡ cast ::uuid). Thiếu → skip + log, user
+        // re-enable sync trong UI để backfill.
+        if (!sm.createdBy) {
+          console.warn(
+            `[tick] delta-sync ${sm.module}: thieu created_by (bat sync lai trong UI de gan) — skip chu ky.`,
+          );
+          continue;
+        }
+        await enqueueMigrationJob({
+          action: "delta-sync",
+          module: sm.module,
+          args: { connectionId: sm.connectionId },
+          userId: sm.createdBy,
+          companyId: sm.companyId,
+        });
+      }
+    }
+
     // Knowledge Base — nguồn có reindex_cron tới hạn → nạp lại.
     const kbSources = await db
       .select()

@@ -94,7 +94,7 @@ const DECISION_DEDUPE_WINDOW_MS = 10_000;
  *  - Cap: giữ tail DECISION_LOG_CAP entry, rotate khi vượt.
  *  Khi seed module mới mà gặp cùng bảng MSSQL → có thể đọc decision cũ
  *  để auto-apply (vd kind=enum đã quyết). */
-function appendDecision(entry: Record<string, unknown>): void {
+export function appendDecision(entry: Record<string, unknown>): void {
   const p = DECISIONS_FILE();
   let arr: unknown[] = [];
   if (existsSync(p)) {
@@ -343,7 +343,9 @@ const ACTION_VALUES = [
   "data",
   "audit",
 ] as const;
-const moduleNameSchema = z.string().regex(/^[a-z][a-z0-9_]*$/, "Module name phải snake_case");
+export const moduleNameSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]*$/, "Module name phải snake_case");
 
 /** Shape 1 proc-row chung — dùng bởi cả listProcsToMigrate (per-module)
  *  và listAllProcsToMigrate (cross-module). filterMode ảnh hưởng đến

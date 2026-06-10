@@ -25,6 +25,7 @@ import { decryptSecret } from "./crypto";
 import { publish as publishWs } from "./ws-hub";
 import { runGenerateModule } from "./migration-codegen-batch";
 import { runFullImportJob } from "./migration-full-import";
+import { runDeltaSyncRun } from "./migration-delta-sync";
 
 const QUEUE_MIGRATION = "migration-run";
 
@@ -35,7 +36,8 @@ type MigrationAction =
   | "generate"
   | "data"
   | "audit"
-  | "full-import";
+  | "full-import"
+  | "delta-sync";
 
 interface MigrationJobData {
   jobId: string;
@@ -390,6 +392,22 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
         // mở connection theo job.connectionId trong DB.
         const r = await runFullImportJob({ jobId: data.module, userId: data.userId });
         state.message = `Full import: ${r.succeededTables} table done, ${r.failedTables} failed, ${r.skippedTables} skipped, ${r.totalRows} rows this run`;
+        break;
+      }
+      case "delta-sync": {
+        // Delta sync: data.args = { connectionId, module }.
+        const connId = typeof data.args.connectionId === "string" ? data.args.connectionId : "";
+        const r = await runDeltaSyncRun({
+          companyId: data.companyId,
+          connectionId: connId,
+          module: data.module,
+          userId: data.userId,
+        });
+        if (r.skipped) {
+          state.message = `Delta-sync ${data.module}: bỏ qua (lock đang giữ bởi job khác)`;
+        } else {
+          state.message = `Delta-sync ${data.module}: +${r.inserts} ins / ~${r.updates} upd / -${r.deletes} del (${r.tablesRun} bảng)`;
+        }
         break;
       }
     }

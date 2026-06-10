@@ -59,6 +59,7 @@ export const migrationVi: Dict = {
   "mig.tab_procedures": "Procedures",
   "mig.tab_relations": "Quan hệ",
   "mig.tab_audit": "6. Kiểm tra",
+  "mig.tab_sync_cutover": "Sync & Cutover",
   "mig.tab_generate_hint": "Tầng 2 (sinh code AI) — chưa triển khai",
   "mig.tab_audit_hint": "Tầng 4 (kiểm tra AI) — chưa triển khai",
 
@@ -355,4 +356,47 @@ export const migrationEn: Dict = {
   "mig.conn_allow_write": "Allow write (execProc)",
   "mig.conn_is_default": "Default",
   "mig.btn_saving": "Saving...",
+
+  // --- sync & cutover tab ---
+  "sync.not_configured_hint":
+    "Module nay chua co delta-sync MSSQL->PG. Cau hinh de dong bo lien tuc.",
+  "sync.need_conn_tables": "Can chon ket noi va it nhat 1 bang.",
+  "sync.no_connections": "(Chua co ket noi MSSQL)",
+  "sync.no_manifest_tables": "(Manifest chua co bang — chay Kham pha truoc)",
+  "sync.no_tables": "Chua co bang nao duoc cau hinh.",
+  "sync.form_conn": "Ket noi MSSQL",
+  "sync.form_tables": "Cac bang se dong bo",
+  "sync.form_cron": "Tan suat (cron expression)",
+  "sync.tables_selected": "bang da chon",
+  "sync.btn_enable": "Bat dong bo",
+  "sync.btn_disable": "Tam dung",
+  "sync.btn_reenable": "Bat lai",
+  "sync.btn_sync_now": "Dong bo ngay",
+  "sync.btn_ct_script": "Script bat CT",
+  "sync.btn_cutover": "Chuyen sang live",
+  "sync.btn_rollback": "Rollback ve mirror",
+  "sync.btn_recheck": "Kiem tra lai",
+  "sync.btn_execute_cutover": "Thuc hien cutover",
+  "sync.status_enabled": "Dang dong bo",
+  "sync.status_disabled": "Tam dung",
+  "sync.status_running": "Dang chay...",
+  "sync.status_error": "Loi",
+  "sync.status_reseed": "Can reseed",
+  "sync.status_cutover": "Da cutover",
+  "sync.tables_heading": "Bang dong bo",
+  "sync.pending_label": "tre {count} version",
+  "sync.ct_script_title": "Script bat Change Tracking",
+  "sync.ct_script_hint":
+    "Chay script nay tren MSSQL voi quyen ALTER DATABASE + ALTER TABLE. Framework khong tu ghi tren MSSQL.",
+  "sync.cutover_title": "Cutover module {module}",
+  "sync.rollback_title": "Rollback module {module}",
+  "sync.cutover_confirm_prompt":
+    "Xac nhan cutover module {module}? Sau khi cutover entity se cho phep ghi tu ERP.",
+  "sync.rollback_confirm_prompt":
+    "Rollback module {module} ve trang thai mirror (ERP se khoa ghi lai)?",
+  "sync.cutover_dqhf_frozen_confirm":
+    "Toi da khoa module nay tren DQHF — khong con ai ghi moi tren he thong cu.",
+  "sync.cutover_done": "Cutover thanh cong ({count} bang chuyen sang live).",
+  "sync.rollback_done": "Rollback thanh cong ({count} bang ve mirror).",
+  "sync.checklist_fail_hint": "Chua du dieu kien cutover — kiem tra lai cac muc do.",
 };

@@ -45,6 +45,7 @@ import {
   stripUnwritableFields,
 } from "./router-helpers";
 import { rbacProcedure, router } from "./trpc";
+import { assertEntityNotMirror } from "./entity-write-guard";
 import { triggerEntityWorkflows } from "./workflow-triggers";
 import { publish as publishWs } from "./ws-hub";
 
@@ -116,6 +117,7 @@ export const recordsRouter = router({
   create: rbacProcedure("create", "entity")
     .input(z.object({ entityId: z.string().uuid(), data: z.record(z.string(), z.unknown()) }))
     .mutation(async ({ ctx, input }) => {
+      await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Strip field user không có quyền write (field-level RBAC).
       const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
@@ -198,6 +200,7 @@ export const recordsRouter = router({
           message: `Version mismatch: bạn đang sửa bản v${input.expectedVersion}, hiện tại đã là v${rec.version}`,
         });
       }
+      await assertEntityNotMirror(ctx.user.companyId, rec.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, rec.entityId);
       // Strip field user không có quyền write trước khi validate.
       const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
@@ -482,6 +485,7 @@ export const recordsRouter = router({
       // Lấy record trước khi xoá để gửi webhook.
       const store = getRecordStore(ctx.db);
       const before = await store.getById(ctx.user.companyId, input);
+      if (before) await assertEntityNotMirror(ctx.user.companyId, before.entityId);
       // Cascade: scan các entity khác có lookup/multi-lookup trỏ tới
       // record này, áp dụng onDelete behavior (restrict/setnull/cascade).
       // Backend-aware (EAV + bảng thật); ghi qua store.
@@ -681,6 +685,7 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Strip field user không có quyền write trước khi validate
       // (field-level RBAC — áp dụng đồng nhất với records.update).
@@ -728,6 +733,7 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const store = getRecordStore(ctx.db);
       let deleted = 0;
       const errors: Array<{ id: string; message: string }> = [];
@@ -751,6 +757,7 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       const store = getRecordStore(ctx.db);
       let imported = 0;

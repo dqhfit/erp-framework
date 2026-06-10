@@ -60,6 +60,7 @@ import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
 import { migrationRouter } from "./migration-router";
+import { migrationSyncRouter } from "./migration-sync-router";
 import { legacyMenuRouter } from "./legacy-menu-router";
 import { navRouter } from "./nav-router";
 import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
@@ -565,6 +566,7 @@ export const appRouter = router({
 
   /* ── Migration MSSQL → framework (admin tooling) ── */
   migration: migrationRouter,
+  migrationSync: migrationSyncRouter,
   mssqlConnections: mssqlConnectionsRouter,
 
   /* ── Cockpit menu-driven — bản đồ menu app cũ (SYS_MENU_NEW) ── */

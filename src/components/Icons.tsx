@@ -683,6 +683,13 @@ export const I = {
       <path d="m9 11 3 3L22 4" />
     </Icon>
   ),
+  XCircle: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m15 9-6 6" />
+      <path d="m9 9 6 6" />
+    </Icon>
+  ),
   Clock4: (p: IP) => (
     <Icon {...p}>
       <circle cx="12" cy="12" r="10" />

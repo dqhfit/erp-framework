@@ -768,7 +768,7 @@ export async function resumeStaleFullJobs(
 
 /* ─── Helper ─── */
 
-async function loadConn(companyId: string, connectionId: string): Promise<MssqlClient> {
+export async function loadConn(companyId: string, connectionId: string): Promise<MssqlClient> {
   const [row] = await db
     .select()
     .from(mssqlConnections)

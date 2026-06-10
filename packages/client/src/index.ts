@@ -68,8 +68,8 @@ export {
   type ErrorDetail,
   type ErrorListItem,
   type ErrorReportInput,
-  type ErrorsClient,
   type ErrorStats,
+  type ErrorsClient,
 } from "./errors";
 export {
   createFeedbackClient,
@@ -142,6 +142,13 @@ export {
   type MigrationJobState,
   type MigrationModuleSummary,
 } from "./migration";
+export {
+  type CutoverCheck,
+  createMigrationSyncClient,
+  type MigrationSyncClient,
+  type SyncModuleRow,
+  type SyncTableRow,
+} from "./migration-sync";
 export {
   createMssqlConnectionsClient,
   type MssqlConnectionSaveInput,
