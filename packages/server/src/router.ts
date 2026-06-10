@@ -52,6 +52,7 @@ import { materializedViewsRouter } from "./materialized-views-router";
 import { entityTemplatesRouter } from "./entity-templates-router";
 import { notificationsRouter } from "./notifications-router";
 import { feedbackRouter } from "./feedback-router";
+import { errorRouter } from "./error-router";
 import { presenceRouter } from "./presence-router";
 import { fieldOpsRouter } from "./field-ops-router";
 import { embedRouter } from "./embed-router";
@@ -540,6 +541,9 @@ export const appRouter = router({
 
   /* ── Feedback — user báo bất cập + đề xuất cải thiện ── */
   feedback: feedbackRouter,
+
+  /* ── Errors — app tự gửi lỗi client về; admin theo dõi/triage ── */
+  errors: errorRouter,
 
   /* ── Presence "đang xem" per record ── */
   presence: presenceRouter,

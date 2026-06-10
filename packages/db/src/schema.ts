@@ -1870,6 +1870,52 @@ export const aiProposals = pgTable(
   }),
 );
 
+/* ─── Lỗi phía client (client_errors) ─────────────────────────────
+   App tự gửi lỗi runtime (window.onerror / unhandledrejection / React
+   ErrorBoundary) về server qua tRPC errors.report. Gom trùng theo
+   fingerprint (server tính từ message + frame stack đầu) — cùng 1 lỗi
+   lặp lại chỉ tăng count + last_seen, KHÔNG đẻ dòng mới (chống ngập DB).
+   Admin theo dõi/triage ở /settings/errors. MCP server (mcp-errors.ts)
+   cho AI ĐỌC + ĐỔI TRẠNG THÁI/XOÁ lỗi (scope errors:read|write). */
+export const clientErrors = pgTable(
+  "client_errors",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    // user gặp lỗi — giữ lỗi khi user bị xoá (set null).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    fingerprint: text("fingerprint").notNull(), // khoá gom trùng (server tính)
+    level: text("level").notNull().default("error"), // error|warn
+    source: text("source").notNull().default("unknown"), // window.onerror|unhandledrejection|react|manual
+    message: text("message").notNull(),
+    stack: text("stack"),
+    componentStack: text("component_stack"), // React error boundary
+    url: text("url"), // URL trang lúc lỗi
+    userAgent: text("user_agent"),
+    meta: jsonb("meta"), // ngữ cảnh thêm (release, props…)
+    status: text("status").notNull().default("open"), // open|resolved|ignored
+    count: integer("count").notNull().default(1), // số lần lặp (gom trùng)
+    firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    // Gom trùng: 1 fingerprint / công ty → onConflictDoUpdate tăng count.
+    companyFingerprintUniq: uniqueIndex("client_errors_company_fingerprint_uniq").on(
+      t.companyId,
+      t.fingerprint,
+    ),
+    companyStatusSeenIdx: index("client_errors_company_status_seen_idx").on(
+      t.companyId,
+      t.status,
+      t.lastSeenAt,
+    ),
+  }),
+);
+
 /* ─── Lịch sử trò chuyện với Agent (per-user, có thể xoá) ─────────── */
 export const agentConversations = pgTable(
   "agent_conversations",

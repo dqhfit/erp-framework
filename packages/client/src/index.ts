@@ -61,6 +61,17 @@ export {
   type EnumValue,
 } from "./enums";
 export {
+  type ClientErrorLevel,
+  type ClientErrorSource,
+  type ClientErrorStatus,
+  createErrorsClient,
+  type ErrorDetail,
+  type ErrorListItem,
+  type ErrorReportInput,
+  type ErrorsClient,
+  type ErrorStats,
+} from "./errors";
+export {
   createFeedbackClient,
   type FeedbackArea,
   type FeedbackClient,

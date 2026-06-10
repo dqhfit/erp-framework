@@ -1436,6 +1436,24 @@ export function Sidebar() {
                   })
                 }
               />
+              {role === "admin" && (
+                <SidebarItem
+                  to="/settings/errors"
+                  active={pathname === "/settings/errors"}
+                  icon={<I.AlertOctagon size={14} />}
+                  collapsed={collapsed}
+                  label="Giám sát lỗi"
+                  isFavorited={favs.isFav("/settings/errors")}
+                  onToggleFavorite={() =>
+                    favs.toggle({
+                      id: "/settings/errors",
+                      to: "/settings/errors",
+                      label: "Giám sát lỗi",
+                      iconName: "AlertOctagon",
+                    })
+                  }
+                />
+              )}
               <SidebarItem
                 to="/settings/llm"
                 active={pathname === "/settings/llm"}

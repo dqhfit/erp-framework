@@ -42,6 +42,7 @@ import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
+import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
@@ -258,6 +259,12 @@ async function main(): Promise<void> {
   // scope feedback:read|propose. AI ngoài (Claude) đọc feedback + ghi đề
   // xuất PENDING; admin duyệt trong UI mới thực thi (xem mcp-feedback.ts).
   registerFeedbackMcp(app, db);
+
+  // MCP server cho module Lỗi — POST /mcp/errors (JSON-RPC), auth X-API-Key
+  // scope errors:read|write. AI ngoài (Claude) đọc lỗi runtime app gửi về +
+  // đổi trạng thái / XOÁ trực tiếp (xem mcp-errors.ts). Khác /mcp Phản hồi:
+  // ở đây AI mutate trực tiếp (cần errors:write, deny-by-default).
+  registerErrorsMcp(app, db);
 
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.

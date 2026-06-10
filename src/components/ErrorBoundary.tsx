@@ -3,6 +3,7 @@
    Hiển thị màn hình lỗi + nút tải lại thay vì trang trắng.
    ========================================================== */
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportClientError } from "@/lib/error-reporter";
 
 interface Props {
   children: ReactNode;
@@ -19,8 +20,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log để debug; production có thể gửi tới service giám sát
+    // Log để debug + gửi về server cho admin theo dõi (fail-safe, không ném).
     console.error("[ErrorBoundary]", error, info.componentStack);
+    reportClientError({
+      source: "react",
+      message: error.message || "React render error",
+      stack: error.stack,
+      componentStack: info.componentStack ?? undefined,
+    });
   }
 
   render() {

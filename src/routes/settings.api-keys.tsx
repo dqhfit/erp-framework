@@ -3,6 +3,7 @@
    /external/3rd-party. Scope deny-by-default (P1.3).
    Format scope: "*" | "entity:<name>:read|write" | "entity:*:read|write"
                  | "feedback:read|propose|apply|*" (MCP /mcp — module Phản hồi)
+                 | "errors:read|write|*" (MCP /mcp/errors — module Lỗi)
    ========================================================== */
 
 import {
@@ -42,6 +43,12 @@ function scopeCovers(a: string, b: string): boolean {
     if (pa[1] === "apply") return pb[1] === "read" || pb[1] === "apply";
     return false; // feedback:read chỉ bao chính nó (đã xử lý a===b)
   }
+  if (pa[0] === "errors" && pb[0] === "errors") {
+    if (pa[1] === "*") return true;
+    // write (đổi trạng thái / xoá) bao luôn read — khớp hasErrorScope.
+    if (pa[1] === "write") return pb[1] === "read" || pb[1] === "write";
+    return false; // errors:read chỉ bao chính nó
+  }
   return false;
 }
 
@@ -63,11 +70,12 @@ function ScopeEditor({
   onChange: (next: string[]) => void;
   disabled?: boolean;
 }) {
-  const [kind, setKind] = useState<"entity" | "feedback" | "all">("entity");
+  const [kind, setKind] = useState<"entity" | "feedback" | "errors" | "all">("entity");
   const [entityName, setEntityName] = useState("*");
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(false);
   const [fbLevel, setFbLevel] = useState<"read" | "propose" | "apply">("propose");
+  const [errLevel, setErrLevel] = useState<"read" | "write">("read");
 
   // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
   // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
@@ -79,6 +87,7 @@ function ScopeEditor({
   const addCurrent = () => {
     if (kind === "all") return addScopes(["*"]);
     if (kind === "feedback") return addScopes([`feedback:${fbLevel}`]);
+    if (kind === "errors") return addScopes([`errors:${errLevel}`]);
     const name = entityName.trim() || "*";
     const out: string[] = [];
     if (read) out.push(`entity:${name}:read`);
@@ -125,6 +134,7 @@ function ScopeEditor({
           >
             <option value="entity">Dữ liệu (entity)</option>
             <option value="feedback">Phản hồi (MCP)</option>
+            <option value="errors">Lỗi (MCP)</option>
             <option value="all">Toàn quyền (*)</option>
           </Select>
         </label>
@@ -174,6 +184,21 @@ function ScopeEditor({
               <option value="read">read — chỉ đọc</option>
               <option value="propose">propose — đọc + tạo đề xuất</option>
               <option value="apply">apply — đọc + áp trạng thái trực tiếp (AI tự set)</option>
+            </Select>
+          </label>
+        )}
+
+        {kind === "errors" && (
+          <label className="text-xs text-muted flex flex-col gap-1">
+            Mức
+            <Select
+              value={errLevel}
+              disabled={disabled}
+              onChange={(e) => setErrLevel(e.target.value as typeof errLevel)}
+              className="w-64"
+            >
+              <option value="read">read — chỉ đọc lỗi</option>
+              <option value="write">write — đọc + đổi trạng thái / xoá lỗi (AI tự xử lý)</option>
             </Select>
           </label>
         )}

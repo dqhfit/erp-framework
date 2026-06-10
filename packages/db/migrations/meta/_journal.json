@@ -505,6 +505,13 @@
       "when": 1783702800000,
       "tag": "0071_record_aux_drop_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1783702900000,
+      "tag": "0072_client_errors",
+      "breakpoints": true
     }
   ]
 }
