@@ -2511,7 +2511,11 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         pageSize={cfg.pageSize as number | undefined}
         loadFilters={cfg.loadFilters as LoadFilters | undefined}
         loadGate={cfg.loadGate as string | undefined}
-        emptyStateShowsAll={cfg.emptyStateShowsAll === true}
+        emptyStateShowsAll={
+          // Mặc định true khi filterFromState có cấu hình: combobox "tất cả" → hiện hết.
+          // Explicit false = master-detail (ẩn khi chưa chọn).
+          cfg.emptyStateShowsAll !== false && !!cfg.filterFromState
+        }
       />,
       embActs,
       pageState,

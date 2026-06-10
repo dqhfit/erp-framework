@@ -61,12 +61,29 @@ export const workflowsRouter = router({
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       };
       if (input.id) {
+        // SELECT → INSERT-or-UPDATE (cùng pattern pages/agents):
+        // client dùng crypto.randomUUID() làm id trước khi server biết → INSERT lần đầu,
+        // UPDATE các lần sau. Cross-tenant: id công ty khác → FORBIDDEN.
+        const [ex] = await ctx.db
+          .select({ companyId: workflows.companyId })
+          .from(workflows)
+          .where(eq(workflows.id, input.id));
+        if (ex && ex.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Đối tượng thuộc công ty khác" });
+        }
+        if (ex) {
+          const [row] = await ctx.db
+            .update(workflows)
+            .set({ ...values, updatedAt: new Date() })
+            .where(eq(workflows.id, input.id))
+            .returning();
+          if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
+          return row;
+        }
         const [row] = await ctx.db
-          .update(workflows)
-          .set({ ...values, updatedAt: new Date() })
-          .where(and(eq(workflows.id, input.id), eq(workflows.companyId, ctx.user.companyId)))
+          .insert(workflows)
+          .values({ id: input.id, companyId: ctx.user.companyId, ...values })
           .returning();
-        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
         return row;
       }
       const [row] = await ctx.db

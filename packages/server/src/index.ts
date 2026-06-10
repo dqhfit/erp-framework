@@ -558,12 +558,19 @@ async function main(): Promise<void> {
               ),
             )
             .limit(1);
-          if (!ent) throw new Error(`Không tìm thấy entity "${entityName}".`);
+          if (!ent)
+            throw new Error(
+              `Không tìm thấy entity "${entityName}" trong hệ thống. ` +
+                `Hãy dùng đúng tên kỹ thuật của entity (phân biệt hoa/thường không quan trọng). ` +
+                `Admin có thể xem danh sách entity tại mục Entities trong ứng dụng.`,
+            );
           // Deny-by-default: chỉ entity được bật cờ opt-in mới cho agent tra.
           const meta = (ent.meta ?? {}) as { agentSearchable?: boolean };
           if (meta.agentSearchable !== true) {
             throw new Error(
-              `Entity "${entityName}" chưa bật cho agent tra cứu (meta.agentSearchable).`,
+              `Entity "${entityName}" chưa được cấp quyền cho agent tìm kiếm. ` +
+                `Admin cần vào cài đặt entity → bật "Cho phép agent tìm kiếm" (AgentSearchable). ` +
+                `Đây là tính năng opt-in để bảo vệ dữ liệu nhạy cảm.`,
             );
           }
           // Validate query của LLM qua zod (queryParams) — bỏ field rác.
