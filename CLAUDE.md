@@ -280,7 +280,14 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
     `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. Tái hiện local: `CI=true npx
     pnpm@11 install --frozen-lockfile --ignore-scripts
     --config.confirmModulesPurge=false`.
-20. **CI hard-fail Biome 0 error** (xem mục 9). `// eslint-disable-line` cũ
+20. **Update `entities.meta` PHẢI merge jsonb, KHÔNG ghi đè object.**
+    `.set({ meta: { source: {...} } })` thay cả meta → xoá mất `meta.storage`
+    (marker bảng thật HYBRID) → reads rơi về EAV rỗng, bảng thật mồ côi.
+    Dùng `meta: sql\`coalesce(meta,'{}') || ${json}::jsonb\`` (đã dính 2 lần:
+    full-import + re-migrate). Tương tự: mọi thao tác data theo entity phải
+    route theo `meta.storage.tier` (bảng thật vs EAV), kể cả delete/count.
+
+21. **CI hard-fail Biome 0 error** (xem mục 9). `// eslint-disable-line` cũ
     KHÔNG có tác dụng với Biome — chuyển sang `// biome-ignore lint/<group>/
     <rule>: <lý do>` đúng vị trí (cấp-element a11y: dòng trên thẻ mở JSX).
     `useExhaustiveDependencies`: suppress, ĐỪNG thêm/bớt deps (loop re-render).

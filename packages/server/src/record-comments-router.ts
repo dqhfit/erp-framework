@@ -2,22 +2,20 @@
    record-comments-router.ts — Comments per record + nested replies.
    ========================================================== */
 
-import { entityRecords, recordComments } from "@erp-framework/db";
+import { recordComments } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { notifyMentions } from "./notifications-router";
+import { getRecordStore } from "./record-store";
 import { rbacProcedure, router } from "./trpc";
 
 export const recordCommentsRouter = router({
   list: rbacProcedure("view", "comment")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      // Verify record thuộc company trước khi trả list.
-      const [rec] = await ctx.db
-        .select({ id: entityRecords.id })
-        .from(entityRecords)
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      // Verify record thuộc company trước khi trả list (qua store — HYBRID-aware).
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       return ctx.db
         .select()
@@ -41,16 +39,8 @@ export const recordCommentsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify record + parent (nếu có) thuộc company.
-      const [rec] = await ctx.db
-        .select({ id: entityRecords.id })
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        );
+      // Verify record + parent (nếu có) thuộc company (qua store — HYBRID-aware).
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input.recordId);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       const [row] = await ctx.db
         .insert(recordComments)

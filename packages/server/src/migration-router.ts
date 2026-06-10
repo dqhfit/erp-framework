@@ -21,6 +21,7 @@ import {
   mssqlConnections,
   pages,
   procedures,
+  recordLocator,
   workflows,
 } from "@erp-framework/db";
 import { runDiscover } from "@erp-framework/migration-cli/discover";
@@ -48,9 +49,20 @@ import {
 import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import { verifyProcAgainstGolden } from "./migration-verify";
-import { type FullJobItem, prepareFullJobTables } from "./migration-full-import";
+import {
+  findExistingInTable,
+  type FullJobItem,
+  insertRowToTable,
+  prepareFullJobTables,
+  updateRowInTable,
+} from "./migration-full-import";
 import { resolveTableName } from "./entity-promote";
-import { applyColumnLabels, type EntityStorage, renameTableDDL } from "./entity-table-ddl";
+import {
+  applyColumnLabels,
+  assertIdent,
+  type EntityStorage,
+  renameTableDDL,
+} from "./entity-table-ddl";
 import { isHybridTablesEnabled } from "./record-store";
 import {
   buildCombinedMigratedSet,
@@ -135,6 +147,192 @@ function readDecisionsForTable(tableName: string): Array<Record<string, unknown>
   } catch {
     return [];
   }
+}
+
+/* ─── Helper HYBRID: entity tier='table' (bảng thật) ─── */
+
+/** storage tier='table' từ entities.meta, hoặc null nếu entity còn EAV. */
+function tableStorageOf(meta: unknown): EntityStorage | null {
+  const s = (meta as { storage?: EntityStorage } | null)?.storage;
+  return s?.tier === "table" ? s : null;
+}
+
+/** Đếm row trong bảng thật của entity (mọi row, gồm soft-deleted — đồng
+ *  nhất với count entity_records phía EAV). */
+async function countTableRows(db: DB, companyId: string, storage: EntityStorage): Promise<number> {
+  const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+  const res = (await db.execute(
+    sql`SELECT count(*)::int AS n FROM ${tbl} WHERE company_id = ${companyId}::uuid`,
+  )) as unknown as Array<{ n: number }> | { rows?: Array<{ n: number }> };
+  const list = Array.isArray(res) ? res : (res.rows ?? []);
+  return Number(list[0]?.n ?? 0);
+}
+
+/** Xoá sạch DATA của entity tier='table': row bảng thật + record_locator +
+ *  snapshot EAV đông lạnh (để re-promote/demote không hồi sinh data cũ).
+ *  Trả số row bảng thật đã xoá. */
+async function purgeTableRows(
+  db: DB,
+  companyId: string,
+  entityId: string,
+  storage: EntityStorage,
+): Promise<number> {
+  const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+  const res = (await db.execute(
+    sql`DELETE FROM ${tbl} WHERE company_id = ${companyId}::uuid RETURNING id`,
+  )) as unknown as Array<{ id: string }> | { rows?: Array<{ id: string }> };
+  const deleted = (Array.isArray(res) ? res : (res.rows ?? [])).length;
+  await db
+    .delete(recordLocator)
+    .where(and(eq(recordLocator.companyId, companyId), eq(recordLocator.entityId, entityId)));
+  await db
+    .delete(entityRecords)
+    .where(and(eq(entityRecords.companyId, companyId), eq(entityRecords.entityId, entityId)));
+  return deleted;
+}
+
+/** Ghi mapped rows vào entity theo tier (HYBRID-aware). Đọc meta TƯƠI từ DB
+ *  để biết storage (caller có thể chỉ có meta giả lập từ dedup-by-source).
+ *  force=true: xoá sạch records cũ rồi insert fresh; pkField: upsert theo PK;
+ *  không có cả hai: insert thẳng (legacy, có thể duplicate). */
+async function writeMappedRows(opts: {
+  db: DB;
+  companyId: string;
+  userId: string;
+  entityId: string;
+  mapped: Array<Record<string, unknown>>;
+  pkField?: string | null;
+  force?: boolean;
+}): Promise<{ rowsUpserted: number; rowsUpdated: number; rowsDeleted: number }> {
+  const { db, companyId, userId, entityId, mapped } = opts;
+  const [ent] = await db
+    .select({ meta: entities.meta })
+    .from(entities)
+    .where(and(eq(entities.companyId, companyId), eq(entities.id, entityId)))
+    .limit(1);
+  const storage = tableStorageOf(ent?.meta);
+
+  const insertAll = async (items: Array<Record<string, unknown>>): Promise<number> => {
+    if (items.length === 0) return 0;
+    if (storage) {
+      const newIds: string[] = [];
+      for (const d of items) {
+        const newId = await insertRowToTable(db, storage, companyId, userId, d);
+        if (newId) newIds.push(newId);
+      }
+      if (newIds.length > 0) {
+        await db
+          .insert(recordLocator)
+          .values(newIds.map((id) => ({ id, companyId, entityId })))
+          .onConflictDoNothing();
+      }
+      return newIds.length;
+    }
+    const inserted = await db
+      .insert(entityRecords)
+      .values(items.map((d) => ({ companyId, entityId, data: d, createdBy: userId })))
+      .returning({ id: entityRecords.id });
+    return inserted.length;
+  };
+
+  if (opts.force) {
+    let rowsDeleted: number;
+    if (storage) {
+      rowsDeleted = await purgeTableRows(db, companyId, entityId, storage);
+    } else {
+      const del = await db
+        .delete(entityRecords)
+        .where(and(eq(entityRecords.companyId, companyId), eq(entityRecords.entityId, entityId)))
+        .returning({ id: entityRecords.id });
+      rowsDeleted = del.length;
+    }
+    return { rowsUpserted: await insertAll(mapped), rowsUpdated: 0, rowsDeleted };
+  }
+
+  if (opts.pkField && mapped.length > 0) {
+    const pkField = opts.pkField;
+    const pkValuesText = mapped
+      .map((d) => d[pkField])
+      .filter((v) => v != null)
+      .map((v) => String(v));
+    let existingMap: Map<string, string>; // pkValue → record.id
+    if (storage) {
+      existingMap = await findExistingInTable(storage, companyId, pkField, pkValuesText);
+    } else {
+      const existingRows =
+        pkValuesText.length > 0
+          ? await db
+              .select({ id: entityRecords.id, data: entityRecords.data })
+              .from(entityRecords)
+              .where(
+                and(
+                  eq(entityRecords.companyId, companyId),
+                  eq(entityRecords.entityId, entityId),
+                  sql`${entityRecords.data}->>${pkField} = ANY(${pkValuesText}::text[])`,
+                ),
+              )
+          : [];
+      existingMap = new Map<string, string>();
+      for (const r of existingRows) {
+        const pkVal = (r.data as Record<string, unknown>)[pkField];
+        if (pkVal != null) existingMap.set(String(pkVal), r.id);
+      }
+    }
+
+    const toInsert: Array<Record<string, unknown>> = [];
+    const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
+    for (const d of mapped) {
+      const pkVal = d[pkField];
+      const existingId = pkVal == null ? undefined : existingMap.get(String(pkVal));
+      if (existingId) toUpdate.push({ id: existingId, data: d });
+      else toInsert.push(d);
+    }
+
+    const rowsUpserted = await insertAll(toInsert);
+    for (const u of toUpdate) {
+      if (storage) {
+        await updateRowInTable(db, storage, u.id, u.data);
+      } else {
+        await db
+          .update(entityRecords)
+          .set({ data: u.data, updatedAt: new Date() })
+          .where(eq(entityRecords.id, u.id));
+      }
+    }
+    return { rowsUpserted, rowsUpdated: toUpdate.length, rowsDeleted: 0 };
+  }
+
+  return { rowsUpserted: await insertAll(mapped), rowsUpdated: 0, rowsDeleted: 0 };
+}
+
+/** Cập nhật meta.source — MERGE jsonb (||), KHÔNG ghi đè cả meta (ghi đè sẽ
+ *  xoá mất meta.storage của entity đã promote — xem bài học #20 CLAUDE.md). */
+async function mergeSourceMeta(
+  db: DB,
+  entityId: string,
+  source: Record<string, unknown>,
+): Promise<void> {
+  await db
+    .update(entities)
+    .set({
+      meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({ source })}::jsonb`,
+      updatedAt: new Date(),
+    })
+    .where(eq(entities.id, entityId));
+}
+
+/** DROP bảng thật + dọn locator khi xoá hẳn entity tier='table'. Bảng vật lý
+ *  KHÔNG nằm trong cascade FK của entities nên phải drop tường minh. */
+async function dropTableForEntity(
+  db: DB,
+  companyId: string,
+  entityId: string,
+  storage: EntityStorage,
+): Promise<void> {
+  await db
+    .delete(recordLocator)
+    .where(and(eq(recordLocator.companyId, companyId), eq(recordLocator.entityId, entityId)));
+  await db.execute(sql.raw(`DROP TABLE IF EXISTS "${assertIdent(storage.tableName)}"`));
 }
 
 const ACTION_VALUES = [
@@ -2470,124 +2668,31 @@ export const migrationRouter = router({
             let rowsDeleted = 0;
             if (!input.dryRun && entityId) {
               const eid = entityId;
-              if (input.force) {
-                const del = await ctx.db
-                  .delete(entityRecords)
-                  .where(
-                    and(
-                      eq(entityRecords.companyId, ctx.user.companyId),
-                      eq(entityRecords.entityId, eid),
-                    ),
-                  )
-                  .returning({ id: entityRecords.id });
-                rowsDeleted = del.length;
-                if (mapped.length > 0) {
-                  const inserted = await ctx.db
-                    .insert(entityRecords)
-                    .values(
-                      mapped.map((d) => ({
-                        companyId: ctx.user.companyId,
-                        entityId: eid,
-                        data: d,
-                        createdBy: ctx.user.id,
-                      })),
-                    )
-                    .returning({ id: entityRecords.id });
-                  rowsUpserted = inserted.length;
-                }
-              } else if (meta.pkField && mapped.length > 0) {
-                // UPSERT theo PK: query existing records, split insert vs update.
-                const pkField = meta.pkField;
-                const pkValues = mapped.map((d) => d[pkField]).filter((v) => v != null);
-                const pkValuesText = pkValues.map((v) => String(v));
-                const existingRows =
-                  pkValuesText.length > 0
-                    ? await ctx.db
-                        .select({ id: entityRecords.id, data: entityRecords.data })
-                        .from(entityRecords)
-                        .where(
-                          and(
-                            eq(entityRecords.companyId, ctx.user.companyId),
-                            eq(entityRecords.entityId, eid),
-                            sql`${entityRecords.data}->>${pkField} = ANY(${pkValuesText}::text[])`,
-                          ),
-                        )
-                    : [];
-                const existingMap = new Map<string, string>(); // pkValue → record.id
-                for (const r of existingRows) {
-                  const pkVal = (r.data as Record<string, unknown>)[pkField];
-                  if (pkVal != null) existingMap.set(String(pkVal), r.id);
-                }
-
-                const toInsert: typeof mapped = [];
-                const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
-                for (const d of mapped) {
-                  const pkVal = d[pkField];
-                  if (pkVal == null) {
-                    toInsert.push(d);
-                    continue;
-                  }
-                  const existingId = existingMap.get(String(pkVal));
-                  if (existingId) toUpdate.push({ id: existingId, data: d });
-                  else toInsert.push(d);
-                }
-
-                if (toInsert.length > 0) {
-                  const inserted = await ctx.db
-                    .insert(entityRecords)
-                    .values(
-                      toInsert.map((d) => ({
-                        companyId: ctx.user.companyId,
-                        entityId: eid,
-                        data: d,
-                        createdBy: ctx.user.id,
-                      })),
-                    )
-                    .returning({ id: entityRecords.id });
-                  rowsUpserted = inserted.length;
-                }
-                for (const u of toUpdate) {
-                  await ctx.db
-                    .update(entityRecords)
-                    .set({ data: u.data, updatedAt: new Date() })
-                    .where(eq(entityRecords.id, u.id));
-                }
-                rowsUpdated = toUpdate.length;
-              } else if (mapped.length > 0) {
-                // Không có pkField + không force → INSERT thẳng (có thể tạo duplicate).
-                const inserted = await ctx.db
-                  .insert(entityRecords)
-                  .values(
-                    mapped.map((d) => ({
-                      companyId: ctx.user.companyId,
-                      entityId: eid,
-                      data: d,
-                      createdBy: ctx.user.id,
-                    })),
-                  )
-                  .returning({ id: entityRecords.id });
-                rowsUpserted = inserted.length;
-              }
+              // HYBRID-aware: route bảng thật vs EAV theo meta.storage.
+              const w = await writeMappedRows({
+                db: ctx.db,
+                companyId: ctx.user.companyId,
+                userId: ctx.user.id,
+                entityId: eid,
+                mapped,
+                pkField: meta.pkField,
+                force: input.force,
+              });
+              rowsUpserted = w.rowsUpserted;
+              rowsUpdated = w.rowsUpdated;
+              rowsDeleted = w.rowsDeleted;
 
               // Phase T1: cập nhật meta.source.importedAt + rowsLastImported sau
               // mỗi lần migrate thành công — dùng cho UI hiển thị "lần migrate cuối".
-              await ctx.db
-                .update(entities)
-                .set({
-                  meta: {
-                    source: {
-                      kind: "migration",
-                      connectionId: defaultConnId,
-                      module: meta.moduleName,
-                      mssqlTable: meta.tableName,
-                      importedAt: new Date().toISOString(),
-                      importedBy: ctx.user.id,
-                      rowsLastImported: rowsUpserted + rowsUpdated,
-                    },
-                  },
-                  updatedAt: new Date(),
-                })
-                .where(eq(entities.id, eid));
+              await mergeSourceMeta(ctx.db, eid, {
+                kind: "migration",
+                connectionId: defaultConnId,
+                module: meta.moduleName,
+                mssqlTable: meta.tableName,
+                importedAt: new Date().toISOString(),
+                importedBy: ctx.user.id,
+                rowsLastImported: rowsUpserted + rowsUpdated,
+              });
 
               // Lưu stats để batch update manifest cuối loop.
               let bucket = manifestUpdates.get(meta.modulePath);
@@ -3033,127 +3138,29 @@ export const migrationRouter = router({
             let rowsDeleted = 0;
             if (!input.dryRun && entityId) {
               const eid = entityId;
-              if (it.force) {
-                // Force: xoá toàn bộ records cũ rồi INSERT fresh.
-                const del = await ctx.db
-                  .delete(entityRecords)
-                  .where(
-                    and(
-                      eq(entityRecords.companyId, ctx.user.companyId),
-                      eq(entityRecords.entityId, eid),
-                    ),
-                  )
-                  .returning({ id: entityRecords.id });
-                rowsDeleted = del.length;
-                if (mapped.length > 0) {
-                  const inserted = await ctx.db
-                    .insert(entityRecords)
-                    .values(
-                      mapped.map((d) => ({
-                        companyId: ctx.user.companyId,
-                        entityId: eid,
-                        data: d,
-                        createdBy: ctx.user.id,
-                      })),
-                    )
-                    .returning({ id: entityRecords.id });
-                  rowsUpserted = inserted.length;
-                }
-              } else if (it.pkField && mapped.length > 0) {
-                // UPSERT theo PK: query existing records, build map, sau đó
-                // chia mapped thành toUpdate (đã có) + toInsert (mới).
-                const pkValues = mapped
-                  .map((d) => d[it.pkField as string])
-                  .filter((v) => v != null);
-                const pkValuesText = pkValues.map((v) => String(v));
-                const existingRows =
-                  pkValuesText.length > 0
-                    ? await ctx.db
-                        .select({ id: entityRecords.id, data: entityRecords.data })
-                        .from(entityRecords)
-                        .where(
-                          and(
-                            eq(entityRecords.companyId, ctx.user.companyId),
-                            eq(entityRecords.entityId, eid),
-                            sql`${entityRecords.data}->>${it.pkField} = ANY(${pkValuesText}::text[])`,
-                          ),
-                        )
-                    : [];
-                const existingMap = new Map<string, string>(); // pkValue → record.id
-                for (const r of existingRows) {
-                  const pkVal = (r.data as Record<string, unknown>)[it.pkField];
-                  if (pkVal != null) existingMap.set(String(pkVal), r.id);
-                }
+              // HYBRID-aware: route bảng thật vs EAV theo meta.storage.
+              const w = await writeMappedRows({
+                db: ctx.db,
+                companyId: ctx.user.companyId,
+                userId: ctx.user.id,
+                entityId: eid,
+                mapped,
+                pkField: it.pkField,
+                force: it.force,
+              });
+              rowsUpserted = w.rowsUpserted;
+              rowsUpdated = w.rowsUpdated;
+              rowsDeleted = w.rowsDeleted;
 
-                const toInsert: typeof mapped = [];
-                const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
-                for (const d of mapped) {
-                  const pkVal = d[it.pkField as string];
-                  if (pkVal == null) {
-                    toInsert.push(d);
-                    continue;
-                  }
-                  const existingId = existingMap.get(String(pkVal));
-                  if (existingId) toUpdate.push({ id: existingId, data: d });
-                  else toInsert.push(d);
-                }
-
-                if (toInsert.length > 0) {
-                  const inserted = await ctx.db
-                    .insert(entityRecords)
-                    .values(
-                      toInsert.map((d) => ({
-                        companyId: ctx.user.companyId,
-                        entityId: eid,
-                        data: d,
-                        createdBy: ctx.user.id,
-                      })),
-                    )
-                    .returning({ id: entityRecords.id });
-                  rowsUpserted = inserted.length;
-                }
-                // UPDATE từng cái — không có batch UPDATE Drizzle hỗ trợ trực tiếp.
-                for (const u of toUpdate) {
-                  await ctx.db
-                    .update(entityRecords)
-                    .set({ data: u.data, updatedAt: new Date() })
-                    .where(eq(entityRecords.id, u.id));
-                }
-                rowsUpdated = toUpdate.length;
-              } else if (mapped.length > 0) {
-                // Không có pkField + không force → INSERT thẳng (legacy, có thể
-                // duplicate nếu user re-migrate). UI nên cảnh báo.
-                const inserted = await ctx.db
-                  .insert(entityRecords)
-                  .values(
-                    mapped.map((d) => ({
-                      companyId: ctx.user.companyId,
-                      entityId: eid,
-                      data: d,
-                      createdBy: ctx.user.id,
-                    })),
-                  )
-                  .returning({ id: entityRecords.id });
-                rowsUpserted = inserted.length;
-              }
-
-              await ctx.db
-                .update(entities)
-                .set({
-                  meta: {
-                    source: {
-                      kind: "migration",
-                      connectionId: input.connectionId,
-                      module: moduleName,
-                      mssqlTable: it.tableName,
-                      importedAt: new Date().toISOString(),
-                      importedBy: ctx.user.id,
-                      rowsLastImported: rowsUpserted + rowsUpdated,
-                    },
-                  },
-                  updatedAt: new Date(),
-                })
-                .where(eq(entities.id, eid));
+              await mergeSourceMeta(ctx.db, eid, {
+                kind: "migration",
+                connectionId: input.connectionId,
+                module: moduleName,
+                mssqlTable: it.tableName,
+                importedAt: new Date().toISOString(),
+                importedBy: ctx.user.id,
+                rowsLastImported: rowsUpserted + rowsUpdated,
+              });
             }
 
             results.push({
@@ -4009,6 +4016,17 @@ export const migrationRouter = router({
         .where(eq(entityRecords.companyId, ctx.user.companyId))
         .groupBy(entityRecords.entityId);
       const countMap = new Map(counts.map((c) => [c.entityId, c.count]));
+      // Entity tier='table' (HYBRID): data sống ở bảng thật — đếm ở đó thay vì
+      // EAV (EAV chỉ còn snapshot đông lạnh hoặc rỗng → số sai).
+      for (const r of rows) {
+        const storage = tableStorageOf(r.meta);
+        if (!storage) continue;
+        try {
+          countMap.set(r.id, await countTableRows(ctx.db, ctx.user.companyId, storage));
+        } catch {
+          /* bảng thật mất (drift) → giữ count EAV */
+        }
+      }
 
       const filtered = rows.filter((r) => {
         const src = (r.meta as { source?: { connectionId?: string; module?: string } } | null)
@@ -4089,17 +4107,33 @@ export const migrationRouter = router({
         });
       }
 
-      // records-only: xoá entity_records, giữ entity.
+      // HYBRID: entity đã promote sang bảng thật → data sống ở đó, EAV chỉ là
+      // snapshot đông lạnh. Mọi nhánh dưới route theo storage.
+      const storage = tableStorageOf(ent.meta);
+
+      // records-only: xoá records (bảng thật nếu tier='table', kèm snapshot
+      // EAV + locator), giữ entity.
       if (input.mode === "records-only" || input.mode === "re-migrate") {
-        const del = await ctx.db
-          .delete(entityRecords)
-          .where(
-            and(
-              eq(entityRecords.companyId, ctx.user.companyId),
-              eq(entityRecords.entityId, input.entityId),
-            ),
-          )
-          .returning({ id: entityRecords.id });
+        let deletedRecords: number;
+        if (storage) {
+          deletedRecords = await purgeTableRows(
+            ctx.db,
+            ctx.user.companyId,
+            input.entityId,
+            storage,
+          );
+        } else {
+          const del = await ctx.db
+            .delete(entityRecords)
+            .where(
+              and(
+                eq(entityRecords.companyId, ctx.user.companyId),
+                eq(entityRecords.entityId, input.entityId),
+              ),
+            )
+            .returning({ id: entityRecords.id });
+          deletedRecords = del.length;
+        }
         appendDecision({
           module: src.module ?? "(unknown)",
           action: {
@@ -4107,7 +4141,8 @@ export const migrationRouter = router({
             mode: input.mode === "re-migrate" ? "records-only-prelude" : "records-only",
             entityId: input.entityId,
             entityName: ent.name,
-            deletedRecords: del.length,
+            tier: storage ? "table" : "eav",
+            deletedRecords,
           },
           by: ctx.user.id,
         });
@@ -4115,27 +4150,37 @@ export const migrationRouter = router({
           return {
             mode: "records-only" as const,
             entityId: input.entityId,
-            deletedRecords: del.length,
+            deletedRecords,
             entityKept: true,
           };
         }
       }
 
-      // entity-and-records: xoá entity (CASCADE FK sẽ xoá records).
+      // entity-and-records: xoá entity (CASCADE FK xoá records EAV) + DROP
+      // bảng thật nếu tier='table' (bảng vật lý KHÔNG nằm trong cascade).
       if (input.mode === "entity-and-records") {
-        // Đếm trước để báo về.
-        const [cnt] = await ctx.db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(entityRecords)
-          .where(
-            and(
-              eq(entityRecords.companyId, ctx.user.companyId),
-              eq(entityRecords.entityId, input.entityId),
-            ),
-          );
+        // Đếm trước để báo về (theo tier — EAV của entity promoted chỉ là snapshot).
+        let recordCount: number;
+        if (storage) {
+          recordCount = await countTableRows(ctx.db, ctx.user.companyId, storage).catch(() => 0);
+        } else {
+          const [cnt] = await ctx.db
+            .select({ n: sql<number>`count(*)::int` })
+            .from(entityRecords)
+            .where(
+              and(
+                eq(entityRecords.companyId, ctx.user.companyId),
+                eq(entityRecords.entityId, input.entityId),
+              ),
+            );
+          recordCount = cnt?.n ?? 0;
+        }
         await ctx.db
           .delete(entities)
           .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, input.entityId)));
+        if (storage) {
+          await dropTableForEntity(ctx.db, ctx.user.companyId, input.entityId, storage);
+        }
 
         // Gỡ migratedAt khỏi manifest _quick-* hoặc module yaml tương ứng.
         if (src.module && src.mssqlTable) {
@@ -4170,14 +4215,15 @@ export const migrationRouter = router({
             entityId: input.entityId,
             entityName: ent.name,
             mssqlTable: src.mssqlTable,
-            deletedRecords: cnt?.n ?? 0,
+            tier: storage ? "table" : "eav",
+            deletedRecords: recordCount,
           },
           by: ctx.user.id,
         });
         return {
           mode: "entity-and-records" as const,
           entityId: input.entityId,
-          deletedRecords: cnt?.n ?? 0,
+          deletedRecords: recordCount,
           entityDeleted: true,
         };
       }
@@ -4241,39 +4287,29 @@ export const migrationRouter = router({
             }
             return data;
           });
-          const inserted = await ctx.db
-            .insert(entityRecords)
-            .values(
-              mapped.map((d) => ({
-                companyId: ctx.user.companyId,
-                entityId: input.entityId,
-                data: d,
-                createdBy: ctx.user.id,
-              })),
-            )
-            .returning({ id: entityRecords.id });
-          rowsUpserted = inserted.length;
+          // HYBRID-aware: bảng thật → insertRowToTable + locator; EAV → insert
+          // thẳng (records cũ đã purge ở nhánh prelude phía trên).
+          const w = await writeMappedRows({
+            db: ctx.db,
+            companyId: ctx.user.companyId,
+            userId: ctx.user.id,
+            entityId: input.entityId,
+            mapped,
+          });
+          rowsUpserted = w.rowsUpserted;
         }
       } finally {
         await client.close().catch(() => undefined);
       }
 
-      // Cập nhật meta.source.importedAt.
-      await ctx.db
-        .update(entities)
-        .set({
-          meta: {
-            source: {
-              ...src,
-              kind: "migration",
-              importedAt: new Date().toISOString(),
-              importedBy: ctx.user.id,
-              rowsLastImported: rowsUpserted,
-            },
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(entities.id, input.entityId));
+      // Cập nhật meta.source.importedAt (merge — giữ meta.storage).
+      await mergeSourceMeta(ctx.db, input.entityId, {
+        ...src,
+        kind: "migration",
+        importedAt: new Date().toISOString(),
+        importedBy: ctx.user.id,
+        rowsLastImported: rowsUpserted,
+      });
 
       appendDecision({
         module: src.module ?? "(unknown)",
@@ -4283,6 +4319,7 @@ export const migrationRouter = router({
           entityId: input.entityId,
           entityName: ent.name,
           mssqlTable: src.mssqlTable,
+          tier: storage ? "table" : "eav",
           rowsRead,
           rowsUpserted,
         },
@@ -4337,19 +4374,29 @@ export const migrationRouter = router({
           // Reuse logic: gọi inline qua DB ops giống cleanupMigratedEntity.
           // Để tránh duplicate code lớn, ghi nhận đơn giản — caller có thể
           // chia nhỏ qua cleanupMigratedEntity từng cái.
+          const storage = tableStorageOf(t.meta);
           if (input.mode === "records-only") {
-            await ctx.db
-              .delete(entityRecords)
-              .where(
-                and(
-                  eq(entityRecords.companyId, ctx.user.companyId),
-                  eq(entityRecords.entityId, t.id),
-                ),
-              );
+            if (storage) {
+              // HYBRID: xoá row bảng thật + locator + snapshot EAV.
+              await purgeTableRows(ctx.db, ctx.user.companyId, t.id, storage);
+            } else {
+              await ctx.db
+                .delete(entityRecords)
+                .where(
+                  and(
+                    eq(entityRecords.companyId, ctx.user.companyId),
+                    eq(entityRecords.entityId, t.id),
+                  ),
+                );
+            }
           } else if (input.mode === "entity-and-records") {
             await ctx.db
               .delete(entities)
               .where(and(eq(entities.companyId, ctx.user.companyId), eq(entities.id, t.id)));
+            if (storage) {
+              // Bảng vật lý không nằm trong cascade FK → drop tường minh.
+              await dropTableForEntity(ctx.db, ctx.user.companyId, t.id, storage);
+            }
           } else if (input.mode === "re-migrate") {
             // Skip — re-migrate phức tạp (cần MSSQL), caller nên gọi tuần
             // tự qua cleanupMigratedEntity per entity để có progress + retry.

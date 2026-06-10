@@ -6,13 +6,14 @@
    cả khi lỗi (theo mẫu run-entity-sync.ts).
    ========================================================== */
 import { readFile } from "node:fs/promises";
+import { entities, knowledgeChunks, knowledgeSources } from "@erp-framework/db";
 import { and, eq } from "drizzle-orm";
-import { knowledgeSources, knowledgeChunks, entities, entityRecords } from "@erp-framework/db";
-import type { DB } from "./db";
+import { logActivity } from "./activity";
 import { chunkText } from "./chunk";
+import type { DB } from "./db";
 import { embedTexts } from "./embeddings";
 import { extractText } from "./extract";
-import { logActivity } from "./activity";
+import { getRecordStore } from "./record-store";
 
 type SourceRow = typeof knowledgeSources.$inferSelect;
 
@@ -41,11 +42,11 @@ async function renderEntity(db: DB, companyId: string, entityId: string): Promis
 
   const fields = (entity.fields ?? []) as Array<{ name: string; label?: string }>;
   // Lấy dư 1 bản ghi để biết có vượt trần không (không SELECT toàn bộ → tránh OOM).
-  const recs = await db
-    .select()
-    .from(entityRecords)
-    .where(and(eq(entityRecords.entityId, entityId), eq(entityRecords.companyId, companyId)))
-    .limit(MAX_ENTITY_RECORDS + 1);
+  // Qua RecordStore — HYBRID-aware (entity tier='table' đọc từ bảng thật).
+  const { rows: recs } = await getRecordStore(db).list(companyId, entityId, {
+    limit: MAX_ENTITY_RECORDS + 1,
+    withTotal: false,
+  });
 
   let warn: string | null = null;
   const used = recs.length > MAX_ENTITY_RECORDS ? recs.slice(0, MAX_ENTITY_RECORDS) : recs;

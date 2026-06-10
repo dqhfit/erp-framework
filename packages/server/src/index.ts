@@ -4,14 +4,7 @@ import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts 
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { roleCan } from "@erp-framework/core";
-import {
-  agents,
-  apiKeys,
-  entities,
-  entityRecords,
-  knowledgeSources,
-  sessions,
-} from "@erp-framework/db";
+import { agents, apiKeys, entities, knowledgeSources, sessions } from "@erp-framework/db";
 import { runMigrations } from "@erp-framework/db/migrate";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -40,14 +33,14 @@ import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
 import { agenticRetrieve } from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
-import { registerOAuth } from "./oauth";
-import { registerPrintRoutes } from "./print-routes";
 import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
+import { registerOAuth } from "./oauth";
+import { registerPrintRoutes } from "./print-routes";
+import { getRecordStore } from "./record-store";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
 import {
-  buildRecordWhere,
   decryptDataOut,
   loadEntityFields,
   queryParams,
@@ -583,12 +576,13 @@ async function main(): Promise<void> {
             limit: Math.min(50, Math.max(1, Number(args.limit) || 10)),
           });
           const query = parsed.success ? parsed.data : { limit: 10 };
-          const where = buildRecordWhere(active.companyId, ent.id, query, false);
-          const rows = await db
-            .select()
-            .from(entityRecords)
-            .where(where)
-            .limit(query?.limit ?? 10);
+          // Qua RecordStore — HYBRID-aware (entity tier='table' đọc bảng thật).
+          const { rows } = await getRecordStore(db).list(active.companyId, ent.id, {
+            q: query?.q,
+            filters: query?.filters,
+            limit: query?.limit ?? 10,
+            withTotal: false,
+          });
           // Decrypt + field-level RBAC strip (đồng nhất records.get).
           const fields = await loadEntityFields(db, active.companyId, ent.id);
           return rows.map((r) => ({

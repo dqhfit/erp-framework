@@ -14,7 +14,6 @@ import { pluginRegistry, validateRecord } from "@erp-framework/core";
 import {
   approvalRequests,
   entities,
-  entityRecords,
   entityRecordTimeseries,
   entityRecordVersions,
 } from "@erp-framework/db";
@@ -27,9 +26,9 @@ import { fireEntityWebhooks } from "./entity-webhooks-router";
 import { makeCallTool } from "./mcp-client";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
-import { applyRollups, invalidateRollupsFor } from "./rollup";
 import { getRecordStore } from "./record-store";
 import { recordTree } from "./record-tree";
+import { applyRollups, invalidateRollupsFor } from "./rollup";
 import {
   applyCascadeOnDelete,
   assertUnique,
@@ -391,16 +390,8 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify record cùng company.
-      const [rec] = await ctx.db
-        .select({ id: entityRecords.id })
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        );
+      // Verify record cùng company (qua store — HYBRID-aware bảng thật/EAV).
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input.recordId);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       const [row] = await ctx.db
         .insert(entityRecordTimeseries)
@@ -547,11 +538,9 @@ export const recordsRouter = router({
   history: rbacProcedure("view", "entity")
     .input(z.string().uuid())
     .query(async ({ ctx, input }) => {
-      // Verify record thuộc đúng công ty trước khi trả version list.
-      const [rec] = await ctx.db
-        .select({ id: entityRecords.id })
-        .from(entityRecords)
-        .where(and(eq(entityRecords.id, input), eq(entityRecords.companyId, ctx.user.companyId)));
+      // Verify record thuộc đúng công ty trước khi trả version list
+      // (qua store — HYBRID-aware bảng thật/EAV).
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       return ctx.db
         .select()
@@ -578,15 +567,8 @@ export const recordsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const targetTs = new Date(input.ts);
-      const [rec] = await ctx.db
-        .select()
-        .from(entityRecords)
-        .where(
-          and(
-            eq(entityRecords.id, input.recordId),
-            eq(entityRecords.companyId, ctx.user.companyId),
-          ),
-        );
+      // Qua store — HYBRID-aware bảng thật/EAV.
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input.recordId);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
       // Tìm version snapshot mới nhất trước ts.
       const [version] = await ctx.db

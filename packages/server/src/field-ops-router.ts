@@ -4,11 +4,13 @@
    state per (record, field); transform op nếu baseSeq lệch.
    Broadcast op mới qua WS channel "field:<recordId>:<field>".
    ========================================================== */
-import { z } from "zod";
-import { and, desc, eq } from "drizzle-orm";
-import { recordFieldOps, entityRecords } from "@erp-framework/db";
-import { router, rbacProcedure } from "./trpc";
+
+import { recordFieldOps } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { getRecordStore } from "./record-store";
+import { rbacProcedure, router } from "./trpc";
 import { publish } from "./ws-hub";
 
 /** Op kind:
@@ -29,44 +31,53 @@ export const fieldOpsRouter = router({
   push: rbacProcedure("edit", "entity")
     .input(opInput)
     .mutation(async ({ ctx, input }) => {
-      // Verify record cùng company.
-      const [rec] = await ctx.db.select({ id: entityRecords.id }).from(entityRecords)
-        .where(and(eq(entityRecords.id, input.recordId),
-          eq(entityRecords.companyId, ctx.user.companyId)));
+      // Verify record cùng company (qua store — HYBRID-aware bảng thật/EAV).
+      const rec = await getRecordStore(ctx.db).getById(ctx.user.companyId, input.recordId);
       if (!rec) throw new TRPCError({ code: "NOT_FOUND", message: "Record không tồn tại" });
 
       // nextSeq = max(seq) + 1; cần lock để tránh race condition trong
       // co-edit cao tần — v1 dùng SELECT + INSERT đơn giản (chấp nhận
       // race rare; client retry với baseSeq mới).
-      const [last] = await ctx.db.select({ seq: recordFieldOps.seq })
+      const [last] = await ctx.db
+        .select({ seq: recordFieldOps.seq })
         .from(recordFieldOps)
-        .where(and(
-          eq(recordFieldOps.recordId, input.recordId),
-          eq(recordFieldOps.fieldName, input.fieldName),
-        ))
+        .where(
+          and(
+            eq(recordFieldOps.recordId, input.recordId),
+            eq(recordFieldOps.fieldName, input.fieldName),
+          ),
+        )
         .orderBy(desc(recordFieldOps.seq))
         .limit(1);
       const nextSeq = (last?.seq ?? 0) + 1;
 
-      const [row] = await ctx.db.insert(recordFieldOps).values({
-        companyId: ctx.user.companyId,
-        recordId: input.recordId,
-        fieldName: input.fieldName,
+      const [row] = await ctx.db
+        .insert(recordFieldOps)
+        .values({
+          companyId: ctx.user.companyId,
+          recordId: input.recordId,
+          fieldName: input.fieldName,
+          seq: nextSeq,
+          baseSeq: input.baseSeq,
+          op: input.op,
+          pos: input.pos,
+          chars: input.chars ?? null,
+          length: input.length ?? null,
+          actorUserId: ctx.user.id,
+        })
+        .returning();
+
+      // Broadcast qua WS channel cho mọi tab/client subscribe.
+      publish(`field:${input.recordId}:${input.fieldName}`, {
+        type: "op",
         seq: nextSeq,
         baseSeq: input.baseSeq,
         op: input.op,
         pos: input.pos,
-        chars: input.chars ?? null,
-        length: input.length ?? null,
+        chars: input.chars,
+        length: input.length,
         actorUserId: ctx.user.id,
-      }).returning();
-
-      // Broadcast qua WS channel cho mọi tab/client subscribe.
-      publish(`field:${input.recordId}:${input.fieldName}`, {
-        type: "op", seq: nextSeq, baseSeq: input.baseSeq,
-        op: input.op, pos: input.pos,
-        chars: input.chars, length: input.length,
-        actorUserId: ctx.user.id, ts: Date.now(),
+        ts: Date.now(),
       });
 
       return row;
@@ -74,17 +85,24 @@ export const fieldOpsRouter = router({
 
   /** Sync from sinceSeq — client recovery sau disconnect. */
   sync: rbacProcedure("view", "entity")
-    .input(z.object({
-      recordId: z.string().uuid(),
-      fieldName: z.string().min(1),
-      sinceSeq: z.number().int().nonnegative().optional(),
-    }))
+    .input(
+      z.object({
+        recordId: z.string().uuid(),
+        fieldName: z.string().min(1),
+        sinceSeq: z.number().int().nonnegative().optional(),
+      }),
+    )
     .query(({ ctx, input }) =>
-      ctx.db.select().from(recordFieldOps)
-        .where(and(
-          eq(recordFieldOps.recordId, input.recordId),
-          eq(recordFieldOps.fieldName, input.fieldName),
-          eq(recordFieldOps.companyId, ctx.user.companyId),
-        ))
-        .orderBy(recordFieldOps.seq)),
+      ctx.db
+        .select()
+        .from(recordFieldOps)
+        .where(
+          and(
+            eq(recordFieldOps.recordId, input.recordId),
+            eq(recordFieldOps.fieldName, input.fieldName),
+            eq(recordFieldOps.companyId, ctx.user.companyId),
+          ),
+        )
+        .orderBy(recordFieldOps.seq),
+    ),
 });

@@ -8,12 +8,14 @@
    trong entity.meta.mcpBindings → gọi tool MCP → normalize rows
    → upsert vào entity_records theo pkField → ghi nhật ký.
    ========================================================== */
+
+import { entities, entitySyncs } from "@erp-framework/db";
 import { and, eq } from "drizzle-orm";
-import { entitySyncs, entities, entityRecords } from "@erp-framework/db";
+import { logActivity } from "./activity";
 import type { DB } from "./db";
 import { makeCallTool } from "./mcp-client";
-import { normalizeRows, inferPkField } from "./normalize";
-import { logActivity } from "./activity";
+import { inferPkField, normalizeRows } from "./normalize";
+import { getRecordStore } from "./record-store";
 
 /* Shape tối thiểu của McpBindings (song song McpBindingsEditor client). */
 interface BindingArg {
@@ -39,12 +41,8 @@ export interface EntitySyncResult {
 
 /** Chạy MỘT lượt đồng bộ theo id cấu hình. Luôn cập nhật trạng
    thái vào bảng entity_syncs (kể cả khi lỗi). */
-export async function runEntitySync(
-  db: DB,
-  syncId: string,
-): Promise<EntitySyncResult> {
-  const [cfg] = await db.select().from(entitySyncs)
-    .where(eq(entitySyncs.id, syncId));
+export async function runEntitySync(db: DB, syncId: string): Promise<EntitySyncResult> {
+  const [cfg] = await db.select().from(entitySyncs).where(eq(entitySyncs.id, syncId));
   if (!cfg) throw new Error(`Cấu hình sync không tồn tại: ${syncId}`);
 
   let created = 0;
@@ -54,9 +52,10 @@ export async function runEntitySync(
   let summary = "";
 
   try {
-    const [entity] = await db.select().from(entities)
-      .where(and(eq(entities.id, cfg.entityId),
-        eq(entities.companyId, cfg.companyId)));
+    const [entity] = await db
+      .select()
+      .from(entities)
+      .where(and(eq(entities.id, cfg.entityId), eq(entities.companyId, cfg.companyId)));
     if (!entity) throw new Error("Entity không tồn tại hoặc khác công ty.");
 
     const meta = (entity.meta ?? {}) as EntityMeta;
@@ -79,37 +78,41 @@ export async function runEntitySync(
 
     // Xác định field khoá: ưu tiên cấu hình, không thì tự suy luận.
     const keyset = new Set<string>();
-    for (const r of rows) Object.keys(r).forEach((k) => keyset.add(k));
+    for (const r of rows) {
+      for (const k of Object.keys(r)) keyset.add(k);
+    }
     const pkField = cfg.pkField || inferPkField([...keyset]);
 
     // Bản ghi hiện có — lập map theo khoá để quyết định thêm/cập nhật.
-    const existing = await db.select({
-      id: entityRecords.id, data: entityRecords.data,
-    }).from(entityRecords).where(and(
-      eq(entityRecords.entityId, cfg.entityId),
-      eq(entityRecords.companyId, cfg.companyId)));
-    const byKey = new Map<string, string>();
-    for (const r of existing) {
-      const k = (r.data as Record<string, unknown>)[pkField];
-      if (k !== undefined && k !== null) byKey.set(String(k), r.id);
+    // Qua RecordStore (HYBRID-aware: bảng thật hay EAV theo meta.storage),
+    // đọc theo batch để khỏi đụng trần limit mặc định của store.list.
+    const store = getRecordStore(db);
+    const byKey = new Map<string, { id: string; version: number }>();
+    const BATCH = 500;
+    for (let offset = 0; ; offset += BATCH) {
+      const { rows: existing } = await store.list(cfg.companyId, cfg.entityId, {
+        includeDeleted: true,
+        limit: BATCH,
+        offset,
+        withTotal: false,
+      });
+      for (const r of existing) {
+        const k = (r.data as Record<string, unknown>)[pkField];
+        if (k !== undefined && k !== null) {
+          byKey.set(String(k), { id: r.id, version: r.version ?? 0 });
+        }
+      }
+      if (existing.length < BATCH) break;
     }
 
     for (const row of rows) {
       const k = row[pkField];
-      const existingId = k !== undefined && k !== null
-        ? byKey.get(String(k))
-        : undefined;
-      if (existingId) {
-        await db.update(entityRecords)
-          .set({ data: row, updatedAt: new Date() })
-          .where(eq(entityRecords.id, existingId));
+      const hit = k !== undefined && k !== null ? byKey.get(String(k)) : undefined;
+      if (hit) {
+        await store.replace(cfg.companyId, hit.id, row, hit.version + 1);
         updated++;
       } else {
-        await db.insert(entityRecords).values({
-          companyId: cfg.companyId,
-          entityId: cfg.entityId,
-          data: row,
-        });
+        await store.insert(cfg.companyId, cfg.entityId, row, null);
         created++;
       }
     }
@@ -127,13 +130,16 @@ export async function runEntitySync(
     detail: `Đồng bộ MCP — ${status}: ${summary}`.slice(0, 480),
   });
 
-  await db.update(entitySyncs).set({
-    lastRun: new Date(),
-    lastStatus: status,
-    lastSummary: summary.slice(0, 2000),
-    runCount: cfg.runCount + 1,
-    updatedAt: new Date(),
-  }).where(eq(entitySyncs.id, cfg.id));
+  await db
+    .update(entitySyncs)
+    .set({
+      lastRun: new Date(),
+      lastStatus: status,
+      lastSummary: summary.slice(0, 2000),
+      runCount: cfg.runCount + 1,
+      updatedAt: new Date(),
+    })
+    .where(eq(entitySyncs.id, cfg.id));
 
   return { status, created, updated, total, summary };
 }

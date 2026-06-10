@@ -21,6 +21,7 @@ import {
   migrationFullJobs,
   migrationFullJobTables,
   mssqlConnections,
+  recordLocator,
 } from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { db } from "./db";
@@ -34,11 +35,11 @@ import { publish as publishWs } from "./ws-hub";
 /* ─── Ghi batch vào BẢNG THẬT (targetTier='table') ─── */
 
 /** Đối tượng chạy SQL thô — db hoặc transaction tx đều thoả (cùng .execute). */
-type SqlExecutor = { execute: (query: SQL) => Promise<unknown> };
+export type SqlExecutor = { execute: (query: SQL) => Promise<unknown> };
 
 /** Tìm id record đã có trong bảng thật theo giá trị PK nguồn (gom trùng khi
  *  re-run/sync). pkField map sang cột typed (storage.columns) hoặc ext jsonb. */
-async function findExistingInTable(
+export async function findExistingInTable(
   storage: EntityStorage,
   companyId: string,
   pkField: string,
@@ -72,14 +73,16 @@ function tsvFor(storage: EntityStorage, data: Record<string, unknown>) {
   return tsv;
 }
 
-/** INSERT 1 row mới vào bảng thật (id uuidv7 mặc định, version 0, now). */
-async function insertRowToTable(
+/** INSERT 1 row mới vào bảng thật (id uuidv7 mặc định, version 0, now).
+ *  Trả id row mới — caller PHẢI ghi record_locator (id-only op mới định
+ *  tuyến được về bảng thật, đồng nhất với promote/record-store). */
+export async function insertRowToTable(
   tx: SqlExecutor,
   storage: EntityStorage,
   companyId: string,
   userId: string,
   data: Record<string, unknown>,
-): Promise<void> {
+): Promise<string | null> {
   const tbl = sql.raw(`"${storage.tableName}"`);
   const { cols, ext } = splitDataForStorage(storage, data);
   const colList = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"];
@@ -94,13 +97,17 @@ async function insertRowToTable(
     colList.push("search_tsv");
     vals.push(sql`to_tsvector('simple', ${tsv})`);
   }
-  await tx.execute(
-    sql`INSERT INTO ${tbl} (${sql.raw(colList.join(", "))}) VALUES (${sql.join(vals, sql`, `)})`,
+  const res = await tx.execute(
+    sql`INSERT INTO ${tbl} (${sql.raw(colList.join(", "))}) VALUES (${sql.join(vals, sql`, `)}) RETURNING id`,
   );
+  const list = Array.isArray(res)
+    ? (res as Array<{ id?: string }>)
+    : ((res as { rows?: Array<{ id?: string }> }).rows ?? []);
+  return list[0]?.id ?? null;
 }
 
 /** UPDATE row có sẵn theo id (cập nhật cột + ext + tsv + updated_at). */
-async function updateRowInTable(
+export async function updateRowInTable(
   tx: SqlExecutor,
   storage: EntityStorage,
   id: string,
@@ -508,11 +515,27 @@ export async function runFullImportJob(data: FullJobData): Promise<{
             await db.transaction(async (tx) => {
               if (useTable && storage) {
                 // Ghi thẳng vào BẢNG THẬT (per-row — cột động + tsv).
+                const newIds: string[] = [];
                 for (const d of toInsert) {
-                  await insertRowToTable(tx, storage, job.companyId, data.userId, d);
+                  const newId = await insertRowToTable(tx, storage, job.companyId, data.userId, d);
+                  if (newId) newIds.push(newId);
                 }
                 for (const u of toUpdate) {
                   await updateRowInTable(tx, storage, u.id, u.data);
+                }
+                // Locator cho row mới — id-only op (get/update theo recordId)
+                // mới định tuyến được về bảng thật (đồng nhất với promote).
+                if (newIds.length > 0) {
+                  await tx
+                    .insert(recordLocator)
+                    .values(
+                      newIds.map((id) => ({
+                        id,
+                        companyId: job.companyId,
+                        entityId: tableEntityId,
+                      })),
+                    )
+                    .onConflictDoNothing();
                 }
               } else {
                 if (toInsert.length > 0) {
@@ -569,11 +592,13 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         }
         if (canceledMidRun) break;
 
-        // Cập nhật meta.source.importedAt + rowsLastImported.
+        // Cập nhật meta.source.importedAt + rowsLastImported. MERGE jsonb (||)
+        // chứ KHÔNG ghi đè cả meta — ghi đè sẽ xoá mất meta.storage vừa
+        // promote (entity mất marker bảng thật, reads rơi về EAV rỗng).
         await db
           .update(entities)
           .set({
-            meta: {
+            meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({
               source: {
                 kind: "migration",
                 connectionId: job.connectionId,
@@ -583,7 +608,7 @@ export async function runFullImportJob(data: FullJobData): Promise<{
                 importedBy: data.userId,
                 rowsLastImported: rowsImported,
               },
-            },
+            })}::jsonb`,
             updatedAt: new Date(),
           })
           .where(eq(entities.id, tableEntityId));

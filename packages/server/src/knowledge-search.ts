@@ -14,7 +14,9 @@
 import { type SQL, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import { embedTexts } from "./embeddings";
+import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import { type KnowledgeAcl, knowledgeAccessibleSql } from "./knowledge-acl";
+import { getRecordStore } from "./record-store";
 
 export interface KnowledgeHit {
   chunkId: string;
@@ -120,32 +122,67 @@ async function searchLiveEntities(
   const srcList = (Array.isArray(sources) ? sources : []).filter((s) => s.entity_id);
   if (srcList.length === 0) return [];
 
-  // Nhãn field để render bản ghi → "Nhãn: giá trị".
+  // Nhãn field để render bản ghi → "Nhãn: giá trị" — kèm meta để biết tier
+  // (HYBRID: entity tier='table' có search_tsv ở BẢNG THẬT, không phải EAV).
   const entityIds = [...new Set(srcList.map((s) => s.entity_id as string))];
   const ents = (await db.execute(sql`
-    SELECT id, fields FROM entities
+    SELECT id, fields, meta FROM entities
     WHERE company_id = ${companyId}::uuid
       AND id IN (${sql.join(
         entityIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )})
-  `)) as unknown as Array<{ id: string; fields: Array<{ name: string; label?: string }> | null }>;
+  `)) as unknown as Array<{
+    id: string;
+    fields: Array<{ name: string; label?: string }> | null;
+    meta: { storage?: EntityStorage } | null;
+  }>;
   const fieldsById = new Map(ents.map((e) => [e.id, e.fields ?? []]));
+  const storageById = new Map(
+    ents.map((e) => [e.id, e.meta?.storage?.tier === "table" ? e.meta.storage : null]),
+  );
 
   const perSource = Math.min(limit, 5);
   const hits: KnowledgeHit[] = [];
   for (const s of srcList) {
     const entityId = s.entity_id as string;
-    const recs = (await db.execute(sql`
-      SELECT id, data, ts_rank(search_tsv, websearch_to_tsquery('simple', ${q})) AS rank
-      FROM entity_records
-      WHERE entity_id = ${entityId}::uuid
-        AND company_id = ${companyId}::uuid
-        AND deleted_at IS NULL
-        AND search_tsv @@ websearch_to_tsquery('simple', ${q})
-      ORDER BY rank DESC
-      LIMIT ${perSource}
-    `)) as unknown as LiveRecRow[];
+    const storage = storageById.get(entityId) ?? null;
+    let recs: LiveRecRow[];
+    if (storage) {
+      // Bảng thật: FTS trên search_tsv của er_/<tên cũ>; bảng không có cột
+      // `data` nên reconstruct qua RecordStore (≤ perSource record).
+      const idRows = (await db.execute(sql`
+        SELECT id, ts_rank(search_tsv, websearch_to_tsquery('simple', ${q})) AS rank
+        FROM ${sql.raw(`"${assertIdent(storage.tableName)}"`)}
+        WHERE company_id = ${companyId}::uuid
+          AND deleted_at IS NULL
+          AND search_tsv @@ websearch_to_tsquery('simple', ${q})
+        ORDER BY rank DESC
+        LIMIT ${perSource}
+      `)) as unknown as Array<{ id: string; rank: number | string }>;
+      recs = [];
+      for (const ir of Array.isArray(idRows) ? idRows : []) {
+        const row = await getRecordStore(db).getById(companyId, ir.id);
+        if (row) {
+          recs.push({
+            id: ir.id,
+            data: row.data as Record<string, unknown> | null,
+            rank: ir.rank,
+          });
+        }
+      }
+    } else {
+      recs = (await db.execute(sql`
+        SELECT id, data, ts_rank(search_tsv, websearch_to_tsquery('simple', ${q})) AS rank
+        FROM entity_records
+        WHERE entity_id = ${entityId}::uuid
+          AND company_id = ${companyId}::uuid
+          AND deleted_at IS NULL
+          AND search_tsv @@ websearch_to_tsquery('simple', ${q})
+        ORDER BY rank DESC
+        LIMIT ${perSource}
+      `)) as unknown as LiveRecRow[];
+    }
     const fields = fieldsById.get(entityId) ?? [];
     for (const r of Array.isArray(recs) ? recs : []) {
       const data = (r.data ?? {}) as Record<string, unknown>;
