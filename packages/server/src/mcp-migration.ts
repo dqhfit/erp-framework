@@ -1034,10 +1034,26 @@ async function callMigrationTool(
       if (content.length > 50) throw new McpError("Tối đa 50 widget mỗi page");
 
       const [exists] = await db
-        .select({ id: pages.id })
+        .select({ id: pages.id, published: pages.published })
         .from(pages)
         .where(and(eq(pages.companyId, companyId), sql`lower(${pages.name}) = lower(${pageName})`));
-      if (exists) return { status: "skipped_exists", pageId: exists.id, name: pageName };
+      if (exists) {
+        // overwrite CHỈ áp cho draft — page đã publish (người dùng đang xài)
+        // tuyệt đối không đè.
+        if (args.overwrite === true && exists.published === false) {
+          await db
+            .update(pages)
+            .set({
+              label,
+              ...(args.icon ? { icon: String(args.icon) } : {}),
+              content,
+              updatedAt: new Date(),
+            })
+            .where(eq(pages.id, exists.id));
+          return { status: "overwritten", pageId: exists.id, name: pageName };
+        }
+        return { status: "skipped_exists", pageId: exists.id, name: pageName };
+      }
 
       const [row] = await db
         .insert(pages)
