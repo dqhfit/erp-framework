@@ -36,6 +36,7 @@ import {
   insertRowToTable,
   loadConn,
   type SqlExecutor,
+  stableRowHash,
   updateRowInTable,
 } from "./migration-full-import";
 import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
@@ -503,8 +504,27 @@ async function syncTableRescan(
 
     let existingTableMap: Map<string, string> = new Map();
     let existingEavMap: Map<string, { id: string; deletedAt: Date | null }> = new Map();
+    // id → {hash, deleted}: so __sync_hash để SKIP row không đổi (tránh
+    // rewrite toàn bảng mỗi chu kỳ rescan — chu kỳ đầu sau import quan sát
+    // updates = đúng kích thước bảng vì upsert vô điều kiện).
+    const hashById = new Map<string, { hash: string | null; deleted: boolean }>();
     if (useTable && storage) {
       existingTableMap = await findExistingInTable(storage, t.companyId, pkLower, pkValues);
+      const ids = [...existingTableMap.values()];
+      if (ids.length > 0) {
+        const tbl = sql.raw(`"${storage.tableName}"`);
+        const inList = sql.join(
+          ids.map((v) => sql`${v}::uuid`),
+          sql`, `,
+        );
+        const res = (await db.execute(
+          sql`SELECT id, ext->>'__sync_hash' AS h, (deleted_at IS NOT NULL) AS del FROM ${tbl} WHERE id IN (${inList})`,
+        )) as unknown as
+          | Array<{ id: string; h: string | null; del: boolean }>
+          | { rows: Array<{ id: string; h: string | null; del: boolean }> };
+        const list = Array.isArray(res) ? res : (res.rows ?? []);
+        for (const r of list) hashById.set(r.id, { hash: r.h, deleted: r.del === true });
+      }
     } else {
       existingEavMap = await findExistingEav(t.companyId, t.entityId!, pkLower, pkValues);
     }
@@ -519,6 +539,11 @@ async function syncTableRescan(
         if (useTable && storage) {
           const existingId = existingTableMap.get(pkStr);
           if (existingId) {
+            const cur = hashById.get(existingId);
+            const newHash = stableRowHash(row);
+            if (cur && cur.hash === newHash && !cur.deleted) {
+              continue; // row y hệt + đang active → bỏ qua, không ghi gì
+            }
             await clearDeletedAt(tx, storage, existingId);
             await updateRowInTable(tx, storage, existingId, row);
             batchUpdates++;

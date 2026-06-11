@@ -14,6 +14,7 @@
    tại — chỉ lấy data mới (pk > lastPk).
    ========================================================== */
 
+import { createHash } from "node:crypto";
 import {
   entities,
   entityRecords,
@@ -73,6 +74,22 @@ function tsvFor(storage: EntityStorage, data: Record<string, unknown>) {
   return tsv;
 }
 
+/** Hash ổn định của 1 row nguồn (key sort + Date→ISO) — lưu vào
+ *  ext.__sync_hash để rescan SKIP row không đổi (tránh rewrite toàn bảng
+ *  mỗi chu kỳ). So hash thay vì so giá trị → né hẳn khác biệt format
+ *  date/numeric giữa driver MSSQL và PG. */
+export function stableRowHash(data: Record<string, unknown>): string {
+  const keys = Object.keys(data).sort();
+  const parts: string[] = [];
+  for (const k of keys) {
+    const v = data[k];
+    if (v === undefined) continue;
+    const s = v instanceof Date ? v.toISOString() : v === null ? "~null~" : JSON.stringify(v);
+    parts.push(`${k}=${s}`);
+  }
+  return createHash("md5").update(parts.join("|")).digest("hex");
+}
+
 /** INSERT 1 row mới vào bảng thật (id uuidv7 mặc định, version 0, now).
  *  Trả id row mới — caller PHẢI ghi record_locator (id-only op mới định
  *  tuyến được về bảng thật, đồng nhất với promote/record-store). */
@@ -85,6 +102,7 @@ export async function insertRowToTable(
 ): Promise<string | null> {
   const tbl = sql.raw(`"${storage.tableName}"`);
   const { cols, ext } = splitDataForStorage(storage, data);
+  (ext as Record<string, unknown>).__sync_hash = stableRowHash(data);
   const colList = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"];
   const vals = [
     sql`${companyId}::uuid`,
@@ -115,6 +133,7 @@ export async function updateRowInTable(
 ): Promise<void> {
   const tbl = sql.raw(`"${storage.tableName}"`);
   const { cols, ext } = splitDataForStorage(storage, data);
+  (ext as Record<string, unknown>).__sync_hash = stableRowHash(data);
   const sets = [
     ...cols.map((c) => sql`${sql.raw(`"${c.col}"`)} = ${c.value}`),
     sql`ext = ${JSON.stringify(ext)}::jsonb`,
