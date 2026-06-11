@@ -93,6 +93,8 @@ export interface MockEntity {
 export interface MockPage {
   id: string;
   name: string;
+  /** Tên kỹ thuật (cột DB `name`, vd dq_danh_muc_nhom_may) — cho tìm kiếm sidebar. */
+  techName?: string;
   icon: IconName;
   updated: string;
   author: string;

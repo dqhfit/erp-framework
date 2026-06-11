@@ -110,6 +110,7 @@ function rowToPage(r: Row): MockPage {
   return {
     id: r.id as string,
     name: (r.label as string) || (r.name as string) || "",
+    techName: (r.name as string) || undefined,
     icon: ((r.icon as string) || "Layout") as IconName,
     updated: upd ? upd.toLocaleDateString("vi-VN") : "—",
     author: "—",
