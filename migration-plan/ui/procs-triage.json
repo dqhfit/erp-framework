@@ -1,0 +1,1139 @@
+{
+ "counts": {
+  "datasource-aggregate": 7,
+  "tierD": 83,
+  "datasource": 4,
+  "tierD-read-scalar": 5,
+  "missing-source": 1,
+  "tierB-pure-calc": 1
+ },
+ "results": [
+  {
+   "proc": "PS_KEHOACH_DONHANG_TOTAL_CONT2",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "ps_kehoach_donhang",
+    "string_split",
+    "tr_bophan",
+    "tr_gridview_column",
+    "tr_order"
+   ],
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_CHITIET_DELETE2",
+   "group": "tierD",
+   "writes": [
+    "tr_baocao_chuyenson_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_GETDATA",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_trangthai_sanxuat",
+    "trtb_m_location"
+   ],
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_HIENDIEN_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baocao_chuyenson_hiendien"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOCAO_ROTCHUYEN_GETBYIDBAOCAO",
+   "group": "datasource",
+   "writes": [],
+   "reads": [
+    "tr_baocao_rotchuyen",
+    "tr_sanpham"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_LUUTRINH_SANXUAT_COPY2",
+   "group": "tierD",
+   "writes": [
+    "tr_luutrinh_sanxuat"
+   ],
+   "reads": [
+    "tr_luutrinh_sanxuat"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOCAO_FINAL_DUYET",
+   "group": "tierD",
+   "writes": [
+    "tr_baocao_final"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_DELETE2",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_donggoi",
+    "tr_baogia_govan",
+    "tr_baogia_govan_giacong",
+    "tr_baogia_ngukim",
+    "tr_baogia_other",
+    "tr_baogia_son",
+    "tr_baogia_thanhpham"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_TUDONG_TEMP_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_tudong_temp"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_CHIPHI_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_chiphi"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_DONGGOI_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_donggoi"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_GOVAN_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_govan"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_NGUKIM_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_ngukim"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_SON_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_son"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA3_TONGHOP_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia3_tonghop"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_CHITIET_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "sal_baogia_govan_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "sal_baogia_govan",
+    "sal_baogia_govan_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETALL2",
+   "group": "datasource",
+   "writes": [],
+   "reads": [
+    "tr_material",
+    "tr_tonkho_sum"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETALL3",
+   "group": "datasource",
+   "writes": [],
+   "reads": [
+    "tr_material",
+    "tr_tonkho_sum"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETBYPRICE",
+   "group": "datasource",
+   "writes": [],
+   "reads": [
+    "tr_material",
+    "tr_tonkho_sum"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_GOVAN_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_htr_govan"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_NGUKIM_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_htr_ngukim"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_TONG_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_htr_tong"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_PHOI_GOVAN_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_phoi_govan"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BAOGIA_PHOI_TONG_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_baogia_phoi_tong"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TINHGIA_DONGGOI_BY_MAVT",
+   "group": "tierD-read-scalar",
+   "writes": [],
+   "reads": [
+    "cur",
+    "fn_split",
+    "tr_congthuc_donggoi",
+    "tr_material",
+    "trmaterialclassstd",
+    "trmaterialclassstddtail"
+   ],
+   "flags": [
+    "cursor",
+    "scalar-assign",
+    "temp-table",
+    "while"
+   ]
+  },
+  {
+   "proc": "TR_HEHANG_Update2",
+   "group": "tierD",
+   "writes": [
+    "tr_banve",
+    "tr_hehang",
+    "tr_nguoiphutrach_kythuat",
+    "tr_sanpham",
+    "tr_sanpham_nhamay"
+   ],
+   "reads": [
+    "tr_hehang"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_danhsach_dexuat"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_DUYET",
+   "group": "tierD",
+   "writes": [
+    "tr_danhsach_dexuat",
+    "tr_danhsach_dexuat_process"
+   ],
+   "reads": [
+    "tr_danhsach_dexuat",
+    "tr_danhsach_xetduyet_user",
+    "tr_quytrinh_xetduyet"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_DUYET_BGD",
+   "group": "tierD",
+   "writes": [
+    "dqt_dexuat_phoi",
+    "tr_danhsach_dexuat",
+    "tr_danhsach_dexuat_process",
+    "tr_denghi_thanhtoan",
+    "tr_dexuat_bangmau",
+    "tr_dondathang",
+    "tr_order",
+    "tr_phieuyeucau",
+    "tr_phieuyeucau_muahang",
+    "tr_thaydoi_kythuat"
+   ],
+   "reads": [
+    "tr_nhom_xetduyet"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_dexuat_bangmau",
+    "tr_dexuat_bangmau_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DONDATHANG_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_dondathang",
+    "tr_dondathang_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_order",
+    "tr_order_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_phieuyeucau"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_CANCEL2",
+   "group": "tierD",
+   "writes": [
+    "tr_phieuyeucau",
+    "tr_phieuyeucau_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_THAYDOI_KYTHUAT_CANCEL",
+   "group": "tierD",
+   "writes": [
+    "tr_thaydoi_kythuat"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_BOM_MIX_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_bom_mix"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_son3"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_SON_THEOMAU_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_son_theomau"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_SON_THEOMAU_INSERT2",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_son_theomau"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_QUYTRINH_SON_DELETEALL",
+   "group": "missing-source",
+   "writes": [],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_SODO_CATVAN_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_sodo_catvan"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_SODO_CATVAN_HEAD_DELETED",
+   "group": "tierD",
+   "writes": [
+    "tr_sodo_catvan_head"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_son3_mauson"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_CHIPHI_SANPHAM_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_chiphi_sanpham"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_SOCHE_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_govan_soche"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_SOCHE_UPDATEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_govan_soche"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_VATTU_TIEUHAO_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_vattu_tieuhao"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_COMMERCIAL_INVOICE_DETAIL_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_commercial_invoice_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_DELETE2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_INSERT2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_order",
+    "tr_order_detail"
+   ],
+   "reads": [
+    "tr_order_detail"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_DELETE2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_example_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_INSERT2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_example_detail"
+   ],
+   "reads": [
+    "tr_material"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_example",
+    "tr_order_example_detail"
+   ],
+   "reads": [
+    "tr_material",
+    "tr_order_example_detail"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_INSERT2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_example"
+   ],
+   "reads": [
+    "tr_order_example"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_order_example"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_SETKHONGTINHSON",
+   "group": "tierD",
+   "writes": [
+    "tr_order_detail"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_ORDER_UPDATE3",
+   "group": "tierD",
+   "writes": [
+    "tr_order"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DONDATHANG_SUMBYYEAR",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_dondathang",
+    "tr_dondathang_chitiet"
+   ],
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_DGO",
+   "group": "tierD-read-scalar",
+   "writes": [],
+   "reads": [
+    "tr_dinhmuc_donggoi",
+    "tr_material"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_GVA2",
+   "group": "tierD-read-scalar",
+   "writes": [],
+   "reads": [
+    "cur",
+    "fn_dongia_nguyenlieu_gva4",
+    "tr_dinhmuc_govan"
+   ],
+   "flags": [
+    "cursor",
+    "scalar-assign",
+    "while"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_NKI",
+   "group": "tierD-read-scalar",
+   "writes": [],
+   "reads": [
+    "tr_dinhmuc_ngukim",
+    "tr_material"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_SON",
+   "group": "tierD-read-scalar",
+   "writes": [],
+   "reads": [
+    "tr_dinhmuc_son3",
+    "tr_dinhmuc_son3_metvuong",
+    "tr_material"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_NGUOIDUYET_BOPHAN_CREATE",
+   "group": "tierD",
+   "writes": [
+    "tr_nguoiduyet_bophan"
+   ],
+   "reads": [
+    "tr_nguoiduyet_bophan"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_NGUOIDUYET_BOPHAN_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_nguoiduyet_bophan"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_GIAOHANG_CHITIET_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_giaohang_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_TONKHO_SUM_CHUYENKHO",
+   "group": "tierD",
+   "writes": [
+    "tr_material",
+    "tr_tonkho_chitiet",
+    "tr_tonkho_sum"
+   ],
+   "reads": [
+    "tr_material",
+    "tr_tonkho_sum"
+   ],
+   "flags": [
+    "group-by",
+    "scalar-assign",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "pb_chitiet_phieubuhang_UPDATESL",
+   "group": "tierD",
+   "writes": [
+    "pb_chitiet_phieubuhang"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_CONT_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_cont",
+    "tr_ctcont"
+   ],
+   "reads": [
+    "tr_ctcont"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_CTCONT_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_ctcont"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_CTCONT_UPDATEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_ctcont"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_CTPHIEUNHAP_INSERT3",
+   "group": "tierD",
+   "writes": [
+    "tr_ctphieunhap"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_TONKHO_SUM_NHAP",
+   "group": "tierD",
+   "writes": [
+    "tr_tonkho_sum"
+   ],
+   "reads": [
+    "tr_material",
+    "tr_site",
+    "tr_tonkho_sum"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_CHITIET_XACNHAN",
+   "group": "tierD",
+   "writes": [
+    "tr_phieugiao_thanhpham_chitiet"
+   ],
+   "reads": [
+    "tr_phieugiao_thanhpham_chitiet"
+   ],
+   "flags": [
+    "exec-proc",
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_LOCK_UNLOCK",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_lock"
+   ],
+   "reads": [
+    "cur",
+    "tr_dinhmuc_lock",
+    "tr_lenhcapphat"
+   ],
+   "flags": [
+    "cursor",
+    "scalar-assign",
+    "while"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_DUYET",
+   "group": "tierD",
+   "writes": [
+    "tr_baocao_hangloi"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DINHMUC_LOCK_CREATE",
+   "group": "tierD",
+   "writes": [
+    "tr_dinhmuc_lock"
+   ],
+   "reads": [
+    "tr_dinhmuc_donggoi",
+    "tr_dinhmuc_govan",
+    "tr_dinhmuc_lock",
+    "tr_dinhmuc_ngukim",
+    "tr_dinhmuc_son"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_NGUKIM_TOTALMAVT",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_dinhmuc_ngukim"
+   ],
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_INSERT3",
+   "group": "tierD",
+   "writes": [
+    "tr_dondathang"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_QUYTRINH_YEUCAU_CHATLUONG_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_quytrinh_yeucau_chatluong"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_HUYDUYET",
+   "group": "tierD",
+   "writes": [
+    "tr_denghi_thanhtoan",
+    "tr_dondathang"
+   ],
+   "reads": [
+    "tr_denghi_thanhtoan"
+   ],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_UPDATE3",
+   "group": "tierD",
+   "writes": [
+    "tr_material"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_MATERIAL_OTHER_DELETEBYCODE",
+   "group": "tierD",
+   "writes": [
+    "tr_material",
+    "tr_material_other",
+    "tr_tonkho_chitiet",
+    "tr_tonkho_sum"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_QUYTRINH_YEUCAU_CHATLUONG_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_quytrinh_yeucau_chatluong"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_TEM_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_thongtin_sanpham_tem"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TRMATERIALCLASS_DELETE2",
+   "group": "tierD",
+   "writes": [
+    "trmaterialclass"
+   ],
+   "reads": [
+    "rcte",
+    "trmaterialclass"
+   ],
+   "flags": [
+    "cte",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_material"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TINHGIA_HANGMUC_LAIVAY",
+   "group": "tierB-pure-calc",
+   "writes": [],
+   "reads": [],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TINHGIA_HANGMUC_SANPHAM",
+   "group": "tierD",
+   "writes": [],
+   "reads": [
+    "tr_chiphi_khauhao",
+    "tr_chiphi_nhancong",
+    "tr_hangmuc_chiphi",
+    "tr_sanpham",
+    "tr_thongke_soluong",
+    "tr_trangthai_sanxuat"
+   ],
+   "flags": [
+    "exec-proc",
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HIENDIEN4_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_baocao_hiendien4",
+    "tr_muctieu_sanxuat2_chitiet"
+   ],
+   "reads": [
+    "tr_muctieu_sanxuat2_chitiet"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_UPDATE2",
+   "group": "tierD",
+   "writes": [
+    "tr_muctieu_sanxuat"
+   ],
+   "reads": [],
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_TINHTOAN",
+   "group": "tierD",
+   "writes": [
+    "tr_muctieu_sanxuat2",
+    "tr_muctieu_sanxuat2_chitiet"
+   ],
+   "reads": [
+    "cur_muctieu_ct",
+    "tr_muctieu_sanxuat2",
+    "tr_muctieu_sanxuat2_chitiet"
+   ],
+   "flags": [
+    "cursor",
+    "scalar-assign",
+    "while"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_CONFIRM",
+   "group": "tierD",
+   "writes": [
+    "tr_kehoach_hangtrang_chitiet"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_DELETEALL",
+   "group": "tierD",
+   "writes": [
+    "tr_kehoach_hangtrang_chitiet"
+   ],
+   "reads": [
+    "string_split",
+    "tr_kehoach_hangtrang"
+   ],
+   "flags": []
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG3_DELETEBYID",
+   "group": "tierD",
+   "writes": [
+    "tr_kehoach_hangtrang3"
+   ],
+   "reads": [],
+   "flags": []
+  },
+  {
+   "proc": "TR_TIENDO_CHUYENSON_GETBYKHUVUC",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_order",
+    "tr_release_govan",
+    "tr_tiendo_chuyenson"
+   ],
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TIENDO_CHUYENSON_GETBYKHUVUC2",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_release_govan",
+    "tr_tiendo_chuyenson"
+   ],
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TINHGIA_BY_DDH",
+   "group": "datasource-aggregate",
+   "writes": [],
+   "reads": [
+    "tr_hehang",
+    "tr_sanpham",
+    "tr_trangthai_sanxuat",
+    "trtb_m_location",
+    "trtb_m_op"
+   ],
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TINHGIA_BY_DDH2",
+   "group": "tierD",
+   "writes": [],
+   "reads": [
+    "string_split",
+    "tr_muctieu_sanxuat2_chitiet",
+    "tr_sanpham",
+    "tr_trangthai_sanxuat",
+    "trtb_m_location",
+    "trtb_m_op"
+   ],
+   "flags": [
+    "exec-proc",
+    "group-by",
+    "scalar-assign",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_GIAOHANG_INSERT2",
+   "group": "tierD",
+   "writes": [
+    "tr_kehoach_giaohang"
+   ],
+   "reads": [
+    "tr_dondathang",
+    "tr_dondathang_chitiet",
+    "tr_kehoach_giaohang",
+    "tr_sanpham"
+   ],
+   "flags": [
+    "group-by",
+    "scalar-assign",
+    "temp-table"
+   ]
+  }
+ ]
+}

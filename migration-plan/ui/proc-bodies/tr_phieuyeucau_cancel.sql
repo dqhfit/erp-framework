@@ -1,0 +1,19 @@
+-- PARAMS:
+-- @sophieu int
+-- @BGD_CANCEL bit
+-- @DESCRIPTION_CANCEL nvarchar
+
+
+CREATE PROC TR_PHIEUYEUCAU_CANCEL
+(
+	@sophieu INT,
+	@BGD_CANCEL BIT,
+	@DESCRIPTION_CANCEL nvarchar(max)
+)
+AS
+UPDATE tr_phieuyeucau
+SET active = 0,
+	BGD_CANCEL = @BGD_CANCEL,
+	DESCRIPTION_CANCEL = @DESCRIPTION_CANCEL
+WHERE sophieu = @sophieu
+
