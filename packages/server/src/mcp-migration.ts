@@ -314,6 +314,36 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "page_list",
+    description:
+      "Liệt kê toàn bộ page của công ty: id, name, label, published, số widget. " +
+      "Dùng để rà soát trước khi dọn page cũ.",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "page_delete",
+    description:
+      "XOÁ vĩnh viễn page theo danh sách tên (đã được người dùng duyệt). " +
+      "Trả kết quả từng page (deleted | not_found).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        names: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 200,
+          description: "Tên page cần xoá",
+        },
+      },
+      required: ["names"],
+    },
+  },
+  {
     name: "entity_set_source",
     description:
       "Gắn meta.source (kind=migration, mssqlTable, connectionId) cho 1 entity — dùng khi " +
@@ -948,6 +978,46 @@ async function callMigrationTool(
         }
       }
       return { results, renamed: results.filter((r) => r.status === "renamed").length };
+    }
+
+    /* ── page_list (read) ───────────────────────────────────── */
+    case "page_list": {
+      const rows = await db
+        .select({
+          id: pages.id,
+          name: pages.name,
+          label: pages.label,
+          published: pages.published,
+          content: pages.content,
+          updatedAt: pages.updatedAt,
+        })
+        .from(pages)
+        .where(eq(pages.companyId, companyId))
+        .orderBy(pages.name);
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        label: r.label,
+        published: r.published,
+        widgets: Array.isArray(r.content) ? r.content.length : 0,
+        updatedAt: r.updatedAt,
+      }));
+    }
+
+    /* ── page_delete (apply) ────────────────────────────────── */
+    case "page_delete": {
+      const names = Array.isArray(args.names) ? args.names.map(String) : [];
+      if (names.length === 0) throw new McpError("names bắt buộc");
+      if (names.length > 200) throw new McpError("Tối đa 200 page mỗi lần");
+      const results: Array<{ name: string; status: "deleted" | "not_found" }> = [];
+      for (const n of names) {
+        const del = await db
+          .delete(pages)
+          .where(and(eq(pages.companyId, companyId), sql`lower(${pages.name}) = lower(${n})`))
+          .returning({ id: pages.id });
+        results.push({ name: n, status: del.length > 0 ? "deleted" : "not_found" });
+      }
+      return { results, deleted: results.filter((r) => r.status === "deleted").length };
     }
 
     /* ── page_create_draft (apply) ──────────────────────────── */
