@@ -25,6 +25,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import {
   applyColumnLabels,
+  assertIdent,
   type EntityStorage,
   ensureEntityTable,
   renameTableDDL,
@@ -355,6 +356,20 @@ export async function cleanupEavForEntity(
     .where(and(eq(entityRecords.companyId, companyId), eq(entityRecords.entityId, entityId)))
     .returning({ id: entityRecords.id });
   return { deleted: res.length, kept: false };
+}
+
+/** DROP bảng thật + dọn locator khi xoá hẳn entity tier='table'. Bảng vật lý
+ *  KHÔNG nằm trong cascade FK của entities nên phải drop tường minh. */
+export async function dropTableForEntity(
+  db: DB,
+  companyId: string,
+  entityId: string,
+  storage: EntityStorage,
+): Promise<void> {
+  await db
+    .delete(recordLocator)
+    .where(and(eq(recordLocator.companyId, companyId), eq(recordLocator.entityId, entityId)));
+  await db.execute(sql.raw(`DROP TABLE IF EXISTS "${assertIdent(storage.tableName)}"`));
 }
 
 export interface RenameTableResult {

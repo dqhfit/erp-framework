@@ -27,7 +27,10 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
-import { renamePromotedTablesForCompany } from "./entity-promote";
+import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
+import type { EntityStorage } from "./entity-table-ddl";
+import { createFullImportJob, type FullJobItem } from "./migration-full-import";
+import { enqueueMigrationJob } from "./migration-worker";
 import { isHybridTablesEnabled } from "./record-store";
 
 /* ── Scope helper ───────────────────────────────────────────── */
@@ -227,6 +230,84 @@ const TOOLS: ToolDef[] = [
       properties: {},
     },
   },
+  {
+    name: "migration_export_entities",
+    description:
+      "Xuất TOÀN BỘ entity import từ MSSQL (có meta.source.mssqlTable) kèm label entity + " +
+      "label từng field + recordCount — dùng làm BACKUP trước khi xoá và làm items cho " +
+      "migration_start_full_import (label giữ nguyên, không cần enrich lại). " +
+      "Kèm danh sách entity KHÔNG có nguồn (sẽ được giữ lại khi xoá).",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "migration_delete_imported_entities",
+    description:
+      "XOÁ vĩnh viễn các entity import theo danh sách tên. GUARD: chỉ xoá entity có " +
+      "meta.source.mssqlTable (entity tạo tay bị từ chối — skipped_no_source). " +
+      "Entity tier=table: DROP bảng thật + dọn locator trước. Cascade xoá entity_records, " +
+      "saved_views, templates... Trả kết quả từng entity (deleted | skipped_no_source | not_found).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        names: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 200,
+          description: "Tên kỹ thuật các entity cần xoá (danh sách đã được duyệt)",
+        },
+      },
+      required: ["names"],
+    },
+  },
+  {
+    name: "migration_start_full_import",
+    description:
+      "Tạo job full-import từ MSSQL. items = [{tableName, entityName, label, fields:[{name,label,type}]}] " +
+      "(lấy từ migration_export_entities). targetTier='table' → import thẳng vào bảng thật " +
+      "mang tên DB cũ (cần ERP_HYBRID_TABLES=1). Trả jobId — theo dõi bằng migration_get_full_job. " +
+      "Worker stream theo PK, tự resume khi lỗi mạng.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        connectionId: { type: "string", description: "UUID kết nối MSSQL" },
+        items: {
+          type: "array",
+          minItems: 1,
+          maxItems: 200,
+          items: {
+            type: "object",
+            properties: {
+              tableName: { type: "string", description: "vd 'dbo.tr_sanpham'" },
+              entityName: { type: "string", description: "^[a-z][a-z0-9_]*$" },
+              label: { type: "string" },
+              fields: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    label: { type: "string" },
+                    type: { type: "string" },
+                  },
+                  required: ["name", "label", "type"],
+                },
+              },
+            },
+            required: ["tableName", "entityName", "label", "fields"],
+          },
+        },
+        targetTier: { type: "string", enum: ["eav", "table"] },
+        batchSize: { type: "number", minimum: 100, maximum: 50000 },
+      },
+      required: ["connectionId", "items"],
+    },
+  },
 ];
 
 /* ── Tool handlers ──────────────────────────────────────────── */
@@ -246,6 +327,7 @@ async function callMigrationTool(
   db: DB,
   companyId: string,
   scopes: string[],
+  apiKeyCreatedBy: string | null,
   name: string,
   rawArgs: unknown,
 ): Promise<unknown> {
@@ -565,6 +647,166 @@ async function callMigrationTool(
       return renamePromotedTablesForCompany(db, companyId);
     }
 
+    /* ── migration_export_entities (read) ───────────────────── */
+    case "migration_export_entities": {
+      const rows = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.companyId, companyId))
+        .orderBy(entities.name);
+
+      const imported: Array<Record<string, unknown>> = [];
+      const kept: Array<{ name: string; label: string; storageTier: string }> = [];
+
+      for (const e of rows) {
+        const meta = (e.meta ?? {}) as EntityMeta & {
+          source?: { mssqlTable?: string; connectionId?: string };
+        };
+        const tier = meta.storage?.tier ?? "eav";
+        if (!meta.source?.mssqlTable) {
+          kept.push({ name: e.name, label: e.label, storageTier: tier });
+          continue;
+        }
+        // Đếm record: bảng thật → COUNT bảng; EAV → COUNT entity_records.
+        let recordCount = 0;
+        try {
+          if (tier === "table" && meta.storage?.tableName) {
+            const r = (await db.execute(
+              sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${meta.storage.tableName}"`)} WHERE company_id = ${companyId}::uuid`,
+            )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
+            const list = Array.isArray(r) ? r : (r.rows ?? []);
+            recordCount = Number(list[0]?.n ?? 0);
+          } else {
+            const r = (await db.execute(
+              sql`SELECT count(*)::int AS n FROM entity_records WHERE company_id = ${companyId}::uuid AND entity_id = ${e.id}::uuid`,
+            )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
+            const list = Array.isArray(r) ? r : (r.rows ?? []);
+            recordCount = Number(list[0]?.n ?? 0);
+          }
+        } catch {
+          recordCount = -1; // đếm lỗi (bảng đã drop?) — không chặn export
+        }
+        imported.push({
+          entityId: e.id,
+          name: e.name,
+          label: e.label,
+          mssqlTable: meta.source.mssqlTable,
+          connectionId: meta.source.connectionId,
+          fields: e.fields,
+          storageTier: tier,
+          tableName: meta.storage?.tableName,
+          agentSearchable: meta.agentSearchable ?? false,
+          recordCount,
+        });
+      }
+      return { imported, importedCount: imported.length, kept, keptCount: kept.length };
+    }
+
+    /* ── migration_delete_imported_entities (apply) ─────────── */
+    case "migration_delete_imported_entities": {
+      const names = Array.isArray(args.names) ? args.names.map(String) : [];
+      if (names.length === 0) throw new McpError("names bắt buộc (mảng tên entity)");
+      if (names.length > 200) throw new McpError("Tối đa 200 entity mỗi lần");
+
+      const results: Array<{
+        name: string;
+        status: "deleted" | "skipped_no_source" | "not_found";
+        droppedTable?: string;
+      }> = [];
+      for (const entityName of names) {
+        const [e] = await db
+          .select({ id: entities.id, meta: entities.meta })
+          .from(entities)
+          .where(
+            and(
+              eq(entities.companyId, companyId),
+              sql`lower(${entities.name}) = lower(${entityName})`,
+            ),
+          );
+        if (!e) {
+          results.push({ name: entityName, status: "not_found" });
+          continue;
+        }
+        const meta = (e.meta ?? {}) as EntityMeta & { source?: { mssqlTable?: string } };
+        // GUARD: chỉ xoá entity import (có nguồn MSSQL) — entity tạo tay từ chối.
+        if (!meta.source?.mssqlTable) {
+          results.push({ name: entityName, status: "skipped_no_source" });
+          continue;
+        }
+        let droppedTable: string | undefined;
+        if (meta.storage?.tier === "table" && meta.storage.tableName) {
+          await dropTableForEntity(db, companyId, e.id, meta.storage as EntityStorage);
+          droppedTable = meta.storage.tableName;
+        }
+        await db
+          .delete(entities)
+          .where(and(eq(entities.id, e.id), eq(entities.companyId, companyId)));
+        results.push({ name: entityName, status: "deleted", droppedTable });
+      }
+      return {
+        results,
+        deleted: results.filter((r) => r.status === "deleted").length,
+      };
+    }
+
+    /* ── migration_start_full_import (apply) ────────────────── */
+    case "migration_start_full_import": {
+      if (!apiKeyCreatedBy) {
+        throw new McpError(
+          "API key không có người tạo (created_by null) — không xác định được createdBy cho job. Tạo key mới từ tài khoản admin.",
+          -32603,
+        );
+      }
+      const connectionId = String(args.connectionId ?? "");
+      if (!connectionId) throw new McpError("connectionId bắt buộc");
+      const rawItems = Array.isArray(args.items) ? args.items : [];
+      if (rawItems.length === 0) throw new McpError("items bắt buộc (>=1 bảng)");
+      if (rawItems.length > 200) throw new McpError("Tối đa 200 bảng mỗi job");
+
+      const items: FullJobItem[] = rawItems.map((it) => {
+        const o = asObj(it);
+        const entityName = String(o.entityName ?? "");
+        if (!/^[a-z][a-z0-9_]*$/.test(entityName)) {
+          throw new McpError(`entityName "${entityName}" sai định dạng (^[a-z][a-z0-9_]*$)`);
+        }
+        const fields = (Array.isArray(o.fields) ? o.fields : []).map((f) => {
+          const fo = asObj(f);
+          return {
+            name: String(fo.name ?? ""),
+            label: String(fo.label ?? fo.name ?? ""),
+            type: String(fo.type ?? "text"),
+          };
+        });
+        return {
+          tableName: String(o.tableName ?? ""),
+          entityName,
+          label: String(o.label ?? entityName),
+          fields,
+        };
+      });
+
+      const targetTier = args.targetTier === "table" ? ("table" as const) : ("eav" as const);
+      if (targetTier === "table" && !isHybridTablesEnabled()) {
+        throw new McpError("targetTier=table cần ERP_HYBRID_TABLES=1 trên server.", -32603);
+      }
+      const batchSize = Math.min(Math.max(Number(args.batchSize ?? 5_000), 100), 50_000);
+
+      const { jobId } = await createFullImportJob(db, companyId, apiKeyCreatedBy, {
+        connectionId,
+        items,
+        batchSize,
+        targetTier,
+      });
+      await enqueueMigrationJob({
+        action: "full-import",
+        module: jobId,
+        args: {},
+        userId: apiKeyCreatedBy,
+        companyId,
+      });
+      return { jobId, tables: items.length, targetTier, batchSize };
+    }
+
     default:
       throw new McpError(`Tool chưa cài đặt: ${name}`, -32601);
   }
@@ -617,7 +859,14 @@ export function registerMigrationMcp(app: FastifyInstance, db: DB): void {
         case "tools/call": {
           const p = asObj(body.params);
           const name = String(p.name ?? "");
-          const data = await callMigrationTool(db, auth.companyId, auth.scopes, name, p.arguments);
+          const data = await callMigrationTool(
+            db,
+            auth.companyId,
+            auth.scopes,
+            auth.createdBy ?? null,
+            name,
+            p.arguments,
+          );
           return ok({
             content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
           });

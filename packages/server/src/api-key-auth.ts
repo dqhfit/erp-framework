@@ -15,6 +15,10 @@ export interface ApiKeyContext {
   id: string;
   companyId: string;
   scopes: string[];
+  /** User tạo key — dùng làm createdBy cho thao tác ghi qua MCP
+   *  (cần uuid thật; chuỗi "system" vỡ cast ::uuid). Optional để các
+   *  caller cũ (graphql, test) không phải khai báo. */
+  createdBy?: string | null;
 }
 
 /** Verify X-API-Key + load company + scopes. Trả null nếu invalid. */
@@ -39,5 +43,6 @@ export async function authApiKey(db: DB, req: FastifyRequest): Promise<ApiKeyCon
     id: row.id,
     companyId: row.companyId,
     scopes: (row.scopes ?? []) as string[],
+    createdBy: row.createdBy ?? null,
   };
 }

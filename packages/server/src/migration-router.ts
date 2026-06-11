@@ -41,7 +41,7 @@ import { z } from "zod";
 import { logActivity } from "./activity";
 import { decryptSecret } from "./crypto";
 import type { DB } from "./db";
-import { renamePromotedTablesForCompany } from "./entity-promote";
+import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
 import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import {
   bodyHash,
@@ -52,10 +52,10 @@ import {
 import { validateGeneratedTs } from "./migration-codegen-batch";
 import { codegenProcWorkflow } from "./migration-codegen-workflow";
 import {
+  createFullImportJob,
   type FullJobItem,
   findExistingInTable,
   insertRowToTable,
-  prepareFullJobTables,
   updateRowInTable,
 } from "./migration-full-import";
 import {
@@ -314,20 +314,6 @@ async function mergeSourceMeta(
       updatedAt: new Date(),
     })
     .where(eq(entities.id, entityId));
-}
-
-/** DROP bảng thật + dọn locator khi xoá hẳn entity tier='table'. Bảng vật lý
- *  KHÔNG nằm trong cascade FK của entities nên phải drop tường minh. */
-async function dropTableForEntity(
-  db: DB,
-  companyId: string,
-  entityId: string,
-  storage: EntityStorage,
-): Promise<void> {
-  await db
-    .delete(recordLocator)
-    .where(and(eq(recordLocator.companyId, companyId), eq(recordLocator.entityId, entityId)));
-  await db.execute(sql.raw(`DROP TABLE IF EXISTS "${assertIdent(storage.tableName)}"`));
 }
 
 const ACTION_VALUES = [
@@ -3316,51 +3302,25 @@ export const migrationRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Tạo job record + per-table records (prepare detect PK).
-      const [job] = await ctx.db
-        .insert(migrationFullJobs)
-        .values({
-          companyId: ctx.user.companyId,
-          connectionId: input.connectionId,
-          kind: "full",
-          status: "queued",
-          config: {
-            items: input.items,
-            batchSize: input.batchSize,
-            writeManifest: input.writeManifest,
-            targetTier: input.targetTier,
-          },
-          totalTables: input.items.length,
-          createdBy: ctx.user.id,
-        })
-        .returning({ id: migrationFullJobs.id });
-      if (!job) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert job fail." });
-      }
-
-      // Prepare tables — detect PK + tạo entity nếu cần.
+      // Tạo job + prepare per-table (logic chung với MCP /mcp/migration).
+      let jobId: string;
       try {
-        await prepareFullJobTables(
-          job.id,
-          ctx.user.companyId,
-          ctx.user.id,
-          input.connectionId,
-          input.items as FullJobItem[],
-          input.batchSize,
-          input.targetTier,
-        );
+        const r = await createFullImportJob(ctx.db, ctx.user.companyId, ctx.user.id, {
+          connectionId: input.connectionId,
+          items: input.items as FullJobItem[],
+          batchSize: input.batchSize,
+          writeManifest: input.writeManifest,
+          targetTier: input.targetTier,
+        });
+        jobId = r.jobId;
       } catch (e) {
-        await ctx.db
-          .update(migrationFullJobs)
-          .set({ status: "failed", error: (e as Error).message, updatedAt: new Date() })
-          .where(eq(migrationFullJobs.id, job.id));
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
       }
 
       // Enqueue qua pg-boss. data.module = jobId.
       await enqueueMigrationJob({
         action: "full-import",
-        module: job.id,
+        module: jobId,
         args: {},
         userId: ctx.user.id,
         companyId: ctx.user.companyId,
@@ -3370,7 +3330,7 @@ export const migrationRouter = router({
         module: `_quick-${input.connectionId}`,
         action: {
           type: "startFullImport",
-          jobId: job.id,
+          jobId,
           connectionId: input.connectionId,
           itemCount: input.items.length,
           batchSize: input.batchSize,
@@ -3378,7 +3338,7 @@ export const migrationRouter = router({
         by: ctx.user.id,
       });
 
-      return { jobId: job.id };
+      return { jobId };
     }),
 
   /** Đổi tên các bảng thật đã promote (er_<id>) sang ĐÚNG tên bảng DB cũ

@@ -14,7 +14,6 @@
    tại — chỉ lấy data mới (pk > lastPk).
    ========================================================== */
 
-import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import {
   entities,
   entityRecords,
@@ -24,10 +23,11 @@ import {
   recordLocator,
 } from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
-import { db } from "./db";
+import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { decryptSecret } from "./crypto";
-import { type EntityStorage, importPkIndexDDL, splitDataForStorage } from "./entity-table-ddl";
+import { type DB, db } from "./db";
 import { promoteEntityToTable } from "./entity-promote";
+import { type EntityStorage, importPkIndexDDL, splitDataForStorage } from "./entity-table-ddl";
 import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
 import { isHybridTablesEnabled } from "./record-store";
 import { publish as publishWs } from "./ws-hub";
@@ -149,6 +149,65 @@ export interface FullJobData {
 }
 
 /* ─── Pre-flight helper: prep tables (run khi tạo job lần đầu) ─── */
+
+export interface StartFullImportInput {
+  connectionId: string;
+  items: FullJobItem[];
+  batchSize?: number;
+  writeManifest?: boolean;
+  targetTier?: "eav" | "table";
+}
+
+/** Tạo job full-import: insert migration_full_jobs + prepare per-table
+ *  (detect PK, tạo entity, promote nếu targetTier=table). KHÔNG enqueue —
+ *  caller tự gọi enqueueMigrationJob (tránh vòng import với migration-worker).
+ *  Dùng chung cho tRPC migration.startFullImport và MCP /mcp/migration. */
+export async function createFullImportJob(
+  db: DB,
+  companyId: string,
+  userId: string,
+  input: StartFullImportInput,
+): Promise<{ jobId: string }> {
+  const batchSize = input.batchSize ?? 5_000;
+  const targetTier = input.targetTier ?? "eav";
+  const [job] = await db
+    .insert(migrationFullJobs)
+    .values({
+      companyId,
+      connectionId: input.connectionId,
+      kind: "full",
+      status: "queued",
+      config: {
+        items: input.items,
+        batchSize,
+        writeManifest: input.writeManifest ?? true,
+        targetTier,
+      },
+      totalTables: input.items.length,
+      createdBy: userId,
+    })
+    .returning({ id: migrationFullJobs.id });
+  if (!job) throw new Error("Insert job fail.");
+
+  try {
+    await prepareFullJobTables(
+      job.id,
+      companyId,
+      userId,
+      input.connectionId,
+      input.items,
+      batchSize,
+      targetTier,
+    );
+  } catch (e) {
+    await db
+      .update(migrationFullJobs)
+      .set({ status: "failed", error: (e as Error).message, updatedAt: new Date() })
+      .where(eq(migrationFullJobs.id, job.id));
+    throw e;
+  }
+  return { jobId: job.id };
+}
 
 /** Chuẩn bị migration_full_job_tables records cho 1 job mới. Detect PK
  *  từ MSSQL info, tạo entity nếu chưa có, insert vào job_tables. */
