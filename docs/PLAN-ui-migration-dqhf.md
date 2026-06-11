@@ -59,21 +59,63 @@ Chọn module nhỏ đã quen: **mes_dinhmuc** (định mức gỗ ván — pilo
 
 ## Phase 2 — Bán tự động hoá scaffold (3-5 ngày, song song Phase 3)
 
-Xây 2 lệnh CLI mới trong `tooling/migration-cli` (in-tree, theo convention):
+### Mô hình mới thay đổi thiết kế tool thế nào (phân tích 2026-06-11)
 
-1. **`analyze-form --module <m>`**: parse `*.Designer.cs` của module →
-   trích control tree + data binding → ghi vào manifest
-   (`tables[].formHints`, `forms[]` mới trong yaml). Tận dụng
-   `dqhf-proc-scope` cho phần proc mapping.
-2. **`scaffold-page --module <m> --form <f>`**: từ formHints + entity
-   fields → sinh page JSON skeleton (list widget với đúng cột grid cũ,
-   form với đúng field nhập, button gọi proc đã port) → POST
-   `pages.save` (draft, chưa publish). Người dùng chỉ tinh chỉnh layout
-   trong PageDesigner thay vì dựng từ đầu.
-3. (Tuỳ chọn) bước AI: `callLlmJson` gợi ý layout/nhóm field từ control
-   tree khi mapping cứng không đủ — fail-safe trả skeleton thô.
+Sau đợt re-migrate, mapping DQHF ↔ ERP trở thành **1:1 trực tiếp** — loại
+bỏ toàn bộ tầng "đoán mapping" mà thiết kế cũ phải làm:
 
-**Deliverable**: scaffold tự động ~70-80% page, người chỉnh 20-30% còn lại.
+| Lớp | Mô hình cũ (EAV, tên sinh) | Mô hình mới (bảng thật, tên nguồn) |
+|---|---|---|
+| Bảng | `entity_records` JSONB, entity `chi_tiet_don_hang_e43806` | bảng PG `tr_order_detail`, entity `tr_order_detail` |
+| Field | tên enrich tự đặt, phải dò fuzzy | **field = lower(tên cột MSSQL)** (`ORDER_QTY` → `order_qty`) |
+| Label | phải enrich lại | đã có tiếng Việt trên field |
+| SQL của form | phải viết lại từ đầu | **transpile gần như nguyên văn** (tên bảng/cột trùng) |
+
+Hệ quả cụ thể cho từng bước scaffold:
+
+1. **Grid binding tự giải**: `DataGridView` cột có `DataPropertyName =
+   "ORDER_QTY"` → field `order_qty` của entity `tr_order_detail` — tra
+   trực tiếp, không cần AI/fuzzy. `HeaderText` của cột dùng để đối chiếu
+   (label tiếng Việt đã có trên field, headerText chỉ override khi khác).
+2. **Query/JOIN của form tái dùng được**: form WinForms chạy
+   `SELECT ... FROM tr_order JOIN tr_order_detail ...` — tên bảng/cột PG
+   giống hệt → chỉ cần transpile T-SQL → PG **máy móc**
+   (`TOP n`→`LIMIT n`, `ISNULL`→`COALESCE`, `GETDATE()`→`now()`,
+   `[x]`→`"x"`, bỏ `dbo.`, `+` chuỗi→`||`) rồi đổ vào **DataSource SQL
+   mode** (tab SQL đã có). AI (`callLlmJson`) chỉ làm fallback cho query
+   không transpile được — fail-safe trả TODO.
+3. **Lookup/ComboBox**: 46 field đã là type `lookup`; phần thiếu lấy từ
+   **FK metadata MSSQL** (client `getTable` đọc được FK) → sinh config
+   lookup cho ComboBox bind FK mà import chưa đánh dấu.
+4. **Proc của button**: `dqhf-proc-scope` map button→method→proc; proc đã
+   port giữ tên gốc → action gọi procedure cùng tên, chưa port → TODO
+   marker trong page draft.
+
+### 2 lệnh CLI (tooling/migration-cli, in-tree)
+
+1. **`analyze-form --module <m> --dqhf-repo <path>`**:
+   - Parse `*.Designer.cs`: control tree (grid columns + DataPropertyName
+     + HeaderText, inputs + DataBindings, buttons + caption).
+   - Parse code-behind `.cs`: handler → proc (dqhf-proc-scope) + inline SQL.
+   - Đọc FK metadata từ MSSQL cho các bảng liên quan (bổ sung lookup).
+   - Ghi `migration-plan/ui/<module>.forms.yaml`:
+     `forms[]: {name, title, grids[{columns[{field,header}], sourceSql?}],
+     inputs[{control,field,editor}], buttons[{caption,procs[]}],
+     masterDetail?}`.
+2. **`scaffold-page --module <m> [--form <f>] [--apply]`**:
+   - Đọc forms.yaml + entity thật (field/label/type qua DB) → sinh page
+     JSON: list widget (đúng cột + thứ tự grid cũ), form widget (editor
+     theo control type: DateTimePicker→date, CheckBox→boolean,
+     NumericUpDown→number, ComboBox→lookup), filter combobox
+     (`filterFromState`), master-detail (`emptyStateShowsAll=false`),
+     button→procedure action.
+   - Query JOIN → tạo DataSource SQL mode kèm query đã transpile.
+   - `--apply` → POST `pages.save` draft (không publish); mặc định in
+     preview JSON.
+
+**Deliverable**: với mapping 1:1 mới, kỳ vọng scaffold đúng ~85-90% page
+đơn giản (grid/form/master-detail); người chỉnh layout + nghiệm thu phần
+còn lại trong PageDesigner.
 
 ## Phase 3 — Chuyển đổi hàng loạt theo module (chiếm phần lớn thời gian)
 
