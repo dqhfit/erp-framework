@@ -137,6 +137,15 @@ Lặp cho từng module theo thứ tự ưu tiên từ Phase 0:
 - [ ] Delta-sync checklist xanh (no_error, low_lag, seeded, recent_sync)
 - [ ] User module xác nhận ngày cắt
 
+**Bước bắt buộc NGAY SAU final-sync, TRƯỚC khi mở ghi** — chuyển IDENTITY:
+với mỗi bảng module có cột id tự tăng (IDENTITY MSSQL): đổi field `id`
+type `number` → `sequence` + seed `entity_sequences.next_value =
+max(id) + 1`. records.create sẽ sinh id atomic (SELECT FOR UPDATE),
+immutable — đúng hành vi IDENTITY. KHÔNG đổi sớm khi còn mirror (seed
+max+1 chỉ đúng sau final-sync). Bảng PK mã text (sopn, card_no,
+RefType…) không phải identity — giữ nguyên type. Detect cột identity
+qua MSSQL metadata (sys.columns.is_identity) lúc dựng checklist.
+
 Thực hiện: `executeCutover` (mirror → live, ERP nhận ghi) → khoá form DQHF
 tương ứng (ẩn menu/quyền) → theo dõi 1 tuần → rollback sẵn
 (`rollbackCutover`) nếu sự cố.
