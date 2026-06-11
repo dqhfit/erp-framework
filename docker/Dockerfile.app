@@ -1,34 +1,39 @@
 # @erp-framework app (SPA) — self-host trong monorepo pnpm.
-#   Stage 1: build dist/ bằng node + pnpm (cần cả workspace package).
-#   Stage 2: serve dist/ bằng nginx — SPA fallback + proxy /trpc → server.
-FROM node:22-slim AS build
+#   Stage 1 (deps): copy manifest → pnpm install (cached khi không đổi deps)
+#   Stage 2 (build): copy source → vite build (chỉ chậm khi code đổi)
+#   Stage 3 (serve): nginx phục vụ dist/ + proxy API
+FROM node:22-slim AS deps
 RUN npm install -g pnpm@11
 RUN pnpm config set minimum-release-age 0 && pnpm config set verify-deps-before-run false
 WORKDIR /app
 
-# Copy toàn bộ monorepo (node_modules đã bị .dockerignore loại trừ).
-# App phụ thuộc @erp-framework/core + @erp-framework/client (workspace),
-# nên phải có mặt đủ package để build chạy được.
-COPY . .
+# ── LAYER CACHING: manifest trước source ──────────────────────
+# Layer này cache hit khi chỉ sửa code (không đổi package.json/lock).
+# pnpm install của toàn workspace (~2 phút) không chạy lại mỗi push code.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/server/package.json packages/server/
+COPY packages/core/package.json packages/core/
+COPY packages/db/package.json packages/db/
+COPY packages/client/package.json packages/client/
+COPY packages/mssql-client/package.json packages/mssql-client/
+COPY packages/plugins/package.json packages/plugins/
 
-# --ignore-scripts: pnpm 11 chặn build script của dependency mặc định và
-# coi đó là LỖI (ERR_PNPM_IGNORED_BUILDS, exit 1) khi chạy không tương tác.
-# Cờ này là chỉ thị tường minh "bỏ qua script" → pnpm thoát 0.
-# esbuild/@swc/core/biome đời mới nạp binary native qua optionalDependencies
-# theo nền tảng (vẫn được cài) nên vite build vẫn chạy; postinstall chỉ là
-# bước tối ưu. pnpm rebuild sau đó chạy lại script cho các gói cần (nếu có).
 RUN pnpm install --ignore-scripts --config.minimum-release-age=0
 RUN pnpm rebuild esbuild @swc/core @biomejs/biome || true
 
-# Chạy thẳng "vite build" thay vì "pnpm build" (tsc && vite build):
-# src/routeTree.gen.ts là file tự sinh, bị .dockerignore loại trừ → tsc
-# (chạy trước) sẽ lỗi vì thiếu file. Plugin router của TanStack tự sinh
-# lại routeTree.gen.ts ở buildStart của vite, nên vite build là đủ để ra
-# dist/. Việc typecheck thuộc khâu dev/CI, không cần trong image.
+# ── Stage build: copy source → vite build ─────────────────────
+FROM deps AS build
+# Copy toàn bộ source (node_modules đã có từ stage deps qua cache).
+COPY . .
+# vite build (không tsc): routeTree.gen.ts được TanStack plugin sinh lại
+# trong buildStart — tsc typecheck thuộc khâu CI, không cần trong image.
 RUN pnpm exec vite build
 
-# ---------- Stage 2: serve ----------
+# ── Stage serve: nginx phục vụ SPA + proxy backend ────────────
 FROM nginx:1.27-alpine AS serve
+# nginx.conf bake vào image làm fallback; production dùng volume mount
+# (docker-compose.yml) để thay đổi proxy rule không cần rebuild image:
+#   git pull && docker exec <app-container> nginx -s reload  (< 1 giây)
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

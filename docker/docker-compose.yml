@@ -108,6 +108,10 @@ services:
       - server
     ports:
       - "3000:80"
+    volumes:
+      # Volume mount nginx.conf: thay đổi proxy rule không cần rebuild image.
+      # Chỉ cần: git pull && docker exec erp-framework-app-1 nginx -s reload
+      - ../docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
   # Claude Code CLI Bridge — dùng claude CLI làm nguồn LLM (auth Pro/Max).
   # Đăng nhập MỘT LẦN sau khi container chạy (credentials lưu vào volume
