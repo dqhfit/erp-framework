@@ -105,6 +105,10 @@ export interface EntityFieldDef {
   /** Field-level RBAC. Mặc định = mọi role có quyền entity được đọc/ghi. */
   readableBy?: Array<"admin" | "editor" | "viewer">;
   writableBy?: Array<"admin" | "editor" | "viewer">;
+  /** Field-level RBAC theo NHÓM người dùng (viewer-group ids) — tầng thứ 2
+   *  sau role, admin bypass. Rỗng/vắng = mọi nhóm. */
+  readableByGroups?: string[];
+  writableByGroups?: string[];
   /** Cho field type "sequence" — prefix + padding (vd "INV-", 4 → INV-0001). */
   sequencePrefix?: string;
   sequencePadding?: number;

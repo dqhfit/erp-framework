@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "w": 12,
-   "h": 5,
+   "h": 9,
    "config": {
     "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
     "title": "Danh sách mã nhà máy",
@@ -23,43 +23,58 @@
      "hehang"
     ],
     "selectionStateKey": "sel",
-    "pageSize": 25
-   }
-  },
-  {
-   "id": "w_detail",
-   "kind": "detail",
-   "x": 0,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
-    "recordIdFromState": "sel",
-    "title": "Chi tiết"
-   }
-  },
-  {
-   "id": "w_form",
-   "kind": "form",
-   "x": 6,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
-    "title": "Thêm mới"
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+        "title": "Thêm — Danh sách mã nhà máy",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+        "title": "Danh sách mã nhà máy",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
    }
   },
   {
    "id": "w_todo",
    "kind": "html",
    "x": 0,
-   "y": 10,
+   "y": 9,
    "w": 12,
    "h": 2,
    "config": {
-    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachMaNhaMay<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: SYS_USER_RULE_Get, TR_SANPHAM_NHAMAY_DUPLICATE, TR_SANPHAM_NHAMAY_GETALL, TR_SANPHAM_NHAMAY_GETBYSTATUS, TR_SANPHAM_NHAMAY_HIDE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_sanpham\n</div>"
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachMaNhaMay<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: SYS_USER_RULE_Get, TR_SANPHAM_NHAMAY_DUPLICATE, TR_SANPHAM_NHAMAY_GETALL, TR_SANPHAM_NHAMAY_GETBYSTATUS, TR_SANPHAM_NHAMAY_HIDE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_sanpham\n</div>"
    }
   }
  ]

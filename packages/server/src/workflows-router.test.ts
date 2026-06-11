@@ -1,10 +1,10 @@
 /* ==========================================================
    workflows-router.test.ts — Unit test workflow CRUD + publish + replay.
    ========================================================== */
-import { describe, it, expect, vi } from "vitest";
-import { workflowsRouter } from "./workflows-router";
+import { describe, expect, it, vi } from "vitest";
+import { assertThrowsTRPCError, makeMockCtx, makeMockDb, makeMockUser } from "./test-helpers";
 import { createCallerFactory } from "./trpc";
-import { makeMockCtx, makeMockDb, makeMockUser, assertThrowsTRPCError } from "./test-helpers";
+import { workflowsRouter } from "./workflows-router";
 
 const caller = createCallerFactory(workflowsRouter);
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -55,17 +55,31 @@ describe("workflows-router", () => {
       expect(r?.name).toBe("new wf");
     });
 
-    it("update + NOT_FOUND khi id không tồn tại", async () => {
-      const { db, enqueueUpdate } = makeMockDb();
-      enqueueUpdate([]); // update returning empty → not found
-      const ctx = makeMockCtx({ db });
+    it("id chưa tồn tại → INSERT với chính id đó (client-generated UUID)", async () => {
+      // Pattern SELECT→INSERT-or-UPDATE (fix "workflow không tồn tại khi chạy
+      // thử"): client sinh crypto.randomUUID() trước khi server biết — lần lưu
+      // đầu phải INSERT, KHÔNG NOT_FOUND như hành vi UPDATE-only cũ.
+      const { db, enqueueSelect, enqueueInsert } = makeMockDb();
+      enqueueSelect([]); // SELECT theo id → chưa có row
+      enqueueInsert([{ id: VALID_UUID, name: "n" }]);
+      const r = await caller(makeMockCtx({ db })).save({
+        id: VALID_UUID,
+        name: "n",
+      });
+      expect(r?.id).toBe(VALID_UUID);
+      expect(r?.name).toBe("n");
+    });
+
+    it("id thuộc công ty KHÁC → FORBIDDEN (chống cross-tenant)", async () => {
+      const { db, enqueueSelect } = makeMockDb();
+      enqueueSelect([{ companyId: "khac-cong-ty" }]); // row tồn tại, company khác
       await assertThrowsTRPCError(
         () =>
-          caller(ctx).save({
+          caller(makeMockCtx({ db })).save({
             id: VALID_UUID,
             name: "n",
           }),
-        "NOT_FOUND",
+        "FORBIDDEN",
       );
     });
   });

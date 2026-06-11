@@ -20,7 +20,7 @@ import {
   type Role,
   validateRecord,
 } from "@erp-framework/core";
-import { entities, entityRecords } from "@erp-framework/db";
+import { entities, entityRecords, userViewerGroups } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -479,11 +479,29 @@ export async function nextSequence(
 
 /* ─── RBAC field-level ────────────────────────────────────── */
 
-/** Loại bỏ key user không có quyền GHI (writableBy) trước khi validate. */
+/** Cache nhóm của user (60s) — group membership đổi hiếm, tránh 1 query
+ *  phụ trên MỌI records.list/update. Đổi nhóm có hiệu lực trễ tối đa 60s. */
+const groupIdsCache = new Map<string, { ids: string[]; exp: number }>();
+
+/** Nạp danh sách viewer-group ids của user (cho fieldCan tầng nhóm). */
+export async function loadUserGroupIds(db: DB, userId: string): Promise<string[]> {
+  const hit = groupIdsCache.get(userId);
+  if (hit && hit.exp > Date.now()) return hit.ids;
+  const rows = await db
+    .select({ g: userViewerGroups.groupId })
+    .from(userViewerGroups)
+    .where(eq(userViewerGroups.userId, userId));
+  const ids = rows.map((r) => r.g);
+  groupIdsCache.set(userId, { ids, exp: Date.now() + 60_000 });
+  return ids;
+}
+
+/** Loại bỏ key user không có quyền GHI (writableBy + writableByGroups). */
 export function stripUnwritableFields(
   fields: EntityFieldDef[],
   data: Record<string, unknown>,
   role: Role,
+  groupIds: string[] = [],
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
@@ -492,16 +510,17 @@ export function stripUnwritableFields(
       out[k] = v;
       continue;
     }
-    if (fieldCan(role, "write", f)) out[k] = v;
+    if (fieldCan(role, "write", f, groupIds)) out[k] = v;
   }
   return out;
 }
 
-/** Loại bỏ key user không có quyền ĐỌC (readableBy) khỏi response. */
+/** Loại bỏ key user không có quyền ĐỌC (readableBy + readableByGroups). */
 export function stripUnreadableFields(
   fields: EntityFieldDef[],
   data: Record<string, unknown>,
   role: Role,
+  groupIds: string[] = [],
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
@@ -510,7 +529,7 @@ export function stripUnreadableFields(
       out[k] = v;
       continue;
     }
-    if (fieldCan(role, "read", f)) out[k] = v;
+    if (fieldCan(role, "read", f, groupIds)) out[k] = v;
   }
   return out;
 }

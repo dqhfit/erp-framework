@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "w": 12,
-   "h": 5,
+   "h": 9,
    "config": {
     "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
     "title": "Phát hành định mức",
@@ -25,43 +25,58 @@
      "ispacking"
     ],
     "selectionStateKey": "sel",
-    "pageSize": 25
-   }
-  },
-  {
-   "id": "w_detail",
-   "kind": "detail",
-   "x": 0,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
-    "recordIdFromState": "sel",
-    "title": "Chi tiết"
-   }
-  },
-  {
-   "id": "w_form",
-   "kind": "form",
-   "x": 6,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
-    "title": "Thêm mới"
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
+        "title": "Thêm — Phát hành định mức",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
+        "title": "Phát hành định mức",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
    }
   },
   {
    "id": "w_todo",
    "kind": "html",
    "x": 0,
-   "y": 10,
+   "y": 9,
    "w": 12,
    "h": 2,
    "config": {
-    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhatHanhDinhMuc2, frmPhatHanhDinhMuc<br/>\nNút cần gắn action: Phát hành · Cập nhật sản phẩm · Phát hành · Cập nhật sản phẩm<br/>\nProc cần port: HR_CONGTY_GET, MES_QUYTRINH_SANPHAM_GETALL2, MES_QUYTRINH_SANPHAM_GETCATEGORY, MES_QUYTRINH_SANPHAM_PHATHANH, TR_BANVE_CREATE, TR_DINHMUC_GOVAN_CLEAN, TR_DINHMUC_GOVAN_CREATE, TR_DINHMUC_GOVAN_GETBYSP2, TR_DINHMUC_GOVAN_M3TOTAL, TR_DINHMUC_LOCK_GET, TR_DINHMUC_LOCK_GET2, TR_EMAIL_SUBSCRIBER2_GETBYTOPIC, TR_SANPHAM_CARTON_DELETE, TR_SANPHAM_CARTON_INSERT, TR_SANPHAM_NHAMAY_GETALL, TR_SANPHAM_NHAMAY_GETBYSTATUS, TR_SANPHAM_UPDATE_QUYCACH, TR_SANPHAM_UPDATE_QUYCACH_CARTON<br/>\nEntity phụ (lookup/filter cân nhắc thêm): mes_quytrinh_sanpham, tr_banve, tr_dinhmuc_govan, tr_hehang, tr_khachhang, tr_loaisp, tr_sanpham, tr_sanpham_carton, tr_sanpham_nhamay\n</div>"
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhatHanhDinhMuc2, frmPhatHanhDinhMuc<br/>\nNút WinForms gốc: Phát hành · Cập nhật sản phẩm · Phát hành · Cập nhật sản phẩm<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, MES_QUYTRINH_SANPHAM_GETALL2, MES_QUYTRINH_SANPHAM_GETCATEGORY, MES_QUYTRINH_SANPHAM_PHATHANH, TR_BANVE_CREATE, TR_DINHMUC_GOVAN_CLEAN, TR_DINHMUC_GOVAN_CREATE, TR_DINHMUC_GOVAN_GETBYSP2, TR_DINHMUC_GOVAN_M3TOTAL, TR_DINHMUC_LOCK_GET, TR_DINHMUC_LOCK_GET2, TR_EMAIL_SUBSCRIBER2_GETBYTOPIC, TR_SANPHAM_CARTON_DELETE, TR_SANPHAM_CARTON_INSERT, TR_SANPHAM_NHAMAY_GETALL, TR_SANPHAM_NHAMAY_GETBYSTATUS, TR_SANPHAM_UPDATE_QUYCACH, TR_SANPHAM_UPDATE_QUYCACH_CARTON<br/>\nEntity phụ (lookup/filter cân nhắc thêm): mes_quytrinh_sanpham, tr_banve, tr_dinhmuc_govan, tr_hehang, tr_khachhang, tr_loaisp, tr_sanpham, tr_sanpham_carton, tr_sanpham_nhamay\n</div>"
    }
   }
  ]

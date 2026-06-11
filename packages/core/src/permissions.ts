@@ -179,14 +179,29 @@ export function permissionsOf(role: Role): string[] {
   return out;
 }
 
-/** Field-level RBAC — kiểm tra role có được đọc/ghi field theo cờ
- *  readableBy/writableBy. Default (cờ vắng) = cho phép. */
+/** Field-level RBAC — kiểm tra role + NHÓM người dùng có được đọc/ghi field.
+ *  2 tầng độc lập, phải qua CẢ HAI:
+ *  - readableBy/writableBy (role): cờ vắng/rỗng = mọi role.
+ *  - readableByGroups/writableByGroups (viewer-group ids): cờ vắng/rỗng =
+ *    mọi nhóm; có cấu hình → user phải thuộc ÍT NHẤT 1 nhóm. ADMIN BYPASS
+ *    tầng nhóm (chống tự khoá mình — admin thường không nằm trong nhóm).
+ *  Caller không truyền groupIds + field có cấu hình nhóm → DENY (fail-closed). */
 export function fieldCan(
   role: Role,
   action: "read" | "write",
-  field: { readableBy?: Role[]; writableBy?: Role[] },
+  field: {
+    readableBy?: Role[];
+    writableBy?: Role[];
+    readableByGroups?: string[];
+    writableByGroups?: string[];
+  },
+  groupIds?: string[],
 ): boolean {
-  const allowed = action === "read" ? field.readableBy : field.writableBy;
-  if (!allowed || allowed.length === 0) return true;
-  return allowed.includes(role);
+  const roles = action === "read" ? field.readableBy : field.writableBy;
+  if (roles && roles.length > 0 && !roles.includes(role)) return false;
+  const groups = action === "read" ? field.readableByGroups : field.writableByGroups;
+  if (groups && groups.length > 0 && role !== "admin") {
+    return (groupIds ?? []).some((g) => groups.includes(g));
+  }
+  return true;
 }

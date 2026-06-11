@@ -57,6 +57,9 @@ export interface EntityField {
   /** Field-level RBAC — role nào đọc/ghi được. */
   readableBy?: Array<"admin" | "editor" | "viewer">;
   writableBy?: Array<"admin" | "editor" | "viewer">;
+  /** RBAC theo nhóm người dùng (viewer-group ids) — tầng 2 sau role. */
+  readableByGroups?: string[];
+  writableByGroups?: string[];
   /** Cho field type "sequence". */
   sequencePrefix?: string;
   sequencePadding?: number;

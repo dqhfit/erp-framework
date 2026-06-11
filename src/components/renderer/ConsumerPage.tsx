@@ -33,8 +33,10 @@ import { applyFieldFormat } from "@/lib/format";
 import type { EntityField, MockEntity } from "@/lib/object-types";
 import { applyFilters } from "@/lib/page-filters";
 import { applyInsertAndResolve } from "@/lib/page-layout";
+import { fieldCan } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
+import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, FilterNode } from "@/types/page";
 
@@ -371,6 +373,9 @@ function EditableListWidget({
   onSave,
 }: EditableListWidgetProps) {
   const t = useT();
+  // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
+  const rbacRole = useRbac((s) => s.role);
+  const myGroupIds = useUserObjects((s) => s.myGroupIds);
   type CellKey = `${number}:${string}`;
   const [editingCell, setEditingCell] = useState<CellKey | null>(null);
   const [cellVals, setCellVals] = useState<Record<string, string>>({});
@@ -495,7 +500,10 @@ function EditableListWidget({
                   >
                     {visibleFields.map((f) => {
                       const k: CellKey = `${r}:${f.name}`;
-                      const isEditing = editingCell === k;
+                      // Field-level RBAC: role + nhóm không có quyền ghi → ô
+                      // read-only (server vẫn strip — đây là tầng UX báo sớm).
+                      const canWrite = fieldCan(rbacRole, "write", f, myGroupIds);
+                      const isEditing = canWrite && editingCell === k;
                       const val = getVal(r, f.name);
                       const changed =
                         cellVals[k] !== undefined && cellVals[k] !== String(row[f.name] ?? "");
@@ -503,10 +511,12 @@ function EditableListWidget({
                         <td
                           key={f.name}
                           className={cn(
-                            "border border-border/60 px-0 h-7 cursor-text",
+                            "border border-border/60 px-0 h-7",
+                            canWrite ? "cursor-text" : "cursor-not-allowed opacity-60",
                             changed && "bg-warning/10",
                           )}
-                          onDoubleClick={() => setEditingCell(k)}
+                          title={canWrite ? undefined : "Không có quyền sửa cột này"}
+                          onDoubleClick={canWrite ? () => setEditingCell(k) : undefined}
                         >
                           {isEditing ? (
                             <input

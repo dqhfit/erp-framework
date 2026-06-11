@@ -314,6 +314,7 @@ export function FieldInspector({
 }: FieldInspectorProps) {
   const t = useT();
   const userEntities = useUserObjects((s) => s.entities);
+  const viewerGroupsList = useUserObjects((s) => s.viewerGroupsList);
   if (!field) {
     return (
       <aside className="w-[320px] shrink-0 border-l border-border bg-panel flex flex-col">
@@ -582,6 +583,66 @@ export function FieldInspector({
                 })}
               </div>
             </FormField>
+            {/* RBAC theo NHÓM người dùng — tầng 2 sau role (admin bypass).
+                Rỗng = mọi nhóm. Có tick = user phải thuộc ít nhất 1 nhóm. */}
+            {viewerGroupsList.length > 0 && (
+              <>
+                <FormField
+                  label="Nhóm được đọc"
+                  hint="Rỗng = mọi nhóm. Tick = chỉ thành viên nhóm (admin luôn được)."
+                >
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {viewerGroupsList.map((g) => {
+                      const cur = field.readableByGroups ?? [];
+                      const on = cur.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={(e) =>
+                              onUpdate({
+                                readableByGroups: e.target.checked
+                                  ? [...cur, g.id]
+                                  : cur.filter((x) => x !== g.id),
+                              } as Partial<EntityField>)
+                            }
+                          />
+                          {g.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </FormField>
+                <FormField
+                  label="Nhóm được ghi"
+                  hint="Vd: tổ kế toán sửa được giá, tổ kho thì không."
+                >
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {viewerGroupsList.map((g) => {
+                      const cur = field.writableByGroups ?? [];
+                      const on = cur.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={(e) =>
+                              onUpdate({
+                                writableByGroups: e.target.checked
+                                  ? [...cur, g.id]
+                                  : cur.filter((x) => x !== g.id),
+                              } as Partial<EntityField>)
+                            }
+                          />
+                          {g.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </FormField>
+              </>
+            )}
 
             {field.type === "formula" && (
               <FormulaEditor

@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "w": 12,
-   "h": 5,
+   "h": 9,
    "config": {
     "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
     "title": "Kiểm tra định mức - bản vẽ - AI",
@@ -20,43 +20,58 @@
      "heso"
     ],
     "selectionStateKey": "sel",
-    "pageSize": 25
-   }
-  },
-  {
-   "id": "w_detail",
-   "kind": "detail",
-   "x": 0,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-    "recordIdFromState": "sel",
-    "title": "Chi tiết"
-   }
-  },
-  {
-   "id": "w_form",
-   "kind": "form",
-   "x": 6,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-    "title": "Thêm mới"
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Thêm — Kiểm tra định mức - bản vẽ - AI",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Kiểm tra định mức - bản vẽ - AI",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
    }
   },
   {
    "id": "w_todo",
    "kind": "html",
    "x": 0,
-   "y": 10,
+   "y": 9,
    "w": 12,
    "h": 2,
    "config": {
-    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_DinhMuc_HeHang<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: DINHMUC_HEHANG_GETALL, TR_HEHANG_GetList<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_khachhang\n</div>"
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_DinhMuc_HeHang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: DINHMUC_HEHANG_GETALL, TR_HEHANG_GetList<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_khachhang\n</div>"
    }
   }
  ]

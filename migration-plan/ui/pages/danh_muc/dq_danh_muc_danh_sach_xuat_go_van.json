@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "w": 12,
-   "h": 5,
+   "h": 9,
    "config": {
     "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
     "title": "Danh sách phiếu xuất gỗ ván",
@@ -25,43 +25,58 @@
      "loaiphieu"
     ],
     "selectionStateKey": "sel",
-    "pageSize": 25
-   }
-  },
-  {
-   "id": "w_detail",
-   "kind": "detail",
-   "x": 0,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
-    "recordIdFromState": "sel",
-    "title": "Chi tiết"
-   }
-  },
-  {
-   "id": "w_form",
-   "kind": "form",
-   "x": 6,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
-    "title": "Thêm mới"
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+        "title": "Thêm — Danh sách phiếu xuất gỗ ván",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+        "title": "Danh sách phiếu xuất gỗ ván",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
    }
   },
   {
    "id": "w_todo",
    "kind": "html",
    "x": 0,
-   "y": 10,
+   "y": 9,
    "w": 12,
    "h": 2,
    "config": {
-    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachXuatGoVan<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_PHIEUXUAT_GOVAN_CHITIET_GETALL, TR_PHIEUXUAT_GOVAN_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachXuatGoVan<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_PHIEUXUAT_GOVAN_CHITIET_GETALL, TR_PHIEUXUAT_GOVAN_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
    }
   }
  ]

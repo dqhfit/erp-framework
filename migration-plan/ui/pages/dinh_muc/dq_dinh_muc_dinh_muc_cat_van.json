@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "w": 12,
-   "h": 5,
+   "h": 9,
    "config": {
     "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
     "title": "frmDinhMucCatVan",
@@ -23,43 +23,58 @@
      "nguoisua"
     ],
     "selectionStateKey": "sel",
-    "pageSize": 25
-   }
-  },
-  {
-   "id": "w_detail",
-   "kind": "detail",
-   "x": 0,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
-    "recordIdFromState": "sel",
-    "title": "Chi tiết"
-   }
-  },
-  {
-   "id": "w_form",
-   "kind": "form",
-   "x": 6,
-   "y": 5,
-   "w": 6,
-   "h": 5,
-   "config": {
-    "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
-    "title": "Thêm mới"
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
+        "title": "Thêm — frmDinhMucCatVan",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
+        "title": "frmDinhMucCatVan",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
    }
   },
   {
    "id": "w_todo",
    "kind": "html",
    "x": 0,
-   "y": 10,
+   "y": 9,
    "w": 12,
    "h": 2,
    "config": {
-    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucCatVan<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: HR_CONGTY_GETLIST, TR_DANHSACH_DEXUAT_PROCESS_INSERT, TR_DONDATHANG_GET3, TR_DONDATHANG_INSERT2, TR_DONDATHANG_NEWID, TR_DONDATHANG_NEWID2, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_INSERT2, TR_MATERIAL_NCC_GET2, TR_MATERIAL_get, TR_NHACC_Get, TR_NHOM_DEXUAT2_GET, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_QUYTRINH_XETDUYET_GETALL, TR_SODO_CATVAN_DELETE, TR_SODO_CATVAN_DELETEALL, TR_SODO_CATVAN_GETALL, TR_SODO_CATVAN_GETBYID, TR_SODO_CATVAN_GETBYORDER, TR_SODO_CATVAN_HEAD_DELETED, TR_SODO_CATVAN_HEAD_GETALL, TR_SODO_CATVAN_HEAD_GETBYID, TR_SODO_CATVAN_HEAD_INSERT, TR_SODO_CATVAN_HEAD_UPDATE, TR_SODO_CATVAN_INSERT, TR_SODO_CATVAN_UPDATE, TR_SODO_CATVAN_UPDATE_DDH<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_loaincc, tr_material, tr_material_ncc, tr_nhacc, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucCatVan<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GETLIST, TR_DANHSACH_DEXUAT_PROCESS_INSERT, TR_DONDATHANG_GET3, TR_DONDATHANG_INSERT2, TR_DONDATHANG_NEWID, TR_DONDATHANG_NEWID2, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_INSERT2, TR_MATERIAL_NCC_GET2, TR_MATERIAL_get, TR_NHACC_Get, TR_NHOM_DEXUAT2_GET, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_QUYTRINH_XETDUYET_GETALL, TR_SODO_CATVAN_DELETE, TR_SODO_CATVAN_DELETEALL, TR_SODO_CATVAN_GETALL, TR_SODO_CATVAN_GETBYID, TR_SODO_CATVAN_GETBYORDER, TR_SODO_CATVAN_HEAD_DELETED, TR_SODO_CATVAN_HEAD_GETALL, TR_SODO_CATVAN_HEAD_GETBYID, TR_SODO_CATVAN_HEAD_INSERT, TR_SODO_CATVAN_HEAD_UPDATE, TR_SODO_CATVAN_INSERT, TR_SODO_CATVAN_UPDATE, TR_SODO_CATVAN_UPDATE_DDH<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_loaincc, tr_material, tr_material_ncc, tr_nhacc, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
    }
   }
  ]

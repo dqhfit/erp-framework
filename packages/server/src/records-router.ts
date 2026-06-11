@@ -23,6 +23,7 @@ import { z } from "zod";
 import { logAuditImmutable } from "./audit-immutable";
 import { findDuplicateRecords } from "./duplicate-detection";
 import { fireEntityWebhooks } from "./entity-webhooks-router";
+import { assertEntityNotMirror } from "./entity-write-guard";
 import { makeCallTool } from "./mcp-client";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
@@ -37,6 +38,7 @@ import {
   deepEqual,
   encryptDataIn,
   loadEntityFields,
+  loadUserGroupIds,
   nextSequence,
   queryParams,
   resolveProcBinding,
@@ -45,7 +47,6 @@ import {
   stripUnwritableFields,
 } from "./router-helpers";
 import { rbacProcedure, router } from "./trpc";
-import { assertEntityNotMirror } from "./entity-write-guard";
 import { triggerEntityWorkflows } from "./workflow-triggers";
 import { publish as publishWs } from "./ws-hub";
 
@@ -74,7 +75,7 @@ export const recordsRouter = router({
         const total = Array.isArray(out) ? rows.length : (out?.total ?? rows.length);
         return { rows, total };
       }
-      return getRecordStore(ctx.db).list(ctx.user.companyId, input.entityId, {
+      const result = await getRecordStore(ctx.db).list(ctx.user.companyId, input.entityId, {
         filters: input.query?.filters,
         q: input.query?.q,
         sort: input.query?.sort,
@@ -82,6 +83,26 @@ export const recordsRouter = router({
         offset: input.query?.offset,
         includeDeleted: input.includeDeleted ?? false,
       });
+      // Field-level RBAC: strip cột không có quyền đọc khỏi TỪNG row.
+      // (get/export đã strip từ trước — list bị sót, vá 2026-06-11.)
+      const listFields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      const needStrip = listFields.some(
+        (f) => (f.readableBy?.length ?? 0) > 0 || (f.readableByGroups?.length ?? 0) > 0,
+      );
+      if (!needStrip) return result;
+      const gIdsList = await loadUserGroupIds(ctx.db, ctx.user.id);
+      return {
+        ...result,
+        rows: result.rows.map((r) => ({
+          ...r,
+          data: stripUnreadableFields(
+            listFields,
+            (r.data ?? {}) as Record<string, unknown>,
+            ctx.user.role,
+            gIdsList,
+          ),
+        })),
+      };
     }),
 
   get: rbacProcedure("view", "entity")
@@ -110,7 +131,12 @@ export const recordsRouter = router({
       });
       return {
         ...row,
-        data: stripUnreadableFields(fields, withRollups, ctx.user.role),
+        data: stripUnreadableFields(
+          fields,
+          withRollups,
+          ctx.user.role,
+          await loadUserGroupIds(ctx.db, ctx.user.id),
+        ),
       };
     }),
 
@@ -120,7 +146,12 @@ export const recordsRouter = router({
       await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Strip field user không có quyền write (field-level RBAC).
-      const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+      const writable = stripUnwritableFields(
+        fields,
+        input.data,
+        ctx.user.role,
+        await loadUserGroupIds(ctx.db, ctx.user.id),
+      );
       const data = assertValid(fields, writable, false);
       // Sinh value cho field type "sequence" — server-side, atomic.
       const [ent] = await ctx.db
@@ -169,7 +200,12 @@ export const recordsRouter = router({
       });
       return {
         ...row,
-        data: stripUnreadableFields(fields, decoded, ctx.user.role),
+        data: stripUnreadableFields(
+          fields,
+          decoded,
+          ctx.user.role,
+          await loadUserGroupIds(ctx.db, ctx.user.id),
+        ),
       };
     }),
 
@@ -203,7 +239,12 @@ export const recordsRouter = router({
       await assertEntityNotMirror(ctx.user.companyId, rec.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, rec.entityId);
       // Strip field user không có quyền write trước khi validate.
-      const writable = stripUnwritableFields(fields, input.data, ctx.user.role);
+      const writable = stripUnwritableFields(
+        fields,
+        input.data,
+        ctx.user.role,
+        await loadUserGroupIds(ctx.db, ctx.user.id),
+      );
       const data = assertValid(fields, writable, true);
       // Sequence không cho update — bỏ key sequence ra khỏi data.
       for (const f of fields) {
@@ -689,7 +730,12 @@ export const recordsRouter = router({
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Strip field user không có quyền write trước khi validate
       // (field-level RBAC — áp dụng đồng nhất với records.update).
-      const writable = stripUnwritableFields(fields, input.patch, ctx.user.role);
+      const writable = stripUnwritableFields(
+        fields,
+        input.patch,
+        ctx.user.role,
+        await loadUserGroupIds(ctx.db, ctx.user.id),
+      );
       const data = assertValid(fields, writable, true);
       const store = getRecordStore(ctx.db);
       let updated = 0;
@@ -760,13 +806,14 @@ export const recordsRouter = router({
       await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       const store = getRecordStore(ctx.db);
+      const gIds = await loadUserGroupIds(ctx.db, ctx.user.id);
       let imported = 0;
       const errors: Array<{ index: number; message: string }> = [];
       for (let i = 0; i < input.rows.length; i++) {
         try {
           const r = input.rows[i]!;
           // Strip field user không có quyền write per row (field-level RBAC).
-          const writable = stripUnwritableFields(fields, r, ctx.user.role);
+          const writable = stripUnwritableFields(fields, r, ctx.user.role, gIds);
           const v = validateRecord(fields, writable, { registry: pluginRegistry });
           if (!v.ok) {
             errors.push({
@@ -810,9 +857,10 @@ export const recordsRouter = router({
       // Strip field unreadable + decrypt per row trước khi export
       // (field-level RBAC — viewer không thấy field admin-only kể cả
       // qua CSV/JSON download).
+      const gIdsExport = await loadUserGroupIds(ctx.db, ctx.user.id);
       const safeRows = rows.map((r) => {
         const decoded = decryptDataOut(fields, (r.data ?? {}) as Record<string, unknown>);
-        return { ...r, data: stripUnreadableFields(fields, decoded, ctx.user.role) };
+        return { ...r, data: stripUnreadableFields(fields, decoded, ctx.user.role, gIdsExport) };
       });
       if (input.format === "json") {
         return {
