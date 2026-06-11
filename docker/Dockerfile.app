@@ -1,5 +1,7 @@
-# syntax=docker/dockerfile:1
 # @erp-framework app (SPA) — self-host trong monorepo pnpm.
+# LƯU Ý: KHÔNG thêm "# syntax=docker/dockerfile:1" — Coolify bake load
+# fail (exit 255 "load local bake definitions"). Engine hiện đại hỗ trợ
+# RUN --mount=type=cache sẵn qua builtin frontend, không cần directive.
 #   Stage 1 (build): pnpm install + vite build
 #   Stage 2 (serve): nginx phục vụ dist/ + proxy API
 #
