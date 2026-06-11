@@ -213,15 +213,29 @@ for (const name of formNames) {
     )
     .filter((t) => /^(tr|mes|kt|dqt|hr)_/.test(t) && !erpTables.has(t));
 
-  const entityList = [...tables].map((t) => erpTables.get(t)).filter(Boolean);
+  // Bảng QUYỀN/NGỮ CẢNH (user, phân quyền, bộ phận, người duyệt, công ty) —
+  // form nào cũng đụng nhưng KHÔNG phải data nghiệp vụ của màn hình.
+  // ERP thay bằng RBAC + resource ACL — không tính khi chọn entity đích.
+  const CONTEXT_TABLES = new Set([
+    "sys_user",
+    "sys_user_rule",
+    "tr_bophan",
+    "tr_nguoiduyet",
+    "hr_congty",
+  ]);
+  const allEntities = [...tables].map((t) => erpTables.get(t)).filter(Boolean) as string[];
+  const entityList = allEntities.filter((t) => !CONTEXT_TABLES.has(t));
+  const contextEntities = allEntities.filter((t) => CONTEXT_TABLES.has(t));
   if (entityList.length > 0) mapped++;
   out.push({
     form: name,
     title: meta?.title ?? "",
     // Quy tắc đã chốt (2026-06-11): form không liên quan 130 bảng đã migrate
-    // → LOẠI khỏi phạm vi chuyển đổi (inScope=false, không scaffold).
+    // → LOẠI khỏi phạm vi chuyển đổi. Form CHỈ đụng bảng quyền/ngữ cảnh cũng
+    // loại (chức năng = phân quyền → RBAC của ERP thay thế).
     inScope: entityList.length > 0,
     entities: entityList,
+    ...(contextEntities.length ? { contextEntities } : {}),
     ...(fingerprint ? { fingerprintScore: Math.round(fingerprint.score * 100) / 100 } : {}),
     ...(missing.length ? { tablesMissing: [...new Set(missing)] } : {}),
     repos: r.repos,
@@ -236,6 +250,19 @@ for (const name of formNames) {
 const allMissing = new Set<string>();
 for (const f of out) for (const t of (f.tablesMissing as string[]) ?? []) allMissing.add(t);
 
+// ── Cluster: form cùng BỘ data-entity = cùng màn hình, khác quyền/phiên bản
+// → scaffold 1 page/cluster, biến thể xử lý bằng RBAC/saved-view.
+const clusters = new Map<string, string[]>();
+for (const f of out) {
+  if (!f.inScope) continue;
+  const key = ([...(f.entities as string[])].sort() as string[]).join(",");
+  if (!clusters.has(key)) clusters.set(key, []);
+  clusters.get(key)?.push(f.form as string);
+}
+const clusterList = [...clusters.entries()]
+  .map(([entities, forms]) => ({ entities: entities.split(","), forms }))
+  .sort((a, b) => b.forms.length - a.forms.length);
+
 const outDir = join(ERP_ROOT, "migration-plan/ui");
 mkdirSync(outDir, { recursive: true });
 const outPath = join(outDir, `${moduleName}.forms.yaml`);
@@ -246,6 +273,7 @@ writeFileSync(
       module: moduleName,
       generatedAt: "2026-06-11",
       tablesMissingInErp: [...allMissing].sort(),
+      pageClusters: clusterList,
       forms: out,
     },
     { lineWidth: 0 },
@@ -253,5 +281,9 @@ writeFileSync(
   "utf8",
 );
 console.log(`Map được entity: ${mapped}/${formNames.length}`);
+console.log(`Page cluster (1 page/cluster): ${clusterList.length}`);
+for (const c of clusterList.filter((x) => x.forms.length > 1)) {
+  console.log(`  ${c.forms.length} form → [${c.entities.join(",")}]: ${c.forms.join(", ")}`);
+}
 if (allMissing.size > 0) console.log(`Bảng cần import bổ sung: ${[...allMissing].join(", ")}`);
 console.log(`Saved ${outPath}`);

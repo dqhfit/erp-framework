@@ -32,11 +32,176 @@ tablesMissingInErp:
   - tr_tonghop_xuat_hopchat
   - tr_tonkho_chitiet
   - tr_tonkho_govan_malo
+pageClusters:
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_lenhcapphat
+      - tr_lenhcapphat_head
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmListMaterialRequest1
+      - frmCreateMaterialRequest
+      - frmCreateMaterialRequestOther
+  - entities:
+      - tr_lenhcapphat
+    forms:
+      - frmCreateMaterialRequest_NonBOM
+      - frmCreateMaterialRequest_GVA
+      - frmListMaterialRequest
+  - entities:
+      - tr_khachhang
+    forms:
+      - frmDanhSachHoaDon
+      - frmDanhSachHoaDon
+      - frmDanhSachCongNo
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmNhomAI
+      - frmCaiDatDonGiaNguyenLieu2
+      - frmCaiDatHeSoHeHang
+  - entities:
+      - tr_loaincc
+      - tr_nhacc
+    forms:
+      - frmDanhSachTaiSan
+      - frm_Danhsachnhacungcap
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_sanpham
+    forms:
+      - frmNhomAIAdd
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_lenhcapphat_head
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieunhap
+      - tr_phieuxuat
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_reftype
+      - tr_site
+    forms:
+      - frmListWHSInOut
+  - entities:
+      - tr_dondathang
+      - tr_lenhcapphat
+    forms:
+      - frmCreateMaterialRequest_GVA_ver2
+  - entities:
+      - tr_ctphieuxuat
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_lenhcapphat_head
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuxuat
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_reftype
+      - tr_site
+    forms:
+      - frmDanhSachHoaDon2
+  - entities:
+      - tr_phieuxuat
+    forms:
+      - frmDanhSachXuatGoVan
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_nguyenlieu_gva
+    forms:
+      - frmCaiDatDonGiaNguyenLieu
+  - entities:
+      - tr_site
+    forms:
+      - frmListMaterialInOut
+  - entities:
+      - tr_bangmau
+      - tr_color
+      - tr_denghi_thanhtoan
+      - tr_denghi_thanhtoan_file
+      - tr_dexuat_bangmau
+      - tr_dexuat_bangmau_chitiet
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_order_replacement_detail
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_thaydoi_kythuat
+    forms:
+      - frmDanhMucDeXuat2
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    forms:
+      - frmDanhSachMaNhaMay
+  - entities:
+      - tr_trangthai_sanxuat
+    forms:
+      - frmDanhSachTongHopXuatHopChatSon
+  - entities:
+      - mes_danhsach_maymoc
+    forms:
+      - frmDanhSachMayMoc
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmListBomEditor
+  - entities:
+      - trtb_m_op
+    forms:
+      - frmNhomMay
+  - entities:
+      - tr_baocao_hangloi
+    forms:
+      - frmDanhMucLoiAdd
 forms:
   - form: frmListJobAdd
     title: Giao việc
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user
     repos: []
     procs:
@@ -109,10 +274,6 @@ forms:
     title: Danh sách lệnh cấp phát
     inScope: true
     entities:
-      - hr_congty
-      - sys_user
-      - sys_user_rule
-      - tr_bophan
       - tr_dexuat_bangmau
       - tr_dondathang
       - tr_hehang
@@ -120,7 +281,6 @@ forms:
       - tr_lenhcapphat
       - tr_lenhcapphat_head
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
       - tr_phieuyeucau
@@ -128,6 +288,12 @@ forms:
       - tr_phieuyeucau_muahang
       - tr_phieuyeucau_muahang_chitiet
       - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - sys_user_rule
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_bieumau_friday
@@ -288,8 +454,9 @@ forms:
     title: Cấp phát vật tư vượt định mức
     inScope: true
     entities:
-      - hr_congty
       - tr_lenhcapphat
+    contextEntities:
+      - hr_congty
     tablesMissing:
       - tr_hinhanh
     repos:
@@ -336,12 +503,13 @@ forms:
     title: Cập nhật nhóm AI
     inScope: true
     entities:
-      - sys_user
       - tr_hehang
       - tr_khachhang
       - tr_loaisp
       - tr_material
       - tr_sanpham
+    contextEntities:
+      - sys_user
     tablesMissing:
       - tr_ai_bom
       - tr_ai_code
@@ -424,8 +592,9 @@ forms:
         caption: Lưu
   - form: frmDanhGiaNhanVien
     title: Đánh giá nhân viên
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user
       - sys_user_rule
       - tr_bophan
@@ -630,16 +799,12 @@ forms:
     title: frmListWHSInOut
     inScope: true
     entities:
-      - hr_congty
-      - sys_user
-      - tr_bophan
       - tr_dexuat_bangmau
       - tr_dondathang
       - tr_hehang
       - tr_khachhang
       - tr_lenhcapphat_head
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
       - tr_phieunhap
@@ -650,6 +815,11 @@ forms:
       - tr_phieuyeucau_muahang_chitiet
       - tr_reftype
       - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_congdoan
@@ -734,8 +904,9 @@ forms:
     buttons: []
   - form: frmListContainer
     title: Danh sách cont
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user
     repos:
       - SYS_USER
@@ -786,9 +957,6 @@ forms:
     title: Tạo lệnh cấp phát
     inScope: true
     entities:
-      - hr_congty
-      - sys_user
-      - tr_bophan
       - tr_dexuat_bangmau
       - tr_dondathang
       - tr_hehang
@@ -796,7 +964,6 @@ forms:
       - tr_lenhcapphat
       - tr_lenhcapphat_head
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
       - tr_phieuyeucau
@@ -804,6 +971,11 @@ forms:
       - tr_phieuyeucau_muahang
       - tr_phieuyeucau_muahang_chitiet
       - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_congdoan
@@ -914,9 +1086,6 @@ forms:
     title: Cấp phát vật tư cho hàng trắng
     inScope: true
     entities:
-      - hr_congty
-      - sys_user
-      - tr_bophan
       - tr_dexuat_bangmau
       - tr_dondathang
       - tr_hehang
@@ -924,7 +1093,6 @@ forms:
       - tr_lenhcapphat
       - tr_lenhcapphat_head
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
       - tr_phieuyeucau
@@ -932,6 +1100,11 @@ forms:
       - tr_phieuyeucau_muahang
       - tr_phieuyeucau_muahang_chitiet
       - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_congdoan
@@ -1092,8 +1265,9 @@ forms:
     buttons: []
   - form: frmCreateMaterialRequest_GVA_1
     title: Cấp phát gỗ ván
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - hr_congty
     tablesMissing:
       - tr_hinhanh
@@ -1331,8 +1505,6 @@ forms:
     title: Hóa đơn bán hàng
     inScope: true
     entities:
-      - sys_user
-      - tr_bophan
       - tr_ctphieuxuat
       - tr_dexuat_bangmau
       - tr_dondathang
@@ -1340,7 +1512,6 @@ forms:
       - tr_khachhang
       - tr_lenhcapphat_head
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
       - tr_phieuxuat
@@ -1350,6 +1521,10 @@ forms:
       - tr_phieuyeucau_muahang_chitiet
       - tr_reftype
       - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_congdoan
@@ -1606,8 +1781,9 @@ forms:
     buttons: []
   - form: frmDanhGiaTongHop
     title: Đánh giá tổng hợp
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user_rule
       - sys_user
     repos:
@@ -1939,9 +2115,10 @@ forms:
     title: frmListMaterialInOut
     inScope: true
     entities:
+      - tr_site
+    contextEntities:
       - hr_congty
       - sys_user_rule
-      - tr_site
     tablesMissing:
       - tr_hinhanh
     repos:
@@ -2195,9 +2372,7 @@ forms:
     title: frmDanhMucDeXuat2
     inScope: true
     entities:
-      - sys_user
       - tr_bangmau
-      - tr_bophan
       - tr_color
       - tr_denghi_thanhtoan
       - tr_denghi_thanhtoan_file
@@ -2208,7 +2383,6 @@ forms:
       - tr_khachhang
       - tr_loaisp
       - tr_material
-      - tr_nguoiduyet
       - tr_order
       - tr_order_detail
       - tr_order_replacement
@@ -2219,6 +2393,10 @@ forms:
       - tr_phieuyeucau_muahang_chitiet
       - tr_site
       - tr_thaydoi_kythuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - dqt_dexuat_phoi_chitiet
@@ -2357,12 +2535,13 @@ forms:
     title: Danh sách mã nhà máy
     inScope: true
     entities:
-      - sys_user_rule
       - tr_hehang
       - tr_khachhang
       - tr_sanpham_nhamay
-      - sys_user
       - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+      - sys_user
     repos:
       - SYS_USER_RULE
       - TR_HEHANG
@@ -2666,8 +2845,9 @@ forms:
     buttons: []
   - form: frmDanhSachLoi
     title: "Khai báo lỗi "
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - tr_bophan
     repos:
       - TR_BOPHAN
@@ -2698,8 +2878,9 @@ forms:
     buttons: []
   - form: frmDanhSachBanGiao
     title: Danh sách bàn giao
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user
       - tr_bophan
     tablesMissing:

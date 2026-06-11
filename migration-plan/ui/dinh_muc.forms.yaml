@@ -25,12 +25,17 @@ tablesMissingInErp:
   - tr_routing
   - tr_sodo_catvan
   - tr_sodo_catvan_head
-forms:
-  - form: frmPhatHanhDinhMuc2
-    title: Phát hành định mức
-    inScope: true
-    entities:
-      - hr_congty
+pageClusters:
+  - entities:
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmDinhMucSon_MixAdd
+      - frmDinhMucSon_TheoMau
+      - frmDinhMucSon_TheoMau2Add
+  - entities:
       - mes_quytrinh_sanpham
       - tr_banve
       - tr_dinhmuc_donggoi
@@ -41,6 +46,161 @@ forms:
       - tr_sanpham
       - tr_sanpham_carton
       - tr_sanpham_nhamay
+    forms:
+      - frmPhatHanhDinhMuc2
+      - frmPhatHanhDinhMuc
+  - entities:
+      - tr_order
+    forms:
+      - frm_kiemtra_dinhmuc_ver2
+  - entities:
+      - tr_dinhmuc_donggoi
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frm_kiemtra_dinhmuc
+  - entities:
+      - tr_banve
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmDinhMucSoChe
+  - entities:
+      - tr_dinhmuc_ngukim
+    forms:
+      - frm_add_dinhmuc_nk
+  - entities:
+      - tr_common
+      - tr_dinhmuc_son3
+      - tr_dinhmuc_son3_metvuong
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_sanpham
+      - trtb_m_op
+    forms:
+      - frmDinhMucSon3
+  - entities:
+      - tr_dinhmuc_govan
+    forms:
+      - frm_add_dinhmuc_vt_ver2
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_order
+      - tr_order_replacement
+    forms:
+      - frm_kiemtra_dinhmuc_ver3
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frm_DinhMuc_HeHang
+  - entities:
+      - tr_sanpham
+    forms:
+      - frmDinhMucDonHang
+  - entities:
+      - tr_color
+      - tr_dinhmuc_son2
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_sanpham
+      - trtb_m_location
+    forms:
+      - frmDinhMucSonEditor
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaincc
+      - tr_material
+      - tr_material_ncc
+      - tr_nhacc
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmDinhMucCatVan
+  - entities:
+      - tr_color
+      - tr_common
+      - tr_dinhmuc_son3
+      - tr_dinhmuc_son3_metvuong
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - trtb_m_op
+    forms:
+      - frmDinhMucSon4
+  - entities:
+      - tr_color
+      - tr_material
+    forms:
+      - frmDinhMucSon_Mix
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmDinhMucChiPhiSanPham
+  - entities:
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmDinhMucGoVanSoChe
+  - entities:
+      - tr_dinhmuc_donggoi
+      - tr_dinhmuc_govan
+      - tr_dinhmuc_ngukim
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmDinhMucHistory
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmDinhMucVatTuTieuHao
+forms:
+  - form: frmPhatHanhDinhMuc2
+    title: Phát hành định mức
+    inScope: true
+    entities:
+      - mes_quytrinh_sanpham
+      - tr_banve
+      - tr_dinhmuc_donggoi
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+      - tr_sanpham_carton
+      - tr_sanpham_nhamay
+    contextEntities:
+      - hr_congty
     tablesMissing:
       - tr_dinhmuc_lock
       - tr_hinhanh
@@ -268,10 +428,11 @@ forms:
     title: Kiểm tra định mức theo đơn hàng
     inScope: true
     entities:
+      - tr_order
+    contextEntities:
       - sys_user
       - tr_bophan
       - tr_nguoiduyet
-      - tr_order
     tablesMissing:
       - tr_congdoan
       - tr_kehoach_hangtrang
@@ -390,7 +551,6 @@ forms:
     title: Phát hành định mức
     inScope: true
     entities:
-      - hr_congty
       - mes_quytrinh_sanpham
       - tr_banve
       - tr_dinhmuc_donggoi
@@ -401,6 +561,8 @@ forms:
       - tr_sanpham
       - tr_sanpham_carton
       - tr_sanpham_nhamay
+    contextEntities:
+      - hr_congty
     tablesMissing:
       - tr_dinhmuc_lock
       - tr_hinhanh
@@ -615,13 +777,14 @@ forms:
     title: frm_kiemtra_dinhmuc
     inScope: true
     entities:
-      - hr_congty
       - tr_dinhmuc_donggoi
       - tr_hehang
       - tr_khachhang
       - tr_loaisp
       - tr_sanpham
       - tr_dinhmuc_govan
+    contextEntities:
+      - hr_congty
     tablesMissing:
       - tr_hinhanh
       - tr_nguyenlieu
@@ -807,11 +970,12 @@ forms:
     title: Hỗn hợp sơn
     inScope: true
     entities:
-      - sys_user
       - tr_color
       - tr_hehang
       - tr_khachhang
       - tr_material
+    contextEntities:
+      - sys_user
     tablesMissing:
       - tr_bom_mix
       - tr_donvitinh
@@ -881,11 +1045,12 @@ forms:
     title: Quy trình sơn theo màu
     inScope: true
     entities:
-      - sys_user
       - tr_color
       - tr_hehang
       - tr_khachhang
       - tr_material
+    contextEntities:
+      - sys_user
     tablesMissing:
       - tr_hinhanh
       - tr_nguyenlieu
@@ -1064,8 +1229,6 @@ forms:
     title: Quy trình sơn
     inScope: true
     entities:
-      - sys_user
-      - sys_user_rule
       - trtb_m_op
       - tr_common
       - tr_dinhmuc_son3
@@ -1075,6 +1238,9 @@ forms:
       - tr_loaisp
       - tr_material
       - tr_sanpham
+    contextEntities:
+      - sys_user
+      - sys_user_rule
     tablesMissing:
       - tr_hinhanh
       - tr_khuvuc_sanxuat
@@ -1305,13 +1471,14 @@ forms:
     title: Kiểm tra định mức theo đơn hàng
     inScope: true
     entities:
-      - sys_user
-      - tr_bophan
       - tr_hehang
       - tr_khachhang
-      - tr_nguoiduyet
       - tr_order
       - tr_order_replacement
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - tr_congdoan
       - tr_kehoach_hangtrang
@@ -1430,11 +1597,12 @@ forms:
     title: Thêm quy trình màu sơn
     inScope: true
     entities:
-      - sys_user
       - tr_color
       - tr_hehang
       - tr_khachhang
       - tr_material
+    contextEntities:
+      - sys_user
     tablesMissing:
       - tr_dinhmuc_son_theomau
       - tr_hinhanh
@@ -1624,9 +1792,6 @@ forms:
     title: frmDinhMucCatVan
     inScope: true
     entities:
-      - hr_congty
-      - sys_user
-      - tr_bophan
       - tr_dexuat_bangmau
       - tr_dondathang
       - tr_dondathang_chitiet
@@ -1635,7 +1800,6 @@ forms:
       - tr_loaincc
       - tr_material
       - tr_material_ncc
-      - tr_nguoiduyet
       - tr_nhacc
       - tr_order
       - tr_order_replacement
@@ -1644,6 +1808,11 @@ forms:
       - tr_phieuyeucau_muahang
       - tr_phieuyeucau_muahang_chitiet
       - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
     tablesMissing:
       - dqt_dexuat_phoi
       - tr_congdoan
@@ -1829,7 +1998,6 @@ forms:
     title: Định mức màu sơn
     inScope: true
     entities:
-      - sys_user
       - trtb_m_op
       - tr_color
       - tr_common
@@ -1838,6 +2006,8 @@ forms:
       - tr_hehang
       - tr_khachhang
       - tr_material
+    contextEntities:
+      - sys_user
     tablesMissing:
       - tr_dinhmuc_son3_mauson
       - tr_hinhanh
@@ -2069,11 +2239,12 @@ forms:
     title: Định mức chi phí sản phẩm
     inScope: true
     entities:
-      - sys_user_rule
       - tr_hehang
       - tr_khachhang
       - tr_loaisp
       - tr_sanpham
+    contextEntities:
+      - sys_user_rule
     tablesMissing:
       - tr_nguyenlieu
     repos:
@@ -2262,8 +2433,9 @@ forms:
     buttons: []
   - form: frmDinhMucLock
     title: Định mức đã khóa
-    inScope: true
-    entities:
+    inScope: false
+    entities: []
+    contextEntities:
       - sys_user_rule
     tablesMissing:
       - tr_dinhmuc_lock
@@ -2301,11 +2473,12 @@ forms:
     title: Định mức vật tư tiêu hao
     inScope: true
     entities:
-      - sys_user
-      - tr_bophan
       - tr_hehang
       - tr_khachhang
       - tr_material
+    contextEntities:
+      - sys_user
+      - tr_bophan
     tablesMissing:
       - tr_hinhanh
       - tr_nguyenlieu
