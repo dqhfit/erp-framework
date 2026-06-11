@@ -1,0 +1,3914 @@
+{
+ "imported": [
+  {
+   "entityId": "344dff58-461d-435a-803f-b0c503230a5f",
+   "name": "chi_tiet_phieu_bao_gia_344dff",
+   "label": "Chi tiết phiếu báo giá",
+   "mssqlTable": "dbo.tr_phieubaogia_chitiet",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297576246_0",
+     "name": "id",
+     "type": "text",
+     "label": "ID"
+    },
+    {
+     "id": "ai_1780297576246_1",
+     "name": "sophieu",
+     "type": "text",
+     "label": "Số Phiếu"
+    },
+    {
+     "id": "ai_1780297576246_2",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã Chi Tiết"
+    },
+    {
+     "id": "ai_1780297576246_3",
+     "name": "dongiacu",
+     "type": "number",
+     "label": "Đơn Giá Cũ"
+    },
+    {
+     "id": "ai_1780297576246_4",
+     "name": "dongiamoi",
+     "type": "number",
+     "label": "Đơn Giá Mới"
+    },
+    {
+     "id": "ai_1780297576246_5",
+     "name": "loaitien",
+     "type": "text",
+     "label": "Loại Tiền"
+    },
+    {
+     "id": "ai_1780297576246_6",
+     "name": "active",
+     "type": "boolean",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780297576246_7",
+     "name": "tenct",
+     "type": "text",
+     "label": "Tên Chi Tiết"
+    },
+    {
+     "id": "ai_1780297576246_8",
+     "name": "quycach",
+     "type": "text",
+     "label": "Quy Cách"
+    },
+    {
+     "id": "ai_1780297576246_9",
+     "name": "mausac",
+     "type": "text",
+     "label": "Màu Sắc"
+    },
+    {
+     "id": "ai_1780297576246_10",
+     "name": "soluong",
+     "type": "number",
+     "label": "Số Lượng"
+    },
+    {
+     "id": "ai_1780297576246_11",
+     "name": "dvt",
+     "type": "text",
+     "label": "Đơn Vị Tính"
+    },
+    {
+     "id": "ai_1780297576246_12",
+     "name": "ngayapdung",
+     "type": "datetime",
+     "label": "Ngày Áp Dụng"
+    },
+    {
+     "id": "ai_1780297576246_13",
+     "name": "nguoiduyet",
+     "type": "text",
+     "label": "Người Duyệt"
+    },
+    {
+     "id": "ai_1780297576246_14",
+     "name": "ngayduyet",
+     "type": "datetime",
+     "label": "Ngày Duyệt"
+    },
+    {
+     "id": "ai_1780297576246_15",
+     "name": "lydokhongduyet",
+     "type": "text",
+     "label": "Lý Do Không Duyệt"
+    },
+    {
+     "id": "ai_1780297576246_16",
+     "name": "isnotduyet",
+     "type": "boolean",
+     "label": "Không Duyệt"
+    },
+    {
+     "id": "ai_1780297576246_17",
+     "name": "isupdateprice",
+     "type": "boolean",
+     "label": "Cập Nhật Giá"
+    },
+    {
+     "id": "ai_1780297576246_18",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi Chú"
+    },
+    {
+     "id": "ai_1780297576246_19",
+     "name": "mancc",
+     "type": "text",
+     "label": "Mã Nhà Cung Cấp"
+    },
+    {
+     "id": "ai_1780297576246_20",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 12590
+  },
+  {
+   "entityId": "b69de161-dcda-4318-90e6-af2bed1a811c",
+   "name": "chi_tiet_phieu_yeu_cau_b69de1",
+   "label": "Chi tiết phiếu yêu cầu",
+   "mssqlTable": "dbo.tr_phieuyeucau_chitiet",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297792825_0",
+     "name": "id",
+     "type": "text",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780297792825_1",
+     "name": "phieuyeucau_id",
+     "type": "text",
+     "label": "phieuyeucau_id"
+    },
+    {
+     "id": "ai_1780297792825_2",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã chi tiết"
+    },
+    {
+     "id": "ai_1780297792825_3",
+     "name": "soluong",
+     "type": "number",
+     "label": "Số lượng"
+    },
+    {
+     "id": "ai_1780297792825_4",
+     "name": "soluong_daphat",
+     "type": "number",
+     "label": "Số lượng đã phát"
+    },
+    {
+     "id": "ai_1780297792825_5",
+     "name": "donhang",
+     "type": "text",
+     "label": "Đơn hàng"
+    },
+    {
+     "id": "ai_1780297792825_6",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi chú"
+    },
+    {
+     "id": "ai_1780297792825_7",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày tạo"
+    },
+    {
+     "id": "ai_1780297792825_8",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người tạo"
+    },
+    {
+     "id": "ai_1780297792825_9",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày sửa"
+    },
+    {
+     "id": "ai_1780297792825_10",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người sửa"
+    },
+    {
+     "id": "ai_1780297792825_11",
+     "name": "active",
+     "type": "boolean",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780297792825_12",
+     "name": "phieuyeucau_idsophieu",
+     "type": "number",
+     "label": "phieuyeucau_idsophieu"
+    },
+    {
+     "id": "ai_1780297792825_13",
+     "name": "phieuyeucau_idid",
+     "type": "text",
+     "label": "phieuyeucau_idid"
+    },
+    {
+     "id": "ai_1780297792825_14",
+     "name": "idmaymoc",
+     "type": "text",
+     "label": "idMayMoc"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 26686
+  },
+  {
+   "entityId": "eb5ffc3e-74e1-49d1-979d-a0071e6b968e",
+   "name": "chi_tiet_phieu_yeu_cau_mua_hang_eb5ffc",
+   "label": "Chi Tiết Phiếu Yêu Cầu Mua Hàng",
+   "mssqlTable": "dbo.tr_phieuyeucau_muahang_chitiet",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780306234913_0",
+     "name": "id",
+     "type": "text",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780306234913_1",
+     "name": "dexuat_id",
+     "type": "text",
+     "label": "dexuat_id"
+    },
+    {
+     "id": "ai_1780306234913_2",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã Chi Tiết"
+    },
+    {
+     "id": "ai_1780306234913_3",
+     "name": "mota",
+     "type": "text",
+     "label": "Mô Tả"
+    },
+    {
+     "id": "ai_1780306234913_4",
+     "name": "quycach",
+     "type": "text",
+     "label": "Quy Cách"
+    },
+    {
+     "id": "ai_1780306234913_5",
+     "name": "mausac",
+     "type": "text",
+     "label": "Màu Sắc"
+    },
+    {
+     "id": "ai_1780306234913_6",
+     "name": "dvt",
+     "type": "text",
+     "label": "Đơn Vị Tính"
+    },
+    {
+     "id": "ai_1780306234913_7",
+     "name": "soluong",
+     "type": "number",
+     "label": "Số Lượng"
+    },
+    {
+     "id": "ai_1780306234913_8",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi Chú"
+    },
+    {
+     "id": "ai_1780306234913_9",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780306234913_10",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày Sửa"
+    },
+    {
+     "id": "ai_1780306234913_11",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780306234913_12",
+     "name": "tinhchiphi",
+     "type": "bool",
+     "label": "Tính Chi Phí"
+    },
+    {
+     "id": "ai_1780306234913_13",
+     "name": "idmaymoc",
+     "type": "text",
+     "label": "ID Máy Móc"
+    },
+    {
+     "id": "ai_1780306234913_14",
+     "name": "id_phieuyeucau_chitiet",
+     "type": "text",
+     "label": "ID Phiếu Yêu Cầu Chi Tiết"
+    },
+    {
+     "id": "ai_1780306234913_15",
+     "name": "iscancel",
+     "type": "bool",
+     "label": "Đã Hủy"
+    },
+    {
+     "id": "ai_1780306234913_16",
+     "name": "gva_cumchitiet",
+     "type": "text",
+     "label": "GVA - Cụm Chi Tiết"
+    },
+    {
+     "id": "ai_1780306234913_17",
+     "name": "gva_stt",
+     "type": "text",
+     "label": "GVA - Số Thứ Tự"
+    },
+    {
+     "id": "ai_1780306234913_18",
+     "name": "gva_nguyenlieu",
+     "type": "text",
+     "label": "GVA - Nguyên Liệu"
+    },
+    {
+     "id": "ai_1780306234913_19",
+     "name": "gva_dayy",
+     "type": "number",
+     "label": "GVA - Dày"
+    },
+    {
+     "id": "ai_1780306234913_20",
+     "name": "gva_rong",
+     "type": "number",
+     "label": "GVA - Rộng"
+    },
+    {
+     "id": "ai_1780306234913_21",
+     "name": "gva_dai",
+     "type": "number",
+     "label": "GVA - Dài"
+    },
+    {
+     "id": "ai_1780306234913_22",
+     "name": "gva_masp",
+     "type": "text",
+     "label": "GVA - Mã Sản Phẩm"
+    },
+    {
+     "id": "ai_1780306234913_23",
+     "name": "donhang",
+     "type": "text",
+     "label": "Đơn Hàng"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 3990
+  },
+  {
+   "entityId": "47056338-8e55-4157-b595-bfe6fbf6d243",
+   "name": "danh_muc_cong_doan_470563",
+   "label": "Danh Mục Công Đoạn",
+   "mssqlTable": "dbo.trtb_m_op",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780306315937_0",
+     "name": "id",
+     "type": "number",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780306315937_1",
+     "ref": "ee47e254-6a05-4129-94fe-4836b8b7282a",
+     "name": "c_op",
+     "type": "lookup",
+     "label": "Mã công đoạn",
+     "required": true
+    },
+    {
+     "id": "ai_1780306315937_2",
+     "name": "n_op",
+     "type": "text",
+     "label": "Tên công đoạn",
+     "required": true
+    },
+    {
+     "id": "ai_1780306315937_3",
+     "name": "c_location",
+     "type": "text",
+     "label": "Vị trí hiện tại"
+    },
+    {
+     "id": "ai_1780306315937_4",
+     "name": "f_out_yn",
+     "type": "bool",
+     "label": "Xuất kho"
+    },
+    {
+     "id": "ai_1780306315937_5",
+     "name": "c_prod_loc",
+     "type": "text",
+     "label": "Vị trí sản xuất"
+    },
+    {
+     "id": "ai_1780306315937_6",
+     "name": "c_out_loc",
+     "type": "text",
+     "label": "Vị trí xuất"
+    },
+    {
+     "id": "ai_1780306315937_7",
+     "name": "c_line",
+     "type": "text",
+     "label": "Dây chuyền"
+    },
+    {
+     "id": "ai_1780306315937_8",
+     "name": "org",
+     "type": "text",
+     "label": "Tổ chức"
+    },
+    {
+     "id": "ai_1780306315937_9",
+     "name": "attribute3",
+     "type": "text",
+     "label": "Thuộc tính 3"
+    },
+    {
+     "id": "ai_1780306315937_10",
+     "name": "attribute4",
+     "type": "text",
+     "label": "Thuộc tính 4"
+    },
+    {
+     "id": "ai_1780306315937_11",
+     "name": "attribute5",
+     "type": "text",
+     "label": "Thuộc tính 5"
+    },
+    {
+     "id": "ai_1780306315937_12",
+     "name": "department",
+     "type": "text",
+     "label": "Bộ phận"
+    },
+    {
+     "id": "ai_1780306315937_13",
+     "name": "stt",
+     "type": "integer",
+     "label": "Số thứ tự"
+    },
+    {
+     "id": "ai_1780306315937_14",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780306315937_15",
+     "name": "mathaythe",
+     "type": "text",
+     "label": "Mã thay thế"
+    },
+    {
+     "id": "ai_1780306315937_16",
+     "name": "p_op",
+     "type": "text",
+     "label": "Công đoạn trước"
+    },
+    {
+     "id": "ai_1780306315937_17",
+     "name": "matonhom",
+     "type": "text",
+     "label": "Mã tổ nhóm"
+    },
+    {
+     "id": "ai_1780306315937_18",
+     "name": "yeucau_chatluong",
+     "type": "longtext",
+     "label": "Yêu cầu chất lượng"
+    },
+    {
+     "id": "ai_1780306315937_19",
+     "ref": "b4b7e4ba-01ce-409e-96fd-47e242149f4c",
+     "name": "id_maymoc",
+     "type": "lookup",
+     "label": "Máy móc"
+    },
+    {
+     "id": "ai_1780306315937_20",
+     "name": "yeucau_kythuat",
+     "type": "longtext",
+     "label": "Yêu cầu kỹ thuật"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 145
+  },
+  {
+   "entityId": "da6bb5cc-dd9a-4ad3-92e9-14c7d9057427",
+   "name": "danh_muc_loai_tham_chieu_da6bb5",
+   "label": "Danh Mục Loại Tham Chiếu",
+   "mssqlTable": "dbo.tr_reftype_category",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298242768_0",
+     "name": "reftypecategory",
+     "type": "number",
+     "label": "Mã Danh Mục"
+    },
+    {
+     "id": "ai_1780298242768_1",
+     "name": "reftypecategoryname",
+     "type": "text",
+     "label": "Tên Danh Mục"
+    },
+    {
+     "id": "ai_1780298242768_2",
+     "name": "description",
+     "type": "text",
+     "label": "Mô Tả"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 12
+  },
+  {
+   "entityId": "bbb85ea0-8912-4a2e-bd0a-920951bb7788",
+   "name": "dia_diem_bbb85e",
+   "label": "Địa điểm",
+   "mssqlTable": "dbo.tr_site",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298048134_0",
+     "name": "id",
+     "type": "number",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780298048134_1",
+     "name": "name",
+     "type": "text",
+     "label": "Tên"
+    },
+    {
+     "id": "ai_1780298048134_2",
+     "name": "description",
+     "type": "longtext",
+     "label": "Mô tả"
+    },
+    {
+     "id": "ai_1780298048134_3",
+     "name": "taikhoan",
+     "type": "number",
+     "label": "Tài khoản"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 12
+  },
+  {
+   "entityId": "47e02348-4de2-45e1-bab2-f4150a701726",
+   "name": "loai_tham_chieu_47e023",
+   "label": "Loại Tham Chiếu",
+   "mssqlTable": "dbo.tr_reftype",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297821363_0",
+     "name": "reftype",
+     "type": "number",
+     "label": "Mã loại tham chiếu"
+    },
+    {
+     "id": "ai_1780297821363_1",
+     "name": "reftypecategory",
+     "type": "number",
+     "label": "Danh mục loại tham chiếu"
+    },
+    {
+     "id": "ai_1780297821363_2",
+     "name": "reftypename",
+     "type": "text",
+     "label": "Tên loại tham chiếu"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 39
+  },
+  {
+   "entityId": "bbc9e6ff-e8a6-4fb3-b045-cb1be4cf6d3b",
+   "name": "pallet_bbc9e6",
+   "label": "Pallet",
+   "mssqlTable": "dbo.tr_pallet",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298517630_0",
+     "ref": "116e6a52-c669-48a5-bc16-44de61a085b7",
+     "name": "id",
+     "type": "lookup",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780298517630_1",
+     "ref": "2db5b6c2-14de-478c-a85d-7276251e08dc",
+     "name": "dondathang",
+     "type": "lookup",
+     "label": "Đơn Đặt Hàng"
+    },
+    {
+     "id": "ai_1780298517630_2",
+     "ref": "ab9208b4-facf-4bff-85fe-57ce2d0e5ebd",
+     "name": "masp",
+     "type": "lookup",
+     "label": "Mã Sản Phẩm"
+    },
+    {
+     "id": "ai_1780298517630_3",
+     "name": "mahtr",
+     "type": "text",
+     "label": "Mã HTR"
+    },
+    {
+     "id": "ai_1780298517630_4",
+     "name": "stt",
+     "type": "text",
+     "label": "Số Thứ Tự"
+    },
+    {
+     "id": "ai_1780298517630_5",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã Chi Tiết"
+    },
+    {
+     "id": "ai_1780298517630_6",
+     "name": "tenct",
+     "type": "text",
+     "label": "Tên Chi Tiết"
+    },
+    {
+     "id": "ai_1780298517630_7",
+     "name": "nguyenlieu",
+     "type": "text",
+     "label": "Nguyên Liệu"
+    },
+    {
+     "id": "ai_1780298517630_8",
+     "name": "dayy_tc",
+     "type": "number",
+     "label": "Dày (Tiêu Chuẩn)"
+    },
+    {
+     "id": "ai_1780298517630_9",
+     "name": "rong_tc",
+     "type": "number",
+     "label": "Rộng (Tiêu Chuẩn)"
+    },
+    {
+     "id": "ai_1780298517630_10",
+     "name": "dai_tc",
+     "type": "number",
+     "label": "Dài (Tiêu Chuẩn)"
+    },
+    {
+     "id": "ai_1780298517630_11",
+     "name": "soluong_tc",
+     "type": "number",
+     "label": "Số Lượng (Tiêu Chuẩn)"
+    },
+    {
+     "id": "ai_1780298517630_12",
+     "name": "dayy_sc",
+     "type": "number",
+     "label": "Dày (Sau Cắt)"
+    },
+    {
+     "id": "ai_1780298517630_13",
+     "name": "rong_sc",
+     "type": "number",
+     "label": "Rộng (Sau Cắt)"
+    },
+    {
+     "id": "ai_1780298517630_14",
+     "name": "dai_sc",
+     "type": "number",
+     "label": "Dài (Sau Cắt)"
+    },
+    {
+     "id": "ai_1780298517630_15",
+     "name": "soluong_sc",
+     "type": "number",
+     "label": "Số Lượng (Sau Cắt)"
+    },
+    {
+     "id": "ai_1780298517630_16",
+     "name": "soluong_donhang",
+     "type": "number",
+     "label": "Số Lượng Đơn Hàng"
+    },
+    {
+     "id": "ai_1780298517630_17",
+     "name": "soluong_can",
+     "type": "number",
+     "label": "Số Lượng Cần"
+    },
+    {
+     "id": "ai_1780298517630_18",
+     "name": "sokhoi_tinhche",
+     "type": "number",
+     "label": "Số Khối Tinh Chế"
+    },
+    {
+     "id": "ai_1780298517630_19",
+     "name": "iscreatecard",
+     "type": "bool",
+     "label": "Đã Tạo Thẻ"
+    },
+    {
+     "id": "ai_1780298517630_20",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780298517630_21",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người Tạo"
+    },
+    {
+     "id": "ai_1780298517630_22",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày Sửa"
+    },
+    {
+     "id": "ai_1780298517630_23",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người Sửa"
+    },
+    {
+     "id": "ai_1780298517630_24",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780298517630_25",
+     "name": "card_qty",
+     "type": "number",
+     "label": "Số Lượng Thẻ"
+    },
+    {
+     "id": "ai_1780298517630_26",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi Chú"
+    },
+    {
+     "id": "ai_1780298517630_27",
+     "name": "veneer_matchinh",
+     "type": "number",
+     "label": "Veneer Mặt Chính"
+    },
+    {
+     "id": "ai_1780298517630_28",
+     "name": "veneer_matphu",
+     "type": "number",
+     "label": "Veneer Mặt Phụ"
+    },
+    {
+     "id": "ai_1780298517630_29",
+     "name": "bemat",
+     "type": "text",
+     "label": "Bề Mặt"
+    },
+    {
+     "id": "ai_1780298517630_30",
+     "name": "somat_giacong",
+     "type": "number",
+     "label": "Số Mặt Gia Công"
+    },
+    {
+     "id": "ai_1780298517630_31",
+     "name": "cc_canh1",
+     "type": "bool",
+     "label": "Cắt Cạnh 1"
+    },
+    {
+     "id": "ai_1780298517630_32",
+     "name": "cc_canh2",
+     "type": "bool",
+     "label": "Cắt Cạnh 2"
+    },
+    {
+     "id": "ai_1780298517630_33",
+     "name": "cc_dau1",
+     "type": "bool",
+     "label": "Cắt Đầu 1"
+    },
+    {
+     "id": "ai_1780298517630_34",
+     "name": "cc_dau2",
+     "type": "bool",
+     "label": "Cắt Đầu 2"
+    },
+    {
+     "id": "ai_1780298517630_35",
+     "name": "cc_mat1",
+     "type": "bool",
+     "label": "Cắt Mặt 1"
+    },
+    {
+     "id": "ai_1780298517630_36",
+     "name": "cc_mat2",
+     "type": "bool",
+     "label": "Cắt Mặt 2"
+    },
+    {
+     "id": "ai_1780298517630_37",
+     "name": "dayy_phoi",
+     "type": "number",
+     "label": "Dày Phôi"
+    },
+    {
+     "id": "ai_1780298517630_38",
+     "name": "id_nguyenlieu",
+     "type": "text",
+     "label": "id_nguyenlieu"
+    },
+    {
+     "id": "ai_1780298517630_39",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "donhang",
+     "type": "lookup",
+     "label": "Đơn Hàng"
+    },
+    {
+     "id": "ai_1780298517630_40",
+     "name": "isordernumber",
+     "type": "bool",
+     "label": "Có Số Đơn Hàng"
+    },
+    {
+     "id": "ai_1780298517630_41",
+     "name": "orderid",
+     "type": "number",
+     "label": "orderid"
+    },
+    {
+     "id": "ai_1780298517630_42",
+     "name": "hangbu",
+     "type": "bool",
+     "label": "Hàng Bù"
+    },
+    {
+     "id": "ai_1780298517630_43",
+     "name": "ischecked",
+     "type": "bool",
+     "label": "Đã Kiểm Tra"
+    },
+    {
+     "id": "ai_1780298517630_44",
+     "name": "veneer_dan_canh",
+     "type": "number",
+     "label": "Veneer Dán Cạnh"
+    },
+    {
+     "id": "ai_1780298517630_45",
+     "name": "veneer_canhdai",
+     "type": "number",
+     "label": "Veneer Cạnh Dài"
+    },
+    {
+     "id": "ai_1780298517630_46",
+     "name": "veneer_canhngan",
+     "type": "number",
+     "label": "Veneer Cạnh Ngắn"
+    },
+    {
+     "id": "ai_1780298517630_47",
+     "name": "pcode",
+     "type": "text",
+     "label": "pcode"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": true,
+   "recordCount": 46549
+  },
+  {
+   "entityId": "fdaa80dd-04c6-4d9f-96df-18be0ac1043e",
+   "name": "phieu_bao_gia_fdaa80",
+   "label": "Phiếu báo giá",
+   "mssqlTable": "dbo.tr_phieubaogia",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297347905_0",
+     "name": "id",
+     "type": "text",
+     "label": "ID"
+    },
+    {
+     "id": "ai_1780297347905_1",
+     "name": "sophieu",
+     "type": "text",
+     "label": "Số Phiếu"
+    },
+    {
+     "id": "ai_1780297347905_2",
+     "name": "tieude",
+     "type": "text",
+     "label": "Tiêu Đề"
+    },
+    {
+     "id": "ai_1780297347905_3",
+     "name": "khachhang",
+     "type": "text",
+     "label": "Khách Hàng"
+    },
+    {
+     "id": "ai_1780297347905_4",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780297347905_5",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người Tạo"
+    },
+    {
+     "id": "ai_1780297347905_6",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày Sửa"
+    },
+    {
+     "id": "ai_1780297347905_7",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người Sửa"
+    },
+    {
+     "id": "ai_1780297347905_8",
+     "name": "active",
+     "type": "boolean",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780297347905_9",
+     "name": "ngayky1",
+     "type": "datetime",
+     "label": "Ngày Ký 1"
+    },
+    {
+     "id": "ai_1780297347905_10",
+     "name": "ngayky2",
+     "type": "datetime",
+     "label": "Ngày Ký 2"
+    },
+    {
+     "id": "ai_1780297347905_11",
+     "name": "nguoiky1",
+     "type": "text",
+     "label": "Người Ký 1"
+    },
+    {
+     "id": "ai_1780297347905_12",
+     "name": "nguoiky2",
+     "type": "text",
+     "label": "Người Ký 2"
+    },
+    {
+     "id": "ai_1780297347905_13",
+     "name": "chuky1",
+     "type": "text",
+     "label": "Chữ Ký 1"
+    },
+    {
+     "id": "ai_1780297347905_14",
+     "name": "chuky2",
+     "type": "text",
+     "label": "Chữ Ký 2"
+    },
+    {
+     "id": "ai_1780297347905_15",
+     "name": "choduyet",
+     "type": "number",
+     "label": "Chờ Duyệt"
+    },
+    {
+     "id": "ai_1780297347905_16",
+     "name": "loaitien",
+     "type": "text",
+     "label": "Loại Tiền"
+    },
+    {
+     "id": "ai_1780297347905_17",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi Chú"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 1295
+  },
+  {
+   "entityId": "c91733f9-562f-4141-8365-380d7432f5ea",
+   "name": "phieu_nhap_c91733",
+   "label": "Phiếu Nhập",
+   "mssqlTable": "dbo.tr_phieunhap",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298289220_0",
+     "name": "sopn",
+     "type": "text",
+     "label": "Số phiếu nhập"
+    },
+    {
+     "id": "ai_1780298289220_1",
+     "name": "chungtu",
+     "type": "text",
+     "label": "Chứng từ"
+    },
+    {
+     "id": "ai_1780298289220_2",
+     "name": "maddh",
+     "type": "text",
+     "label": "Mã đặt hàng"
+    },
+    {
+     "id": "ai_1780298289220_3",
+     "name": "mancc",
+     "type": "text",
+     "label": "Mã nhà cung cấp"
+    },
+    {
+     "id": "ai_1780298289220_4",
+     "name": "tenncc",
+     "type": "text",
+     "label": "Tên nhà cung cấp"
+    },
+    {
+     "id": "ai_1780298289220_5",
+     "name": "makho",
+     "type": "text",
+     "label": "Mã kho"
+    },
+    {
+     "id": "ai_1780298289220_6",
+     "name": "ngayphieu",
+     "type": "datetime",
+     "label": "Ngày phiếu"
+    },
+    {
+     "id": "ai_1780298289220_7",
+     "name": "ngaynhap",
+     "type": "datetime",
+     "label": "Ngày nhập"
+    },
+    {
+     "id": "ai_1780298289220_8",
+     "name": "nguoinhap",
+     "type": "text",
+     "label": "Người nhập"
+    },
+    {
+     "id": "ai_1780298289220_9",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi chú"
+    },
+    {
+     "id": "ai_1780298289220_10",
+     "name": "loaiphieu",
+     "type": "text",
+     "label": "Loại phiếu"
+    },
+    {
+     "id": "ai_1780298289220_11",
+     "name": "active",
+     "type": "bool",
+     "label": "Đang hoạt động"
+    },
+    {
+     "id": "ai_1780298289220_12",
+     "name": "congno",
+     "type": "bool",
+     "label": "Công nợ"
+    },
+    {
+     "id": "ai_1780298289220_13",
+     "name": "luyke",
+     "type": "bool",
+     "label": "Lũy kế"
+    },
+    {
+     "id": "ai_1780298289220_14",
+     "name": "reftype",
+     "type": "number",
+     "label": "Loại tham chiếu"
+    },
+    {
+     "id": "ai_1780298289220_15",
+     "name": "donhangsanxuat",
+     "type": "text",
+     "label": "Đơn hàng sản xuất"
+    },
+    {
+     "id": "ai_1780298289220_16",
+     "name": "sophieuxuat",
+     "type": "text",
+     "label": "Số phiếu xuất"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 18573
+  },
+  {
+   "entityId": "94a74390-d018-49c3-8d5a-8f99c6478123",
+   "name": "phieu_xuat_94a743",
+   "label": "Phiếu Xuất",
+   "mssqlTable": "dbo.tr_phieuxuat",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298124289_0",
+     "name": "id",
+     "type": "number",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780298124289_1",
+     "name": "sopx",
+     "type": "text",
+     "label": "Số phiếu xuất"
+    },
+    {
+     "id": "ai_1780298124289_2",
+     "name": "lenhcapphat",
+     "type": "text",
+     "label": "Lệnh cấp phát"
+    },
+    {
+     "id": "ai_1780298124289_3",
+     "name": "makho",
+     "type": "text",
+     "label": "Mã kho"
+    },
+    {
+     "id": "ai_1780298124289_4",
+     "name": "nguoinhan",
+     "type": "text",
+     "label": "Người nhận"
+    },
+    {
+     "id": "ai_1780298124289_5",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi chú"
+    },
+    {
+     "id": "ai_1780298124289_6",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người tạo"
+    },
+    {
+     "id": "ai_1780298124289_7",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày tạo"
+    },
+    {
+     "id": "ai_1780298124289_8",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780298124289_9",
+     "name": "loaiphieu",
+     "type": "number",
+     "label": "Loại phiếu"
+    },
+    {
+     "id": "ai_1780298124289_10",
+     "name": "donhang",
+     "type": "text",
+     "label": "Đơn hàng"
+    },
+    {
+     "id": "ai_1780298124289_11",
+     "name": "control",
+     "type": "text",
+     "label": "Kiểm soát"
+    },
+    {
+     "id": "ai_1780298124289_12",
+     "name": "nguoixacnhan",
+     "type": "text",
+     "label": "Người xác nhận"
+    },
+    {
+     "id": "ai_1780298124289_13",
+     "name": "ngayxacnhan",
+     "type": "datetime",
+     "label": "Ngày xác nhận"
+    },
+    {
+     "id": "ai_1780298124289_14",
+     "name": "xacnhan",
+     "type": "bool",
+     "label": "Xác nhận"
+    },
+    {
+     "id": "ai_1780298124289_15",
+     "name": "isxuat",
+     "type": "bool",
+     "label": "Đã xuất"
+    },
+    {
+     "id": "ai_1780298124289_16",
+     "name": "ngayxuat",
+     "type": "datetime",
+     "label": "Ngày xuất"
+    },
+    {
+     "id": "ai_1780298124289_17",
+     "name": "reftype",
+     "type": "number",
+     "label": "Loại tham chiếu"
+    },
+    {
+     "id": "ai_1780298124289_18",
+     "name": "phieuyeucau",
+     "type": "text",
+     "label": "Phiếu yêu cầu"
+    },
+    {
+     "id": "ai_1780298124289_19",
+     "name": "maddh",
+     "type": "text",
+     "label": "Mã đặt hàng"
+    },
+    {
+     "id": "ai_1780298124289_20",
+     "name": "mucdich",
+     "type": "number",
+     "label": "Mục đích"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 22473
+  },
+  {
+   "entityId": "ba3a8591-ba5f-4fa2-897d-ae6e529a881e",
+   "name": "phieu_yeu_cau_ba3a85",
+   "label": "Phiếu Yêu Cầu",
+   "mssqlTable": "dbo.tr_phieuyeucau",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780299502771_0",
+     "name": "id",
+     "type": "text",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780299502771_1",
+     "name": "sophieu",
+     "type": "number",
+     "label": "Số phiếu"
+    },
+    {
+     "id": "ai_1780299502771_2",
+     "name": "makho",
+     "type": "text",
+     "label": "Mã kho"
+    },
+    {
+     "id": "ai_1780299502771_3",
+     "name": "bophan",
+     "type": "text",
+     "label": "Bộ phận"
+    },
+    {
+     "id": "ai_1780299502771_4",
+     "name": "loaidexuat",
+     "type": "text",
+     "label": "Loại đề xuất"
+    },
+    {
+     "id": "ai_1780299502771_5",
+     "name": "sanxuat",
+     "type": "boolean",
+     "label": "Sản xuất"
+    },
+    {
+     "id": "ai_1780299502771_6",
+     "name": "trahang",
+     "type": "boolean",
+     "label": "Trả hàng"
+    },
+    {
+     "id": "ai_1780299502771_7",
+     "name": "suachua",
+     "type": "boolean",
+     "label": "Sửa chữa"
+    },
+    {
+     "id": "ai_1780299502771_8",
+     "name": "phatsinh",
+     "type": "boolean",
+     "label": "Phát sinh"
+    },
+    {
+     "id": "ai_1780299502771_9",
+     "name": "chetao",
+     "type": "boolean",
+     "label": "Chế tạo"
+    },
+    {
+     "id": "ai_1780299502771_10",
+     "name": "vesinh",
+     "type": "boolean",
+     "label": "Vệ sinh"
+    },
+    {
+     "id": "ai_1780299502771_11",
+     "name": "khac",
+     "type": "boolean",
+     "label": "Khác"
+    },
+    {
+     "id": "ai_1780299502771_12",
+     "name": "mucdich",
+     "type": "text",
+     "label": "Mục đích"
+    },
+    {
+     "id": "ai_1780299502771_13",
+     "name": "donhang",
+     "type": "text",
+     "label": "Đơn hàng"
+    },
+    {
+     "id": "ai_1780299502771_14",
+     "name": "nguoiduyet",
+     "type": "text",
+     "label": "Người duyệt"
+    },
+    {
+     "id": "ai_1780299502771_15",
+     "name": "ngayduyet",
+     "type": "datetime",
+     "label": "Ngày duyệt"
+    },
+    {
+     "id": "ai_1780299502771_16",
+     "name": "nguoiduyet2",
+     "type": "text",
+     "label": "Người duyệt 2"
+    },
+    {
+     "id": "ai_1780299502771_17",
+     "name": "ngayduyet2",
+     "type": "datetime",
+     "label": "Ngày duyệt 2"
+    },
+    {
+     "id": "ai_1780299502771_18",
+     "name": "nguoiky",
+     "type": "text",
+     "label": "Người ký"
+    },
+    {
+     "id": "ai_1780299502771_19",
+     "name": "ngayky",
+     "type": "datetime",
+     "label": "Ngày ký"
+    },
+    {
+     "id": "ai_1780299502771_20",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày tạo"
+    },
+    {
+     "id": "ai_1780299502771_21",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người tạo"
+    },
+    {
+     "id": "ai_1780299502771_22",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày sửa"
+    },
+    {
+     "id": "ai_1780299502771_23",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người sửa"
+    },
+    {
+     "id": "ai_1780299502771_24",
+     "name": "isconfirm",
+     "type": "boolean",
+     "label": "Đã xác nhận"
+    },
+    {
+     "id": "ai_1780299502771_25",
+     "name": "issign",
+     "type": "boolean",
+     "label": "Đã ký"
+    },
+    {
+     "id": "ai_1780299502771_26",
+     "name": "isfinish",
+     "type": "boolean",
+     "label": "Đã hoàn thành"
+    },
+    {
+     "id": "ai_1780299502771_27",
+     "name": "active",
+     "type": "boolean",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780299502771_28",
+     "name": "issend",
+     "type": "boolean",
+     "label": "Đã gửi"
+    },
+    {
+     "id": "ai_1780299502771_29",
+     "name": "sophieustr",
+     "type": "number",
+     "label": "Số phiếu (chuỗi)"
+    },
+    {
+     "id": "ai_1780299502771_30",
+     "name": "bgd_cancel",
+     "type": "boolean",
+     "label": "BGĐ hủy"
+    },
+    {
+     "id": "ai_1780299502771_31",
+     "name": "description_cancel",
+     "type": "text",
+     "label": "Lý do hủy"
+    },
+    {
+     "id": "ai_1780299502771_32",
+     "name": "message_id",
+     "type": "number",
+     "label": "message_id"
+    },
+    {
+     "id": "ai_1780299502771_33",
+     "name": "messageid",
+     "type": "text",
+     "label": "messageid"
+    },
+    {
+     "id": "ai_1780299502771_34",
+     "name": "km_prev",
+     "type": "number",
+     "label": "Km trước"
+    },
+    {
+     "id": "ai_1780299502771_35",
+     "name": "km_current",
+     "type": "number",
+     "label": "Km hiện tại"
+    },
+    {
+     "id": "ai_1780299502771_36",
+     "name": "ischoxuat",
+     "type": "boolean",
+     "label": "Chờ xuất"
+    },
+    {
+     "id": "ai_1780299502771_37",
+     "name": "xemxetlai",
+     "type": "boolean",
+     "label": "Xem xét lại"
+    },
+    {
+     "id": "ai_1780299502771_38",
+     "name": "xemxetlai_noidung",
+     "type": "text",
+     "label": "Nội dung xem xét lại"
+    },
+    {
+     "id": "ai_1780299502771_39",
+     "name": "ngayyeucauxuat",
+     "type": "date",
+     "label": "Ngày yêu cầu xuất"
+    },
+    {
+     "id": "ai_1780299502771_40",
+     "name": "ngaycan",
+     "type": "date",
+     "label": "Ngày cần"
+    },
+    {
+     "id": "ai_1780299502771_41",
+     "name": "uutien",
+     "type": "text",
+     "label": "Ưu tiên"
+    },
+    {
+     "id": "ai_1780299502771_42",
+     "name": "donhangtrang",
+     "type": "text",
+     "label": "Đơn hàng trắng"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 10494
+  },
+  {
+   "entityId": "6860c50c-18f7-4bb2-b42f-697d07363fed",
+   "name": "phieu_yeu_cau_mua_hang_6860c5",
+   "label": "Phiếu yêu cầu mua hàng",
+   "mssqlTable": "dbo.tr_phieuyeucau_muahang",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780284966919_0",
+     "name": "id",
+     "type": "text",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780284966919_1",
+     "name": "ngaythang",
+     "type": "date",
+     "label": "Ngày tháng"
+    },
+    {
+     "id": "ai_1780284966919_2",
+     "name": "bophan",
+     "type": "text",
+     "label": "Bộ phận"
+    },
+    {
+     "id": "ai_1780284966919_3",
+     "name": "nguoiyeucau",
+     "type": "text",
+     "label": "Người yêu cầu"
+    },
+    {
+     "id": "ai_1780284966919_4",
+     "name": "noidung",
+     "type": "text",
+     "label": "Nội dung"
+    },
+    {
+     "id": "ai_1780284966919_5",
+     "name": "loaidexuat",
+     "type": "text",
+     "label": "Loại đề xuất"
+    },
+    {
+     "id": "ai_1780284966919_6",
+     "name": "issend",
+     "type": "boolean",
+     "label": "Đã gửi"
+    },
+    {
+     "id": "ai_1780284966919_7",
+     "name": "nguoiduyet",
+     "type": "text",
+     "label": "Người duyệt"
+    },
+    {
+     "id": "ai_1780284966919_8",
+     "name": "ngayduyet",
+     "type": "datetime",
+     "label": "Ngày duyệt"
+    },
+    {
+     "id": "ai_1780284966919_9",
+     "name": "nguoiky",
+     "type": "text",
+     "label": "Người ký"
+    },
+    {
+     "id": "ai_1780284966919_10",
+     "name": "ngayky",
+     "type": "datetime",
+     "label": "Ngày ký"
+    },
+    {
+     "id": "ai_1780284966919_11",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày tạo"
+    },
+    {
+     "id": "ai_1780284966919_12",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày sửa"
+    },
+    {
+     "id": "ai_1780284966919_13",
+     "name": "iscancel",
+     "type": "boolean",
+     "label": "Đã hủy"
+    },
+    {
+     "id": "ai_1780284966919_14",
+     "name": "lydohuy",
+     "type": "text",
+     "label": "Lý do hủy"
+    },
+    {
+     "id": "ai_1780284966919_15",
+     "name": "active",
+     "type": "boolean",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780284966919_16",
+     "name": "messageid",
+     "type": "text",
+     "label": "Mã tin nhắn"
+    },
+    {
+     "id": "ai_1780284966919_17",
+     "name": "sophieu",
+     "type": "text",
+     "label": "Số phiếu"
+    },
+    {
+     "id": "ai_1780284966919_18",
+     "name": "stt",
+     "type": "number",
+     "label": "Số thứ tự"
+    },
+    {
+     "id": "ai_1780284966919_19",
+     "name": "mucdich",
+     "type": "text",
+     "label": "Mục đích"
+    },
+    {
+     "id": "ai_1780284966919_20",
+     "name": "ngaycan",
+     "type": "date",
+     "label": "Ngày cần"
+    },
+    {
+     "id": "ai_1780284966919_21",
+     "name": "uutien",
+     "type": "text",
+     "label": "Ưu tiên"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 1168
+  },
+  {
+   "entityId": "e6238c65-4677-43bc-b856-6fd87b9a2e4f",
+   "name": "quet_cong_doan_e6238c",
+   "label": "Quét công đoạn",
+   "mssqlTable": "dbo.trtb_scan_op",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297151648_0",
+     "name": "id",
+     "type": "integer",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780297151648_1",
+     "name": "user_id",
+     "type": "text",
+     "label": "user_id"
+    },
+    {
+     "id": "ai_1780297151648_2",
+     "name": "scan_op",
+     "type": "text",
+     "label": "Công đoạn quét"
+    },
+    {
+     "id": "ai_1780297151648_3",
+     "name": "scan_location",
+     "type": "text",
+     "label": "Vị trí quét"
+    },
+    {
+     "id": "ai_1780297151648_4",
+     "name": "admin",
+     "type": "bool",
+     "label": "Quản trị"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 332
+  },
+  {
+   "entityId": "ab9208b4-facf-4bff-85fe-57ce2d0e5ebd",
+   "name": "san_pham_ab9208",
+   "label": "Sản Phẩm",
+   "mssqlTable": "dbo.tr_sanpham",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780299632325_0",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "id",
+     "type": "lookup",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780299632325_1",
+     "ref": "bbc9e6ff-e8a6-4fb3-b045-cb1be4cf6d3b",
+     "name": "masp",
+     "type": "lookup",
+     "label": "Mã Sản Phẩm"
+    },
+    {
+     "id": "ai_1780299632325_2",
+     "name": "masp_khachhang",
+     "type": "text",
+     "label": "Mã SP Khách Hàng"
+    },
+    {
+     "id": "ai_1780299632325_3",
+     "name": "masp_nhamay",
+     "type": "text",
+     "label": "Mã SP Nhà Máy"
+    },
+    {
+     "id": "ai_1780299632325_4",
+     "name": "tensp",
+     "type": "text",
+     "label": "Tên Sản Phẩm"
+    },
+    {
+     "id": "ai_1780299632325_5",
+     "name": "tensp_vn",
+     "type": "text",
+     "label": "Tên Sản Phẩm (Tiếng Việt)"
+    },
+    {
+     "id": "ai_1780299632325_6",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "hehang",
+     "type": "lookup",
+     "label": "Hệ Hàng"
+    },
+    {
+     "id": "ai_1780299632325_7",
+     "ref": "87a573d3-2ee4-4021-bace-814b02cfb1d0",
+     "name": "mausac",
+     "type": "lookup",
+     "label": "Màu Sắc"
+    },
+    {
+     "id": "ai_1780299632325_8",
+     "ref": "87a573d3-2ee4-4021-bace-814b02cfb1d0",
+     "name": "mauuv",
+     "type": "lookup",
+     "label": "Màu UV"
+    },
+    {
+     "id": "ai_1780299632325_9",
+     "ref": "2d4dc394-df65-4a00-9cae-73725a07221b",
+     "name": "loaisp",
+     "type": "lookup",
+     "label": "Loại Sản Phẩm"
+    },
+    {
+     "id": "ai_1780299632325_10",
+     "name": "ketcau",
+     "type": "text",
+     "label": "Kết Cấu"
+    },
+    {
+     "id": "ai_1780299632325_11",
+     "name": "bemat_sanpham",
+     "type": "text",
+     "label": "Bề Mặt Sản Phẩm"
+    },
+    {
+     "id": "ai_1780299632325_12",
+     "name": "ghichu",
+     "type": "text",
+     "label": "Ghi Chú"
+    },
+    {
+     "id": "ai_1780299632325_13",
+     "name": "dai",
+     "type": "number",
+     "label": "Dài"
+    },
+    {
+     "id": "ai_1780299632325_14",
+     "name": "rong",
+     "type": "number",
+     "label": "Rộng"
+    },
+    {
+     "id": "ai_1780299632325_15",
+     "name": "cao",
+     "type": "number",
+     "label": "Cao"
+    },
+    {
+     "id": "ai_1780299632325_16",
+     "name": "kichthuoc",
+     "type": "text",
+     "label": "Kích Thước"
+    },
+    {
+     "id": "ai_1780299632325_17",
+     "name": "nguyenlieu",
+     "type": "text",
+     "label": "Nguyên Liệu"
+    },
+    {
+     "id": "ai_1780299632325_18",
+     "name": "dvt",
+     "type": "text",
+     "label": "Đơn Vị Tính"
+    },
+    {
+     "id": "ai_1780299632325_19",
+     "name": "quycach",
+     "type": "text",
+     "label": "Quy Cách"
+    },
+    {
+     "id": "ai_1780299632325_20",
+     "name": "m2",
+     "type": "number",
+     "label": "M²"
+    },
+    {
+     "id": "ai_1780299632325_21",
+     "name": "m3",
+     "type": "number",
+     "label": "M³"
+    },
+    {
+     "id": "ai_1780299632325_22",
+     "name": "dai_carton",
+     "type": "number",
+     "label": "Dài Carton"
+    },
+    {
+     "id": "ai_1780299632325_23",
+     "name": "rong_carton",
+     "type": "number",
+     "label": "Rộng Carton"
+    },
+    {
+     "id": "ai_1780299632325_24",
+     "name": "cao_carton",
+     "type": "number",
+     "label": "Cao Carton"
+    },
+    {
+     "id": "ai_1780299632325_25",
+     "name": "cbm",
+     "type": "number",
+     "label": "CBM"
+    },
+    {
+     "id": "ai_1780299632325_26",
+     "name": "carton_qty",
+     "type": "number",
+     "label": "Số Lượng Carton"
+    },
+    {
+     "id": "ai_1780299632325_27",
+     "name": "dongia",
+     "type": "currency",
+     "label": "Đơn Giá"
+    },
+    {
+     "id": "ai_1780299632325_28",
+     "name": "loaitien",
+     "type": "text",
+     "label": "Loại Tiền"
+    },
+    {
+     "id": "ai_1780299632325_29",
+     "name": "vendor",
+     "type": "text",
+     "label": "Nhà Cung Cấp"
+    },
+    {
+     "id": "ai_1780299632325_30",
+     "ref": "192ce615-f146-4640-9685-27ffbafc48f1",
+     "name": "customer",
+     "type": "lookup",
+     "label": "Khách Hàng"
+    },
+    {
+     "id": "ai_1780299632325_31",
+     "name": "dacdiem",
+     "type": "text",
+     "label": "Đặc Điểm"
+    },
+    {
+     "id": "ai_1780299632325_32",
+     "name": "hinhanh",
+     "type": "image",
+     "label": "Hình Ảnh"
+    },
+    {
+     "id": "ai_1780299632325_33",
+     "name": "hinhanh1",
+     "type": "image",
+     "label": "Hình Ảnh 1"
+    },
+    {
+     "id": "ai_1780299632325_34",
+     "name": "thumbnail",
+     "type": "image",
+     "label": "Ảnh Thu Nhỏ"
+    },
+    {
+     "id": "ai_1780299632325_35",
+     "name": "isgovan",
+     "type": "bool",
+     "label": "Là Gỗ Ván"
+    },
+    {
+     "id": "ai_1780299632325_36",
+     "name": "isngukim",
+     "type": "bool",
+     "label": "Là Ngũ Kim"
+    },
+    {
+     "id": "ai_1780299632325_37",
+     "name": "isson",
+     "type": "bool",
+     "label": "Là Sơn"
+    },
+    {
+     "id": "ai_1780299632325_38",
+     "name": "isbaobi",
+     "type": "bool",
+     "label": "Là Bao Bì"
+    },
+    {
+     "id": "ai_1780299632325_39",
+     "name": "ishangtrang",
+     "type": "bool",
+     "label": "Là Hàng Trắng"
+    },
+    {
+     "id": "ai_1780299632325_40",
+     "name": "banve",
+     "type": "text",
+     "label": "Bản Vẽ"
+    },
+    {
+     "id": "ai_1780299632325_41",
+     "name": "ngaybaogia",
+     "type": "datetime",
+     "label": "Ngày Báo Giá"
+    },
+    {
+     "id": "ai_1780299632325_42",
+     "name": "hanbaogia",
+     "type": "datetime",
+     "label": "Hạn Báo Giá"
+    },
+    {
+     "id": "ai_1780299632325_43",
+     "name": "create_by",
+     "type": "text",
+     "label": "Người Tạo"
+    },
+    {
+     "id": "ai_1780299632325_44",
+     "name": "create_date",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780299632325_45",
+     "name": "update_by",
+     "type": "text",
+     "label": "Người Cập Nhật"
+    },
+    {
+     "id": "ai_1780299632325_46",
+     "name": "update_date",
+     "type": "datetime",
+     "label": "Ngày Cập Nhật"
+    },
+    {
+     "id": "ai_1780299632325_47",
+     "name": "hinhanh2",
+     "type": "image",
+     "label": "Hình Ảnh 2"
+    },
+    {
+     "id": "ai_1780299632325_48",
+     "name": "heso_mam",
+     "type": "number",
+     "label": "Hệ Số Mâm"
+    },
+    {
+     "id": "ai_1780299632325_49",
+     "name": "dongia_mam",
+     "type": "currency",
+     "label": "Đơn Giá Mâm"
+    },
+    {
+     "id": "ai_1780299632325_50",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780299632325_51",
+     "name": "n_weight",
+     "type": "number",
+     "label": "Trọng Lượng Tịnh"
+    },
+    {
+     "id": "ai_1780299632325_52",
+     "name": "g_weight",
+     "type": "number",
+     "label": "Trọng Lượng Gross"
+    },
+    {
+     "id": "ai_1780299632325_53",
+     "name": "thoidiem",
+     "type": "number",
+     "label": "Thời Điểm"
+    },
+    {
+     "id": "ai_1780299632325_54",
+     "name": "ma_btp",
+     "type": "text",
+     "label": "Mã Bán Thành Phẩm"
+    },
+    {
+     "id": "ai_1780299632325_55",
+     "name": "ma_erp",
+     "type": "text",
+     "label": "Mã ERP"
+    },
+    {
+     "id": "ai_1780299632325_56",
+     "name": "isveneer",
+     "type": "bool",
+     "label": "Là Veneer"
+    },
+    {
+     "id": "ai_1780299632325_57",
+     "name": "mautrong",
+     "type": "text",
+     "label": "Màu Trong"
+    },
+    {
+     "id": "ai_1780299632325_58",
+     "name": "isastm",
+     "type": "bool",
+     "label": "Là ASTM"
+    },
+    {
+     "id": "ai_1780299632325_59",
+     "name": "isbvkt",
+     "type": "bool",
+     "label": "Là Bản Vẽ Kỹ Thuật"
+    },
+    {
+     "id": "ai_1780299632325_60",
+     "name": "isbvdg",
+     "type": "bool",
+     "label": "Là Bản Vẽ Định Giá"
+    },
+    {
+     "id": "ai_1780299632325_61",
+     "name": "isbvai",
+     "type": "bool",
+     "label": "Là Bản Vẽ AI"
+    },
+    {
+     "id": "ai_1780299632325_62",
+     "name": "maustaincanh",
+     "type": "text",
+     "label": "Màu Stain Cạnh"
+    },
+    {
+     "id": "ai_1780299632325_63",
+     "name": "tieuchuan",
+     "type": "text",
+     "label": "Tiêu Chuẩn"
+    },
+    {
+     "id": "ai_1780299632325_64",
+     "name": "sothung_carton",
+     "type": "text",
+     "label": "Số Thùng Carton"
+    },
+    {
+     "id": "ai_1780299632325_65",
+     "name": "tieuchuan_carton",
+     "type": "text",
+     "label": "Tiêu Chuẩn Carton"
+    },
+    {
+     "id": "ai_1780299632325_66",
+     "name": "solop_carton",
+     "type": "text",
+     "label": "Số Lớp Carton"
+    },
+    {
+     "id": "ai_1780299632325_67",
+     "name": "dobuc_carton",
+     "type": "text",
+     "label": "Độ Bục Carton"
+    },
+    {
+     "id": "ai_1780299632325_68",
+     "name": "nguyenlieu_vatchen",
+     "type": "text",
+     "label": "Nguyên Liệu Vật Chèn"
+    },
+    {
+     "id": "ai_1780299632325_69",
+     "name": "dinhluong_vatchen",
+     "type": "text",
+     "label": "Định Lượng Vật Chèn"
+    },
+    {
+     "id": "ai_1780299632325_70",
+     "name": "tuichongdo",
+     "type": "text",
+     "label": "Túi Chống Ẩm"
+    },
+    {
+     "id": "ai_1780299632325_71",
+     "name": "droptest",
+     "type": "text",
+     "label": "Kiểm Tra Thả Rơi"
+    },
+    {
+     "id": "ai_1780299632325_72",
+     "name": "interlock",
+     "type": "text",
+     "label": "Khóa Liên Động"
+    },
+    {
+     "id": "ai_1780299632325_73",
+     "name": "tiptest",
+     "type": "text",
+     "label": "Kiểm Tra Nghiêng"
+    },
+    {
+     "id": "ai_1780299632325_74",
+     "name": "m3_tc",
+     "type": "number",
+     "label": "M³ Tiêu Chuẩn"
+    },
+    {
+     "id": "ai_1780299632325_75",
+     "name": "dongia_son",
+     "type": "currency",
+     "label": "Đơn Giá Sơn"
+    },
+    {
+     "id": "ai_1780299632325_76",
+     "name": "quycach_carton",
+     "type": "text",
+     "label": "Quy Cách Carton"
+    },
+    {
+     "id": "ai_1780299632325_77",
+     "name": "iscreatedcosting",
+     "type": "bool",
+     "label": "Đã Tạo Báo Giá"
+    },
+    {
+     "id": "ai_1780299632325_78",
+     "name": "isquytrinh",
+     "type": "bool",
+     "label": "Có Quy Trình"
+    },
+    {
+     "id": "ai_1780299632325_79",
+     "name": "m2_tc",
+     "type": "number",
+     "label": "M² Tiêu Chuẩn"
+    },
+    {
+     "id": "ai_1780299632325_80",
+     "name": "masp_thaythe",
+     "type": "text",
+     "label": "Mã SP Thay Thế"
+    },
+    {
+     "id": "ai_1780299632325_81",
+     "name": "oast_date",
+     "type": "date",
+     "label": "Ngày OAST"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": true,
+   "recordCount": 6744
+  },
+  {
+   "entityId": "dca146f3-a27f-48d3-ab94-53ef0d03c7eb",
+   "name": "thay_doi_ky_thuat_dca146",
+   "label": "Thay Đổi Kỹ Thuật",
+   "mssqlTable": "dbo.tr_thaydoi_kythuat",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780298362384_0",
+     "name": "id",
+     "type": "text",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780298362384_1",
+     "name": "sophieu",
+     "type": "text",
+     "label": "Số Phiếu"
+    },
+    {
+     "id": "ai_1780298362384_2",
+     "name": "bophan",
+     "type": "text",
+     "label": "Bộ Phận"
+    },
+    {
+     "id": "ai_1780298362384_3",
+     "name": "denghithaydoi",
+     "type": "text",
+     "label": "Đề Nghị Thay Đổi"
+    },
+    {
+     "id": "ai_1780298362384_4",
+     "name": "masp",
+     "type": "text",
+     "label": "Mã Sản Phẩm"
+    },
+    {
+     "id": "ai_1780298362384_5",
+     "name": "tensp",
+     "type": "text",
+     "label": "Tên Sản Phẩm"
+    },
+    {
+     "id": "ai_1780298362384_6",
+     "name": "hehang",
+     "type": "text",
+     "label": "Hệ Hàng"
+    },
+    {
+     "id": "ai_1780298362384_7",
+     "name": "khachhang",
+     "type": "text",
+     "label": "Khách Hàng"
+    },
+    {
+     "id": "ai_1780298362384_8",
+     "name": "noidungcanthaydoi",
+     "type": "text",
+     "label": "Nội Dung Cần Thay Đổi"
+    },
+    {
+     "id": "ai_1780298362384_9",
+     "name": "lydothaydoi",
+     "type": "text",
+     "label": "Lý Do Thay Đổi"
+    },
+    {
+     "id": "ai_1780298362384_10",
+     "name": "lydo_caitien",
+     "type": "text",
+     "label": "Lý Do Cải Tiến"
+    },
+    {
+     "id": "ai_1780298362384_11",
+     "name": "lydo_giamchiphi",
+     "type": "text",
+     "label": "Lý Do Giảm Chi Phí"
+    },
+    {
+     "id": "ai_1780298362384_12",
+     "name": "lydo_khac",
+     "type": "text",
+     "label": "Lý Do Khác"
+    },
+    {
+     "id": "ai_1780298362384_13",
+     "name": "noidung_pkt",
+     "type": "text",
+     "label": "Nội Dung Phòng Kỹ Thuật"
+    },
+    {
+     "id": "ai_1780298362384_14",
+     "name": "pkt_dongy",
+     "type": "bool",
+     "label": "Phòng Kỹ Thuật Đồng Ý"
+    },
+    {
+     "id": "ai_1780298362384_15",
+     "name": "noidungduyet",
+     "type": "text",
+     "label": "Nội Dung Duyệt"
+    },
+    {
+     "id": "ai_1780298362384_16",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780298362384_17",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người Tạo"
+    },
+    {
+     "id": "ai_1780298362384_18",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày Sửa"
+    },
+    {
+     "id": "ai_1780298362384_19",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người Sửa"
+    },
+    {
+     "id": "ai_1780298362384_20",
+     "name": "isconfirm1",
+     "type": "bool",
+     "label": "Xác Nhận 1"
+    },
+    {
+     "id": "ai_1780298362384_21",
+     "name": "isconfirm2",
+     "type": "bool",
+     "label": "Xác Nhận 2"
+    },
+    {
+     "id": "ai_1780298362384_22",
+     "name": "isconfirm3",
+     "type": "bool",
+     "label": "Xác Nhận 3"
+    },
+    {
+     "id": "ai_1780298362384_23",
+     "name": "truongbophan",
+     "type": "text",
+     "label": "Trưởng Bộ Phận"
+    },
+    {
+     "id": "ai_1780298362384_24",
+     "name": "truongphongkythuat",
+     "type": "text",
+     "label": "Trưởng Phòng Kỹ Thuật"
+    },
+    {
+     "id": "ai_1780298362384_25",
+     "name": "bangiamdoc",
+     "type": "text",
+     "label": "Ban Giám Đốc"
+    },
+    {
+     "id": "ai_1780298362384_26",
+     "name": "ngayduyet1",
+     "type": "datetime",
+     "label": "Ngày Duyệt 1"
+    },
+    {
+     "id": "ai_1780298362384_27",
+     "name": "ngayduyet2",
+     "type": "datetime",
+     "label": "Ngày Duyệt 2"
+    },
+    {
+     "id": "ai_1780298362384_28",
+     "name": "ngayduyet3",
+     "type": "datetime",
+     "label": "Ngày Duyệt 3"
+    },
+    {
+     "id": "ai_1780298362384_29",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780298362384_30",
+     "name": "trangthai",
+     "type": "integer",
+     "label": "Trạng Thái"
+    },
+    {
+     "id": "ai_1780298362384_31",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã Chi Tiết"
+    },
+    {
+     "id": "ai_1780298362384_32",
+     "name": "tenct",
+     "type": "text",
+     "label": "Tên Chi Tiết"
+    },
+    {
+     "id": "ai_1780298362384_33",
+     "name": "dinhmuc",
+     "type": "text",
+     "label": "Định Mức"
+    },
+    {
+     "id": "ai_1780298362384_34",
+     "name": "khongduyet",
+     "type": "bool",
+     "label": "Không Duyệt"
+    },
+    {
+     "id": "ai_1780298362384_35",
+     "name": "noidung_khongduyet",
+     "type": "text",
+     "label": "Nội Dung Không Duyệt"
+    },
+    {
+     "id": "ai_1780298362384_36",
+     "name": "ngayhuy",
+     "type": "datetime",
+     "label": "Ngày Hủy"
+    },
+    {
+     "id": "ai_1780298362384_37",
+     "name": "nguoihuy",
+     "type": "text",
+     "label": "Người Hủy"
+    },
+    {
+     "id": "ai_1780298362384_38",
+     "name": "ngaycanhoanthanh",
+     "type": "date",
+     "label": "Ngày Cần Hoàn Thành"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 266
+  },
+  {
+   "entityId": "116e6a52-c669-48a5-bc16-44de61a085b7",
+   "name": "the_pallet_116e6a",
+   "label": "Thẻ pallet",
+   "mssqlTable": "dbo.tr_pallet_card",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297135898_0",
+     "ref": "58b95eab-8f6b-417e-8aa9-8b1c72f07a97",
+     "name": "card_no",
+     "type": "lookup",
+     "label": "Số thẻ"
+    },
+    {
+     "id": "ai_1780297135898_1",
+     "ref": "bbc9e6ff-e8a6-4fb3-b045-cb1be4cf6d3b",
+     "name": "pallet_id",
+     "type": "lookup",
+     "label": "Pallet ID"
+    },
+    {
+     "id": "ai_1780297135898_2",
+     "name": "card_type",
+     "type": "text",
+     "label": "Loại thẻ"
+    },
+    {
+     "id": "ai_1780297135898_3",
+     "name": "soluong",
+     "type": "number",
+     "label": "Số lượng"
+    },
+    {
+     "id": "ai_1780297135898_4",
+     "name": "issue_date",
+     "type": "datetime",
+     "label": "Ngày phát hành"
+    },
+    {
+     "id": "ai_1780297135898_5",
+     "name": "reissue_date",
+     "type": "datetime",
+     "label": "Ngày phát hành lại"
+    },
+    {
+     "id": "ai_1780297135898_6",
+     "name": "reissue_qty",
+     "type": "number",
+     "label": "Số lượng phát hành lại"
+    },
+    {
+     "id": "ai_1780297135898_7",
+     "name": "card_seq",
+     "type": "number",
+     "label": "Thứ tự thẻ"
+    },
+    {
+     "id": "ai_1780297135898_8",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày tạo"
+    },
+    {
+     "id": "ai_1780297135898_9",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người tạo"
+    },
+    {
+     "id": "ai_1780297135898_10",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt động"
+    },
+    {
+     "id": "ai_1780297135898_11",
+     "name": "stt_snap",
+     "type": "text",
+     "label": "Số thứ tự (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_12",
+     "name": "mact_snap",
+     "type": "text",
+     "label": "Mã chi tiết (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_13",
+     "name": "tenct_snap",
+     "type": "text",
+     "label": "Tên chi tiết (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_14",
+     "name": "nguyenlieu_snap",
+     "type": "text",
+     "label": "Nguyên liệu (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_15",
+     "name": "dayy_tc_snap",
+     "type": "number",
+     "label": "Dày tiêu chuẩn (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_16",
+     "name": "rong_tc_snap",
+     "type": "number",
+     "label": "Rộng tiêu chuẩn (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_17",
+     "name": "dai_tc_snap",
+     "type": "number",
+     "label": "Dài tiêu chuẩn (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_18",
+     "name": "soluong_tc_snap",
+     "type": "number",
+     "label": "Số lượng tiêu chuẩn (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_19",
+     "name": "dayy_sc_snap",
+     "type": "number",
+     "label": "Dày sơ chế (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_20",
+     "name": "rong_sc_snap",
+     "type": "number",
+     "label": "Rộng sơ chế (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_21",
+     "name": "dai_sc_snap",
+     "type": "number",
+     "label": "Dài sơ chế (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_22",
+     "name": "soluong_sc_snap",
+     "type": "number",
+     "label": "Số lượng sơ chế (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_23",
+     "name": "soluong_donhang_snap",
+     "type": "number",
+     "label": "Số lượng đơn hàng (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_24",
+     "name": "soluong_can_snap",
+     "type": "number",
+     "label": "Số lượng cần (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_25",
+     "name": "sokhoi_tinhche_snap",
+     "type": "number",
+     "label": "Số khối tinh chế (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_26",
+     "name": "ghichu_snap",
+     "type": "text",
+     "label": "Ghi chú (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_27",
+     "name": "veneer_matchinh_snap",
+     "type": "number",
+     "label": "Veneer mặt chính (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_28",
+     "name": "veneer_matphu_snap",
+     "type": "number",
+     "label": "Veneer mặt phụ (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_29",
+     "name": "veneer_dan_canh_snap",
+     "type": "number",
+     "label": "Veneer dán cạnh (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_30",
+     "name": "veneer_canhdai_snap",
+     "type": "number",
+     "label": "Veneer cạnh dài (snapshot)"
+    },
+    {
+     "id": "ai_1780297135898_31",
+     "name": "veneer_canhngan_snap",
+     "type": "number",
+     "label": "Veneer cạnh ngắn (snapshot)"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 35603
+  },
+  {
+   "entityId": "58b95eab-8f6b-417e-8aa9-8b1c72f07a97",
+   "name": "trang_thai_san_xuat_58b95e",
+   "label": "Trạng Thái Sản Xuất",
+   "mssqlTable": "dbo.tr_trangthai_sanxuat",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780297520938_0",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "id",
+     "type": "lookup",
+     "label": "id"
+    },
+    {
+     "id": "ai_1780297520938_1",
+     "ref": "912342d0-1404-416c-8b2f-f399b0e8bad1",
+     "name": "madonhang",
+     "type": "lookup",
+     "label": "Mã Đơn Hàng"
+    },
+    {
+     "id": "ai_1780297520938_2",
+     "ref": "912342d0-1404-416c-8b2f-f399b0e8bad1",
+     "name": "masp",
+     "type": "lookup",
+     "label": "Mã Sản Phẩm"
+    },
+    {
+     "id": "ai_1780297520938_3",
+     "ref": "ab9208b4-facf-4bff-85fe-57ce2d0e5ebd",
+     "name": "masp1",
+     "type": "lookup",
+     "label": "Mã Sản Phẩm 1"
+    },
+    {
+     "id": "ai_1780297520938_4",
+     "name": "mact",
+     "type": "text",
+     "label": "Mã Chi Tiết"
+    },
+    {
+     "id": "ai_1780297520938_5",
+     "name": "tenct",
+     "type": "text",
+     "label": "Tên Chi Tiết"
+    },
+    {
+     "id": "ai_1780297520938_6",
+     "name": "nguyenlieu",
+     "type": "text",
+     "label": "Nguyên Liệu"
+    },
+    {
+     "id": "ai_1780297520938_7",
+     "name": "dayy",
+     "type": "number",
+     "label": "Dày"
+    },
+    {
+     "id": "ai_1780297520938_8",
+     "name": "rong",
+     "type": "number",
+     "label": "Rộng"
+    },
+    {
+     "id": "ai_1780297520938_9",
+     "name": "dai",
+     "type": "number",
+     "label": "Dài"
+    },
+    {
+     "id": "ai_1780297520938_10",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "congdoan",
+     "type": "lookup",
+     "label": "Công Đoạn"
+    },
+    {
+     "id": "ai_1780297520938_11",
+     "name": "soluong",
+     "type": "number",
+     "label": "Số Lượng"
+    },
+    {
+     "id": "ai_1780297520938_12",
+     "name": "sokhoi",
+     "type": "number",
+     "label": "Số Khối"
+    },
+    {
+     "id": "ai_1780297520938_13",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "ngaythang",
+     "type": "lookup",
+     "label": "Ngày Tháng"
+    },
+    {
+     "id": "ai_1780297520938_14",
+     "name": "ngaytao",
+     "type": "datetime",
+     "label": "Ngày Tạo"
+    },
+    {
+     "id": "ai_1780297520938_15",
+     "name": "nguoitao",
+     "type": "text",
+     "label": "Người Tạo"
+    },
+    {
+     "id": "ai_1780297520938_16",
+     "name": "batdau",
+     "type": "datetime",
+     "label": "Bắt Đầu"
+    },
+    {
+     "id": "ai_1780297520938_17",
+     "name": "hoanthanh",
+     "type": "datetime",
+     "label": "Hoàn Thành"
+    },
+    {
+     "id": "ai_1780297520938_18",
+     "name": "vitrimay",
+     "type": "text",
+     "label": "Vị Trí Máy"
+    },
+    {
+     "id": "ai_1780297520938_19",
+     "name": "tenvitri",
+     "type": "text",
+     "label": "Tên Vị Trí"
+    },
+    {
+     "id": "ai_1780297520938_20",
+     "name": "thoidiem",
+     "type": "text",
+     "label": "Thời Điểm"
+    },
+    {
+     "id": "ai_1780297520938_21",
+     "name": "nguoilam",
+     "type": "text",
+     "label": "Người Làm"
+    },
+    {
+     "id": "ai_1780297520938_22",
+     "name": "iscum",
+     "type": "boolean",
+     "label": "Là Cụm"
+    },
+    {
+     "id": "ai_1780297520938_23",
+     "name": "ngaygiao",
+     "type": "datetime",
+     "label": "Ngày Giao"
+    },
+    {
+     "id": "ai_1780297520938_24",
+     "name": "sophut",
+     "type": "number",
+     "label": "Số Phút"
+    },
+    {
+     "id": "ai_1780297520938_25",
+     "name": "somatuv",
+     "type": "number",
+     "label": "Số Mã Tuv"
+    },
+    {
+     "id": "ai_1780297520938_26",
+     "ref": "116e6a52-c669-48a5-bc16-44de61a085b7",
+     "name": "pcard",
+     "type": "lookup",
+     "label": "Phiếu Card"
+    },
+    {
+     "id": "ai_1780297520938_27",
+     "name": "chiphikinhdoanh",
+     "type": "text",
+     "label": "Chi Phí Kinh Doanh"
+    },
+    {
+     "id": "ai_1780297520938_28",
+     "name": "oday",
+     "type": "number",
+     "label": "Dày Gốc"
+    },
+    {
+     "id": "ai_1780297520938_29",
+     "name": "orong",
+     "type": "number",
+     "label": "Rộng Gốc"
+    },
+    {
+     "id": "ai_1780297520938_30",
+     "name": "odai",
+     "type": "number",
+     "label": "Dài Gốc"
+    },
+    {
+     "id": "ai_1780297520938_31",
+     "ref": "ee47e254-6a05-4129-94fe-4836b8b7282a",
+     "name": "congdoantieptheo",
+     "type": "lookup",
+     "label": "Công Đoạn Tiếp Theo"
+    },
+    {
+     "id": "ai_1780297520938_32",
+     "name": "diqua",
+     "type": "number",
+     "label": "Đi Qua"
+    },
+    {
+     "id": "ai_1780297520938_33",
+     "name": "gianguyenlieu",
+     "type": "number",
+     "label": "Giá Nguyên Liệu"
+    },
+    {
+     "id": "ai_1780297520938_34",
+     "name": "nguoisua",
+     "type": "text",
+     "label": "Người Sửa"
+    },
+    {
+     "id": "ai_1780297520938_35",
+     "name": "ngaysua",
+     "type": "datetime",
+     "label": "Ngày Sửa"
+    },
+    {
+     "id": "ai_1780297520938_36",
+     "name": "ishoanthanh",
+     "type": "boolean",
+     "label": "Đã Hoàn Thành"
+    },
+    {
+     "id": "ai_1780297520938_37",
+     "name": "donhang_sanxuat",
+     "type": "text",
+     "label": "Đơn Hàng Sản Xuất"
+    },
+    {
+     "id": "ai_1780297520938_38",
+     "name": "nguoinhan",
+     "type": "text",
+     "label": "Người Nhận"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 282036
+  },
+  {
+   "entityId": "912342d0-1404-416c-8b2f-f399b0e8bad1",
+   "name": "tr_dondathang_chitiet",
+   "label": "tr_dondathang_chitiet",
+   "mssqlTable": "dbo.tr_dondathang_chitiet",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "ref": "ab9208b4-facf-4bff-85fe-57ce2d0e5ebd",
+     "name": "id",
+     "type": "lookup",
+     "label": "id"
+    },
+    {
+     "name": "id_maddh",
+     "type": "number",
+     "label": "id_maddh"
+    },
+    {
+     "ref": "c91733f9-562f-4141-8365-380d7432f5ea",
+     "name": "maddh",
+     "type": "lookup",
+     "label": "maddh"
+    },
+    {
+     "ref": "ab9208b4-facf-4bff-85fe-57ce2d0e5ebd",
+     "name": "masp",
+     "type": "lookup",
+     "label": "masp"
+    },
+    {
+     "name": "chitiet",
+     "type": "text",
+     "label": "chitiet"
+    },
+    {
+     "name": "tenchitiet",
+     "type": "text",
+     "label": "tenchitiet"
+    },
+    {
+     "name": "soluong",
+     "type": "number",
+     "label": "soluong"
+    },
+    {
+     "name": "dvt",
+     "type": "text",
+     "label": "dvt"
+    },
+    {
+     "name": "sl_danhan",
+     "type": "number",
+     "label": "sl_danhan"
+    },
+    {
+     "name": "sl_conlai",
+     "type": "number",
+     "label": "sl_conlai"
+    },
+    {
+     "name": "dongia",
+     "type": "number",
+     "label": "dongia"
+    },
+    {
+     "name": "thanhtien",
+     "type": "number",
+     "label": "thanhtien"
+    },
+    {
+     "name": "loaitien",
+     "type": "text",
+     "label": "loaitien"
+    },
+    {
+     "name": "donhang",
+     "type": "text",
+     "label": "donhang"
+    },
+    {
+     "name": "ghichu",
+     "type": "text",
+     "label": "ghichu"
+    },
+    {
+     "name": "hoanthanh_htr",
+     "type": "boolean",
+     "label": "hoanthanh_htr"
+    },
+    {
+     "name": "create_date",
+     "type": "datetime",
+     "label": "create_date"
+    },
+    {
+     "name": "create_by",
+     "type": "text",
+     "label": "create_by"
+    },
+    {
+     "name": "update_by",
+     "type": "text",
+     "label": "update_by"
+    },
+    {
+     "name": "update_date",
+     "type": "datetime",
+     "label": "update_date"
+    },
+    {
+     "name": "active",
+     "type": "boolean",
+     "label": "active"
+    },
+    {
+     "name": "id_maddhid",
+     "type": "text",
+     "label": "id_maddhid"
+    },
+    {
+     "name": "id_maddhmaddh",
+     "type": "text",
+     "label": "id_maddhmaddh"
+    },
+    {
+     "name": "maddhid",
+     "type": "text",
+     "label": "maddhid"
+    },
+    {
+     "name": "maddhmaddh",
+     "type": "text",
+     "label": "maddhmaddh"
+    },
+    {
+     "name": "dayy",
+     "type": "number",
+     "label": "dayy"
+    },
+    {
+     "name": "rong",
+     "type": "number",
+     "label": "rong"
+    },
+    {
+     "name": "dai",
+     "type": "number",
+     "label": "dai"
+    },
+    {
+     "name": "nguyenlieu",
+     "type": "text",
+     "label": "nguyenlieu"
+    },
+    {
+     "name": "ngaycangiao",
+     "type": "datetime",
+     "label": "ngaycangiao"
+    },
+    {
+     "name": "sophieu_dexuat",
+     "type": "text",
+     "label": "sophieu_dexuat"
+    },
+    {
+     "name": "dongia_m3",
+     "type": "number",
+     "label": "dongia_m3"
+    },
+    {
+     "name": "icreatedcard",
+     "type": "boolean",
+     "label": "iCreatedCard"
+    },
+    {
+     "name": "iprintedcard",
+     "type": "boolean",
+     "label": "iPrintedCard"
+    },
+    {
+     "name": "fsc_id",
+     "type": "number",
+     "label": "fsc_id"
+    },
+    {
+     "name": "idchitiet2",
+     "type": "text",
+     "label": "idChiTiet2"
+    },
+    {
+     "name": "tygia",
+     "type": "number",
+     "label": "tygia"
+    },
+    {
+     "name": "ischecked",
+     "type": "boolean",
+     "label": "IsChecked"
+    },
+    {
+     "name": "pid",
+     "type": "number",
+     "label": "pid"
+    },
+    {
+     "name": "ngayhoanthanh",
+     "type": "date",
+     "label": "ngayhoanthanh"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": true,
+   "recordCount": 175312
+  },
+  {
+   "entityId": "ee47e254-6a05-4129-94fe-4836b8b7282a",
+   "name": "vi_tri_cong_doan_ee47e2",
+   "label": "Vị Trí Công Đoạn",
+   "mssqlTable": "dbo.trtb_m_location",
+   "connectionId": "019e688e-d3c9-717e-bf07-325f4712543d",
+   "fields": [
+    {
+     "id": "ai_1780306181737_0",
+     "name": "c_location",
+     "type": "text",
+     "label": "Mã Vị Trí",
+     "required": true
+    },
+    {
+     "id": "ai_1780306181737_1",
+     "ref": "47056338-8e55-4157-b595-bfe6fbf6d243",
+     "name": "c_op",
+     "type": "lookup",
+     "label": "Mã Công Đoạn"
+    },
+    {
+     "id": "ai_1780306181737_2",
+     "name": "n_location",
+     "type": "text",
+     "label": "Tên Vị Trí"
+    },
+    {
+     "id": "ai_1780306181737_3",
+     "name": "n_scan",
+     "type": "text",
+     "label": "Tên Quét"
+    },
+    {
+     "id": "ai_1780306181737_4",
+     "name": "c_nextloc",
+     "type": "text",
+     "label": "Vị Trí Tiếp Theo"
+    },
+    {
+     "id": "ai_1780306181737_5",
+     "name": "org",
+     "type": "text",
+     "label": "Tổ Chức"
+    },
+    {
+     "id": "ai_1780306181737_6",
+     "name": "maymoc",
+     "type": "text",
+     "label": "Máy Móc"
+    },
+    {
+     "id": "ai_1780306181737_7",
+     "name": "stt",
+     "type": "number",
+     "label": "Số Thứ Tự"
+    },
+    {
+     "id": "ai_1780306181737_8",
+     "name": "bophanchiphi",
+     "type": "text",
+     "label": "Bộ Phận Chi Phí"
+    },
+    {
+     "id": "ai_1780306181737_9",
+     "name": "loaichiphi",
+     "type": "text",
+     "label": "Loại Chi Phí"
+    },
+    {
+     "id": "ai_1780306181737_10",
+     "name": "oday",
+     "type": "number",
+     "label": "Dày"
+    },
+    {
+     "id": "ai_1780306181737_11",
+     "name": "orong",
+     "type": "number",
+     "label": "Rộng"
+    },
+    {
+     "id": "ai_1780306181737_12",
+     "name": "odai",
+     "type": "number",
+     "label": "Dài"
+    },
+    {
+     "id": "ai_1780306181737_13",
+     "name": "active",
+     "type": "bool",
+     "label": "Hoạt Động"
+    },
+    {
+     "id": "ai_1780306181737_14",
+     "name": "ngay",
+     "type": "datetime",
+     "label": "Ngày"
+    },
+    {
+     "id": "ai_1780306181737_15",
+     "name": "loaitieuchuan",
+     "type": "text",
+     "label": "Loại Tiêu Chuẩn"
+    },
+    {
+     "id": "ai_1780306181737_16",
+     "name": "tieuchuantheochitiet",
+     "type": "bool",
+     "label": "Tiêu Chuẩn Theo Chi Tiết"
+    },
+    {
+     "id": "ai_1780306181737_17",
+     "name": "aql",
+     "type": "bool",
+     "label": "AQL"
+    },
+    {
+     "id": "ai_1780306181737_18",
+     "name": "isshow",
+     "type": "bool",
+     "label": "Hiển Thị"
+    }
+   ],
+   "storageTier": "eav",
+   "agentSearchable": false,
+   "recordCount": 96
+  }
+ ],
+ "importedCount": 20,
+ "kept": [
+  {
+   "name": "bang_gia_cap_do_son_f75b17",
+   "label": "Bảng giá cấp độ sơn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bang_mau_3a0aa8",
+   "label": "Bảng màu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bang_mau_87a573",
+   "label": "Bảng màu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bang_mau_bao_cao_lua_chon_f871ae",
+   "label": "Bảng màu - Báo cáo - Lựa chọn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ban_ve_394e38",
+   "label": "Bản vẽ",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ban_ve_65a3a7",
+   "label": "Bản vẽ",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ban_ve_ai_5c5bb9",
+   "label": "Bản vẻ -AI",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_cao_bang_mau_c43799",
+   "label": "Báo cáo bảng màu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_cao_cuoi_b7bb3f",
+   "label": "Báo cáo cuối",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_cao_cuoi_hinh_anh_56a7a3",
+   "label": "Báo cáo cuối - Hình ảnh",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_cao_hang_loi_b2965b",
+   "label": "Báo cáo hàng lỗi",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_cao_muc_kiem_tra_7cb06f",
+   "label": "Báo cáo múc kiểm tra",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_18eecc",
+   "label": "Báo giá - chi phí",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_khac_1126f3",
+   "label": "Báo Giá Chi Phí Khác",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_khac_174196",
+   "label": "Báo Giá Chi Phí Khác",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_nguyen_lieu_be3928",
+   "label": "Báo giá - Chi phí - Nguyên liệu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_nhan_cong_f9dbe6",
+   "label": "Báo giá -Chi phí - Nhân công",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_chi_phi_veneer_54aad6",
+   "label": "Báo giá - Chi phí Veneer",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_danh_sach_2704d1",
+   "label": "Báo giá danh sách",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_dong_goi_24683c",
+   "label": "Báo Giá Đóng Gói",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_go_van_4fed4e",
+   "label": "Báo Giá Gỗ Ván",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_go_van_gia_cong_320d99",
+   "label": "Báo Giá Gỗ Ván - Gia Công",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_ngu_kim_c0f461",
+   "label": "Báo giá - Ngũ kim",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_nhan_cong_75aef5",
+   "label": "Báo giá nhân công",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_son_de64b7",
+   "label": "Báo giá sơn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_thanh_pham_618b4c",
+   "label": "Báo Giá Thành Phẩm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bao_gia_tong_910ee4",
+   "label": "Báo giá tổng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "bo_phan_a91efd",
+   "label": "Bộ phận",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_phi_bo_phan_dffdd6",
+   "label": "Chi phí bộ phân",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_phi_bo_phan_gian_tiep_0455f8",
+   "label": "Chi Phí Bộ Phận Gián Tiếp",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_phi_d09fa2",
+   "label": "Chi phí",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_phi_kinh_doanh_fcec51",
+   "label": "Chi phí kinh doanh",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_de_xuat_bang_mau_874a3d",
+   "label": "Chi tiết đề xuất bảng màu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_don_dat_hang_05a75a",
+   "label": "Chi tiết đơn đặt hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_don_hang_e43806",
+   "label": "Chi tiết đơn hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_don_hang_thay_the_bba28c",
+   "label": "Chi tiết đơn hàng thay thế",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_hon_hop_son_906e6b",
+   "label": "Chi Tiết Hỗn Hợp Sơn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_muc_tieu_san_xuat_0eee50",
+   "label": "Chi tiết mục tiêu sản xuất",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_pallet_3642de",
+   "label": "Chi tiết pallet",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_phieu_nhap_a58203",
+   "label": "Chi tiết phiếu nhập",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chi_tiet_phieu_xuat_f6fdac",
+   "label": "Chi Tiết Phiếu Xuất",
+   "storageTier": "eav"
+  },
+  {
+   "name": "chuc_vu_4b4e2a",
+   "label": "Chức vụ",
+   "storageTier": "eav"
+  },
+  {
+   "name": "cong_ty_45e31b",
+   "label": "Công ty",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_diem_den_06097c",
+   "label": "Danh sách điểm đến",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_lo_hang_bb5463",
+   "label": "Danh sách lô hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_may_moc_b4b7e4",
+   "label": "Danh sách máy móc",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_may_moc_nhom_1a87de",
+   "label": "Danh Sách Máy Móc Nhóm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_may_moc_nhom_421f7a",
+   "label": " Danh Sách Máy Móc Nhóm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "danh_sach_van_chuyen_bae8ef",
+   "label": "Danh sách vận chuyển",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_nghi_thanh_toan_fffbc1",
+   "label": "Đề nghị thanh toán",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_xuat_bang_mau_ab19f0",
+   "label": "Đề xuất bảng màu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_xuat_dich_vu_chi_tiet_ee17e8",
+   "label": "Đề xuất dịch vụ chi tiết",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_xuat_dich_vu_edea34",
+   "label": "Đề xuất dịch vụ",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_xuat_phoi_8874aa",
+   "label": "Đề xuất phôi",
+   "storageTier": "eav"
+  },
+  {
+   "name": "de_xuat_phoi_chi_tiet_2bde7b",
+   "label": "Đề xuất phôi chi tiết",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dieu_khoan_thanh_toan_d3d7d0",
+   "label": "Điều Khoản Thanh Toán",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_dong_goi_552120",
+   "label": "Định mức đóng gói",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_dong_goi_e3de42",
+   "label": "Định mức đóng gói",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_go_van_33f30f",
+   "label": "Định Mức Gỗ Ván",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_go_van_ec64e2",
+   "label": "Định mức gỗ ván",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_ngu_kim_bbd060",
+   "label": "Định mức ngũ kim",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_ngu_kim_e1f5a3",
+   "label": "Định mức ngũ kim",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_son_2_b2c217",
+   "label": "Định mức sơn 2",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_son_3_47e97d",
+   "label": "Định mức sơn 3",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_son_9007fe",
+   "label": "Định mức sơn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_son_met_vuong_6086f0",
+   "label": "Định mức sơn / mét vuông",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_veneer_9d7808",
+   "label": "Định mức veneer",
+   "storageTier": "eav"
+  },
+  {
+   "name": "dinh_muc_veneer_c1996f",
+   "label": "Định mức veneer",
+   "storageTier": "eav"
+  },
+  {
+   "name": "don_dat_hang_2db5b6",
+   "label": "Đơn đặt hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "don_dat_hang_cff369",
+   "label": "Đơn đặt hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "don_hang_9833f5",
+   "label": "Đơn hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "don_hang_d1aadc",
+   "label": "Đơn Hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "don_hang_thay_the_483445",
+   "label": "Đơn Hàng Thay Thế",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ghi_chu_dinh_muc_go_van_e17de6",
+   "label": "Ghi chú định mức gỗ ván",
+   "storageTier": "eav"
+  },
+  {
+   "name": "gia_nguyen_vat_lieu_theo_nha_cung_cap_702f9d",
+   "label": "Giá Nguyên Vật Liệu Theo Nhà Cung Cấp",
+   "storageTier": "eav"
+  },
+  {
+   "name": "he_hang_45450b",
+   "label": "Hệ hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "hon_hop_son_42d66f",
+   "label": "Hỗn hợp sơn",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ket_qua_kinh_doanh_2e6970",
+   "label": "Kết quả kinh doanh",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ket_qua_kinh_doanh_tuan_2f25d0",
+   "label": "Kết quả kinh doanh tuần",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ket_qua_kinh_doanh_tuan_chi_phi_co_dinh_871aa0",
+   "label": "Kết Quả Kinh Doanh Tuần - Chi Phí Cố Định",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ket_qua_kinh_doanh_tuan_chi_phi_phoi_57ea54",
+   "label": "Kết Quả Kinh Doanh Tuần - Chi Phí Phôi",
+   "storageTier": "eav"
+  },
+  {
+   "name": "khach_hang",
+   "label": "Khách hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "khach_hang_192ce6",
+   "label": "Khách hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "khach_hang_gian_tiep_f9f1d7",
+   "label": "Khách Hàng Gián Tiếp",
+   "storageTier": "eav"
+  },
+  {
+   "name": "khu_vuc_a967e5",
+   "label": "Khu Vực",
+   "storageTier": "eav"
+  },
+  {
+   "name": "lenh_cap_phat_bf41f7",
+   "label": "Lệnh cấp phát",
+   "storageTier": "eav"
+  },
+  {
+   "name": "lenh_cap_phat_dau_7348f6",
+   "label": "Lệnh cấp phát đầu",
+   "storageTier": "eav"
+  },
+  {
+   "name": "loai_de_xuat_5795e1",
+   "label": "Loại Đề Xuất",
+   "storageTier": "eav"
+  },
+  {
+   "name": "loai_don_hang_2faefc",
+   "label": "Loại Đơn Hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "loai_giao_dich_520428",
+   "label": "Loại giao dịch",
+   "storageTier": "eav"
+  },
+  {
+   "name": "loai_nha_cung_cap_a74f4b",
+   "label": "Loại Nhà Cung Cấp",
+   "storageTier": "eav"
+  },
+  {
+   "name": "loai_san_pham_2d4dc3",
+   "label": "Loại sản phẩm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "muc_tieu_san_xuat_2_2b0ea7",
+   "label": "Mục Tiêu Sản Xuất 2",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ngan_hang_3c0de4",
+   "label": "Ngân hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nguoi_dung_8d24db",
+   "label": "Người dùng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nguoi_duyet_845d37",
+   "label": "Người Duyệt",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nguoi_duyet_bo_phan_2cc065",
+   "label": "Người Duyệt Bộ Phận",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nguyen_lieu_gva_bc8ebc",
+   "label": "Nguyên liệu gva",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nha_cung_cap_14c076",
+   "label": "Nhà Cung Cấp",
+   "storageTier": "eav"
+  },
+  {
+   "name": "nhom_chi_phi_53bc07",
+   "label": "Nhóm chi phí",
+   "storageTier": "table"
+  },
+  {
+   "name": "quy_tac_nguoi_dung_e9ed26",
+   "label": "Quy Tắc Người Dùng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "quy_trinh_san_pham_82b14d",
+   "label": "Quy trình sản phẩm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "san_pham_adf69e",
+   "label": "Sản phẩm",
+   "storageTier": "eav"
+  },
+  {
+   "name": "san_pham_carton_101ec3",
+   "label": "Sản phẩm carton",
+   "storageTier": "eav"
+  },
+  {
+   "name": "san_pham_nha_may_d17fa5",
+   "label": "Sản phẩm nhà máy",
+   "storageTier": "eav"
+  },
+  {
+   "name": "so_hieu_tai_khoan_11a2ab",
+   "label": "Sổ hiệu tài khoản",
+   "storageTier": "eav"
+  },
+  {
+   "name": "so_quy_tien_mat_28845a",
+   "label": "Số quỹ tiền mặt",
+   "storageTier": "eav"
+  },
+  {
+   "name": "tep_dinh_kem_de_nghi_thanh_toan_e8b4a0",
+   "label": "Tệp đính kèm đề nghị thanh toán",
+   "storageTier": "eav"
+  },
+  {
+   "name": "thong_ke_phoi_1f4884",
+   "label": "Thống Kê Phôi",
+   "storageTier": "eav"
+  },
+  {
+   "name": "ton_kho_tong_a8a9b5",
+   "label": "Tồn kho tổng",
+   "storageTier": "table"
+  },
+  {
+   "name": "tr_khach_hang",
+   "label": "Khách hàng",
+   "storageTier": "eav"
+  },
+  {
+   "name": "vat_lieu_khac_66260c",
+   "label": "Vật liệu khác",
+   "storageTier": "eav"
+  },
+  {
+   "name": "vat_lieu_khong_ma_95d473",
+   "label": "Vật liệu không mã",
+   "storageTier": "eav"
+  },
+  {
+   "name": "vat_tu_23307f",
+   "label": "Vật Tư",
+   "storageTier": "eav"
+  },
+  {
+   "name": "yeu_cau_xuat_chi_tiet_pallet_f80671",
+   "label": "Yêu cầu xuất chi tiết pallet",
+   "storageTier": "table"
+  },
+  {
+   "name": "yeu_cau_xuat_pallet_19ef4a",
+   "label": "Yêu cầu xuất pallet",
+   "storageTier": "eav"
+  }
+ ],
+ "keptCount": 116
+}

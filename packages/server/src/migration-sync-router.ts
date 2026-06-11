@@ -28,8 +28,12 @@ import YAML from "yaml";
 import { z } from "zod";
 import { decryptSecret } from "./crypto";
 import { db } from "./db";
-import { countDestActiveRows, runDeltaSyncRun, seedSyncTable } from "./migration-delta-sync";
-import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
+import {
+  countDestActiveRows,
+  enableModuleSyncForCompany,
+  runDeltaSyncRun,
+  seedSyncTable,
+} from "./migration-delta-sync";
 import { appendDecision, moduleNameSchema } from "./migration-router";
 import { rbacProcedure, router } from "./trpc";
 
@@ -245,97 +249,13 @@ export const migrationSyncRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Upsert module row.
-      const existingMod = await db
-        .select({ id: migrationSyncModules.id })
-        .from(migrationSyncModules)
-        .where(
-          and(
-            eq(migrationSyncModules.companyId, ctx.user.companyId),
-            eq(migrationSyncModules.connectionId, input.connectionId),
-            eq(migrationSyncModules.module, input.module),
-          ),
-        )
-        .limit(1);
-
-      let modId: string;
-      if (existingMod[0]) {
-        modId = existingMod[0].id;
-        await db
-          .update(migrationSyncModules)
-          .set({
-            enabled: true,
-            cronExpr: input.cronExpr,
-            createdBy: ctx.user.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(migrationSyncModules.id, modId));
-      } else {
-        const [ins] = await db
-          .insert(migrationSyncModules)
-          .values({
-            companyId: ctx.user.companyId,
-            connectionId: input.connectionId,
-            module: input.module,
-            enabled: true,
-            cronExpr: input.cronExpr,
-            createdBy: ctx.user.id,
-          })
-          .returning({ id: migrationSyncModules.id });
-        if (!ins)
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Tạo sync module thất bại.",
-          });
-        modId = ins.id;
+      // Logic chung với MCP /mcp/migration (enableModuleSyncForCompany).
+      try {
+        const r = await enableModuleSyncForCompany(ctx.user.companyId, ctx.user.id, input);
+        return { modId: r.modId, created: r.created };
+      } catch (e) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
       }
-
-      // Tạo rows migration_sync_tables (idempotent).
-      const created: string[] = [];
-      for (const tbl of input.tables) {
-        // Tìm entity tương ứng.
-        const entRow = await findMigratedEntityBySourceTable(db, ctx.user.companyId, tbl.tableName);
-        const entityId = entRow?.id ?? null;
-
-        const exists = await db
-          .select({ id: migrationSyncTables.id })
-          .from(migrationSyncTables)
-          .where(
-            and(
-              eq(migrationSyncTables.companyId, ctx.user.companyId),
-              eq(migrationSyncTables.connectionId, input.connectionId),
-              eq(migrationSyncTables.tableName, tbl.tableName),
-            ),
-          )
-          .limit(1);
-
-        if (!exists[0]) {
-          await db.insert(migrationSyncTables).values({
-            companyId: ctx.user.companyId,
-            connectionId: input.connectionId,
-            module: input.module,
-            tableName: tbl.tableName,
-            entityId,
-            pkColumn: tbl.pkColumn ?? null,
-            mode: tbl.mode,
-            enabled: true,
-          });
-          created.push(tbl.tableName);
-        }
-
-        // Đặt meta.sync.state='mirror' cho entity (merge jsonb — bài học #20).
-        if (entityId) {
-          await db
-            .update(entities)
-            .set({
-              meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || '{"sync":{"state":"mirror"}}'::jsonb`,
-              updatedAt: new Date(),
-            })
-            .where(eq(entities.id, entityId));
-        }
-      }
-
-      return { modId, created };
     }),
 
   /** Tắt sync cho 1 module (không xoá bảng sync_tables). */

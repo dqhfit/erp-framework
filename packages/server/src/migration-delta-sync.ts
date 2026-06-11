@@ -38,6 +38,7 @@ import {
   type SqlExecutor,
   updateRowInTable,
 } from "./migration-full-import";
+import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
 import { publish as publishWs } from "./ws-hub";
 
 /* ─── Types ─── */
@@ -862,4 +863,108 @@ export async function runDeltaSyncRun(opts: {
     tablesRun,
     error: runError,
   };
+}
+
+/* ─── Bật sync module (logic chung tRPC enableModuleSync + MCP) ─── */
+
+export interface EnableSyncInput {
+  connectionId: string;
+  module: string;
+  cronExpr?: string;
+  tables: Array<{ tableName: string; pkColumn?: string; mode?: "ct" | "rescan" | "manual" }>;
+}
+
+/** Upsert module row + per-table rows (idempotent), gắn entity theo
+ *  meta.source.mssqlTable, set meta.sync.state='mirror' (merge jsonb).
+ *  Dùng chung cho tRPC migrationSync.enableModuleSync và MCP /mcp/migration. */
+export async function enableModuleSyncForCompany(
+  companyId: string,
+  userId: string,
+  input: EnableSyncInput,
+): Promise<{ modId: string; created: string[]; linked: number; unlinked: string[] }> {
+  const cronExpr = input.cronExpr ?? "*/5 * * * *";
+
+  const existingMod = await db
+    .select({ id: migrationSyncModules.id })
+    .from(migrationSyncModules)
+    .where(
+      and(
+        eq(migrationSyncModules.companyId, companyId),
+        eq(migrationSyncModules.connectionId, input.connectionId),
+        eq(migrationSyncModules.module, input.module),
+      ),
+    )
+    .limit(1);
+
+  let modId: string;
+  if (existingMod[0]) {
+    modId = existingMod[0].id;
+    await db
+      .update(migrationSyncModules)
+      .set({ enabled: true, cronExpr, createdBy: userId, updatedAt: new Date() })
+      .where(eq(migrationSyncModules.id, modId));
+  } else {
+    const [ins] = await db
+      .insert(migrationSyncModules)
+      .values({
+        companyId,
+        connectionId: input.connectionId,
+        module: input.module,
+        enabled: true,
+        cronExpr,
+        createdBy: userId,
+      })
+      .returning({ id: migrationSyncModules.id });
+    if (!ins) throw new Error("Tao sync module that bai.");
+    modId = ins.id;
+  }
+
+  const created: string[] = [];
+  const unlinked: string[] = [];
+  let linked = 0;
+  for (const tbl of input.tables) {
+    const entRow = await findMigratedEntityBySourceTable(db, companyId, tbl.tableName);
+    const entityId = entRow?.id ?? null;
+    if (entityId) linked += 1;
+    else unlinked.push(tbl.tableName);
+
+    const exists = await db
+      .select({ id: migrationSyncTables.id })
+      .from(migrationSyncTables)
+      .where(
+        and(
+          eq(migrationSyncTables.companyId, companyId),
+          eq(migrationSyncTables.connectionId, input.connectionId),
+          eq(migrationSyncTables.tableName, tbl.tableName),
+        ),
+      )
+      .limit(1);
+
+    if (!exists[0]) {
+      await db.insert(migrationSyncTables).values({
+        companyId,
+        connectionId: input.connectionId,
+        module: input.module,
+        tableName: tbl.tableName,
+        entityId,
+        pkColumn: tbl.pkColumn ?? null,
+        mode: tbl.mode ?? "ct",
+        enabled: true,
+      });
+      created.push(tbl.tableName);
+    }
+
+    // meta.sync.state='mirror' — merge jsonb (bai hoc #20), KHONG ghi de meta.
+    if (entityId) {
+      await db
+        .update(entities)
+        .set({
+          meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || '{"sync":{"state":"mirror"}}'::jsonb`,
+          updatedAt: new Date(),
+        })
+        .where(eq(entities.id, entityId));
+    }
+  }
+
+  return { modId, created, linked, unlinked };
 }

@@ -29,6 +29,7 @@ import { authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
 import { assertIdent, type EntityStorage } from "./entity-table-ddl";
+import { enableModuleSyncForCompany } from "./migration-delta-sync";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
 import { enqueueMigrationJob } from "./migration-worker";
 import { isHybridTablesEnabled } from "./record-store";
@@ -281,6 +282,45 @@ const TOOLS: ToolDef[] = [
     inputSchema: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "migration_enable_sync",
+    description:
+      "BẬT delta-sync cho 1 module (nhóm bảng): tạo module row (cron) + đăng ký từng bảng " +
+      "với mode ct|rescan|manual. mode=rescan KHÔNG cần Change Tracking trên MSSQL (chỉ đọc, " +
+      "quét toàn bảng so diff mỗi chu kỳ — nặng với bảng lớn, đặt cron thưa). " +
+      "Tự gắn entity theo meta.source.mssqlTable + set meta.sync.state='mirror' " +
+      "(chặn ghi từ ERP khi chạy song song). Idempotent.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        connectionId: { type: "string", description: "UUID kết nối MSSQL" },
+        module: {
+          type: "string",
+          description: "Tên nhóm sync, vd 'dqhf_core' / 'dqhf_heavy'",
+        },
+        cronExpr: {
+          type: "string",
+          description: "Cron chu kỳ sync (mặc định */5 * * * *)",
+        },
+        tables: {
+          type: "array",
+          minItems: 1,
+          maxItems: 200,
+          items: {
+            type: "object",
+            properties: {
+              tableName: { type: "string", description: "vd 'dbo.tr_sanpham'" },
+              pkColumn: { type: "string", description: "Cột PK (rescan bắt buộc cần)" },
+              mode: { type: "string", enum: ["ct", "rescan", "manual"] },
+            },
+            required: ["tableName"],
+          },
+        },
+      },
+      required: ["connectionId", "module", "tables"],
     },
   },
   {
@@ -827,6 +867,43 @@ async function callMigrationTool(
         }
       }
       return { results, renamed: results.filter((r) => r.status === "renamed").length };
+    }
+
+    /* ── migration_enable_sync (apply) ──────────────────────── */
+    case "migration_enable_sync": {
+      if (!apiKeyCreatedBy) {
+        throw new McpError(
+          "API key không có người tạo (created_by null) — không xác định được createdBy.",
+          -32603,
+        );
+      }
+      const connectionId = String(args.connectionId ?? "");
+      const module = String(args.module ?? "");
+      if (!connectionId || !module) throw new McpError("connectionId + module bắt buộc");
+      if (!/^[a-z][a-z0-9_]*$/.test(module)) {
+        throw new McpError("module sai định dạng (^[a-z][a-z0-9_]*$)");
+      }
+      const rawTables = Array.isArray(args.tables) ? args.tables : [];
+      if (rawTables.length === 0) throw new McpError("tables bắt buộc (>=1)");
+      if (rawTables.length > 200) throw new McpError("Tối đa 200 bảng mỗi module");
+      const tables = rawTables.map((t) => {
+        const o = asObj(t);
+        const mode = ["ct", "rescan", "manual"].includes(String(o.mode))
+          ? (String(o.mode) as "ct" | "rescan" | "manual")
+          : ("ct" as const);
+        return {
+          tableName: String(o.tableName ?? ""),
+          pkColumn: o.pkColumn ? String(o.pkColumn) : undefined,
+          mode,
+        };
+      });
+      const cronExpr = args.cronExpr ? String(args.cronExpr) : undefined;
+      return enableModuleSyncForCompany(companyId, apiKeyCreatedBy, {
+        connectionId,
+        module,
+        cronExpr,
+        tables,
+      });
     }
 
     /* ── migration_start_full_import (apply) ────────────────── */

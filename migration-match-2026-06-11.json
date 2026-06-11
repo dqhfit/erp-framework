@@ -1,0 +1,464 @@
+{
+ "matched": {
+  "bang_gia_cap_do_son_f75b17": {
+   "table": "dbo.tr_baogia_levelson",
+   "score": 1.0
+  },
+  "bang_mau_3a0aa8": {
+   "table": "dbo.tr_color",
+   "score": 1.0
+  },
+  "bang_mau_87a573": {
+   "table": "dbo.tr_bangmau",
+   "score": 1.0
+  },
+  "bang_mau_bao_cao_lua_chon_f871ae": {
+   "table": "dbo.tr_bangmau_baocao_luachon",
+   "score": 1.0
+  },
+  "ban_ve_394e38": {
+   "table": "dbo.tr_banve",
+   "score": 1.0
+  },
+  "ban_ve_65a3a7": {
+   "table": "dbo.mes_banve",
+   "score": 1.0
+  },
+  "ban_ve_ai_5c5bb9": {
+   "table": "dbo.tr_banve_ai",
+   "score": 1.0
+  },
+  "bao_cao_bang_mau_c43799": {
+   "table": "dbo.tr_bangmau_baocao_duyet",
+   "score": 1.0
+  },
+  "bao_cao_cuoi_b7bb3f": {
+   "table": "dbo.tr_baocao_final",
+   "score": 1.0
+  },
+  "bao_cao_cuoi_hinh_anh_56a7a3": {
+   "table": "dbo.tr_baocao_final_hinhanh",
+   "score": 1.0
+  },
+  "bao_cao_hang_loi_b2965b": {
+   "table": "dbo.tr_baocao_hangloi",
+   "score": 1.0
+  },
+  "bao_cao_muc_kiem_tra_7cb06f": {
+   "table": "dbo.tr_baocao_final_muckiemtra",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_18eecc": {
+   "table": "dbo.tr_baogia_chiphi",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_khac_1126f3": {
+   "table": "dbo.tr_baogia_other",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_khac_174196": {
+   "table": "dbo.tr_baogia_chiphi_other",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_nguyen_lieu_be3928": {
+   "table": "dbo.tr_baogia_chiphi_nguyenlieu",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_nhan_cong_f9dbe6": {
+   "table": "dbo.tr_baogia_chiphi_nhancong",
+   "score": 1.0
+  },
+  "bao_gia_chi_phi_veneer_54aad6": {
+   "table": "dbo.tr_baogia_chiphi_veneer",
+   "score": 1.0
+  },
+  "bao_gia_danh_sach_2704d1": {
+   "table": "dbo.tr_baogia2_danhsach",
+   "score": 1.0
+  },
+  "bao_gia_dong_goi_24683c": {
+   "table": "dbo.tr_baogia_donggoi",
+   "score": 1.0
+  },
+  "bao_gia_go_van_4fed4e": {
+   "table": "dbo.tr_baogia_govan",
+   "score": 1.0
+  },
+  "bao_gia_go_van_gia_cong_320d99": {
+   "table": "dbo.tr_baogia_govan_giacong",
+   "score": 1.0
+  },
+  "bao_gia_ngu_kim_c0f461": {
+   "table": "dbo.tr_baogia_ngukim",
+   "score": 1.0
+  },
+  "bao_gia_nhan_cong_75aef5": {
+   "table": "dbo.tr_baogia_nhancong",
+   "score": 1.0
+  },
+  "bao_gia_son_de64b7": {
+   "table": "dbo.tr_baogia_son",
+   "score": 1.0
+  },
+  "bao_gia_thanh_pham_618b4c": {
+   "table": "dbo.tr_baogia_thanhpham",
+   "score": 1.0
+  },
+  "bao_gia_tong_910ee4": {
+   "table": "dbo.tr_baogia_summary",
+   "score": 1.0
+  },
+  "bo_phan_a91efd": {
+   "table": "dbo.tr_bophan",
+   "score": 1.0
+  },
+  "chi_phi_bo_phan_dffdd6": {
+   "table": "dbo.kt_chiphi_bophan",
+   "score": 1.0
+  },
+  "chi_phi_bo_phan_gian_tiep_0455f8": {
+   "table": "dbo.kt_chiphi_bophan_giantiep",
+   "score": 1.0
+  },
+  "chi_phi_d09fa2": {
+   "table": "dbo.kt_chiphi",
+   "score": 1.0
+  },
+  "chi_phi_kinh_doanh_fcec51": {
+   "table": "dbo.kt_chiphi_kinhdoanh",
+   "score": 1.0
+  },
+  "chi_tiet_de_xuat_bang_mau_874a3d": {
+   "table": "dbo.tr_dexuat_bangmau_chitiet",
+   "score": 1.0
+  },
+  "chi_tiet_don_dat_hang_05a75a": {
+   "table": "dbo.tr_dondathang_chitiet",
+   "score": 1.0
+  },
+  "chi_tiet_don_hang_e43806": {
+   "table": "dbo.tr_order_detail",
+   "score": 1.0
+  },
+  "chi_tiet_don_hang_thay_the_bba28c": {
+   "table": "dbo.tr_order_replacement_detail",
+   "score": 1.0
+  },
+  "chi_tiet_hon_hop_son_906e6b": {
+   "table": "dbo.tr_honhop_son_chitiet",
+   "score": 1.0
+  },
+  "chi_tiet_muc_tieu_san_xuat_0eee50": {
+   "table": "dbo.tr_muctieu_sanxuat2_chitiet",
+   "score": 1.0
+  },
+  "chi_tiet_pallet_3642de": {
+   "table": "dbo.dqt_pallet_chitiet",
+   "score": 1.0
+  },
+  "chi_tiet_phieu_nhap_a58203": {
+   "table": "dbo.tr_ctphieunhap",
+   "score": 1.0
+  },
+  "chi_tiet_phieu_xuat_f6fdac": {
+   "table": "dbo.tr_ctphieuxuat",
+   "score": 1.0
+  },
+  "chuc_vu_4b4e2a": {
+   "table": "dbo.tr_chucvu",
+   "score": 1.0
+  },
+  "cong_ty_45e31b": {
+   "table": "dbo.hr_congty",
+   "score": 1.0
+  },
+  "danh_sach_diem_den_06097c": {
+   "table": "dbo.tr_list_destination",
+   "score": 1.0
+  },
+  "danh_sach_lo_hang_bb5463": {
+   "table": "dbo.tr_list_shipment",
+   "score": 1.0
+  },
+  "danh_sach_may_moc_b4b7e4": {
+   "table": "dbo.mes_danhsach_maymoc",
+   "score": 1.0
+  },
+  "danh_sach_may_moc_nhom_421f7a": {
+   "table": "dbo.mes_danhsach_maymoc_group",
+   "score": 1.0
+  },
+  "danh_sach_van_chuyen_bae8ef": {
+   "table": "dbo.tr_list_shipping",
+   "score": 1.0
+  },
+  "de_nghi_thanh_toan_fffbc1": {
+   "table": "dbo.tr_denghi_thanhtoan",
+   "score": 1.0
+  },
+  "de_xuat_bang_mau_ab19f0": {
+   "table": "dbo.tr_dexuat_bangmau",
+   "score": 1.0
+  },
+  "de_xuat_dich_vu_chi_tiet_ee17e8": {
+   "table": "dbo.tr_dexuatdichvu_chitiet",
+   "score": 1.0
+  },
+  "de_xuat_dich_vu_edea34": {
+   "table": "dbo.tr_dexuatdichvu",
+   "score": 1.0
+  },
+  "de_xuat_phoi_8874aa": {
+   "table": "dbo.tr_dexuat_phoi",
+   "score": 1.0
+  },
+  "de_xuat_phoi_chi_tiet_2bde7b": {
+   "table": "dbo.tr_dexuat_phoi_chitiet",
+   "score": 1.0
+  },
+  "dieu_khoan_thanh_toan_d3d7d0": {
+   "table": "dbo.tr_list_paymentterm",
+   "score": 1.0
+  },
+  "dinh_muc_dong_goi_552120": {
+   "table": "dbo.tr_dinhmuc_donggoi",
+   "score": 1.0
+  },
+  "dinh_muc_dong_goi_e3de42": {
+   "table": "dbo.mes_dinhmuc_donggoi",
+   "score": 1.0
+  },
+  "dinh_muc_go_van_33f30f": {
+   "table": "dbo.tr_dinhmuc_govan",
+   "score": 1.0
+  },
+  "dinh_muc_go_van_ec64e2": {
+   "table": "dbo.mes_dinhmuc_govan",
+   "score": 1.0
+  },
+  "dinh_muc_ngu_kim_bbd060": {
+   "table": "dbo.mes_dinhmuc_ngukim",
+   "score": 1.0
+  },
+  "dinh_muc_ngu_kim_e1f5a3": {
+   "table": "dbo.tr_dinhmuc_ngukim",
+   "score": 1.0
+  },
+  "dinh_muc_son_2_b2c217": {
+   "table": "dbo.tr_dinhmuc_son2",
+   "score": 1.0
+  },
+  "dinh_muc_son_3_47e97d": {
+   "table": "dbo.tr_dinhmuc_son3",
+   "score": 1.0
+  },
+  "dinh_muc_son_9007fe": {
+   "table": "dbo.mes_dinhmuc_son",
+   "score": 1.0
+  },
+  "dinh_muc_son_met_vuong_6086f0": {
+   "table": "dbo.tr_dinhmuc_son3_metvuong",
+   "score": 1.0
+  },
+  "dinh_muc_veneer_9d7808": {
+   "table": "dbo.mes_dinhmuc_veneer",
+   "score": 1.0
+  },
+  "dinh_muc_veneer_c1996f": {
+   "table": "dbo.tr_dinhmuc_veneer",
+   "score": 1.0
+  },
+  "don_dat_hang_2db5b6": {
+   "table": "dbo.tr_dondathang",
+   "score": 1.0
+  },
+  "don_dat_hang_cff369": {
+   "table": "dbo.tr_dondathang",
+   "score": 1.0
+  },
+  "don_hang_9833f5": {
+   "table": "dbo.tr_order",
+   "score": 1.0
+  },
+  "don_hang_d1aadc": {
+   "table": "dbo.tr_order",
+   "score": 0.75
+  },
+  "don_hang_thay_the_483445": {
+   "table": "dbo.tr_order_replacement",
+   "score": 1.0
+  },
+  "ghi_chu_dinh_muc_go_van_e17de6": {
+   "table": "dbo.mes_dinhmuc_govan_ghichu",
+   "score": 1.0
+  },
+  "gia_nguyen_vat_lieu_theo_nha_cung_cap_702f9d": {
+   "table": "dbo.tr_material_ncc",
+   "score": 1.0
+  },
+  "he_hang_45450b": {
+   "table": "dbo.tr_hehang",
+   "score": 1.0
+  },
+  "hon_hop_son_42d66f": {
+   "table": "dbo.tr_honhop_son",
+   "score": 1.0
+  },
+  "ket_qua_kinh_doanh_2e6970": {
+   "table": "dbo.kt_ketqua_kinhdoanh",
+   "score": 1.0
+  },
+  "ket_qua_kinh_doanh_tuan_2f25d0": {
+   "table": "dbo.kt_ketqua_kinhdoanh_tuan",
+   "score": 1.0
+  },
+  "ket_qua_kinh_doanh_tuan_chi_phi_co_dinh_871aa0": {
+   "table": "dbo.kt_ketqua_kinhdoanh_tuan_cpcd",
+   "score": 1.0
+  },
+  "ket_qua_kinh_doanh_tuan_chi_phi_phoi_57ea54": {
+   "table": "dbo.kt_ketqua_kinhdoanh_tuan_cpphoi",
+   "score": 1.0
+  },
+  "khach_hang_192ce6": {
+   "table": "dbo.tr_khachhang",
+   "score": 1.0
+  },
+  "khach_hang_gian_tiep_f9f1d7": {
+   "table": "dbo.tr_khachhang_giantiep",
+   "score": 1.0
+  },
+  "khu_vuc_a967e5": {
+   "table": "dbo.tr_khuvuc",
+   "score": 1.0
+  },
+  "lenh_cap_phat_bf41f7": {
+   "table": "dbo.tr_lenhcapphat",
+   "score": 1.0
+  },
+  "lenh_cap_phat_dau_7348f6": {
+   "table": "dbo.tr_lenhcapphat_head",
+   "score": 1.0
+  },
+  "loai_de_xuat_5795e1": {
+   "table": "dbo.tr_loai_dexuat",
+   "score": 1.0
+  },
+  "loai_don_hang_2faefc": {
+   "table": "dbo.tr_loaidh",
+   "score": 1.0
+  },
+  "loai_giao_dich_520428": {
+   "table": "dbo.kt_loai_giaodich",
+   "score": 1.0
+  },
+  "loai_nha_cung_cap_a74f4b": {
+   "table": "dbo.tr_loaincc",
+   "score": 1.0
+  },
+  "loai_san_pham_2d4dc3": {
+   "table": "dbo.tr_loaisp",
+   "score": 1.0
+  },
+  "muc_tieu_san_xuat_2_2b0ea7": {
+   "table": "dbo.tr_muctieu_sanxuat2",
+   "score": 1.0
+  },
+  "ngan_hang_3c0de4": {
+   "table": "dbo.tr_nganhang",
+   "score": 1.0
+  },
+  "nguoi_dung_8d24db": {
+   "table": "dbo.SYS_USER",
+   "score": 1.0
+  },
+  "nguoi_duyet_845d37": {
+   "table": "dbo.tr_nguoiduyet",
+   "score": 1.0
+  },
+  "nguoi_duyet_bo_phan_2cc065": {
+   "table": "dbo.tr_nguoiduyet_bophan",
+   "score": 1.0
+  },
+  "nguyen_lieu_gva_bc8ebc": {
+   "table": "dbo.tr_nguyenlieu_gva",
+   "score": 1.0
+  },
+  "nha_cung_cap_14c076": {
+   "table": "dbo.tr_nhacc",
+   "score": 1.0
+  },
+  "nhom_chi_phi_53bc07": {
+   "table": "dbo.kt_nhom_chiphi",
+   "score": 1.0
+  },
+  "quy_tac_nguoi_dung_e9ed26": {
+   "table": "dbo.SYS_USER_RULE",
+   "score": 1.0
+  },
+  "quy_trinh_san_pham_82b14d": {
+   "table": "dbo.mes_quytrinh_sanpham",
+   "score": 1.0
+  },
+  "san_pham_adf69e": {
+   "table": "dbo.tr_sanpham",
+   "score": 1.0
+  },
+  "san_pham_carton_101ec3": {
+   "table": "dbo.tr_sanpham_carton",
+   "score": 1.0
+  },
+  "san_pham_nha_may_d17fa5": {
+   "table": "dbo.tr_sanpham_nhamay",
+   "score": 1.0
+  },
+  "so_hieu_tai_khoan_11a2ab": {
+   "table": "dbo.kt_sohieutaikhoan",
+   "score": 1.0
+  },
+  "so_quy_tien_mat_28845a": {
+   "table": "dbo.kt_soquy_tienmat",
+   "score": 1.0
+  },
+  "tep_dinh_kem_de_nghi_thanh_toan_e8b4a0": {
+   "table": "dbo.tr_denghi_thanhtoan_file",
+   "score": 1.0
+  },
+  "thong_ke_phoi_1f4884": {
+   "table": "dbo.dqt_thongke_phoi",
+   "score": 1.0
+  },
+  "ton_kho_tong_a8a9b5": {
+   "table": "dbo.tr_tonkho_sum",
+   "score": 1.0
+  },
+  "tr_khach_hang": {
+   "table": "dbo.tr_khachhang",
+   "score": 1.0
+  },
+  "vat_lieu_khac_66260c": {
+   "table": "dbo.tr_material_other",
+   "score": 1.0
+  },
+  "vat_lieu_khong_ma_95d473": {
+   "table": "dbo.tr_material_nocode",
+   "score": 1.0
+  },
+  "vat_tu_23307f": {
+   "table": "dbo.tr_material",
+   "score": 1.0
+  },
+  "yeu_cau_xuat_chi_tiet_pallet_f80671": {
+   "table": "dbo.dqt_pallet_yeucauxuat_chitiet",
+   "score": 1.0
+  },
+  "yeu_cau_xuat_pallet_19ef4a": {
+   "table": "dbo.dqt_pallet_yeucauxuat",
+   "score": 1.0
+  }
+ },
+ "unmatched": [
+  "danh_sach_may_moc_nhom_1a87de",
+  "khach_hang"
+ ]
+}
