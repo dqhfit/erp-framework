@@ -13,8 +13,16 @@
     "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
     "title": "Lệnh cấp phát gỗ ván",
     "fields": [
+     "id",
      "maddh",
-     "nhom"
+     "tenddh",
+     "mancc",
+     "tenncc",
+     "loaidonhang",
+     "loaiddh",
+     "loaithanhtoan",
+     "ngaydat",
+     "ngaygiao"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25

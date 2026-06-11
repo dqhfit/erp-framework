@@ -14,7 +14,15 @@
     "title": "Danh sách phiếu xuất gỗ ván",
     "fields": [
      "id",
-     "ngayxuat"
+     "sopx",
+     "lenhcapphat",
+     "makho",
+     "nguoinhan",
+     "ghichu",
+     "nguoitao",
+     "ngaytao",
+     "active",
+     "loaiphieu"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25

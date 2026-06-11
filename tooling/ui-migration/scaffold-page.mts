@@ -25,6 +25,7 @@ const ERP_ROOT = "D:/code/cowok/Apps/erp-framework";
 const MCP_URL = "https://erp.vfmgroup.vn/mcp/migration";
 const moduleName = process.argv[2];
 const APPLY = process.argv.includes("--apply");
+const OVERWRITE = process.argv.includes("--overwrite");
 const KEY = process.env.MCP_KEY ?? "";
 if (!moduleName) {
   console.error("Cách dùng: MCP_KEY=sk_x npx tsx scaffold-page.mts <module> [--apply]");
@@ -127,10 +128,51 @@ function buildPage(
   const procs = [...new Set(entries.flatMap((e) => e.procs ?? []))];
   const todoHtml = `<div style="font:12px sans-serif;color:#888;padding:8px">
 <b>Scaffold từ DQHF</b> — form gốc: ${cluster.forms.join(", ")}<br/>
-Nút cần gắn action: ${buttons.map((b) => b.caption).join(" · ") || "(không)"}<br/>
+Nút WinForms gốc: ${buttons.map((b) => b.caption).join(" · ") || "(không)"}<br/>
+Nút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>
 Proc cần port: ${procs.join(", ") || "(không)"}<br/>
 Entity phụ (lookup/filter cân nhắc thêm): ${cluster.entities.filter((e) => e !== primary).join(", ") || "(không)"}
 </div>`;
+
+  // Quy chuẩn giao diện theo DQHF: 1 LIST chính full-width + dải nút chức
+  // năng trên header (embeddedActions). Thêm = popup form; Xem = popup
+  // detail record đang chọn; Sửa = inline (editable). Xoá/In/Xuất → TODO.
+  const embeddedActions: Array<Record<string, unknown>> = [
+    {
+      id: "act_add",
+      label: "Thêm",
+      icon: "Plus",
+      variant: "primary",
+      steps: [
+        {
+          id: "s_add",
+          kind: "open-popup",
+          popupMode: "form",
+          entity: primaryId,
+          title: `Thêm — ${title}`,
+          saveOutputTo: "newRec",
+        },
+      ],
+    },
+    {
+      id: "act_view",
+      label: "Xem chi tiết",
+      icon: "Eye",
+      variant: "default",
+      hint: "Chọn 1 dòng trong danh sách rồi bấm",
+      steps: [
+        {
+          id: "s_view",
+          kind: "open-popup",
+          popupMode: "detail",
+          entity: primaryId,
+          title,
+          recordIdBinding: { source: "state", key: "sel" },
+          saveOutputTo: "_viewed",
+        },
+      ],
+    },
+  ];
 
   const content: Array<Record<string, unknown>> = [
     {
@@ -139,34 +181,18 @@ Entity phụ (lookup/filter cân nhắc thêm): ${cluster.entities.filter((e) =>
       x: 0,
       y: 0,
       w: 12,
-      h: 5,
+      h: 9,
       config: {
         entity: primaryId,
         title,
         fields: listFields,
         selectionStateKey: "sel",
         pageSize: 25,
+        editable: true, // Sửa = inline trực tiếp trên lưới (double-click cell)
+        embeddedActions,
       },
     },
-    {
-      id: "w_detail",
-      kind: "detail",
-      x: 0,
-      y: 5,
-      w: 6,
-      h: 5,
-      config: { entity: primaryId, recordIdFromState: "sel", title: "Chi tiết" },
-    },
-    {
-      id: "w_form",
-      kind: "form",
-      x: 6,
-      y: 5,
-      w: 6,
-      h: 5,
-      config: { entity: primaryId, title: "Thêm mới" },
-    },
-    { id: "w_todo", kind: "html", x: 0, y: 10, w: 12, h: 2, config: { html: todoHtml } },
+    { id: "w_todo", kind: "html", x: 0, y: 9, w: 12, h: 2, config: { html: todoHtml } },
   ];
 
   return { name: `dq_${moduleName}_${snake(rep.form)}`.slice(0, 60), label: title, content };
@@ -194,8 +220,10 @@ const main = async () => {
     }
     writeFileSync(join(outDir, `${page.name}.json`), JSON.stringify(page, null, 1), "utf8");
     if (APPLY) {
-      const r = (await mcp("page_create_draft", page)) as { status: string };
-      if (r.status === "created") created++;
+      const r = (await mcp("page_create_draft", { ...page, overwrite: OVERWRITE })) as {
+        status: string;
+      };
+      if (r.status === "created" || r.status === "overwritten") created++;
       else skipped++;
       console.log(`  ${r.status === "created" ? "✓" : "≈"} ${page.name} — ${page.label}`);
     } else {

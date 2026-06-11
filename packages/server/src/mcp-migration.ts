@@ -304,6 +304,11 @@ const TOOLS: ToolDef[] = [
           description: "PageComponent[] — {id,kind,x,y,w,h,config}",
           items: { type: "object" },
         },
+        overwrite: {
+          type: "boolean",
+          description:
+            "true = ghi đè nếu page tồn tại VÀ còn draft (published=false). Page đã publish không bao giờ bị đè.",
+        },
       },
       required: ["name", "label", "content"],
     },
