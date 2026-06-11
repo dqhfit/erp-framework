@@ -28,7 +28,7 @@ import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
-import type { EntityStorage } from "./entity-table-ddl";
+import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
 import { enqueueMigrationJob } from "./migration-worker";
 import { isHybridTablesEnabled } from "./record-store";
@@ -671,8 +671,10 @@ async function callMigrationTool(
         let recordCount = 0;
         try {
           if (tier === "table" && meta.storage?.tableName) {
+            // assertIdent: tableName từ meta jsonb — validate trước khi sql.raw
+            // (cùng validator với dropTableForEntity, chống injection nếu meta hỏng).
             const r = (await db.execute(
-              sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${meta.storage.tableName}"`)} WHERE company_id = ${companyId}::uuid`,
+              sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${assertIdent(meta.storage.tableName)}"`)} WHERE company_id = ${companyId}::uuid`,
             )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
             const list = Array.isArray(r) ? r : (r.rows ?? []);
             recordCount = Number(list[0]?.n ?? 0);
