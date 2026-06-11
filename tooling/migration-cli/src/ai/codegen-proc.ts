@@ -103,7 +103,7 @@ function buildMappingDoc(m: Manifest, proc: ManifestProc): string {
         .join("\n");
       const header =
         tier === "table"
-          ? `### Bảng MSSQL \`${t.name}\` → **BẢNG THẬT PostgreSQL \`${phys}\`** (cột typed cùng tên field — query trực tiếp, KHÔNG dùng entity_records)\n| Cột MSSQL | Cột PG | Kiểu |`
+          ? `### Bảng MSSQL \`${t.name}\` → **BẢNG THẬT PostgreSQL \`${phys}\`** (⚠ cột vật lý KHÔNG trùng tên field: cột prefix f_ hoặc nằm trong ext jsonb — BẮT BUỘC truy cập qua helper procTable với TÊN FIELD ở cột 2, case-sensitive)\n| Cột MSSQL | Field entity (dùng với procTable) | Kiểu |`
           : `### Bảng MSSQL \`${t.name}\` → entity \`${entity}\` (EAV)\n| Cột MSSQL | Field entity (data->>) | Kiểu |`;
       return `${header}\n|---|---|---|\n${rows}`;
     })
@@ -207,7 +207,12 @@ export async function runCodegenProc(
   const moduleDir = resolve(repoRoot, "packages", "plugins", `module-${m.module}`);
   const fileName = proc.targetFile ?? `${procShortName(proc.name).toLowerCase()}.ts`;
   const targetPath = resolve(moduleDir, fileName);
-  const exampleRel = "packages/plugins/module-sales/lay_cap_phat_vat_tu_govan_theo_sp.ts";
+  // Mẫu bảng thật (procTable) + mẫu EAV — agent đọc theo tier trong mapping.
+  const exampleRel = [
+    "packages/plugins/module-ui_procs/tr_dondathang_insert2.ts (bảng thật — INSERT qua procTable)",
+    "packages/plugins/module-ui_procs/tr_order_islock.ts (bảng thật — SELECT + field ext)",
+    "packages/plugins/module-sales/lay_cap_phat_vat_tu_govan_theo_sp.ts (EAV)",
+  ].join("\n");
 
   const typecheckPrefix = process.env.MIGRATION_CODEGEN_TYPECHECK?.trim() || null;
   const mapping = buildMappingDoc(m, proc);

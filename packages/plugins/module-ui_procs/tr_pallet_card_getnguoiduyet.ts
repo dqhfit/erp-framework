@@ -1,5 +1,22 @@
-import { sql } from "drizzle-orm";
+/* Port TR_PALLET_CARD_GETNGUOIDUYET — lấy thông tin người duyệt/người tạo
+   + chi tiết hàng lỗi của thẻ pallet (chỉ áp dụng card_type = 'D').
+   Nguồn: migration-plan/ui/proc-bodies/tr_pallet_card_getnguoiduyet.sql
+
+   Đọc qua procTable (mapping cột vật lý từ meta.storage lúc runtime):
+   - tr_pallet_card      → card_type theo card_no (CÓ trên prod).
+   - tr_baocao_hangloi   → nguoiduyet/nguoitao/tinhtrang/nguyennhan/
+                           huongxuly/bophanlamloi theo card_no (CÓ field-map).
+   - trtb_m_location     → n_location theo c_location = bophanlamloi,
+                           bỏ chuỗi "[Hoàn thành]" (CÓ field-map).
+   - tr_tieuchuan_nguyennhan CHƯA migrate — proc gốc LEFT JOIN, không match
+     thì rơi về nguyennhan (nhánh COALESCE 'Khác'); ở đây thử lookup, lỗi
+     entity không tồn tại thì fallback nguyennhan y hệt nhánh đó.
+   - tr_hinhanh + SYS_USER CHƯA migrate (SYS_USER.UserName không map sang
+     bảng users framework) → tennguoiduyet/tennguoitao/chuky_* tạm trả null;
+     bổ sung khi 2 bảng vào scope migrate. */
 import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function trPalletCardGetnguoiduyet(
   db: DB,
@@ -24,23 +41,17 @@ export async function trPalletCardGetnguoiduyet(
 > {
   if (!args.card_no) throw new Error("Thiếu card_no");
 
-  // Bước 1: lấy card_type từ bảng thật tr_pallet_card
-  type CardRow = { card_type: string | null };
-  const cardRows = await db.execute<CardRow>(sql`
-    SELECT card_type
-    FROM tr_pallet_card
-    WHERE company_id = ${companyId}
-      AND card_no   = ${args.card_no}
-      AND deleted_at IS NULL
-    LIMIT 1
-  `);
+  const asText = (v: unknown): string | null => (v == null ? null : String(v));
 
-  const card = (cardRows as unknown as CardRow[])[0];
-  if (!card) return [];
+  // Bước 1: lấy card_type từ tr_pallet_card theo card_no
+  const card = await procTable(db, companyId, "tr_pallet_card");
+  const [cardRow] = await card.listWhere(sql`${card.text("card_no")} = ${args.card_no}`, {
+    limit: 1,
+  });
+  const cardType = asText(cardRow?.card_type);
 
-  const cardType = card.card_type;
-
-  // card_type != 'D': proc gốc gán tennguoiduyet = NULL, trả ngay
+  // card_type != 'D' (kể cả không tìm thấy thẻ): proc gốc chỉ set
+  // tennguoiduyet = NULL rồi SELECT các biến chưa gán → toàn null.
   if (cardType !== "D") {
     return [
       {
@@ -59,39 +70,60 @@ export async function trPalletCardGetnguoiduyet(
     ];
   }
 
-  // Bước 2 (card_type = 'D'): lấy thông tin hàng lỗi + chữ ký người duyệt/người tạo
-  //
-  // TODO: tr_baocao_hangloi CHƯA có trong mapping bảng.
-  //       Proc gốc: SELECT nguoiduyet, nguoitao, tinhtrang, nguyennhan, huongxuly, bophanlamloi
-  //                 FROM tr_baocao_hangloi WHERE card_no = @card_no
-  //       JOIN tr_tieuchuan_nguyennhan B ON nguyennhanloi = B.Id
-  //            → IIF(COALESCE(B.Name,'Khác')='Khác', nguyennhan, B.Name) AS nguyennhanloi
-  //       JOIN trtb_m_location loc1 ON bophanlamloi = loc1.c_location
-  //            → REPLACE(loc1.n_location, '[Hoàn thành]', '') AS bophanlamloi
-  //
-  // TODO: tr_hinhanh + SYS_USER CHƯA có trong mapping.
-  //       Proc gốc lấy FullName + hinhanh (varbinary/ảnh chữ ký) cho cả nguoiduyet lẫn nguoitao:
-  //         SELECT B.FullName, A.hinhanh
-  //         FROM tr_hinhanh A RIGHT JOIN SYS_USER B ON A.name = B.UserName
-  //         WHERE A.phanloai = 'USER' AND B.UserName = @nguoiduyet1 / @nguoitao1
-  //       Trong PG: SYS_USER tương ứng bảng users (cột full_name/username), tr_hinhanh chưa rõ.
-  //       chuky_nguoiduyet/chuky_nguoitao là binary (ảnh) → kiểu PG bytea hoặc text base64.
-  //
-  // Khi mapping được bổ sung, thay các null dưới đây bằng query thực tế.
+  // Bước 2 (card_type = 'D'): báo cáo hàng lỗi theo card_no
+  const hangloi = await procTable(db, companyId, "tr_baocao_hangloi");
+  const [loi] = await hangloi.listWhere(sql`${hangloi.text("card_no")} = ${args.card_no}`, {
+    limit: 1,
+  });
+
+  // 2a. nguyennhanloi: proc gốc LEFT JOIN tr_tieuchuan_nguyennhan B ON
+  //     nguyennhanloi = B.Id, rồi IIF(COALESCE(B.Name,'Khác')='Khác',
+  //     nguyennhan, B.Name). Bảng chuẩn nguyên nhân chưa migrate → mọi
+  //     lỗi lookup rơi về nguyennhan (đúng ngữ nghĩa nhánh 'Khác').
+  let nguyennhanloi = asText(loi?.nguyennhan);
+  if (loi?.nguyennhanloi != null) {
+    try {
+      const tieuchuan = await procTable(db, companyId, "tr_tieuchuan_nguyennhan");
+      const [tc] = await tieuchuan.listWhere(
+        sql`${tieuchuan.text("Id")} = ${String(loi.nguyennhanloi)}`,
+        { limit: 1 },
+      );
+      const name = asText(tc?.Name);
+      if (name && name !== "Khác") nguyennhanloi = name;
+    } catch {
+      // entity chưa tồn tại hoặc field "Id"/"Name" khác case — giữ fallback nguyennhan
+    }
+  }
+
+  // 2b. bophanlamloi: LEFT JOIN trtb_m_location ON c_location = bophanlamloi
+  //     → REPLACE(n_location, '[Hoàn thành]', ''). Không match → NULL
+  //     (proc gốc lấy từ loc1.n_location, không phải mã thô).
+  let bophanlamloi: string | null = null;
+  if (loi?.bophanlamloi != null) {
+    const loc = await procTable(db, companyId, "trtb_m_location");
+    const [locRow] = await loc.listWhere(
+      sql`${loc.text("c_location")} = ${String(loi.bophanlamloi)}`,
+      { limit: 1 },
+    );
+    const nLocation = asText(locRow?.n_location);
+    if (nLocation != null) bophanlamloi = nLocation.replaceAll("[Hoàn thành]", "");
+  }
 
   return [
     {
       card_type: "D",
-      tinhtrangloi: null, // TODO: tr_baocao_hangloi.tinhtrang WHERE card_no = args.card_no
-      nguyennhanloi: null, // TODO: IIF(tieuchuan.Name='Khác', nguyennhan, tieuchuan.Name)
-      tennguoitao: null, // TODO: SYS_USER.FullName cho nguoitao của tr_baocao_hangloi
-      nguoitao: null, // TODO: tr_baocao_hangloi.nguoitao
-      chuky_nguoitao: null, // TODO: tr_hinhanh.hinhanh (base64/bytea) cho nguoitao
-      tennguoiduyet: null, // TODO: SYS_USER.FullName cho nguoiduyet của tr_baocao_hangloi
-      nguoiduyet: null, // TODO: tr_baocao_hangloi.nguoiduyet
-      chuky_nguoiduyet: null, // TODO: tr_hinhanh.hinhanh (base64/bytea) cho nguoiduyet
-      huongxuly: null, // TODO: tr_baocao_hangloi.huongxuly
-      bophanlamloi: null, // TODO: REPLACE(trtb_m_location.n_location,'[Hoàn thành]','')
+      tinhtrangloi: asText(loi?.tinhtrang),
+      nguyennhanloi,
+      // TODO: FullName từ SYS_USER + ảnh chữ ký từ tr_hinhanh (phanloai='USER',
+      // name = UserName) — 2 bảng chưa migrate, bổ sung khi vào scope.
+      tennguoitao: null,
+      nguoitao: asText(loi?.nguoitao),
+      chuky_nguoitao: null,
+      tennguoiduyet: null,
+      nguoiduyet: asText(loi?.nguoiduyet),
+      chuky_nguoiduyet: null,
+      huongxuly: asText(loi?.huongxuly),
+      bophanlamloi,
     },
   ];
 }

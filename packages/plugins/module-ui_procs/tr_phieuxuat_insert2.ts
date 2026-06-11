@@ -1,5 +1,13 @@
-import { sql } from "drizzle-orm";
+/* Port TR_PHIEUXUAT_INSERT2 — thêm phiếu xuất kho.
+   Nguồn: migration-plan/ui/proc-bodies/tr_phieuxuat_insert2.sql
+   Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   của bảng thật, tự version/updated_at/search_tsv, guard mirror).
+   Lưu ý: cột nguồn IsXuat / RefType → field-map là isxuat / reftype
+   (lowercase). @IsXuat bit = 1 → default true khi không truyền.
+   Semantic đổi: @id OUTPUT int (SCOPE_IDENTITY) của nguồn không tồn tại cho
+   row mới — trả id uuid của row mới từ insertRow. */
 import type { DB } from "@erp-framework/server/db";
+import { procTable } from "../src/proc-table";
 
 export async function trPhieuxuatInsert2(
   db: DB,
@@ -29,58 +37,28 @@ export async function trPhieuxuatInsert2(
 ): Promise<Array<{ id: string }>> {
   if (!args.sopx) throw new Error("Thiếu sopx");
 
-  const r = await db.execute<{ id: string }>(sql`
-    INSERT INTO tr_phieuxuat (
-      id,
-      company_id,
-      sopx,
-      loaiphieu,
-      lenhcapphat,
-      donhang,
-      makho,
-      nguoinhan,
-      ghichu,
-      nguoitao,
-      ngaytao,
-      active,
-      nguoixacnhan,
-      ngayxacnhan,
-      xacnhan,
-      isxuat,
-      ngayxuat,
-      reftype,
-      phieuyeucau,
-      maddh,
-      mucdich,
-      created_at,
-      updated_at
-    ) VALUES (
-      gen_random_uuid(),
-      ${companyId},
-      ${args.sopx},
-      ${args.loaiphieu},
-      ${args.lenhcapphat},
-      ${args.donhang},
-      ${args.makho},
-      ${args.nguoinhan},
-      ${args.ghichu},
-      ${args.nguoitao},
-      ${args.ngaytao},
-      ${args.active},
-      ${args.nguoixacnhan ?? null},
-      ${args.ngayxacnhan ?? null},
-      ${args.xacnhan ?? null},
-      ${args.is_xuat ?? true},
-      ${args.ngayxuat ?? null},
-      ${args.reftype ?? null},
-      ${args.phieuyeucau ?? null},
-      ${args.maddh ?? null},
-      ${args.mucdich ?? null},
-      now(),
-      now()
-    )
-    RETURNING id
-  `);
+  const t = await procTable(db, companyId, "tr_phieuxuat");
+  const id = await t.insertRow({
+    sopx: args.sopx,
+    loaiphieu: args.loaiphieu,
+    lenhcapphat: args.lenhcapphat,
+    donhang: args.donhang,
+    makho: args.makho,
+    nguoinhan: args.nguoinhan,
+    ghichu: args.ghichu,
+    nguoitao: args.nguoitao,
+    ngaytao: args.ngaytao,
+    active: args.active,
+    nguoixacnhan: args.nguoixacnhan ?? null,
+    ngayxacnhan: args.ngayxacnhan ?? null,
+    xacnhan: args.xacnhan ?? null,
+    isxuat: args.is_xuat ?? true,
+    ngayxuat: args.ngayxuat ?? null,
+    reftype: args.reftype ?? null,
+    phieuyeucau: args.phieuyeucau ?? null,
+    maddh: args.maddh ?? null,
+    mucdich: args.mucdich ?? null,
+  });
 
-  return r as unknown as Array<{ id: string }>;
+  return [{ id }];
 }

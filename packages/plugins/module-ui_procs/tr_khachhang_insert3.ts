@@ -1,5 +1,12 @@
-import { sql } from "drizzle-orm";
+/* Port TR_KHACHHANG_INSERT3 — thêm khách hàng nếu chưa tồn tại theo customer_id.
+   Nguồn: migration-plan/ui/proc-bodies/tr_khachhang_insert3.sql
+   Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   của bảng thật, tự version/updated_at/search_tsv, guard mirror).
+   Semantic đổi: @id OUTPUT int (SCOPE_IDENTITY) của nguồn không tồn tại cho
+   row mới — trả id uuid của row (mới insert hoặc row tồn tại sẵn). */
 import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function trKhachhangInsert3(
   db: DB,
@@ -26,81 +33,44 @@ export async function trKhachhangInsert3(
     customer_type?: string | null;
     customer_type_name?: string | null;
   },
-): Promise<Array<{ id: number }>> {
+): Promise<Array<{ id: string }>> {
   if (!args.customer_id) throw new Error("Thiếu customer_id");
   if (!args.customer_name) throw new Error("Thiếu customer_name");
 
-  // Kiểm tra khách hàng đã tồn tại theo customer_id (trong phạm vi company)
-  const existing = await db.execute<{ id: number }>(sql`
-    SELECT id
-    FROM tr_khachhang
-    WHERE company_id = ${companyId}
-      AND customer_id = ${args.customer_id}
-      AND deleted_at IS NULL
-    LIMIT 1
-  `);
+  const t = await procTable(db, companyId, "tr_khachhang");
 
-  const rows = existing as unknown as Array<{ id: number }>;
-
-  if (rows.length > 0) {
-    // Đã tồn tại — trả lại id hiện có (tương đương nhánh ELSE của proc gốc)
-    return [{ id: rows[0].id }];
+  // Proc gốc: IF NOT EXISTS (... WHERE customer_id = @customer_id)
+  const existing = await t.listWhere(sql`${t.text("customer_id")} = ${args.customer_id}`, {
+    limit: 1,
+  });
+  const found = existing[0];
+  if (found) {
+    // Đã tồn tại — nhánh ELSE proc gốc trả id hiện có (ở đây là uuid row)
+    return [{ id: String(found._id) }];
   }
 
-  // Chưa tồn tại — INSERT và trả id mới (tương đương SCOPE_IDENTITY())
-  const inserted = await db.execute<{ id: number }>(sql`
-    INSERT INTO tr_khachhang (
-      company_id,
-      customer_id,
-      customer_name,
-      address,
-      area,
-      phone,
-      fax,
-      email,
-      website,
-      director,
-      merchandiser,
-      merchandiser_phone,
-      merchandiser_mail,
-      ngaylamviec,
-      create_by,
-      create_date,
-      bank_id,
-      taxcode,
-      active,
-      customer_type,
-      customer_type_name,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      ${companyId},
-      ${args.customer_id},
-      ${args.customer_name},
-      ${args.address ?? null},
-      ${args.area ?? null},
-      ${args.phone ?? null},
-      ${args.fax ?? null},
-      ${args.email ?? null},
-      ${args.website ?? null},
-      ${args.director ?? null},
-      ${args.merchandiser ?? null},
-      ${args.merchandiser_phone ?? null},
-      ${args.merchandiser_mail ?? null},
-      ${args.ngaylamviec ?? null},
-      ${args.create_by ?? null},
-      ${args.create_date ?? null},
-      ${args.bank_id ?? null},
-      ${args.taxcode ?? null},
-      ${args.active ?? null},
-      ${args.customer_type ?? null},
-      ${args.customer_type_name ?? null},
-      now(),
-      now()
-    )
-    RETURNING id
-  `);
+  const id = await t.insertRow({
+    customer_id: args.customer_id,
+    customer_name: args.customer_name,
+    address: args.address ?? null,
+    area: args.area ?? null,
+    phone: args.phone ?? null,
+    fax: args.fax ?? null,
+    email: args.email ?? null,
+    website: args.website ?? null,
+    director: args.director ?? null,
+    merchandiser: args.merchandiser ?? null,
+    merchandiser_phone: args.merchandiser_phone ?? null,
+    merchandiser_mail: args.merchandiser_mail ?? null,
+    ngaylamviec: args.ngaylamviec ?? null,
+    create_by: args.create_by ?? null,
+    create_date: args.create_date ?? null,
+    bank_id: args.bank_id ?? null,
+    taxcode: args.taxcode ?? null,
+    active: args.active ?? null,
+    customer_type: args.customer_type ?? null,
+    customer_type_name: args.customer_type_name ?? null,
+  });
 
-  return inserted as unknown as Array<{ id: number }>;
+  return [{ id }];
 }

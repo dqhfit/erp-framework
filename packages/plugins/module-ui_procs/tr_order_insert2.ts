@@ -1,5 +1,14 @@
-import { sql } from "drizzle-orm";
+/* Port TR_ORDER_INSERT2 — thêm đơn hàng nếu order_number chưa tồn tại.
+   Nguồn: migration-plan/ui/proc-bodies/tr_order_insert2.sql
+   Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   của bảng thật, tự version/updated_at/search_tsv, guard mirror).
+   Lưu ý: tr_order có field CASE-SENSITIVE theo field-map: IsLock, Finished,
+   IsPay, IsExample, IsPhoi, IsUV, IsOutsource — args giữ shape snake cũ.
+   Semantic đổi: @id OUTPUT int (SCOPE_IDENTITY) của nguồn không tồn tại cho
+   row mới — trả id uuid của row mới; trùng order_number → trả mảng rỗng. */
 import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function trOrderInsert2(
   db: DB,
@@ -45,112 +54,59 @@ export async function trOrderInsert2(
     fsc_id?: number | null;
     payment_term_id?: number | null;
   },
-): Promise<Array<{ id: number }>> {
+): Promise<Array<{ id: string }>> {
   if (!args.order_number) throw new Error("Thiếu order_number");
 
-  // Tương đương IF NOT EXISTS trong proc gốc — scope theo tenant
-  const existRows = await db.execute<{ id: number }>(sql`
-    SELECT id FROM tr_order
-    WHERE company_id = ${companyId}
-      AND order_number = ${args.order_number}
-      AND deleted_at IS NULL
-    LIMIT 1
-  `);
-  if ((existRows as unknown as Array<unknown>).length > 0) {
-    // order_number đã tồn tại — proc gốc không làm gì, trả mảng rỗng
-    return [];
-  }
+  const t = await procTable(db, companyId, "tr_order");
 
-  const r = await db.execute<{ id: number }>(sql`
-    INSERT INTO tr_order (
-      company_id,
-      order_number,
-      customer,
-      order_date,
-      ship_date,
-      etd,
-      cont_date,
-      f_cancelled,
-      choduyet,
-      islock,
-      finished,
-      ispay,
-      isexample,
-      isphoi,
-      isuv,
-      destination_port,
-      ship_to,
-      remark,
-      payment_term,
-      carton_marking,
-      cont_qty,
-      cust_po_number,
-      range,
-      create_date,
-      create_by,
-      update_date,
-      update_by,
-      ngay_hangtrang,
-      ngay_son,
-      ngay_donggoi,
-      nguyenlieu,
-      bemat,
-      isoutsource,
-      vendor_id,
-      noisanxuat,
-      loaidonhangmau,
-      currency_code,
-      exchange_rate,
-      fsc_id,
-      payment_term_id,
-      created_at,
-      updated_at
-    ) VALUES (
-      ${companyId},
-      ${args.order_number},
-      ${args.customer},
-      ${args.order_date},
-      ${args.ship_date},
-      ${args.etd},
-      ${args.cont_date},
-      ${args.f_cancelled},
-      ${args.choduyet},
-      ${args.is_lock},
-      ${args.finished},
-      ${args.is_pay},
-      ${args.is_example},
-      ${args.is_phoi},
-      ${args.is_uv},
-      ${args.destination_port},
-      ${args.ship_to},
-      ${args.remark},
-      ${args.payment_term},
-      ${args.carton_marking},
-      ${args.cont_qty},
-      ${args.cust_po_number},
-      ${args.range},
-      ${args.create_date},
-      ${args.create_by},
-      ${args.update_date},
-      ${args.update_by},
-      ${args.ngay_hangtrang ?? null},
-      ${args.ngay_son ?? null},
-      ${args.ngay_donggoi ?? null},
-      ${args.nguyenlieu ?? null},
-      ${args.bemat ?? null},
-      ${args.is_outsource ?? null},
-      ${args.vendor_id ?? null},
-      ${args.noisanxuat ?? true},
-      ${args.loaidonhangmau ?? null},
-      ${args.currency_code ?? null},
-      ${args.exchange_rate ?? null},
-      ${args.fsc_id ?? null},
-      ${args.payment_term_id ?? null},
-      now(),
-      now()
-    )
-    RETURNING id
-  `);
+  // Proc gốc: IF NOT EXISTS (... WHERE order_number = @order_number)
+  // — trùng thì không làm gì, trả mảng rỗng.
+  const existing = await t.listWhere(sql`${t.text("order_number")} = ${args.order_number}`, {
+    limit: 1,
+  });
+  if (existing.length > 0) return [];
+
+  const id = await t.insertRow({
+    order_number: args.order_number,
+    customer: args.customer,
+    order_date: args.order_date,
+    ship_date: args.ship_date,
+    etd: args.etd,
+    cont_date: args.cont_date,
+    f_cancelled: args.f_cancelled,
+    choduyet: args.choduyet,
+    IsLock: args.is_lock,
+    Finished: args.finished,
+    IsPay: args.is_pay,
+    IsExample: args.is_example,
+    IsPhoi: args.is_phoi,
+    IsUV: args.is_uv,
+    destination_port: args.destination_port,
+    ship_to: args.ship_to,
+    remark: args.remark,
+    payment_term: args.payment_term,
+    carton_marking: args.carton_marking,
+    cont_qty: args.cont_qty,
+    cust_po_number: args.cust_po_number,
+    range: args.range,
+    create_date: args.create_date,
+    create_by: args.create_by,
+    update_date: args.update_date,
+    update_by: args.update_by,
+    ngay_hangtrang: args.ngay_hangtrang ?? null,
+    ngay_son: args.ngay_son ?? null,
+    ngay_donggoi: args.ngay_donggoi ?? null,
+    nguyenlieu: args.nguyenlieu ?? null,
+    bemat: args.bemat ?? null,
+    IsOutsource: args.is_outsource ?? null,
+    vendor_id: args.vendor_id ?? null,
+    noisanxuat: args.noisanxuat ?? true,
+    loaidonhangmau: args.loaidonhangmau ?? null,
+    currency_code: args.currency_code ?? null,
+    exchange_rate: args.exchange_rate ?? null,
+    fsc_id: args.fsc_id ?? null,
+    payment_term_id: args.payment_term_id ?? null,
+  });
 
   // TODO: Proc gốc gọi EXEC PS_KEHOACH_DONHANG_CREATE @order_number, 'frmKeHoachSanXuatPO2'
   // ngay sau INSERT thành công. Cần port proc đó thành module proc riêng rồi gọi ở đây:
@@ -160,5 +116,5 @@ export async function trOrderInsert2(
   //   });
   // Tác động khi thiếu: bảng kế hoạch đơn hàng (ps_kehoach_donhang?) sẽ không được tạo.
 
-  return r as unknown as Array<{ id: number }>;
+  return [{ id }];
 }

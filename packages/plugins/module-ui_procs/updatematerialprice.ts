@@ -1,5 +1,13 @@
-import { sql } from "drizzle-orm";
+/* Port UpdateMaterialPrice — cập nhật đơn giá + nhà cung cấp vật tư.
+   Nguồn: migration-plan/ui/proc-bodies/updatematerialprice.sql
+   Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   f_... hoặc ext của bảng thật, tự version/updated_at, guard mirror).
+   T-SQL: WHERE ISNULL(idxuong, mavt) = @MaterialCode → COALESCE 2 biểu thức field.
+   loaitien: T-SQL chỉ ghi đè khi tham số khác NULL/rỗng — JS quyết định trước,
+   rỗng thì bỏ key khỏi patch (giữ nguyên giá trị hiện tại). */
 import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function updateMaterialPrice(
   db: DB,
@@ -15,34 +23,22 @@ export async function updateMaterialPrice(
   if (!args.material_code) throw new Error("Thiếu material_code");
   if (args.price == null) throw new Error("Thiếu price");
 
-  // COALESCE(idxuong, mavt) = @MaterialCode — giữ nguyên logic fallback của T-SQL gốc:
-  // tr_material dùng idxuong làm mã chính nếu có, ngược lại dùng mavt.
-  //
-  // loaitien chỉ cập nhật khi tham số không rỗng; nếu rỗng/null thì giữ giá trị
-  // hiện tại trong bảng — dùng COALESCE(NULLIF(..., ''), loaitien) thay cho
-  // CASE WHEN IS NULL OR = '' của T-SQL gốc.
-  const loaiTien = args.loai_tien ?? null;
+  const t = await procTable(db, companyId, "tr_material");
 
-  const r = await db.execute(sql`
-    UPDATE tr_material
-    SET dongia     = ${args.price},
-        mancc      = ${args.vendor_code},
-        tenncc     = ${args.vendor_name},
-        loaitien   = COALESCE(NULLIF(${loaiTien}, ''), loaitien),
-        updated_at = now()
-    WHERE company_id = ${companyId}
-      AND COALESCE(idxuong, mavt) = ${args.material_code}
-      AND deleted_at IS NULL
-  `);
+  const patch: Record<string, unknown> = {
+    dongia: args.price,
+    mancc: args.vendor_code,
+    tenncc: args.vendor_name,
+  };
+  // Chỉ cập nhật loaitien khi có giá trị (khác null/rỗng) — như CASE WHEN gốc
+  if (args.loai_tien != null && args.loai_tien !== "") {
+    patch.loaitien = args.loai_tien;
+  }
 
-  // postgres.js trả về .count (number of affected rows) trên DML
-  return [
-    {
-      rows_updated: Number(
-        (r as unknown as { count?: number; rowCount?: number }).count ??
-          (r as unknown as { count?: number; rowCount?: number }).rowCount ??
-          0,
-      ),
-    },
-  ];
+  const updated = await t.updateWhere(
+    patch,
+    sql`COALESCE(${t.text("idxuong")}, ${t.text("mavt")}) = ${args.material_code}`,
+  );
+
+  return [{ rows_updated: updated }];
 }

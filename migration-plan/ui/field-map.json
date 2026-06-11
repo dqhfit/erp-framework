@@ -1,0 +1,3558 @@
+{
+ "tr_sanpham": {
+  "entityName": "tr_sanpham",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "masp_khachhang": "text",
+   "masp_nhamay": "text",
+   "tensp": "text",
+   "tensp_vn": "text",
+   "hehang": "text",
+   "mausac": "text",
+   "mauuv": "text",
+   "loaisp": "text",
+   "ketcau": "text",
+   "bemat_sanpham": "text",
+   "ghichu": "text",
+   "dai": "number",
+   "rong": "number",
+   "cao": "number",
+   "kichthuoc": "text",
+   "nguyenlieu": "text",
+   "dvt": "text",
+   "quycach": "text",
+   "m2": "number",
+   "m3": "number",
+   "dai_carton": "number",
+   "rong_carton": "number",
+   "cao_carton": "number",
+   "cbm": "number",
+   "carton_qty": "number",
+   "dongia": "number",
+   "loaitien": "text",
+   "vendor": "text",
+   "customer": "text",
+   "dacdiem": "text",
+   "hinhanh": "text",
+   "hinhanh1": "text",
+   "thumbnail": "text",
+   "isgovan": "boolean",
+   "isngukim": "boolean",
+   "isson": "boolean",
+   "isbaobi": "boolean",
+   "ishangtrang": "boolean",
+   "banve": "text",
+   "ngaybaogia": "datetime",
+   "hanbaogia": "datetime",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "hinhanh2": "text",
+   "heso_mam": "number",
+   "dongia_mam": "number",
+   "active": "boolean",
+   "n_weight": "number",
+   "g_weight": "number",
+   "thoidiem": "number",
+   "ma_btp": "text",
+   "ma_erp": "text",
+   "isveneer": "boolean",
+   "mautrong": "text",
+   "isastm": "boolean",
+   "isbvkt": "boolean",
+   "isbvdg": "boolean",
+   "isbvai": "boolean",
+   "maustaincanh": "text",
+   "tieuchuan": "text",
+   "sothung_carton": "text",
+   "tieuchuan_carton": "text",
+   "solop_carton": "text",
+   "dobuc_carton": "text",
+   "nguyenlieu_vatchen": "text",
+   "dinhluong_vatchen": "text",
+   "tuichongdo": "text",
+   "droptest": "text",
+   "interlock": "text",
+   "tiptest": "text",
+   "m3_tc": "number",
+   "dongia_son": "number",
+   "quycach_carton": "text",
+   "iscreatedcosting": "boolean",
+   "isquytrinh": "boolean",
+   "m2_tc": "number",
+   "masp_thaythe": "text",
+   "oast_date": "date"
+  }
+ },
+ "tr_dondathang": {
+  "entityName": "tr_dondathang",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "lookup",
+   "maddh": "lookup",
+   "tenddh": "text",
+   "mancc": "lookup",
+   "tenncc": "text",
+   "loaidonhang": "lookup",
+   "loaiddh": "lookup",
+   "loaithanhtoan": "number",
+   "ngaydat": "date",
+   "ngaygiao": "date",
+   "ngayyeucau": "date",
+   "trangthai": "text",
+   "pheduyet": "text",
+   "donhang": "lookup",
+   "lan_sua": "number",
+   "ngayduyet": "datetime",
+   "nguoiduyet": "text",
+   "ngayky": "datetime",
+   "nguoiky": "text",
+   "isshowsign": "boolean",
+   "create_by": "lookup",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "active": "boolean",
+   "kehoach_sanxuat": "number",
+   "id_maddhmaddh": "text",
+   "ghichu": "text",
+   "chukytp": "text",
+   "chukygd": "text",
+   "chukynv": "text",
+   "ngayky_nhanvien": "datetime",
+   "khongtp": "boolean",
+   "id_user": "text",
+   "trangthaidonhang": "number",
+   "tienthanhtoan": "number",
+   "tientamung": "number",
+   "bophan": "text",
+   "nhom": "text",
+   "mahoso": "text",
+   "sophieu_dexuat": "text",
+   "ispayment": "boolean",
+   "columnname": "text",
+   "macongty": "text",
+   "ngayhoanthanh": "date"
+  }
+ },
+ "tr_dondathang_chitiet": {
+  "entityName": "tr_dondathang_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "id_maddh": "number",
+   "maddh": "lookup",
+   "masp": "lookup",
+   "chitiet": "lookup",
+   "tenchitiet": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "sl_danhan": "number",
+   "sl_conlai": "number",
+   "dongia": "currency",
+   "thanhtien": "currency",
+   "loaitien": "text",
+   "donhang": "text",
+   "ghichu": "text",
+   "hoanthanh_htr": "bool",
+   "create_date": "datetime",
+   "create_by": "text",
+   "update_by": "text",
+   "update_date": "datetime",
+   "active": "bool",
+   "id_maddhid": "text",
+   "id_maddhmaddh": "text",
+   "maddhid": "text",
+   "maddhmaddh": "text",
+   "dayy": "number",
+   "rong": "number",
+   "dai": "number",
+   "nguyenlieu": "text",
+   "ngaycangiao": "datetime",
+   "sophieu_dexuat": "text",
+   "dongia_m3": "currency",
+   "icreatedcard": "bool",
+   "iprintedcard": "bool",
+   "fsc_id": "number",
+   "idchitiet2": "text",
+   "tygia": "number",
+   "ischecked": "bool",
+   "pid": "number",
+   "ngayhoanthanh": "date"
+  }
+ },
+ "sys_user": {
+  "entityName": "sys_user",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "userid": "number",
+   "employeecode": "text",
+   "username": "text",
+   "fullname": "text",
+   "password": "text",
+   "email": "email",
+   "group_id": "text",
+   "departmentcode": "text",
+   "position": "text",
+   "managerid": "text",
+   "chuky": "text",
+   "active": "bool",
+   "createby": "text",
+   "createdate": "datetime",
+   "board": "bool",
+   "customer_user": "bool",
+   "token": "text",
+   "bophan": "text",
+   "nhomdanhgia": "text",
+   "admintieuchuan": "bool",
+   "adminhangloi": "bool",
+   "nguoidanhgia": "text",
+   "refreshtoken": "text",
+   "refreshtokenexpirytime": "datetime"
+  }
+ },
+ "sys_user_rule": {
+  "entityName": "sys_user_rule",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "username": "text",
+   "c_menu": "text",
+   "allowadd": "bool",
+   "allowdelete": "bool",
+   "allowedit": "bool",
+   "allowaccess": "bool",
+   "allowprint": "bool",
+   "allowexport": "bool",
+   "allowimport": "bool",
+   "active": "bool",
+   "pins": "bool"
+  }
+ },
+ "tr_pallet": {
+  "entityName": "tr_pallet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "lookup",
+   "dondathang": "lookup",
+   "masp": "lookup",
+   "mahtr": "text",
+   "stt": "text",
+   "mact": "text",
+   "tenct": "text",
+   "nguyenlieu": "text",
+   "dayy_tc": "number",
+   "rong_tc": "number",
+   "dai_tc": "number",
+   "soluong_tc": "number",
+   "dayy_sc": "number",
+   "rong_sc": "number",
+   "dai_sc": "number",
+   "soluong_sc": "number",
+   "soluong_donhang": "number",
+   "soluong_can": "number",
+   "sokhoi_tinhche": "number",
+   "iscreatecard": "bool",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "active": "bool",
+   "card_qty": "number",
+   "ghichu": "text",
+   "veneer_matchinh": "number",
+   "veneer_matphu": "number",
+   "bemat": "text",
+   "somat_giacong": "number",
+   "cc_canh1": "bool",
+   "cc_canh2": "bool",
+   "cc_dau1": "bool",
+   "cc_dau2": "bool",
+   "cc_mat1": "bool",
+   "cc_mat2": "bool",
+   "dayy_phoi": "number",
+   "id_nguyenlieu": "text",
+   "donhang": "lookup",
+   "isordernumber": "bool",
+   "orderid": "number",
+   "hangbu": "bool",
+   "ischecked": "bool",
+   "veneer_dan_canh": "number",
+   "veneer_canhdai": "number",
+   "veneer_canhngan": "number",
+   "pcode": "text"
+  }
+ },
+ "tr_pallet_card": {
+  "entityName": "tr_pallet_card",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "card_no": "lookup",
+   "pallet_id": "lookup",
+   "card_type": "text",
+   "soluong": "number",
+   "issue_date": "datetime",
+   "reissue_date": "datetime",
+   "reissue_qty": "number",
+   "card_seq": "number",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "active": "bool",
+   "stt_snap": "text",
+   "mact_snap": "text",
+   "tenct_snap": "text",
+   "nguyenlieu_snap": "text",
+   "dayy_tc_snap": "number",
+   "rong_tc_snap": "number",
+   "dai_tc_snap": "number",
+   "soluong_tc_snap": "number",
+   "dayy_sc_snap": "number",
+   "rong_sc_snap": "number",
+   "dai_sc_snap": "number",
+   "soluong_sc_snap": "number",
+   "soluong_donhang_snap": "number",
+   "soluong_can_snap": "number",
+   "sokhoi_tinhche_snap": "number",
+   "ghichu_snap": "text",
+   "veneer_matchinh_snap": "number",
+   "veneer_matphu_snap": "number",
+   "veneer_dan_canh_snap": "number",
+   "veneer_canhdai_snap": "number",
+   "veneer_canhngan_snap": "number"
+  }
+ },
+ "tr_phieubaogia": {
+  "entityName": "tr_phieubaogia",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "tieude": "text",
+   "khachhang": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "active": "boolean",
+   "ngayky1": "datetime",
+   "ngayky2": "datetime",
+   "nguoiky1": "text",
+   "nguoiky2": "text",
+   "chuky1": "text",
+   "chuky2": "text",
+   "choduyet": "number",
+   "loaitien": "text",
+   "ghichu": "text"
+  }
+ },
+ "tr_phieubaogia_chitiet": {
+  "entityName": "tr_phieubaogia_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "mact": "text",
+   "dongiacu": "number",
+   "dongiamoi": "number",
+   "loaitien": "text",
+   "active": "boolean",
+   "tenct": "text",
+   "quycach": "text",
+   "mausac": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "ngayapdung": "datetime",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "lydokhongduyet": "text",
+   "isnotduyet": "boolean",
+   "isupdateprice": "boolean",
+   "ghichu": "text",
+   "mancc": "text",
+   "ngaytao": "datetime"
+  }
+ },
+ "tr_phieunhap": {
+  "entityName": "tr_phieunhap",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "sopn": "text",
+   "chungtu": "text",
+   "maddh": "text",
+   "mancc": "text",
+   "tenncc": "text",
+   "makho": "text",
+   "ngayphieu": "datetime",
+   "ngaynhap": "datetime",
+   "nguoinhap": "text",
+   "ghichu": "text",
+   "loaiphieu": "text",
+   "active": "bool",
+   "congno": "bool",
+   "luyke": "bool",
+   "reftype": "number",
+   "donhangsanxuat": "text",
+   "sophieuxuat": "text"
+  }
+ },
+ "tr_phieuxuat": {
+  "entityName": "tr_phieuxuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "sopx": "text",
+   "lenhcapphat": "text",
+   "makho": "text",
+   "nguoinhan": "text",
+   "ghichu": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "active": "bool",
+   "loaiphieu": "number",
+   "donhang": "text",
+   "control": "text",
+   "nguoixacnhan": "text",
+   "ngayxacnhan": "datetime",
+   "xacnhan": "bool",
+   "isxuat": "bool",
+   "ngayxuat": "datetime",
+   "reftype": "number",
+   "phieuyeucau": "text",
+   "maddh": "text",
+   "mucdich": "number"
+  }
+ },
+ "tr_phieuyeucau": {
+  "entityName": "tr_phieuyeucau",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "number",
+   "makho": "text",
+   "bophan": "text",
+   "loaidexuat": "text",
+   "sanxuat": "boolean",
+   "trahang": "boolean",
+   "suachua": "boolean",
+   "phatsinh": "boolean",
+   "chetao": "boolean",
+   "vesinh": "boolean",
+   "khac": "boolean",
+   "mucdich": "text",
+   "donhang": "text",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "nguoiduyet2": "text",
+   "ngayduyet2": "datetime",
+   "nguoiky": "text",
+   "ngayky": "datetime",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "isconfirm": "boolean",
+   "issign": "boolean",
+   "isfinish": "boolean",
+   "active": "boolean",
+   "issend": "boolean",
+   "sophieustr": "number",
+   "bgd_cancel": "boolean",
+   "description_cancel": "text",
+   "message_id": "number",
+   "messageid": "text",
+   "km_prev": "number",
+   "km_current": "number",
+   "ischoxuat": "boolean",
+   "xemxetlai": "boolean",
+   "xemxetlai_noidung": "text",
+   "ngayyeucauxuat": "date",
+   "ngaycan": "date",
+   "uutien": "text",
+   "donhangtrang": "text"
+  }
+ },
+ "tr_phieuyeucau_chitiet": {
+  "entityName": "tr_phieuyeucau_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "phieuyeucau_id": "text",
+   "mact": "text",
+   "soluong": "number",
+   "soluong_daphat": "number",
+   "donhang": "text",
+   "ghichu": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "active": "boolean",
+   "phieuyeucau_idsophieu": "number",
+   "phieuyeucau_idid": "text",
+   "idmaymoc": "text"
+  }
+ },
+ "tr_phieuyeucau_muahang": {
+  "entityName": "tr_phieuyeucau_muahang",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "ngaythang": "date",
+   "bophan": "text",
+   "nguoiyeucau": "text",
+   "noidung": "text",
+   "loaidexuat": "text",
+   "issend": "boolean",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "nguoiky": "text",
+   "ngayky": "datetime",
+   "ngaytao": "datetime",
+   "ngaysua": "datetime",
+   "iscancel": "boolean",
+   "lydohuy": "text",
+   "active": "boolean",
+   "messageid": "text",
+   "sophieu": "text",
+   "stt": "number",
+   "mucdich": "text",
+   "ngaycan": "date",
+   "uutien": "text"
+  }
+ },
+ "tr_phieuyeucau_muahang_chitiet": {
+  "entityName": "tr_phieuyeucau_muahang_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "dexuat_id": "text",
+   "mact": "text",
+   "mota": "text",
+   "quycach": "text",
+   "mausac": "text",
+   "dvt": "text",
+   "soluong": "number",
+   "ghichu": "text",
+   "ngaytao": "datetime",
+   "ngaysua": "datetime",
+   "active": "bool",
+   "tinhchiphi": "bool",
+   "idmaymoc": "text",
+   "id_phieuyeucau_chitiet": "text",
+   "iscancel": "bool",
+   "gva_cumchitiet": "text",
+   "gva_stt": "text",
+   "gva_nguyenlieu": "text",
+   "gva_dayy": "number",
+   "gva_rong": "number",
+   "gva_dai": "number",
+   "gva_masp": "text",
+   "donhang": "text"
+  }
+ },
+ "tr_reftype": {
+  "entityName": "tr_reftype",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "reftype": "number",
+   "reftypecategory": "number",
+   "reftypename": "text"
+  }
+ },
+ "tr_reftype_category": {
+  "entityName": "tr_reftype_category",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "reftypecategory": "number",
+   "reftypecategoryname": "text",
+   "description": "text"
+  }
+ },
+ "tr_site": {
+  "entityName": "tr_site",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "name": "text",
+   "description": "longtext",
+   "taikhoan": "number"
+  }
+ },
+ "tr_thaydoi_kythuat": {
+  "entityName": "tr_thaydoi_kythuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "bophan": "text",
+   "denghithaydoi": "text",
+   "masp": "text",
+   "tensp": "text",
+   "hehang": "text",
+   "khachhang": "text",
+   "noidungcanthaydoi": "text",
+   "lydothaydoi": "text",
+   "lydo_caitien": "text",
+   "lydo_giamchiphi": "text",
+   "lydo_khac": "text",
+   "noidung_pkt": "text",
+   "pkt_dongy": "bool",
+   "noidungduyet": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "isconfirm1": "bool",
+   "isconfirm2": "bool",
+   "isconfirm3": "bool",
+   "truongbophan": "text",
+   "truongphongkythuat": "text",
+   "bangiamdoc": "text",
+   "ngayduyet1": "datetime",
+   "ngayduyet2": "datetime",
+   "ngayduyet3": "datetime",
+   "active": "bool",
+   "trangthai": "integer",
+   "mact": "text",
+   "tenct": "text",
+   "dinhmuc": "text",
+   "khongduyet": "bool",
+   "noidung_khongduyet": "text",
+   "ngayhuy": "datetime",
+   "nguoihuy": "text",
+   "ngaycanhoanthanh": "date"
+  }
+ },
+ "tr_tonkho_sum": {
+  "entityName": "tr_tonkho_sum",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "mavt": "text",
+   "makho": "text",
+   "soluong": "number",
+   "soluong_toithieu": "number",
+   "ghichu": "text",
+   "update_date": "datetime",
+   "update_by": "text",
+   "optimisticlockfield": "number",
+   "ngaynhapkho": "date",
+   "nhapton": "number"
+  }
+ },
+ "tr_trangthai_sanxuat": {
+  "entityName": "tr_trangthai_sanxuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "lookup",
+   "madonhang": "lookup",
+   "masp": "lookup",
+   "masp1": "lookup",
+   "mact": "text",
+   "tenct": "text",
+   "nguyenlieu": "text",
+   "dayy": "number",
+   "rong": "number",
+   "dai": "number",
+   "congdoan": "lookup",
+   "soluong": "number",
+   "sokhoi": "number",
+   "ngaythang": "lookup",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "batdau": "datetime",
+   "hoanthanh": "datetime",
+   "vitrimay": "text",
+   "tenvitri": "text",
+   "thoidiem": "text",
+   "nguoilam": "text",
+   "iscum": "boolean",
+   "ngaygiao": "datetime",
+   "sophut": "number",
+   "somatuv": "number",
+   "pcard": "lookup",
+   "chiphikinhdoanh": "text",
+   "oday": "number",
+   "orong": "number",
+   "odai": "number",
+   "congdoantieptheo": "lookup",
+   "diqua": "number",
+   "gianguyenlieu": "number",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "ishoanthanh": "boolean",
+   "donhang_sanxuat": "text",
+   "nguoinhan": "text"
+  }
+ },
+ "trtb_m_location": {
+  "entityName": "trtb_m_location",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "c_location": "text",
+   "c_op": "lookup",
+   "n_location": "text",
+   "n_scan": "text",
+   "c_nextloc": "text",
+   "org": "text",
+   "maymoc": "text",
+   "stt": "number",
+   "bophanchiphi": "text",
+   "loaichiphi": "text",
+   "oday": "number",
+   "orong": "number",
+   "odai": "number",
+   "active": "bool",
+   "ngay": "datetime",
+   "loaitieuchuan": "text",
+   "tieuchuantheochitiet": "bool",
+   "aql": "bool",
+   "isshow": "bool"
+  }
+ },
+ "trtb_m_op": {
+  "entityName": "trtb_m_op",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "c_op": "lookup",
+   "n_op": "text",
+   "c_location": "text",
+   "f_out_yn": "bool",
+   "c_prod_loc": "text",
+   "c_out_loc": "text",
+   "c_line": "text",
+   "org": "text",
+   "attribute3": "text",
+   "attribute4": "text",
+   "attribute5": "text",
+   "department": "text",
+   "stt": "integer",
+   "active": "bool",
+   "mathaythe": "text",
+   "p_op": "text",
+   "matonhom": "text",
+   "yeucau_chatluong": "longtext",
+   "id_maymoc": "lookup",
+   "yeucau_kythuat": "longtext"
+  }
+ },
+ "trtb_scan_op": {
+  "entityName": "trtb_scan_op",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "user_id": "text",
+   "scan_op": "text",
+   "scan_location": "text",
+   "admin": "bool"
+  }
+ },
+ "tr_chucvu": {
+  "entityName": "tr_chucvu",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "machucvu": "text",
+   "chucvu": "text",
+   "tentienganh": "text"
+  }
+ },
+ "tr_common": {
+  "entityName": "tr_common",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "ma": "text",
+   "ten": "text",
+   "x": "number",
+   "y": "number",
+   "w": "number",
+   "h": "number",
+   "mamau": "text",
+   "phanloai": "number",
+   "stt": "number",
+   "tenkhac": "text"
+  }
+ },
+ "tr_ctphieunhap": {
+  "entityName": "tr_ctphieunhap",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "id_dathang": "text",
+   "sopn": "text",
+   "mavt": "text",
+   "slnhap": "number",
+   "soluong_du": "number",
+   "ghichu": "text",
+   "ngaynhap": "datetime",
+   "nguoinhap": "text",
+   "idchitiet": "text",
+   "gianhap": "number",
+   "tigia": "number",
+   "luyke": "bool",
+   "congno": "text",
+   "vat": "number",
+   "taikhoan": "number",
+   "tinhchiphi": "bool",
+   "chiphikinhdoanh": "text",
+   "batchno": "text",
+   "fscid": "number",
+   "nhomnguyenlieu": "number",
+   "malonguyenlieu2": "text",
+   "loaitien": "text",
+   "hansudung": "date"
+  }
+ },
+ "tr_ctphieuxuat": {
+  "entityName": "tr_ctphieuxuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "lenhcapphat": "text",
+   "phieuxuat": "text",
+   "makho": "text",
+   "mact": "text",
+   "soluong": "number",
+   "ghichu": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "giaxuat": "currency",
+   "luyke": "bool",
+   "tinhchiphi": "bool",
+   "taikhoan": "number",
+   "chiphikinhdoanh": "text",
+   "id_pyc_chitiet": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "id_chitiet_dathang": "number",
+   "id_chitiet_lcp": "number",
+   "batchno": "text",
+   "id_chitiet_phieunhap": "number"
+  }
+ },
+ "tr_denghi_thanhtoan": {
+  "entityName": "tr_denghi_thanhtoan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "ngayphieu": "date",
+   "nguoidenghi": "text",
+   "bophan": "text",
+   "loaithanhtoan": "number",
+   "loaitien": "text",
+   "tygia": "number",
+   "sotien": "currency",
+   "thue": "number",
+   "phigiaohang": "currency",
+   "tienthue": "currency",
+   "thanhtien": "currency",
+   "sotien_bangchu": "text",
+   "thanhtien_vnd": "currency",
+   "sotien_bangchu_vnd": "text",
+   "noidung": "longtext",
+   "dathanhtoan": "bool",
+   "sophieu_index": "integer",
+   "chungtu": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "bool",
+   "nguoiduyet": "text",
+   "truongbophan": "text",
+   "ngayduyet": "datetime",
+   "ngayduyet2": "datetime",
+   "ngayhuyduyet": "date",
+   "lydohuyduyet": "longtext",
+   "hinhthuc_thanhtoan": "bool",
+   "sotaikhoan": "text",
+   "tentaikhoan": "text",
+   "tennganhang": "text",
+   "tinhchiphi": "bool",
+   "ngaycan_thanhtoan": "datetime",
+   "nguoican_thanhtoan": "text",
+   "hoanthanh": "bool",
+   "benthanhtoan": "text"
+  }
+ },
+ "tr_denghi_thanhtoan_file": {
+  "entityName": "tr_denghi_thanhtoan_file",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "id_sophieu": "text",
+   "filename": "text",
+   "path": "text"
+  }
+ },
+ "tr_dexuat_bangmau": {
+  "entityName": "tr_dexuat_bangmau",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "ngaydexuat": "date",
+   "ngayhoanthien": "date",
+   "ngaythucte": "date",
+   "mucdich": "text",
+   "bangiamdoc_duyet": "text",
+   "bangiamdoc_ngayduyet": "datetime",
+   "truongbophan_duyet": "text",
+   "truongbophan_ngayduyet": "datetime",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "bool",
+   "tieuchuan_go": "text",
+   "tieuchuan_veneer": "text",
+   "sophieu2": "text"
+  }
+ },
+ "tr_dexuat_bangmau_chitiet": {
+  "entityName": "tr_dexuat_bangmau_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "dexuat_id": "text",
+   "mamau": "text",
+   "hehang": "text",
+   "nguyenlieu": "text",
+   "hieuung": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "quycach": "text",
+   "ghichu": "longtext",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "active": "bool",
+   "tieuchuan_veneer": "text",
+   "tieuchuan_go": "text",
+   "dayy": "number",
+   "rong": "number",
+   "dai": "number"
+  }
+ },
+ "tr_dexuat_phoi": {
+  "entityName": "tr_dexuat_phoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "loaidexuat": "text",
+   "nguoidexuat": "text",
+   "bophan": "text",
+   "ngaydexuat": "date",
+   "mucdich": "text",
+   "donhang": "text",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "nguoiky": "text",
+   "ngayky": "datetime",
+   "isfinish": "bool",
+   "iscancel": "bool",
+   "issend": "bool",
+   "isplan": "bool",
+   "lydo_huy": "text",
+   "ngaycanphoi": "datetime",
+   "ngaygiaophoi": "datetime",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text"
+  }
+ },
+ "tr_dexuat_phoi_chitiet": {
+  "entityName": "tr_dexuat_phoi_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "dexuat_id": "text",
+   "nguyenlieu": "text",
+   "nguongoc": "text",
+   "nguongoc_giao": "text",
+   "chatluong_yc": "text",
+   "dayy_yc": "number",
+   "rong_yc": "number",
+   "dai_yc": "number",
+   "sothanh_yc": "number",
+   "sokhoi_yc": "number",
+   "ghichu_yc": "text",
+   "chatluong_giao": "text",
+   "dayy_giao": "text",
+   "rong_giao": "text",
+   "dai_giao": "text",
+   "sothanh_giao": "number",
+   "sokhoi_giao": "number",
+   "ghichu_giao": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "iscancel": "bool",
+   "isfinish": "bool",
+   "ngaygiaophoi": "datetime",
+   "sokhoi_dadung": "number",
+   "fsc_id": "number"
+  }
+ },
+ "tr_dexuatdichvu": {
+  "entityName": "tr_dexuatdichvu",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "sophieu": "text",
+   "mucdich": "text",
+   "bophan": "text",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "ngayky": "datetime",
+   "nguoiky": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "issend": "bool",
+   "active": "integer",
+   "nguoihuy": "text",
+   "ngayhuy": "datetime"
+  }
+ },
+ "tr_dexuatdichvu_chitiet": {
+  "entityName": "tr_dexuatdichvu_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "id_dichvu": "text",
+   "bencungcap_dv": "text",
+   "yeucau": "text",
+   "ghichu": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "active": "number"
+  }
+ },
+ "tr_dinhmuc_donggoi": {
+  "entityName": "tr_dinhmuc_donggoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "pcode": "text",
+   "ccode": "text",
+   "c_level": "number",
+   "masp": "lookup",
+   "madonggoi": "lookup",
+   "stt": "number",
+   "chitiet": "text",
+   "dai": "text",
+   "rong": "text",
+   "cao": "text",
+   "quycach": "text",
+   "soluong": "number",
+   "khoiluong": "text",
+   "vitri": "text",
+   "cbm": "number",
+   "ispacking": "boolean",
+   "ghichu": "text",
+   "dvt": "text",
+   "nhom": "text",
+   "bophan_sudung": "text",
+   "hoanthanh": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "id_dinhmuc": "text"
+  }
+ },
+ "tr_dinhmuc_govan": {
+  "entityName": "tr_dinhmuc_govan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "pcode": "text",
+   "c_level": "number",
+   "masp": "lookup",
+   "mact": "text",
+   "stt": "text",
+   "chitiet": "text",
+   "nguyenlieu": "text",
+   "chatluong": "text",
+   "long": "text",
+   "loainguyenlieu": "text",
+   "dayy_tc": "number",
+   "rong_tc": "number",
+   "dai_tc": "number",
+   "soluong_tc": "number",
+   "m2_tc": "number",
+   "m3_tc": "number",
+   "dayy_sc": "number",
+   "rong_sc": "number",
+   "dai_sc": "number",
+   "soluong_sc": "number",
+   "m3_sc": "number",
+   "dayy_phoi": "number",
+   "cachlayphoi": "text",
+   "ghichu": "text",
+   "quytrinhgiacong": "text",
+   "hinhanh": "text",
+   "hoanthanh": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "maspid": "text",
+   "maspmasp": "text",
+   "soluong_mong": "number",
+   "kichthuoc_mong": "number",
+   "mong1": "number",
+   "mong2": "number",
+   "veneer_matchinh": "lookup",
+   "veneer_matphu": "lookup",
+   "veneer_canhngan": "number",
+   "veneer_canhdai": "number",
+   "selection": "boolean",
+   "uv_mat1": "boolean",
+   "uv_mat2": "boolean",
+   "uv_canh1": "boolean",
+   "uv_canh2": "boolean",
+   "uv_dau1": "boolean",
+   "uv_dau2": "boolean",
+   "m2_uv": "number",
+   "thoigian": "number",
+   "uv_code": "text",
+   "uv_quytrinh": "text",
+   "bemat": "text",
+   "chitiet_ghep": "text",
+   "chitiet_ghep2": "boolean",
+   "objecttype": "number",
+   "phoi_ghep": "number",
+   "somat_giacong": "number",
+   "t_sort": "number",
+   "cum_trai": "number",
+   "cum_phai": "number",
+   "cum_truoc": "number",
+   "cum_sau": "number",
+   "cum_dinh": "number",
+   "cum_day": "number",
+   "ischitietroi": "boolean",
+   "son_mat1": "text",
+   "son_mat2": "text",
+   "son_canh1": "text",
+   "son_canh2": "text",
+   "son_dau1": "text",
+   "son_dau2": "text",
+   "m2_son": "number",
+   "thoidiem": "number",
+   "cc_mat1": "boolean",
+   "cc_mat2": "boolean",
+   "cc_canh1": "boolean",
+   "cc_canh2": "boolean",
+   "cc_dau1": "boolean",
+   "cc_dau2": "boolean",
+   "isconverted": "boolean",
+   "isgroup": "boolean",
+   "mact_v2": "text",
+   "danveneer": "text",
+   "veneer_canh": "text",
+   "loaiveneer": "number",
+   "veneer_1_mat": "text",
+   "veneer_2_mat": "text",
+   "veneer_dan_canh": "lookup",
+   "uv_matchinh": "boolean",
+   "uv_matphu": "boolean",
+   "uv_canhngan": "number",
+   "uv_canhdai": "number",
+   "id_nguyenlieu": "lookup",
+   "phoi_tructiep": "boolean",
+   "phoi_ghep_ngang": "boolean",
+   "phoi_ghep_finger": "boolean",
+   "ghepthanh": "boolean",
+   "gheptam": "boolean",
+   "idtieuchuanphoi": "number",
+   "gioihan_boiso_tam": "boolean",
+   "phoi_giacong_ngoai": "boolean",
+   "banve": "text",
+   "fsc_100": "boolean",
+   "fsc_mix": "boolean",
+   "fsc_cw": "boolean",
+   "uv_matchinh1": "number",
+   "uv_matphu1": "number",
+   "uv_canhngan1": "number",
+   "uv_canhdai1": "number",
+   "fsc_recycled": "boolean",
+   "non_fsc": "boolean",
+   "fsc_id": "number"
+  }
+ },
+ "tr_dinhmuc_ngukim": {
+  "entityName": "tr_dinhmuc_ngukim",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "pcode": "text",
+   "ccode": "text",
+   "c_level": "number",
+   "masp": "lookup",
+   "mavt": "lookup",
+   "stt": "number",
+   "chitiet": "text",
+   "quycach": "text",
+   "slchet": "text",
+   "slroi": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "nhom": "text",
+   "hwforww": "boolean",
+   "hwforpacking": "boolean",
+   "hwforai": "boolean",
+   "bophan_sudung": "text",
+   "tenbophan": "text",
+   "vitri_sudung": "text",
+   "ghichu": "text",
+   "hoanthanh": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "maspid": "number",
+   "maspmasp": "text",
+   "id_dinhmuc": "text"
+  }
+ },
+ "tr_dinhmuc_son2": {
+  "entityName": "tr_dinhmuc_son2",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "tenchitiet": "text",
+   "nguyenlieu": "text",
+   "soluong": "number",
+   "metvuong": "number",
+   "buoc1": "text",
+   "buoc2": "text",
+   "buoc3": "text",
+   "buoc4": "text",
+   "buoc5": "text",
+   "buoc6": "text",
+   "buoc7": "text",
+   "buoc8": "text",
+   "buoc9": "text",
+   "buoc10": "text",
+   "buoc11": "text",
+   "buoc12": "text",
+   "buoc13": "text",
+   "buoc14": "text",
+   "buoc15": "text",
+   "buoc16": "text",
+   "buoc17": "text",
+   "buoc18": "text",
+   "buoc19": "text",
+   "buoc20": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "stt": "number"
+  }
+ },
+ "tr_dinhmuc_son3": {
+  "entityName": "tr_dinhmuc_son3",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "stt": "number",
+   "buoc": "text",
+   "mact": "text",
+   "tenct": "text",
+   "soluong": "number",
+   "matson": "text",
+   "t_sort": "number",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "makhuvuc": "text",
+   "macongdoan": "text",
+   "stt_buoc": "text",
+   "donhot": "text",
+   "thoigiankho": "text",
+   "cachthuchien": "text",
+   "tonghonhop": "number",
+   "tinhtrang_sudung": "text",
+   "tinhtrang_uv": "text"
+  }
+ },
+ "tr_dinhmuc_son3_metvuong": {
+  "entityName": "tr_dinhmuc_son3_metvuong",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "matson": "text",
+   "metvuong": "number",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "ghichu": "text"
+  }
+ },
+ "tr_dinhmuc_veneer": {
+  "entityName": "tr_dinhmuc_veneer",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "mact": "text",
+   "soluong": "number",
+   "ghichu": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "t_sort": "number"
+  }
+ },
+ "tr_hehang": {
+  "entityName": "tr_hehang",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "tenhh": "text",
+   "khachhang": "text",
+   "ghichu": "longtext",
+   "heso": "number"
+  }
+ },
+ "tr_honhop_son": {
+  "entityName": "tr_honhop_son",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "master_code": "text",
+   "name": "text",
+   "color_code": "text",
+   "color_name": "text",
+   "substrate": "text",
+   "description": "longtext",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime"
+  }
+ },
+ "tr_honhop_son_chitiet": {
+  "entityName": "tr_honhop_son_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "master_code": "text",
+   "step": "integer",
+   "material_code": "text",
+   "material_name": "text",
+   "description": "longtext",
+   "quantity": "number",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime"
+  }
+ },
+ "tr_khachhang": {
+  "entityName": "tr_khachhang",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "customer_id": "text",
+   "customer_name": "text",
+   "address": "text",
+   "area": "text",
+   "phone": "phone",
+   "fax": "text",
+   "email": "email",
+   "website": "url",
+   "director": "text",
+   "merchandiser": "text",
+   "merchandiser_phone": "phone",
+   "merchandiser_mail": "email",
+   "ngaylamviec": "datetime",
+   "create_by": "text",
+   "create_date": "datetime",
+   "bank_id": "text",
+   "taxcode": "text",
+   "active": "bool",
+   "customer_type": "text",
+   "customer_type_name": "text"
+  }
+ },
+ "tr_khachhang_giantiep": {
+  "entityName": "tr_khachhang_giantiep",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "customer_id": "text",
+   "customer_name": "text",
+   "address": "text",
+   "area": "text",
+   "phone": "phone",
+   "fax": "text",
+   "email": "email",
+   "website": "url",
+   "director": "text",
+   "merchandiser": "text",
+   "merchandiser_phone": "phone",
+   "merchandiser_mail": "email",
+   "ngaylamviec": "date",
+   "create_by": "text",
+   "create_date": "datetime"
+  }
+ },
+ "tr_khuvuc": {
+  "entityName": "tr_khuvuc",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "khuvuc": "text",
+   "ghichu": "longtext"
+  }
+ },
+ "tr_lenhcapphat": {
+  "entityName": "tr_lenhcapphat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "lenhcapphatid": "text",
+   "loaidonhang": "text",
+   "loaicapphat": "text",
+   "madondathang": "text",
+   "madonhang": "text",
+   "master_code": "text",
+   "masp": "text",
+   "mavt": "text",
+   "mota": "text",
+   "quycach": "text",
+   "mausac": "text",
+   "soluong_donhang": "number",
+   "soluong": "number",
+   "soluong_daphat": "number",
+   "soluong_conlai": "number",
+   "dvt": "text",
+   "nhom": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "capphat": "bool",
+   "active": "bool",
+   "ghichu": "text",
+   "vuotdinhmuc": "bool",
+   "nguoisua": "text",
+   "ngaysua": "datetime"
+  }
+ },
+ "tr_lenhcapphat_head": {
+  "entityName": "tr_lenhcapphat_head",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "lenhcapphatid": "text",
+   "loaidonhang": "text",
+   "loaicapphat": "text",
+   "madondathang": "text",
+   "hoanthanh": "bool",
+   "vuotdinhmuc": "bool",
+   "active": "bool",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "mahoso": "text",
+   "nguoisua": "text",
+   "ngaysua": "datetime"
+  }
+ },
+ "tr_list_destination": {
+  "entityName": "tr_list_destination",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "destination_code": "text",
+   "destination_name": "text",
+   "description": "text",
+   "active": "bool",
+   "create_date": "datetime",
+   "create_by": "text"
+  }
+ },
+ "tr_list_paymentterm": {
+  "entityName": "tr_list_paymentterm",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "payment_term": "text",
+   "description": "text",
+   "active": "bool",
+   "create_date": "datetime",
+   "create_by": "text",
+   "deposit_per": "number"
+  }
+ },
+ "tr_list_shipment": {
+  "entityName": "tr_list_shipment",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "cangxuat": "text",
+   "ghichu": "text",
+   "active": "bool",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text"
+  }
+ },
+ "tr_list_shipping": {
+  "entityName": "tr_list_shipping",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "destination_code": "text",
+   "shipping_code": "text",
+   "shipping_name": "text",
+   "description": "text",
+   "active": "boolean",
+   "create_date": "datetime",
+   "create_by": "text"
+  }
+ },
+ "tr_loai_dexuat": {
+  "entityName": "tr_loai_dexuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "madexuat": "text",
+   "tendexuat": "text",
+   "macdinh": "bool",
+   "active": "bool",
+   "t_sort": "integer"
+  }
+ },
+ "tr_loaidh": {
+  "entityName": "tr_loaidh",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "maloaidh": "text",
+   "tenloaidh": "text"
+  }
+ },
+ "tr_loaisp": {
+  "entityName": "tr_loaisp",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "maloaisp": "text",
+   "tenloaisp": "text",
+   "ghichu": "text",
+   "tenloaisp_english": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "number"
+  }
+ },
+ "tr_loaincc": {
+  "entityName": "tr_loaincc",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "loaincc": "text"
+  }
+ },
+ "tr_material": {
+  "entityName": "tr_material",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "idxuong": "lookup",
+   "mavt": "lookup",
+   "tenvt": "text",
+   "tenvt_en": "text",
+   "mota": "text",
+   "quycach": "text",
+   "dayy": "text",
+   "rong": "text",
+   "dai": "text",
+   "cao": "text",
+   "dacdiem": "text",
+   "mausac": "text",
+   "dvt": "text",
+   "soluong1kg": "number",
+   "nguyenlieu": "text",
+   "nhom": "text",
+   "mancc": "text",
+   "tenncc": "text",
+   "dongia": "currency",
+   "dongia_goc": "currency",
+   "dongia_ban": "currency",
+   "loaitien": "text",
+   "hinhanh": "image",
+   "hinhanh1": "image",
+   "ghichu": "longtext",
+   "kho": "text",
+   "dobuc": "text",
+   "solop": "text",
+   "seq7": "text",
+   "seg8": "text",
+   "seg9": "text",
+   "seq10": "text",
+   "xuatxu": "text",
+   "xoa": "text",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "van_tieuchuan": "text",
+   "van_mat1": "text",
+   "van_mat2": "text",
+   "duongkinhtrong": "number",
+   "duongkinhngoai": "number",
+   "heren": "text",
+   "duongkinh": "text",
+   "temp_rong": "text",
+   "temp_cao": "text",
+   "material_id": "number",
+   "mavach": "text",
+   "tieuchuan": "text",
+   "xacnhan": "bool",
+   "nguoixacnhan": "text",
+   "ngayxacnhan": "datetime",
+   "ngayhethan": "date",
+   "thue_gtgt": "number",
+   "thuenhapkhau": "number",
+   "chiphi_vanchuyen": "currency",
+   "chiphikhac": "currency",
+   "giatri_quydoi": "number",
+   "dvt_quydoi": "text",
+   "id_xuatxu": "text",
+   "ngaycapnhat_dongia": "date"
+  }
+ },
+ "tr_material_ncc": {
+  "entityName": "tr_material_ncc",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "ma_nvl": "text",
+   "ma_ncc": "text",
+   "dongia": "currency",
+   "tungay": "date",
+   "denngay": "date",
+   "macdinh": "bool",
+   "tigia": "text"
+  }
+ },
+ "tr_material_nocode": {
+  "entityName": "tr_material_nocode",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "mota": "text",
+   "dvt": "text"
+  }
+ },
+ "tr_material_other": {
+  "entityName": "tr_material_other",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "mact": "text",
+   "tenct": "text",
+   "quycach": "text",
+   "mausac": "text",
+   "dvt": "text",
+   "makho": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "boolean",
+   "hangsanxuat": "text",
+   "dacdiem": "text",
+   "nhomvattu": "number"
+  }
+ },
+ "tr_nganhang": {
+  "entityName": "tr_nganhang",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "name": "text",
+   "abbr_name": "text",
+   "branch": "text",
+   "address": "text",
+   "swift": "text",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "isdefault": "bool",
+   "acc_name": "text",
+   "acc_address": "text",
+   "acc_number": "text"
+  }
+ },
+ "tr_muctieu_sanxuat2": {
+  "entityName": "tr_muctieu_sanxuat2",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "nam": "number",
+   "thang": "number",
+   "mabophan": "text",
+   "songuoi": "number",
+   "songay": "number",
+   "mucthuong": "number",
+   "phantram_tang": "number",
+   "col1": "number",
+   "col2": "number",
+   "col3": "number",
+   "col4": "number",
+   "col5": "number",
+   "col6": "number",
+   "col7": "number",
+   "col8": "number",
+   "col9": "number",
+   "col10": "number",
+   "col11": "number",
+   "col12": "number",
+   "col13": "number",
+   "col14": "number",
+   "col15": "number",
+   "col16": "number",
+   "col17": "number",
+   "col18": "text",
+   "col19": "number",
+   "col20": "number",
+   "col21": "number",
+   "col22": "number",
+   "col23": "number",
+   "col24": "number",
+   "col25": "number"
+  }
+ },
+ "tr_muctieu_sanxuat2_chitiet": {
+  "entityName": "tr_muctieu_sanxuat2_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "macongdoan": "text",
+   "ngaythang": "date",
+   "day_names": "text",
+   "muctieu_songuoi": "number",
+   "muctieu_sogio": "number",
+   "muctieu_songuoi_tangca_15": "number",
+   "muctieu_sogio_tangca_15": "number",
+   "muctieu_songuoi_tangca_20": "number",
+   "muctieu_sogio_tangca_20": "number",
+   "muctieu_tonggio": "number",
+   "muctieu_tonggio1": "number",
+   "muctieu_sokhoi_theo_tangca": "number",
+   "muctieu_sokhoi_trungbinh": "number",
+   "songuoi_hiendien_tc": "number",
+   "songuoi_hiendien_hc": "number",
+   "sogio_tangca_15": "number",
+   "sogio_tangca_20": "number",
+   "tonggio": "number",
+   "sokhoi": "number",
+   "tile": "number",
+   "sokhoi_hoanthanh": "number",
+   "tile_hoanthanh": "number",
+   "vegiuagio": "number",
+   "muctieu_tonggio_hc": "number",
+   "muctieu_sokhoi_theo_hc": "number",
+   "giochenhlech": "number",
+   "giocanbu": "number",
+   "muctieu_tonggio_tc": "number",
+   "cont_roi": "number",
+   "cont_rap": "number"
+  }
+ },
+ "tr_nguoiduyet": {
+  "entityName": "tr_nguoiduyet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "username": "text",
+   "bophan": "text"
+  }
+ },
+ "tr_nguoiduyet_bophan": {
+  "entityName": "tr_nguoiduyet_bophan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "username": "text",
+   "mabophan": "text",
+   "phanloai": "text"
+  }
+ },
+ "tr_nguyenlieu_gva": {
+  "entityName": "tr_nguyenlieu_gva",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "nguyenlieu": "text",
+   "dongia": "currency",
+   "tilehaohut": "number",
+   "congdaiphoi": "number",
+   "congdayphoi": "number",
+   "congrongphoi": "number",
+   "catgo": "bool",
+   "dongia_met": "currency",
+   "dongia_metvuong": "currency",
+   "dongia_metkhoi": "currency",
+   "trongluongrieng": "number",
+   "loainguyenlieu": "text"
+  }
+ },
+ "tr_nhacc": {
+  "entityName": "tr_nhacc",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "vendor_id": "text",
+   "vendor_name": "text",
+   "address": "text",
+   "area": "text",
+   "phone": "phone",
+   "email": "email",
+   "website": "url",
+   "loaincc": "lookup",
+   "create_by": "text",
+   "create_date": "datetime",
+   "sotaikhoan": "text",
+   "tentaikhoan": "text",
+   "tennganhang": "text"
+  }
+ },
+ "tr_bangmau": {
+  "entityName": "tr_bangmau",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "ma": "text",
+   "ten": "text",
+   "hehang": "text",
+   "ghichu": "text",
+   "active": "bool"
+  }
+ },
+ "tr_bangmau_baocao_duyet": {
+  "entityName": "tr_bangmau_baocao_duyet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "mancc": "text",
+   "ketqua": "text",
+   "quytrinhmau": "text",
+   "ngay": "datetime",
+   "hehang": "text",
+   "loaigo": "text",
+   "veerner": "text",
+   "mamau": "text",
+   "hieuung": "text",
+   "nguyennhan": "text",
+   "lanky": "number",
+   "duockyboi": "text",
+   "slduocky": "number",
+   "slkhachgiu": "number",
+   "slnhamaygiu": "number",
+   "hinhmattruoc": "text",
+   "hinhmatsau": "text",
+   "createdby": "text",
+   "createdon": "datetime",
+   "updatedby": "text",
+   "updatedon": "datetime",
+   "id_sendmail": "text"
+  }
+ },
+ "tr_bangmau_baocao_luachon": {
+  "entityName": "tr_bangmau_baocao_luachon",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "loai": "text",
+   "namevi": "text",
+   "nameen": "text"
+  }
+ },
+ "tr_banve": {
+  "entityName": "tr_banve",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "tensp": "text",
+   "khachhang": "text",
+   "hehang": "text",
+   "filepath": "text",
+   "pdffile": "text",
+   "seq1": "text",
+   "seq2": "text",
+   "banve_donggoi": "bool",
+   "banve_govan": "bool",
+   "phanloai": "text",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "active": "bool"
+  }
+ },
+ "tr_banve_ai": {
+  "entityName": "tr_banve_ai",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "duongdan": "text",
+   "tenteptin": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "boolean"
+  }
+ },
+ "tr_baocao_final": {
+  "entityName": "tr_baocao_final",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "report_id": "text",
+   "khachhang": "text",
+   "hehang": "text",
+   "ngaykiemtra": "date",
+   "po_khachhang": "text",
+   "madonhang": "text",
+   "qc_khachhang": "text",
+   "ketluan": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "dexuat": "text",
+   "reftype": "number",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime"
+  }
+ },
+ "tr_baocao_final_hinhanh": {
+  "entityName": "tr_baocao_final_hinhanh",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "image_id": "number",
+   "item_id": "text",
+   "image_path": "text",
+   "image_name": "text"
+  }
+ },
+ "tr_baocao_final_muckiemtra": {
+  "entityName": "tr_baocao_final_muckiemtra",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "item_id": "text",
+   "report_id": "text",
+   "masp": "text",
+   "stt": "number",
+   "diengiai": "text",
+   "soluong_kiemtra": "number",
+   "danhgia": "text",
+   "hanhdong": "text",
+   "ghichu": "text",
+   "tensp": "text"
+  }
+ },
+ "tr_baocao_hangloi": {
+  "entityName": "tr_baocao_hangloi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "donhang": "text",
+   "ngaythang": "date",
+   "masp": "text",
+   "mact": "text",
+   "tenct": "text",
+   "dayy": "number",
+   "rong": "number",
+   "dai": "number",
+   "soluong": "number",
+   "tinhtrang": "text",
+   "nguyennhan": "text",
+   "nguoiphutrach": "text",
+   "huongxuly": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "xuongphoi": "text",
+   "xuongdinhhinh": "text",
+   "xuonghoanthien": "text",
+   "soluong_xuly": "number",
+   "bophantra": "text",
+   "congdoan": "text",
+   "daxuly": "bool",
+   "masp1": "text",
+   "pallet_id": "number",
+   "nguoiduyet": "text",
+   "loailoi": "text",
+   "tacnhangayloi": "text",
+   "nguyennhanloi": "text",
+   "nguyennhankhac": "text",
+   "bophanlamloi": "text",
+   "iscreatecard": "bool",
+   "card_no": "text",
+   "congdoanhientai": "text",
+   "tieuchuan": "text",
+   "danhmucloi": "text",
+   "ghichu": "text",
+   "nguyenlieu": "text"
+  }
+ },
+ "tr_baogia_chiphi": {
+  "entityName": "tr_baogia_chiphi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "name": "text",
+   "price": "currency",
+   "price_usd": "currency",
+   "rate": "number",
+   "currency": "text"
+  }
+ },
+ "tr_baogia_chiphi_nguyenlieu": {
+  "entityName": "tr_baogia_chiphi_nguyenlieu",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "nguyenlieu": "text",
+   "dongia": "currency",
+   "loaitien": "text"
+  }
+ },
+ "tr_baogia_chiphi_nhancong": {
+  "entityName": "tr_baogia_chiphi_nhancong",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "bophan": "text",
+   "chiphi": "number",
+   "active": "bool"
+  }
+ },
+ "tr_baogia_chiphi_other": {
+  "entityName": "tr_baogia_chiphi_other",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "name": "text",
+   "price": "currency",
+   "price_usd": "currency",
+   "rate": "number",
+   "currency": "text",
+   "locked": "bool",
+   "type": "text"
+  }
+ },
+ "tr_baogia_chiphi_veneer": {
+  "entityName": "tr_baogia_chiphi_veneer",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "loaihang": "text",
+   "dvt": "text",
+   "dongia1": "number",
+   "dongia2": "number",
+   "mancc": "text",
+   "dongia3": "number",
+   "ghichu": "text",
+   "actived": "bool",
+   "ngaytao": "datetime"
+  }
+ },
+ "tr_baogia_donggoi": {
+  "entityName": "tr_baogia_donggoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "mact": "text",
+   "masp": "text",
+   "stt": "text",
+   "chitiet": "text",
+   "dai": "text",
+   "rong": "text",
+   "cao": "text",
+   "quycach": "text",
+   "soluong": "number",
+   "dongia": "currency",
+   "dvt": "text",
+   "ghichu": "text",
+   "baogiaid": "text"
+  }
+ },
+ "tr_baogia_govan": {
+  "entityName": "tr_baogia_govan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "trangso": "text",
+   "mact": "text",
+   "masp": "text",
+   "stt": "text",
+   "chitiet": "text",
+   "nguyenlieu": "text",
+   "danveneer": "text",
+   "veneer_canh": "text",
+   "loaiveneer": "number",
+   "dayy_tc": "number",
+   "rong_tc": "number",
+   "dai_tc": "number",
+   "mong": "number",
+   "soluong_tc": "number",
+   "sldh": "number",
+   "m3": "number",
+   "go_ngoai_a": "text",
+   "go_trong_b": "text",
+   "plywood_3": "text",
+   "plywood_5": "text",
+   "plywood_9": "text",
+   "plywood_12": "text",
+   "plywood_15": "text",
+   "plywood_18": "text",
+   "mdf_3": "text",
+   "mdf_4_5": "text",
+   "mdf_5": "text",
+   "mdf_9": "text",
+   "mdf_12": "text",
+   "mdf_15": "text",
+   "mdf_17": "text",
+   "mdf_18": "text",
+   "mdf_20": "text",
+   "mdf_25": "text",
+   "veneer_1_mat": "text",
+   "veneer_2_mat": "text",
+   "veneer_dan_canh": "number",
+   "mat_a": "text",
+   "mat_b": "text",
+   "mat_c": "text",
+   "ghichu": "text",
+   "caosu_03": "text",
+   "bachduong_03": "text",
+   "oak": "text",
+   "ash": "text",
+   "walnut_03": "text",
+   "veneer_matchinh": "number",
+   "veneer_matphu": "number",
+   "baogiaid": "text",
+   "t_sort": "number",
+   "uv_matchinh": "bool",
+   "uv_matphu": "bool",
+   "uv_canhdai": "number",
+   "uv_canhngan": "number",
+   "dongia_nguyenlieu": "number",
+   "thanhtien_govan": "number",
+   "thanhtien_veneer": "number",
+   "dongia_son": "number",
+   "dientich": "number",
+   "tyle_haohut": "number",
+   "dokho_giacong": "number",
+   "idchiphigiacong": "number",
+   "dongia_giacong": "number",
+   "thanhtien_giacong": "number",
+   "uv_matchinh1": "number",
+   "uv_matphu1": "number",
+   "uv_canhngan1": "number",
+   "uv_canhdai1": "number",
+   "dongia_nhancong": "number",
+   "dongia_nhancong1": "number",
+   "dongia_nhancong2": "number",
+   "dongia_nhancong3": "number",
+   "dongia_nhancong4": "number",
+   "dongia_nhancong5": "number",
+   "dongia_nhancong6": "number",
+   "dongia_nhancong7": "number",
+   "dongia_nhancong8": "number",
+   "dongia_nhancong9": "number",
+   "dongia_nhancong10": "number",
+   "dongia_nhancong11": "number",
+   "dongia_nhancong12": "number",
+   "trongluongrieng": "number",
+   "fsc_id": "number",
+   "phantram_tang": "number",
+   "dongia_goc": "number"
+  }
+ },
+ "tr_baogia_govan_giacong": {
+  "entityName": "tr_baogia_govan_giacong",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "baogiaid": "text",
+   "id_baogia_govan": "number",
+   "macongdoan": "text",
+   "thanhtien_giacong": "number"
+  }
+ },
+ "tr_baogia_levelson": {
+  "entityName": "tr_baogia_levelson",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "c_level": "integer",
+   "c_percent": "number"
+  }
+ },
+ "tr_baogia_ngukim": {
+  "entityName": "tr_baogia_ngukim",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "stt": "text",
+   "mact": "text",
+   "masp": "text",
+   "chitiet": "text",
+   "soluong": "number",
+   "dongia": "currency",
+   "dvt": "text",
+   "ghichu": "text",
+   "baogiaid": "text"
+  }
+ },
+ "tr_baogia_nhancong": {
+  "entityName": "tr_baogia_nhancong",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "baogiaid": "text",
+   "id_chiphi": "text",
+   "bophan": "text",
+   "chiphi": "currency",
+   "cbm": "number",
+   "m3_tc": "number",
+   "thanhtien": "currency"
+  }
+ },
+ "tr_baogia_other": {
+  "entityName": "tr_baogia_other",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "baogiaid": "text",
+   "id_chiphi": "number",
+   "tenchiphi": "text",
+   "dongia": "currency",
+   "cbm": "number",
+   "thanhtien": "currency",
+   "tigia": "number",
+   "loaichiphi": "text"
+  }
+ },
+ "tr_baogia_son": {
+  "entityName": "tr_baogia_son",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "mact": "text",
+   "soluong": "number",
+   "dongia": "currency",
+   "kichthuoc": "text",
+   "dientich": "number",
+   "dokho": "number",
+   "giason": "currency",
+   "cumson": "text",
+   "matson": "text",
+   "phantram_son": "number",
+   "baogiaid": "text",
+   "dai": "number",
+   "rong": "number",
+   "cao": "number"
+  }
+ },
+ "tr_baogia_summary": {
+  "entityName": "tr_baogia_summary",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "id_truong": "text",
+   "tentruong": "text",
+   "ghichu": "text",
+   "ord": "number",
+   "baogiaid": "text"
+  }
+ },
+ "tr_baogia_thanhpham": {
+  "entityName": "tr_baogia_thanhpham",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "tenchiphi": "text",
+   "dongia": "currency",
+   "soluong": "number",
+   "tigia": "currency",
+   "thanhtien": "currency",
+   "phantram": "text",
+   "daxem": "bool",
+   "nhom": "text",
+   "baogiaid": "text",
+   "revision": "integer",
+   "ghichu": "longtext"
+  }
+ },
+ "tr_baogia2_danhsach": {
+  "entityName": "tr_baogia2_danhsach",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "tensp": "text",
+   "mausac": "text",
+   "ketcau": "text",
+   "bemat_sanpham": "text",
+   "dai": "number",
+   "rong": "number",
+   "cao": "number",
+   "carton_dai": "number",
+   "carton_rong": "number",
+   "carton_cao": "number",
+   "quycach_carton": "text",
+   "tong_cbm": "number",
+   "somam": "number",
+   "sotien_mam": "number",
+   "tygia_usd": "number",
+   "sotien_baogia": "number",
+   "ngaybaogia": "date",
+   "ngayhethan": "date",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "macdinh": "boolean",
+   "revision": "number",
+   "money_target": "number",
+   "ghichu": "text",
+   "net_weight": "number",
+   "cachtinhson": "number"
+  }
+ },
+ "tr_bophan": {
+  "entityName": "tr_bophan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "phanloai": "text",
+   "mabophan": "text",
+   "tenbophan": "text",
+   "ghichu": "text",
+   "stt": "number",
+   "tenkhac": "text",
+   "truongbophan": "lookup"
+  }
+ },
+ "dqt_pallet_chitiet": {
+  "entityName": "dqt_pallet_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "pallet_id": "number",
+   "id_nguyenlieu": "lookup",
+   "xuatxu": "number",
+   "dayy": "number",
+   "rong": "number",
+   "dai": "number",
+   "sothanh": "number",
+   "sokhoi": "number",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "active": "boolean",
+   "sothanh_daxuat": "number",
+   "ngayxuat": "datetime",
+   "dain": "boolean",
+   "ngayin": "datetime",
+   "sophieu": "text",
+   "donhang": "lookup",
+   "phanloai": "text",
+   "ghichu": "text",
+   "fsc_id": "number",
+   "ngaysanxuat": "date",
+   "malo_nguyenlieu": "text",
+   "dvt": "text",
+   "congdoan": "lookup",
+   "sokhoi_daxuat": "number",
+   "machatluong": "text"
+  }
+ },
+ "dqt_pallet_yeucauxuat": {
+  "entityName": "dqt_pallet_yeucauxuat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "noidung": "text",
+   "ngaydexuat": "date",
+   "tongsothanh": "number",
+   "tongsokhoi": "number",
+   "daxuat": "boolean",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "boolean",
+   "dondathang": "text",
+   "bennhan": "text",
+   "reftype": "number"
+  }
+ },
+ "dqt_pallet_yeucauxuat_chitiet": {
+  "entityName": "dqt_pallet_yeucauxuat_chitiet",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "dexuat_id": "number",
+   "sophieu_pallet": "text",
+   "sothanh_dexuat": "number",
+   "sokhoi_dexuat": "number",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "huybo": "boolean",
+   "ghichu": "text",
+   "daxuat": "boolean",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime"
+  }
+ },
+ "dqt_thongke_phoi": {
+  "entityName": "dqt_thongke_phoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "bengiao": "text",
+   "madonhang": "lookup",
+   "nguyenlieu": "text",
+   "day_sc": "number",
+   "rong_sc": "number",
+   "dai_sc": "number",
+   "soluong": "number",
+   "sokhoi": "number",
+   "ngaythang": "date",
+   "isin": "bool",
+   "ghichu": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "id_donhang_chitiet": "number",
+   "sophieu_nhaphang": "text",
+   "xuatxu": "number",
+   "malo_nguyenlieu": "text",
+   "fsc_id": "number",
+   "p_id": "text",
+   "soluong_xuat": "number",
+   "dongia_usd": "number",
+   "dexuat_phoi_id": "text",
+   "sophieu_dexuat": "text",
+   "loaitien": "text",
+   "mact": "text",
+   "nhomnguyenlieu_id": "number"
+  }
+ },
+ "hr_congty": {
+  "entityName": "hr_congty",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "macty": "text",
+   "tencty": "text",
+   "mst": "text",
+   "diachi": "text",
+   "giamdoc": "text",
+   "hinhanh": "image",
+   "ghichu": "longtext",
+   "maquocgia": "text",
+   "madoanhnghiep": "text",
+   "diachikho": "text",
+   "sodienthoai": "phone",
+   "email": "email",
+   "tenctyen": "text",
+   "diachien": "text",
+   "website": "url"
+  }
+ },
+ "kt_chiphi": {
+  "entityName": "kt_chiphi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "stt": "integer",
+   "name": "text",
+   "nhomchiphi": "number"
+  }
+ },
+ "kt_chiphi_bophan": {
+  "entityName": "kt_chiphi_bophan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "name": "text",
+   "tinhphoi": "boolean",
+   "taikhoanphoithu": "number",
+   "taikhoanphoichi": "number",
+   "nhomchi": "number",
+   "nhomthu": "number",
+   "hangmucchi": "number",
+   "hangmucthu": "number",
+   "noicungcap": "text",
+   "congdoannhan": "text",
+   "congdoanhoanthanh": "text",
+   "stt": "number",
+   "congty": "text",
+   "malienket": "text",
+   "congdoandongbo": "text"
+  }
+ },
+ "kt_chiphi_bophan_giantiep": {
+  "entityName": "kt_chiphi_bophan_giantiep",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "bophanchiphi": "text",
+   "bophan": "text"
+  }
+ },
+ "kt_chiphi_kinhdoanh": {
+  "entityName": "kt_chiphi_kinhdoanh",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "loaichiphi": "text",
+   "ngaygiaodich": "date",
+   "tenchiphi": "text",
+   "sotien": "number",
+   "sotien_usd": "number",
+   "ghichu": "text",
+   "isshow": "boolean",
+   "soluong": "number",
+   "dvt": "text",
+   "dongia": "number",
+   "nguoidexuat": "text",
+   "nhacungcap": "text",
+   "id_nhomchiphi": "number",
+   "mucdich": "text",
+   "chiphi": "number",
+   "tygia": "number",
+   "ketquakinhdoanh": "text",
+   "taikhoan": "number",
+   "id_hangmuc": "number",
+   "loaitien": "text",
+   "active": "boolean"
+  }
+ },
+ "kt_ketqua_kinhdoanh": {
+  "entityName": "kt_ketqua_kinhdoanh",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "tuan": "text",
+   "bophan": "text",
+   "nguoiphutrach": "text",
+   "ghichu": "text",
+   "tienluonghc": "number",
+   "tiencomhc": "number",
+   "tienluongtc": "number",
+   "tiencomtc": "number",
+   "tienphucap": "number",
+   "solaodong": "number",
+   "xuathang": "number",
+   "khauhao": "number",
+   "laivay": "number",
+   "thuexuong": "number",
+   "diennuoc": "number",
+   "thuong12thang": "number",
+   "chikhac": "number",
+   "tongcodinh": "number",
+   "chiphoi": "number",
+   "tontruoc": "number",
+   "thuphoi": "number",
+   "thukhac": "number",
+   "tongthu": "number",
+   "tongchi": "number",
+   "toncuoi": "number",
+   "ngay": "datetime"
+  }
+ },
+ "kt_ketqua_kinhdoanh_tuan": {
+  "entityName": "kt_ketqua_kinhdoanh_tuan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "nam": "number",
+   "name": "text",
+   "tungay": "datetime",
+   "denngay": "datetime",
+   "optimisticlockfield": "number",
+   "gcrecord": "number"
+  }
+ },
+ "kt_ketqua_kinhdoanh_tuan_cpcd": {
+  "entityName": "kt_ketqua_kinhdoanh_tuan_cpcd",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "tuan": "text",
+   "bophan": "text",
+   "chiphi": "number",
+   "sotien": "number",
+   "ketquakinhdoanh": "text",
+   "ngay": "datetime",
+   "thang": "number",
+   "nam": "number"
+  }
+ },
+ "kt_ketqua_kinhdoanh_tuan_cpphoi": {
+  "entityName": "kt_ketqua_kinhdoanh_tuan_cpphoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "ngay": "datetime",
+   "tuan": "text",
+   "bophan": "text",
+   "chiphi": "number",
+   "nhancong": "number",
+   "codinh": "number",
+   "nguyenlieu": "text",
+   "m3nhan": "number",
+   "m3hoanthanh": "number",
+   "gianguyenlieu": "number",
+   "tilehaohut": "number",
+   "giathanhpham": "number",
+   "sotien": "number",
+   "ghichu": "text",
+   "ketquakinhdoanh": "text",
+   "sotienthu": "number",
+   "noicungcap": "text"
+  }
+ },
+ "kt_loai_giaodich": {
+  "entityName": "kt_loai_giaodich",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "name": "text",
+   "stt": "integer"
+  }
+ },
+ "kt_nhom_chiphi": {
+  "entityName": "kt_nhom_chiphi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "nhomchiphi": "text",
+   "sotien": "currency",
+   "loaichiphi": "text",
+   "stt": "integer",
+   "name": "text"
+  }
+ },
+ "kt_sohieutaikhoan": {
+  "entityName": "kt_sohieutaikhoan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "name": "text"
+  }
+ },
+ "kt_soquy_tienmat": {
+  "entityName": "kt_soquy_tienmat",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "ngaythang": "date",
+   "tengoi": "text",
+   "soluong": "number",
+   "dongia": "number",
+   "thanhtien": "number",
+   "dvt": "text",
+   "nguoidexuat": "text",
+   "nhacungcap": "text",
+   "khoanthu": "number",
+   "chiphi_sanxuat": "number",
+   "chiphi_baotri_sx": "number",
+   "chiphi_com_sx": "number",
+   "chiphi_khac": "number",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text"
+  }
+ },
+ "mes_banve": {
+  "entityName": "mes_banve",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "duongdan": "text",
+   "dinhdang": "text",
+   "tenteptin": "text",
+   "phanloai": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "phathanh": "bool"
+  }
+ },
+ "mes_danhsach_maymoc": {
+  "entityName": "mes_danhsach_maymoc",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "mamay": "text",
+   "tenmay": "text",
+   "xuong": "number",
+   "bophan": "number",
+   "active": "boolean",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime"
+  }
+ },
+ "mes_danhsach_maymoc_group": {
+  "entityName": "mes_danhsach_maymoc_group",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id_maymoc": "number",
+   "c_op": "text"
+  }
+ },
+ "mes_dinhmuc_donggoi": {
+  "entityName": "mes_dinhmuc_donggoi",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "stt": "number",
+   "masp": "text",
+   "masp_mausac": "text",
+   "mavt": "text",
+   "chitiet": "text",
+   "soluong": "number",
+   "cbm": "number",
+   "ispacking": "bool",
+   "ghichu": "text",
+   "hoanthanh": "bool",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "id_dinhmuc": "text"
+  }
+ },
+ "mes_dinhmuc_govan": {
+  "entityName": "mes_dinhmuc_govan",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "masp": "text",
+   "mact": "text",
+   "stt": "text",
+   "chitiet": "text",
+   "nguyenlieu": "text",
+   "dayy_tc": "number",
+   "rong_tc": "number",
+   "dai_tc": "number",
+   "soluong_tc": "number",
+   "m3_tc": "number",
+   "m2_tc": "number",
+   "dayy_sc": "number",
+   "rong_sc": "number",
+   "dai_sc": "number",
+   "soluong_sc": "number",
+   "m3_sc": "number",
+   "ghichu": "text",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "hoanthanh": "boolean",
+   "mong1": "number",
+   "mong2": "number",
+   "veneer_matchinh": "text",
+   "veneer_matphu": "text",
+   "veneer_dan_canh": "text",
+   "uv_matchinh": "boolean",
+   "uv_matphu": "boolean",
+   "uv_canhdai": "number",
+   "uv_canhngan": "number",
+   "veneer_canhdai": "number",
+   "veneer_canhngan": "number",
+   "id_nguyenlieu": "text",
+   "banve": "text",
+   "fsc_100": "boolean",
+   "fsc_mix": "boolean",
+   "fsc_cw": "boolean",
+   "uv_matchinh1": "number",
+   "uv_matphu1": "number",
+   "uv_canhngan1": "number",
+   "uv_canhdai1": "number",
+   "fsc_recycled": "boolean",
+   "non_fsc": "boolean",
+   "fsc_id": "number",
+   "uv_code": "text",
+   "cnc_file": "text",
+   "dim_file": "text",
+   "pcode": "text",
+   "phoi_tructiep": "boolean"
+  }
+ },
+ "mes_dinhmuc_govan_ghichu": {
+  "entityName": "mes_dinhmuc_govan_ghichu",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp_nhamay": "text",
+   "masp_mausac": "text",
+   "mact": "text",
+   "ghichu": "longtext"
+  }
+ },
+ "mes_dinhmuc_ngukim": {
+  "entityName": "mes_dinhmuc_ngukim",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "stt": "number",
+   "masp": "text",
+   "masp_mausac": "text",
+   "mavt": "text",
+   "chitiet": "text",
+   "soluong": "number",
+   "hwforww": "boolean",
+   "hwforpacking": "boolean",
+   "hwforai": "boolean",
+   "ghichu": "text",
+   "hoanthanh": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "id_dinhmuc": "text"
+  }
+ },
+ "mes_dinhmuc_son": {
+  "entityName": "mes_dinhmuc_son",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "stt": "text",
+   "masp": "text",
+   "masp_mausac": "text",
+   "buoc": "text",
+   "mavt": "text",
+   "chitiet": "text",
+   "m2": "number",
+   "sl_m2": "number",
+   "sl_sp": "number",
+   "sontrongsanpham": "boolean",
+   "hoanthanh": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "t_sort": "number",
+   "id_dinhmuc": "text"
+  }
+ },
+ "mes_dinhmuc_veneer": {
+  "entityName": "mes_dinhmuc_veneer",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "masp_mausac": "text",
+   "mavt": "text",
+   "chitiet": "text",
+   "soluong": "number",
+   "ghichu": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "t_sort": "number"
+  }
+ },
+ "mes_quytrinh_sanpham": {
+  "entityName": "mes_quytrinh_sanpham",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "mact": "text",
+   "stt": "text",
+   "tenct": "text",
+   "nguyenlieu": "text",
+   "dayy_tc": "number",
+   "rong_tc": "number",
+   "dai_tc": "number",
+   "buoc": "number",
+   "quytrinh": "text",
+   "maymoc": "text",
+   "attribute1": "number",
+   "attribute2": "text",
+   "attribute3": "text",
+   "attribute4": "text",
+   "attribute5": "text",
+   "attribute6": "text",
+   "attribute7": "text",
+   "attribute8": "text",
+   "attribute9": "text",
+   "active": "boolean",
+   "ngaytao": "datetime",
+   "nguoitao": "text",
+   "ngaysua": "datetime",
+   "nguoisua": "text",
+   "nguoichiutrachnhiem": "text",
+   "nguoikiemtra": "text",
+   "id_maymoc": "number",
+   "quytrinh2": "text"
+  }
+ },
+ "tr_order": {
+  "entityName": "tr_order",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "integer",
+   "order_number": "text",
+   "customer": "text",
+   "order_date": "datetime",
+   "ship_date": "datetime",
+   "etd": "datetime",
+   "cont_date": "text",
+   "f_cancelled": "text",
+   "choduyet": "integer",
+   "IsLock": "bool",
+   "Finished": "bool",
+   "IsPay": "bool",
+   "IsExample": "bool",
+   "destination_port": "text",
+   "ship_to": "text",
+   "remark": "text",
+   "payment_term": "text",
+   "carton_marking": "text",
+   "cont_qty": "number",
+   "cust_po_number": "text",
+   "range": "text",
+   "create_date": "datetime",
+   "create_by": "text",
+   "update_date": "datetime",
+   "update_by": "text",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "IsPhoi": "bool",
+   "IsUV": "bool",
+   "bangiamdoc_duyet": "text",
+   "bangiamdoc_ngayduyet": "datetime",
+   "ngay_hangtrang": "datetime",
+   "ngay_son": "datetime",
+   "ngay_donggoi": "datetime",
+   "nguyenlieu": "text",
+   "bemat": "text",
+   "IsOutsource": "bool",
+   "vendor_id": "text",
+   "fsc_id": "integer",
+   "noisanxuat": "bool",
+   "loaidonhangmau": "integer",
+   "currency_code": "text",
+   "exchange_rate": "number",
+   "ncc_phoi": "text",
+   "ncc_dinhhinh": "text",
+   "ncc_son": "text",
+   "target_date": "datetime",
+   "actual_date": "datetime",
+   "kehoach_hangtrang": "datetime",
+   "status": "text",
+   "remark2": "text",
+   "danhgia": "text",
+   "SortOrder": "integer",
+   "trangthai_donhang": "text",
+   "payment_term_id": "integer"
+  }
+ },
+ "tr_order_detail": {
+  "entityName": "tr_order_detail",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "customer": "text",
+   "agent": "text",
+   "range": "text",
+   "order_number": "lookup",
+   "item_number": "lookup",
+   "cust_item_number": "text",
+   "description": "text",
+   "color": "text",
+   "material": "text",
+   "order_qty": "number",
+   "cbm": "number",
+   "price": "number",
+   "currency": "text",
+   "amount": "number",
+   "bill_to": "text",
+   "ship_to": "text",
+   "input_qty": "number",
+   "destination_port": "text",
+   "etd": "date",
+   "ship_date": "date",
+   "ship_qty": "number",
+   "order_date": "date",
+   "cont_date": "date",
+   "container_size": "text",
+   "nccht": "text",
+   "payment_term": "text",
+   "remark": "text",
+   "cust_po_number": "text",
+   "attribute4": "text",
+   "choduyet": "text",
+   "f_cancelled": "text",
+   "finished": "boolean",
+   "isrelease": "boolean",
+   "create_by": "text",
+   "create_date": "datetime",
+   "update_by": "text",
+   "update_date": "datetime",
+   "test_run_qty": "number",
+   "khongtinhson": "boolean",
+   "fsc_100": "boolean",
+   "fsc_mix": "boolean",
+   "fsc_cw": "boolean",
+   "soluong_choxuat": "number",
+   "fsc_recycled": "boolean",
+   "idordernumber": "number",
+   "nccs": "text",
+   "tenkhoahoc": "text",
+   "fsc_id": "number",
+   "ship_date1": "date"
+  }
+ },
+ "tr_order_replacement": {
+  "entityName": "tr_order_replacement",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "donhang": "text",
+   "sudungcho": "text",
+   "pokhachhang": "text",
+   "tenkhachhang": "text",
+   "loaidonggoi": "number",
+   "ngayhoanthanh": "date",
+   "ngayxuat": "date",
+   "mucdichsudung": "text",
+   "ghichu": "text",
+   "hoanthanh": "bool",
+   "chiutrachnhiem": "text",
+   "active": "bool",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "makhachhang": "text",
+   "nguoiduyet": "text",
+   "ngayduyet": "datetime",
+   "bgd_nguoiduyet": "text",
+   "bgd_ngayduyet": "datetime",
+   "choduyet": "number",
+   "noisanxuat": "text"
+  }
+ },
+ "tr_order_replacement_detail": {
+  "entityName": "tr_order_replacement_detail",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "order_id": "text",
+   "donhang": "text",
+   "masp": "text",
+   "mact": "text",
+   "tenct": "text",
+   "quycach": "text",
+   "mausac": "text",
+   "soluong": "number",
+   "dvt": "text",
+   "dinhmuc": "text",
+   "tensp": "text",
+   "chiutrachnhiem": "text"
+  }
+ },
+ "tr_sanpham_carton": {
+  "entityName": "tr_sanpham_carton",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "text",
+   "masp": "text",
+   "mact": "text",
+   "tenct": "text",
+   "soluong": "number",
+   "quycach1": "text",
+   "quycach2": "text",
+   "cbm2": "number",
+   "grossweight": "number",
+   "netweight": "number",
+   "mathung": "text"
+  }
+ },
+ "tr_sanpham_nhamay": {
+  "entityName": "tr_sanpham_nhamay",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "masp_nhamay": "text",
+   "tensp": "text",
+   "nguoitao": "text",
+   "ngaytao": "datetime",
+   "nguoisua": "text",
+   "ngaysua": "datetime",
+   "active": "bool",
+   "hehang": "text",
+   "isgovan": "bool",
+   "isngukim": "bool",
+   "isbaobi": "bool",
+   "isson": "bool",
+   "isveneer": "bool",
+   "isbvkt": "bool",
+   "isbvdg": "bool",
+   "isbvai": "bool",
+   "phienban": "number",
+   "masp_goc": "text"
+  }
+ },
+ "tr_color": {
+  "entityName": "tr_color",
+  "storageTier": "table",
+  "pk": [
+   "id"
+  ],
+  "fields": {
+   "id": "number",
+   "code": "text",
+   "name": "text",
+   "khachhang": "text",
+   "ghichu": "text",
+   "hinhanh": "text",
+   "dongia": "currency",
+   "hieuung": "text",
+   "tenfile": "text",
+   "duongdan": "url",
+   "ncc": "text",
+   "phanloai": "text",
+   "tenfile2": "text",
+   "duongdan2": "url",
+   "active": "bool",
+   "imageurl": "url"
+  }
+ }
+}

@@ -1,5 +1,9 @@
-import { sql } from "drizzle-orm";
+/* Port TR_DONDATHANG_INSERT2 — thêm đơn đặt hàng.
+   Nguồn: migration-plan/ui/proc-bodies/tr_dondathang_insert2.sql
+   Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   f_... hoặc ext của bảng thật, tự version/updated_at/search_tsv, guard mirror). */
 import type { DB } from "@erp-framework/server/db";
+import { procTable } from "../src/proc-table";
 
 export async function trDondathangInsert2(
   db: DB,
@@ -42,86 +46,42 @@ export async function trDondathangInsert2(
 ): Promise<Array<{ id: string }>> {
   if (!args.maddh) throw new Error("Thiếu maddh");
 
-  const r = await db.execute<{ id: string }>(sql`
-    INSERT INTO tr_dondathang (
-      id,
-      company_id,
-      maddh,
-      tenddh,
-      mancc,
-      tenncc,
-      loaidonhang,
-      loaiddh,
-      loaithanhtoan,
-      ngaydat,
-      ngaygiao,
-      ngayyeucau,
-      trangthai,
-      pheduyet,
-      donhang,
-      lan_sua,
-      ngayduyet,
-      nguoiduyet,
-      ngayky,
-      nguoiky,
-      isshowsign,
-      create_by,
-      create_date,
-      update_by,
-      update_date,
-      active,
-      kehoach_sanxuat,
-      id_maddhmaddh,
-      ghichu,
-      chukytp,
-      chukygd,
-      chukynv,
-      ngayky_nhanvien,
-      mahoso,
-      macongty,
-      created_at,
-      updated_at
-    ) VALUES (
-      gen_random_uuid(),
-      ${companyId},
-      ${args.maddh},
-      ${args.tenddh ?? null},
-      ${args.mancc ?? null},
-      ${args.tenncc ?? null},
-      ${args.loaidonhang ?? null},
-      ${args.loaiddh ?? null},
-      ${args.loaithanhtoan ?? null},
-      ${args.ngaydat ?? null},
-      ${args.ngaygiao ?? null},
-      ${args.ngayyeucau ?? null},
-      ${args.trangthai ?? null},
-      ${args.pheduyet ?? null},
-      ${args.donhang ?? null},
-      ${args.lan_sua ?? null},
-      ${args.ngayduyet ?? null},
-      ${args.nguoiduyet ?? null},
-      ${args.ngayky ?? null},
-      ${args.nguoiky ?? null},
-      ${args.isshowsign ?? null},
-      ${args.create_by ?? null},
-      ${args.create_date ?? null},
-      ${args.update_by ?? null},
-      ${args.update_date ?? null},
-      ${args.active ?? null},
-      ${args.kehoach_sanxuat ?? null},
-      ${args.id_maddhmaddh ?? null},
-      ${args.ghichu ?? null},
-      ${args.chukytp ?? null},
-      ${args.chukygd ?? null},
-      ${args.chukynv ?? null},
-      ${args.ngayky_nhanvien ?? null},
-      ${args.mahoso ?? null},
-      ${args.macongty ?? null},
-      now(),
-      now()
-    )
-    RETURNING id
-  `);
+  const t = await procTable(db, companyId, "tr_dondathang");
+  const id = await t.insertRow({
+    maddh: args.maddh,
+    tenddh: args.tenddh ?? null,
+    mancc: args.mancc ?? null,
+    tenncc: args.tenncc ?? null,
+    loaidonhang: args.loaidonhang ?? null,
+    loaiddh: args.loaiddh ?? null,
+    loaithanhtoan: args.loaithanhtoan ?? null,
+    ngaydat: args.ngaydat ?? null,
+    ngaygiao: args.ngaygiao ?? null,
+    ngayyeucau: args.ngayyeucau ?? null,
+    trangthai: args.trangthai ?? null,
+    pheduyet: args.pheduyet ?? null,
+    donhang: args.donhang ?? null,
+    lan_sua: args.lan_sua ?? null,
+    ngayduyet: args.ngayduyet ?? null,
+    nguoiduyet: args.nguoiduyet ?? null,
+    ngayky: args.ngayky ?? null,
+    nguoiky: args.nguoiky ?? null,
+    isshowsign: args.isshowsign ?? null,
+    create_by: args.create_by ?? null,
+    create_date: args.create_date ?? null,
+    update_by: args.update_by ?? null,
+    update_date: args.update_date ?? null,
+    active: args.active ?? null,
+    kehoach_sanxuat: args.kehoach_sanxuat ?? null,
+    id_maddhmaddh: args.id_maddhmaddh ?? null,
+    ghichu: args.ghichu ?? null,
+    chukytp: args.chukytp ?? null,
+    chukygd: args.chukygd ?? null,
+    chukynv: args.chukynv ?? null,
+    ngayky_nhanvien: args.ngayky_nhanvien ?? null,
+    mahoso: args.mahoso ?? null,
+    macongty: args.macongty ?? null,
+  });
 
-  return r as unknown as Array<{ id: string }>;
+  return [{ id }];
 }

@@ -1,27 +1,22 @@
-import { sql } from "drizzle-orm";
-import type { DB } from "@erp-framework/server/db";
+/* Port TR_SANPHAM_COMPONENTS_DELETEBYID — xoá component của sản phẩm theo id.
+   Nguồn: migration-plan/ui/proc-bodies/tr_sanpham_components_deletebyid.sql
 
-// TODO: mapping chỉ cung cấp tr_sanpham; tr_sanpham_components giả định là
-// BẢNG THẬT PG cùng tên (HYBRID) với các cột hệ thống company_id/deleted_at/updated_at.
-// Cần xác nhận bảng tồn tại và có đủ cột trước khi deploy.
+   Bảng tr_sanpham_components CHƯA migrate sang PG — proc sẽ throw
+   "entity không tồn tại" khi gọi, cần đưa bảng vào scope migrate trước.
+   (procTable tự fail-fast với message rõ.) */
+import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function trSanphamComponentsDeletebyid(
   db: DB,
   companyId: string,
   args: { id: number },
-): Promise<void> {
+): Promise<number> {
   if (!args.id) throw new Error("Thiếu id");
 
-  // Proc gốc: DELETE tr_sanpham_components WHERE id = @id (hard-delete).
-  // Framework dùng soft-delete — set deleted_at thay vì xoá vật lý.
-  // Nếu nghiệp vụ yêu cầu hard-delete thật sự, đổi thành DELETE FROM ... và bỏ updated_at.
-  await db.execute(sql`
-    UPDATE tr_sanpham_components
-    SET
-      deleted_at = now(),
-      updated_at = now()
-    WHERE id          = ${args.id}
-      AND company_id  = ${companyId}
-      AND deleted_at  IS NULL
-  `);
+  const t = await procTable(db, companyId, "tr_sanpham_components");
+  // Proc gốc: DELETE tr_sanpham_components WHERE id = @id (PK nguồn int).
+  // Hệ mới dùng soft-delete (deleted_at) cho bảng thật — chuẩn thay cho DELETE.
+  return t.softDeleteWhere(sql`${t.num("id")} = ${args.id}`);
 }

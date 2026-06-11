@@ -1,5 +1,15 @@
-import { sql } from "drizzle-orm";
+/* Port TR_TRANGTHAI_SANXUAT_XACNHAN — xác nhận giao hàng trạng thái sản xuất.
+   Nguồn: KHÔNG có file migration-plan/ui/proc-bodies/tr_trangthai_sanxuat_xacnhan.sql
+   — giữ nguyên logic từ bản port trước (đã đối chiếu T-SQL gốc khi port lần đầu).
+   Đọc/ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
+   f_... hoặc ext của bảng thật, tự version/updated_at, guard mirror).
+   Lưu ý: T-SQL gốc có bug @congdoan = @congdoan (tự gán, không đọc từ bảng);
+   block IF dùng @congdoan đã bị comment out nên không ảnh hưởng — bỏ qua ở đây.
+   mact = '000' (cụm): sokhoi lấy m3_tc của tr_sanpham theo masp1;
+   ngược lại sokhoi = dayy*rong*dai*soluong/1e9. */
 import type { DB } from "@erp-framework/server/db";
+import { sql } from "drizzle-orm";
+import { procTable } from "../src/proc-table";
 
 export async function trTrangThaiSanXuatXacNhan(
   db: DB,
@@ -16,66 +26,39 @@ export async function trTrangThaiSanXuatXacNhan(
   if (!args.ngaygiao) throw new Error("Thiếu ngaygiao");
   if (!args.nguoinhan) throw new Error("Thiếu nguoinhan");
 
-  // Đọc thông tin dòng cần xác nhận từ bảng thật
-  // Lưu ý: T-SQL gốc có bug @congdoan = @congdoan (tự gán, không đọc từ bảng);
-  // block IF dùng @congdoan đã bị comment out nên không ảnh hưởng — bỏ qua ở đây.
-  const selectRows = await db.execute<{
-    mact: string | null;
-    masp1: string | null;
-    dayy: number | null;
-    rong: number | null;
-    dai: number | null;
-  }>(sql`
-    SELECT mact, masp1, dayy, rong, dai
-    FROM tr_trangthai_sanxuat
-    WHERE id = ${args.id}
-      AND company_id = ${companyId}
-      AND deleted_at IS NULL
-  `);
+  const ngaygiao =
+    args.ngaygiao instanceof Date
+      ? args.ngaygiao.toISOString()
+      : new Date(args.ngaygiao).toISOString();
 
-  const row = (
-    selectRows as unknown as Array<{
-      mact: string | null;
-      masp1: string | null;
-      dayy: number | null;
-      rong: number | null;
-      dai: number | null;
-    }>
-  )[0];
+  const t = await procTable(db, companyId, "tr_trangthai_sanxuat");
+  const where = sql`${t.text("id")} = ${args.id}`;
 
+  // Đọc thông tin dòng cần xác nhận (mact, masp1, kích thước)
+  const [row] = await t.listWhere(where, { limit: 1 });
   if (!row) throw new Error("Không tìm thấy bản ghi tr_trangthai_sanxuat");
 
   let sokhoi: number;
-
   if (row.mact === "000") {
-    // TODO: bảng tr_sanpham không có trong mapping được cung cấp.
-    // Giả định đây là BẢNG THẬT PostgreSQL `tr_sanpham` với cột masp (text) và m3_tc (numeric).
-    // Cần xác nhận tên bảng + tên cột thực tế trước khi deploy.
-    const spRows = await db.execute<{ m3_tc: number | null }>(sql`
-      SELECT m3_tc
-      FROM tr_sanpham
-      WHERE masp = ${row.masp1}
-        AND company_id = ${companyId}
-        AND deleted_at IS NULL
-      LIMIT 1
-    `);
-    const sp = (spRows as unknown as Array<{ m3_tc: number | null }>)[0];
-    sokhoi = sp?.m3_tc ?? 0;
+    // Dòng cụm — lấy số khối tiêu chuẩn m3_tc từ sản phẩm theo masp1
+    const tsp = await procTable(db, companyId, "tr_sanpham");
+    const [sp] = await tsp.listWhere(sql`${tsp.text("masp")} = ${row.masp1 ?? null}`, { limit: 1 });
+    const m3tc = Number(sp?.m3_tc);
+    sokhoi = Number.isFinite(m3tc) ? m3tc : 0;
   } else {
-    const dayy = row.dayy ?? 0;
-    const rong = row.rong ?? 0;
-    const dai = row.dai ?? 0;
+    const dayy = Number(row.dayy) || 0;
+    const rong = Number(row.rong) || 0;
+    const dai = Number(row.dai) || 0;
     sokhoi = (dayy * rong * dai * args.soluong) / 1_000_000_000;
   }
 
-  await db.execute(sql`
-    UPDATE tr_trangthai_sanxuat
-    SET ngaygiao   = ${args.ngaygiao},
-        nguoinhan  = ${args.nguoinhan},
-        soluong    = ${args.soluong},
-        sokhoi     = ${sokhoi},
-        updated_at = now()
-    WHERE id = ${args.id}
-      AND company_id = ${companyId}
-  `);
+  await t.updateWhere(
+    {
+      ngaygiao,
+      nguoinhan: args.nguoinhan,
+      soluong: args.soluong,
+      sokhoi,
+    },
+    where,
+  );
 }

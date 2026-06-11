@@ -1,5 +1,15 @@
 {
   "extends": "../../tooling/tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2022", "DOM"] },
-  "include": ["src"]
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    // Proc Tier D import type DB từ server (type-only, erased lúc runtime —
+    // KHÔNG tạo dependency vòng). Map path để tsc resolve khi typecheck.
+    "paths": {
+      "@erp-framework/server/db": ["../server/src/db.ts"]
+    }
+  },
+  // module-sales / module-ui_procs là code Tier D do migration sinh —
+  // PHẢI nằm trong include để pnpm typecheck bắt lỗi (trước đây chỉ "src"
+  // nên proc không hề được typecheck).
+  "include": ["src", "module-sales", "module-ui_procs"]
 }
