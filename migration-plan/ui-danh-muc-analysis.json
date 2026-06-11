@@ -1,0 +1,563 @@
+[
+ {
+  "form": "frmListProgramInstall",
+  "title": "frmListProgramInstall",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachCongNo",
+  "title": "Công nợ khách hàng",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachHoaDon",
+  "title": "Danh sách hóa đơn",
+  "grids": 2,
+  "inputs": 1,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachHoaDon2",
+  "title": "Hóa đơn bán hàng",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachHoaDonLuuTam",
+  "title": "Hóa đơn lưu tạm",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCaiDatBieuMau",
+  "title": "Cài đặt biểu mẫu",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCaiDatBieuMauAdd",
+  "title": "Cài đặt quy trình duyệt",
+  "grids": 1,
+  "inputs": 1,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCaiDatDonGiaNguyenLieu",
+  "title": "Cài đặt đơn giá",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCaiDatDonGiaNguyenLieu2",
+  "title": "Cài đặt đơn giá",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachCongViec",
+  "title": "Danh sách công việc",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListJob",
+  "title": "Danh sách công việc",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "TR_PHANCONG_CONGVIEC_GETBYDATE"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": [
+   "tr_phancong_congviec"
+  ]
+ },
+ {
+  "form": "frmListJobAdd",
+  "title": "Giao việc",
+  "grids": 0,
+  "inputs": 3,
+  "procs": [
+   "SYS_USER_GetList",
+   "TR_PHANCONG_CONGVIEC_GETBYID",
+   "TR_PHANCONG_CONGVIEC_INSERT",
+   "TR_PHANCONG_CONGVIEC_UPDATE"
+  ],
+  "tablesInErp": [
+   "sys_user",
+   "tr_bophan"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachCongViec",
+  "title": "Công việc hàng ngày",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhMucDeXuat2",
+  "title": "frmDanhMucDeXuat2",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachMaNhaMay",
+  "title": "Danh sách mã nhà máy",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachMayMocAdd",
+  "title": "Thêm máy móc",
+  "grids": 0,
+  "inputs": 2,
+  "procs": [
+   "TR_DANHSACH_MAYMOC_GETBYDEP",
+   "TR_DANHSACH_MAYMOC_GETBYNAME",
+   "TR_DANHSACH_MAYMOC_INSERT"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachTongHopXuatHopChatSon",
+  "title": "Tổng hợp xuất hợp chất sơn",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachTongHopXuatHopChatSon2",
+  "title": "Tổng hợp xuất hỗn hợp sơn",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachXuatGoVan",
+  "title": "Danh sách phiếu xuất gỗ ván",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListGWHSInOut",
+  "title": "frmListGWHSInOut",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListMaterialInOut",
+  "title": "frmListMaterialInOut",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "MATERIAL_INOUT"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListWHSInOut",
+  "title": "frmListWHSInOut",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "ListWHSInOut_Detail",
+   "TR_SITE_GetAll"
+  ],
+  "tablesInErp": [
+   "tr_phieunhap",
+   "tr_phieuxuat"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListContainer",
+  "title": "Danh sách cont",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "TR_CONT_FINISH",
+   "TR_CONT_GetList"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": [
+   "tr_cont"
+  ]
+ },
+ {
+  "form": "frmDanhSachMayMoc",
+  "title": "Danh sách máy móc",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachMayMocAdd",
+  "title": "Cập nhật máy móc",
+  "grids": 0,
+  "inputs": 1,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListBomEditor",
+  "title": "Danh sách sản phẩm",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmNhomAI",
+  "title": "Nhóm AI",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmNhomAIAdd",
+  "title": "Cập nhật nhóm AI",
+  "grids": 1,
+  "inputs": 3,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmNhomMay",
+  "title": "Nhóm máy",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmRoutList",
+  "title": "Danh sách quy trình",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmRSTNhomNguyenLieu",
+  "title": "Cập nhật nhóm nguyên liệu",
+  "grids": 1,
+  "inputs": 1,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhMucLoi",
+  "title": "Danh mục lỗi",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhMucLoiAdd",
+  "title": "Cập nhật danh mục lỗi",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachLoi",
+  "title": "Khai báo lỗi ",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCaiDatHeSoHeHang",
+  "title": "Cài đặt hệ số",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachBanGiao",
+  "title": "Danh sách bàn giao",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachSuaChua",
+  "title": "Danh sách sửa chữa",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachTaiSan",
+  "title": "Danh sách tài sản",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCreateMaterialRequest",
+  "title": "Tạo lệnh cấp phát",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "CreateMaterialRequest_Ver2",
+   "TR_LENHCAPPHAT_Get"
+  ],
+  "tablesInErp": [
+   "tr_lenhcapphat",
+   "tr_order_detail",
+   "tr_site"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCreateMaterialRequestOther",
+  "title": "Cấp phát vật tư cho hàng trắng",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "LENHCAPPHAT_HANGTRANG",
+   "TR_LENHCAPPHAT_Get"
+  ],
+  "tablesInErp": [
+   "tr_lenhcapphat"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA",
+  "title": "frmCreateMaterialRequest_GVA",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "TR_LENHCAPPHAT_GOVAN",
+   "TR_LENHCAPPHAT_GOVAN_2"
+  ],
+  "tablesInErp": [
+   "tr_order_detail"
+  ],
+  "tablesMissing": [
+   "tr_nhom_nguyenlieu"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA_1",
+  "title": "Cấp phát gỗ ván",
+  "grids": 1,
+  "inputs": 2,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA_ver2",
+  "title": "Lệnh cấp phát gỗ ván",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "TR_DONDATHANG_GET2",
+   "TR_LENHCAPPHAT_GOVAN_VER2"
+  ],
+  "tablesInErp": [
+   "tr_dinhmuc_govan",
+   "tr_dondathang_chitiet"
+  ],
+  "tablesMissing": [
+   "tr_chitiet_hangtrang"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_NonBOM",
+  "title": "Cấp phát vật tư vượt định mức",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [
+   "CreateMaterialRequest_NonBOM",
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_Insert"
+  ],
+  "tablesInErp": [
+   "tr_lenhcapphat",
+   "tr_order_detail",
+   "tr_site"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListMaterialRequest",
+  "title": "Danh sách lệnh cấp phát",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [
+   "tr_lenhcapphat"
+  ],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmListMaterialRequest1",
+  "title": "Danh sách lệnh cấp phát",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_GetListID"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhSachHoaDon",
+  "title": "frmDanhSachHoaDon",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhsachkho",
+  "title": "Danh sách kho",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frm_Danhsachnhacungcap",
+  "title": "Danh sách nhà cung cấp",
+  "grids": 1,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhGiaNhanVien",
+  "title": "Đánh giá nhân viên",
+  "grids": 2,
+  "inputs": 2,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhGiaTongHop",
+  "title": "Đánh giá tổng hợp",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmNhomDanhGiaAdd",
+  "title": "Nhóm đánh giá",
+  "grids": 1,
+  "inputs": 1,
+  "procs": [],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmLoaiTB_Add",
+  "title": "Loại thiết bị",
+  "grids": 0,
+  "inputs": 2,
+  "procs": [
+   "TR_LOAITHIETBI_GET",
+   "TR_LOAITHIETBI_INSERT",
+   "TR_LOAITHIETBI_UPDATE"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": []
+ },
+ {
+  "form": "frmDanhsachCongno_Thu_Tra",
+  "title": "Danh sách công nợ phải Thu - Trả Showroom",
+  "grids": 2,
+  "inputs": 0,
+  "procs": [
+   "SR_DANHSACHCONGNO_THU_TRA"
+  ],
+  "tablesInErp": [],
+  "tablesMissing": []
+ }
+]

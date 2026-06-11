@@ -1,0 +1,713 @@
+[
+ {
+  "form": "frmListProgramInstall",
+  "title": "frmListProgramInstall",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachCongNo",
+  "title": "Công nợ khách hàng",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachHoaDon",
+  "title": "Danh sách hóa đơn",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachHoaDon2",
+  "title": "Hóa đơn bán hàng",
+  "procs": [
+   "TR_CTPHIEUXUAT_INSERT2",
+   "TR_PHIEUXUAT_INSERT2"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_ctphieuxuat",
+   "tr_phieuxuat"
+  ]
+ },
+ {
+  "form": "frmDanhSachHoaDonLuuTam",
+  "title": "Hóa đơn lưu tạm",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmCaiDatBieuMau",
+  "title": "Cài đặt biểu mẫu",
+  "procs": [
+   "TR_NHOM_DEXUAT2_GET",
+   "TR_NHOM_DEXUAT2_GETALL",
+   "TR_NHOM_DEXUAT2_UPDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmCaiDatBieuMauAdd",
+  "title": "Cài đặt quy trình duyệt",
+  "procs": [
+   "TR_NHOM_DEXUAT2_GET",
+   "TR_NHOM_DEXUAT2_UPDATE",
+   "TR_NHOM_XETDUYET_GETALL",
+   "TR_QUYTRINH_XETDUYET_DELETEALL",
+   "TR_QUYTRINH_XETDUYET_GETALL",
+   "TR_QUYTRINH_XETDUYET_INSERT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmCaiDatDonGiaNguyenLieu",
+  "title": "Cài đặt đơn giá",
+  "procs": [
+   "TR_DONGIA_NGUYENLIEU_GVA_DELETEBYID",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETALL",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETBYID",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETBYNGUYENLIEU",
+   "TR_DONGIA_NGUYENLIEU_GVA_INSERT",
+   "TR_DONGIA_NGUYENLIEU_GVA_UPDATE",
+   "TR_NGUYENLIEU_GVA_INSERT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_nguyenlieu_gva"
+  ]
+ },
+ {
+  "form": "frmCaiDatDonGiaNguyenLieu2",
+  "title": "Cài đặt đơn giá",
+  "procs": [
+   "TR_DONGIA_NGUYENLIEU_GVA_DELETEBYID",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETALL",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETBYID",
+   "TR_DONGIA_NGUYENLIEU_GVA_GETBYNGUYENLIEU",
+   "TR_DONGIA_NGUYENLIEU_GVA_INSERT",
+   "TR_DONGIA_NGUYENLIEU_GVA_UPDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachCongViec",
+  "title": "Danh sách công việc",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmListJob",
+  "title": "Danh sách công việc",
+  "procs": [
+   "TR_PHANCONG_CONGVIEC_GETBYDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmListJobAdd",
+  "title": "Giao việc",
+  "procs": [
+   "SYS_USER_GetList",
+   "TR_PHANCONG_CONGVIEC_GETBYID",
+   "TR_PHANCONG_CONGVIEC_INSERT",
+   "TR_PHANCONG_CONGVIEC_UPDATE"
+  ],
+  "tablesDirect": [
+   "sys_user",
+   "tr_bophan"
+  ],
+  "tablesAll": [
+   "sys_user",
+   "tr_bophan"
+  ]
+ },
+ {
+  "form": "frmDanhSachCongViec",
+  "title": "Công việc hàng ngày",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhMucDeXuat2",
+  "title": "frmDanhMucDeXuat2",
+  "procs": [
+   "DQT_DEXUAT_PHOI_CHITIET_DELETE",
+   "DQT_DEXUAT_PHOI_CHITIET_GET",
+   "DQT_DEXUAT_PHOI_CHITIET_GETALL",
+   "DQT_DEXUAT_PHOI_CHITIET_INSERT",
+   "DQT_DEXUAT_PHOI_CHITIET_UPDATE",
+   "TR_DANHSACH_DEXUAT_CANCEL",
+   "TR_DANHSACH_DEXUAT_DUYET",
+   "TR_DANHSACH_DEXUAT_DUYET_BGD",
+   "TR_DANHSACH_DEXUAT_GETALL",
+   "TR_DANHSACH_DEXUAT_PROCESS_GETALL",
+   "TR_DANHSACH_XETDUYET_USER_GETALL",
+   "TR_DENGHI_THANHTOAN_FILE_GETLIST",
+   "TR_DENGHI_THANHTOAN_GET",
+   "TR_DEXUAT_BANGMAU_CANCEL",
+   "TR_DEXUAT_BANGMAU_CHITIET_DELETE",
+   "TR_DEXUAT_BANGMAU_CHITIET_GETALL",
+   "TR_DEXUAT_BANGMAU_CHITIET_GETBYID",
+   "TR_DEXUAT_BANGMAU_CHITIET_INSERT",
+   "TR_DEXUAT_BANGMAU_CHITIET_UPDATE",
+   "TR_DEXUAT_BANGMAU_CONFIRM",
+   "TR_DEXUAT_BANGMAU_EXISTS",
+   "TR_DEXUAT_BANGMAU_GETBYID",
+   "TR_DEXUAT_BANGMAU_INSERT",
+   "TR_DEXUAT_BANGMAU_NEWID",
+   "TR_DEXUAT_BANGMAU_UPDATE",
+   "TR_DONDATHANG_CANCEL",
+   "TR_DONDATHANG_GET3",
+   "TR_DONDATHANG_GETLISTHTR",
+   "TR_NGUOIDUYET_GETALL",
+   "TR_NHOM_XETDUYET_GET",
+   "TR_NHOM_XETDUYET_GETALL",
+   "TR_ORDER_CANCEL",
+   "TR_ORDER_DETAIL_GETALL",
+   "TR_ORDER_DETAIL_GETLISTBYORDER",
+   "TR_ORDER_GET2",
+   "TR_PHIEUTRAHANGTRANG_NHAP_GETALL",
+   "TR_PHIEUYEUCAU_CANCEL",
+   "TR_PHIEUYEUCAU_CANCEL2",
+   "TR_PHIEUYEUCAU_GETBYID",
+   "TR_THAYDOI_KYTHUAT_CANCEL",
+   "TR_THAYDOI_KYTHUAT_GETBYID",
+   "pb_chitiet_phieubuhang_GetAll"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_denghi_thanhtoan",
+   "tr_denghi_thanhtoan_file",
+   "tr_dexuat_bangmau",
+   "tr_dexuat_bangmau_chitiet",
+   "tr_dondathang",
+   "tr_nguoiduyet",
+   "tr_order",
+   "tr_order_detail",
+   "tr_phieuyeucau",
+   "tr_thaydoi_kythuat"
+  ]
+ },
+ {
+  "form": "frmDanhSachMaNhaMay",
+  "title": "Danh sách mã nhà máy",
+  "procs": [
+   "SYS_USER_RULE_Get",
+   "TR_SANPHAM_NHAMAY_DUPLICATE",
+   "TR_SANPHAM_NHAMAY_GETALL",
+   "TR_SANPHAM_NHAMAY_GETBYSTATUS",
+   "TR_SANPHAM_NHAMAY_HIDE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "sys_user",
+   "sys_user_rule",
+   "tr_sanpham",
+   "tr_sanpham_nhamay"
+  ]
+ },
+ {
+  "form": "frmDanhSachMayMocAdd",
+  "title": "Thêm máy móc",
+  "procs": [
+   "TR_DANHSACH_MAYMOC_GETBYDEP",
+   "TR_DANHSACH_MAYMOC_GETBYNAME",
+   "TR_DANHSACH_MAYMOC_INSERT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachTongHopXuatHopChatSon",
+  "title": "Tổng hợp xuất hợp chất sơn",
+  "procs": [
+   "TR_TONGHOP_XUAT_HOPCHAT_GETBYDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachTongHopXuatHopChatSon2",
+  "title": "Tổng hợp xuất hỗn hợp sơn",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachXuatGoVan",
+  "title": "Danh sách phiếu xuất gỗ ván",
+  "procs": [
+   "TR_PHIEUXUAT_GOVAN_CHITIET_GETALL",
+   "TR_PHIEUXUAT_GOVAN_GETALL"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_phieuxuat"
+  ]
+ },
+ {
+  "form": "frmListGWHSInOut",
+  "title": "frmListGWHSInOut",
+  "procs": [
+   "TR_NHAPXUAT_THANHPHAM_ByDate",
+   "TR_NHAPXUAT_THANHPHAM_ByOrder"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmListMaterialInOut",
+  "title": "frmListMaterialInOut",
+  "procs": [
+   "HR_CONGTY_GET",
+   "MATERIAL_INOUT",
+   "RPT_BAOCAO_NHAPXUAT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "hr_congty"
+  ]
+ },
+ {
+  "form": "frmListWHSInOut",
+  "title": "frmListWHSInOut",
+  "procs": [
+   "HR_CONGTY_GET",
+   "ListWHSInOut_Detail",
+   "TR_PHIEUNHAP_GET",
+   "TR_PHIEUNHAP_HTR",
+   "TR_PHIEUNHAP_PRINT",
+   "TR_PHIEUNXUAT_PRINT",
+   "TR_PHIEUXUAT_GET",
+   "TR_SITE_GetAll"
+  ],
+  "tablesDirect": [
+   "tr_phieunhap",
+   "tr_phieuxuat"
+  ],
+  "tablesAll": [
+   "hr_congty",
+   "tr_phieunhap",
+   "tr_phieuxuat",
+   "tr_site"
+  ]
+ },
+ {
+  "form": "frmListContainer",
+  "title": "Danh sách cont",
+  "procs": [
+   "TR_CONT_FINISH",
+   "TR_CONT_Get",
+   "TR_CONT_GetList",
+   "TR_CONT_PRINT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachMayMoc",
+  "title": "Danh sách máy móc",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachMayMocAdd",
+  "title": "Cập nhật máy móc",
+  "procs": [
+   "TR_DANHSACH_MAYMOC_GETBYDEP",
+   "TR_DANHSACH_MAYMOC_GETBYNAME",
+   "TR_DANHSACH_MAYMOC_INSERT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmListBomEditor",
+  "title": "Danh sách sản phẩm",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmNhomAI",
+  "title": "Nhóm AI",
+  "procs": [
+   "TR_AI_BOM_GETLIST",
+   "TR_AI_CODE_DELETE",
+   "TR_AI_CODE_GETLIST"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmNhomAIAdd",
+  "title": "Cập nhật nhóm AI",
+  "procs": [
+   "TR_AI_BOM_DELETE",
+   "TR_AI_BOM_GET",
+   "TR_AI_BOM_GETBYID",
+   "TR_AI_BOM_GETLIST",
+   "TR_AI_BOM_INSERT",
+   "TR_AI_BOM_UPDATE",
+   "TR_AI_CODE_GET",
+   "TR_AI_CODE_INSERT",
+   "TR_AI_CODE_UPDATE",
+   "TR_MATERIAL_GETCHITIETBYKHO",
+   "TR_MATERIAL_get"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_material"
+  ]
+ },
+ {
+  "form": "frmNhomMay",
+  "title": "Nhóm máy",
+  "procs": [
+   "TRTB_M_OP_GETLIST3"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "trtb_m_op"
+  ]
+ },
+ {
+  "form": "frmRoutList",
+  "title": "Danh sách quy trình",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmRSTNhomNguyenLieu",
+  "title": "Cập nhật nhóm nguyên liệu",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhMucLoi",
+  "title": "Danh mục lỗi",
+  "procs": [
+   "TR_TIEUCHUAN_NGUYENNHAN_DELETE",
+   "TR_TIEUCHUAN_NGUYENNHAN_GETALL2"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhMucLoiAdd",
+  "title": "Cập nhật danh mục lỗi",
+  "procs": [
+   "TR_TIEUCHUAN_HANGLOI_TACNHAN_GETALL",
+   "TR_TIEUCHUAN_NGUYENNHAN_DELETE",
+   "TR_TIEUCHUAN_NGUYENNHAN_GETALL",
+   "TR_TIEUCHUAN_NGUYENNHAN_GETBYID",
+   "TR_TIEUCHUAN_NGUYENNHAN_INSERT",
+   "TR_TIEUCHUAN_NGUYENNHAN_KHAC",
+   "TR_TIEUCHUAN_NGUYENNHAN_UPDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachLoi",
+  "title": "Khai báo lỗi ",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmCaiDatHeSoHeHang",
+  "title": "Cài đặt hệ số",
+  "procs": [
+   "TR_HEHANG_GETBYID",
+   "TR_HEHANG_GetList",
+   "TR_HEHANG_Update2"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_hehang"
+  ]
+ },
+ {
+  "form": "frmDanhSachBanGiao",
+  "title": "Danh sách bàn giao",
+  "procs": [
+   "HR_NHANVIEN2_GETALL"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachSuaChua",
+  "title": "Danh sách sửa chữa",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhSachTaiSan",
+  "title": "Danh sách tài sản",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmCreateMaterialRequest",
+  "title": "Tạo lệnh cấp phát",
+  "procs": [
+   "CreateMaterialRequest_Ver2",
+   "GETVENDORBYMADDH",
+   "HR_CONGTY_GET",
+   "TR_DONDATHANG_GET3",
+   "TR_HINHANH_GET",
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_HEAD_GET2",
+   "TR_LENHCAPPHAT_HEAD_INSERT",
+   "TR_LENHCAPPHAT_HEAD_NEWID",
+   "TR_LENHCAPPHAT_INSERT2",
+   "TR_LENHCAPPHAT_SON",
+   "TR_LENHCAPPHAT_SUMBYMACT",
+   "TR_TONKHO_CHITIET_GETLISTBYMACT"
+  ],
+  "tablesDirect": [
+   "tr_lenhcapphat",
+   "tr_order_detail",
+   "tr_site"
+  ],
+  "tablesAll": [
+   "hr_congty",
+   "tr_dondathang",
+   "tr_lenhcapphat",
+   "tr_lenhcapphat_head",
+   "tr_order_detail",
+   "tr_site"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequestOther",
+  "title": "Cấp phát vật tư cho hàng trắng",
+  "procs": [
+   "GETVENDORBYMADDH",
+   "HR_CONGTY_GET",
+   "LENHCAPPHAT_HANGTRANG",
+   "TR_DONDATHANG_GET3",
+   "TR_DONDATHANG_GETLISTHTR",
+   "TR_HINHANH_GET",
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_HEAD_GET2",
+   "TR_LENHCAPPHAT_HEAD_GETLIST",
+   "TR_LENHCAPPHAT_HEAD_GETLISTBYTYPE",
+   "TR_LENHCAPPHAT_HEAD_INSERT",
+   "TR_LENHCAPPHAT_HEAD_NEWID",
+   "TR_LENHCAPPHAT_INSERT2",
+   "TR_LENHCAPPHAT_SUMBYMACT",
+   "TR_TONKHO_CHITIET_GETLISTBYMACT"
+  ],
+  "tablesDirect": [
+   "tr_lenhcapphat"
+  ],
+  "tablesAll": [
+   "hr_congty",
+   "tr_dondathang",
+   "tr_lenhcapphat",
+   "tr_lenhcapphat_head"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA",
+  "title": "frmCreateMaterialRequest_GVA",
+  "procs": [
+   "TR_LENHCAPPHAT_GOVAN",
+   "TR_LENHCAPPHAT_GOVAN_2"
+  ],
+  "tablesDirect": [
+   "tr_order_detail"
+  ],
+  "tablesAll": [
+   "tr_lenhcapphat",
+   "tr_order_detail"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA_1",
+  "title": "Cấp phát gỗ ván",
+  "procs": [
+   "HR_CONGTY_GET"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "hr_congty"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_GVA_ver2",
+  "title": "Lệnh cấp phát gỗ ván",
+  "procs": [
+   "TR_DONDATHANG_GET2",
+   "TR_LENHCAPPHAT_GOVAN_VER2"
+  ],
+  "tablesDirect": [
+   "tr_dinhmuc_govan",
+   "tr_dondathang_chitiet"
+  ],
+  "tablesAll": [
+   "tr_dinhmuc_govan",
+   "tr_dondathang",
+   "tr_dondathang_chitiet",
+   "tr_lenhcapphat"
+  ]
+ },
+ {
+  "form": "frmCreateMaterialRequest_NonBOM",
+  "title": "Cấp phát vật tư vượt định mức",
+  "procs": [
+   "CreateMaterialRequest_NonBOM",
+   "HR_CONGTY_GET",
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_Insert"
+  ],
+  "tablesDirect": [
+   "tr_lenhcapphat",
+   "tr_order_detail",
+   "tr_site"
+  ],
+  "tablesAll": [
+   "hr_congty",
+   "tr_lenhcapphat",
+   "tr_order_detail",
+   "tr_site"
+  ]
+ },
+ {
+  "form": "frmListMaterialRequest",
+  "title": "Danh sách lệnh cấp phát",
+  "procs": [],
+  "tablesDirect": [
+   "tr_lenhcapphat"
+  ],
+  "tablesAll": [
+   "tr_lenhcapphat"
+  ]
+ },
+ {
+  "form": "frmListMaterialRequest1",
+  "title": "Danh sách lệnh cấp phát",
+  "procs": [
+   "GETVENDORBYMADDH",
+   "HR_CONGTY_GET",
+   "TR_BIEUMAU_FRIDAY_GETBYREPORTID",
+   "TR_DONDATHANG_GET3",
+   "TR_HINHANH_GET",
+   "TR_LENHCAPPHAT_GETALL",
+   "TR_LENHCAPPHAT_GETALL_PIVOT",
+   "TR_LENHCAPPHAT_Get",
+   "TR_LENHCAPPHAT_GetListID",
+   "TR_LENHCAPPHAT_HEAD_DELETE",
+   "TR_LENHCAPPHAT_HEAD_GET2",
+   "TR_LENHCAPPHAT_HEAD_GETBYACTIVE",
+   "TR_LENHCAPPHAT_HEAD_GETLIST",
+   "TR_LENHCAPPHAT_HEAD_GETLISTBYTYPE",
+   "TR_LENHCAPPHAT_HEAD_SETFINISH",
+   "TR_LENHCAPPHAT_HEAD_UPDATE",
+   "TR_LENHCAPPHAT_SON",
+   "TR_LENHCAPPHAT_SUMBYMACT",
+   "TR_TONKHO_CHITIET_GETLISTBYMACT"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "hr_congty",
+   "tr_dondathang",
+   "tr_lenhcapphat",
+   "tr_lenhcapphat_head"
+  ]
+ },
+ {
+  "form": "frmDanhSachHoaDon",
+  "title": "frmDanhSachHoaDon",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhsachkho",
+  "title": "Danh sách kho",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frm_Danhsachnhacungcap",
+  "title": "Danh sách nhà cung cấp",
+  "procs": [
+   "TR_NHACC_GetAll"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "tr_nhacc"
+  ]
+ },
+ {
+  "form": "frmDanhGiaNhanVien",
+  "title": "Đánh giá nhân viên",
+  "procs": [
+   "SYS_USER_RULE_Get"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "sys_user",
+   "sys_user_rule"
+  ]
+ },
+ {
+  "form": "frmDanhGiaTongHop",
+  "title": "Đánh giá tổng hợp",
+  "procs": [
+   "SYS_USER_RULE_Get"
+  ],
+  "tablesDirect": [],
+  "tablesAll": [
+   "sys_user",
+   "sys_user_rule"
+  ]
+ },
+ {
+  "form": "frmNhomDanhGiaAdd",
+  "title": "Nhóm đánh giá",
+  "procs": [],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmLoaiTB_Add",
+  "title": "Loại thiết bị",
+  "procs": [
+   "TR_LOAITHIETBI_GET",
+   "TR_LOAITHIETBI_INSERT",
+   "TR_LOAITHIETBI_UPDATE"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ },
+ {
+  "form": "frmDanhsachCongno_Thu_Tra",
+  "title": "Danh sách công nợ phải Thu - Trả Showroom",
+  "procs": [
+   "SR_DANHSACHCONGNO_THU_TRA"
+  ],
+  "tablesDirect": [],
+  "tablesAll": []
+ }
+]
