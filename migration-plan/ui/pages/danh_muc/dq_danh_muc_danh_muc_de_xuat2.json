@@ -1,0 +1,63 @@
+{
+ "name": "dq_danh_muc_danh_muc_de_xuat2",
+ "label": "frmDanhMucDeXuat2",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+    "title": "frmDanhMucDeXuat2",
+    "fields": [
+     "id",
+     "sophieu",
+     "ngaydexuat",
+     "mucdich",
+     "nguoitao"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhMucDeXuat2<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: DQT_DEXUAT_PHOI_CHITIET_DELETE, DQT_DEXUAT_PHOI_CHITIET_GET, DQT_DEXUAT_PHOI_CHITIET_GETALL, DQT_DEXUAT_PHOI_CHITIET_INSERT, DQT_DEXUAT_PHOI_CHITIET_UPDATE, TR_DANHSACH_DEXUAT_CANCEL, TR_DANHSACH_DEXUAT_DUYET, TR_DANHSACH_DEXUAT_DUYET_BGD, TR_DANHSACH_DEXUAT_GETALL, TR_DANHSACH_DEXUAT_PROCESS_GETALL, TR_DANHSACH_XETDUYET_USER_GETALL, TR_DENGHI_THANHTOAN_FILE_GETLIST, TR_DENGHI_THANHTOAN_GET, TR_DEXUAT_BANGMAU_CANCEL, TR_DEXUAT_BANGMAU_CHITIET_DELETE, TR_DEXUAT_BANGMAU_CHITIET_GETALL, TR_DEXUAT_BANGMAU_CHITIET_GETBYID, TR_DEXUAT_BANGMAU_CHITIET_INSERT, TR_DEXUAT_BANGMAU_CHITIET_UPDATE, TR_DEXUAT_BANGMAU_CONFIRM, TR_DEXUAT_BANGMAU_EXISTS, TR_DEXUAT_BANGMAU_GETBYID, TR_DEXUAT_BANGMAU_INSERT, TR_DEXUAT_BANGMAU_NEWID, TR_DEXUAT_BANGMAU_UPDATE, TR_DONDATHANG_CANCEL, TR_DONDATHANG_GET3, TR_DONDATHANG_GETLISTHTR, TR_NGUOIDUYET_GETALL, TR_NHOM_XETDUYET_GET, TR_NHOM_XETDUYET_GETALL, TR_ORDER_CANCEL, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GET2, TR_PHIEUTRAHANGTRANG_NHAP_GETALL, TR_PHIEUYEUCAU_CANCEL, TR_PHIEUYEUCAU_CANCEL2, TR_PHIEUYEUCAU_GETBYID, TR_THAYDOI_KYTHUAT_CANCEL, TR_THAYDOI_KYTHUAT_GETBYID, pb_chitiet_phieubuhang_GetAll<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_bangmau, tr_color, tr_denghi_thanhtoan, tr_denghi_thanhtoan_file, tr_dexuat_bangmau_chitiet, tr_dondathang, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_order_replacement, tr_order_replacement_detail, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site, tr_thaydoi_kythuat\n</div>"
+   }
+  }
+ ]
+}

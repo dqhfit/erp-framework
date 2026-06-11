@@ -1,0 +1,62 @@
+{
+ "name": "dq_danh_muc_danh_muc_loi_add",
+ "label": "Cập nhật danh mục lỗi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "title": "Cập nhật danh mục lỗi",
+    "fields": [
+     "tinhtrang",
+     "nguyennhankhac",
+     "id",
+     "tacnhangayloi"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhMucLoiAdd<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_TIEUCHUAN_HANGLOI_TACNHAN_GETALL, TR_TIEUCHUAN_NGUYENNHAN_DELETE, TR_TIEUCHUAN_NGUYENNHAN_GETALL, TR_TIEUCHUAN_NGUYENNHAN_GETBYID, TR_TIEUCHUAN_NGUYENNHAN_INSERT, TR_TIEUCHUAN_NGUYENNHAN_KHAC, TR_TIEUCHUAN_NGUYENNHAN_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

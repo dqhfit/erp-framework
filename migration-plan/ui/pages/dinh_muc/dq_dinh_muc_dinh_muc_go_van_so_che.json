@@ -1,0 +1,71 @@
+{
+ "name": "dq_dinh_muc_dinh_muc_go_van_so_che",
+ "label": "frmDinhMucGoVanSoChe",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "frmDinhMucGoVanSoChe",
+    "fields": [
+     "masp",
+     "stt",
+     "mact",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_sc",
+     "rong_sc",
+     "dai_sc",
+     "soluong_sc",
+     "veneer_matchinh",
+     "id",
+     "veneer_matphu",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucGoVanSoChe<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_DINHMUC_GOVAN_SOCHE_DELETE, TR_DINHMUC_GOVAN_SOCHE_DELETEBYID, TR_DINHMUC_GOVAN_SOCHE_GETALL, TR_DINHMUC_GOVAN_SOCHE_GETBYID, TR_DINHMUC_GOVAN_SOCHE_INSERT, TR_DINHMUC_GOVAN_SOCHE_UPDATEBYID<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaisp, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

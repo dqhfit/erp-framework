@@ -1,0 +1,61 @@
+{
+ "name": "dq_dinh_muc_dinh_muc_son_mix",
+ "label": "Danh sách hỗn hợp sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Danh sách hỗn hợp sơn",
+    "fields": [
+     "mausac",
+     "dvt",
+     "mota"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucSon_Mix<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_BOM_MIX_GETBYPARENT, TR_MATERIAL_MIX_DELETE, TR_MATERIAL_MIX_GETLIST<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color\n</div>"
+   }
+  }
+ ]
+}

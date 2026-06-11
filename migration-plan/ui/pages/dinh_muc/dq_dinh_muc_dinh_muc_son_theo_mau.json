@@ -1,0 +1,62 @@
+{
+ "name": "dq_dinh_muc_dinh_muc_son_theo_mau",
+ "label": "Quy trình sơn theo màu",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Quy trình sơn theo màu",
+    "fields": [
+     "id",
+     "idxuong",
+     "mota",
+     "mausac"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucSon_MixAdd, frmDinhMucSon_TheoMau, frmDinhMucSon_TheoMau2Add<br/>\nNút cần gắn action: Lưu && Đóng · Đóng · Lưu && Thêm · Đóng · Lưu<br/>\nProc cần port: TR_BOM_MIX_DELETEALL, TR_BOM_MIX_GETBYPARENT, TR_BOM_MIX_INSERT, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_GetAll, TR_MATERIAL_MIX_GET, TR_MATERIAL_MIX_INSERT, TR_MATERIAL_MIX_UPDATE, TR_MATERIAL_get, TR_DINHMUC_SON_THEOMAU_DELETE, TR_DINHMUC_SON_THEOMAU_GET, TR_DINHMUC_SON_THEOMAU_INSERT, TR_DINHMUC_SON_THEOMAU_UPDATE, TR_DINHMUC_SON_THEOMAU_DELETEALL, TR_DINHMUC_SON_THEOMAU_GETLIST, TR_DINHMUC_SON_THEOMAU_INSERT2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_hehang, tr_khachhang\n</div>"
+   }
+  }
+ ]
+}

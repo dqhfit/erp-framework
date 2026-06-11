@@ -1,0 +1,63 @@
+{
+ "name": "dq_danh_muc_nhom_may",
+ "label": "Nhóm máy",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Nhóm máy",
+    "fields": [
+     "p_op",
+     "c_op",
+     "n_op",
+     "id",
+     "id_maymoc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmNhomMay<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TRTB_M_OP_GETLIST3<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

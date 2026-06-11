@@ -1,0 +1,61 @@
+{
+ "name": "dq_danh_muc_cai_dat_don_gia_nguyen_lieu",
+ "label": "Cài đặt đơn giá",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "85081428-689e-4d00-a4c8-b2935b4c5867",
+    "title": "Cài đặt đơn giá",
+    "fields": [
+     "id",
+     "nguyenlieu",
+     "dongia"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "85081428-689e-4d00-a4c8-b2935b4c5867",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "85081428-689e-4d00-a4c8-b2935b4c5867",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmCaiDatDonGiaNguyenLieu<br/>\nNút cần gắn action: Đóng · Lưu<br/>\nProc cần port: TR_DONGIA_NGUYENLIEU_GVA_DELETEBYID, TR_DONGIA_NGUYENLIEU_GVA_GETALL, TR_DONGIA_NGUYENLIEU_GVA_GETBYID, TR_DONGIA_NGUYENLIEU_GVA_GETBYNGUYENLIEU, TR_DONGIA_NGUYENLIEU_GVA_INSERT, TR_DONGIA_NGUYENLIEU_GVA_UPDATE, TR_NGUYENLIEU_GVA_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang\n</div>"
+   }
+  }
+ ]
+}

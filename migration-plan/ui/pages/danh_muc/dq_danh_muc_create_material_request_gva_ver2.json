@@ -1,0 +1,60 @@
+{
+ "name": "dq_danh_muc_create_material_request_gva_ver2",
+ "label": "Lệnh cấp phát gỗ ván",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+    "title": "Lệnh cấp phát gỗ ván",
+    "fields": [
+     "maddh",
+     "nhom"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmCreateMaterialRequest_GVA_ver2<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_DONDATHANG_GET2, TR_LENHCAPPHAT_GOVAN_VER2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_lenhcapphat\n</div>"
+   }
+  }
+ ]
+}

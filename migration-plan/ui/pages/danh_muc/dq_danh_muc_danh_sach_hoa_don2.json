@@ -1,0 +1,62 @@
+{
+ "name": "dq_danh_muc_danh_sach_hoa_don2",
+ "label": "Hóa đơn bán hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "title": "Hóa đơn bán hàng",
+    "fields": [
+     "id",
+     "name",
+     "description",
+     "taikhoan"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachHoaDon2<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_CTPHIEUXUAT_INSERT2, TR_PHIEUXUAT_INSERT2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_ctphieuxuat, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_lenhcapphat_head, tr_material, tr_order, tr_order_replacement, tr_phieuxuat, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_reftype\n</div>"
+   }
+  }
+ ]
+}

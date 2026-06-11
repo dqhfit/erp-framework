@@ -1,0 +1,72 @@
+{
+ "name": "dq_dinh_muc_dinh_muc_son_editor",
+ "label": "Định mức sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "cc9c6d0f-5a33-49f6-9405-99c87cc15cfa",
+    "title": "Định mức sơn",
+    "fields": [
+     "masp",
+     "id",
+     "tenchitiet",
+     "nguyenlieu",
+     "soluong",
+     "metvuong",
+     "buoc1",
+     "buoc2",
+     "buoc3",
+     "buoc4",
+     "buoc5",
+     "buoc6",
+     "buoc7",
+     "buoc8"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "cc9c6d0f-5a33-49f6-9405-99c87cc15cfa",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "cc9c6d0f-5a33-49f6-9405-99c87cc15cfa",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucSonEditor<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_BOM_MIX_GETBYPARENT, TR_DINHMUC_SON2_DELETE, TR_DINHMUC_SON2_GET, TR_DINHMUC_SON2_GETLISTBYMASP, TR_DINHMUC_SON2_INSERT, TR_DINHMUC_SON2_UPDATE, TR_MATERIAL_MIX_GET, TR_MATERIAL_MIX_GETBYCOLOR, TR_MATERIAL_MIX_GETLIST, TR_QUYTRINH_SON_DELETEALL, TR_QUYTRINH_SON_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_sanpham, trtb_m_location\n</div>"
+   }
+  }
+ ]
+}

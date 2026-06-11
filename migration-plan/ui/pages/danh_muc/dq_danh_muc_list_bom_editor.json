@@ -1,0 +1,64 @@
+{
+ "name": "dq_danh_muc_list_bom_editor",
+ "label": "Danh sách sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Danh sách sản phẩm",
+    "fields": [
+     "hehang",
+     "masp",
+     "tensp",
+     "kichthuoc",
+     "mausac",
+     "nguyenlieu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmListBomEditor<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: (không)<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaisp\n</div>"
+   }
+  }
+ ]
+}

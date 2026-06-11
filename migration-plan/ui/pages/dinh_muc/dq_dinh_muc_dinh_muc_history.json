@@ -1,0 +1,68 @@
+{
+ "name": "dq_dinh_muc_dinh_muc_history",
+ "label": "Lịch sử thay đổi định mức",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
+    "title": "Lịch sử thay đổi định mức",
+    "fields": [
+     "id",
+     "pcode",
+     "ccode",
+     "c_level",
+     "masp",
+     "madonggoi",
+     "stt",
+     "chitiet",
+     "dai",
+     "rong"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "2e65e7b1-fb3b-4619-ae5c-e8aaee0b4c63",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDinhMucHistory<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: TR_DINHMUC_DONGGOI_HISTORY3_GETALL, TR_DINHMUC_GOVAN_HISTORY3_GETALL, TR_DINHMUC_NGUKIM_HISTORY3_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dinhmuc_govan, tr_dinhmuc_ngukim, tr_hehang, tr_khachhang, tr_loaisp, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

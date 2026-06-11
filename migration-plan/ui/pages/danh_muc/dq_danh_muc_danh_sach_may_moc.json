@@ -1,0 +1,65 @@
+{
+ "name": "dq_danh_muc_danh_sach_may_moc",
+ "label": "Danh sách máy móc",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+    "title": "Danh sách máy móc",
+    "fields": [
+     "id",
+     "mamay",
+     "tenmay",
+     "nguoitao",
+     "ngaytao",
+     "nguoisua",
+     "ngaysua"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDanhSachMayMoc<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: (không)<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

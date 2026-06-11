@@ -118,9 +118,9 @@ function buildPage(
   if (!primaryId) return null;
 
   const fset = new Set(fieldsByEntity.get(primary) ?? []);
-  let listFields = gridCols.filter((c) => fset.has(c));
+  let listFields = [...new Set(gridCols.filter((c) => fset.has(c)))];
   if (listFields.length < 3) listFields = (fieldsByEntity.get(primary) ?? []).slice(0, 10);
-  listFields = [...new Set(listFields)].slice(0, 14);
+  listFields = listFields.slice(0, 14);
 
   const title = rep.title || rep.form;
   const buttons = entries.flatMap((e) => e.buttons ?? []).filter((b) => b.caption);

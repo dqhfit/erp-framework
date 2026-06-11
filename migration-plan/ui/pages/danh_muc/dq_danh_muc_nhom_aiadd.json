@@ -1,0 +1,64 @@
+{
+ "name": "dq_danh_muc_nhom_aiadd",
+ "label": "Cập nhật nhóm AI",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Cập nhật nhóm AI",
+    "fields": [
+     "id",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmNhomAIAdd<br/>\nNút cần gắn action: Đóng · Lưu<br/>\nProc cần port: TR_AI_BOM_DELETE, TR_AI_BOM_GET, TR_AI_BOM_GETBYID, TR_AI_BOM_GETLIST, TR_AI_BOM_INSERT, TR_AI_BOM_UPDATE, TR_AI_CODE_GET, TR_AI_CODE_INSERT, TR_AI_CODE_UPDATE, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_get<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaisp, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

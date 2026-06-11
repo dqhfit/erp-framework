@@ -1,0 +1,68 @@
+{
+ "name": "dq_dinh_muc_kiemtra_dinhmuc_ver2",
+ "label": "Kiểm tra định mức theo đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 5,
+   "config": {
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "title": "Kiểm tra định mức theo đơn hàng",
+    "fields": [
+     "id",
+     "order_number",
+     "customer",
+     "order_date",
+     "ship_date",
+     "etd",
+     "cont_date",
+     "f_cancelled",
+     "choduyet",
+     "islock"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25
+   }
+  },
+  {
+   "id": "w_detail",
+   "kind": "detail",
+   "x": 0,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "recordIdFromState": "sel",
+    "title": "Chi tiết"
+   }
+  },
+  {
+   "id": "w_form",
+   "kind": "form",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 5,
+   "config": {
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "title": "Thêm mới"
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 10,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_kiemtra_dinhmuc_ver2<br/>\nNút cần gắn action: (không)<br/>\nProc cần port: KIEMTRA_DINHMUC_GVA, KIEMTRA_DINHMUC_NKIDGO, KIEMTRA_DINHMUC_SON, TR_ORDER_GET2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}
