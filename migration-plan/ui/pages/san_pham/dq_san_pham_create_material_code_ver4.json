@@ -1,0 +1,76 @@
+{
+ "name": "dq_san_pham_create_material_code_ver4",
+ "label": "Tạo mã chi tiết",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "title": "Tạo mã chi tiết",
+    "fields": [
+     "id",
+     "name",
+     "description"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+        "title": "Thêm — Tạo mã chi tiết",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+        "title": "Tạo mã chi tiết",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmCreateMaterialCode_Ver4<br/>\nNút WinForms gốc: Lưu · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_MATERIAL_OTHER_GETBYCODE, TR_MATERIAL_OTHER_INSERT, TR_MATERIAL_OTHER_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_material, tr_material_other\n</div>"
+   }
+  }
+ ]
+}

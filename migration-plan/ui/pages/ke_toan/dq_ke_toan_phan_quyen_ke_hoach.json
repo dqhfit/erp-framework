@@ -1,0 +1,77 @@
+{
+ "name": "dq_ke_toan_phan_quyen_ke_hoach",
+ "label": "Phân quyền nhập kế hoạch",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b1eacb7a-8d4b-4e7b-889f-bfb6cad9b1f7",
+    "title": "Phân quyền nhập kế hoạch",
+    "fields": [
+     "mabophan",
+     "username",
+     "id",
+     "phanloai"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b1eacb7a-8d4b-4e7b-889f-bfb6cad9b1f7",
+        "title": "Thêm — Phân quyền nhập kế hoạch",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b1eacb7a-8d4b-4e7b-889f-bfb6cad9b1f7",
+        "title": "Phân quyền nhập kế hoạch",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhanQuyenKeHoach<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_NGUOIDUYET_BOPHAN_CREATE, TR_NGUOIDUYET_BOPHAN_DELETE, TR_NGUOIDUYET_BOPHAN_DELETEBYID, TR_NGUOIDUYET_BOPHAN_GET, TR_NGUOIDUYET_BOPHAN_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

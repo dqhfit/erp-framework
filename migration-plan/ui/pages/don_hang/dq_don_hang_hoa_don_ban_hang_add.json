@@ -1,0 +1,83 @@
+{
+ "name": "dq_don_hang_hoa_don_ban_hang_add",
+ "label": "Hóa đơn bán hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+    "title": "Hóa đơn bán hàng",
+    "fields": [
+     "id",
+     "customer_id",
+     "customer_name",
+     "address",
+     "area",
+     "phone",
+     "fax",
+     "email",
+     "website",
+     "director"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Thêm — Hóa đơn bán hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Hóa đơn bán hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmHoaDonBanHangAdd, frmHoadonbanhangAdd<br/>\nNút WinForms gốc: Lưu tạm · Tạo phiếu bán hàng · Hủy phiếu · Đóng · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: (không)<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_lenhcapphat_head, tr_loaisp, tr_material, tr_order, tr_order_replacement, tr_phieuxuat, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_reftype, tr_sanpham, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,83 @@
+{
+ "name": "dq_khach_hang_ncc_sosanhgia_nvt_ncc",
+ "label": "So sánh giá nguyên vật liệu nhà cung cấp",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+    "title": "So sánh giá nguyên vật liệu nhà cung cấp",
+    "fields": [
+     "id",
+     "vendor_id",
+     "vendor_name",
+     "address",
+     "area",
+     "phone",
+     "email",
+     "website",
+     "loaincc",
+     "create_by"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "Thêm — So sánh giá nguyên vật liệu nhà cung cấp",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "So sánh giá nguyên vật liệu nhà cung cấp",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmNhaCungCapAdd, frmNhaCungCapAdd, frmChiTietCongNoNhaCungCap, frmNhaCungCap, frm_sosanhgia_nvt_ncc<br/>\nNút WinForms gốc: Đóng · Lưu && Thêm · Lưu && Đóng · Đóng · Lưu && Thêm · Lưu && Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_NHACC_INSERT2, TR_NHACC_UPDATE2, TR_NHACC_DELETE, TR_NHACC_GetAll, TR_NHACC_Get<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_loaincc\n</div>"
+   }
+  }
+ ]
+}

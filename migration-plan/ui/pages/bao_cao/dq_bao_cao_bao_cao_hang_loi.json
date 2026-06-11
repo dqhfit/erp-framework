@@ -1,0 +1,77 @@
+{
+ "name": "dq_bao_cao_bao_cao_hang_loi",
+ "label": "Báo cáo sản phẩm không phù hợp",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Báo cáo sản phẩm không phù hợp",
+    "fields": [
+     "chitiet",
+     "mact",
+     "stt",
+     "nguyenlieu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Báo cáo sản phẩm không phù hợp",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Báo cáo sản phẩm không phù hợp",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoCaoHangLoi<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DINHMUC_GOVAN_GETBYSP, TR_DONDATHANG_GETLISTHTR<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_banve, tr_dexuat_bangmau, tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_material, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,75 @@
+{
+ "name": "dq_don_hang_banhanggo_phieunhapkho",
+ "label": "Nhập kho",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "f76e9a7e-5d87-46f6-a012-91b57cdd7549",
+    "title": "Nhập kho",
+    "fields": [
+     "id",
+     "loaincc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "f76e9a7e-5d87-46f6-a012-91b57cdd7549",
+        "title": "Thêm — Nhập kho",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "f76e9a7e-5d87-46f6-a012-91b57cdd7549",
+        "title": "Nhập kho",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_banhanggo_ncc, frm_banhanggo_Phieunhapkho, frm_banhanggo_ncc<br/>\nNút WinForms gốc: Đóng · Lưu · Hoàn tất · Hủy · Đóng · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_NHACC_INSERT2, TR_NHACC_UPDATE2, TR_NGUYENLIEU_TENKHOAHOC_GETALL, TR_NHACC_GetAll, TR_NHOM_NGUYENLIEU2_GETBYID, TR_NHOM_NGUYENLIEU2_INSERT, TR_NHOM_NGUYENLIEU2_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_nhacc\n</div>"
+   }
+  }
+ ]
+}

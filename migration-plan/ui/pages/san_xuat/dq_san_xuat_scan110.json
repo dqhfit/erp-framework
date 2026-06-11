@@ -1,0 +1,87 @@
+{
+ "name": "dq_san_xuat_scan110",
+ "label": "Scan xuất kho",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Scan xuất kho",
+    "fields": [
+     "lenhcapphatid",
+     "loaicapphat",
+     "madonhang",
+     "madondathang",
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "soluong_daphat",
+     "soluong_conlai",
+     "nhom"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Thêm — Scan xuất kho",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Scan xuất kho",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmScan110<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_LENHCAPPHAT_Get, TR_LENHCAPPHAT_HEAD_GET2, TR_LENHCAPPHAT_HEAD_GETBYKHO, TR_MATERIAL_GETBYID, TR_TONKHO_CHITIET_GETLISTBYMACT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_lenhcapphat_head, tr_material, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,87 @@
+{
+ "name": "dq_de_xuat_de_xuat_phoi_add5",
+ "label": "Đề xuất phôi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+    "title": "Đề xuất phôi",
+    "fields": [
+     "nguyenlieu",
+     "id",
+     "dexuat_id",
+     "fsc_id",
+     "chatluong_yc",
+     "dayy_yc",
+     "rong_yc",
+     "dai_yc",
+     "sokhoi_yc",
+     "sothanh_yc",
+     "ghichu_yc",
+     "nguongoc_giao",
+     "chatluong_giao",
+     "dayy_giao"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Thêm — Đề xuất phôi",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Đề xuất phôi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDeXuatPhoiAdd5<br/>\nNút WinForms gốc: Đóng · Lưu lại · Duyệt đề xuất · Hủy đề xuất<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DANHSACH_DEXUAT_GET, TR_DANHSACH_DEXUAT_PROCESS_GETALL, TR_DEXUAT_PHOI_CHITIET_DELETE, TR_DEXUAT_PHOI_CHITIET_GET, TR_DEXUAT_PHOI_CHITIET_GETALL, TR_DEXUAT_PHOI_CHITIET_INSERT, TR_DEXUAT_PHOI_CHITIET_UPDATE, TR_DEXUAT_PHOI_GETBYID, TR_DEXUAT_PHOI_NEWID, TR_DEXUAT_PHOI_UPDATE, TR_DONDATHANG_GETLISTHTR, TR_THONGKE_SOKHOI_DDH, Tr_DEXUAT_PHOI_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dexuat_phoi, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_nguyenlieu_gva, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "name": "dq_don_hang_don_hang_son",
+ "label": "Đơn hàng sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Đơn hàng sơn",
+    "fields": [
+     "mota",
+     "dvt",
+     "mausac"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Đơn hàng sơn",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Đơn hàng sơn",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmDonHangSon<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DINHMUC_SON3_MAUSON_GETBYORDER, TR_DINHMUC_SON3_MAUSON_GETBYORDER2, TR_DINHMUC_SON3_METVUONG_GHICHU, TR_DINHMUC_SON3_TONGBUOCSON, TR_DINHMUC_SON3_TONGKHOILUONG, TR_DINHMUC_SON3_TONGKHOILUONG2, TR_DINHMUC_SON3_TONGMETVUONG, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_DETAIL_SETKHONGTINHSON, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_dinhmuc_son3, tr_dinhmuc_son3_metvuong, tr_hehang, tr_khachhang, tr_loaisp, tr_order, tr_order_detail, tr_order_replacement\n</div>"
+   }
+  }
+ ]
+}

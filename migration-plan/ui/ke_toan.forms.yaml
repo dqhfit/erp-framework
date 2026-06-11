@@ -1,0 +1,1443 @@
+module: ke_toan
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - dqt_dexuat_phoi
+  - tr_congdoan
+  - tr_danhsach_dexuat
+  - tr_danhsach_dexuat_process
+  - tr_danhsach_xetduyet_user
+  - tr_hinhanh
+  - tr_kehoach_hangtrang
+  - tr_loai_xetduyet
+  - tr_nguyenlieu
+  - tr_nhom_dexuat2
+  - tr_nhom_xetduyet
+  - tr_quytrinh_sanpham2
+  - tr_quytrinh_xetduyet
+  - tr_xuong
+pageClusters:
+  - entities:
+      - tr_denghi_thanhtoan
+    forms:
+      - frmChiTietDeNghiThanhToan
+      - frmDeNghiTT
+      - frm_denghi_thanhtoan_tonghop
+  - entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmQuyTrinhLanUV_Add
+      - frmQuyTrinhLanUV
+  - entities:
+      - tr_sanpham
+    forms:
+      - frmDanhSachQuyTrinh
+      - frm_na_chiphicodinh_nguyenvatlieu
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    forms:
+      - frmNhomQuyCachPhoi
+      - frmDanhSachQuyTrinh2
+  - entities:
+      - tr_denghi_thanhtoan
+      - tr_nganhang
+    forms:
+      - frm_denghi_thanhtoan_ncc_add
+  - entities:
+      - tr_bangmau
+    forms:
+      - frmQuyTrinhUV
+  - entities:
+      - tr_nganhang
+    forms:
+      - frmNganHangAdd
+  - entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmQuyTrinhLanUVAdd
+  - entities:
+      - tr_khachhang
+    forms:
+      - frmGiaoDichThanhToan
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmBangDuTruChiPhi
+  - entities:
+      - tr_nguoiduyet_bophan
+    forms:
+      - frmPhanQuyenKeHoach
+  - entities:
+      - tr_dexuat_bangmau_chitiet
+    forms:
+      - frmDeXuatPhoi_ChonQuyCach
+  - entities:
+      - tr_sanpham
+      - tr_sanpham_carton
+    forms:
+      - view_QuyCachCarton
+  - entities:
+      - tr_color
+    forms:
+      - frmQuyTrinhSon
+  - entities:
+      - tr_trangthai_sanxuat
+    forms:
+      - frmLichSuThongKe
+forms:
+  - form: frmQuyTrinhLanUV_Add
+    title: Quy trình lăn UV
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+    repos:
+      - TR_BANGMAU
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_BANGMAU_INSERT
+      - TR_BANGMAU_UPDATE
+      - TR_QUYTRINH_LANUV_DELETE
+      - TR_QUYTRINH_LANUV_GET
+      - TR_QUYTRINH_LANUV_INSERT
+      - sproc_nguyenlieu_govan_getall
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: bangmau
+          header: Mã bảng màu
+        - field: stt
+          header: STT
+        - field: quytrinh
+          header: Tên quy trình
+        - field: ghichu
+          header: Ghi chú
+        - field: dinhluong
+          header: Định lượng (gram)
+        - field: nguyenlieu
+          header: Nguyên liệu
+    inputs:
+      - control: txtDescription
+        kind: text
+      - control: txtName
+        kind: text
+      - control: txtCode
+        kind: text
+      - control: cboNguyenLieu
+        kind: select
+      - control: cheHeHang
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frm_denghi_thanhtoan_ncc_add
+    title: Thông tin người cần thanh toán
+    inScope: true
+    entities:
+      - tr_nganhang
+      - tr_denghi_thanhtoan
+    repos:
+      - TR_NGANHANG
+    procs:
+      - TR_DENGHI_THANHTOAN_NHACC_GET
+      - TR_DENGHI_THANHTOAN_NHACC_INSERT
+    grid:
+      columns: []
+    inputs:
+      - control: txtmancc
+        kind: text
+      - control: txttenncc
+        kind: text
+      - control: txtDiachi
+        kind: text
+      - control: txtemail
+        kind: text
+      - control: txtwebsite
+        kind: text
+      - control: sedienthoai
+        kind: text
+      - control: txtSoTK
+        kind: text
+      - control: txtTenNH
+        kind: text
+      - control: txtChuTK
+        kind: text
+    buttons:
+      - control: btnDong
+        caption: Đóng
+      - control: btnLuu
+        caption: Lưu
+  - form: frmPhanQuyenCongViec
+    title: frmPhanQuyenCongViec
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+    repos: []
+    procs:
+      - DQT_PHANQUYEN_CONGVIEC_INSERT
+      - SYS_USER_Get
+      - SYS_USER_GetList
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: parentid
+          header: ParentID
+        - field: name
+          header: Tên công việc
+        - field: id_app
+          header: id
+        - field: id_congviec
+          header: ID
+        - field: c_code
+          header: Mã công việc
+        - field: c_name
+          header: Tên công việc
+        - field: p_code
+          header: PCode
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên người dùng
+    inputs:
+      - control: glkUser
+        kind: select
+      - control: txtFullName
+        kind: text
+      - control: glkDept
+        kind: select
+      - control: txtPosition
+        kind: text
+      - control: txtMail
+        kind: text
+    buttons:
+      - control: btnAdd
+        caption: Cấp quyền
+      - control: btnDelete
+        caption: Xóa quyền
+  - form: frmQuyTrinhUV
+    title: Quy trình UV
+    inScope: true
+    entities:
+      - tr_bangmau
+    repos: []
+    procs:
+      - TR_BANGMAU_GETALL
+      - TR_LUUTRINH_SANXUAT_GETUV
+      - TR_LUUTRINH_SANXUAT_UV_UPDATE
+    grid:
+      columns:
+        - field: ma
+          header: Mã màu
+        - field: ten
+          header: Tên
+        - field: quytrinh
+          header: Quy trình màu
+        - field: thongtin
+          header: Thông tin công đoạn
+        - field: somat
+          header: Số mặt
+        - field: socanh
+          header: Số cạnh
+        - field: sodau
+          header: Số đầu
+    inputs:
+      - control: txtQuyTrinh
+        kind: text
+      - control: txtThongTin
+        kind: text
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClose
+        caption: Đóng
+  - form: frmQuyTrinhDanhSachAdd
+    title: Danh sách quy trình
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: buoc
+          header: Bước
+        - field: somay
+          header: Số máy
+        - field: songuoi
+          header: Số người
+        - field: thoigian
+          header: Thời gian
+        - field: soluong
+          header: Số lượng
+        - field: stt
+          header: STT
+        - field: ghichu
+          header: Ghi chú
+        - field: tenmay
+          header: Tên máy
+    inputs:
+      - control: cboNguyenLieu
+        kind: select
+      - control: txtGhiChu
+        kind: text
+      - control: cboXuong
+        kind: select
+      - control: txtMaQT
+        kind: text
+      - control: txtTenQT
+        kind: text
+      - control: cboBeMat
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmNganHangAdd
+    title: Cập nhật ngân hàng
+    inScope: true
+    entities:
+      - tr_nganhang
+    repos:
+      - TR_NGANHANG
+    procs:
+      - TR_NGANHANG_GET
+      - TR_NGANHANG_INSERT
+      - TR_NGANHANG_UPDATE
+    grid:
+      columns: []
+    inputs:
+      - control: txtName
+        kind: text
+      - control: txtAbbrName
+        kind: text
+      - control: txtBranch
+        kind: text
+      - control: txtAddress
+        kind: text
+      - control: txtSwift
+        kind: text
+      - control: cheIsDefault
+        kind: boolean
+      - control: txtAccountName
+        kind: text
+      - control: txtAccountAddress
+        kind: text
+      - control: txtAccountNumber
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmChiTietDeNghiThanhToan
+    title: Đề nghị thanh toán
+    inScope: true
+    entities:
+      - tr_denghi_thanhtoan
+    repos: []
+    procs:
+      - TR_DENGHI_THANHTOAN_GETBYNUMBER
+    grid:
+      columns: []
+    inputs:
+      - control: txtSoPhieu
+        kind: text
+      - control: dteNgayDeNghi
+        kind: date
+      - control: txtNguoiDeNghi
+        kind: text
+      - control: txtLoaiThanhToan
+        kind: text
+      - control: txtNoiDung
+        kind: text
+      - control: speSoTien
+        kind: number
+      - control: txtLoaiTien
+        kind: text
+      - control: txtBenThanhToan
+        kind: text
+      - control: txtNguoiCanThanhToan
+        kind: text
+    buttons: []
+  - form: frmQuyTrinhLanUVAdd
+    title: Quy trình lăn UV
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BANGMAU
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_GetAll
+      - TR_MATERIAL_INSERT2
+      - TR_MATERIAL_get
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: bangmau
+          header: Mã bảng màu
+        - field: quytrinh
+          header: Tên quy trình
+        - field: ghichu
+          header: Ghi chú
+        - field: dinhluong
+          header: Định lượng (gram)
+        - field: mact
+          header: Mã chi tiết
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: somat
+          header: Số lớp cán / mặt
+    inputs:
+      - control: repMaChiTiet
+        kind: select
+      - control: cboNguyenLieu
+        kind: select
+      - control: txtMa
+        kind: text
+      - control: txtTen
+        kind: text
+      - control: txtGhiChu
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Thoát
+  - form: frmGiaoDichThanhToan
+    title: Thông tin thanh toán
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs: []
+    grid:
+      columns:
+        - field: paymenttransactionid
+          header: Mã giao dịch
+        - field: customerid
+          header: Mã khách hàng
+        - field: customername
+          header: Tên khách hàng
+        - field: transactiondate
+          header: Ngày giao dịch
+        - field: invoicecode
+          header: Mã hóa đơn
+        - field: paymentamount
+          header: Số tiền thanh toán
+        - field: remainingamount
+          header: Còn lại
+        - field: debtamount
+          header: Ghi nợ
+    inputs:
+      - control: txtKhachHang
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtDienThoai
+        kind: text
+      - control: calTotalDebt
+        kind: number
+    buttons:
+      - control: btnThanhToan
+        caption: Thanh toán
+  - form: frmBangDuTruChiPhi
+    title: frmBangDuTruChiPhi
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TINHGIA_NGUYENLIEU_DGO
+      - TINHGIA_NGUYENLIEU_GVA2
+      - TINHGIA_NGUYENLIEU_NKI
+      - TINHGIA_NGUYENLIEU_SON
+      - TR_DONDATHANG_GETLISTHTR
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: donhang
+          header: PO#
+        - field: tenncc
+          header: Nhà cung cấp
+        - field: masp
+          header: Mã sản phẩm
+        - field: loaichiphi
+          header: Loại chi phí
+        - field: thanhtien
+          header: Thành tiền
+        - field: masp
+          header: Mã sản phẩm
+        - field: chitiet
+          header: Mã hàng trắng
+        - field: tenchitiet
+          header: Mô tả
+        - field: soluong
+          header: Số lượng
+        - field: dongia
+          header: Đơn giá
+        - field: ghichu
+          header: Ghi chú
+        - field: thanhtien
+          header: Thành tiền
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: txtDonHang
+        kind: text
+      - control: speTiGia
+        kind: number
+    buttons: []
+  - form: frmPhanQuyenKeHoach
+    title: Phân quyền nhập kế hoạch
+    inScope: true
+    entities:
+      - tr_nguoiduyet_bophan
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+    procs:
+      - TR_NGUOIDUYET_BOPHAN_CREATE
+      - TR_NGUOIDUYET_BOPHAN_DELETE
+      - TR_NGUOIDUYET_BOPHAN_DELETEBYID
+      - TR_NGUOIDUYET_BOPHAN_GET
+      - TR_NGUOIDUYET_BOPHAN_GETALL
+    grid:
+      columns:
+        - field: mabophan
+          header: Mã bộ phận
+        - field: tenbophan
+          header: Tên bộ phận
+        - field: tenkhac
+          header: Tên khác
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên người dùng
+        - field: tenbophan
+          header: Bộ phận
+        - field: id
+          header: ID
+        - field: mabophan
+          header: Mã bộ phận
+        - field: tenbophan
+          header: Tên bộ phận
+        - field: phanloai
+          header: Phân loại
+    inputs:
+      - control: glkUser
+        kind: select
+      - control: txtTenBoPhan
+        kind: text
+    buttons: []
+  - form: frmQuyTrinhDanhSach
+    title: Danh sách quy trình
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: tenquytrinh
+          header: Tên quy trình
+        - field: somay
+          header: Số máy
+        - field: songuoi
+          header: Số người
+        - field: thoigian
+          header: Thời gian
+        - field: soluong
+          header: Số lượng
+        - field: xuong
+          header: Công đoạn
+        - field: tonhom
+          header: Tổ nhóm
+        - field: ghichu
+          header: Ghi chú
+        - field: loainguyenlieu
+          header: Loại nguyên liệu
+        - field: stt
+          header: STT
+        - field: buoc
+          header: Bước
+        - field: somay
+          header: Số máy
+        - field: songuoi
+          header: Số người
+        - field: tenmay
+          header: Tên máy
+        - field: bemat
+          header: Bề mặt
+    inputs: []
+    buttons: []
+  - form: frmDanhSachQuyTrinh
+    title: Danh sách quy trình đã phát hành
+    inScope: true
+    entities:
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+      - tr_quytrinh_sanpham2
+    repos:
+      - TR_NGUYENLIEU
+      - TR_QUYTRINH_SANPHAM2
+    procs:
+      - TR_QUYTRINH_SANPHAM2_GETALL3
+      - TR_SANPHAM_GETBYROUTING
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: customer
+          header: Khách hàng
+        - field: stt
+          header: STT
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: mact
+          header: Mã chi tiết
+    inputs: []
+    buttons: []
+  - form: frmQuyTrinhLanUV
+    title: Danh sách bảng màu
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+    repos:
+      - TR_BANGMAU
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs: []
+    grid:
+      columns:
+        - field: ma
+          header: Mã
+        - field: ten
+          header: Tên
+        - field: ghichu
+          header: Ghi chú
+        - field: hehang
+          header: Hệ hàng sử dụng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quytrinh
+          header: Tên quy trình
+        - field: dinhluong
+          header: Định lượng (gr/m2)
+        - field: dinhluong2
+          header: Kg/m2
+        - field: somat
+          header: Số lớp cán / mặt
+        - field: ghichu
+          header: Ghi chú
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmNhomQuyCachPhoi
+    title: frmNhomQuyCachPhoi
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham_nhamay
+      - tr_sanpham
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_SANPHAM_NHAMAY_REPO
+    procs:
+      - TR_SANPHAM_NHAMAY_GETALL
+      - TR_SANPHAM_NHAMAY_GETBYSTATUS
+    grid:
+      columns:
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng chi tiết
+        - field: m3_tc
+          header: Số khối
+        - field: masp
+          header: Mã sản phẩm
+    inputs:
+      - control: repStep
+        kind: number
+      - control: repositoryItemSpinEdit1
+        kind: number
+    buttons: []
+  - form: frmDeXuatPhoi_ChonQuyCach
+    title: Tồn kho gỗ thông
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau_chitiet
+    fingerprintScore: 0.6
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: dexuat_id
+          header: Đề xuất id
+        - field: check
+          header: Chọn
+        - field: tennguongoc
+          header: Nguồn gốc
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: sothanh
+          header: Số thanh
+        - field: m3
+          header: Số khối
+        - field: ghichu
+          header: Ghi chú
+    inputs:
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+    buttons:
+      - control: btnHoantat
+        caption: Hoàn tất
+      - control: btnClose
+        caption: Đóng
+  - form: frmPhanQuyen2
+    title: Phân quyền
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+      - sys_user_rule
+    repos:
+      - LoggerManager
+      - SYS_USER
+      - SYS_USER_RULE
+    procs:
+      - Permision_Get
+      - SYS_USER_RULE_CREATE
+    grid:
+      columns:
+        - field: name
+          header: Chức năng
+        - field: allowaccess
+          header: Truy cập
+        - field: allowadd
+          header: Thêm
+        - field: allowedit
+          header: Sửa
+        - field: allowdelete
+          header: Xóa
+        - field: allowprint
+          header: In
+        - field: allowimport
+          header: Nhập
+        - field: allowexport
+          header: Xuất
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên hiển thị
+        - field: position
+          header: Chức vụ
+        - field: departmentcode
+          header: Bộ phận
+        - field: name
+          header: Chức năng
+        - field: allowaccess
+          header: Truy cập
+        - field: allowadd
+          header: Thêm
+        - field: allowedit
+          header: Sửa
+        - field: allowdelete
+          header: Xóa
+        - field: allowprint
+          header: In
+        - field: allowimport
+          header: Nhập
+        - field: allowexport
+          header: Xuất
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên hiển thị
+        - field: position
+          header: Chức vụ
+        - field: departmentcode
+          header: Bộ phận
+        - field: id
+          header: ID
+        - field: active
+          header: Active
+    inputs:
+      - control: txtName1
+        kind: text
+      - control: glkUser1
+        kind: select
+      - control: glkUser2
+        kind: select
+      - control: txtName2
+        kind: text
+    buttons: []
+  - form: frmDeNghiTT
+    title: frm_banhang
+    inScope: true
+    entities:
+      - tr_denghi_thanhtoan
+    repos: []
+    procs:
+      - TR_DENGHI_THANHTOAN_NHACC_GETMNCC
+      - TR_DENGHI_THANHTOAN_NHACC_UPDATE
+    grid:
+      columns:
+        - field: tenncc
+          header: Tên  nhà cung cấp
+    inputs:
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: repositoryItemTextEdit2
+        kind: text
+      - control: repositoryItemGridLookUpEdit1
+        kind: select
+    buttons: []
+  - form: view_QuyCachCarton
+    title: Quy cách thùng carton
+    inScope: true
+    entities:
+      - tr_sanpham_carton
+      - tr_sanpham
+    repos:
+      - TR_SANPHAM_CARTON
+    procs:
+      - TR_SANPHAM_CARTON_GET
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: soluong
+          header: Số lượng
+        - field: quycach1
+          header: Quy cách lọt lòng
+        - field: quycach2
+          header: Quy cách phủ bì
+        - field: cbm2
+          header: CBM (phủ bì)
+        - field: grossweight
+          header: G. Weight
+        - field: netweight
+          header: N. Weight
+    inputs: []
+    buttons: []
+  - form: frmDeNghiKiemTraMayMoc
+    title: Danh sách phiếu đề nghị kiểm tra máy
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_xuong
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_NGUOIDUYET
+      - TR_XUONG
+    procs:
+      - TR_XUONG_GET
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: id_xuong
+          header: Xưởng
+        - field: tenmay
+          header: Tên máy
+        - field: nguoitao
+          header: Người đề nghị
+        - field: tinhtrangmay
+          header: Tình trạng máy
+        - field: nguoiduyet
+          header: Người duyệt
+        - field: ngayduyet
+          header: Ngày duyệt
+        - field: nguoiky
+          header: Người ký
+        - field: ngayky
+          header: Ngày ký
+    inputs:
+      - control: repUser
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repositoryItemImageComboBox1
+        kind: select
+    buttons: []
+  - form: frmBaoCaoKinhDoanh
+    title: Báo cáo tình hình kinh doanh
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: name
+          header: Bộ phận
+        - field: congty
+          header: Công ty
+        - field: id
+          header: id bộ phận
+        - field: tenloaichiphi
+          header: Loại chi phí
+        - field: congty
+          header: Công ty
+        - field: bophan
+          header: Bộ phận
+        - field: nhomchiphi
+          header: Nhóm chi phí
+        - field: hangmuc
+          header: Hạng mục
+        - field: hangmuc
+          header: Nội dung
+        - field: taikhoan
+          header: Số tài khoản
+        - field: tentaikhoan
+          header: Tên tài khoản
+        - field: tongsotien
+          header: Tổng số tiền
+        - field: d1
+          header: "1"
+        - field: d2
+          header: "2"
+        - field: d3
+          header: "3"
+        - field: d4
+          header: "4"
+        - field: d5
+          header: "5"
+        - field: d6
+          header: "6"
+        - field: d7
+          header: "7"
+        - field: d8
+          header: "8"
+        - field: d9
+          header: "9"
+        - field: d10
+          header: "10"
+        - field: d11
+          header: "11"
+        - field: d12
+          header: "12"
+        - field: d13
+          header: "13"
+        - field: d14
+          header: "14"
+        - field: d15
+          header: "15"
+        - field: d16
+          header: "16"
+        - field: d17
+          header: "17"
+        - field: d18
+          header: "18"
+        - field: d19
+          header: "19"
+        - field: d20
+          header: "20"
+        - field: d21
+          header: "21"
+        - field: d22
+          header: "22"
+        - field: d23
+          header: "23"
+        - field: d24
+          header: "24"
+        - field: d25
+          header: "25"
+        - field: d26
+          header: "26"
+        - field: d27
+          header: "27"
+        - field: d28
+          header: "28"
+        - field: d29
+          header: "29"
+        - field: d30
+          header: "30"
+        - field: d31
+          header: "31"
+    inputs:
+      - control: repBoPhan
+        kind: select
+      - control: repMonth
+        kind: date
+    buttons: []
+  - form: frmChiPhiKhauHao
+    title: Chi phí khấu hao
+    inScope: false
+    entities: []
+    repos:
+      - LoggerManager
+    procs:
+      - TR_CHIPHI_KHAUHAO_DELETEALL
+      - TR_CHIPHI_KHAUHAO_GETALL
+      - TR_CHIPHI_KHAUHAO_GETBYID
+      - TR_CHIPHI_KHAUHAO_INSERT
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: ngaythang
+          header: Tháng
+        - field: tiendien
+          header: Tiền điện
+        - field: maymoc_nhaxuong
+          header: Máy móc, nhà xưởng
+        - field: suachua
+          header: CCDC, sửa chữa
+        - field: baohiem_taisan
+          header: Bảo hiểm tài sản
+        - field: maxuong
+          header: Xưởng
+        - field: tenxuong
+          header: Tên xưởng
+    inputs:
+      - control: repPhanXuong
+        kind: select
+      - control: repYear
+        kind: date
+    buttons: []
+  - form: frmChiPhiNhanCong
+    title: Chi phí nhân công
+    inScope: false
+    entities: []
+    contextEntities:
+      - tr_bophan
+    repos:
+      - LoggerManager
+      - TR_BOPHAN
+    procs:
+      - TR_CHIPHI_NHANCONG_DELETEALL
+      - TR_CHIPHI_NHANCONG_GETALL
+      - TR_CHIPHI_NHANCONG_INSERT
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: ngaythang
+          header: Ngày tháng
+        - field: khuvuc
+          header: Khu vực
+        - field: bophan
+          header: Bộ phận
+        - field: songuoi
+          header: Số người
+        - field: quyluong
+          header: Quỹ lương
+        - field: giocong
+          header: Giờ làm HC + Tca
+        - field: luonghanhchanh
+          header: Lương hành chánh
+        - field: luongtangca_thuong
+          header: Lương tăng ca thường
+        - field: luongtangca_chunhat
+          header: Lương tăng ca CN
+        - field: congkhac
+          header: Các khoản cộng khác
+        - field: tienluong
+          header: Tiền lương
+        - field: bhxh_congdoan
+          header: BHXH, Công đoàn
+        - field: phepnam
+          header: Phép năm
+        - field: luongthang_13
+          header: Lương tháng 13
+        - field: tiencom
+          header: Cơm
+    inputs:
+      - control: repMonth
+        kind: date
+    buttons: []
+  - form: frm_denghi_thanhtoan_tonghop
+    title: frm_denghi_thanhtoan_tonghop
+    inScope: true
+    entities:
+      - tr_denghi_thanhtoan
+    fingerprintScore: 0.83
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: tenncc
+          header: Người cần thanh toán
+        - field: ngaycan_thanhtoan
+          header: Ngày cần thanh toán
+        - field: loaithanhtoan
+          header: Loại thanh toán
+        - field: thanhtien
+          header: Thành tiền
+        - field: hinhthuc_thanhtoan
+          header: Hình thức thanh toán
+        - field: loaitien
+          header: Loại tiền
+    inputs: []
+    buttons: []
+  - form: frmDanhSachQuyTrinh2
+    title: Quy trình sản phẩm (theo mã nhà máy)
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham_nhamay
+      - tr_sanpham
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_SANPHAM_NHAMAY_REPO
+    procs:
+      - TR_SANPHAM_NHAMAY_GETALL
+      - TR_SANPHAM_NHAMAY_GETBYSTATUS
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp_nhamay
+          header: Mã nhà máy
+        - field: tensp
+          header: Tên sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: stt
+          header: STT
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: buoc
+          header: Bước
+        - field: tenquytrinh
+          header: Quy trình
+        - field: maymoc
+          header: Máy
+        - field: yeucau_kythuat
+          header: Yêu cầu kỹ thuật
+        - field: yeucau_chatluong
+          header: Yêu cầu chất lượng
+        - field: nguoisua
+          header: Người cập nhật
+        - field: ngaysua
+          header: Ngày cập nhật
+    inputs:
+      - control: repSanPham
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmQuyTrinhSon
+    title: Quy trình sơn
+    inScope: true
+    entities:
+      - tr_color
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_COLOR
+      - TR_NGUYENLIEU
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: tensp_vn
+          header: Tên sản phẩm VN
+        - field: ma
+          header: Vị trí
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: NL
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SL
+        - field: m3_tc
+          header: M3
+        - field: buoc1
+          header: Màu sơn
+        - field: buoc2
+          header: Màu sơn
+        - field: buoc3
+          header: Màu sơn
+        - field: buoc4
+          header: Màu sơn
+        - field: buoc5
+          header: Màu sơn
+        - field: buoc6
+          header: Màu sơn
+        - field: buoc7
+          header: Màu sơn
+        - field: buoc8
+          header: Màu sơn
+        - field: buoc9
+          header: Màu sơn
+        - field: buoc10
+          header: Màu sơn
+        - field: vitri1
+          header: Vị trí
+        - field: vitri2
+          header: Vị trí
+        - field: vitri3
+          header: Vị trí
+        - field: vitri4
+          header: Vị trí
+        - field: vitri5
+          header: Vị trí
+        - field: vitri6
+          header: Vị trí
+        - field: vitri7
+          header: Vị trí
+        - field: vitri8
+          header: Vị trí
+        - field: vitri9
+          header: Vị trí
+        - field: vitri10
+          header: Vị trí
+    inputs:
+      - control: repositoryItemGridLookUpEdit1
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repVitri
+        kind: select
+      - control: repMauson
+        kind: select
+    buttons: []
+  - form: frm_na_chiphicodinh_nguyenvatlieu
+    title: Danh sách chi phí cố định thay đổi theo tháng
+    inScope: true
+    entities:
+      - tr_sanpham
+    fingerprintScore: 0.67
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: tenmathang
+          header: Tên nguyên vật liệu
+        - field: dvt
+          header: ĐVT
+        - field: dongia
+          header: Đơn giá
+    inputs:
+      - control: repositoryItemDateEdit1
+        kind: date
+    buttons: []
+  - form: frmLichSuThongKe
+    title: Chi tiết thống kê
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_TRANGTHAI_SANXUAT_GETBY_CT
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày
+        - field: tenct
+          header: Tên chi tiết
+        - field: n_location
+          header: Công đoạn
+        - field: soluong
+          header: Số lượng
+        - field: nguoitao
+          header: Người tạo
+    inputs: []
+    buttons: []

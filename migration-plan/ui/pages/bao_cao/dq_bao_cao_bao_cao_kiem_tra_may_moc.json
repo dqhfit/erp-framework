@@ -1,0 +1,83 @@
+{
+ "name": "dq_bao_cao_bao_cao_kiem_tra_may_moc",
+ "label": "Báo cáo công việc bảo trì",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+    "title": "Báo cáo công việc bảo trì",
+    "fields": [
+     "id",
+     "mact",
+     "tenct",
+     "quycach",
+     "mausac",
+     "dvt",
+     "makho",
+     "nguoitao",
+     "ngaytao",
+     "nguoisua"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+        "title": "Thêm — Báo cáo công việc bảo trì",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+        "title": "Báo cáo công việc bảo trì",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoCaoKiemTraMayMoc<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_MATERIAL_OTHER_GETBYCODE, TR_XUONG_GET<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_material\n</div>"
+   }
+  }
+ ]
+}

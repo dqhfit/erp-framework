@@ -1,0 +1,82 @@
+{
+ "name": "dq_san_xuat_tien_do_hang_trang",
+ "label": "Tiến độ hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+    "title": "Tiến độ hàng trắng",
+    "fields": [
+     "masp",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy",
+     "rong",
+     "dai",
+     "masp1",
+     "madonhang"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Thêm — Tiến độ hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Tiến độ hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTienDoHangTrang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TRTB_M_LOCATION_GET, TRTB_M_LOCATION_GETALL2, TR_DONDATHANG_GETLISTHTR, TR_PALLET_CARD_GETALL, TR_PALLET_CARD_GETBYID, TR_PALLET_GET, TR_ROUT_UV_GET, TR_ROUT_UV_GETBYID, TR_TINHGIA_NGUYENLIEU, TR_TRANGTHAI_SANXUAT_GETBYDONHANG2, TR_TRANGTHAI_SANXUAT_GETBYDONHANG3, TR_TRANGTHAI_SANXUAT_GETBYDONHANG4, TR_TRANGTHAI_SANXUAT_GETBYPCARD, TR_TRANGTHAI_SANXUAT_INSERT, TR_TRANGTHAI_SANXUAT_PHANTRAM_HOANTHANH, TR_TRANGTHAI_SANXUAT_SOKHOI_HOANTHANH<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_order, tr_order_replacement, tr_pallet, tr_pallet_card, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site, trtb_m_location, trtb_scan_op\n</div>"
+   }
+  }
+ ]
+}

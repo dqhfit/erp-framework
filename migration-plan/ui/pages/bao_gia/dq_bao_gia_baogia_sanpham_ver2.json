@@ -1,0 +1,82 @@
+{
+ "name": "dq_bao_gia_baogia_sanpham_ver2",
+ "label": "Báo giá sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Báo giá sản phẩm",
+    "fields": [
+     "dongia",
+     "nguyenlieu",
+     "id",
+     "m3",
+     "ghichu",
+     "masp",
+     "quycach",
+     "dvt",
+     "mausac"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Báo giá sản phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Báo giá sản phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_baogia_sanpham_ver2<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: SYS_USER_RULE_Get, TR_BAOGIA_CHIPHI_OTHER_GETLIST, TR_BAOGIA_DELETE2, TR_BAOGIA_HESOMAM_UPDATE, TR_BAOGIA_NGAYBAOGIA_UPDATE, TR_BAOGIA_SON_GET4, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_get, TR_SANPHAM_CARTON_DELETE, TR_SANPHAM_CARTON_INSERT, TR_SANPHAM_COMPONENTS_DELETEBYID, TR_SANPHAM_COMPONENTS_GETALL, TR_SANPHAM_COMPONENTS_GETBYID, TR_SANPHAM_COMPONENTS_INSERT, TR_SANPHAM_COMPONENTS_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_baogia_chiphi, tr_baogia_chiphi_other, tr_baogia_son, tr_color, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_sanpham_carton\n</div>"
+   }
+  }
+ ]
+}

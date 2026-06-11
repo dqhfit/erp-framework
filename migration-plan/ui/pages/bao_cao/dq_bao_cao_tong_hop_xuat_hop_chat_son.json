@@ -1,0 +1,83 @@
+{
+ "name": "dq_bao_cao_tong_hop_xuat_hop_chat_son",
+ "label": "Tổng hợp xuất hợp chất sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b8dd332b-c4ac-4e41-854e-dd368b01dc3c",
+    "title": "Tổng hợp xuất hợp chất sơn",
+    "fields": [
+     "id",
+     "ma",
+     "ten",
+     "x",
+     "y",
+     "w",
+     "h",
+     "mamau",
+     "phanloai",
+     "stt"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b8dd332b-c4ac-4e41-854e-dd368b01dc3c",
+        "title": "Thêm — Tổng hợp xuất hợp chất sơn",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b8dd332b-c4ac-4e41-854e-dd368b01dc3c",
+        "title": "Tổng hợp xuất hợp chất sơn",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTongHopXuatHopChatSon<br/>\nNút WinForms gốc: Đóng · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_TONGHOP_XUAT_HOPCHAT_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_order, tr_order_replacement\n</div>"
+   }
+  }
+ ]
+}

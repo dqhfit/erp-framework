@@ -1,0 +1,77 @@
+{
+ "name": "dq_don_hang_banhanggo_phieudoihang_add",
+ "label": "Phiếu đổi hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+    "title": "Phiếu đổi hàng",
+    "fields": [
+     "id",
+     "dexuat_id",
+     "sothanh_yc",
+     "sokhoi_yc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Thêm — Phiếu đổi hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Phiếu đổi hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_banhanggo_PhieutrahangAdd, frm_banhanggo_PhieudoihangAdd<br/>\nNút WinForms gốc: Đóng · Lưu · Đóng · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DEXUAT_PHOI_CHITIET_GETALL, TR_DEXUAT_PHOI_CHITIET_NGUONGOC, TR_DEXUAT_PHOI_CHITIET_NGUONGOC_NULL, TR_DEXUAT_PHOI_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_phoi, tr_khachhang\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,83 @@
+{
+ "name": "dq_kho_vat_tu_vattu_update_price_supplier",
+ "label": "Cập nhật vật tư đơn giá - nhà cung cấp",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+    "title": "Cập nhật vật tư đơn giá - nhà cung cấp",
+    "fields": [
+     "id",
+     "vendor_id",
+     "vendor_name",
+     "address",
+     "area",
+     "phone",
+     "email",
+     "website",
+     "loaincc",
+     "create_by"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "Thêm — Cập nhật vật tư đơn giá - nhà cung cấp",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "Cập nhật vật tư đơn giá - nhà cung cấp",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_vattu_update_price_supplier, frmRSTNhapNguyenLieuAdd<br/>\nNút WinForms gốc: Lưu · Đóng · Đóng · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_MTERIAL_UPDATE_PRICE_SUPPLIER, RST_NHAP_NGUYENLIEU_GETBYCODE, RST_NHAP_NGUYENLIEU_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_loaincc\n</div>"
+   }
+  }
+ ]
+}

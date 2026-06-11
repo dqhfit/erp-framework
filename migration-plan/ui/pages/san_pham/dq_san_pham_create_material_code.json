@@ -1,0 +1,87 @@
+{
+ "name": "dq_san_pham_create_material_code",
+ "label": "frmCreateMaterialCode",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "frmCreateMaterialCode",
+    "fields": [
+     "id",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "dongia",
+     "mancc",
+     "tenncc",
+     "nhom",
+     "dacdiem",
+     "ghichu",
+     "kho",
+     "hinhanh",
+     "seq10"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — frmCreateMaterialCode",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "frmCreateMaterialCode",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmCreateMaterialCode_Ver2, frmMaterialCodeEdit2, frmCreateMaterialCode<br/>\nNút WinForms gốc: Tạo mã chi tiết<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TRMATERIALCLASSDETAILS_DELETE, TRMATERIALCLASSDETAILS_INSERT, TRMATERIALCLASS_DELETE2, TRMATERIALCLASS_INSERT, TRMATERIALCLASS_UPDATE, TR_MATERIAL_GETGROUP, TR_MATERIAL_Insert, TR_MATERIAL_UPDATE_DESC, TR_MATERIAL_get, UPDATEMATERIALCODE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

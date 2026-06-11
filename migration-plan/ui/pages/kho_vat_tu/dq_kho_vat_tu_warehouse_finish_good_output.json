@@ -1,0 +1,83 @@
+{
+ "name": "dq_kho_vat_tu_warehouse_finish_good_output",
+ "label": "Xuất kho thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+    "title": "Xuất kho thành phẩm",
+    "fields": [
+     "id",
+     "sopx",
+     "lenhcapphat",
+     "makho",
+     "nguoinhan",
+     "ghichu",
+     "nguoitao",
+     "ngaytao",
+     "active",
+     "loaiphieu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+        "title": "Thêm — Xuất kho thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+        "title": "Xuất kho thành phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmWarehouseFinishGoodOutput<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, TR_CONT_DETAIL_Get2, TR_CONT_DETAIL_Search, TR_CONT_List, TR_PHIEUXUAT_THANHPHAM_Get, TR_PHIEUXUAT_THANHPHAM_Insert, TR_TONKHO_THANHPHAM_GetList<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

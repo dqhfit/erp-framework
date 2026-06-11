@@ -1,0 +1,87 @@
+{
+ "name": "dq_don_hang_banhanggo_danh_sach_de_xuat_phoi",
+ "label": "Danh sách đề xuất phôi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+    "title": "Danh sách đề xuất phôi",
+    "fields": [
+     "dexuat_id",
+     "id",
+     "isfinish",
+     "ngaygiaophoi",
+     "nguongoc_giao",
+     "chatluong_giao",
+     "dayy_giao",
+     "rong_giao",
+     "dai_giao",
+     "sothanh_giao",
+     "sokhoi_giao",
+     "ghichu_giao",
+     "nguyenlieu",
+     "nguongoc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Thêm — Danh sách đề xuất phôi",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Danh sách đề xuất phôi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_banhanggo_DanhSachDeXuatPhoi, frm_banhanggo_DanhsachDeXuatPhoi_NgayGiaoPhoi<br/>\nNút WinForms gốc: Lưu · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: BG_DEXUAT_PHOI_BANGO_GETALL, TR_DEXUAT_PHOI_CHITIET_GET, TR_DEXUAT_PHOI_CHITIET_GETALL, TR_DEXUAT_PHOI_CHITIET_GETALL3, TR_DEXUAT_PHOI_CHITIET_UPDATE, TR_DEXUAT_PHOI_FINISH, TR_DEXUAT_PHOI_GETALL, TR_DEXUAT_PHOI_GETBYID, TR_DEXUAT_PHOI_NOT_FINISH, TR_DEXUAT_PHOI_UPDATE, TR_DEXUAT_PHOI_CHITIET_GETALL4, TR_DEXUAT_PHOI_NGAYGIAOPHOI<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_phoi\n</div>"
+   }
+  }
+ ]
+}

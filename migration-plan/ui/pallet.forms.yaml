@@ -1,0 +1,259 @@
+module: pallet
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - dqt_dexuat_phoi
+  - tr_bieumau_friday
+  - tr_congdoan
+  - tr_danhsach_dexuat
+  - tr_danhsach_dexuat_process
+  - tr_danhsach_xetduyet_user
+  - tr_hinhanh
+  - tr_kehoach_hangtrang
+  - tr_loai_xetduyet
+  - tr_nguyenlieu
+  - tr_nhom_dexuat2
+  - tr_nhom_xetduyet
+  - tr_quytrinh_xetduyet
+  - tr_rout_uv
+  - tr_routing
+pageClusters:
+  - entities:
+      - tr_dinhmuc_govan
+    forms:
+      - frm_In_Pallet_2
+  - entities:
+      - tr_order_detail
+    forms:
+      - frm_In_Pallet
+  - entities:
+      - tr_banve
+      - tr_dexuat_bangmau
+      - tr_dinhmuc_govan
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmDanhSachPallet
+forms:
+  - form: frm_In_Pallet_2
+    title: In Phiếu Pallet
+    inScope: true
+    entities:
+      - tr_dinhmuc_govan
+    fingerprintScore: 0.67
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_NGUYENLIEU
+    procs: []
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: chitiet
+          header: Mã hàng trắng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tenchitiet
+          header: Tên sản phẩm
+        - field: soluong
+          header: Số lượng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên gọi
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng chi tiết
+        - field: order_qty
+          header: Số lượng đơn hàng
+        - field: sum_qty
+          header: Số lượng cần
+        - field: ghichu
+          header: Ghi chú kỹ thuật
+    inputs: []
+    buttons: []
+  - form: frm_In_Pallet
+    title: In Phiếu Pallet
+    inScope: true
+    entities:
+      - tr_order_detail
+    fingerprintScore: 1
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: order_number
+          header: Mã đơn hàng
+        - field: item_number
+          header: Mã sản phẩm
+        - field: description
+          header: Tên sản phẩm
+        - field: order_qty
+          header: Số lượng
+    inputs: []
+    buttons: []
+  - form: frmDanhSachPallet
+    title: Danh sách phiếu pallet
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_dexuat_bangmau
+      - tr_dinhmuc_govan
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_bieumau_friday
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+      - tr_routing
+      - tr_rout_uv
+    repos:
+      - DQT_DEXUAT_PHOI
+      - HR_CONGTY
+      - LoggerManager
+      - SYS_USER
+      - TR_BANVE
+      - TR_BIEUMAU_FRIDAY
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DINHMUC_GOVAN
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_ROUTING
+      - TR_ROUT_UV
+      - TR_SITE
+    procs:
+      - HR_CONGTY_GET
+      - TR_BIEUMAU_FRIDAY_GETBYREPORTID
+      - TR_DINHMUC_GOVAN_GETBYMACT2
+      - TR_PALLET_CARD_DELETE
+      - TR_PALLET_CARD_GETALL3
+      - TR_PALLET_CARD_GETBYID
+      - TR_PALLET_CARD_GETNGUOIDUYET
+      - TR_PALLET_CARD_PRINT
+      - TR_PALLET_CARD_PRINT3
+      - TR_PALLET_CARD_PRINT4
+      - TR_PALLET_CARD_QUYTRINH
+      - TR_PALLET_CARD_UPDATE
+      - TR_PALLET_GETNEWITEM
+      - TR_PALLET_GETNEWITEM2
+    grid:
+      columns:
+        - field: maddh
+          header: Đơn hàng
+        - field: chitiet
+          header: Mã sản phẩm
+        - field: soluong
+          header: Số lượng
+        - field: icreatedcard
+          header: iCreatedCard
+        - field: iprintedcard
+          header: iPrintedCard
+        - field: trangthai
+          header: Trạng thái
+        - field: card_no
+          header: Mã phiếu
+        - field: dondathang
+          header: Đơn hàng
+        - field: mahtr
+          header: Mã sản phẩm
+        - field: stt_snap
+          header: STT
+        - field: mact_snap
+          header: Mã chi tiết
+        - field: tenct_snap
+          header: Tên chi tiết
+        - field: nguyenlieu_snap
+          header: Nguyên liệu
+        - field: dayy_tc_snap
+          header: Dày (*)
+        - field: rong_tc_snap
+          header: Rộng (*)
+        - field: dai_tc_snap
+          header: Dài (*)
+        - field: quycach
+          header: Quy cách
+        - field: soluong
+          header: Số lượng
+        - field: reissue_qty
+          header: Số lượng in lại
+        - field: issue_date
+          header: Ngày in
+        - field: card_seq
+          header: Seq
+    inputs:
+      - control: repLoaiPhieu
+        kind: select
+      - control: repDonHang
+        kind: select
+      - control: repSanPham
+        kind: select
+    buttons: []

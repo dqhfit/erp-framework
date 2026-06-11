@@ -1,0 +1,76 @@
+{
+ "name": "dq_san_xuat_tien_do_chuyen_son",
+ "label": "Tiến độ sản xuất chuyền sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "a6173ea1-6769-469f-b203-35984f0e0b34",
+    "title": "Tiến độ sản xuất chuyền sơn",
+    "fields": [
+     "id",
+     "khuvuc",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "a6173ea1-6769-469f-b203-35984f0e0b34",
+        "title": "Thêm — Tiến độ sản xuất chuyền sơn",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "a6173ea1-6769-469f-b203-35984f0e0b34",
+        "title": "Tiến độ sản xuất chuyền sơn",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTienDoChuyenSon<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_KHUVUC_CHUYENSON_GET, TR_KHUVUC_CHUYENSON_GETALL, TR_TIENDO_CHUYENSON_GETBYKHUVUC, TR_TIENDO_CHUYENSON_GETBYKHUVUC2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

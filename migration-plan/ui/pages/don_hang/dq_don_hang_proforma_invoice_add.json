@@ -1,0 +1,80 @@
+{
+ "name": "dq_don_hang_proforma_invoice_add",
+ "label": "Thêm Proforma Invoice",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Thêm Proforma Invoice",
+    "fields": [
+     "id",
+     "masp",
+     "masp_khachhang",
+     "tensp",
+     "cbm",
+     "dongia",
+     "dvt"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Thêm Proforma Invoice",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm Proforma Invoice",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmProformaInvoiceAdd, frmProformaInvoiceAdd<br/>\nNút WinForms gốc: Đóng · Lưu · Thêm từ đơn hàng khác · Đóng · Lưu · Thêm từ đơn hàng khác<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_ORDER_GET2, TR_PROFORMA_INVOICE_DETAIL_INSERT, TR_PROFORMA_INVOICE_DETAIL_UPDATE, TR_PROFORMA_INVOICE_INSERT, TR_PROFORMA_INVOICE_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_list_destination, tr_list_paymentterm, tr_list_shipment, tr_loaisp, tr_order\n</div>"
+   }
+  }
+ ]
+}

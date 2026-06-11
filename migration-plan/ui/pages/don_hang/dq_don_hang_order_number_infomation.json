@@ -1,0 +1,87 @@
+{
+ "name": "dq_don_hang_order_number_infomation",
+ "label": "Thông tin đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Thông tin đơn hàng",
+    "fields": [
+     "order_number",
+     "customer",
+     "order_date",
+     "ship_date",
+     "cont_date",
+     "order_qty",
+     "finished",
+     "cust_po_number",
+     "create_by",
+     "create_date",
+     "id",
+     "amount",
+     "agent",
+     "range"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Thông tin đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thông tin đơn hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmOrderNumberInfomation<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, RPT_PI_GET, TR_BIEUMAU_FRIDAY_GETBYREPORTID, TR_DANHSACH_DEXUAT_GET, TR_DANHSACH_DEXUAT_PROCESS_GETALL, TR_KHACHHANG_Get, TR_NGANHANG_GET, TR_NGANHANG_GETDEFAULT, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_DETAIL_PRINT, TR_ORDER_DETAIL_PRINT3, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETBYSTATUS, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_ORDER_GetByOrder, TR_PROFORMA_INVOICE_GETBYID<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_list_paymentterm, tr_loaisp, tr_material, tr_nganhang, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_sanpham, tr_site\n</div>"
+   }
+  }
+ ]
+}

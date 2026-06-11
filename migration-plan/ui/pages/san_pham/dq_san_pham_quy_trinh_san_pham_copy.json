@@ -1,0 +1,80 @@
+{
+ "name": "dq_san_pham_quy_trinh_san_pham_copy",
+ "label": "Copy quy trình sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Copy quy trình sản phẩm",
+    "fields": [
+     "masp",
+     "tensp",
+     "id",
+     "hehang",
+     "loaisp",
+     "nguyenlieu",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Copy quy trình sản phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Copy quy trình sản phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmQuyTrinhSanPhamCopy, frmDanhSachDonGiaSanPhamAdd, frmDienTichSanPham, frmDonGiaSanPhamEdit, frmNhomSanPhamAdd, frmSanPhamMultipleAdd, frmSanPhamEdit, frm_sanpham_thaythe, frmSanPham, frmDanhSachDonGiaSanPham, frmTinhChiPhiSanPham<br/>\nNút WinForms gốc: Đồng ý · Đóng · Lưu · Thoát · Đóng · Đồng ý · Lưu · Đóng · Đóng · Lưu · Lưu · Đóng · Đồng ý<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DONGIA_SANPHAM_GET, TR_DONGIA_SANPHAM_INSERT, TR_DONGIA_SANPHAM_UPDATE, TR_DONGIA_SANPHAM_GETALL, TR_DONGIA_SANPHAM_GETLIST, TR_SANPHAM_UPDATE_METVUONG, SYS_USER_RULE_Get, TINHGIA_HANGMUC_LAIVAY, TINHGIA_HANGMUC_SANPHAM, TR_CHIPHI_SANXUAT_SP_GETBYSP, TR_HANGMUC_CHIPHI_GETBYID, TR_HANGMUC_CHIPHI_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaisp\n</div>"
+   }
+  }
+ ]
+}

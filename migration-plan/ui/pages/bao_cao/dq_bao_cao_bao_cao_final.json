@@ -1,0 +1,82 @@
+{
+ "name": "dq_bao_cao_bao_cao_final",
+ "label": "Danh sách báo cáo Final",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+    "title": "Danh sách báo cáo Final",
+    "fields": [
+     "report_id",
+     "khachhang",
+     "hehang",
+     "ngaykiemtra",
+     "madonhang",
+     "qc_khachhang",
+     "ketluan",
+     "dexuat",
+     "ngaytao"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+        "title": "Thêm — Danh sách báo cáo Final",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+        "title": "Danh sách báo cáo Final",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoCaoFinal<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, SYS_USER_RULE_Get, TR_BAOCAO_FINAL_DELETE, TR_BAOCAO_FINAL_DUYET, TR_BAOCAO_FINAL_GETALL, TR_BAOCAO_FINAL_GETBYID, TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_baocao_final_hinhanh, tr_baocao_final_muckiemtra, tr_hehang, tr_khachhang\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,83 @@
+{
+ "name": "dq_kho_vat_tu_warehouse_input_htr",
+ "label": "Nhập kho hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Nhập kho hàng trắng",
+    "fields": [
+     "masp",
+     "mact",
+     "stt",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Nhập kho hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Nhập kho hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmWarehouseInput_HTR<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, TR_DINHMUC_GOVAN_Get2, TR_DONDATHANG_CHITIET_NHAP, TR_DONDATHANG_GET, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_TRANSACTION_Insert, TR_MATERIAL_get, TR_PHIEUNHAP_CHITIET_Insert, TR_PHIEUNHAP_GET, TR_PHIEUNHAP_HTR, TR_PHIEUNHAP_Insert<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_phieunhap, tr_reftype, tr_site\n</div>"
+   }
+  }
+ ]
+}

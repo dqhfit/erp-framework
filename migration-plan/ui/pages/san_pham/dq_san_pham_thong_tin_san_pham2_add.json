@@ -1,0 +1,82 @@
+{
+ "name": "dq_san_pham_thong_tin_san_pham2_add",
+ "label": "Thêm thông tin sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Thêm thông tin sản phẩm",
+    "fields": [
+     "hinhanh",
+     "id",
+     "masp",
+     "tensp",
+     "ketcau",
+     "nguyenlieu",
+     "ghichu",
+     "tieuchuan",
+     "mausac"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Thêm thông tin sản phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm thông tin sản phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmThongTinSanPham2Add<br/>\nNút WinForms gốc: Lưu && Đóng · Lưu && Thêm · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_TEM_DONGGOI_GET, TR_THONGTIN_SANPHAM_DANHSACH_DELETE, TR_THONGTIN_SANPHAM_DANHSACH_INSERT, TR_THONGTIN_SANPHAM_DONGGOI_DELETE, TR_THONGTIN_SANPHAM_DONGGOI_INSERT, TR_THONGTIN_SANPHAM_MAUSON_DELETE, TR_THONGTIN_SANPHAM_MAUSON_INSERT, TR_THONGTIN_SANPHAM_NGUYENLIEU_DELETE, TR_THONGTIN_SANPHAM_NGUYENLIEU_INSERT, TR_THONGTIN_SANPHAM_TEM_DELETEALL, TR_THONGTIN_SANPHAM_TEM_INSERT, TR_THONGTIN_SANPHAM_VATTU_DELETE, TR_THONGTIN_SANPHAM_VATTU_INSERT, TR_THONGTIN_SANPHAM_YEUCAUKHAC_DELETE, TR_THONGTIN_SANPHAM_YEUCAUKHAC_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_bangmau, tr_color, tr_hehang, tr_khachhang, tr_loaisp\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,227 @@
+module: he_thong
+generatedAt: 2026-06-11
+tablesMissingInErp: []
+pageClusters: []
+forms:
+  - form: z_UserAdd
+    title: Cập nhật người dùng
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+      - tr_bophan
+    repos:
+      - SYS_GROUP
+      - SYS_USER
+      - TR_BOPHAN
+    procs:
+      - SYS_USER_Update
+      - SYS_USER_UpdatePassword
+    grid:
+      columns:
+        - field: machucvu
+          header: Mã chức vụ
+        - field: chucvu
+          header: Chức vụ
+        - field: tennhom
+          header: Nhóm đanh giá
+        - field: mabophan
+          header: Mã bộ phận
+        - field: tenbophan
+          header: Tên bộ phận
+        - field: group_id
+          header: Mã nhóm
+        - field: group_name
+          header: Tên nhóm
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên người dùng
+        - field: tenbophan
+          header: Bộ phận
+    inputs:
+      - control: glkChucVu
+        kind: select
+      - control: glkNhomDanhGia
+        kind: select
+      - control: cheChangePass
+        kind: boolean
+      - control: txtID
+        kind: text
+      - control: cheActive
+        kind: boolean
+      - control: glkDepartment
+        kind: select
+      - control: glkGroup_ID
+        kind: select
+      - control: txtEmployeeCode
+        kind: text
+      - control: txtFullName
+        kind: text
+      - control: txtUserName
+        kind: text
+      - control: txtPassword
+        kind: text
+      - control: txtEmail
+        kind: text
+      - control: cheNotifications
+        kind: boolean
+      - control: glkNguoiQuanLy
+        kind: select
+    buttons:
+      - control: bbiSave
+        caption: Lưu && Đóng
+      - control: bbiSaveNew
+        caption: Lưu && Thêm
+      - control: bbiClose
+        caption: Thoát
+  - form: xfmDatabaseConfig
+    title: Cấu Hình Cơ Sở Dữ Liệu
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: cbxServer
+        kind: select
+      - control: cbxDatabase
+        kind: select
+      - control: teLogin
+        kind: text
+      - control: tePassword
+        kind: text
+      - control: txtFtp_Host
+        kind: text
+      - control: txtFtp_User
+        kind: text
+      - control: txtFtp_Pass
+        kind: text
+      - control: calPort
+        kind: number
+      - control: cboServerType
+        kind: select
+      - control: cboChuoiKetNoi
+        kind: select
+    buttons:
+      - control: btnLogin
+        caption: CẬP NHẬT
+      - control: btnUpdate
+        caption: CẬP NHẬT
+  - form: z_UserAdd_old
+    title: Cập nhật người dùng
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: mabophan
+          header: Mã bộ phận
+        - field: tenbophan
+          header: Tên bộ phận
+        - field: group_id
+          header: Mã nhóm
+        - field: group_name
+          header: Tên nhóm
+    inputs:
+      - control: cheChangePass
+        kind: boolean
+      - control: txtID
+        kind: text
+      - control: cheActive
+        kind: boolean
+      - control: glkDepartment
+        kind: select
+      - control: glkGroup_ID
+        kind: select
+      - control: txtEmployeeCode
+        kind: text
+      - control: txtFullName
+        kind: text
+      - control: txtUserName
+        kind: text
+      - control: txtPassword
+        kind: text
+      - control: txtEmail
+        kind: text
+    buttons:
+      - control: bbiSave
+        caption: Lưu && Đóng
+      - control: bbiSaveNew
+        caption: Lưu && Thêm
+      - control: bbiClose
+        caption: Thoát
+  - form: frmUser
+    title: Tài khoản đăng nhập
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+      - tr_bophan
+    repos:
+      - SYS_GROUP
+      - SYS_USER
+      - TR_BOPHAN
+    procs:
+      - SYS_USER_DELETE
+      - SYS_USER_GetList
+    grid:
+      columns:
+        - field: employeecode
+          header: Mã nhân viên
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên hiển thị
+        - field: email
+          header: Email
+        - field: group_id
+          header: Nhóm người dùng
+        - field: departmentcode
+          header: Bộ phận
+        - field: position
+          header: Chức vụ
+        - field: chucvu
+          header: Chức vụ
+        - field: active
+          header: Sử dụng
+        - field: board
+          header: Thông báo
+        - field: userid
+          header: USERID
+        - field: nhomdanhgia
+          header: Nhóm đánh giá
+        - field: hierarchy
+          header: Người quản lý
+    inputs:
+      - control: repGroupUser
+        kind: select
+      - control: repGroupDepartment
+        kind: select
+      - control: repChucVu
+        kind: select
+    buttons: []
+  - form: frmEmailConfig
+    title: Cài đặt mail
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: username
+          header: Tên đăng nhập
+        - field: name
+          header: Tên
+        - field: email
+          header: Mail
+        - field: topic
+          header: Phân loại
+    inputs:
+      - control: repTopic
+        kind: select
+    buttons: []

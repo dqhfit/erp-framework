@@ -1,0 +1,82 @@
+{
+ "name": "dq_kho_vat_tu_phieu_bu_hang_add",
+ "label": "Phiếu bù hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Phiếu bù hàng",
+    "fields": [
+     "nguyenlieu",
+     "ghichu",
+     "mact",
+     "chitiet",
+     "soluong_tc",
+     "stt",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Phiếu bù hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Phiếu bù hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhieuBuHangAdd<br/>\nNút WinForms gốc: Thêm · Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DINHMUC_GOVAN_GETBYMACT2, TR_DINHMUC_GOVAN_Get, TR_DINHMUC_GOVAN_Get_MADDH, TR_DONDATHANG_GETLISTHTR, TR_NGUYENLIEU_GVA_GETALL, TR_PHIEUTRAHANGTRANG_NHAP_GETALL, bp_phieubuhang_GetAll, bp_phieubuhang_Insert, pb_chitiet_phieubuhang_Delete, pb_chitiet_phieubuhang_GetAll, pb_chitiet_phieubuhang_Insert, pb_chitiet_phieubuhang_UPDATESL, pb_chitiet_phieubuhang_Update, pb_phieubuhang_Nguyenlieu_Insert<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_banve, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_nguyenlieu_gva, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

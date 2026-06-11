@@ -1,0 +1,807 @@
+module: bang_mau_banve
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - tr_hinhanh
+  - tr_nguyenlieu
+  - tr_rout_uv
+  - tr_routing
+pageClusters:
+  - entities:
+      - tr_banve
+      - tr_dinhmuc_govan
+    forms:
+      - frm_banve_view2
+      - frm_banve_view3
+  - entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmBanVeDao
+      - frmDanhSachBanVe2
+  - entities:
+      - tr_banve
+      - tr_banve_ai
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frm_banve
+      - frm_banve_donggoi
+  - entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmUploadBanVe2
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dexuat_bangmau_chitiet
+    forms:
+      - frmChiTietDeXuatBangMau
+  - entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmBangMauAdd
+  - entities:
+      - tr_bangmau
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dexuat_bangmau_chitiet
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmDeXuatBangMauAdd
+  - entities:
+      - tr_banve
+    forms:
+      - frm_banve2
+  - entities:
+      - trtb_m_location
+    forms:
+      - frm_banve_mau
+  - entities:
+      - tr_dinhmuc_govan
+    forms:
+      - frm_banve_test
+  - entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    forms:
+      - frmDanhSachBanVe
+forms:
+  - form: frmUploadBanVe2
+    title: Tải bản vẽ
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_BANVE_DELETE
+      - TR_BANVE_GET
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_BANVE_INSERT3
+      - TR_BANVE_UPDATE3
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: path
+          header: Đường dẫn
+        - field: filename
+          header: Tên tệp tin
+        - field: format
+          header: Định dạng
+        - field: status
+          header: Status
+        - field: phanloai
+          header: Loại bản vẽ
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+    inputs:
+      - control: cboLoaiBanVe
+        kind: select
+      - control: glkProduct
+        kind: select
+      - control: txtProductName
+        kind: text
+      - control: txtRange
+        kind: text
+      - control: txtCustomer
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Thoát
+      - control: btnOK
+        caption: Đồng ý
+  - form: frm_banve_view2
+    title: Xem bản vẽ
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_dinhmuc_govan
+    repos: []
+    procs:
+      - TR_BANVE_DELETE
+      - TR_BANVE_GetAll2
+      - TR_DINHMUC_GOVAN_Get
+    grid:
+      columns:
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: NL
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SL
+        - field: m3_tc
+          header: M3
+        - field: ghichu
+          header: Ghi chú
+        - field: masp
+          header: Mã sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: filepath
+          header: Đường dẫn
+        - field: seq1
+          header: Định dạng
+        - field: seq2
+          header: Tên tệp tin
+        - field: create_date
+          header: Ngày tải lên
+        - field: update_date
+          header: Ngày sửa đổi
+        - field: id
+          header: ID
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtGhiChu
+        kind: text
+    buttons: []
+  - form: frm_banve_view3
+    title: frm_banve_view3
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_dinhmuc_govan
+    repos: []
+    procs:
+      - TR_BANVE_DELETE
+      - TR_BANVE_GetAll2
+      - TR_DINHMUC_GOVAN_Get
+    grid:
+      columns:
+        - field: phanloai
+          header: Loại bản vẽ
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: filepath
+          header: Đường dẫn
+        - field: seq1
+          header: Định dạng
+        - field: seq2
+          header: Tên tệp tin
+        - field: create_date
+          header: Ngày tải lên
+        - field: update_date
+          header: Ngày sửa đổi
+        - field: id
+          header: ID
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: NL
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SL
+        - field: m3_tc
+          header: M3
+        - field: ghichu
+          header: Ghi chú
+        - field: masp
+          header: Mã sản phẩm
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtGhiChu
+        kind: text
+    buttons: []
+  - form: frmChiTietDeXuatBangMau
+    title: Đề xuất bảng màu
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dexuat_bangmau_chitiet
+    repos: []
+    procs:
+      - TR_DEXUAT_BANGMAU_CHITIET_GETALL
+      - TR_DEXUAT_BANGMAU_GETBYNUMBER
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: mamau
+          header: Mã màu
+        - field: hehang
+          header: Hệ hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: hieuung
+          header: Hiệu ứng
+        - field: quycach
+          header: Quy cách
+        - field: dvt
+          header: ĐVT
+        - field: soluong
+          header: Số lượng
+    inputs:
+      - control: txtSoPhieu
+        kind: text
+      - control: dteNgayDeXuat
+        kind: date
+      - control: txtNguoiDeXuat
+        kind: text
+      - control: txtMucDich
+        kind: text
+      - control: txtTieuChuanGo
+        kind: text
+      - control: txtTieuChuanVan
+        kind: text
+    buttons: []
+  - form: frmBangMauAdd
+    title: Thông tin bảng màu
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+    repos:
+      - TR_BANGMAU
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_BANGMAU_INSERT
+      - TR_BANGMAU_UPDATE
+    grid:
+      columns: []
+    inputs:
+      - control: txtCode
+        kind: text
+      - control: txtName
+        kind: text
+      - control: txtDescription
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnSave
+        caption: Lưu
+  - form: frmDeXuatBangMauAdd
+    title: Đề xuất bảng màu
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dexuat_bangmau_chitiet
+      - tr_hehang
+      - tr_khachhang
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_BANGMAU
+      - TR_COLOR
+      - TR_DEXUAT_BANGMAU
+      - TR_DEXUAT_BANGMAU_CHITIET
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_NGUYENLIEU
+    procs:
+      - TR_DEXUAT_BANGMAU_CHITIET_DELETE
+      - TR_DEXUAT_BANGMAU_CHITIET_GETALL
+      - TR_DEXUAT_BANGMAU_CHITIET_GETBYID
+      - TR_DEXUAT_BANGMAU_CHITIET_INSERT
+      - TR_DEXUAT_BANGMAU_CHITIET_UPDATE
+      - TR_DEXUAT_BANGMAU_CONFIRM
+      - TR_DEXUAT_BANGMAU_EXISTS
+      - TR_DEXUAT_BANGMAU_GETBYID
+      - TR_DEXUAT_BANGMAU_INSERT
+      - TR_DEXUAT_BANGMAU_NEWID
+      - TR_DEXUAT_BANGMAU_UPDATE
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: dexuat_id
+          header: Đề xuất Id
+        - field: mamau
+          header: Mã màu
+        - field: hehang
+          header: Hệ hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: hieuung
+          header: Hiệu ứng
+        - field: soluong
+          header: Số lượng
+        - field: dvt
+          header: Đơn vị tính
+        - field: quycach
+          header: Quy cách
+        - field: ghichu
+          header: Ghi chú
+        - field: tieuchuan_go
+          header: Tiêu chuẩn gỗ
+        - field: tieuchuan_veneer
+          header: Tiêu chuẩn veneer
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+    inputs:
+      - control: txtSoPhieu
+        kind: text
+      - control: dateNgayDeXuat
+        kind: date
+      - control: dateNgayHoanThien
+        kind: date
+      - control: txtMucDich
+        kind: text
+      - control: txtTieuChuanGo
+        kind: text
+      - control: txtTieuChuanVeneer
+        kind: text
+      - control: repMaMau
+        kind: select
+      - control: repHeHang
+        kind: select
+      - control: repHieuUng
+        kind: select
+      - control: repMemoEdit
+        kind: text
+    buttons:
+      - control: btnConfirm
+        caption: Duyệt đề xuất
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Thoát
+  - form: frm_banve2
+    title: Danh sách bản vẽ
+    inScope: true
+    entities:
+      - tr_banve
+    repos: []
+    procs:
+      - TR_BANVE_DELETE
+      - TR_BANVE_GetAll2
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: filepath
+          header: Đường dẫn
+        - field: seq1
+          header: Định dạng
+        - field: seq2
+          header: Tên tệp tin
+        - field: create_date
+          header: Ngày tải lên
+        - field: update_date
+          header: Ngày sửa đổi
+        - field: id
+          header: ID
+    inputs: []
+    buttons: []
+  - form: frm_banve_mau
+    title: frm_banve_mau
+    inScope: true
+    entities:
+      - trtb_m_location
+    repos:
+      - TRTB_M_LOCATION
+    procs: []
+    grid:
+      columns:
+        - field: name
+          header: Tên thư mục
+        - field: fullname
+          header: FullName
+        - field: type
+          header: Type
+        - field: name
+          header: Name
+        - field: datemodified
+          header: Date Modified
+        - field: type
+          header: Type
+        - field: size
+          header: Size
+        - field: fullname
+          header: Path
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repositoryItemTextEdit1
+        kind: text
+    buttons: []
+  - form: frm_banve_test
+    title: frm_banve_test
+    inScope: true
+    entities:
+      - tr_dinhmuc_govan
+    fingerprintScore: 1
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: NL
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SL
+        - field: m3_tc
+          header: M3
+        - field: ghichu
+          header: Ghi chú
+        - field: masp
+          header: Mã sản phẩm
+    inputs:
+      - control: txtTenCT
+        kind: text
+      - control: txtGhiChu
+        kind: text
+    buttons: []
+  - form: frmBanVeDao
+    title: Bản vẽ dao
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+    contextEntities:
+      - sys_user_rule
+    repos:
+      - SYS_USER_RULE
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_BANVE_DELETE
+      - TR_BANVE_GETBYTYPE
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: seq2
+          header: Tên tệp tin
+        - field: filepath
+          header: Đường dẫn
+        - field: create_date
+          header: Ngày tạo
+        - field: create_by
+          header: Người tạo
+        - field: update_date
+          header: Ngày sửa
+        - field: update_by
+          header: Người sửa
+        - field: id
+          header: ID
+    inputs: []
+    buttons: []
+  - form: frmDanhSachBanVe
+    title: Danh sách bản vẽ
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_sanpham_nhamay
+      - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+      - sys_user
+    repos:
+      - SYS_USER_RULE
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_SANPHAM_NHAMAY_REPO
+    procs:
+      - SYS_USER_RULE_Get
+      - TR_BANVE_DELETE
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_BANVE_GETLIST
+      - TR_BANVE_INSERT3
+      - TR_BANVE_UPDATE3
+      - TR_SANPHAM_NHAMAY_GET
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã nhà máy
+        - field: duongdan
+          header: Đường dẫn
+        - field: tenteptin
+          header: Tên tệp tin
+        - field: dinhdang
+          header: Định dạng
+        - field: phanloai
+          header: Phân loại
+        - field: tensp
+          header: Tên sản phẩm
+        - field: ngaytao
+          header: Ngày tạo
+        - field: ngaysua
+          header: Ngày sửa
+        - field: phathanh
+          header: Phát hành
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmDanhSachBanVe2
+    title: Danh sách bản vẽ đã phát hành
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+    contextEntities:
+      - sys_user_rule
+      - sys_user
+    repos:
+      - SYS_USER_RULE
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - SYS_USER_RULE_Get
+      - TR_BANVE_DELETE
+      - TR_BANVE_GETALL3
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: khachhang
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: filepath
+          header: Đường dẫn
+        - field: seq1
+          header: Định dạng
+        - field: seq2
+          header: Tên tệp tin
+        - field: phanloai
+          header: Loại bản vẽ
+        - field: create_by
+          header: Người tạo
+        - field: create_date
+          header: Ngày tạo
+        - field: update_by
+          header: Người sửa
+        - field: update_date
+          header: Ngày sửa
+        - field: active
+          header: Còn sử dụng
+    inputs:
+      - control: repTrangThai
+        kind: select
+    buttons: []
+  - form: frm_banve
+    title: Chi tiết bản vẽ
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_banve_ai
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    contextEntities:
+      - hr_congty
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+      - tr_routing
+      - tr_rout_uv
+    repos:
+      - HR_CONGTY
+      - TR_BANVE
+      - TR_BANVE_AI
+      - TR_DINHMUC_GOVAN
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_ROUTING
+      - TR_ROUT_UV
+      - TR_SANPHAM
+    procs:
+      - HR_CONGTY_GET
+      - TR_BANVE_DELETE
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_BANVE_GETLIST
+      - TR_BANVE_UPDATE3
+      - TR_DINHMUC_GOVAN_GETBYSP2
+      - TR_DINHMUC_GOVAN_M3TOTAL
+    grid:
+      columns:
+        - field: tenhh
+          header: Hệ hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: create_date
+          header: Ngày tạo
+        - field: update_date
+          header: Ngày sửa
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+    inputs:
+      - control: repLoaiBanVe
+        kind: select
+      - control: repHeHang
+        kind: select
+      - control: repMaSP1
+        kind: select
+      - control: repMaSP2
+        kind: select
+      - control: repositoryItemTextEdit2
+        kind: text
+      - control: repositoryItemTextEdit1
+        kind: text
+    buttons: []
+  - form: frm_banve_donggoi
+    title: Bản vẽ đóng gói
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_banve_ai
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    contextEntities:
+      - hr_congty
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+      - tr_routing
+      - tr_rout_uv
+    repos:
+      - HR_CONGTY
+      - TR_BANVE
+      - TR_BANVE_AI
+      - TR_DINHMUC_GOVAN
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_ROUTING
+      - TR_ROUT_UV
+      - TR_SANPHAM
+    procs:
+      - HR_CONGTY_GET
+      - TR_BANVE_DELETE
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_BANVE_UPDATE3
+      - TR_DINHMUC_GOVAN_GETBYSP2
+      - TR_DINHMUC_GOVAN_M3TOTAL
+    grid:
+      columns:
+        - field: tenhh
+          header: Hệ hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: create_date
+          header: Ngày tạo
+        - field: update_date
+          header: Ngày sửa
+    inputs:
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: repHeHang
+        kind: select
+      - control: repMaSP2
+        kind: select
+    buttons: []

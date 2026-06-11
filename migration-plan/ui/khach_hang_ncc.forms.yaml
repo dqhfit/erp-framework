@@ -1,0 +1,921 @@
+module: khach_hang_ncc
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - tr_congdoan
+  - tr_currentcy
+  - tr_hinhanh
+  - tr_kehoach_hangtrang
+  - tr_nguyenlieu
+pageClusters:
+  - entities:
+      - tr_khachhang
+    forms:
+      - frmKhachHangAdd
+      - frmKhachHangAdd2
+      - frmCustomerPermission
+      - frmKhachHang
+      - frmKhachHang
+      - frmDanhsachkhachhang
+      - frmkhachhang
+  - entities:
+      - tr_loaincc
+      - tr_nhacc
+    forms:
+      - frmNhaCungCapAdd
+      - frmNhaCungCapAdd
+      - frmChiTietCongNoNhaCungCap
+      - frmNhaCungCap
+      - frm_sosanhgia_nvt_ncc
+  - entities:
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+    forms:
+      - frmKhachHangInfo
+  - entities:
+      - tr_loaincc
+      - tr_nganhang
+      - tr_nhacc
+    forms:
+      - frmNhaCungCapAdd2
+  - entities:
+      - tr_lenhcapphat
+    forms:
+      - frm_sosanhgia_nvt_ncc_print
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frm_sosanhgia_nvt_ncc_print2
+forms:
+  - form: frmKhachHangInfo
+    title: Thông tin khách hàng
+    inScope: true
+    entities:
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_currentcy
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+    procs:
+      - TR_KHACHHANG_Get
+      - TR_ORDER_DETAIL_GETBYCUSTOMER_PIVOT
+    grid:
+      columns:
+        - field: nam
+          header: Năm
+        - field: groupname
+          header: Name
+        - field: total
+          header: Tổng
+        - field: t1
+          header: Tháng 1
+        - field: t2
+          header: Tháng 2
+        - field: t3
+          header: Tháng 3
+        - field: t4
+          header: Tháng 4
+        - field: t5
+          header: Tháng 5
+        - field: t6
+          header: Tháng 6
+        - field: t8
+          header: Tháng 8
+        - field: t9
+          header: Tháng 9
+        - field: t10
+          header: Tháng 10
+        - field: t11
+          header: Táng 11
+        - field: t12
+          header: Tháng 12
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: tensp_vn
+          header: Tên sản phẩm (VN)
+        - field: hehang
+          header: Hệ hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: kichthuoc
+          header: Quy cách sản phẩm
+        - field: order_qty
+          header: Tổng SL sản phẩm
+        - field: amount
+          header: Tổng giá trị
+        - field: order_number
+          header: Mã đơn hàng
+        - field: cust_po_number
+          header: PO khách hàng
+        - field: order_date
+          header: Ngày đặt
+        - field: ship_date
+          header: Ngày yêu cầu giao
+        - field: range
+          header: Hệ hàng
+        - field: total_order_qty
+          header: Tổng sản phẩm
+        - field: total_amount
+          header: Tổng giá trị
+        - field: remark
+          header: Ghi chú
+        - field: payment_term
+          header: Payment term
+    inputs:
+      - control: txtMaKhach
+        kind: text
+      - control: txtTenKhach
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtSoDienThoai
+        kind: text
+      - control: txtEmail
+        kind: text
+    buttons: []
+  - form: frmKhachHangAdd
+    title: Thêm khách hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_INSERT3
+      - TR_KHACHHANG_UPDATE3
+    grid:
+      columns:
+        - field: name
+          header: Tên ngân hàng
+        - field: abbr_name
+          header: Tên viết tắt
+    inputs:
+      - control: cboLoaiKhachHang
+        kind: select
+      - control: glkBankID
+        kind: select
+      - control: txtID
+        kind: text
+      - control: txtName
+        kind: text
+      - control: txtAddress
+        kind: text
+      - control: cboArea
+        kind: select
+      - control: txtPhone
+        kind: text
+      - control: txtFax
+        kind: text
+      - control: txtEmail
+        kind: text
+      - control: txtWebsite
+        kind: text
+      - control: txtDirector
+        kind: text
+      - control: txtTaxCode
+        kind: text
+      - control: cheActive
+        kind: boolean
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmNhaCungCapAdd2
+    title: Nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nganhang
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+      - TR_NGANHANG
+      - TR_NHACC
+    procs: []
+    grid:
+      columns:
+        - field: sotaikhoan
+          header: Số tài khoản
+        - field: nganhang
+          header: Tên ngân hàng
+        - field: chinhanh
+          header: Chi nhánh
+        - field: id
+          header: id
+        - field: idncc
+          header: Id_NCC
+    inputs:
+      - control: txtMaNhaCC
+        kind: text
+      - control: txtTenNhaCC
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtDienThoai
+        kind: text
+      - control: txtEmail
+        kind: text
+      - control: txtDonVi
+        kind: text
+    buttons:
+      - control: btnSaveClose
+        caption: Lưu && Đóng
+      - control: btnSaveNew
+        caption: "Lưu "
+      - control: btnClose
+        caption: Hủy bỏ
+  - form: frmNhaCungCapAdd
+    title: Cập nhật nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+      - TR_NHACC
+    procs:
+      - TR_NHACC_INSERT2
+      - TR_NHACC_UPDATE2
+    grid:
+      columns:
+        - field: loaincc
+          header: Cung cấp
+    inputs:
+      - control: txtMaNCC
+        kind: text
+      - control: txtTenNCC
+        kind: text
+      - control: glkLoaiCungCap
+        kind: select
+      - control: txtSDT
+        kind: text
+      - control: txtMail
+        kind: text
+      - control: txtWeb
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtSoTaiKhoan
+        kind: text
+      - control: txtTenTaiKhoan
+        kind: text
+      - control: txtTenNganHang
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnSaveNew
+        caption: Lưu && Thêm
+      - control: btnSaveClose
+        caption: Lưu && Đóng
+  - form: frmKhachHangAdd2
+    title: Thông tin khách  hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_INSERT3
+    grid:
+      columns: []
+    inputs:
+      - control: txtMaKhachHang
+        kind: text
+      - control: txtTenKhachHang
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtDienThoai
+        kind: text
+      - control: cboKhuVuc
+        kind: select
+      - control: txtNguoiLienHe
+        kind: text
+      - control: txtSoDienThoaiLienHe
+        kind: text
+      - control: txtMaSoThue
+        kind: text
+      - control: cboLoaiKhachHang
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+  - form: frm_add_ncc
+    title: Cập nhật nhà cung cấp
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: txtTenNCC
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtSDT
+        kind: text
+      - control: txtEmail
+        kind: text
+      - control: txtWeb
+        kind: text
+      - control: cboKhuVuc
+        kind: select
+      - control: lkLoaiNCC
+        kind: select
+      - control: txtMaNCC
+        kind: text
+    buttons: []
+  - form: frmCustomerPermission
+    title: Phân quyền khách hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    contextEntities:
+      - sys_user
+    repos:
+      - SYS_USER
+      - TR_KHACHHANG
+    procs:
+      - SYS_ORDER_PERMISSION_CREATE
+      - SYS_ORDER_PERMISSION_GET
+    grid:
+      columns:
+        - field: username
+          header: Tên đăng nhập
+        - field: fullname
+          header: Tên hiển thị
+        - field: customer_user
+          header: Khách hàng
+    inputs:
+      - control: glkUser
+        kind: select
+      - control: txtFullName
+        kind: text
+    buttons:
+      - control: simpleButton1
+        caption: Lưu
+      - control: simpleButton2
+        caption: Đóng
+  - form: frmNhaCungCapAdd
+    title: Cập nhật nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+      - TR_NHACC
+    procs:
+      - TR_NHACC_INSERT2
+      - TR_NHACC_UPDATE2
+    grid:
+      columns:
+        - field: loaincc
+          header: Cung cấp
+    inputs:
+      - control: txtMaNCC
+        kind: text
+      - control: txtTenNCC
+        kind: text
+      - control: glkLoaiCungCap
+        kind: select
+      - control: txtSDT
+        kind: text
+      - control: txtMail
+        kind: text
+      - control: txtWeb
+        kind: text
+      - control: txtDiaChi
+        kind: text
+      - control: txtSoTaiKhoan
+        kind: text
+      - control: txtTenTaiKhoan
+        kind: text
+      - control: txtTenNganHang
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnSaveNew
+        caption: Lưu && Thêm
+      - control: btnSaveClose
+        caption: Lưu && Đóng
+  - form: frmThuTienKhachHang
+    title: Trả tiền nhà cung cấp
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: ngaychungtu
+          header: Ngày chứng từ
+        - field: sophieunhap
+          header: Số chứng từ
+        - field: ghichu
+          header: Ghi chú
+        - field: tongtienthanhtoan
+          header: Tổng tiền hàng
+        - field: tongtiendathanhtoan
+          header: Số tiền đã trả
+        - field: giamgia_giamtru
+          header: Giảm giá hàng bán
+        - field: tralai_giamtru
+          header: Trả lại hàng bán
+        - field: nocu
+          header: Nợ cũ
+        - field: tongtien
+          header: Tổng nợ
+        - field: conno1
+          header: Còn nợ
+        - field: sotientra
+          header: Số tiền trả
+        - field: id
+          header: ID
+        - field: giamgia_chitien
+          header: Thu tiền
+        - field: tralai_chitien
+          header: Thu tiền 1
+        - field: id
+          header: ID
+        - field: ngaychungtu
+          header: Ngày chứng từ
+        - field: sochungtu
+          header: Số chứng từ
+        - field: ghichu
+          header: Ghi chú
+        - field: tongtienthanhtoan
+          header: Tổng nợ
+        - field: tongtiendathanhtoan
+          header: Còn nợ
+        - field: sotientra
+          header: Số tiền trả
+        - field: tenncc
+          header: Tên nhà cung cấp
+        - field: id
+          header: ID
+        - field: ngaytratien
+          header: Ngày thu tiền
+    inputs:
+      - control: glkKhachhang
+        kind: select
+      - control: cbbLoaithanhtoan
+        kind: select
+      - control: dateNgaytraTien
+        kind: date
+      - control: cbbloaitien
+        kind: select
+      - control: spTigia
+        kind: number
+      - control: repositoryItemDateEdit1
+        kind: date
+    buttons:
+      - control: btnDong
+        caption: Đóng
+      - control: btnLuu
+        caption: Lưu
+  - form: frm_sosanhgia_nvt_ncc_print
+    title: In so sánh giá của nhà cung cấp
+    inScope: true
+    entities:
+      - tr_lenhcapphat
+    fingerprintScore: 0.67
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: vendor_id
+          header: ID
+        - field: vendor_name
+          header: Tên nhà cung cấp
+        - field: mavt
+          header: Mã nguyên vật liệu
+        - field: mota
+          header: Mô tả
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+    inputs:
+      - control: gridLookUpEdit1
+        kind: select
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+      - control: dateEdit1
+        kind: date
+    buttons:
+      - control: simpleButton1
+        caption: Hoàn tất
+  - form: frmSoChiTietCongNoKhachHang_Search
+    title: Chọn tham số
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: tenncc
+          header: Tên nhà cung cấp
+        - field: id
+          header: id
+        - field: checkncc
+          header: Chọn
+        - field: tenncc
+          header: Tên khách hàng
+        - field: id
+          header: id
+        - field: checkkhachhang
+          header: Chọn
+        - field: mancc
+          header: Mã nhà cung cấp
+        - field: diachi
+          header: Địa chỉ
+        - field: sdt
+          header: Số điện thoại
+    inputs:
+      - control: cheCheckAll
+        kind: boolean
+      - control: repositoryItemDateEdit1
+        kind: date
+      - control: repositoryItemDateEdit2
+        kind: date
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+    buttons:
+      - control: btnDongy
+        caption: Đồng ý
+      - control: btnDong
+        caption: Đóng
+  - form: frmChiTietCongNoNhaCungCap
+    title: Chi tiết công nợ nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+      - TR_NHACC
+    procs: []
+    grid:
+      columns:
+        - field: receiptcode
+          header: Số phiếu
+        - field: receiptdate
+          header: Ngày tháng
+        - field: productname
+          header: Diễn giải
+        - field: quantity
+          header: Số lượng
+        - field: unitprice
+          header: Đơn giá
+        - field: totalamount
+          header: Thành tiền
+        - field: grouptype
+          header: Nhóm
+        - field: suppliername
+          header: Nhà cung cấp
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmKhachHang
+    title: Khách hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_GetList
+      - TR_KHACHHANG_UPDATE3
+    grid:
+      columns:
+        - field: id
+          header: id
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: address
+          header: Địa chỉ
+        - field: phone
+          header: Số điện thoại
+        - field: email
+          header: Email
+        - field: customer_type_name
+          header: Nhóm khách hàng
+        - field: active
+          header: Tình trạng hoạt động
+    inputs: []
+    buttons: []
+  - form: frmNhaCungCap
+    title: Danh sách nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+      - TR_NHACC
+    procs:
+      - TR_NHACC_DELETE
+      - TR_NHACC_GetAll
+    grid:
+      columns:
+        - field: supplierid
+          header: supplierID
+        - field: suppliercode
+          header: Mã nhà cung cấp
+        - field: suppliername
+          header: Tên nhà cung cấp
+        - field: address
+          header: Địa chỉ
+        - field: phone
+          header: Điện thoại
+        - field: email
+          header: Email
+        - field: totaldebt
+          header: Nợ cũ
+    inputs: []
+    buttons: []
+  - form: frmKhachHang
+    title: Khách hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_GetList
+      - TR_KHACHHANG_UPDATE3
+    grid:
+      columns:
+        - field: id
+          header: id
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: address
+          header: Địa chỉ
+        - field: phone
+          header: Số điện thoại
+        - field: email
+          header: Email
+        - field: customer_type_name
+          header: Nhóm khách hàng
+        - field: active
+          header: Tình trạng hoạt động
+    inputs: []
+    buttons: []
+  - form: frm_sosanhgia_nvt_ncc
+    title: So sánh giá nguyên vật liệu nhà cung cấp
+    inScope: true
+    entities:
+      - tr_loaincc
+      - tr_nhacc
+    repos:
+      - TR_LOAINCC
+    procs:
+      - TR_NHACC_Get
+    grid:
+      columns:
+        - field: ma_ncc
+          header: Mã nhà cung cấp
+        - field: vendor_name
+          header: Tên nhà cung cấp
+        - field: ma_nvl
+          header: Mã nguyên vật liệu
+        - field: mota
+          header: Mô tả
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: ĐVT
+        - field: dongia
+          header: Đơn giá
+        - field: tungay
+          header: Từ ngày
+        - field: macdinh
+          header: Mặc định
+        - field: id
+          header: ID
+        - field: tigia
+          header: Tỉ giá
+        - field: tenvt
+          header: Tên chi tiết
+    inputs:
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+    buttons: []
+  - form: frm_sosanhgia_nvt_ncc_print2
+    title: So sánh giá nguyên liệu
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_get
+    grid:
+      columns:
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: ĐVT
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+    inputs:
+      - control: glkChiTiet
+        kind: select
+    buttons: []
+  - form: frmDanhsachkhachhang
+    title: Danh sách khách hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - BG_KHACHHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_GetList
+    grid:
+      columns:
+        - field: makh
+          header: Mã khách hàng
+        - field: tenkh
+          header: Tên khách hàng
+        - field: diachi
+          header: Địa chỉ
+        - field: dienthoai
+          header: Điện thoại    (Công ty)
+        - field: fax
+          header: FAX
+        - field: email
+          header: Email
+        - field: director
+          header: Giám đốc
+        - field: website
+          header: Website
+        - field: area
+          header: Loại khách hàng
+        - field: id
+          header: ID
+        - field: tencongty
+          header: Tên công ty
+        - field: sdtgiamdoc
+          header: Điện thoại  (Giám đốc)
+        - field: tenketoan
+          header: Tên kế toán
+        - field: sdtketoan
+          header: Điện thoại     (Kế toán)
+        - field: mst
+          header: Mã số thuế
+    inputs: []
+    buttons: []
+  - form: frmkhachhang
+    title: Danh sách nhà cung cấp
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_GetList
+      - TR_KHACHHANG_UPDATE3
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: tenncc
+          header: Tên khách hàng
+        - field: diachi
+          header: Địa chỉ
+        - field: sdt
+          header: Số điện thoại
+        - field: email
+          header: Email
+        - field: stk
+          header: Số tài khoản
+        - field: mancc
+          header: Mã khách hàng
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmSoChiTietCongNoKhachHang
+    title: Sổ chi tiết công nợ khách hàng
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dvt
+          header: ĐVT
+        - field: tenkho
+          header: Kho nhập
+        - field: soluong
+          header: Số lượng
+        - field: dongia
+          header: Đơn giá
+        - field: thanhtien
+          header: Thành tiền
+        - field: soluongtra
+          header: Số lượng trả
+        - field: thanhtien_tra
+          header: Thành tiền trả
+        - field: thanhtien_giam
+          header: Thành tiền giảm
+        - field: ngayhachtoan
+          header: Ngày hạch toán
+        - field: ngaychungtu
+          header: Ngày chứng từ
+        - field: sochungtu
+          header: Số chứng từ
+        - field: ghichu
+          header: Ghi chú
+        - field: tongtienthanhtoan
+          header: Tổng tiền đơn hàng
+        - field: tongtiendathanhtoan
+          header: Tổng tiền đã trả
+        - field: tenncc
+          header: Tên khách hàng
+        - field: giamtra
+          header: Trả lại/giảm giá
+        - field: conlai
+          header: Còn nợ
+        - field: nocu
+          header: Nợ cũ
+    inputs: []
+    buttons: []

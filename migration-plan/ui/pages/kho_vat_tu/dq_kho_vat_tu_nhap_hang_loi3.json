@@ -1,0 +1,87 @@
+{
+ "name": "dq_kho_vat_tu_nhap_hang_loi3",
+ "label": "Báo cáo hàng lỗi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "title": "Báo cáo hàng lỗi",
+    "fields": [
+     "ngaythang",
+     "donhang",
+     "masp",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy",
+     "rong",
+     "dai",
+     "soluong",
+     "tinhtrang",
+     "loailoi",
+     "tacnhangayloi",
+     "nguyennhanloi"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Thêm — Báo cáo hàng lỗi",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Báo cáo hàng lỗi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmNhapHangLoi3<br/>\nNút WinForms gốc: Chưa tạo phiếu · Đã hoàn thành · Chưa hoàn thành<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, TR_BAOCAO_HANGLOI_CREATE_PALLET, TR_BAOCAO_HANGLOI_DELETE, TR_BAOCAO_HANGLOI_DUYET, TR_BAOCAO_HANGLOI_GET, TR_BAOCAO_HANGLOI_GETALL2, TR_BAOCAO_HANGLOI_GETALL3, TR_BAOCAO_HANGLOI_GETALL4, TR_BAOCAO_HANGLOI_GETALL5, TR_BAOCAO_HANGLOI_HOANTHANH, TR_BAOCAO_HANGLOI_HUONGXULY, TR_BIEUMAU_FRIDAY_GETBYREPORTID, TR_DINHMUC_GOVAN_GETBYMACT2, TR_HANGLOI_SOPHIEU_GETBYID, TR_PALLET_CARD_GETBYID, TR_PALLET_CARD_GETNGUOIDUYET, TR_PALLET_CARD_PRINT4, TR_PALLET_CARD_UPDATE, TR_TRANGTHAI_SANXUAT_GETBYPCARD2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_banve, tr_dinhmuc_govan, tr_hehang, tr_khachhang, tr_pallet, tr_pallet_card, tr_trangthai_sanxuat\n</div>"
+   }
+  }
+ ]
+}

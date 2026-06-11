@@ -1,0 +1,77 @@
+{
+ "name": "dq_kho_vat_tu_phieu_giao_thanh_pham_add",
+ "label": "Phiếu giao thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b5444cf9-81cb-4772-95a7-dc4b698e8e27",
+    "title": "Phiếu giao thành phẩm",
+    "fields": [
+     "id",
+     "masp",
+     "mathung",
+     "soluong"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b5444cf9-81cb-4772-95a7-dc4b698e8e27",
+        "title": "Thêm — Phiếu giao thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b5444cf9-81cb-4772-95a7-dc4b698e8e27",
+        "title": "Phiếu giao thành phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhieuGiaoThanhPhamAdd<br/>\nNút WinForms gốc: Lưu · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_NHOM_SANPHAM_INSERT, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_PHIEUGIAO_THANHPHAM_CHITIET_DELETE, TR_PHIEUGIAO_THANHPHAM_CHITIET_GETALL, TR_PHIEUGIAO_THANHPHAM_CHITIET_GETBYID, TR_PHIEUGIAO_THANHPHAM_CHITIET_GETBYORDER, TR_PHIEUGIAO_THANHPHAM_CHITIET_INSERT, TR_PHIEUGIAO_THANHPHAM_CHITIET_UPDATE, TR_PHIEUGIAO_THANHPHAM_GETBYID, TR_PHIEUGIAO_THANHPHAM_INSERT, TR_PHIEUGIAO_THANHPHAM_NEWID, TR_PHIEUGIAO_THANHPHAM_UPDATE, TR_SANPHAM_CARTON_GET<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_order_replacement, tr_reftype, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

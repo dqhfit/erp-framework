@@ -1,0 +1,83 @@
+{
+ "name": "dq_bao_cao_thong_ke_xuat_hang_thanh_pham",
+ "label": "Thống kê xuất hàng thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+    "title": "Thống kê xuất hàng thành phẩm",
+    "fields": [
+     "id",
+     "masp",
+     "tensp",
+     "khachhang",
+     "hehang",
+     "filepath",
+     "pdffile",
+     "seq1",
+     "seq2",
+     "banve_donggoi"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thêm — Thống kê xuất hàng thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thống kê xuất hàng thành phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmThongKeXuatHangThanhPham<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, TR_DINHMUC_GOVAN_GETBYSP, TR_DINHMUC_GOVAN_GETBYSP2, TR_DINHMUC_GOVAN_Get, TR_DINHMUC_GOVAN_M3TOTAL, TR_LUUTRINH_SANXUAT_COPY2, TR_PHIEUXUAT_THANHPHAM_DINHMUC_GOVAN_GET, TR_PHIEUXUAT_THANHPHAM_GETALL<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dinhmuc_govan, tr_hehang, tr_khachhang, tr_loaisp, tr_phieuxuat, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

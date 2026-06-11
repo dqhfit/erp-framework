@@ -1,0 +1,82 @@
+{
+ "name": "dq_san_xuat_tien_do_chuyen_son_add",
+ "label": "Nhập tiến độ chuyền sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Nhập tiến độ chuyền sơn",
+    "fields": [
+     "masp",
+     "stt",
+     "mact",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Nhập tiến độ chuyền sơn",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Nhập tiến độ chuyền sơn",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTienDoChuyenSonAdd<br/>\nNút WinForms gốc: Lưu<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DINHMUC_GOVAN_GETBYSP3, TR_DINHMUC_GOVAN_RELEASE, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GETALL, TR_ORDER_GETBYSTATUS, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_TIENDO_CHUYENSON_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_banve, tr_color, tr_common, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail\n</div>"
+   }
+  }
+ ]
+}

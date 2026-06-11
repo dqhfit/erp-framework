@@ -1,0 +1,87 @@
+{
+ "name": "dq_kho_vat_tu_xuat_kho_lenh_cap_phat",
+ "label": "Xuất kho theo lệnh cấp phát",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Xuất kho theo lệnh cấp phát",
+    "fields": [
+     "lenhcapphatid",
+     "loaicapphat",
+     "madondathang",
+     "madonhang",
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "soluong_daphat",
+     "soluong_conlai",
+     "nhom"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Thêm — Xuất kho theo lệnh cấp phát",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Xuất kho theo lệnh cấp phát",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmXuatVatTuAI, frmXuatKhoLenhCapPhat, frmWarehouseOutput2, frmWarehouseOutput2<br/>\nNút WinForms gốc: Xác nhận<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_LENHCAPPHAT_GETALL, TR_LENHCAPPHAT_HEAD_GET2, TR_LENHCAPPHAT_Update, TR_PHIEUXUAT_INSERT2, TR_PHIEUXUAT_NEWID, TR_PHIEUXUAT_UPDATESTATUS, TR_TONKHO_CHITIET_XUAT, TR_TONKHO_CHITIET_XUAT2, HR_CONGTY_GET, TR_DINHMUC_LOCK_UNLOCK, TR_LENHCAPPHAT_Get, TR_LENHCAPPHAT_HEAD_GETBYKHO, TR_PHIEUNXUAT_PRINT, TR_PHIEUXUAT_GET, TR_TONKHO_CHITIET_GETLISTBYMACT, TR_LENHCAPPHAT_HEAD_GETBYKHO2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_lenhcapphat_head, tr_material, tr_order, tr_order_replacement, tr_phieuxuat, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_reftype, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+{
+ "name": "dq_don_hang_tu_dong_tao_don_hang",
+ "label": "Tự động tạo đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Tự động tạo đơn hàng",
+    "fields": [
+     "price",
+     "amount",
+     "remark",
+     "range"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Tự động tạo đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Tự động tạo đơn hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTuDongTaoDonHang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_HEHANG_GetList, TR_KHACHHANG_INSERT3, TR_ORDER_DETAIL_AUTO_CREATE, TR_ORDER_INSERT2, TR_SANPHAM_NHAMAY_GET<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_common, tr_hehang, tr_khachhang, tr_list_paymentterm, tr_loaisp, tr_material, tr_order, tr_sanpham, tr_sanpham_nhamay\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,81 @@
+{
+ "name": "dq_bao_cao_bao_cao_final_add",
+ "label": "Nhập Báo cáo Kiểm tra",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "fc2c58f7-98bf-40f7-9af8-91b840e028b2",
+    "title": "Nhập Báo cáo Kiểm tra",
+    "fields": [
+     "masp",
+     "tensp",
+     "diengiai",
+     "soluong_kiemtra",
+     "danhgia",
+     "hanhdong",
+     "ghichu",
+     "item_id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "fc2c58f7-98bf-40f7-9af8-91b840e028b2",
+        "title": "Thêm — Nhập Báo cáo Kiểm tra",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "fc2c58f7-98bf-40f7-9af8-91b840e028b2",
+        "title": "Nhập Báo cáo Kiểm tra",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoCaoFinalAdd3, frmBaoCaoFinalAdd<br/>\nNút WinForms gốc: Cập nhật báo cáo · Thêm · Thêm · Lưu báo cáo<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_BAOCAO_FINAL_GETBYID, TR_BAOCAO_FINAL_HINHANH_DELETE, TR_BAOCAO_FINAL_HINHANH_GETALL, TR_BAOCAO_FINAL_HINHANH_INSERT, TR_BAOCAO_FINAL_MUCKIEMTRA_DELETE, TR_BAOCAO_FINAL_MUCKIEMTRA_DELETE2, TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL, TR_BAOCAO_FINAL_MUCKIEMTRA_GETBYID, TR_BAOCAO_FINAL_MUCKIEMTRA_INSERT, TR_BAOCAO_FINAL_MUCKIEMTRA_UPDATE, TR_BAOCAO_FINAL_UPDATE, TR_ORDER_DETAIL_GETBYMULTIPLEORDER, TR_BAOCAO_FINAL_HINHANH_GETBYID, TR_BAOCAO_FINAL_HINHANH_UPDATE, TR_BAOCAO_FINAL_INSERT, TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL2, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GET2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_baocao_final, tr_baocao_final_hinhanh, tr_color, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_reftype\n</div>"
+   }
+  }
+ ]
+}

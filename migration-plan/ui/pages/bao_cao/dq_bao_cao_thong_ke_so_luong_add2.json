@@ -1,0 +1,87 @@
+{
+ "name": "dq_bao_cao_thong_ke_so_luong_add2",
+ "label": "Thống kê sản lượng (Sơn, Đóng gói)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+    "title": "Thống kê sản lượng (Sơn, Đóng gói)",
+    "fields": [
+     "masp",
+     "mact",
+     "nguyenlieu",
+     "madonhang",
+     "id",
+     "masp1",
+     "tenct",
+     "dayy",
+     "rong",
+     "dai",
+     "soluong",
+     "congdoan",
+     "ngaythang",
+     "ngaygiao"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Thêm — Thống kê sản lượng (Sơn, Đóng gói)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Thống kê sản lượng (Sơn, Đóng gói)",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmThongKeSoLuongAdd2<br/>\nNút WinForms gốc: Sản phẩm · Chi tiết · Thùng carton · Chưa hoàn thành · Tất cả · Đã nhận · Chưa nhận<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: SYS_USER_RULE_Get, TRTB_M_LOCATION_GET, TRTB_M_LOCATION_GET_SON_DGO, TRTB_M_LOCATION_NEXT_GETALL, TR_DINHMUC_GOVAN_RELEASE, TR_GIAONHAN_THANHPHAM_PRINT, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETBYSTATUS, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_THONGKE_SANLUONG_HOANTHIEN_BYDATE, TR_TRANGTHAI_SANXUAT_GETALL_SX, TR_TRANGTHAI_SANXUAT_GETALL_SX2, TR_TRANGTHAI_SANXUAT_GETALL_SX_BYBOX, TR_TRANGTHAI_SANXUAT_GETBYDONHANG6, TR_TRANGTHAI_SANXUAT_INSERT, TR_TRANGTHAI_SANXUAT_KIEMTRA_SON, TR_TRANGTHAI_SANXUAT_XACNHAN<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_dinhmuc_govan, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_sanpham, trtb_m_location\n</div>"
+   }
+  }
+ ]
+}

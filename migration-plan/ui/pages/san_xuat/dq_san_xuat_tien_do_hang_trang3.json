@@ -1,0 +1,82 @@
+{
+ "name": "dq_san_xuat_tien_do_hang_trang3",
+ "label": "Nhập tiến độ sản xuất",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+    "title": "Nhập tiến độ sản xuất",
+    "fields": [
+     "mahtr",
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_can",
+     "mact"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Thêm — Nhập tiến độ sản xuất",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Nhập tiến độ sản xuất",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTienDoHangTrang3<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: SYS_USER_RULE_Get, TRTB_M_LOCATION_GETBYDEPARTMENT, TRTB_M_LOCATION_NEXT_GETALL, TR_DONDATHANG_GETLISTHTR, TR_PALLET_CARD_GETBYID, TR_PALLET_GETBYID, TR_TINHGIA_NGUYENLIEU, TR_TRANGTHAI_SANXUAT_GETBYDONHANG2, TR_TRANGTHAI_SANXUAT_GETBYDONHANG3, TR_TRANGTHAI_SANXUAT_GETBYDONHANG4, TR_TRANGTHAI_SANXUAT_INSERT<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_order, tr_order_replacement, tr_pallet_card, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site, tr_trangthai_sanxuat, trtb_m_location\n</div>"
+   }
+  }
+ ]
+}

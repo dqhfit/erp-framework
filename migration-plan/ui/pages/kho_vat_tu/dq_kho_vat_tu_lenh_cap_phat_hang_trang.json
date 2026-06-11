@@ -1,0 +1,82 @@
+{
+ "name": "dq_kho_vat_tu_lenh_cap_phat_hang_trang",
+ "label": "Lệnh cấp phát hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Lệnh cấp phát hàng trắng",
+    "fields": [
+     "id",
+     "madonhang",
+     "masp",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong_conlai",
+     "soluong_donhang",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Thêm — Lệnh cấp phát hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Lệnh cấp phát hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmLenhCapPhat_HangTrang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: SYS_USER_RULE_Get, TR_DINHMUC_NGUKIM_Get3, TR_DONDATHANG_GET3, TR_DONDATHANG_GETLISTHTR, TR_LENHCAPPHAT_HEAD_INSERT, TR_LENHCAPPHAT_HEAD_NEWID, TR_LENHCAPPHAT_INSERT2, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_get<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dinhmuc_ngukim, tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_lenhcapphat_head, tr_material, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

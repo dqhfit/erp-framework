@@ -1,0 +1,84 @@
+{
+ "name": "dq_don_hang_order_example",
+ "label": "frmOrderExample",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "frmOrderExample",
+    "fields": [
+     "order_number",
+     "customer",
+     "order_date",
+     "ship_date",
+     "order_qty",
+     "finished",
+     "create_by",
+     "create_date",
+     "id",
+     "cbm",
+     "remark"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — frmOrderExample",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "frmOrderExample",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmOrderExample<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: HR_CONGTY_GET, TR_BIEUMAU_FRIDAY_GETBYREPORTID, TR_DANHSACH_DEXUAT_GET, TR_DANHSACH_DEXUAT_PROCESS_GETALL, TR_KHACHHANG_Get, TR_ORDER_DETAIL_PRINT, TR_ORDER_FINISH, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETBYSTATUS, TR_ORDER_GETLIST, TR_ORDER_Get3<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_common, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_sanpham, tr_site\n</div>"
+   }
+  }
+ ]
+}

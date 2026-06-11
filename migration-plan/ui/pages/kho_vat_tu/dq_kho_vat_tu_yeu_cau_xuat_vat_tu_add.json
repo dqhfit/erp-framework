@@ -1,0 +1,81 @@
+{
+ "name": "dq_kho_vat_tu_yeu_cau_xuat_vat_tu_add",
+ "label": "frmYeuCauXuat_VatTuAdd",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+    "title": "frmYeuCauXuat_VatTuAdd",
+    "fields": [
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "ghichu",
+     "id",
+     "mact"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "Thêm — frmYeuCauXuat_VatTuAdd",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "frmYeuCauXuat_VatTuAdd",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmYeuCauXuat_VatTuAdd, frmPhieuTraHangAdd, frmTheoDoiPhieuYeuCau<br/>\nNút WinForms gốc: Lưu · Đóng · Duyệt đề xuất · Lưu · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DANHSACH_DEXUAT_PROCESS_INSERT, TR_EMAIL_SUBSCRIBER2_GETBYTOPIC, TR_MATERIAL_GETBYID, TR_MATERIAL_GETBYKHO, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_GETGROUP, TR_MATERIAL_GetAll, TR_MATERIAL_get, TR_NGUOIDUYET_GET, TR_NHOM_DEXUAT2_GET, TR_ORDER_GET2, TR_ORDER_GETALL, TR_ORDER_GETALLBYCUSTOMER, TR_ORDER_GETBYSTATUS, TR_ORDER_GETCONTAINER, TR_ORDER_GETLIST, TR_ORDER_Get3, TR_PHIEUYEUCAU_CHITIET_DELETE, TR_PHIEUYEUCAU_CHITIET_INSERT, TR_PHIEUYEUCAU_CONFIRM, TR_PHIEUYEUCAU_GET, TR_PHIEUYEUCAU_GETBYID, TR_PHIEUYEUCAU_INSERT, TR_PHIEUYEUCAU_ISFINISH, TR_PHIEUYEUCAU_UPDATE, TR_QUYTRINH_XETDUYET_GETALL, DQT_DINHMUC_GOVAN_GET2, TR_DONDATHANG_GETLISTHTR, TR_PHIEUYEUCAU_GETALL3<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,3740 @@
+module: san_pham
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - dqt_dexuat_phoi
+  - hr_tonhom2
+  - tr_chitiet_hangtrang
+  - tr_congdoan
+  - tr_currentcy
+  - tr_danhsach_dexuat
+  - tr_danhsach_dexuat_process
+  - tr_danhsach_xetduyet_user
+  - tr_donvitinh
+  - tr_hangsanxuat
+  - tr_hinhanh
+  - tr_kehoach_hangtrang
+  - tr_loai_xetduyet
+  - tr_nguyenlieu
+  - tr_nhom_dexuat2
+  - tr_nhom_xetduyet
+  - tr_quytrinh_xetduyet
+  - tr_sanpham_common
+  - tr_sanpham_govan
+  - tr_sanpham_ngukim
+  - tr_sanpham_nhom_nguyenlieu
+  - tr_sanpham_tem
+  - tr_sanpham_tieuchuan
+  - tr_sanpham_vattu
+  - tr_sanpham_venner
+  - tr_sanpham_yeucau_khachhang
+pageClusters:
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmQuyTrinhSanPhamCopy
+      - frmDanhSachDonGiaSanPhamAdd
+      - frmDienTichSanPham
+      - frmDonGiaSanPhamEdit
+      - frmNhomSanPhamAdd
+      - frmSanPhamMultipleAdd
+      - frmSanPhamEdit
+      - frm_sanpham_thaythe
+      - frmSanPham
+      - frmDanhSachDonGiaSanPham
+      - frmTinhChiPhiSanPham
+  - entities:
+      - tr_material
+    forms:
+      - frmCreateMaterialCode_Ver2
+      - frmMaterialCodeEdit2
+      - frmCreateMaterialCode
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmMaterialCodeEdit3
+      - frmMaterialCodeEdit
+      - frmMaterialCodeEdit4
+  - entities:
+      - tr_khachhang
+    forms:
+      - frmThongTinSanPham
+      - frmThongTinSanPham2
+      - frmThongtinsanpham
+  - entities:
+      - tr_bangmau
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_khachhang_giantiep
+      - tr_loaisp
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    forms:
+      - frmSanPhamAdd3
+      - frmSanPhamAdd2
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmThongTinSanPham_Add
+      - frmSanPhamMauAdd
+  - entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frm_sanpham
+      - tr_sanpham_hide
+  - entities:
+      - tr_sanpham
+    forms:
+      - frm_sanpham_multiselect
+      - frmChiPhiSanXuatSanPham
+  - entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmTaoPhieuSanPham
+      - frmDanhSachPhieuSanPham
+  - entities:
+      - tr_bangmau
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmThongTinSanPham2Add
+  - entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frmSanPhamEditCode
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+    forms:
+      - frm_add_sanpham
+  - entities:
+      - tr_color
+      - tr_common
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmCreateMaterialCode_Ver3
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_nguyenlieu_gva
+      - tr_sanpham
+      - trtb_m_location
+    forms:
+      - frmQuyTrinhSanPham
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+      - trtb_m_location
+    forms:
+      - frmQuyTrinhSanPham2
+  - entities:
+      - tr_reftype
+    forms:
+      - frmNhapSanPhamMau
+  - entities:
+      - tr_material
+      - tr_material_other
+      - tr_site
+    forms:
+      - frmCreateMaterialCode_Ver4
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_nguyenlieu_gva
+      - tr_sanpham
+    forms:
+      - frmKhoiLuongSanPham
+  - entities:
+      - tr_phieubaogia
+    forms:
+      - frmSanPhamMau_NhapXuat
+forms:
+  - form: frmThongTinSanPham2Add
+    title: Thêm thông tin sản phẩm
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - LoggerManager
+      - TR_BANGMAU
+      - TR_COLOR
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_TEM_DONGGOI_GET
+      - TR_THONGTIN_SANPHAM_DANHSACH_DELETE
+      - TR_THONGTIN_SANPHAM_DANHSACH_INSERT
+      - TR_THONGTIN_SANPHAM_DONGGOI_DELETE
+      - TR_THONGTIN_SANPHAM_DONGGOI_INSERT
+      - TR_THONGTIN_SANPHAM_MAUSON_DELETE
+      - TR_THONGTIN_SANPHAM_MAUSON_INSERT
+      - TR_THONGTIN_SANPHAM_NGUYENLIEU_DELETE
+      - TR_THONGTIN_SANPHAM_NGUYENLIEU_INSERT
+      - TR_THONGTIN_SANPHAM_TEM_DELETEALL
+      - TR_THONGTIN_SANPHAM_TEM_INSERT
+      - TR_THONGTIN_SANPHAM_VATTU_DELETE
+      - TR_THONGTIN_SANPHAM_VATTU_INSERT
+      - TR_THONGTIN_SANPHAM_YEUCAUKHAC_DELETE
+      - TR_THONGTIN_SANPHAM_YEUCAUKHAC_INSERT
+    grid:
+      columns:
+        - field: mancc
+          header: Nhà cung cấp
+        - field: mamau
+          header: Mã màu
+        - field: tenmau
+          header: Tên màu
+        - field: hinhanh
+          header: Hình ảnh
+        - field: hieuung
+          header: Hiệu ứng
+        - field: idbosanpham
+          header: ID
+        - field: id
+          header: ID
+        - field: dobong
+          header: Độ bóng
+        - field: code
+          header: Mã màu
+        - field: name
+          header: Tên màu
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hinhanh
+          header: Hình ảnh
+        - field: ketcau
+          header: Kết cấu
+        - field: mauson
+          header: Màu sơn
+        - field: yeucaukhac
+          header: Yêu cầu khác
+        - field: idbosanpham
+          header: IDBoSanPham
+        - field: masp_kh
+          header: Mã sản phẩm khách hàng
+        - field: chitiet
+          header: Chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: hinhanh
+          header: Hình ảnh
+        - field: loainguyenlieu
+          header: Loại
+        - field: ghichu
+          header: Ghi chú
+        - field: phanloai
+          header: Phân loại
+        - field: idbosanpham
+          header: IDBoSanPham
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: chitiet
+          header: Chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: hinhanh
+          header: Hình ảnh
+        - field: loainguyenlieu
+          header: Loại
+        - field: ghichu
+          header: Ghi chú
+        - field: phanloai
+          header: Phân loại
+        - field: idbosanpham
+          header: IDBoSanPham
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: chitiet
+          header: Chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: hinhanh
+          header: Hình ảnh
+        - field: loainguyenlieu
+          header: Loại
+        - field: ghichu
+          header: Ghi chú
+        - field: phanloai
+          header: Phân loại
+        - field: idbosanpham
+          header: IDBoSanPham
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: tieuchuan
+          header: Tiêu chuẩn
+        - field: chitiet
+          header: Chi tiết
+        - field: mota
+          header: Mô tả
+        - field: hinhanh
+          header: Hình ảnh
+        - field: mausac
+          header: Màu sắc
+        - field: ghichu
+          header: Ghi chú
+        - field: idbosanpham
+          header: IDBoSanPham
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: danhmuc
+          header: Hạng mục
+        - field: tieuchuan
+          header: Tiêu chuẩn
+    inputs:
+      - control: cboMauSac
+        kind: select
+      - control: txtTenMauSon
+        kind: text
+      - control: txtHieuUngSon
+        kind: text
+      - control: repMauSac
+        kind: select
+      - control: repositoryItemMemoEdit4
+        kind: text
+      - control: repositoryItemMemoEdit5
+        kind: text
+      - control: repositoryItemMemoEdit6
+        kind: text
+      - control: repositoryItemMemoEdit7
+        kind: text
+      - control: repositoryItemMemoEdit8
+        kind: text
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repositoryItemMemoEdit2
+        kind: text
+      - control: repTemNhan
+        kind: select
+      - control: txtTenUV
+        kind: text
+      - control: cboMauUV
+        kind: select
+      - control: dateNgayPhatHanh
+        kind: date
+      - control: glkKhachHang
+        kind: select
+      - control: glkHeHang
+        kind: select
+    buttons:
+      - control: btnSaveClose
+        caption: Lưu && Đóng
+      - control: btnSaveNew
+        caption: Lưu && Thêm
+      - control: btnClose
+        caption: Đóng
+  - form: frmSanPhamAdd3
+    title: Cập nhật thông tin sản phẩm
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_khachhang_giantiep
+      - tr_loaisp
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    tablesMissing:
+      - tr_chitiet_hangtrang
+      - tr_donvitinh
+      - tr_hinhanh
+      - tr_nguyenlieu
+      - tr_sanpham_common
+      - tr_sanpham_govan
+      - tr_sanpham_ngukim
+      - tr_sanpham_nhom_nguyenlieu
+      - tr_sanpham_tem
+      - tr_sanpham_tieuchuan
+      - tr_sanpham_vattu
+      - tr_sanpham_venner
+      - tr_sanpham_yeucau_khachhang
+    repos:
+      - TRTB_M_THONGBAO
+      - TR_BANGMAU
+      - TR_CHITIET_HANGTRANG
+      - TR_COLOR
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_KHACHHANG_GIANTIEP
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+      - TR_SANPHAM_COMMON_BOL
+      - TR_SANPHAM_GOVAN_BOL
+      - TR_SANPHAM_NGUKIM_BOL
+      - TR_SANPHAM_NHAMAY_REPO
+      - TR_SANPHAM_NHOM_NGUYENLIEU_BOL
+      - TR_SANPHAM_TEM_BOL
+      - TR_SANPHAM_TIEUCHUAN_BOL
+      - TR_SANPHAM_VATTU_BOL
+      - TR_SANPHAM_VENNER_BOL
+      - TR_SANPHAM_YEUCAU_KHACHHANG_BOL
+    procs:
+      - TR_HINHANH_GET
+      - TR_HINHANH_INSERT
+      - TR_HINHANH_UPDATE
+      - TR_NGUYENLIEU_NGUKIM_DELETE
+      - TR_NGUYENLIEU_NGUKIM_GETMASP
+      - TR_NGUYENLIEU_NGUKIM_INSERT
+      - TR_NGUYENLIEU_TEM_DELETE
+      - TR_NGUYENLIEU_TEM_GETMASP
+      - TR_NGUYENLIEU_TEM_INSERT
+      - TR_NGUYENLIEU_VATTU_DELETE
+      - TR_NGUYENLIEU_VATTU_GETMASP
+      - TR_NGUYENLIEU_VATTU_INSERT
+      - TR_NGUYENLIEU_VENNER_DELETE
+      - TR_NGUYENLIEU_VENNER_GETMASP
+      - TR_NGUYENLIEU_VENNER_INSERT
+      - TR_SANPHAM_COMMON_INSERT
+      - TR_SANPHAM_EditCode
+      - TR_SANPHAM_NHAMAY_GET
+      - TR_SANPHAM_NHAMAY_GETALL
+      - TR_SANPHAM_NHAMAY_GETBYSTATUS
+      - TR_SANPHAM_NHOM_NGUYENLIEU_INSERT
+      - TR_SANPHAM_UPDATE_MASP
+      - TR_SANPHAM_YEUCAU_KHACHHANG_DELETE
+      - TR_SANPHAM_YEUCAU_KHACHHANG_GETALL
+      - TR_SANPHAM_YEUCAU_KHACHHANG_INSERT
+    grid:
+      columns:
+        - field: tem
+          header: Tem
+        - field: id
+          header: ID Tem
+        - field: ten
+          header: Tên tem
+        - field: soluong
+          header: Số lượng
+        - field: vitri
+          header: Vị trí
+        - field: hinhanh
+          header: Hình mẫu
+        - field: matieuchuan
+          header: Mã tiêu chuẩn
+        - field: tieuchuan
+          header: Tên tiêu chuẩn
+        - field: mota
+          header: Mô tả
+        - field: hinhanh
+          header: Hình ảnh
+        - field: mausac
+          header: Màu sắc
+        - field: ghichu
+          header: Ghi chú
+        - field: quycach
+          header: Kích thước
+        - field: soluong
+          header: Số lượng
+        - field: mota
+          header: Mô tả
+        - field: hinhanh
+          header: Hình ảnh
+        - field: mausac
+          header: Màu sắc
+        - field: ghichu
+          header: Ghi chú
+        - field: quycach
+          header: Kích thước
+        - field: soluong
+          header: Số lượng
+        - field: tennl
+          header: Loại gỗ
+        - field: tennl
+          header: Loại gỗ
+        - field: doday
+          header: Độ dày
+        - field: vango
+          header: Vân gỗ
+        - field: mauvenner
+          header: Màu venner
+        - field: matgo
+          header: Mắt gỗ trên veneer
+        - field: chieuvenner
+          header: Chiều veneer
+        - field: tieuchuan
+          header: Tiêu chuẩn
+        - field: id_nhom
+          header: Nhóm nguyên liệu
+        - field: ten
+          header: Tên
+        - field: nguyenlieu
+          header: Loại nguyên liệu
+        - field: tieuchuan
+          header: Tiêu chuẩn
+        - field: tenhh
+          header: Hệ hàng
+        - field: khachhang
+          header: Khách hàng
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Loại sản phẩm
+        - field: customer_id
+          header: Id
+        - field: customer_name
+          header: Khách hàng
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: yeucau
+          header: Yêu cầu
+        - field: noidung
+          header: Nội dung
+        - field: masp_nhamay
+          header: Mã nhà máy
+        - field: tensp
+          header: Tên
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: ten
+          header: Tiêu chuẩn
+        - field: ten
+          header: Độ bục
+        - field: ten
+          header: Vật liệu
+        - field: tenhh
+          header: Hệ hàng
+        - field: khachhang
+          header: Khách hàng
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Loại sản phẩm
+        - field: customer_id
+          header: Id
+        - field: customer_name
+          header: Khách hàng
+        - field: code
+          header: Mã
+    inputs:
+      - control: cheBeMatSanPham
+        kind: select
+      - control: cheNguyenLieu
+        kind: select
+      - control: glkHeHang
+        kind: select
+      - control: glkKhachHang1
+        kind: select
+      - control: txtTenVN
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtTenBangMau
+        kind: text
+      - control: cboMauUV
+        kind: select
+      - control: txtMaERP
+        kind: text
+      - control: txtMaBTP
+        kind: text
+      - control: txtMaSPNM
+        kind: text
+      - control: txtMaSPKH
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: glkLoaiSP
+        kind: select
+      - control: glkKhachHang2
+        kind: select
+      - control: glkMautrong
+        kind: select
+      - control: txtDinhluong_vatchen
+        kind: text
+      - control: txtSolop_carton
+        kind: text
+      - control: txtSothung
+        kind: text
+      - control: cheIsEditCode
+        kind: boolean
+      - control: txtTuichongdo
+        kind: text
+      - control: txtTiptest
+        kind: text
+      - control: txtInterlook
+        kind: text
+      - control: txtDroptest
+        kind: text
+      - control: glkTem
+        kind: select
+      - control: repositoryItemMemoEdit7
+        kind: text
+      - control: glkTieuchuan
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repositoryItemMemoEdit8
+        kind: text
+      - control: glkLoaigo
+        kind: select
+      - control: repositoryItemMemoEdit4
+        kind: text
+      - control: glkNhomNguyenLieu
+        kind: select
+      - control: repositoryItemMemoEdit3
+        kind: text
+      - control: glkHeHang1
+        kind: select
+      - control: cboDVT1
+        kind: select
+      - control: glkKhachHang
+        kind: select
+      - control: glkLoaiSP1
+        kind: select
+      - control: txtMaERP1
+        kind: text
+      - control: txtMaSPKH1
+        kind: text
+      - control: txtMaBTP1
+        kind: text
+      - control: txtTenSP1
+        kind: text
+      - control: txtTenVN1
+        kind: text
+      - control: glkKhachHang21
+        kind: select
+      - control: cheBeMatSanPham1
+        kind: select
+      - control: cboKetCau
+        kind: select
+      - control: cboLoaiTien
+        kind: select
+      - control: cboMauUV12
+        kind: select
+      - control: txtTenBangMau12
+        kind: text
+      - control: glkMautrong1
+        kind: select
+      - control: spdai_carton
+        kind: number
+      - control: sprong_carton
+        kind: number
+      - control: spcao_carton
+        kind: number
+      - control: repositoryItemMemoEdit5
+        kind: text
+      - control: repositoryItemMemoEdit2
+        kind: text
+      - control: glkMaSPNM
+        kind: select
+      - control: glkMauCanh
+        kind: select
+      - control: glkTieuchuan_carton
+        kind: select
+      - control: glkDobuc_carton
+        kind: select
+      - control: glkVatlieu_vatchen
+        kind: select
+      - control: txtHangTrang
+        kind: text
+    buttons:
+      - control: btnSaochep
+        caption: Sao chép sản phẩm
+      - control: btnDong
+        caption: Đóng
+      - control: btnLuu
+        caption: Lưu
+  - form: frmCreateMaterialCode_Ver2
+    title: Tạo mã chi tiết
+    inScope: true
+    entities:
+      - tr_material
+    tablesMissing:
+      - tr_donvitinh
+    repos:
+      - TR_DONVITINH
+    procs:
+      - TRMATERIALCLASSDETAILS_DELETE
+      - TRMATERIALCLASSDETAILS_INSERT
+      - TRMATERIALCLASS_DELETE2
+      - TRMATERIALCLASS_INSERT
+      - TRMATERIALCLASS_UPDATE
+      - TR_MATERIAL_GETGROUP
+      - TR_MATERIAL_Insert
+      - TR_MATERIAL_UPDATE_DESC
+    grid:
+      columns:
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: p_id
+          header: Cod
+        - field: levelclass
+          header: Level
+        - field: name
+          header: Thuộc tính
+        - field: id
+          header: ID
+        - field: name
+          header: Thuộc tính
+        - field: value
+          header: Giá trị
+        - field: unit
+          header: Đơn vị
+        - field: id
+          header: ID
+        - field: iduom
+          header: IDUOM
+        - field: mavt
+          header: Mã chi tiết
+        - field: seg9
+          header: STT
+        - field: tenvt
+          header: Tên gọi
+        - field: mota
+          header: Mô tả
+        - field: quycach
+          header: Quy cách
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: cao
+          header: Cao
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: Đơn vị tính
+        - field: nhom
+          header: Nhóm chi tiết
+        - field: dacdiem
+          header: Đặc điểm
+        - field: ghichu
+          header: Ghi chú
+        - field: kho
+          header: Kho
+        - field: seq10
+          header: IDUOM
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dobuc
+          header: Độ bục
+        - field: solop
+          header: Số lớp
+    inputs:
+      - control: txtMaCT
+        kind: text
+      - control: glkThuocTinh
+        kind: select
+      - control: cboDVT
+        kind: select
+    buttons:
+      - control: btnCreate
+        caption: Tạo mã chi tiết
+  - form: frmSanPhamEditCode
+    title: Sửa mã sản phẩm
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_chitiet_hangtrang
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - LoggerManager
+      - TR_BANGMAU
+      - TR_CHITIET_HANGTRANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_CHITIET_HTR_Insert
+      - TR_SANPHAM_EditCode
+      - TR_SANPHAM_UPDATE_MASP
+    grid:
+      columns:
+        - field: customer_id
+          header: Mã công ty
+        - field: customer_name
+          header: Tên công ty
+        - field: maloaisp
+          header: Mã loại SP
+        - field: tenloaisp
+          header: Tên loại SP
+    inputs:
+      - control: glkLoaiTien
+        kind: select
+      - control: txtHangTrang
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: glkCustomer4
+        kind: select
+      - control: glkCustomer3
+        kind: select
+      - control: glkCustomer2
+        kind: select
+      - control: glkCustomer1
+        kind: select
+      - control: cheNguyenLieu
+        kind: select
+      - control: txtMaSP
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: cboHeHang
+        kind: select
+      - control: txtMaSPKH
+        kind: text
+      - control: cboKetCau
+        kind: select
+      - control: cboLoaiSP
+        kind: select
+      - control: txtID
+        kind: text
+      - control: txtMaSPNM
+        kind: text
+      - control: txtTenVN
+        kind: text
+      - control: txtBeMat
+        kind: select
+      - control: cboMauUV
+        kind: select
+      - control: txtTenBangMau
+        kind: text
+      - control: txtMaBTP
+        kind: text
+      - control: txtMaERP
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Thoát
+  - form: frmMaterialCodeEdit3
+    title: Sửa thông tin chi tiết
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_donvitinh
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_UPDATE2
+      - TR_MATERIAL_get
+    grid:
+      columns: []
+    inputs:
+      - control: txtMaCT
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: txtQuyCach
+        kind: text
+      - control: txtDay
+        kind: text
+      - control: txtRong
+        kind: text
+      - control: txtDai
+        kind: text
+      - control: txtCao
+        kind: text
+      - control: txtDacDiem
+        kind: text
+      - control: txtMauSac
+        kind: text
+      - control: txtVanTieuChuan
+        kind: text
+      - control: txtVanMat1
+        kind: text
+      - control: txtVanMat2
+        kind: text
+      - control: txtGhiChu
+        kind: text
+      - control: txtNhomCT
+        kind: text
+      - control: calDuongKinhTrong
+        kind: number
+      - control: calDuongKinhNgoai
+        kind: number
+      - control: cboHeRen
+        kind: select
+      - control: txtDuongKinh
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frm_add_sanpham
+    title: Cập nhật sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: txtMaSPKH
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtMaSP
+        kind: text
+      - control: txtGhiChu
+        kind: text
+      - control: txtDacDiem
+        kind: text
+      - control: cboLoaiSP
+        kind: select
+      - control: cboNgLieu
+        kind: select
+      - control: cboLoaiSP_1
+        kind: select
+      - control: cboHH
+        kind: select
+      - control: txtMetKhoi
+        kind: text
+      - control: txtMetVuong
+        kind: text
+      - control: txtKetCau
+        kind: text
+      - control: txtHinhAnh
+        kind: select
+      - control: txtPathBanVe
+        kind: select
+    buttons: []
+  - form: frmMaterialCodeEdit2
+    title: Sửa thông tin chi tiết
+    inScope: true
+    entities:
+      - tr_material
+    tablesMissing:
+      - tr_donvitinh
+    repos:
+      - TR_DONVITINH
+    procs:
+      - TR_MATERIAL_get
+      - UPDATEMATERIALCODE
+    grid:
+      columns: []
+    inputs:
+      - control: txtName
+        kind: text
+      - control: txtCode
+        kind: text
+      - control: txtQuyCach
+        kind: text
+      - control: txtDay
+        kind: text
+      - control: txtRong
+        kind: text
+      - control: txtDai
+        kind: text
+      - control: txtCao
+        kind: text
+      - control: txtDacDiem
+        kind: text
+      - control: txtMauSac
+        kind: text
+      - control: cboDVT
+        kind: select
+    buttons: []
+  - form: frmSanPhamAdd2
+    title: Cập nhật sản phẩm
+    inScope: true
+    entities:
+      - tr_bangmau
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_khachhang_giantiep
+      - tr_loaisp
+      - tr_sanpham
+      - tr_sanpham_nhamay
+    tablesMissing:
+      - tr_chitiet_hangtrang
+      - tr_donvitinh
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - TRTB_M_THONGBAO
+      - TR_BANGMAU
+      - TR_CHITIET_HANGTRANG
+      - TR_COLOR
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_KHACHHANG_GIANTIEP
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+      - TR_SANPHAM_NHAMAY_REPO
+    procs:
+      - TR_HINHANH_GET
+      - TR_HINHANH_INSERT
+      - TR_HINHANH_UPDATE
+      - TR_SANPHAM_EditCode
+      - TR_SANPHAM_NHAMAY_GET
+      - TR_SANPHAM_NHAMAY_GETBYHEHANG
+      - TR_SANPHAM_UPDATE_MASP
+    grid:
+      columns:
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Loại sản phẩm
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: tenhh
+          header: Hệ hàng
+        - field: khachhang
+          header: Khách hàng
+        - field: masp_nhamay
+          header: Mã nhà máy
+        - field: tensp
+          header: Tên
+    inputs:
+      - control: cheIsEditCode
+        kind: boolean
+      - control: txtHangTrang
+        kind: text
+      - control: txtMaSP
+        kind: text
+      - control: glkMautrong
+        kind: select
+      - control: glkLoaiSP
+        kind: select
+      - control: cboDVT
+        kind: select
+      - control: txtMaSPKH
+        kind: text
+      - control: txtMaBTP
+        kind: text
+      - control: txtMaERP
+        kind: text
+      - control: cboMauUV
+        kind: select
+      - control: txtTenBangMau
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtTenVN
+        kind: text
+      - control: glkKhachHang1
+        kind: select
+      - control: glkHeHang
+        kind: select
+      - control: glkMaSPNM
+        kind: select
+      - control: cheBeMatSanPham
+        kind: select
+      - control: cheNguyenLieu
+        kind: select
+      - control: cboKetCau
+        kind: select
+      - control: cboLoaiTien
+        kind: select
+    buttons:
+      - control: btnCopy
+        caption: Sao chép thông tin sản phẩm
+  - form: frmQuyTrinhSanPhamCopy
+    title: Copy quy trình sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: hehang
+          header: Hệ hàng
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: cumchitiet
+          header: Cụm chi tiết
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng
+        - field: mong1
+          header: Mộng 1
+        - field: mong2
+          header: Mộng 2
+        - field: matchinh
+          header: Mặt chính
+        - field: matphu
+          header: Mặt phụ
+        - field: bemat
+          header: Bề mặt
+        - field: somat_giacong
+          header: Số mặt giả cổ
+        - field: dayy_phoi
+          header: Phôi liền
+        - field: phoi_ghep
+          header: Phôi ghép
+        - field: chitiet_ghep
+          header: Loại chi tiết
+        - field: dayy_sc
+          header: Dày
+        - field: rong_sc
+          header: Rộng
+        - field: dai_sc
+          header: Dài
+        - field: soluong_sc
+          header: Số lượng
+        - field: daucay1
+          header: Đầu cây 1
+        - field: daucay2
+          header: Đầu cây 2
+        - field: canh1
+          header: Cạnh 1
+        - field: canh2
+          header: Cạnh 2
+        - field: mat1
+          header: Mặt 1
+        - field: mat2
+          header: Mặt 2
+        - field: vitri_khac
+          header: Vị trí khác
+        - field: ph_quytrinh1
+          header: "1"
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: tenquytrinh
+          header: Tên quy trình
+        - field: bemat
+          header: Bề mặt
+        - field: loainguyenlieu
+          header: Nguyên liệu
+        - field: ph_quytrinh2
+          header: "2"
+        - field: ph_quytrinh3
+          header: "3"
+        - field: quytrinh1
+          header: "1"
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: tenquytrinh
+          header: Tên quy trình
+        - field: bemat
+          header: Bề mặt
+        - field: loainguyenlieu
+          header: Nguyên liệu
+        - field: quytrinh2
+          header: "2"
+        - field: quytrinh3
+          header: "3"
+        - field: quytrinh4
+          header: "4"
+        - field: quytrinh5
+          header: "5"
+        - field: quytrinh6
+          header: "6"
+        - field: quytrinh7
+          header: "7"
+        - field: quytrinh8
+          header: "8"
+        - field: quytrinh9
+          header: "9"
+        - field: quytrinh10
+          header: "10"
+        - field: ghichu
+          header: Ghi chú
+        - field: ph_quytrinh4
+          header: "4"
+    inputs:
+      - control: glkSanPham
+        kind: select
+      - control: txtTenSP
+        kind: text
+      - control: txtHeHang
+        kind: text
+      - control: glkSanPham1
+        kind: select
+      - control: txtTenSP1
+        kind: text
+      - control: txtHeHang1
+        kind: text
+      - control: repLoaiSP
+        kind: select
+      - control: repLoaiVeneer
+        kind: select
+      - control: cboBeMat
+        kind: select
+      - control: cboSoMatGC
+        kind: select
+      - control: cboCTGhep
+        kind: select
+      - control: repQTDinhPhoi
+        kind: select
+      - control: repQTDinhHinh
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repRout
+        kind: select
+      - control: repCumCT
+        kind: select
+      - control: cboLoaiSP1
+        kind: select
+      - control: repLoaiVeneer1
+        kind: select
+      - control: cboBeMat1
+        kind: select
+      - control: cboSoMatGC1
+        kind: select
+      - control: cboCTGhep1
+        kind: select
+      - control: repQTDinhPhoi1
+        kind: select
+      - control: repQTDinhHinh1
+        kind: select
+      - control: repositoryItemMemoEdit2
+        kind: text
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClose
+        caption: Đóng
+  - form: frmCreateMaterialCode
+    title: frmCreateMaterialCode
+    inScope: true
+    entities:
+      - tr_material
+    repos: []
+    procs:
+      - TR_MATERIAL_Insert
+    grid:
+      columns:
+        - field: vendor_id
+          header: Mã nhà cung cấp
+        - field: vendor_name
+          header: Tên nhà cung cấp
+        - field: name
+          header: Thuộc tính
+        - field: value
+          header: Giá trị
+        - field: unit
+          header: Đơn vị
+        - field: id
+          header: ID
+        - field: iduom
+          header: IDUOM
+        - field: code
+          header: Mã
+        - field: name
+          header: Tên
+        - field: levelclass
+          header: Level
+        - field: mact
+          header: Mã chi tiết
+        - field: stt
+          header: STT
+        - field: tengoi
+          header: Tên gọi
+        - field: mota
+          header: Mô tả
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: Đơn vị tính
+        - field: dongia
+          header: Đơn giá
+        - field: mancc
+          header: Mã nhà cung cấp
+        - field: tenncc
+          header: Tên nhà cung cấp
+        - field: nhom
+          header: Nhóm chi tiết
+        - field: dacdiem
+          header: Đặc điểm
+        - field: ghichu
+          header: Ghi chú
+        - field: kho
+          header: Kho
+        - field: hinhanh
+          header: Hình ảnh
+        - field: seq10
+          header: IDUOM
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: cao
+          header: Cao
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dobuc
+          header: Độ bục
+        - field: solop
+          header: Số lớp
+    inputs:
+      - control: glkNhaCungCap
+        kind: select
+      - control: txtGhiChu
+        kind: text
+      - control: cboDVT
+        kind: select
+    buttons: []
+  - form: frmCreateMaterialCode_Ver3
+    title: Tạo mã chi tiết
+    inScope: true
+    entities:
+      - tr_color
+      - tr_common
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_donvitinh
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - LoggerManager
+      - SYS_USER
+      - TR_COLOR
+      - TR_COMMON
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_Delete
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_GETGROUP
+      - TR_MATERIAL_GETGROUP2
+      - TR_MATERIAL_INSERT2
+      - TR_MATERIAL_UPDATE_DESC
+      - TR_MATERIAL_get
+    grid:
+      columns:
+        - field: id
+          header: Mã nhóm
+        - field: name
+          header: Tên nhóm
+        - field: levelclass
+          header: Level
+        - field: id
+          header: ID
+        - field: code
+          header: Mã nhóm
+        - field: name
+          header: Tên nhóm
+        - field: p_id
+          header: ParentId
+        - field: levelclass
+          header: Level
+        - field: description
+          header: Ghi chú
+        - field: active
+          header: Active
+        - field: uom
+          header: Đơn vị tính
+        - field: mavt
+          header: Mã chi tiết
+        - field: tenvt
+          header: Tên chi tiết
+        - field: mota
+          header: Mô tả
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: cao
+          header: Cao
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: Đơn vị tính
+        - field: nhom
+          header: Nhóm chi tiết
+        - field: idstd
+          header: Thuộc tính
+        - field: id
+          header: ID
+        - field: name
+          header: Name
+        - field: value
+          header: Giá trị
+        - field: unit
+          header: Đơn vị
+        - field: id
+          header: ID
+        - field: iduom
+          header: ID_VALUE
+        - field: stt
+          header: STT
+    inputs:
+      - control: repNhomChiTiet
+        kind: select
+      - control: repMaCT
+        kind: text
+      - control: repDVT
+        kind: select
+      - control: txtParentCode
+        kind: text
+      - control: txtCCode
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repThuocTinh
+        kind: select
+    buttons: []
+  - form: frmThongTinSanPham_Add
+    title: Thông tin dòng hàng
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_THONGTIN_SANPHAM_GET
+      - TR_THONGTIN_SANPHAM_INSERT
+      - TR_THONGTIN_SANPHAM_UPDATE
+    grid:
+      columns:
+        - field: tenhh
+          header: Hệ hàng
+        - field: id
+          header: ID
+        - field: duongdan
+          header: Đường dẫn
+        - field: tenteptin
+          header: Tên tệp tin
+    inputs:
+      - control: searchLookUpEdit1
+        kind: select
+      - control: txtTemNhan
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Thoát
+      - control: btnOK
+        caption: Đồng ý
+  - form: frm_sanpham
+    title: Danh sách sản phẩm
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER_RULE
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TRANGTHAI_DINHMUC
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_SANPHAM_GetAll
+      - TR_SANPHAM_GetHaveOrder
+      - TR_SANPHAM_GetNotOrder
+      - TR_SANPHAM_INTEM
+      - TR_SANPHAM_UPDATE_QUYCACH_CARTON
+      - TR_SANPHAM_UPDATE_SANPHAM_THAYTHE
+    grid:
+      columns:
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Tên
+        - field: masp_khachhang
+          header: Mã SP khách hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: tensp_vn
+          header: Tên tiếng việt
+        - field: hehang
+          header: Hệ hàng
+        - field: mausac
+          header: Màu sắc
+        - field: quycach
+          header: Quy cách sản phẩm
+        - field: dai
+          header: Dài
+        - field: rong
+          header: Rộng
+        - field: cao
+          header: Cao
+        - field: quycach_carton
+          header: Quy cách thùng </br>(phủ bì)
+        - field: bemat_sanpham
+          header: Bề mặt sản phẩm
+        - field: m2
+          header: M2
+        - field: cbm
+          header: CBM
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: customer
+          header: Khách hàng
+        - field: isgovan
+          header: Định mức gỗ ván
+        - field: isngukim
+          header: Định mức ngũ kim
+        - field: isbaobi
+          header: Định mức đóng gói
+        - field: isson
+          header: Định mức sơn
+        - field: dai_carton
+          header: Dài Carton (*)
+        - field: rong_carton
+          header: Rộng Carton (*)
+        - field: cao_carton
+          header: Cao carton (*)
+        - field: customer_name
+          header: Tên khách hàng
+        - field: carton_qty
+          header: Số thùng carton
+        - field: cuft
+          header: CUFT
+        - field: n_weight
+          header: N.Weight (kg)
+        - field: g_weight
+          header: G.Weight (kg)
+        - field: mauuv
+          header: Màu UV
+        - field: ma_btp
+          header: Mã BTP
+        - field: ma_erp
+          header: Mã ERP
+        - field: mautrong
+          header: Màu trong
+        - field: isastm
+          header: ASTM F2057-23
+        - field: ketcau
+          header: Kết cấu
+        - field: m3_tc
+          header: Số khối tinh chế
+        - field: dongia
+          header: Giá bán
+        - field: oast_date
+          header: Ngày PASS
+    inputs:
+      - control: repLoaiSP
+        kind: select
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+      - control: repFilter
+        kind: select
+    buttons: []
+  - form: frm_sanpham_multiselect
+    title: Ẩn nhiều sản phẩm
+    inScope: true
+    entities:
+      - tr_sanpham
+    repos: []
+    procs:
+      - TR_SANPHAM_GetAll
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: customer
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+    inputs: []
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClose
+        caption: Đóng
+      - control: btnSelectAll
+        caption: Chọn tất cả
+  - form: frmMaterialCodeEdit
+    title: Sửa chi tiết
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_donvitinh
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETBYID
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_Update
+      - TR_MATERIAL_get
+      - UPDATEMATERIALCODE
+    grid:
+      columns:
+        - field: id
+          header: Thuộc tính
+        - field: name
+          header: Thuộc tính
+        - field: value
+          header: Giá trị
+        - field: unit
+          header: Đơn vị
+        - field: id
+          header: ID
+        - field: iduom
+          header: ID_VALUE
+    inputs:
+      - control: glkThuocTinh
+        kind: select
+      - control: txtGhiChu
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: txtName
+        kind: text
+      - control: txtCode
+        kind: text
+      - control: txtNhomCT
+        kind: text
+    buttons: []
+  - form: frmTaoPhieuSanPham
+    title: Tạo phiếu sản phẩm
+    inScope: true
+    entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_currentcy
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TR_ORDER_DETAIL_GETALL
+      - TR_ORDER_DETAIL_GETLISTBYORDER
+      - TR_PALLET_CARD_CREATE
+      - TR_PALLET_CARD_GETALL
+      - TR_PALLET_GETNEWORDER
+      - TR_PALLET_GETNEWORDER2
+    grid:
+      columns:
+        - field: order_number
+          header: Mã đơn hàng
+        - field: range
+          header: Hệ hàng
+        - field: item_number
+          header: Mã sản phẩm
+        - field: description
+          header: Tên sản phẩm
+        - field: order_qty
+          header: Số lượng
+        - field: stt
+          header: STT
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SLCT
+        - field: soluong_donhang
+          header: SLDH
+        - field: soluong_can
+          header: Số lượng cần
+        - field: card_qty
+          header: Số lượng phát hành
+        - field: id
+          header: Pallet ID
+        - field: donhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: iscreatecard
+          header: isCreateCard
+        - field: id
+          header: ID
+        - field: soluong_can
+          header: Số lượng cần
+        - field: card_qty
+          header: Số lượng phát hành
+        - field: card_no
+          header: Mã phiếu
+        - field: soluong
+          header: Số lượng
+        - field: issue_date
+          header: Ngày in
+        - field: card_seq
+          header: STT
+        - field: pallet_id
+          header: pallet_id
+        - field: card_type
+          header: Loại phiếu
+    inputs:
+      - control: repLoaiPhieu
+        kind: select
+      - control: repDonHang
+        kind: select
+      - control: repSanPham
+        kind: select
+      - control: calSoLuong
+        kind: number
+    buttons: []
+  - form: frmQuyTrinhSanPham
+    title: Quy trình sản phẩm
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_nguyenlieu_gva
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TRTB_M_LOCATION
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_NGUYENLIEU_GVA
+      - TR_SANPHAM
+    procs:
+      - TR_NGUYENLIEU_GVA_GETALL
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: khachhang
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: cumchitiet
+          header: Cụm chi tiết
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng
+        - field: trongluong
+          header: Trọng lượng (kg)
+        - field: mong1
+          header: Mộng 1
+        - field: mong2
+          header: Mộng 2
+        - field: matchinh
+          header: Mặt chính
+        - field: matphu
+          header: Mặt phụ
+        - field: bemat
+          header: Bề mặt
+        - field: somat_giacong
+          header: Số mặt giả cổ
+        - field: dayy_phoi
+          header: Phôi liền
+        - field: phoi_ghep
+          header: Phôi ghép
+        - field: chitiet_ghep
+          header: Loại chi tiết
+        - field: dayy_sc
+          header: Dày
+        - field: rong_sc
+          header: Rộng
+        - field: dai_sc
+          header: Dài
+        - field: soluong_sc
+          header: Số lượng
+        - field: daucay1
+          header: Đầu cây 1
+        - field: daucay2
+          header: Đầu cây 2
+        - field: soluong_daucay
+          header: Số lượng đầu cây
+        - field: canh1
+          header: Cạnh 1
+        - field: canh2
+          header: Cạnh 2
+        - field: mat1
+          header: Mặt 1
+        - field: mat2
+          header: Mặt 2
+        - field: soluong_canhmat
+          header: Số lượng cạnh + mặt
+        - field: vitri_khac
+          header: Vị trí khác
+        - field: ph_quytrinh1
+          header: "1"
+        - field: ph_quytrinh2
+          header: "2"
+        - field: ph_quytrinh3
+          header: "3"
+        - field: quytrinh1
+          header: "1"
+        - field: quytrinh2
+          header: "2"
+        - field: quytrinh3
+          header: "3"
+        - field: quytrinh4
+          header: "4"
+        - field: quytrinh5
+          header: "5"
+        - field: quytrinh6
+          header: "6"
+        - field: quytrinh7
+          header: "7"
+        - field: quytrinh8
+          header: "8"
+        - field: quytrinh9
+          header: "9"
+        - field: quytrinh10
+          header: "10"
+        - field: cc_mat1
+          header: Mặt 1
+        - field: cc_mat2
+          header: Mặt 2
+        - field: cc_canh1
+          header: Canh 1
+        - field: cc_canh2
+          header: Canh 2
+        - field: cc_dau1
+          header: Đầu 1
+        - field: cc_dau2
+          header: Đầu 2
+        - field: ghichu
+          header: Ghi chú
+    inputs:
+      - control: repFilter
+        kind: select
+      - control: repSanPham
+        kind: select
+      - control: repLoaiSP
+        kind: select
+      - control: repLoaiVeneer
+        kind: select
+      - control: cboBeMat
+        kind: select
+      - control: cboSoMatGC
+        kind: select
+      - control: cboCTGhep
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repRout
+        kind: select
+      - control: repCumCT
+        kind: select
+      - control: repQTDinhPhoi
+        kind: select
+      - control: repQTDinhHinh
+        kind: select
+      - control: txtHeHang
+        kind: text
+      - control: txtMaSP
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtNguyenLieu
+        kind: text
+    buttons: []
+  - form: frmQuyTrinhSanPham2
+    title: Quy trình sản phẩm
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TRTB_M_LOCATION
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: khachhang
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: cumchitiet
+          header: Cụm chi tiết
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng
+        - field: mong1
+          header: Mộng 1
+        - field: mong2
+          header: Mộng 2
+        - field: matchinh
+          header: Mặt chính
+        - field: matphu
+          header: Mặt phụ
+        - field: bemat
+          header: Bề mặt
+        - field: somat_giacong
+          header: Số mặt giả cổ
+        - field: dayy_phoi
+          header: Phôi liền
+        - field: phoi_ghep
+          header: Phôi ghép
+        - field: chitiet_ghep
+          header: Loại chi tiết
+        - field: dayy_sc
+          header: Dày
+        - field: rong_sc
+          header: Rộng
+        - field: dai_sc
+          header: Dài
+        - field: soluong_sc
+          header: Số lượng
+        - field: daucay1
+          header: Đầu cây 1
+        - field: daucay2
+          header: Đầu cây 2
+        - field: soluong_daucay
+          header: Số lượng đầu cây
+        - field: canh1
+          header: Cạnh 1
+        - field: canh2
+          header: Cạnh 2
+        - field: mat1
+          header: Mặt 1
+        - field: mat2
+          header: Mặt 2
+        - field: soluong_canhmat
+          header: Số lượng cạnh + mặt
+        - field: vitri_khac
+          header: Vị trí khác
+        - field: dongia_chitiet
+          header: Đơn giá gia công
+        - field: dongia_nguyenlieu
+          header: Đơn giá nguyên liệu
+        - field: thanhtien
+          header: Thành tiền
+        - field: ph_quytrinh1
+          header: "1"
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: tenquytrinh
+          header: Tên quy trình
+        - field: bemat
+          header: Bề mặt
+        - field: loainguyenlieu
+          header: Nguyên liệu
+        - field: ph_quytrinh2
+          header: "2"
+        - field: ph_quytrinh3
+          header: "3"
+        - field: ph_quytrinh4
+          header: "4"
+        - field: ph_quytrinh5
+          header: "5"
+        - field: quytrinh1
+          header: "1"
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: tenquytrinh
+          header: Tên quy trình
+        - field: bemat
+          header: Bề mặt
+        - field: loainguyenlieu
+          header: Nguyên liệu
+        - field: quytrinh2
+          header: "2"
+        - field: quytrinh3
+          header: "3"
+        - field: quytrinh4
+          header: "4"
+        - field: quytrinh5
+          header: "5"
+    inputs:
+      - control: repFilter
+        kind: select
+      - control: repSanPham
+        kind: select
+      - control: txtHeHang
+        kind: text
+      - control: txtMaSP
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtNguyenLieu
+        kind: text
+      - control: repLoaiSP
+        kind: select
+      - control: repLoaiVeneer
+        kind: select
+      - control: cboBeMat
+        kind: select
+      - control: cboSoMatGC
+        kind: select
+      - control: cboCTGhep
+        kind: select
+      - control: repQTDinhPhoi
+        kind: select
+      - control: repQTDinhHinh
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repRout
+        kind: select
+      - control: repCumCT
+        kind: select
+    buttons: []
+  - form: frmDanhSachDonGiaSanPhamAdd
+    title: Đơn giá sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_DONGIA_SANPHAM_GET
+      - TR_DONGIA_SANPHAM_INSERT
+      - TR_DONGIA_SANPHAM_UPDATE
+    grid:
+      columns:
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+    inputs:
+      - control: glkKhachHang
+        kind: select
+      - control: glkMaSP
+        kind: select
+      - control: txtTenSP
+        kind: text
+      - control: txtHeHang
+        kind: text
+      - control: txtQuyCachSanPham
+        kind: text
+      - control: txtQuyCachDongGoi
+        kind: text
+      - control: calCBM
+        kind: number
+      - control: calNetWeight
+        kind: number
+      - control: calGrossWeight
+        kind: number
+      - control: calDonGia
+        kind: number
+      - control: dateNgayApDung
+        kind: date
+      - control: cheIsUsed
+        kind: boolean
+      - control: txtMaSPKH
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Thoát
+  - form: frmNhapSanPhamMau
+    title: Nhập hàng mẫu
+    inScope: true
+    entities:
+      - tr_reftype
+    repos:
+      - TR_REFTYPE
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã
+        - field: tensp
+          header: Tên sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: seal
+          header: Seal
+        - field: dvt
+          header: Đơn vị tính
+        - field: soluong
+          header: Số lượng tồn
+        - field: vitri
+          header: Vị trí tồn id
+        - field: name
+          header: Vị trí tồn
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: dvt
+          header: Đơn vị tính
+        - field: soluong
+          header: Số lượng
+        - field: id
+          header: ID
+        - field: id_nhap
+          header: ID nhập
+        - field: ghichu
+          header: Ghi chú
+        - field: vitri
+          header: Nơi nhận
+        - field: name
+          header: Vi trí
+        - field: id
+          header: ID
+    inputs:
+      - control: glkSanPham
+        kind: select
+      - control: glkVitri_nhap
+        kind: select
+      - control: txtBenNhan
+        kind: text
+      - control: txtBenGiao
+        kind: text
+      - control: dateNgayNhap
+        kind: date
+      - control: txtGhiChu
+        kind: text
+    buttons:
+      - control: btnDong
+        caption: Đóng
+      - control: btnLuu
+        caption: Lưu
+  - form: frmSanPhamMauAdd
+    title: Cập nhật sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_donvitinh
+    repos:
+      - SYS_USER
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs: []
+    grid:
+      columns:
+        - field: fullname
+          header: Người ký duyệt
+        - field: tenhh
+          header: Hệ hàng
+    inputs:
+      - control: glknguoiky
+        kind: select
+      - control: dateNgayKy
+        kind: date
+      - control: glkHehang
+        kind: select
+      - control: txtMaSP
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtMoTa
+        kind: text
+      - control: txtSEAL
+        kind: text
+      - control: cboDVT
+        kind: select
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnSave
+        caption: Lưu && Đóng
+      - control: btnSaveNew
+        caption: Lưu && Thêm
+  - form: frmDienTichSanPham
+    title: Tính diện tích sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: ten_hienthi
+          header: Các mặt
+        - field: heso
+          header: Số mặt sơn
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+    inputs:
+      - control: glkMaSP
+        kind: select
+      - control: txtTenSP
+        kind: text
+      - control: txtQuyCach
+        kind: text
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnOK
+        caption: Đồng ý
+  - form: frmThongTinSanPham
+    title: frmThongTinSanPham
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_Get
+      - TR_THONGTIN_SANPHAM_GETALL
+      - TR_THONGTIN_SANPHAM_UPDATE
+    grid:
+      columns:
+        - field: hehang
+          header: Dòng hàng
+        - field: duongdan
+          header: Đường dẫn
+        - field: id
+          header: ID
+        - field: tenteptin
+          header: Tên tệp tin
+        - field: khachhang
+          header: Khách hàng
+        - field: temnhan
+          header: Tem nhãn
+    inputs:
+      - control: txtTemNhan
+        kind: text
+    buttons: []
+  - form: frmDonGiaSanPhamEdit
+    title: Cập nhật đơn giá sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_DONGIA_SANPHAM_GETALL
+      - TR_DONGIA_SANPHAM_GETLIST
+    grid:
+      columns:
+        - field: dongia
+          header: Đơn giá
+        - field: ngayapdung
+          header: Ngày cập nhật
+        - field: nguoitao1
+          header: Người cập nhật
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+    inputs:
+      - control: glkSanPham
+        kind: select
+      - control: txtTenSP
+        kind: text
+      - control: txtHeHang
+        kind: text
+      - control: calDonGia
+        kind: number
+      - control: calDonGia_Moi
+        kind: number
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmCreateMaterialCode_Ver4
+    title: Tạo mã chi tiết
+    inScope: true
+    entities:
+      - tr_material_other
+      - tr_site
+      - tr_material
+    tablesMissing:
+      - tr_donvitinh
+      - tr_hangsanxuat
+    repos:
+      - TR_DONVITINH
+      - TR_HANGSANXUAT
+      - TR_MATERIAL_OTHER
+      - TR_SITE
+    procs:
+      - TR_MATERIAL_OTHER_GETBYCODE
+      - TR_MATERIAL_OTHER_INSERT
+      - TR_MATERIAL_OTHER_UPDATE
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: nhomvattu
+          header: Nhóm vật tư
+        - field: name
+          header: Mã kho
+        - field: description
+          header: Tên kho
+    inputs:
+      - control: glkNhomChiTiet
+        kind: select
+      - control: glkSite
+        kind: select
+      - control: txtTenCT
+        kind: text
+      - control: txtQuyCach
+        kind: text
+      - control: txtMauSac
+        kind: text
+      - control: cboDVT
+        kind: select
+      - control: txtDacDiem
+        kind: text
+      - control: txtHangSanXuat
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmBoSuuTapSanPhamAdd
+    title: Cập nhật thông tin sản phẩm
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - TR_PRODUCT_CATEGORY_INSERT
+    grid:
+      columns:
+        - field: imageid
+          header: ImageID
+        - field: imageurl
+          header: Đường dẫn hình ảnh
+        - field: isdefault
+          header: Ảnh đại diện
+    inputs:
+      - control: txtTitle
+        kind: text
+      - control: txtDescription
+        kind: text
+      - control: icbCategory
+        kind: select
+    buttons:
+      - control: btnUpLoadImage
+        caption: Thêm hình ảnh
+      - control: btnSave
+        caption: Lưu thông tin
+  - form: frmNhomSanPhamAdd
+    title: Nhóm sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: id_sanpham
+          header: Mã sản phẩm
+        - field: id
+          header: ID
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dvt
+          header: Đơn vị tính
+        - field: mota
+          header: Mô tả
+        - field: loaihang
+          header: Loại hàng
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dvt
+          header: Đơn vị tính
+        - field: mota
+          header: Mô tả
+        - field: loaihang
+          header: Loại hàng
+    inputs:
+      - control: txtTenNhom
+        kind: text
+      - control: calGiaMoc
+        kind: number
+      - control: calGiaXe
+        kind: number
+      - control: calGiaSon
+        kind: number
+      - control: calGiaVon
+        kind: number
+      - control: calGiaBanSi
+        kind: number
+      - control: calGiaBanLe
+        kind: number
+      - control: glksanpham
+        kind: select
+    buttons:
+      - control: btnDong
+        caption: Đóng
+      - control: btnLuu
+        caption: Lưu
+  - form: frmSanPhamMultipleAdd
+    title: Thêm nhiều sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_donvitinh
+      - tr_nguyenlieu
+    repos:
+      - LoggerManager
+      - TR_DONVITINH
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dvt
+          header: Đơn vị tính
+        - field: moc_giavon
+          header: Giá vốn
+        - field: moc_giabansi
+          header: Giá bán sỉ
+        - field: moc_giabanle
+          header: Giá bán lẻ
+        - field: son_giavon
+          header: Giá vốn
+        - field: son_giabansi
+          header: Giá bán sỉ
+        - field: son_giabanle
+          header: Giá bán lẻ
+    inputs:
+      - control: repDVT
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmSanPhamEdit
+    title: frmSanPhamEdit
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_SANPHAM_UPDATE_METVUONG
+    grid:
+      columns:
+        - field: masp_khachhang
+          header: Mã SPKH
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Tên
+        - field: ketcau
+          header: Kết cấu
+        - field: m2
+          header: Mét vuông (m2)
+        - field: m3
+          header: Mét khối (m3)
+        - field: id
+          header: ID
+    inputs:
+      - control: repLoaiSP
+        kind: select
+    buttons: []
+  - form: tr_sanpham_hide
+    title: Danh sách sản phẩm đã ẩn
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_BANVE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_BANVE_GET2
+      - TR_BANVE_GETBYID
+      - TR_SANPHAM_GetAll2
+    grid:
+      columns:
+        - field: loaisp
+          header: Loại sản phẩm
+        - field: maloaisp
+          header: Mã
+        - field: tenloaisp
+          header: Tên
+        - field: masp_khachhang
+          header: Mã SP khách hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: tensp_vn
+          header: Tên tiếng việt
+        - field: hehang
+          header: Hệ hàng
+        - field: mausac
+          header: Màu sắc
+        - field: quycach
+          header: Quy cách
+        - field: dai
+          header: Dài
+        - field: rong
+          header: Rộng
+        - field: cao
+          header: Cao
+        - field: bemat_sanpham
+          header: Bề mặt sản phẩm
+        - field: m2
+          header: M2
+        - field: cbm
+          header: CBM
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: ghichu
+          header: Ghi chú
+        - field: customer
+          header: Khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: thumbnail
+          header: Hình ảnh
+    inputs:
+      - control: repLoaiSP
+        kind: select
+    buttons: []
+  - form: frmTinhChiPhiSanPham2
+    title: Chi phí sản phẩm
+    inScope: false
+    entities: []
+    tablesMissing:
+      - hr_tonhom2
+    repos:
+      - HR_TONHOM2
+    procs:
+      - HR_TONHOM2_GETALL3
+      - TINHGIA_NGUYENLIEU_DGO
+      - TINHGIA_NGUYENLIEU_GVA
+      - TINHGIA_NGUYENLIEU_GVA2
+      - TINHGIA_NGUYENLIEU_NKI
+      - TINHGIA_NGUYENLIEU_SON
+      - TR_TINHGIA_SANPHAM_ALL
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: m3_tc
+          header: Số khối tinh chế
+        - field: dongia
+          header: Đơn giá bán
+        - field: dongia_govan
+          header: Chi phí gỗ, ván
+        - field: dongia_ngukim
+          header: Chi phí ngũ kim
+        - field: dongia_donggoi
+          header: Chi phí đóng gói
+        - field: dongia_son
+          header: Chi phí sơn
+        - field: tongchiphi
+          header: Tổng chi phí
+        - field: heso
+          header: Số ngày hoàn thành
+    inputs:
+      - control: repTyGia
+        kind: number
+      - control: repSanPham
+        kind: select
+    buttons: []
+  - form: frm_sanpham_thaythe
+    title: Sản phẩm thay thế
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: masp_thaythe
+          header: Mã thay thế
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+    inputs:
+      - control: glkSanPham
+        kind: select
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+  - form: frmMaterialCodeEdit4
+    title: Sửa thông tin chi tiết
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETCHITIETBYKHO
+      - TR_MATERIAL_get
+    grid:
+      columns:
+        - field: id
+          header: Thuộc tính
+        - field: name
+          header: Thuộc tính
+        - field: value
+          header: Giá trị
+        - field: unit
+          header: Đơn vị
+        - field: id
+          header: ID
+        - field: iduom
+          header: ID_VALUE
+    inputs:
+      - control: glkThuocTinh
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+  - form: frmSanPham
+    title: Danh sách sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: productid
+          header: productID
+        - field: productcode
+          header: Mã sản phẩm
+        - field: productname
+          header: Tên sản phẩm
+        - field: uom
+          header: Đơn vị tính
+        - field: description
+          header: Mô tả
+        - field: costprice
+          header: Giá vốn
+        - field: wholesaleprice
+          header: Giá bán sỉ
+        - field: retailprice
+          header: Giá bán lẻ
+        - field: hinhanh
+          header: Hình ảnh (*)
+        - field: hinhanh1
+          header: Hình ảnh
+    inputs: []
+    buttons: []
+  - form: frmKhoiLuongSanPham
+    title: Trọng lượng sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_nguyenlieu_gva
+      - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER_RULE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_NGUYENLIEU_GVA
+      - TR_SANPHAM
+    procs:
+      - TR_NGUYENLIEU_GVA_GETALL
+    grid:
+      columns:
+        - field: tenhh
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: stt
+          header: STT
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng chi tiết
+        - field: m3_tc
+          header: Số khối
+        - field: trongluongrieng
+          header: Khối lượng riêng (kg/m3)
+        - field: khoiluong1
+          header: Khối lượng 1 chi tiết
+        - field: khoiluong2
+          header: Khối lượng tổng
+        - field: id_nguyenlieu
+          header: Nguyên liệu ID
+    inputs:
+      - control: repHeHang
+        kind: select
+      - control: repSanPham
+        kind: select
+    buttons: []
+  - form: frmThongTinSanPham2
+    title: Thông tin dòng hàng
+    inScope: true
+    entities:
+      - tr_khachhang
+    contextEntities:
+      - hr_congty
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - HR_CONGTY
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_NGUYENLIEU
+    procs:
+      - HR_CONGTY_GET
+      - TR_KHACHHANG_Get
+      - TR_KHACHHANG_GetList
+      - TR_THONGTIN_SANPHAM_DANHSACH_GET
+      - TR_THONGTIN_SANPHAM_DANHSACH_GET2
+      - TR_THONGTIN_SANPHAM_MAUSON_GET
+      - TR_THONGTIN_SANPHAM_MAUSON_GET2
+      - TR_THONGTIN_SANPHAM_NGUYENLIEU_GET
+      - TR_THONGTIN_SANPHAM_NGUYENLIEU_GET2
+      - TR_THONGTIN_SANPHAM_NGUYENLIEU_GET3
+      - TR_THONGTIN_SANPHAM_VATTU_GET
+      - TR_THONGTIN_SANPHAM_VATTU_GET2
+      - TR_THONGTIN_SANPHAM_YEUCAUKHAC_GET
+      - TR_THONGTIN_SANPHAM_YEUCAUKHAC_GET2
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: bosanpham
+          header: Bộ sản phẩm
+        - field: khachhang
+          header: Khách hàng
+        - field: customer_id
+          header: Mã khách hàng
+        - field: customer_name
+          header: Tên khách hàng
+        - field: ngayphathanh
+          header: Ngày phát hành
+        - field: ngaytao
+          header: Ngày tạo
+        - field: nguoitao
+          header: Người tạo
+        - field: ngaysua
+          header: Ngày cập nhật
+        - field: nguoisua
+          header: Người cập nhật
+        - field: tieuchuan_govan
+          header: Tiêu chuẩn gỗ, ván
+        - field: tieuchuan_veneer
+          header: Tiêu chuẩn veneer
+        - field: tieuchuan_chung
+          header: Tiêu chuẩn khác
+    inputs:
+      - control: repKhachHang
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmChiPhiSanXuatSanPham
+    title: Chi phí sản xuất cho sản phẩm
+    inScope: true
+    entities:
+      - tr_sanpham
+    fingerprintScore: 0.71
+    repos: []
+    procs:
+      - TR_CHIPHI_SANXUAT_SP_DELETE
+      - TR_CHIPHI_SANXUAT_SP_GETALL
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: dongia
+          header: Giá bán
+        - field: loaitien
+          header: Loại tiền
+        - field: chiphi1
+          header: Chi phí cho 1 sản phẩm
+        - field: chiphi2
+          header: Chi phí cho 1 mét khối
+    inputs: []
+    buttons: []
+  - form: frmDanhSachDonGiaSanPham
+    title: Danh sách giá sản phẩm khách hàng
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+      - sys_user
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER_RULE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - SYS_USER_RULE_Get
+    grid:
+      columns:
+        - field: customer_name
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: masp_khachhang
+          header: Mã sản phẩm khách hàng
+        - field: tensp
+          header: Tên sản phẩm
+        - field: id
+          header: ID
+        - field: dai
+          header: Dài
+        - field: rong
+          header: Rộng
+        - field: cao
+          header: Cao
+        - field: quycach_carton
+          header: Quy cách carton
+        - field: dai_carton
+          header: Dài
+        - field: rong_carton
+          header: Rộng
+        - field: cao_carton
+          header: Cao
+        - field: cbm
+          header: CBM
+        - field: n_weight
+          header: NW
+        - field: g_weight
+          header: GW
+        - field: dongia
+          header: Đơn giá hiện tại (USD)
+        - field: m3_tc
+          header: Số khối tinh chế
+    inputs: []
+    buttons: []
+  - form: frmLayoutSanPham
+    title: Layout sản phẩm
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user_rule
+    repos:
+      - SYS_USER_RULE
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: duongdan
+          header: Đường dẫn tệp tin
+        - field: filename
+          header: Tệp tin
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmSanPhamMau
+    title: Danh sách mẫu
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: mausac
+          header: Màu sắc
+        - field: quycach
+          header: Quy cách
+        - field: seal
+          header: Số seal
+        - field: dvt
+          header: ĐVT
+        - field: soluong
+          header: Số lượng
+        - field: hehang
+          header: Hệ hàng
+        - field: ngayky
+          header: Ngày ký duyệt
+        - field: nguoiky
+          header: Người ký duyệt
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmSanPhamMau_NhapXuat
+    title: Nhập - Xuất hàng mẫu
+    inScope: true
+    entities:
+      - tr_phieubaogia
+    fingerprintScore: 0.6
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: sophieu
+          header: Số phiếu
+        - field: bengiao
+          header: Bên giao
+        - field: bennhan
+          header: Bên nhận
+        - field: ngaythang
+          header: Ngày
+        - field: ghichu
+          header: Ghi chú
+        - field: nguoitao
+          header: Người tạo
+        - field: ngaytao
+          header: Ngày tạo
+        - field: nguoisua
+          header: Người sửa
+        - field: ngaysua
+          header: Ngày sửa
+        - field: loaiphieu
+          header: Loại phiếu
+        - field: id
+          header: ID
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+    buttons: []
+  - form: frmTinhChiPhiSanPham
+    title: Chi phí sản xuất cho sản phẩm
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    contextEntities:
+      - sys_user_rule
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER_RULE
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TINHGIA_HANGMUC_LAIVAY
+      - TINHGIA_HANGMUC_SANPHAM
+      - TR_CHIPHI_SANXUAT_SP_GETBYSP
+      - TR_HANGMUC_CHIPHI_GETBYID
+      - TR_HANGMUC_CHIPHI_UPDATE
+    grid:
+      columns:
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hangmuc
+          header: Khoản mục
+        - field: chiphi1
+          header: Chi phí cho 1 sản phẩm
+        - field: chiphi2
+          header: Chi phí cho một mét khối
+        - field: dongia1
+          header: Đơn giá 1 sản phẩm
+        - field: dongia2
+          header: Đơn giá một mét vuông
+        - field: id
+          header: ID
+        - field: id
+          header: ID
+        - field: hangmuc_id
+          header: Hạng mục ID
+        - field: hangmuc
+          header: Hạng mục
+        - field: chitiet
+          header: Chi tiết
+        - field: chiphi1
+          header: CP cho 1 SP
+        - field: chiphi2
+          header: Tính cho 1m3 SP
+        - field: phantram
+          header: "% CP/DT"
+        - field: đơn giá 1 sản phẩm
+          header: Đơn giá 1 sản phẩm
+        - field: đơn giá một mét khối
+          header: Đơn giá một mét khối
+        - field: ghichu
+          header: Ghi chú
+        - field: hangmuc
+          header: Khoản mục
+        - field: chiphi1
+          header: Chi phí cho 1 sản phẩm
+        - field: chiphi2
+          header: Chi phí cho một mét khối
+        - field: phantram
+          header: "% CP/DT"
+        - field: dongia1
+          header: Đơn giá 1 sản phẩm
+        - field: dongia2
+          header: Đơn giá một mét khối
+    inputs:
+      - control: repTyGia
+        kind: number
+      - control: repSanPham
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmTonSanPhamMau
+    title: Danh sách seal mẫu tồn
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: Id
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: mausac
+          header: Màu sắc
+        - field: quycach
+          header: Quy cách
+        - field: seal
+          header: Số seal
+        - field: dvt
+          header: ĐVT
+        - field: soluong
+          header: Số lượng
+        - field: hehang
+          header: Hệ hàng
+        - field: ngayky
+          header: Ngày ký duyệt
+        - field: nguoiky
+          header: Người ký
+        - field: name
+          header: Nơi lưu
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmDanhSachPhieuSanPham
+    title: Danh sách phiếu sản phẩm
+    inScope: true
+    entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_currentcy
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TR_ORDER_DETAIL_GETALL
+      - TR_ORDER_DETAIL_GETLISTBYORDER
+      - TR_PALLET_CARD_GETBYID
+      - TR_PALLET_CARD_GETBYORDER
+      - TR_PALLET_CARD_GETBYORDER2
+      - TR_PALLET_CARD_PRINT
+      - TR_PALLET_CARD_PRINT2
+      - TR_PALLET_CARD_UPDATE
+      - TR_PALLET_GETORDER
+    grid:
+      columns:
+        - field: order_number
+          header: Mã đơn hàng
+        - field: range
+          header: Hệ hàng
+        - field: item_number
+          header: Mã sản phẩm
+        - field: description
+          header: Tên sản phẩm
+        - field: card_no
+          header: Mã phiếu
+        - field: donhang
+          header: Đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày (*)
+        - field: rong_tc
+          header: Rộng (*)
+        - field: dai_tc
+          header: Dài (*)
+        - field: quycach
+          header: Quy cách
+        - field: soluong
+          header: Số lượng
+        - field: reissue_qty
+          header: Số lượng in lại
+        - field: issue_date
+          header: Ngày in
+        - field: card_seq
+          header: Seq
+    inputs:
+      - control: repLoaiPhieu
+        kind: select
+      - control: repDonHang
+        kind: select
+      - control: repSanPham
+        kind: select
+    buttons: []
+  - form: frmThongtinsanpham
+    title: Danh sách sản phẩm
+    inScope: true
+    entities:
+      - tr_khachhang
+    repos:
+      - TR_KHACHHANG
+    procs:
+      - TR_KHACHHANG_Get
+      - TR_THONGTIN_SANPHAM_GETALL
+      - TR_THONGTIN_SANPHAM_UPDATE
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dai
+          header: Dài
+        - field: rong
+          header: Rộng
+        - field: cao
+          header: Cao
+        - field: dvt
+          header: Đơn vị tính
+        - field: mota
+          header: Mô tả
+        - field: check
+          header: Chọn
+        - field: loaihang
+          header: Loại hàng
+        - field: giavon
+          header: Giá vốn
+        - field: giasi
+          header: Giá sỉ
+        - field: giaban
+          header: Giá lẻ
+    inputs:
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+    buttons: []
+  - form: frm_DanhSachNhomSanPham
+    title: frm_DanhSachNhomSanPham
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: tennhom
+          header: Tên nhóm
+        - field: giamoc
+          header: Giá mộc
+        - field: giaxe
+          header: Giá xe
+        - field: giason
+          header: Giá sơn
+        - field: giavon
+          header: Giá vốn
+        - field: giasi
+          header: Giá sỉ
+        - field: giale
+          header: Giá lẻ
+        - field: id
+          header: ID
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: dvt
+          header: Đơn vị tính
+        - field: mota
+          header: Mô tả
+    inputs: []
+    buttons: []
+  - form: frm_sr_sanpham
+    title: frm_sr_sanpham
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - SR_GETDAT_TENSP
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemImageComboBox2
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: repositoryItemImageComboBox1
+        kind: select
+    buttons: []

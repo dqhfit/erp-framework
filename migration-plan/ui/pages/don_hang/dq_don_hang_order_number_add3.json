@@ -1,0 +1,87 @@
+{
+ "name": "dq_don_hang_order_number_add3",
+ "label": "Tạo đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Tạo đơn hàng",
+    "fields": [
+     "order_qty",
+     "price",
+     "currency",
+     "cbm",
+     "id",
+     "range",
+     "cust_item_number",
+     "color",
+     "material",
+     "test_run_qty",
+     "remark",
+     "fsc_100",
+     "fsc_mix",
+     "fsc_recycled"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Tạo đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Tạo đơn hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmOrderNumberAdd3<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: PS_KEHOACH_DONHANG_AUTOFILL, TR_ORDER_DETAIL_DELETE2, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYID, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_DETAIL_INSERT2, TR_ORDER_DETAIL_UPDATE2, TR_ORDER_EXAMPLE_NEWID, TR_ORDER_GET2, TR_ORDER_GETBYID, TR_ORDER_INSERT2, TR_ORDER_UPDATE2<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_common, tr_hehang, tr_khachhang, tr_loaincc, tr_loaisp, tr_material, tr_nhacc, tr_order, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

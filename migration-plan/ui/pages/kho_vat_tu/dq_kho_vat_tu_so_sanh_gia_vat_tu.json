@@ -1,0 +1,79 @@
+{
+ "name": "dq_kho_vat_tu_so_sanh_gia_vat_tu",
+ "label": "So sánh giá vật tư",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "So sánh giá vật tư",
+    "fields": [
+     "mancc",
+     "tenncc",
+     "mota",
+     "quycach",
+     "dvt",
+     "nhom"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — So sánh giá vật tư",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "So sánh giá vật tư",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmSoSanhGiaVatTu<br/>\nNút WinForms gốc: Hủy · Đồng ý<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_MATERIAL_NCC_GETBYGROUP_PV, TR_NHACC_Get<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dondathang_chitiet, tr_loaincc, tr_material_ncc, tr_nhacc\n</div>"
+   }
+  }
+ ]
+}

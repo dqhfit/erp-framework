@@ -1,0 +1,83 @@
+{
+ "name": "dq_san_xuat_ke_hoach_san_xuat_po2",
+ "label": "Kế hoạch đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "title": "Kế hoạch đơn hàng",
+    "fields": [
+     "id",
+     "order_number",
+     "customer",
+     "order_date",
+     "ship_date",
+     "etd",
+     "cont_date",
+     "f_cancelled",
+     "choduyet",
+     "islock"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+        "title": "Thêm — Kế hoạch đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+        "title": "Kế hoạch đơn hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmKeHoachSanXuatPO2<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: PS_KEHOACH_DONHANG_CREATE, PS_KEHOACH_DONHANG_CREATE2, PS_KEHOACH_DONHANG_EXPORT, PS_KEHOACH_DONHANG_EXPORT2, PS_KEHOACH_DONHANG_GETALL5, PS_KEHOACH_DONHANG_GETALL6, PS_KEHOACH_DONHANG_GETALL7, PS_KEHOACH_DONHANG_GETALL8, PS_KEHOACH_DONHANG_GETALL9, PS_KEHOACH_DONHANG_GETBYCOLUMN, PS_KEHOACH_DONHANG_HOANTHANH, PS_KEHOACH_DONHANG_SUASOLUONG, PS_KEHOACH_DONHANG_TACHDONHANG, PS_KEHOACH_DONHANG_TOTAL_CONT, PS_KEHOACH_DONHANG_TOTAL_CONT2, PS_KEHOACH_DONHANG_UPDATE, PS_KEHOACH_DONHANG_UPDATE2, PS_KEHOACH_DONHANG_UPDATE_GHICHU, PS_KEHOACH_DONHANG_UPDATE_TRANGTHAI, TR_GRIDVIEW_COLUMN_GET, TR_GRIDVIEW_COLUMN_GETALL, TR_GRIDVIEW_COLUMN_GETALL2, TR_GRIDVIEW_COLUMN_GETDEPT, TR_ORDER_ISLOCK<br/>\nEntity phụ (lookup/filter cân nhắc thêm): trtb_m_location\n</div>"
+   }
+  }
+ ]
+}

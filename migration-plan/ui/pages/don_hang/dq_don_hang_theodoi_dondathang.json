@@ -1,0 +1,86 @@
+{
+ "name": "dq_don_hang_theodoi_dondathang",
+ "label": "Theo dõi đơn đặt hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+    "title": "Theo dõi đơn đặt hàng",
+    "fields": [
+     "maddh",
+     "masp",
+     "chitiet",
+     "tenchitiet",
+     "dvt",
+     "soluong",
+     "sl_danhan",
+     "sl_conlai",
+     "dongia",
+     "donhang",
+     "create_by",
+     "id",
+     "thanhtien"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+        "title": "Thêm — Theo dõi đơn đặt hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+        "title": "Theo dõi đơn đặt hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frm_theodoi_dondathang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_DONDATHANG_CHITIET_BYDAY, TR_DONDATHANG_CHITIET_BY_MACT, TR_DONDATHANG_GETBYSTATUS<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_loaincc, tr_material, tr_nhacc, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

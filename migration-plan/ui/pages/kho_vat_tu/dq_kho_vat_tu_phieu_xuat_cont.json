@@ -1,0 +1,82 @@
+{
+ "name": "dq_kho_vat_tu_phieu_xuat_cont",
+ "label": "Phiếu xuất cont",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Phiếu xuất cont",
+    "fields": [
+     "order_number",
+     "cust_po_number",
+     "range",
+     "id",
+     "item_number",
+     "description",
+     "order_qty",
+     "ship_qty",
+     "cbm"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Phiếu xuất cont",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Phiếu xuất cont",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmPhieuXuatCont<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_CONT_Get, TR_CONT_PRINT, TR_CONT_UPDATE2, TR_CTCONT_DELETEBYID, TR_CTCONT_GET, TR_CTCONT_GETBYID, TR_CTCONT_INSERT, TR_CTCONT_UPDATEBYID, TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_ORDER_GETALL, TR_ORDER_GETBYSTATUS, TR_ORDER_GETLIST, TR_ORDER_Get3<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_sanpham\n</div>"
+   }
+  }
+ ]
+}

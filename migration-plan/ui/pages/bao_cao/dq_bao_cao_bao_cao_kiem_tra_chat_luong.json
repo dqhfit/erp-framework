@@ -1,0 +1,77 @@
+{
+ "name": "dq_bao_cao_bao_cao_kiem_tra_chat_luong",
+ "label": "Báo cáo kiểm tra chất lượng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+    "title": "Báo cáo kiểm tra chất lượng",
+    "fields": [
+     "masp",
+     "mact",
+     "tenct",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+        "title": "Thêm — Báo cáo kiểm tra chất lượng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+        "title": "Báo cáo kiểm tra chất lượng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoCaoKiemTraChatLuong<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TRTB_M_LOCATION_GET, TRTB_M_LOCATION_GETLIST, TR_BAOCAO_FINAL_BAOCAOCHATLUONG, TR_BIEUMAU_FRIDAY_CONGDOAN_GET2, TR_DONDATHANG_CHECK_FSC, TR_DONDATHANG_GET3, TR_THAYDOI_KYTHUAT_BAOCAOCHATLUONG, TR_TIEUCHUAN_BAOCAO_QC_BAOCAO, TR_TIEUCHUAN_BAOCAO_QC_BAOCAO2, TR_TIEUCHUAN_BAOCAO_QC_CHONIN, TR_TIEUCHUAN_BAOCAO_QC_CHONIN2, TR_TIEUCHUAN_CHATLUONG_GETALL, TR_TIEUCHUAN_CHATLUONG_GETALL2, TR_TIEUCHUAN_CHATLUONG_GETALL3, TR_TIEUCHUAN_CHATLUONG_GETALL4, TR_TIEUCHUAN_CHATLUONG_GETBYDATE, TR_TIEUCHUAN_CHATLUONG_IMPORT, TR_TIEUCHUAN_CHATLUONG_UPDATE_TIEUCHUANLOI<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_baocao_final, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_material, tr_order, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site, trtb_m_location\n</div>"
+   }
+  }
+ ]
+}

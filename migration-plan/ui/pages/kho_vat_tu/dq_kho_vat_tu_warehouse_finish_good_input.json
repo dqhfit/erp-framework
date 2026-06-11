@@ -1,0 +1,80 @@
+{
+ "name": "dq_kho_vat_tu_warehouse_finish_good_input",
+ "label": "Nhập thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Nhập thành phẩm",
+    "fields": [
+     "masp_khachhang",
+     "dvt",
+     "id",
+     "masp",
+     "tensp",
+     "hehang",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Nhập thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Nhập thành phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmWarehouseFinishGoodInput2, frmWarehouseFinishGoodInput<br/>\nNút WinForms gốc: Đồng ý · Đồng ý<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: GWHS_Catelog, HR_CONGTY_GET, TR_NHAP_THANHPHAM_ByCurrentDate, TR_NHAP_THANHPHAM_ByDate, TR_NHAP_THANHPHAM_Insert, TR_ORDER_ISLOCK, TR_PHIEUNHAP_THANHPHAM_Get, TR_PHIEUNHAP_THANHPHAM_Insert, TR_NHAP_THANHPHAM_GETALL, TR_NHAP_THANHPHAM_GETBYSP, TR_NHAP_THANHPHAM_GETBYSP2, TR_TONKHO_THANHPHAM_Get<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaisp, tr_order, tr_phieunhap\n</div>"
+   }
+  }
+ ]
+}

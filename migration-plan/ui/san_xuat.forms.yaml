@@ -1,0 +1,5243 @@
+module: san_xuat
+generatedAt: 2026-06-11
+tablesMissingInErp:
+  - dqt_dexuat_phoi
+  - tr_bieumau_friday
+  - tr_calendar
+  - tr_congdoan
+  - tr_currentcy
+  - tr_danhsach_dexuat
+  - tr_danhsach_dexuat_process
+  - tr_danhsach_xetduyet_user
+  - tr_hinhanh
+  - tr_kehoach_hangtrang
+  - tr_kehoach_hangtrang2
+  - tr_kehoach_hangtrang2_head
+  - tr_kehoach_hangtrang2_nguyenlieu
+  - tr_kehoach_hangtrang3
+  - tr_kehoach_hangtrang_chitiet
+  - tr_khuvuc_chuyenson
+  - tr_loai_tieuchuan_phoi
+  - tr_loai_xetduyet
+  - tr_material_classification
+  - tr_muctieu_sanxuat
+  - tr_nguyenlieu
+  - tr_nhom_dexuat2
+  - tr_nhom_xetduyet
+  - tr_quality_criteria
+  - tr_quality_standards
+  - tr_quytrinh_xetduyet
+  - tr_quytrinh_yeucau_chatluong
+  - tr_release_govan
+  - tr_rout_uv
+  - tr_routing
+  - tr_thongke_soluong
+  - tr_tiendo_chuyenson
+  - tr_tiendo_hoanthien
+  - tr_tonkho_chitiet
+pageClusters:
+  - entities:
+      - tr_trangthai_sanxuat
+    forms:
+      - frmScan120
+      - frmTienDoHangTrang2
+      - frmBaoCaoSanXuatHTR
+      - frmBaoCaoSanLuongTheoMucTieu
+      - frmTienDoSanXuat
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    forms:
+      - frmTrangThaiSanXuatHTR
+      - frmTinhGiaSanXuat
+      - frmTienDoHangTrang5
+  - entities:
+      - trtb_m_op
+    forms:
+      - frmKeHoachHangTrang
+      - frmKeHoachHangTrang3
+      - frmKeHoachHangTrang
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_order
+      - tr_order_replacement
+    forms:
+      - frmHoSoSanXuat
+      - frmBaoCaoHangTrangAdd
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - trtb_m_op
+    forms:
+      - frmMucTieuSanXuatAdd
+      - frmMucTieuSanXuatAdd2
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+      - trtb_m_location
+    forms:
+      - frmTienDoHangTrang4
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+      - trtb_m_location
+    forms:
+      - frm_quytrinh_sanxuat_ver2
+  - entities:
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frm_quytrinh_sanxuat_copy
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+      - trtb_m_location
+      - trtb_scan_op
+    forms:
+      - frmTienDoHangTrang
+  - entities:
+      - tr_dinhmuc_govan
+    forms:
+      - frm_quytrinh_sanxuat_import
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+    forms:
+      - frm_quytrinh_sanxuat_danhsach
+  - entities:
+      - tr_banve
+      - tr_color
+      - tr_common
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+    forms:
+      - frmTienDoChuyenSonAdd
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - trtb_scan_op
+    forms:
+      - frmMucTieuSanXuat
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_muctieu_sanxuat2
+      - tr_muctieu_sanxuat2_chitiet
+      - trtb_m_op
+      - trtb_scan_op
+    forms:
+      - frmMucTieuSanXuat2
+  - entities:
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+    forms:
+      - frmBaoCaoTienDoChuyenSonAdd
+  - entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_reftype
+      - tr_sanpham
+      - tr_site
+    forms:
+      - frm_tiendo_sanxuat
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_lenhcapphat
+      - tr_lenhcapphat_head
+      - tr_material
+      - tr_site
+    forms:
+      - frmScan110
+  - entities:
+      - tr_order
+      - trtb_m_location
+    forms:
+      - frmKeHoachSanXuatPO2
+  - entities:
+      - trtb_m_location
+    forms:
+      - frmKeHoachSanXuatPO2_HTR
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+      - trtb_m_location
+    forms:
+      - frmThongKeCongDoan
+  - entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    forms:
+      - frmTongHopChiTiet_HangTrang
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+    forms:
+      - frm_quytrinh_sanxuat_danhsach2
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+    forms:
+      - frm_tiendo_sanxuat_hangtrang
+  - entities:
+      - tr_dondathang
+    forms:
+      - frmKeHoachSanXuatPO2_HTR_Add
+  - entities:
+      - tr_nguyenlieu_gva
+    forms:
+      - frmTieuChuanGoVan
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    forms:
+      - frmScan110_1
+  - entities:
+      - tr_pallet
+    forms:
+      - frmKeHoachHangTrang_SapXep
+  - entities:
+      - tr_material
+    forms:
+      - frmQuanLyTieuChuan
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    forms:
+      - frm_quytrinh_sanxuat_reprint
+  - entities:
+      - tr_order_detail
+    forms:
+      - frm_QuyTrinh_SanXuat
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    forms:
+      - frmGiaoNhanHangTrang
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+    forms:
+      - frmKeHoachHangTrang_Ver3
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaincc
+      - tr_nhacc
+      - tr_order
+    forms:
+      - frmKeHoachSanXuatPO
+  - entities:
+      - tr_khuvuc
+    forms:
+      - frmTienDoChuyenSon
+  - entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+      - trtb_m_location
+    forms:
+      - frmTienDoHangTrang3
+  - entities:
+      - tr_hehang
+      - tr_khachhang
+      - trtb_m_location
+    forms:
+      - frmLichGiaoHangTrang
+forms:
+  - form: frmRegCalendars
+    title: Lịch sản xuất
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - TR_CALENDAR_INSERT
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemComboBox1
+        kind: select
+      - control: repositoryItemComboBox2
+        kind: select
+      - control: repositoryItemComboBox3
+        kind: select
+      - control: check41
+        kind: boolean
+      - control: check40
+        kind: boolean
+      - control: check39
+        kind: boolean
+      - control: check38
+        kind: boolean
+      - control: check37
+        kind: boolean
+      - control: check36
+        kind: boolean
+      - control: check35
+        kind: boolean
+      - control: check34
+        kind: boolean
+      - control: check33
+        kind: boolean
+      - control: check32
+        kind: boolean
+      - control: check31
+        kind: boolean
+      - control: check30
+        kind: boolean
+      - control: check29
+        kind: boolean
+      - control: check28
+        kind: boolean
+      - control: check27
+        kind: boolean
+      - control: check26
+        kind: boolean
+      - control: check25
+        kind: boolean
+      - control: check24
+        kind: boolean
+      - control: check23
+        kind: boolean
+      - control: check22
+        kind: boolean
+      - control: check21
+        kind: boolean
+      - control: check20
+        kind: boolean
+      - control: check19
+        kind: boolean
+      - control: check18
+        kind: boolean
+      - control: check17
+        kind: boolean
+      - control: check16
+        kind: boolean
+      - control: check15
+        kind: boolean
+      - control: check14
+        kind: boolean
+      - control: check13
+        kind: boolean
+      - control: check12
+        kind: boolean
+      - control: check11
+        kind: boolean
+      - control: check10
+        kind: boolean
+      - control: check9
+        kind: boolean
+      - control: check8
+        kind: boolean
+      - control: check7
+        kind: boolean
+      - control: check6
+        kind: boolean
+      - control: check5
+        kind: boolean
+      - control: check4
+        kind: boolean
+      - control: check3
+        kind: boolean
+      - control: check2
+        kind: boolean
+      - control: check1
+        kind: boolean
+      - control: check0
+        kind: boolean
+      - control: txtRemark0
+        kind: text
+      - control: txtRemark1
+        kind: text
+      - control: txtRemark2
+        kind: text
+      - control: txtRemark3
+        kind: text
+      - control: txtRemark4
+        kind: text
+      - control: txtRemark5
+        kind: text
+      - control: txtRemark6
+        kind: text
+      - control: txtRemark7
+        kind: text
+      - control: txtRemark8
+        kind: text
+      - control: txtRemark9
+        kind: text
+      - control: txtRemark10
+        kind: text
+      - control: txtRemark11
+        kind: text
+      - control: txtRemark12
+        kind: text
+      - control: txtRemark13
+        kind: text
+      - control: txtRemark14
+        kind: text
+    buttons:
+      - control: btnMon
+        caption: Th2
+      - control: btnTue
+        caption: Th3
+      - control: btnWed
+        caption: Th4
+      - control: btnThu
+        caption: Th5
+      - control: btnFri
+        caption: Th6
+      - control: btnSat
+        caption: Th7
+      - control: btnSun
+        caption: CN
+  - form: frmTienDoHangTrang4
+    title: Nhập tiến độ hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TRTB_M_LOCATION
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TRTB_M_LOCATION_GET
+      - TRTB_M_LOCATION_GETLIST3
+      - TRTB_M_LOCATION_NEXT_GETALL
+      - TR_DONDATHANG_CHECK_FSC
+      - TR_GIAONHAN_CHITIET_PRINT2
+      - TR_PALLET_CARD_GETBYID
+      - TR_PALLET_GETBYID
+      - TR_PALLET_GET_MADDH
+      - TR_TINHGIA_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG2
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG3
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG4
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG6
+      - TR_TRANGTHAI_SANXUAT_INSERT
+      - TR_TRANGTHAI_SANXUAT_XACNHAN
+    grid:
+      columns:
+        - field: maddh
+          header: Đơn hàng
+        - field: donhang
+          header: Đơn hàng sử dụng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: mahtr
+          header: Mã hàng trắng
+        - field: stt
+          header: STT
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_can
+          header: Số lượng cần
+        - field: soluong_hoanthanh
+          header: Số lượng đã hoàn thành
+        - field: soluong_conlai
+          header: Số lượng còn lại
+        - field: soluong_nhap
+          header: Nhập số lượng
+        - field: card_no
+          header: Mã pallet
+        - field: mact
+          header: Mã chi tiết
+        - field: id
+          header: ID
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp1
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: soluong
+          header: Số lượng
+        - field: congdoan
+          header: Công đoạn
+        - field: ngaythang
+          header: Ngày tháng
+        - field: tennguoigiao
+          header: Người giao
+        - field: tennguoinhan
+          header: Người nhận
+        - field: ngaygiao
+          header: Ngày nhận
+        - field: sokhoi
+          header: Số khối
+    inputs:
+      - control: repositoryItemSpinEdit1
+        kind: number
+    buttons:
+      - control: btnPallet_SanPham
+        caption: Pallet sản phẩm
+      - control: btnPallet_ChiTiet
+        caption: Pallet chi tiết
+      - control: btnPhoi
+        caption: Phôi
+      - control: btnDinhHinh1
+        caption: Định hình 1
+      - control: btnDinhHinh2
+        caption: Định hình 2
+      - control: btnLapRap
+        caption: Lắp ráp
+      - control: btnNham
+        caption: Nhám
+      - control: btnSon
+        caption: Sơn
+      - control: btnDongGoi
+        caption: Đóng gói
+      - control: btnPhoi_1
+        caption: Phôi
+      - control: btnDinhHinh1_1
+        caption: Định hình 1
+      - control: btnDinhHinh2_1
+        caption: Định hình 2
+      - control: btnLapRap_1
+        caption: Lắp ráp
+      - control: btnNham_1
+        caption: Nhám
+      - control: btnSon_1
+        caption: Sơn
+      - control: btnDongGoi_1
+        caption: Đóng gói
+      - control: btnSonChiTiet_1
+        caption: Sơn tự động
+      - control: btnAll
+        caption: Tất cả
+      - control: btnNotYet
+        caption: Chưa hoàn thành
+      - control: simpleButton1
+        caption: Đã nhận
+      - control: simpleButton2
+        caption: Chưa nhận
+  - form: frm_quytrinh_sanxuat_ver2
+    title: Quy trình sản xuất
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - TRTB_M_LOCATION
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_LUUTRINH_GETLIST
+      - TR_LUUTRINH_SANXUAT_GET2
+      - TR_LUUTRINH_SANXUAT_Update
+      - TR_NHOM_NGUYENLIEU_SEARCH
+      - TR_QUYTRINH_PRINT
+      - TR_QUYTRINH_SANXUAT_RESOURCE_UPDATE
+      - rptLuuTrinhSanXuat
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: bemat_sanpham
+          header: Bề mặt
+        - field: id
+          header: ID
+        - field: active
+          header: Chọn
+        - field: tonhom
+          header: Tổ, nhóm
+        - field: tenquytrinh
+          header: Tên công đoạn
+        - field: may
+          header: Máy móc
+        - field: tenmay
+          header: Tên máy
+        - field: bophan
+          header: Bộ phận
+        - field: thongtin
+          header: Thông tin công đoạn
+        - field: luuy
+          header: Lưu ý
+        - field: routid
+          header: RoutID
+        - field: bophan
+          header: Bộ phận
+        - field: somay
+          header: Số máy
+        - field: songuoi
+          header: Số người
+        - field: thoigian
+          header: Thời gian (giờ)
+        - field: soluong
+          header: Số lượng
+        - field: sotien
+          header: Số tiền (USD)
+    inputs:
+      - control: repFilter
+        kind: select
+      - control: repMaSP
+        kind: select
+      - control: txtTenCongDoan
+        kind: text
+      - control: repMayMoc
+        kind: select
+      - control: txtThongTin
+        kind: text
+      - control: txtLuuY
+        kind: text
+      - control: cboBoPhan
+        kind: select
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClear
+        caption: Bỏ chọn tất cả
+      - control: btnView
+        caption: Xem bản kê
+  - form: frm_quytrinh_sanxuat_copy
+    title: Sao chép quy trình sản xuất
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+      - tr_dinhmuc_govan
+    tablesMissing:
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs:
+      - TR_DINHMUC_GOVAN_Get
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: tenquytrinh
+          header: Tên công đoạn
+        - field: tonhom
+          header: Tổ nhóm
+        - field: may
+          header: Máy móc
+        - field: id_rout
+          header: ID_ROUT
+        - field: thongtin
+          header: Thông tin
+        - field: luuy
+          header: Lưu ý
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: tenquytrinh
+          header: Tên công đoạn
+        - field: tonhom
+          header: Tổ nhóm
+        - field: may
+          header: Máy móc
+        - field: id_rout
+          header: ID_ROUT
+        - field: thongtin
+          header: Thông tin
+        - field: luuy
+          header: Lưu ý
+        - field: lanuv
+          header: Lăn UV
+        - field: lanuv
+          header: Lăn UV
+    inputs:
+      - control: glkMaSP
+        kind: select
+      - control: glkMaCT
+        kind: select
+      - control: txtMaSP
+        kind: text
+      - control: txtMaCT
+        kind: text
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClose
+        caption: Thoát
+      - control: btnNext
+        caption: ">"
+      - control: btnNextAll
+        caption: ">>"
+      - control: btnPrv
+        caption: <
+      - control: btnPrvAll
+        caption: <<
+  - form: frmScan120
+    title: Quét phiếu pallet
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    fingerprintScore: 0.75
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: quycach
+          header: Quy cách (tinh chế)
+        - field: sokhoi
+          header: Số khối
+        - field: soluong
+          header: Số lượng
+    inputs:
+      - control: repBarCode
+        kind: text
+      - control: txtMaSP
+        kind: text
+      - control: txtTenSP
+        kind: text
+      - control: txtHeHang
+        kind: text
+      - control: txtDonHang
+        kind: text
+      - control: txtCumCT
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtMaCT
+        kind: text
+      - control: txtBeMat
+        kind: text
+      - control: calSoLuong
+        kind: number
+      - control: calSoMatGiaCong
+        kind: number
+      - control: calSoLuongSanPham
+        kind: number
+      - control: txtNguyenLieu
+        kind: text
+      - control: calSoLuongCan
+        kind: number
+      - control: txtQuyCachTC
+        kind: text
+      - control: calM3TC
+        kind: number
+      - control: calSoLuongSC
+        kind: number
+      - control: txtQuyCachSC
+        kind: text
+      - control: calM3SC
+        kind: number
+      - control: repositoryItemGridLookUpEdit1
+        kind: select
+    buttons: []
+  - form: frm_quytrinh_sanxuat_copy2
+    title: Copy quy trình sản xuất
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - TR_LUUTRINH_GETLIST
+      - TR_LUUTRINH_SANXUAT_COPY2
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: mact
+          header: Mã chi tiết
+        - field: stt
+          header: STT
+        - field: chitiet
+          header: Tên chi tiết
+        - field: mact1
+          header: Mã chi tiết
+        - field: stt1
+          header: STT
+        - field: id1
+          header: Tên chi tiết
+        - field: id
+          header: id
+        - field: stt
+          header: STT
+        - field: chitiet
+          header: Chi tiết
+        - field: id
+          header: ID
+        - field: id1
+          header: ID
+    inputs:
+      - control: repChiTiet
+        kind: select
+    buttons: []
+  - form: frmTienDoHangTrang
+    title: Tiến độ hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_location
+      - trtb_scan_op
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+      - tr_rout_uv
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TRTB_M_LOCATION
+      - TRTB_SCAN_OP
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_ROUT_UV
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TRTB_M_LOCATION_GET
+      - TRTB_M_LOCATION_GETALL2
+      - TR_DONDATHANG_GETLISTHTR
+      - TR_PALLET_CARD_GETALL
+      - TR_PALLET_CARD_GETBYID
+      - TR_PALLET_GET
+      - TR_ROUT_UV_GET
+      - TR_ROUT_UV_GETBYID
+      - TR_TINHGIA_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG2
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG3
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG4
+      - TR_TRANGTHAI_SANXUAT_GETBYPCARD
+      - TR_TRANGTHAI_SANXUAT_INSERT
+      - TR_TRANGTHAI_SANXUAT_PHANTRAM_HOANTHANH
+      - TR_TRANGTHAI_SANXUAT_SOKHOI_HOANTHANH
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã hàng trắng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: soluong_can
+          header: Số lượng cần
+        - field: dp01-prod
+          header: Hoàn thành
+        - field: dp02-in
+          header: Nhận
+        - field: dp02-prod
+          header: Hoàn thành
+        - field: dp03-in
+          header: Nhận
+        - field: dp03-prod
+          header: Hoàn thành
+        - field: dp04-prod
+          header: Hoàn thành
+        - field: va01-prod
+          header: Hoàn thành
+        - field: uv01-in
+          header: Nhận
+        - field: uv01-prod
+          header: Hoàn thành
+        - field: uv02-in
+          header: Nhận
+        - field: uv02-prod
+          header: Hoàn thành
+        - field: dh01-in
+          header: Nhận
+        - field: dh01-prod
+          header: Hoàn thành
+        - field: dh02-in
+          header: Nhận
+        - field: dh02-prod
+          header: Hoàn thành
+        - field: lr01-prod
+          header: Hoàn thành
+        - field: lr02-prod
+          header: Hoàn thành
+        - field: masp1
+          header: Mã sản phẩm
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: iscreatecard
+          header: IsCreateCard
+        - field: masp
+          header: Mã hàng trắng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: soluong_can
+          header: Số lượng cần
+        - field: masp1
+          header: Mã sản phẩm
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: iscreatecard
+          header: IsCreateCard
+        - field: madonhang
+          header: Đơn hàng
+        - field: donhang
+          header: Đơn hàng sử dụng
+        - field: sokhoi_donhang
+          header: Số khối đơn hàng
+        - field: ngaykehoach
+          header: Ngày
+        - field: madonhang
+          header: Đơn hàng
+        - field: donhang
+          header: Đơn hàng sử dụng
+        - field: sokhoi_donhang
+          header: Số khối đơn hàng
+        - field: ngaykehoach
+          header: Ngày
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repositoryItemMemoEdit2
+        kind: text
+    buttons: []
+  - form: frm_quytrinh_sanxuat_import
+    title: Nạp quy trình sản xuất
+    inScope: true
+    entities:
+      - tr_dinhmuc_govan
+    contextEntities:
+      - tr_bophan
+    repos:
+      - TR_BOPHAN
+    procs:
+      - TR_DINHMUC_GOVAN_GETBYMACT
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: day
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: tenquytrinh
+          header: Quy trình
+        - field: maquytrinh
+          header: Mã quy trình
+        - field: stt
+          header: STT
+        - field: maymoc
+          header: Máy móc
+        - field: xuong
+          header: Xưởng
+        - field: tonhom
+          header: Tổ nhóm
+    inputs:
+      - control: cboSheet
+        kind: select
+      - control: txtPath
+        kind: text
+    buttons:
+      - control: btnRead
+        caption: Đọc
+      - control: btnChooseFile
+        caption: Chọn file...
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frm_quytrinh_sanxuat_danhsach
+    title: In quy trình sản xuất
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - HR_CONGTY
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SANPHAM
+      - TR_SITE
+    procs:
+      - DQT_DONDATHANG_HTR
+      - HR_CONGTY_GET
+      - TR_QUYTRINH_GET
+      - TR_QUYTRINH_PRINT
+      - XUC_QUYTRINH_GET
+      - rptLuuTrinhSanXuat
+      - rptPalletDinhHinh_2
+      - rptPalletDinhPhoi_2
+      - rptPheiCatPhoi
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: chitiet
+          header: Sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: soluong
+          header: Số lượng
+        - field: masp
+          header: Mã sản phẩm
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SLCT
+        - field: soluong_donhang
+          header: SLDH
+        - field: m3_tc
+          header: M3
+        - field: quytrinh
+          header: Quy trình
+        - field: ghichu
+          header: Ghi chú
+        - field: id
+          header: ID
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repMaSP
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtQuyTrinh
+        kind: text
+    buttons: []
+  - form: frm_quytrinh_sanxuat_resource
+    title: Thông tin quy trình
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - TR_QUYTRINH_SANXUAT_GET
+      - TR_QUYTRINH_SANXUAT_RESOURCE_UPDATE
+    grid:
+      columns: []
+    inputs:
+      - control: txtID
+        kind: text
+      - control: txtToNhom
+        kind: text
+      - control: txtQuyTrinh
+        kind: text
+      - control: spSoMay
+        kind: number
+      - control: spSoNguoi
+        kind: number
+      - control: spSoGio
+        kind: number
+      - control: spSoLuong
+        kind: number
+      - control: spSoTien
+        kind: number
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Thoát
+  - form: frmTienDoChuyenSonAdd
+    title: Nhập tiến độ chuyền sơn
+    inScope: true
+    entities:
+      - tr_banve
+      - tr_color
+      - tr_common
+      - tr_dinhmuc_govan
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_currentcy
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_khuvuc_chuyenson
+      - tr_nguyenlieu
+      - tr_release_govan
+      - tr_routing
+      - tr_rout_uv
+      - tr_tiendo_chuyenson
+    repos:
+      - SYS_USER
+      - TR_BANVE
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_COMMON
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_DINHMUC_GOVAN
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_KHUVUC_CHUYENSON
+      - TR_LOAISP
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_RELEASE_GOVAN
+      - TR_ROUTING
+      - TR_ROUT_UV
+      - TR_TIENDO_CHUYENSON
+    procs:
+      - TR_DINHMUC_GOVAN_GETBYSP3
+      - TR_DINHMUC_GOVAN_RELEASE
+      - TR_ORDER_DETAIL_GETALL
+      - TR_ORDER_DETAIL_GETLISTBYORDER
+      - TR_ORDER_GETALL
+      - TR_ORDER_GETBYSTATUS
+      - TR_ORDER_GETLIST
+      - TR_ORDER_Get3
+      - TR_TIENDO_CHUYENSON_INSERT
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: order_qty
+          header: Số lượng sản phẩm
+        - field: order_number
+          header: Mã đơn hàng
+        - field: ship_date
+          header: Ngày y/c giao
+        - field: customer_po_number
+          header: PO#
+        - field: range
+          header: Hệ hàng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng đơn hàng
+        - field: ten
+          header: Bước
+        - field: soluong
+          header: Số lượng hoàn thành
+        - field: ma
+          header: Mã
+    inputs:
+      - control: glkSanPham
+        kind: select
+      - control: glkDonHang
+        kind: select
+      - control: dteNgayNhap
+        kind: date
+      - control: txtTenCT
+        kind: text
+      - control: icbChuyenSon
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+  - form: frmMucTieuSanXuat
+    title: Mục tiêu sản xuất
+    inScope: true
+    entities:
+      - trtb_scan_op
+      - tr_hehang
+      - tr_khachhang
+    contextEntities:
+      - sys_user_rule
+    tablesMissing:
+      - tr_muctieu_sanxuat
+    repos:
+      - LoggerManager
+      - SYS_USER_RULE
+      - TRTB_SCAN_OP
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_MUCTIEU_SANXUAT
+    procs:
+      - TR_BAOCAO_HIENDIEN4_CREATE2
+      - TR_BAOCAO_HIENDIEN4_GETBYID
+      - TR_BAOCAO_HIENDIEN4_INSERT
+      - TR_BAOCAO_HIENDIEN4_UPDATE2
+      - TR_MUCTIEU_SANXUAT_DELETEALL
+      - TR_MUCTIEU_SANXUAT_GETALL4
+      - TR_MUCTIEU_SANXUAT_GETBYID
+      - TR_MUCTIEU_SANXUAT_INSERT
+      - TR_MUCTIEU_SANXUAT_UPDATE2
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: ngaythang
+          header: Ngày
+        - field: macongdoan
+          header: Mã công đoạn
+        - field: day_name
+          header: Thứ
+        - field: tencongdoan
+          header: Công đoạn
+        - field: muctieu
+          header: Số lượng mục tiêu
+        - field: songuoi
+          header: Số người
+        - field: sogio
+          header: Số giờ
+        - field: rowver
+          header: RowVer
+        - field: c_op
+          header: Mã công đoạn
+        - field: n_op
+          header: Tên công đoạn
+        - field: tenkhuvuc
+          header: Khu vực
+        - field: ngaythang
+          header: Ngày
+        - field: songuoi_hanhchanh
+          header: Số người  hành chánh
+        - field: songuoi_tangca
+          header: Số người tăng ca
+        - field: id
+          header: ID
+        - field: day_name
+          header: Thứ
+        - field: rowver
+          header: RowVer
+    inputs:
+      - control: repMonth
+        kind: date
+      - control: repLoaiBaoCao
+        kind: select
+    buttons: []
+  - form: frmMucTieuSanXuat2
+    title: Mục tiêu sản xuất
+    inScope: true
+    entities:
+      - trtb_m_op
+      - trtb_scan_op
+      - tr_hehang
+      - tr_khachhang
+      - tr_muctieu_sanxuat2
+      - tr_muctieu_sanxuat2_chitiet
+    tablesMissing:
+      - tr_muctieu_sanxuat
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - TRTB_M_OP
+      - TRTB_SCAN_OP
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_MUCTIEU_SANXUAT
+      - TR_MUCTIEU_SANXUAT2
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TR_MUCTIEU_SANXUAT2_CHITIET_CREATE
+      - TR_MUCTIEU_SANXUAT2_CHITIET_SAVE
+      - TR_MUCTIEU_SANXUAT2_GETBYMONTH
+      - TR_MUCTIEU_SANXUAT2_GETBYMONTH2
+      - TR_MUCTIEU_SANXUAT2_GETM3_HOANTHANH
+      - TR_MUCTIEU_SANXUAT2_SAVE
+      - TR_MUCTIEU_SANXUAT2_TINHTOAN
+      - TR_MUCTIEU_SANXUAT_GETALL4
+    grid:
+      columns:
+        - field: mabophan
+          header: Bộ phận (*)
+        - field: tencongdoan
+          header: Bộ phận
+        - field: songuoi
+          header: Số người
+        - field: songay
+          header: Số ngày
+        - field: mucthuong
+          header: Mức
+        - field: phantram_tang
+          header: "% tăng"
+        - field: col1
+          header: Cont Rời\r\n (*35)
+        - field: col2
+          header: Cont Ráp (*10)
+        - field: col3
+          header: Tổng cont
+        - field: col4
+          header: Số giờ
+        - field: col5
+          header: Số M3
+        - field: col6
+          header: Tỉ lệ
+        - field: col7
+          header: Cont Rời\r\n (*35)
+        - field: col8
+          header: Cont Ráp (*10)
+        - field: col9
+          header: Tổng cont
+        - field: col10
+          header: Số giờ
+        - field: col11
+          header: Số M3
+        - field: col12
+          header: Tỉ lệ
+        - field: col13
+          header: Số giờ
+        - field: col14
+          header: M3
+        - field: col15
+          header: Tỉ lệ
+        - field: col16
+          header: M3
+        - field: col17
+          header: Tỉ lệ
+        - field: col18
+          header: Kết quả
+        - field: col22
+          header: Cont rời
+        - field: col23
+          header: Cont ráp
+        - field: col19
+          header: Số người
+        - field: col20
+          header: Số tiền
+        - field: col21
+          header: Tổng thưởng
+        - field: nam
+          header: Năm
+        - field: thang
+          header: Tháng
+        - field: id
+          header: ID
+        - field: n_op
+          header: Bộ phận
+        - field: n_op
+          header: Tên công đoạn
+        - field: tenkhuvuc
+          header: Khu vực
+        - field: c_op
+          header: Mã công đoạn
+        - field: id
+          header: ID
+        - field: macongdoan
+          header: Mã công đoạn
+        - field: ngaythang
+          header: Ngày
+        - field: day_name
+          header: Thứ
+        - field: muctieu_songuoi
+          header: Số người
+        - field: muctieu_sogio
+          header: Số giờ
+        - field: muctieu_songuoi_tangca_15
+          header: Số người
+        - field: muctieu_sogio_tangca_15
+          header: Số giờ
+        - field: muctieu_songuoi_tangca_20
+          header: Số người
+        - field: muctieu_sogio_tangca_20
+          header: Số giờ
+        - field: muctieu_tonggio_hc
+          header: Hành chánh
+        - field: muctieu_tonggio_tc
+          header: Tăng ca
+        - field: muctieu_tonggio
+          header: Thực
+        - field: muctieu_sokhoi_theo_hc
+          header: Theo hành chánh
+        - field: muctieu_sokhoi_trungbinh
+          header: Chia đều các ngày
+        - field: songuoi_hiendien_hc
+          header: HC
+        - field: songuoi_hiendien_tc
+          header: TC
+        - field: giochenhlech
+          header: Giờ chênh lệch
+        - field: sogio_tangca_15
+          header: Tăng ca 1.5
+        - field: sogio_tangca_20
+          header: Tăng ca 2.0
+        - field: tonggio
+          header: Giờ
+        - field: sokhoi
+          header: Số khối
+        - field: tile
+          header: Tỉ lệ
+        - field: sokhoi_hoanthanh
+          header: Số khối
+    inputs:
+      - control: repThang
+        kind: date
+      - control: repositoryItemGridLookUpEdit1
+        kind: select
+      - control: repBoPhan
+        kind: select
+    buttons: []
+  - form: frmKeHoachSanXuatPO2_HTR_SapXep
+    title: Sắp xếp đơn hàng
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - PS_KEHOACH_DONHANG_GETDDH_SAPXEP
+      - PS_KEHOACH_DONHANG_GET_SAPXEP
+      - PS_KEHOACH_DONHANG_UPDATE_VITRI
+      - PS_KEHOACH_DONHANG_UPDATE_VITRI_DDH
+    grid:
+      columns:
+        - field: dondathang
+          header: Mã đơn hàng
+        - field: donhang
+          header: Đơn hàng sử dụng
+        - field: sapxep
+          header: STT
+        - field: lansanxuat
+          header: Đợt
+    inputs: []
+    buttons:
+      - control: btnSave
+        caption: Lưu
+  - form: frmBaoCaoTienDoChuyenSonAdd
+    title: Tiến độ lên chuyền sơn
+    inScope: true
+    entities:
+      - tr_color
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_currentcy
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_ORDER_REPLACEMENT
+    procs:
+      - TR_BAOCAO_TIENDO_CHUYENSON_DELETE
+      - TR_BAOCAO_TIENDO_CHUYENSON_GETALL
+      - TR_BAOCAO_TIENDO_CHUYENSON_GETLIST
+      - TR_BAOCAO_TIENDO_CHUYENSON_INSERT
+      - TR_BAOCAO_TIENDO_CHUYENSON_UPDATE
+      - TR_ORDER_DETAIL_GETBYMULTIPLEORDER
+      - TR_ORDER_GET2
+      - TR_ORDER_GETALL
+      - TR_ORDER_GETALLBYCUSTOMER
+      - TR_ORDER_GETBYSTATUS
+      - TR_ORDER_GETCONTAINER
+      - TR_ORDER_GETLIST
+      - TR_ORDER_Get3
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày
+        - field: masp
+          header: Mã sản phẩm
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: soluong_donhang
+          header: Số lượng
+        - field: tensp
+          header: Tên sản phẩm
+        - field: soluong_sanpham
+          header: Số lượng
+        - field: mam_tren_sanpham
+          header: Mâm / mã
+        - field: tongmam
+          header: Tổng mâm
+        - field: id
+          header: ID
+        - field: ghichu
+          header: Ghi chú
+    inputs:
+      - control: repDate
+        kind: date
+      - control: repSanPham
+        kind: select
+      - control: txtBangBaoCao
+        kind: text
+      - control: spSoLuongCont
+        kind: number
+      - control: dateTuNgay
+        kind: date
+      - control: dateDenNgay
+        kind: date
+    buttons:
+      - control: btnOK
+        caption: Đồng ý
+      - control: btnClose
+        caption: Thoát
+  - form: frm_tiendo_sanxuat
+    title: Tiến độ sản xuất
+    inScope: true
+    entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_reftype
+      - tr_sanpham
+      - tr_site
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_bieumau_friday
+      - tr_congdoan
+      - tr_currentcy
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+      - tr_thongke_soluong
+    repos:
+      - DQT_DEXUAT_PHOI
+      - HR_CONGTY
+      - LoggerManager
+      - SYS_GROUP
+      - SYS_USER
+      - TR_BIEUMAU_FRIDAY
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_REFTYPE
+      - TR_SANPHAM
+      - TR_SITE
+      - TR_THONGKE_SOLUONG
+    procs:
+      - CHART_THEODOI_SOLUONG_DONHANG
+      - CHART_THEODOI_SOLUONG_DONHANG2
+      - HR_CONGTY_GET
+      - TIENDO_SANXUAT
+      - TR_BIEUMAU_FRIDAY_GETBYREPORTID
+      - TR_DONDATHANG_CHITIET_LSX
+      - TR_DONDATHANG_GET3
+      - TR_ORDER_CHECK_FSC
+      - TR_ORDER_DETAIL_GETALL
+      - TR_ORDER_DETAIL_GETLISTBYORDER
+      - TR_ORDER_DETAIL_GETLISTCHITIET
+      - TR_ORDER_DETAIL_LSX
+      - TR_ORDER_DETAIL_PRINT
+      - TR_ORDER_GET2
+      - TR_ORDER_ISLOCK
+      - TR_THONGKE_CHITIET_LANUV
+      - TR_TIENDO_THANHPHAM_BY_ORDER
+    grid:
+      columns:
+        - field: order_number
+          header: Mã đơn hàng
+        - field: item_number
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: order_qty
+          header: Số lượng đơn hàng
+        - field: order_m3tc
+          header: Tổng khối tinh
+        - field: son01
+          header: Số lượng
+        - field: son01_per
+          header: "%"
+        - field: dg01
+          header: Số lượng
+        - field: dg01_per
+          header: "%"
+        - field: sct01
+          header: Số lượng
+        - field: sct01_per
+          header: "%"
+        - field: dg02
+          header: Số lượng
+        - field: dg02_per
+          header: "%"
+        - field: fullname
+          header: Tên nhân viên
+        - field: tenbophan
+          header: Bộ phận
+        - field: fullname
+          header: Tên nhân viên
+        - field: tenbophan
+          header: Bộ phận
+    inputs:
+      - control: repQuanLy
+        kind: select
+      - control: repNhanVien
+        kind: select
+    buttons: []
+  - form: frmScan110
+    title: Scan xuất kho
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_lenhcapphat
+      - tr_lenhcapphat_head
+      - tr_material
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+      - tr_tonkho_chitiet
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LENHCAPPHAT
+      - TR_LENHCAPPHAT_HEAD
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_SITE
+      - TR_TONKHO_CHITIET
+    procs:
+      - TR_LENHCAPPHAT_Get
+      - TR_LENHCAPPHAT_HEAD_GET2
+      - TR_LENHCAPPHAT_HEAD_GETBYKHO
+      - TR_MATERIAL_GETBYID
+      - TR_TONKHO_CHITIET_GETLISTBYMACT
+    grid:
+      columns:
+        - field: lenhcapphatid
+          header: Lệnh cấp phát
+        - field: loaicapphat
+          header: Loại cấp phát
+        - field: madonhang
+          header: Đơn hàng
+        - field: madondathang
+          header: Đơn hàng trắng
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: ĐVT
+        - field: soluong
+          header: Số lượng yêu cầu
+        - field: soluong_daphat
+          header: Số lượng đã phát
+        - field: soluong_conlai
+          header: Số lượng chưa phát
+        - field: soluong_nhap
+          header: Nhập số lượng
+        - field: nhom
+          header: Nhóm
+        - field: ghichu
+          header: Ghi chú
+        - field: id
+          header: id
+    inputs:
+      - control: glkLenhCapPhat
+        kind: select
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: cboLoaiXuatHang
+        kind: select
+      - control: cboKhoXuat
+        kind: select
+      - control: cboLoaiCapPhat
+        kind: select
+      - control: txtDonHang
+        kind: text
+      - control: txtNguoiNhan
+        kind: text
+      - control: txtGhiChu
+        kind: text
+      - control: txtBarcode
+        kind: text
+    buttons: []
+  - form: frmHoSoSanXuat
+    title: Hồ sơ sản xuất
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_order
+      - tr_order_replacement
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_HEHANG
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+    procs:
+      - TR_ORDER_GET2
+      - TR_ORDER_GETALL
+      - TR_ORDER_GETALLBYCUSTOMER
+      - TR_ORDER_GETBYSTATUS
+      - TR_ORDER_GETCONTAINER
+      - TR_ORDER_GETLIST
+      - TR_ORDER_Get3
+    grid:
+      columns:
+        - field: madonhang
+          header: Đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: soluong_sanxuat
+          header: Số lượng sản xuất
+        - field: ngaysanxuat
+          header: Ngày sản xuất
+        - field: id
+          header: Id
+        - field: nguoitao
+          header: Người tạo
+        - field: ngaytao
+          header: Ngày tạo
+        - field: nguoisua
+          header: Người sửa
+        - field: ngaysua
+          header: Ngày sửa
+        - field: mahoso
+          header: Mã hồ sơ
+        - field: mota
+          header: Mô tả
+    inputs:
+      - control: glkHoSoSanXuat
+        kind: select
+      - control: txtMoTa
+        kind: text
+    buttons:
+      - control: btnLoad
+        caption: SAO CHÉP HỒ SƠ
+      - control: btnCreate
+        caption: TẠO HỒ SƠ
+  - form: frmKeHoachHangTrangAdd
+    title: Tạo kế hoạch hàng trắng
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: gridLookUpEdit1
+        kind: select
+      - control: textEdit1
+        kind: text
+      - control: dateEdit1
+        kind: date
+      - control: textEdit2
+        kind: text
+    buttons: []
+  - form: frmKeHoachHangTrang_Ver2
+    title: Kế hoạch sản xuất hàng trắng
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user_rule
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang2
+      - tr_kehoach_hangtrang2_nguyenlieu
+    repos:
+      - SYS_GROUP
+      - SYS_USER_RULE
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_KEHOACH_HANGTRANG2
+      - TR_KEHOACH_HANGTRANG2_NGUYENLIEU
+    procs:
+      - TR_KEHOACH_HANGTRANG2_CREATE
+      - TR_KEHOACH_HANGTRANG2_GETALL2
+      - TR_KEHOACH_HANGTRANG2_GETALL3
+      - TR_KEHOACH_HANGTRANG2_GETALL4
+      - TR_KEHOACH_HANGTRANG2_GETALL5
+      - TR_KEHOACH_HANGTRANG2_NGUYENLIEU_CREATE
+      - TR_KEHOACH_HANGTRANG2_NGUYENLIEU_GETALL
+    grid:
+      columns:
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: soluong
+          header: Số lượng đơn hàng
+        - field: sokhoi_tinhche
+          header: Số khối tinh chế
+        - field: socont
+          header: Số cont
+        - field: dp09_from
+          header: Từ ngày
+        - field: dp09_to
+          header: Đến ngày
+        - field: dp09_per
+          header: Hoàn thành (%)
+        - field: dh06_from
+          header: Từ ngày
+        - field: dh06_to
+          header: Đến ngày
+        - field: dh06_per
+          header: Hoàn thành (%)
+        - field: dh07_from
+          header: Từ ngày
+        - field: dh07_to
+          header: Đến ngày
+        - field: dh07_per
+          header: Hoàn thành (%)
+        - field: lr02_from
+          header: Từ ngày
+        - field: lr02_to
+          header: Đến ngày
+        - field: lr02_per
+          header: Hoàn thành (%)
+        - field: nha01_from
+          header: Từ ngày
+        - field: nha01_to
+          header: Đến ngày
+        - field: nha01_per
+          header: Hoàn thành (%)
+        - field: id_trangthai
+          header: Trạng thái
+        - field: name
+          header: Trạng thái
+        - field: madonhang_sort
+          header: Mã đơn hàng
+        - field: maddh
+          header: Mã đơn hàng
+        - field: loainguyenlieu
+          header: Loại nguyên liệu
+        - field: sokhoi_tinhche
+          header: Số khối tinh chế
+        - field: dp09_from
+          header: Từ ngày
+        - field: dp09_to
+          header: Đến ngày
+        - field: dh06_from
+          header: Từ ngày
+        - field: dh06_to
+          header: Đến ngày
+        - field: dh07_from
+          header: Từ ngày
+        - field: dh07_to
+          header: Đến ngày
+        - field: lr02_from
+          header: Từ ngày
+        - field: lr02_to
+          header: Đến ngày
+        - field: nha01_from
+          header: Từ ngày
+        - field: nha01_to
+          header: Đến ngày
+        - field: id_trangthai
+          header: Trạng thái
+        - field: name
+          header: Trạng thái
+        - field: madonhang_sort
+          header: Mã đơn hàng
+    inputs:
+      - control: repTrangThai
+        kind: select
+      - control: glktrangthai
+        kind: select
+      - control: repTrangThai2
+        kind: select
+    buttons: []
+  - form: frmKeHoachSanXuatPO2
+    title: Kế hoạch đơn hàng
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_order
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TRTB_M_LOCATION
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_KEHOACH_HANGTRANG
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+    procs:
+      - PS_KEHOACH_DONHANG_CREATE
+      - PS_KEHOACH_DONHANG_CREATE2
+      - PS_KEHOACH_DONHANG_EXPORT
+      - PS_KEHOACH_DONHANG_EXPORT2
+      - PS_KEHOACH_DONHANG_GETALL5
+      - PS_KEHOACH_DONHANG_GETALL6
+      - PS_KEHOACH_DONHANG_GETALL7
+      - PS_KEHOACH_DONHANG_GETALL8
+      - PS_KEHOACH_DONHANG_GETALL9
+      - PS_KEHOACH_DONHANG_GETBYCOLUMN
+      - PS_KEHOACH_DONHANG_HOANTHANH
+      - PS_KEHOACH_DONHANG_SUASOLUONG
+      - PS_KEHOACH_DONHANG_TACHDONHANG
+      - PS_KEHOACH_DONHANG_TOTAL_CONT
+      - PS_KEHOACH_DONHANG_TOTAL_CONT2
+      - PS_KEHOACH_DONHANG_UPDATE
+      - PS_KEHOACH_DONHANG_UPDATE2
+      - PS_KEHOACH_DONHANG_UPDATE_GHICHU
+      - PS_KEHOACH_DONHANG_UPDATE_TRANGTHAI
+      - TR_GRIDVIEW_COLUMN_GET
+      - TR_GRIDVIEW_COLUMN_GETALL
+      - TR_GRIDVIEW_COLUMN_GETALL2
+      - TR_GRIDVIEW_COLUMN_GETDEPT
+      - TR_ORDER_ISLOCK
+    grid:
+      columns:
+        - field: fullname
+          header: Tên
+        - field: sapxep
+          header: STT
+        - field: lansanxuat
+          header: Đợt
+        - field: madonhang
+          header: Đơn hàng
+        - field: makhachhang
+          header: Mã khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: soluong
+          header: Số lượng kế hoạch
+        - field: socont
+          header: Số cont
+        - field: sokhoi
+          header: Số khối tinh
+        - field: trangthai
+          header: Trạng thái
+        - field: hoanthanh
+          header: Hoàn thành
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: typeid
+          header: typeID
+        - field: columnname
+          header: columnName
+        - field: ten
+          header: Ngày
+        - field: ngaykehoach
+          header: Giá trị
+        - field: lansanxuat
+          header: Lần sản xuất
+    inputs:
+      - control: repTrangThai1
+        kind: select
+      - control: repTruongBoPhan
+        kind: select
+      - control: repFilter
+        kind: select
+      - control: repositoryItemSpinEdit1
+        kind: number
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmKeHoachSanXuatPO2_HTR
+    title: Kế hoạch sản xuất hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_location
+    contextEntities:
+      - sys_user
+      - tr_bophan
+    repos:
+      - SYS_USER
+      - TRTB_M_LOCATION
+      - TR_BOPHAN
+    procs:
+      - PS_KEHOACH_DONHANG_CREATE3
+      - PS_KEHOACH_DONHANG_EXPORT
+      - PS_KEHOACH_DONHANG_EXPORT2
+      - PS_KEHOACH_DONHANG_GETALL4
+      - PS_KEHOACH_DONHANG_GETALL6
+      - PS_KEHOACH_DONHANG_GETALL7
+      - PS_KEHOACH_DONHANG_GETALL8
+      - PS_KEHOACH_DONHANG_GETALL9
+      - PS_KEHOACH_DONHANG_GETBYCOLUMN_DDH
+      - PS_KEHOACH_DONHANG_HOANTHANH_DDH
+      - PS_KEHOACH_DONHANG_SHOWINREPORT_DDH
+      - PS_KEHOACH_DONHANG_SUASOLUONG_DDH
+      - PS_KEHOACH_DONHANG_TACHDONHANG
+      - PS_KEHOACH_DONHANG_TOTAL_CONT
+      - PS_KEHOACH_DONHANG_TOTAL_CONT2
+      - PS_KEHOACH_DONHANG_UPDATE_DDH
+      - PS_KEHOACH_DONHANG_UPDATE_GHICHU_DDH
+      - PS_KEHOACH_DONHANG_UPDATE_TRANGTHAI_DDH
+      - TR_GRIDVIEW_COLUMN_GETALL
+      - TR_GRIDVIEW_COLUMN_GETALL2
+      - TR_GRIDVIEW_COLUMN_GETDEPT
+    grid:
+      columns:
+        - field: fullname
+          header: Tên
+        - field: sapxep
+          header: STT
+        - field: lansanxuat
+          header: Đợt sản xuất
+        - field: dondathang
+          header: Đơn hàng
+        - field: makhachhang
+          header: Mã khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: donhang
+          header: PO
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: soluong
+          header: Số lượng sản phẩm
+        - field: socont
+          header: Số cont
+        - field: sokhoi
+          header: Số khối tinh
+        - field: trangthai
+          header: Trạng thái
+        - field: hoanthanh
+          header: Hoàn thành
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: typeid
+          header: typeID
+        - field: columnname
+          header: columnName
+        - field: ten
+          header: Ngày
+        - field: ngaykehoach
+          header: Giá trị
+        - field: lansanxuat
+          header: Đợt sản xuất
+    inputs:
+      - control: repTrangThai
+        kind: select
+      - control: repTruongBoPhan
+        kind: select
+      - control: repFilter
+        kind: select
+      - control: repositoryItemMemoEdit2
+        kind: text
+      - control: repositoryItemSpinEdit1
+        kind: number
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmLichSuGiaoNhanHangTrang
+    title: Lịch sử giao nhận hàng trắng
+    inScope: false
+    entities: []
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+    procs:
+      - tr_Lichsugiaonhanhangtrang
+      - tr_Lichsugiaonhanhangtrang_CHITIET
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn đặt hàng
+        - field: tensp
+          header: Tên sản phẩm
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SLCT
+        - field: m3_tc
+          header: Số khối
+        - field: soluong
+          header: Số lượng ĐH
+        - field: slct_can
+          header: SLCT cần
+        - field: van9
+          header: Nhận vào
+        - field: van9_conlai
+          header: SL nhận còn lại
+        - field: vanp
+          header: Hoàn thành
+        - field: vano
+          header: Đã giao
+        - field: dhi9
+          header: Nhận vào
+        - field: dhi9_conlai
+          header: Còn lại
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: dhip
+          header: Hoàn thành
+        - field: dhip_conlai
+          header: Còn lại
+        - field: dhio
+          header: Đã giao
+        - field: dhio_conlai
+          header: Còn lại
+        - field: uvp
+          header: Hoàn thành
+        - field: lra9
+          header: Nhận vào
+        - field: lra9_conlai
+          header: Còn lại
+        - field: lrap
+          header: Hoàn thành
+        - field: lrap_conlai
+          header: Còn lại
+        - field: lrao
+          header: Đã giao
+        - field: lrao_conlai
+          header: Còn lại
+        - field: masp
+          header: Mã sản phẩm
+        - field: nha9
+          header: Nhận vào
+        - field: nhap
+          header: Hoàn thành
+        - field: nhao
+          header: Đã giao
+        - field: mahtr
+          header: Mã hàng trắng
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: repositoryItemComboBox1
+        kind: select
+      - control: repositoryItemComboBox2
+        kind: select
+    buttons: []
+  - form: frmThongKeCongDoan
+    title: Tiến độ đơn hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TRTB_M_LOCATION
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TRTB_M_LOCATION_GETALL
+      - TRTB_M_LOCATION_GETALL2
+      - TRTB_M_LOCATION_GETLIST
+      - TR_DONDATHANG_GET3
+      - TR_TRANGTHAI_SANXUAT_GETBYDATE2
+      - TR_TRANGTHAI_SANXUAT_GETBYDATE3
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG2
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG3
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG4
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG5
+      - TR_TRANGTHAI_SANXUAT_GETLIST4
+    grid:
+      columns:
+        - field: tenkhuvuc
+          header: Bộ phận
+        - field: n_op
+          header: Công đoạn
+        - field: dondathang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: mahtr
+          header: Mã hàng trắng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: soluong_can
+          header: Số lượng theo đơn hàng
+        - field: sokhoi_can
+          header: Số khối theo đơn hàng
+        - field: soluong_hoanthanh
+          header: Số lượng hoàn thành
+        - field: sokhoi_hoanthanh
+          header: Số khối hoàn thành
+        - field: soluong_conlai
+          header: Số lượng còn lại
+        - field: phantram
+          header: Phần trăm hoàn thành
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: sokhoi_in
+          header: Phôi đầu vào
+        - field: sokhoi
+          header: Số khối theo đơn hàng
+        - field: mact
+          header: Mẫ chi tiết
+    inputs:
+      - control: repViewType
+        kind: select
+      - control: repLoaiPhieu
+        kind: select
+      - control: repCongDoan
+        kind: select
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+    buttons: []
+  - form: frmTienDoHangTrang2
+    title: Theo dõi tiến độ hàng trắng
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_TRANGTHAI_SANXUAT_GETBYDATE2
+      - TR_TRANGTHAI_SANXUAT_GETBYDATE3
+    grid:
+      columns:
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: sokhoi_in
+          header: Phôi đầu vào
+        - field: sokhoi
+          header: Số khối theo đơn hàng
+        - field: dp01-prod
+          header: Hoàn thành
+        - field: dp02-in
+          header: Nhận
+        - field: dp02-prod
+          header: Hoàn thành
+        - field: dp03-in
+          header: Nhận
+        - field: dp03-prod
+          header: Hoàn thành
+        - field: dp04-prod
+          header: Hoàn thành
+        - field: va01-prod
+          header: Hoàn thành
+        - field: uv01-in
+          header: Nhận
+        - field: uv01-prod
+          header: Hoàn thành
+        - field: uv02-in
+          header: Nhận
+        - field: uv02-prod
+          header: Hoàn thành
+        - field: dh01-in
+          header: Nhận
+        - field: dh01-prod
+          header: Hoàn thành
+        - field: dh02-in
+          header: Nhận
+        - field: dh02-prod
+          header: Hoàn thành
+        - field: lr01-prod
+          header: Hoàn thành
+        - field: lr02-prod
+          header: Hoàn thành
+    inputs:
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+    buttons: []
+  - form: frmBaoCaoHangTrangAdd
+    title: Báo cáo hàng trắng
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_order
+      - tr_order_replacement
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_HEHANG
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+    procs:
+      - TR_ORDER_GET2
+      - TR_ORDER_GETALL
+      - TR_ORDER_GETALLBYCUSTOMER
+      - TR_ORDER_GETBYSTATUS
+      - TR_ORDER_GETCONTAINER
+      - TR_ORDER_GETLIST
+      - TR_ORDER_Get3
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: donhang
+          header: Đơn hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: soluongcont
+          header: Số lượng cont
+        - field: trangthai
+          header: Trạng thái
+        - field: ghichu
+          header: Ghi chú
+        - field: tungay
+          header: Từ ngày
+        - field: denngay
+          header: Đến ngày
+        - field: maddh
+          header: Mã đơn hàng
+    inputs:
+      - control: repTrangThai
+        kind: select
+      - control: repDonHang
+        kind: select
+      - control: txtBangBaoCao
+        kind: text
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmTongHopChiTiet_HangTrang
+    title: frmTongHopChiTiet_HangTrang
+    inScope: true
+    entities:
+      - tr_color
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_detail
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_currentcy
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_COLOR
+      - TR_CONGDOAN
+      - TR_CURRENTCY
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_DETAIL
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TR_DINHMUC_CAPPHAT_XEMTRUOC2
+      - TR_ORDER_DETAIL_GETALL
+      - TR_ORDER_DETAIL_GETLISTBYID
+      - TR_ORDER_DETAIL_GETLISTBYORDER
+    grid:
+      columns:
+        - field: masp
+          header: Mã sản phẩm
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: soluong
+          header: Số lượng cần
+        - field: dvt
+          header: ĐVT
+        - field: madondathang
+          header: Mã đơn hàng
+        - field: soluong_daphat
+          header: Số lượng đã nhận
+        - field: soluong_conlai
+          header: Số lượng còn lại
+        - field: soluong_dm
+          header: Số lượng
+        - field: mahtr
+          header: Mã hàng trắng
+        - field: tensp
+          header: Tên sản phẩm
+        - field: ghichu
+          header: Ghi chú
+        - field: capphat
+          header: Cấp phát
+        - field: order_number
+          header: Đơn hàng
+        - field: range
+          header: Hệ hàng
+    inputs:
+      - control: repKeSo
+        kind: text
+      - control: repDonHang
+        kind: select
+    buttons: []
+  - form: frm_quytrinh_sanxuat_danhsach2
+    title: "In phiếu pallet "
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SANPHAM
+      - TR_SITE
+    procs:
+      - TR_QUYTRINH_GET
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: chitiet
+          header: Sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: soluong
+          header: Số lượng
+        - field: masp
+          header: Mã sản phẩm
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: quytrinh
+          header: Quy trình
+        - field: id
+          header: ID
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SLCT
+        - field: soluong_donhang
+          header: SLDH
+        - field: m3_tc
+          header: M3
+        - field: soluong_sanxuat
+          header: Số lượng sản xuất
+        - field: ghichu
+          header: Ghi chú
+        - field: dain
+          header: Đã in phiếu
+        - field: tachphieu
+          header: Phiếu tách
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repMaSP
+        kind: select
+      - control: repositoryItemTextEdit1
+        kind: text
+      - control: txtTenCT
+        kind: text
+      - control: txtQuyTrinh
+        kind: text
+    buttons: []
+  - form: frm_tiendo_sanxuat_hangtrang
+    title: Tiến độ sản xuất
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_sanpham
+      - tr_site
+      - tr_order_detail
+    contextEntities:
+      - hr_congty
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - HR_CONGTY
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SANPHAM
+      - TR_SITE
+    procs:
+      - CHART_THEODOI_SOLUONG_DONHANG
+      - HR_CONGTY_GET
+      - TIENDO_SANXUAT_HTR
+      - TR_ORDER_DETAIL_PRINT
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng trắng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: soluong_yc
+          header: Số lượng đơn hàng
+        - field: soluong_dp
+          header: Số lượng
+        - field: dp_percent
+          header: "%"
+        - field: soluong_dh
+          header: Số lượng
+        - field: dh_percent
+          header: "%"
+        - field: soluong_lrap
+          header: Số lượng
+        - field: lrap_percent
+          header: "%"
+        - field: donhang
+          header: PO
+    inputs:
+      - control: repDonHang
+        kind: select
+    buttons: []
+  - form: frmKeHoachSanXuatPO2_HTR_Add
+    title: Thêm đơn hàng
+    inScope: true
+    entities:
+      - tr_dondathang
+    fingerprintScore: 0.83
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: tenncc
+          header: Nhà cung cấp
+        - field: trangthai
+          header: Trạng thái
+        - field: loaiddh
+          header: Loại đơn hàng
+        - field: selection
+          header: Chọn
+        - field: donhang
+          header: Sử dụng cho
+    inputs:
+      - control: repTrangThai
+        kind: select
+      - control: cboSite
+        kind: select
+    buttons:
+      - control: btnClose
+        caption: Đóng
+      - control: btnOK
+        caption: Chọn
+  - form: frmTieuChuanGoVan
+    title: Tiêu chuẩn gỗ ván
+    inScope: true
+    entities:
+      - tr_nguyenlieu_gva
+    tablesMissing:
+      - tr_loai_tieuchuan_phoi
+      - tr_nguyenlieu
+    repos:
+      - LoggerManager
+      - TR_LOAI_TIEUCHUAN_PHOI
+      - TR_NGUYENLIEU
+      - TR_NGUYENLIEU_GVA
+    procs:
+      - TR_LOAI_TIEUCHUAN_PHOI_INSERT
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: id_nguyenlieu
+          header: Nguyên liệu
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: tieuchuan
+          header: Chất lượng
+        - field: tieuchuan_phoi
+          header: Tiêu chuẩn phôi
+        - field: tile_haohut
+          header: Tỉ lệ hao hụt
+        - field: dongia
+          header: Đơn giá
+        - field: loaitien
+          header: Loại tiền
+    inputs:
+      - control: repNguyenLieu
+        kind: select
+      - control: repChatLuong
+        kind: select
+      - control: repLoaiTien
+        kind: select
+    buttons:
+      - control: btnSave
+        caption: Lưu
+      - control: btnClose
+        caption: Đóng
+  - form: frmTieuChuanVeneerAdd
+    title: frmTieuChuanVeneerAdd
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: textEdit1
+        kind: text
+      - control: textEdit2
+        kind: text
+      - control: comboBoxEdit1
+        kind: select
+      - control: comboBoxEdit2
+        kind: select
+      - control: spinEdit1
+        kind: number
+      - control: spinEdit2
+        kind: number
+      - control: comboBoxEdit3
+        kind: select
+    buttons: []
+  - form: frmThongKeSanLuongMucTieu
+    title: Thống kê sản lượng mục tiêu
+    inScope: false
+    entities: []
+    repos: []
+    procs:
+      - TR_THONGKE_SANLUONG_MUCTIEU_BYYEAR
+    grid:
+      columns:
+        - field: congdoan
+          header: Mã công đoạn
+        - field: tencongdoan
+          header: Tên công đoạn
+        - field: trangthai
+          header: Trạng thái
+        - field: "1"
+          header: Tháng 1
+        - field: "2"
+          header: Tháng 2
+        - field: "3"
+          header: Tháng 3
+        - field: "4"
+          header: Tháng 4
+        - field: "5"
+          header: Tháng 5
+        - field: "6"
+          header: Tháng 6
+        - field: "7"
+          header: Tháng 7
+        - field: "8"
+          header: Tháng 8
+        - field: "9"
+          header: Tháng 9
+        - field: "10"
+          header: Tháng 10
+        - field: "11"
+          header: Tháng 11
+        - field: "12"
+          header: Tháng 12
+    inputs:
+      - control: repYear
+        kind: date
+    buttons: []
+  - form: frmTrangThaiSanXuatHTR
+    title: Trạng thái sản xuất hàng trắng
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TR_DONDATHANG_GET3
+      - TR_DONDATHANG_GETBYSTATUS
+      - TR_DONDATHANG_GET_THANHTOAN
+      - TR_TRANGTHAI_SANXUAT_GETALL_MADDH
+    grid:
+      columns:
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp1
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: soluong
+          header: Số lượng
+        - field: sokhoi
+          header: Số khối
+        - field: congdoan
+          header: Mã công đoạn
+        - field: n_location
+          header: Tên công đoạn
+        - field: ngaythang
+          header: Ngày tháng
+    inputs: []
+    buttons: []
+  - form: frmScan110_1
+    title: Danh sách vật tư
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+    contextEntities:
+      - sys_user
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_MATERIAL
+      - TR_NGUYENLIEU
+    procs:
+      - TR_MATERIAL_GETBYID
+      - TR_MATERIAL_GETBYKHO
+      - TR_MATERIAL_GetAll
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: mavt
+          header: Mã chi tiết
+        - field: mota
+          header: Tên chi tiết
+        - field: quycach
+          header: Quy cách
+        - field: mausac
+          header: Màu sắc
+        - field: dvt
+          header: ĐVT
+    inputs:
+      - control: repMemoEdit
+        kind: text
+    buttons:
+      - control: btnReLoad
+        caption: Nạp lại
+      - control: btnClose
+        caption: Đóng
+  - form: frmKeHoachHangTrang_SapXep
+    title: Sắp xếp đơn hàng
+    inScope: true
+    entities:
+      - tr_pallet
+    fingerprintScore: 0.67
+    tablesMissing:
+      - tr_kehoach_hangtrang2_head
+    repos:
+      - TR_KEHOACH_HANGTRANG2_HEAD
+    procs:
+      - TR_KEHOACH_HANGTRANG2_HEAD_GETALL
+      - TR_KEHOACH_HANGTRANG2_HEAD_SETORDER
+    grid:
+      columns:
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: donhang
+          header: Đơn hàng sử dụng
+        - field: stt
+          header: STT
+    inputs: []
+    buttons:
+      - control: btnSave
+        caption: Lưu
+  - form: frmQuanLyTieuChuan
+    title: Quản lý tiêu chuẩn chất lượng
+    inScope: true
+    entities:
+      - tr_material
+    tablesMissing:
+      - tr_material_classification
+      - tr_quality_criteria
+      - tr_quality_standards
+    repos:
+      - TR_MATERIAL_CLASSIFICATION
+      - TR_QUALITY_CRITERIA
+      - TR_QUALITY_STANDARDS
+    procs:
+      - TR_MATERIAL_CLASSIFICATION_GETALL
+    grid:
+      columns:
+        - field: name
+          header: Nhóm
+        - field: code
+          header: Mã
+        - field: parent_code
+          header: Thuộc nhóm
+        - field: seq_no
+          header: STT
+        - field: criteria_id
+          header: Tiêu chí kiểm tra
+        - field: criteria_name
+          header: Tiêu chí
+        - field: category_name
+          header: Loại
+        - field: standard_name
+          header: Tiêu chuẩn
+        - field: category_name
+          header: Phân loại
+        - field: standard_id
+          header: Standard Id
+    inputs:
+      - control: repTieuChi
+        kind: select
+      - control: txtClassCode
+        kind: text
+    buttons: []
+  - form: frm_quytrinh_sanxuat_reprint
+    title: frm_quytrinh_sanxuat_reprint
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaisp
+      - tr_sanpham
+    tablesMissing:
+      - tr_hinhanh
+      - tr_nguyenlieu
+    repos:
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KHACHHANG
+      - TR_LOAISP
+      - TR_NGUYENLIEU
+      - TR_SANPHAM
+    procs: []
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: chitiet
+          header: Sản phẩm
+        - field: mota
+          header: Mô tả
+        - field: soluong
+          header: Số lượng
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: Số lượng chi tiết
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: id
+          header: ID
+        - field: dain
+          header: Đã in phiếu
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repSanPham
+        kind: select
+    buttons: []
+  - form: frm_QuyTrinh_SanXuat
+    title: Quy trình sản xuất
+    inScope: true
+    entities:
+      - tr_order_detail
+    fingerprintScore: 1
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: order_number
+          header: Mã đơn hàng
+        - field: item_number
+          header: Mã sản phẩm
+        - field: description
+          header: Tên sản phẩm
+        - field: order_qty
+          header: Số lượng
+    inputs: []
+    buttons: []
+  - form: frmTieuChuanChatLuong
+    title: Tiêu chuẩn chất lượng
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: name
+          header: Name
+        - field: fullname
+          header: FullName
+        - field: type
+          header: Type
+        - field: name
+          header: Name
+        - field: datemodified
+          header: Date Modified
+        - field: type
+          header: Type
+        - field: size
+          header: Size
+        - field: fullname
+          header: Path
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmTieuChuanChatLuong2
+    title: Quản lý tiêu chuẩn chất lượng
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user_rule
+    repos:
+      - SYS_USER_RULE
+    procs: []
+    grid:
+      columns:
+        - field: name
+          header: Remote
+        - field: type
+          header: Type
+        - field: name
+          header: Name
+        - field: size
+          header: Size
+        - field: modified
+          header: Modified
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: memoLog
+        kind: text
+    buttons: []
+  - form: frmBaoCaoSanXuatHTR
+    title: Báo cáo sản xuất hàng trắng
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+    procs:
+      - TR_TRANGTHAI_SANXUAT_GETBYDATE
+      - TR_TRANGTHAI_SANXUAT_GETBYMONTH
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: sokhoi
+          header: Số khối
+        - field: nha9
+          header: Nhận vào
+        - field: nhap
+          header: Hoàn thành
+        - field: nhao
+          header: Đã giao
+        - field: van9
+          header: Nhận vào
+        - field: vanp
+          header: Hoàn thành
+        - field: vano
+          header: Đã giao
+        - field: dhi9
+          header: Nhận vào
+        - field: dhip
+          header: Hoàn thành
+        - field: dhio
+          header: Đã giao
+        - field: lra9
+          header: Nhận vào
+        - field: lrap
+          header: Hoàn thành
+        - field: lrao
+          header: Đã giao
+    inputs:
+      - control: repViewType
+        kind: select
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+      - control: repThang
+        kind: date
+    buttons: []
+  - form: frmDanhSachHoSoSanXuat
+    title: Danh sách hồ sơ sản xuất
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user
+    repos:
+      - SYS_USER
+    procs: []
+    grid:
+      columns:
+        - field: mahoso
+          header: Mã hồ sơ
+        - field: mota
+          header: Mô tả
+        - field: loaihoso
+          header: Loại hồ sơ
+        - field: ngayhethan
+          header: Ngày hết hạn
+        - field: ngaytao
+          header: Ngày tạo
+        - field: nguoitao
+          header: Người tạo
+        - field: donhang
+          header: Đơn hàng
+        - field: isrelease
+          header: Đã phát hành
+        - field: loaiyeucau
+          header: Loại yêu cầu
+    inputs:
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repLoaiHoSo
+        kind: select
+      - control: repUser
+        kind: select
+    buttons: []
+  - form: frmGiaoNhanHangTrang
+    title: Trạng thái sản xuất hàng trắng
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_dondathang_chitiet
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+      - tr_rout_uv
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_GROUP
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_DONDATHANG_CHITIET
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_ROUT_UV
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_DONDATHANG_GETLISTHTR
+      - TR_ROUT_UV_GET
+      - TR_ROUT_UV_GETBYID
+      - TR_TRANGTHAI_SANXUAT_GETLIST
+      - TR_TRANGTHAI_SANXUAT_GETLIST2
+      - TR_TRANGTHAI_SANXUAT_GETLIST3
+      - TR_TRANGTHAI_SANXUAT_INSERT
+    grid:
+      columns:
+        - field: maddh
+          header: Mã đơn hàng
+        - field: chitiet
+          header: Mã sản phẩm
+        - field: tenchitiet
+          header: Tên sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: stt
+          header: STT
+        - field: mact
+          header: Mã chi tiết
+        - field: chitiet
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_tc
+          header: SLCT
+        - field: m3_tc
+          header: Số khối
+        - field: soluong_donhang
+          header: Số lượng ĐH
+        - field: slct_can
+          header: SLCT cần
+        - field: dphoip
+          header: Hoàn thành
+        - field: dphoip_conlai
+          header: Còn lại
+        - field: van9
+          header: "Nhận vào "
+        - field: van9_conlai
+          header: SL nhận còn lại
+        - field: vanp
+          header: Hoàn thành
+        - field: lra9_conlai
+          header: Còn lại
+        - field: vano
+          header: Đã giao
+        - field: dhip
+          header: Hoàn thành
+        - field: dhio_conlai
+          header: "Còn lại "
+        - field: dhip_conlai
+          header: Còn lại
+        - field: uvp
+          header: "Hoàn thành "
+        - field: lrap
+          header: "Hoàn thành "
+        - field: lrap_conlai
+          header: Còn lại
+        - field: masp
+          header: Mã sản phẩm
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: nha9
+          header: Nhận vào
+        - field: nhap
+          header: Hoàn thành
+        - field: nhao
+          header: Đã giao
+        - field: dhi9
+          header: Nhận vào
+        - field: dhio
+          header: Đã giao
+        - field: lra9
+          header: Nhận vào
+        - field: lrao
+          header: Đã giao
+        - field: mahtr
+          header: Mã hàng trắng
+        - field: lrao_conlai
+          header: Còn lại
+        - field: dhi9_conlai
+          header: Còn lại
+        - field: uv9_conlai
+          header: Còn lại
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repSanPham
+        kind: select
+    buttons: []
+  - form: frmKeHoachHangTrang
+    title: Kế hoạch hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_op
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - TRTB_M_OP
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_KEHOACH_HANGTRANG
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TR_KEHOACH_HANGTRANG_GETALL
+      - TR_KEHOACH_HANGTRANG_GETBYID
+      - TR_KEHOACH_HANGTRANG_INSERT
+      - TR_KEHOACH_HANGTRANG_UPDATE
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+    buttons: []
+  - form: frmKeHoachHangTrang3
+    title: Kế hoạch sản xuất hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_op
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_kehoach_hangtrang_chitiet
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - TRTB_M_OP
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_KEHOACH_HANGTRANG
+      - TR_KEHOACH_HANGTRANG_CHITIET
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TRTB_M_OP_GET
+      - TR_KEHOACH_HANGTRANG_AUTOCREATE
+      - TR_KEHOACH_HANGTRANG_CHITIET_CONFIRM
+      - TR_KEHOACH_HANGTRANG_CHITIET_DELETEALL
+      - TR_KEHOACH_HANGTRANG_CHITIET_GETALL
+      - TR_KEHOACH_HANGTRANG_CHITIET_GETALL2
+      - TR_KEHOACH_HANGTRANG_GETALL2
+      - TR_KEHOACH_HANGTRANG_GETBYORDER
+    grid:
+      columns:
+        - field: tenkhuvuc
+          header: Khu vực
+        - field: n_op
+          header: Công đoạn
+        - field: c_op
+          header: Mã công đoạn
+        - field: id_kehoach
+          header: id_kehoach
+        - field: congdoan
+          header: Công đoạn
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: tensp
+          header: Tên sản phẩm
+        - field: hehang
+          header: Hệ hàng
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: ngaythang
+          header: Ngày tháng
+        - field: soluong_kehoach
+          header: Số lượng kế hoạch
+        - field: xacnhan
+          header: Xác nhận
+        - field: id_chitiet
+          header: id_chitiet
+    inputs:
+      - control: repCongDoan
+        kind: select
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+    buttons: []
+  - form: frmKeHoachHangTrang_Ver3
+    title: Kế hoạch hàng trắng
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+    contextEntities:
+      - sys_user_rule
+      - sys_user
+    tablesMissing:
+      - tr_calendar
+      - tr_kehoach_hangtrang3
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER_RULE
+      - TR_CALENDAR
+      - TR_HEHANG
+      - TR_KEHOACH_HANGTRANG3
+      - TR_KHACHHANG
+      - TR_NGUYENLIEU
+    procs:
+      - SYS_USER_RULE_Get
+      - TR_KEHOACH_HANGTRANG3_DELETEBYID
+      - TR_KEHOACH_HANGTRANG3_GETALL
+      - TR_KEHOACH_HANGTRANG3_GETBYID
+      - TR_KEHOACH_HANGTRANG3_INSERT
+      - TR_KEHOACH_HANGTRANG3_UPDATE
+    grid:
+      columns:
+        - field: stt
+          header: STT
+        - field: madonhang
+          header: Đơn hàng
+        - field: donhang_sanxuat
+          header: Số PO
+        - field: hehang
+          header: Hệ hàng
+        - field: khachhang
+          header: Khách hàng
+        - field: socont_donhang
+          header: SL cont
+        - field: ngayyeucau
+          header: Ngày yêu cầu xuất
+        - field: songayxuat
+          header: Ngày trễ/ sớm
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: sokhoi_tinhche
+          header: Số m3 tinh chế
+        - field: phoi1_batdau
+          header: Bắt đầu
+        - field: phoi1_ketthuc
+          header: Kết thúc
+        - field: phoi1_tongngaylam
+          header: Tổng số ngày làm
+        - field: phoi1_sokhoi_theongay
+          header: M3 mỗi ngày
+        - field: phoi1_songuoi
+          header: Tổng số người
+        - field: phoi1_sokhoi_songuoi
+          header: Số m3/người/ngày
+        - field: phoi2_batdau
+          header: Bắt đầu
+        - field: phoi2_ketthuc
+          header: Kết thúc
+        - field: phoi2_tongngaylam
+          header: Tổng số ngày làm
+        - field: phoi2_sokhoi_theongay
+          header: M3 mỗi ngày
+        - field: phoi2_songuoi
+          header: Tổng số người
+        - field: phoi2_sokhoi_songuoi
+          header: Số m3/người/ngày
+        - field: dln_batdau
+          header: Bắt đầu
+        - field: dln_ketthuc
+          header: Kết thúc
+        - field: dln_tongngaylam
+          header: Tổng số ngày làm
+        - field: dln_sokhoi_theongay
+          header: M3 mỗi ngày
+        - field: dln_songuoi
+          header: Tổng số người
+        - field: dln_sokhoi_songuoi
+          header: Số m3/người/ngày
+        - field: ghichu
+          header: Ghi chú
+        - field: trangthai
+          header: Trạng thái
+        - field: name
+          header: Trạng thái
+        - field: id
+          header: ID
+    inputs:
+      - control: repTrangThai
+        kind: select
+      - control: repTrangThai2
+        kind: select
+    buttons: []
+  - form: frmKeHoachSanXuatPO
+    title: Kế hoạch sản xuất
+    inScope: true
+    entities:
+      - tr_hehang
+      - tr_khachhang
+      - tr_loaincc
+      - tr_nhacc
+      - tr_order
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_nguyenlieu
+    repos:
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_HEHANG
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAINCC
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHACC
+      - TR_ORDER
+    procs:
+      - TR_NHACC_GetAll
+      - TR_ORDER_GETALL
+      - TR_ORDER_GETBYSTATUS
+      - TR_ORDER_GETLIST
+      - TR_ORDER_Get3
+    grid:
+      columns:
+        - field: kehoachthang
+          header: Kế hoạch tháng
+        - field: donhang
+          header: Đơn hàng
+        - field: order_number
+          header: Mã đơn hàng
+        - field: range
+          header: Hệ hàng
+        - field: cont_qty
+          header: Số lượng cont
+        - field: customer
+          header: Khách hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: slcont
+          header: Số lượng cont
+        - field: ncc
+          header: Nhà cung cấp sơn
+        - field: vendor_id
+          header: Mã nhà cung cấp
+        - field: vendor_name
+          header: Tên nhà cung cấp
+        - field: htr_ngaydukien
+          header: Từ ngày
+        - field: htr_ngaythucte
+          header: Đến ngày
+        - field: lr_tungay
+          header: Từ ngày
+        - field: lr_denngay
+          header: Đến ngày
+        - field: nguoi_tungay
+          header: Từ ngày
+        - field: nguoi_denngay
+          header: Đến ngày
+        - field: son_tungay
+          header: "Từ ngày "
+        - field: son_denngay
+          header: Đến ngày
+        - field: dog_tungay
+          header: Từ ngày
+        - field: dog_denngay
+          header: Đến ngày
+        - field: final_tungay
+          header: Từ ngày
+        - field: final_denngay
+          header: Đến ngày
+        - field: ghichu
+          header: Ghi chú
+        - field: id
+          header: ID
+        - field: trangthai
+          header: Trạng thái đơn hàng
+    inputs:
+      - control: repositoryItemDateEdit13
+        kind: date
+      - control: glkDonhang
+        kind: select
+      - control: glkNCC
+        kind: select
+      - control: repositoryItemDateEdit1
+        kind: date
+      - control: repositoryItemDateEdit2
+        kind: date
+      - control: repositoryItemDateEdit3
+        kind: date
+      - control: repositoryItemDateEdit4
+        kind: date
+      - control: repositoryItemDateEdit5
+        kind: date
+      - control: repositoryItemDateEdit6
+        kind: date
+      - control: repositoryItemDateEdit7
+        kind: date
+      - control: repositoryItemDateEdit8
+        kind: date
+      - control: repositoryItemDateEdit9
+        kind: date
+      - control: repositoryItemDateEdit10
+        kind: date
+      - control: repositoryItemDateEdit11
+        kind: date
+      - control: repositoryItemDateEdit12
+        kind: date
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmCongDoan
+    title: Danh sách công đoạn sản xuất
+    inScope: false
+    entities: []
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+    procs:
+      - TR_CONGDOAN_GETALL
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: bophan
+          header: Bộ phận
+        - field: macd
+          header: Mã công đoạn
+        - field: tencd
+          header: Tên công đoạn
+        - field: nguoitao
+          header: Người tạo
+        - field: ngaytao
+          header: Ngày tạo
+        - field: active
+          header: Còn sử dụng
+    inputs: []
+    buttons: []
+  - form: frmTieuChuanVeneer
+    title: frmTieuChuanVeneer
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs: []
+    buttons: []
+  - form: frmBaoCaoSanLuongTheoMucTieu
+    title: Báo cáo sản lượng theo mục tiêu
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_THONGKE_SANPHAM_MONITORING3
+    grid:
+      columns:
+        - field: chenhlech
+          header: Chênh lệch
+        - field: macongdoan
+          header: Mã công đoạn
+        - field: tencongdoan
+          header: Tên công đoạn
+        - field: ngaythang
+          header: Ngày
+        - field: songuoi_hanhchanh
+          header: Số người hành chính
+        - field: songuoi_tangca
+          header: Số người tăng ca
+        - field: sogio_hanhchinh
+          header: Số giờ hành chính
+        - field: sogio_tangca
+          header: Số giờ tăng ca theo hệ số
+        - field: muctieu_hanhchinh
+          header: Mục tiêu hành chính
+        - field: muctieu_tangca
+          header: Mục tiêu tăng ca
+        - field: tongmuctieu
+          header: Tổng mục tiêu
+        - field: sokhoi_hoanthanh
+          header: Số khối hoàn thành
+        - field: phantram_hoanthanh
+          header: "% hoàn thành"
+        - field: tile
+          header: Tỉ lệ
+    inputs:
+      - control: repThang
+        kind: date
+    buttons: []
+  - form: frmTienDoChuyenSon
+    title: Tiến độ sản xuất chuyền sơn
+    inScope: true
+    entities:
+      - tr_khuvuc
+    tablesMissing:
+      - tr_khuvuc_chuyenson
+      - tr_tiendo_chuyenson
+    repos:
+      - TR_KHUVUC_CHUYENSON
+      - TR_TIENDO_CHUYENSON
+    procs:
+      - TR_KHUVUC_CHUYENSON_GET
+      - TR_KHUVUC_CHUYENSON_GETALL
+      - TR_TIENDO_CHUYENSON_GETBYKHUVUC
+      - TR_TIENDO_CHUYENSON_GETBYKHUVUC2
+    grid:
+      columns:
+        - field: tenkhuvuc
+          header: Chuyền sơn
+        - field: donhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết
+        - field: soluong_donhang
+          header: Số lượng đơn hàng
+        - field: buoc1
+          header: Bước 1
+        - field: buoc2
+          header: Bước 2
+        - field: buoc3
+          header: Bước 3
+        - field: buoc4
+          header: Bước 4
+        - field: buoc5
+          header: Bước 5
+        - field: buoc6
+          header: Bước 6
+        - field: buoc7
+          header: Bước 7
+        - field: buoc8
+          header: Bước 8
+        - field: buoc9
+          header: Bước 9
+        - field: buoc10
+          header: Bước 10
+        - field: buoc11
+          header: Bước 11
+        - field: buoc12
+          header: Bước 12
+        - field: buoc13
+          header: Bước 13
+        - field: buoc14
+          header: Bước 14
+        - field: buoc15
+          header: Bước 15
+    inputs:
+      - control: repChuyenSon
+        kind: select
+      - control: repositoryItemCheckedComboBoxEdit1
+        kind: select
+    buttons: []
+  - form: frmTienDoChuyenSon2
+    title: Tiến độ chuyền sơn
+    inScope: false
+    entities: []
+    contextEntities:
+      - sys_user_rule
+      - sys_user
+    tablesMissing:
+      - tr_nguyenlieu
+      - tr_tiendo_hoanthien
+    repos:
+      - SYS_USER_RULE
+      - TR_NGUYENLIEU
+      - TR_TIENDO_HOANTHIEN
+    procs:
+      - SYS_USER_RULE_Get
+      - TR_TIENDO_HOANTHIEN_GETBYDATE
+      - TR_TIENDO_HOANTHIEN_GETBYDATE2
+      - TR_TIENDO_HOANTHIEN_GETBYORDERS
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày nhập
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: masp
+          header: Mã sản phẩm
+        - field: mact
+          header: Mã chi tiết
+        - field: tenct
+          header: Tên chi tiết/ Sản phẩm
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_hangtrang
+          header: Hàng trắng về
+        - field: soluong_son_pallet
+          header: Pallet
+        - field: soluong_son_bangtai
+          header: Băng tải
+        - field: soluong_son_treo
+          header: Treo
+        - field: soluong_donggoi_pallet
+          header: Pallet
+        - field: soluong_donggoi_bangtai
+          header: Băng tải
+    inputs:
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmTienDoHangTrang3
+    title: Nhập tiến độ sản xuất
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_pallet
+      - tr_pallet_card
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - sys_user_rule
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - SYS_USER_RULE
+      - TRTB_M_LOCATION
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PALLET
+      - TR_PALLET_CARD
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - SYS_USER_RULE_Get
+      - TRTB_M_LOCATION_GETBYDEPARTMENT
+      - TRTB_M_LOCATION_NEXT_GETALL
+      - TR_DONDATHANG_GETLISTHTR
+      - TR_PALLET_CARD_GETBYID
+      - TR_PALLET_GETBYID
+      - TR_TINHGIA_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG2
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG3
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG4
+      - TR_TRANGTHAI_SANXUAT_INSERT
+    grid:
+      columns:
+        - field: maddh
+          header: Đơn hàng
+        - field: tenkhuvuc
+          header: Bộ phận
+        - field: n_location
+          header: Công đoạn
+        - field: location_type
+          header: Nhóm
+        - field: tenkhuvuc
+          header: Bộ phận
+        - field: n_location
+          header: Công đoạn
+        - field: mahtr
+          header: Mã hàng trắng
+        - field: stt
+          header: STT
+        - field: tenct
+          header: Tên chi tiết
+        - field: nguyenlieu
+          header: Nguyên liệu
+        - field: dayy_tc
+          header: Dày
+        - field: rong_tc
+          header: Rộng
+        - field: dai_tc
+          header: Dài
+        - field: soluong_can
+          header: Số lượng cần
+        - field: soluong_hoanthanh
+          header: Số lượng đã hoàn thành
+        - field: soluong_conlai
+          header: Số lượng còn lại
+        - field: soluong_nhap
+          header: Nhập số lượng
+        - field: card_no
+          header: Mã pallet
+        - field: mact
+          header: Mã chi tiết
+    inputs:
+      - control: repDonHang
+        kind: select
+      - control: repCongDoan
+        kind: select
+      - control: repCongDoanTiepTheo
+        kind: select
+      - control: repositoryItemSpinEdit1
+        kind: number
+      - control: repLoaiPhieu
+        kind: select
+    buttons: []
+  - form: frmTienDoSanXuat
+    title: Tiến độ sản xuất
+    inScope: true
+    entities:
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_TRANGTHAI_SANXUAT_BAOCAO_THEONGAY
+      - TR_TRANGTHAI_SANXUAT_REPORT5
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày làm
+        - field: tencongdoan
+          header: Công đoạn
+        - field: songuoi_hiendien_hc
+          header: Số người hiện diện
+        - field: sokhoi
+          header: Tổng số khối <br>(m3)
+        - field: ti_01
+          header: 7:30 <br>~<br>9:30
+        - field: ti_02
+          header: 9:30 <br>~<br>11:30
+        - field: ti_03
+          header: 12:30 <br>~<br>14:30
+        - field: ti_04
+          header: 14:30 <br>~<br>16:30
+        - field: ti_05
+          header: ">= 16:30"
+        - field: macongdoan
+          header: Mã công đoạn
+        - field: binhquan
+          header: M3/Người/Ngày
+    inputs:
+      - control: repTuNgay
+        kind: date
+      - control: repDenNgay
+        kind: date
+    buttons: []
+  - form: frmTinhGiaCongDoanSanXuat
+    title: frmTinhGiaCongDoanSanXuat
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemDateEdit1
+        kind: date
+    buttons: []
+  - form: frmTinhGiaSanXuat
+    title: frmTinhGiaSanXuat
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+      - TR_TRANGTHAI_SANXUAT
+    procs:
+      - TR_DONDATHANG_GET3
+      - TR_DONDATHANG_GETBYSTATUS
+      - TR_DONDATHANG_GET_THANHTOAN
+      - TR_HEHANG_GetList
+      - TR_TINHGIA_BY_DDH
+      - TR_TINHGIA_BY_DDH2
+    grid:
+      columns:
+        - field: ngaythang
+          header: Ngày làm
+        - field: macongdoan
+          header: Mã công đoạn
+        - field: tencongdoan
+          header: Tên công đoạn
+        - field: madonhang
+          header: Mã đơn hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: sokhoi
+          header: Số khối hoàn thành
+        - field: songuoi_hiendien
+          header: Số người hiện diện
+        - field: luong1ngay
+          header: Lương bình quân trong ngày
+        - field: phantram
+          header: Phần trăm HT
+        - field: thanhtien
+          header: Tổng chi phí
+    inputs: []
+    buttons: []
+  - form: frmTrangThaiSanXuat2
+    title: "Trạng thái sản xuất "
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemGridLookUpEdit1
+        kind: select
+    buttons: []
+  - form: frmXacNhanHoanThanhHangTrang
+    title: Xác nhận hoàn thành
+    inScope: false
+    entities: []
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_nguyenlieu
+    repos:
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_NGUYENLIEU
+    procs:
+      - TR_PHIEUTRAHANGTRANG_NHAP_GETALL
+      - pb_chitiet_phieubuhang_GetAll
+      - pb_chitiet_phieubuhang_XACNHAN
+    grid:
+      columns:
+        - field: id_phieubu
+          header: Số phiếu
+        - field: machitiet
+          header: Mã chi tiết
+        - field: tenchitiet
+          header: Tên chi tiết
+        - field: dayy
+          header: Dày
+        - field: rong
+          header: Rộng
+        - field: dai
+          header: Dài
+        - field: soluong
+          header: Số lượng bù
+        - field: bophannhan
+          header: Bộ phận nhận
+        - field: bophantra
+          header: Bộ phận trả
+        - field: ghichu
+          header: Ghi chú
+        - field: xacnhanhoanthanh
+          header: Hoàn thành
+        - field: id_chitiet_phieubu
+          header: id
+    inputs:
+      - control: repositoryItemCheckEdit1
+        kind: boolean
+    buttons: []
+  - form: frmKeHoachHangTrang
+    title: Kế hoạch hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_op
+    contextEntities:
+      - tr_bophan
+    tablesMissing:
+      - tr_congdoan
+      - tr_kehoach_hangtrang
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - TRTB_M_OP
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_KEHOACH_HANGTRANG
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TR_KEHOACH_HANGTRANG_GETALL
+      - TR_KEHOACH_HANGTRANG_GETBYID
+      - TR_KEHOACH_HANGTRANG_INSERT
+      - TR_KEHOACH_HANGTRANG_UPDATE
+    grid:
+      columns: []
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+    buttons: []
+  - form: frmMucTieuSanXuatAdd
+    title: Nhập mục tiêu sản xuất
+    inScope: true
+    entities:
+      - trtb_m_op
+      - tr_hehang
+      - tr_khachhang
+    tablesMissing:
+      - tr_muctieu_sanxuat
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - LoggerManager
+      - TRTB_M_OP
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_MUCTIEU_SANXUAT
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TR_MUCTIEU_SANXUAT_DELETEALL
+      - TR_MUCTIEU_SANXUAT_GETALL
+      - TR_MUCTIEU_SANXUAT_GETALL2
+      - TR_MUCTIEU_SANXUAT_INSERT
+    grid:
+      columns:
+        - field: c_op
+          header: Mã công đoạn
+        - field: n_op
+          header: Tên công đoạn
+        - field: tenkhuvuc
+          header: Khu vực
+        - field: donhang
+          header: Đơn hàng
+        - field: hehang
+          header: Hệ hàng
+        - field: d1
+          header: "1"
+        - field: d2
+          header: "2"
+        - field: d3
+          header: "3"
+        - field: d4
+          header: "4"
+        - field: d5
+          header: "5"
+        - field: d6
+          header: "6"
+        - field: d7
+          header: "7"
+        - field: d8
+          header: "8"
+        - field: d9
+          header: "9"
+        - field: d10
+          header: "10"
+        - field: d11
+          header: "11"
+        - field: d12
+          header: "12"
+        - field: d13
+          header: "13"
+        - field: d14
+          header: "14"
+        - field: d15
+          header: "15"
+        - field: d16
+          header: "16"
+        - field: d17
+          header: "17"
+        - field: d18
+          header: "18"
+        - field: d19
+          header: "19"
+        - field: d20
+          header: "20"
+        - field: d21
+          header: "21"
+        - field: d22
+          header: "22"
+        - field: d23
+          header: "23"
+        - field: d24
+          header: "24"
+        - field: d25
+          header: "25"
+        - field: d26
+          header: "26"
+        - field: d27
+          header: "27"
+        - field: d28
+          header: "28"
+        - field: d29
+          header: "29"
+        - field: d30
+          header: "30"
+        - field: d31
+          header: "31"
+    inputs:
+      - control: repMonth
+        kind: date
+      - control: repOperation
+        kind: select
+    buttons: []
+  - form: frmMucTieuSanXuatAdd2
+    title: Nhập mục tiêu sản xuất
+    inScope: true
+    entities:
+      - trtb_m_op
+      - tr_hehang
+      - tr_khachhang
+    tablesMissing:
+      - tr_muctieu_sanxuat
+      - tr_quytrinh_yeucau_chatluong
+    repos:
+      - LoggerManager
+      - TRTB_M_OP
+      - TR_HEHANG
+      - TR_KHACHHANG
+      - TR_MUCTIEU_SANXUAT
+      - TR_QUYTRINH_YEUCAU_CHATLUONG
+    procs:
+      - TR_MUCTIEU_SANXUAT_DELETEALL
+      - TR_MUCTIEU_SANXUAT_GETALL3
+      - TR_MUCTIEU_SANXUAT_INSERT
+    grid:
+      columns:
+        - field: c_op
+          header: Mã công đoạn
+        - field: n_op
+          header: Tên công đoạn
+        - field: tenkhuvuc
+          header: Khu vực
+        - field: id
+          header: ID
+        - field: ngaythang
+          header: Ngày
+        - field: muctieu
+          header: Số lượng mục tiêu
+        - field: songuoi
+          header: Số người mục tiêu
+        - field: day_name
+          header: Thứ
+        - field: sogio
+          header: Số giờ
+    inputs:
+      - control: repMonth
+        kind: date
+      - control: repOperation
+        kind: select
+    buttons: []
+  - form: frmLichGiaoHangTrang
+    title: Kế hoạch giao hàng trắng
+    inScope: true
+    entities:
+      - trtb_m_location
+      - tr_hehang
+      - tr_khachhang
+    repos:
+      - TRTB_M_LOCATION
+      - TR_HEHANG
+      - TR_KHACHHANG
+    procs:
+      - TR_KEHOACH_GIAOHANG_GET
+      - TR_KEHOACH_GIAOHANG_GETLISTBYSTATUS
+      - TR_KEHOACH_GIAOHANG_INSERT2
+      - TR_KEHOACH_GIAOHANG_UPDATE
+    grid:
+      columns:
+        - field: tenncc
+          header: Nhà cung cấp
+        - field: maddh
+          header: Đơn hàng
+        - field: ngaygiaohang
+          header: Ngày giao theo đơn
+        - field: donhang
+          header: Số PO
+        - field: hehang
+          header: Hệ hàng
+        - field: khachhang
+          header: Khách hàng
+        - field: soluong_cont
+          header: SL cont
+        - field: ngaycanvan
+          header: Ngày cần ván
+        - field: batdau
+          header: Bắt đầu
+        - field: ketthuc
+          header: Kết thúc
+        - field: trangthai
+          header: Trạng thái
+        - field: ngayhoanthanh
+          header: Ngày hoàn thành giao
+    inputs:
+      - control: repositoryItemImageComboBox1
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+      - control: repTrangThai
+        kind: select
+    buttons: []
+  - form: frmTieuChiDanhGia
+    title: Tiêu chí đánh giá
+    inScope: false
+    entities: []
+    repos: []
+    procs: []
+    grid:
+      columns:
+        - field: id
+          header: ID
+        - field: manhom
+          header: Nhóm đánh giá
+        - field: matieuchi
+          header: Mã tiêu chí
+        - field: tentieuchi
+          header: Tiêu chí đánh giá
+        - field: diemtoida
+          header: Số điểm tối đa
+        - field: ngaytao
+          header: Ngày tạo
+        - field: ngaysua
+          header: Ngày sửa
+        - field: active
+          header: Còn sử dụng
+    inputs:
+      - control: repNhomDanhGia
+        kind: select
+      - control: repositoryItemMemoEdit1
+        kind: text
+    buttons: []
+  - form: frmTienDoHangTrang5
+    title: Tiến độ hàng trắng
+    inScope: true
+    entities:
+      - tr_dexuat_bangmau
+      - tr_dondathang
+      - tr_hehang
+      - tr_khachhang
+      - tr_material
+      - tr_order
+      - tr_order_replacement
+      - tr_phieuyeucau
+      - tr_phieuyeucau_chitiet
+      - tr_phieuyeucau_muahang
+      - tr_phieuyeucau_muahang_chitiet
+      - tr_site
+      - tr_trangthai_sanxuat
+    contextEntities:
+      - sys_user
+      - tr_bophan
+      - tr_nguoiduyet
+    tablesMissing:
+      - dqt_dexuat_phoi
+      - tr_congdoan
+      - tr_danhsach_dexuat
+      - tr_danhsach_dexuat_process
+      - tr_danhsach_xetduyet_user
+      - tr_hinhanh
+      - tr_kehoach_hangtrang
+      - tr_loai_xetduyet
+      - tr_nguyenlieu
+      - tr_nhom_dexuat2
+      - tr_nhom_xetduyet
+      - tr_quytrinh_xetduyet
+    repos:
+      - DQT_DEXUAT_PHOI
+      - LoggerManager
+      - SYS_USER
+      - TR_BOPHAN
+      - TR_CONGDOAN
+      - TR_DANHSACH_DEXUAT
+      - TR_DANHSACH_DEXUAT_PROCESS
+      - TR_DANHSACH_XETDUYET_USER
+      - TR_DEXUAT_BANGMAU
+      - TR_DONDATHANG
+      - TR_HEHANG
+      - TR_HINHANH
+      - TR_KEHOACH_HANGTRANG
+      - TR_KHACHHANG
+      - TR_LOAI_XETDUYET
+      - TR_MATERIAL
+      - TR_NGUOIDUYET
+      - TR_NGUYENLIEU
+      - TR_NHOM_DEXUAT2
+      - TR_NHOM_XETDUYET
+      - TR_ORDER
+      - TR_ORDER_REPLACEMENT
+      - TR_PHIEUYEUCAU
+      - TR_PHIEUYEUCAU_CHITIET
+      - TR_PHIEUYEUCAU_MUAHANG
+      - TR_PHIEUYEUCAU_MUAHANG_CHITIET
+      - TR_QUYTRINH_XETDUYET
+      - TR_SITE
+    procs:
+      - TR_DONDATHANG_GETLISTHTR
+      - TR_TRANGTHAI_SANXUAT_GETBYDONHANG7
+    grid:
+      columns:
+        - field: maddh
+          header: Đơn hàng
+    inputs:
+      - control: repDonHang
+        kind: select
+    buttons: []

@@ -1,0 +1,87 @@
+{
+ "name": "dq_san_pham_tao_phieu_san_pham",
+ "label": "Tạo phiếu sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+    "title": "Tạo phiếu sản phẩm",
+    "fields": [
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "soluong_donhang",
+     "soluong_can",
+     "card_qty",
+     "id",
+     "donhang",
+     "masp",
+     "iscreatecard"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Thêm — Tạo phiếu sản phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Tạo phiếu sản phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmTaoPhieuSanPham, frmDanhSachPhieuSanPham<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_ORDER_DETAIL_GETALL, TR_ORDER_DETAIL_GETLISTBYORDER, TR_PALLET_CARD_CREATE, TR_PALLET_CARD_GETALL, TR_PALLET_GETNEWORDER, TR_PALLET_GETNEWORDER2, TR_PALLET_CARD_GETBYID, TR_PALLET_CARD_GETBYORDER, TR_PALLET_CARD_GETBYORDER2, TR_PALLET_CARD_PRINT, TR_PALLET_CARD_PRINT2, TR_PALLET_CARD_UPDATE, TR_PALLET_GETORDER<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_color, tr_dexuat_bangmau, tr_dondathang, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_order_replacement, tr_pallet_card, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}

@@ -1,0 +1,85 @@
+{
+ "name": "dq_bao_gia_bao_gia_vat_tu_add2",
+ "label": "Cập nhật báo giá",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "9b94683d-7a94-4ef6-9ef4-832a559af23c",
+    "title": "Cập nhật báo giá",
+    "fields": [
+     "id",
+     "mact",
+     "quycach",
+     "mausac",
+     "dvt",
+     "dongiacu",
+     "dongiamoi",
+     "loaitien",
+     "nguoiduyet",
+     "isnotduyet",
+     "ghichu",
+     "mancc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "9b94683d-7a94-4ef6-9ef4-832a559af23c",
+        "title": "Thêm — Cập nhật báo giá",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "9b94683d-7a94-4ef6-9ef4-832a559af23c",
+        "title": "Cập nhật báo giá",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmBaoGiaVatTuAdd2<br/>\nNút WinForms gốc: Lưu · Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TINHGIA_DONGGOI_BY_MAVT, TR_MATERIAL_GETCHITIETBYKHO, TR_MATERIAL_NCC_GET2, TR_MATERIAL_get, TR_PHIEUBAOGIA_CHITIET_DELETEBYID, TR_PHIEUBAOGIA_CHITIET_GETALL, TR_PHIEUBAOGIA_CHITIET_GETBYID, TR_PHIEUBAOGIA_CHITIET_GET_BY_MACT_MANCC, TR_PHIEUBAOGIA_CHITIET_INSERT, TR_PHIEUBAOGIA_CHITIET_UPDATE, TR_PHIEUBAOGIA_GETBYNUMBER, TR_PHIEUBAOGIA_INSERT, TR_PHIEUBAOGIA_NEWID, TR_PHIEUBAOGIA_UPDATE<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_hehang, tr_khachhang, tr_loaincc, tr_material, tr_material_ncc, tr_nhacc, tr_phieubaogia\n</div>"
+   }
+  }
+ ]
+}

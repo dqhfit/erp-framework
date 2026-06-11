@@ -1,0 +1,83 @@
+{
+ "name": "dq_san_xuat_ke_hoach_hang_trang3",
+ "label": "Kế hoạch sản xuất hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Kế hoạch sản xuất hàng trắng",
+    "fields": [
+     "id",
+     "c_op",
+     "n_op",
+     "c_location",
+     "f_out_yn",
+     "c_prod_loc",
+     "c_out_loc",
+     "c_line",
+     "org",
+     "attribute3"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Thêm — Kế hoạch sản xuất hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Kế hoạch sản xuất hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmKeHoachHangTrang, frmKeHoachHangTrang3, frmKeHoachHangTrang<br/>\nNút WinForms gốc: (không)<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_KEHOACH_HANGTRANG_GETALL, TR_KEHOACH_HANGTRANG_GETBYID, TR_KEHOACH_HANGTRANG_INSERT, TR_KEHOACH_HANGTRANG_UPDATE, TRTB_M_OP_GET, TR_KEHOACH_HANGTRANG_AUTOCREATE, TR_KEHOACH_HANGTRANG_CHITIET_CONFIRM, TR_KEHOACH_HANGTRANG_CHITIET_DELETEALL, TR_KEHOACH_HANGTRANG_CHITIET_GETALL, TR_KEHOACH_HANGTRANG_CHITIET_GETALL2, TR_KEHOACH_HANGTRANG_GETALL2, TR_KEHOACH_HANGTRANG_GETBYORDER<br/>\nEntity phụ (lookup/filter cân nhắc thêm): (không)\n</div>"
+   }
+  }
+ ]
+}

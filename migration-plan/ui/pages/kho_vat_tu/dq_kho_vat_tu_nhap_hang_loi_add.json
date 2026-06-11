@@ -1,0 +1,78 @@
+{
+ "name": "dq_kho_vat_tu_nhap_hang_loi_add",
+ "label": "hàng lỗi - hàng đổi trả",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 9,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "hàng lỗi - hàng đổi trả",
+    "fields": [
+     "id",
+     "mact",
+     "chitiet",
+     "soluong_tc",
+     "stt"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s_add",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — hàng lỗi - hàng đổi trả",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "hint": "Chọn 1 dòng trong danh sách rồi bấm",
+      "steps": [
+       {
+        "id": "s_view",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "hàng lỗi - hàng đổi trả",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "saveOutputTo": "_viewed"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "w_todo",
+   "kind": "html",
+   "x": 0,
+   "y": 9,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "html": "<div style=\"font:12px sans-serif;color:#888;padding:8px\">\n<b>Scaffold từ DQHF</b> — form gốc: frmNhapHangLoiAdd<br/>\nNút WinForms gốc: Đóng · Lưu && Thêm · Lưu && Đóng<br/>\nNút cần gắn thêm: Xoá (procedure/records.delete) · In (cần print template entity) · Xuất (export)<br/>\nProc cần port: TR_BAOCAO_HANGLOI_GET, TR_BAOCAO_HANGLOI_INSERT, TR_BAOCAO_HANGLOI_UPDATE, TR_DINHMUC_GOVAN_GETBYMACT2, TR_DINHMUC_GOVAN_Get, TR_DONDATHANG_GETLISTHTR, TR_ORDER_DETAIL_GETLISTBYORDER<br/>\nEntity phụ (lookup/filter cân nhắc thêm): tr_banve, tr_baocao_hangloi, tr_color, tr_dexuat_bangmau, tr_dondathang, tr_dondathang_chitiet, tr_hehang, tr_khachhang, tr_loaisp, tr_material, tr_order, tr_order_detail, tr_order_replacement, tr_phieuyeucau, tr_phieuyeucau_chitiet, tr_phieuyeucau_muahang, tr_phieuyeucau_muahang_chitiet, tr_site\n</div>"
+   }
+  }
+ ]
+}
