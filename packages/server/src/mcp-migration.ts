@@ -22,6 +22,7 @@ import {
   migrationSyncRuns,
   migrationSyncTables,
   mssqlConnections,
+  pages,
 } from "@erp-framework/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -282,6 +283,29 @@ const TOOLS: ToolDef[] = [
     inputSchema: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "page_create_draft",
+    description:
+      "Tạo page DRAFT (published=false — chỉ admin/designer thấy, người dùng KHÔNG thấy " +
+      "đến khi publish trong PageDesigner). content = mảng PageComponent " +
+      "[{id,kind,x,y,w,h,config}] (grid 12 cột). Idempotent: name đã tồn tại → skip " +
+      "(không ghi đè page người dùng đã chỉnh). Dùng cho scaffold UI từ form DQHF.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Định danh máy ^[a-z][a-z0-9_]*$" },
+        label: { type: "string", description: "Nhãn hiển thị" },
+        icon: { type: "string" },
+        content: {
+          type: "array",
+          description: "PageComponent[] — {id,kind,x,y,w,h,config}",
+          items: { type: "object" },
+        },
+      },
+      required: ["name", "label", "content"],
     },
   },
   {
@@ -919,6 +943,39 @@ async function callMigrationTool(
         }
       }
       return { results, renamed: results.filter((r) => r.status === "renamed").length };
+    }
+
+    /* ── page_create_draft (apply) ──────────────────────────── */
+    case "page_create_draft": {
+      const pageName = String(args.name ?? "");
+      const label = String(args.label ?? "");
+      if (!/^[a-z][a-z0-9_]*$/.test(pageName)) {
+        throw new McpError("name sai định dạng (^[a-z][a-z0-9_]*$)");
+      }
+      if (!label) throw new McpError("label bắt buộc");
+      const content = Array.isArray(args.content) ? args.content : null;
+      if (!content || content.length === 0)
+        throw new McpError("content bắt buộc (PageComponent[])");
+      if (content.length > 50) throw new McpError("Tối đa 50 widget mỗi page");
+
+      const [exists] = await db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.companyId, companyId), sql`lower(${pages.name}) = lower(${pageName})`));
+      if (exists) return { status: "skipped_exists", pageId: exists.id, name: pageName };
+
+      const [row] = await db
+        .insert(pages)
+        .values({
+          companyId,
+          name: pageName,
+          label,
+          icon: args.icon ? String(args.icon) : null,
+          content,
+          published: false,
+        })
+        .returning({ id: pages.id });
+      return { status: "created", pageId: row?.id, name: pageName };
     }
 
     /* ── entity_set_source (apply) ──────────────────────────── */
