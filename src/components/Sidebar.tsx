@@ -778,10 +778,16 @@ export function Sidebar() {
     if (isMobile) setMobileNavOpen(false);
   }, [pathname]);
 
-  const filterBySearch = <T extends { name: string }>(arr: T[]): T[] =>
-    search.trim()
-      ? arr.filter((i) => i.name.toLowerCase().includes(search.trim().toLowerCase()))
-      : arr;
+  // Khớp cả nhãn hiển thị (name) lẫn tên kỹ thuật (techName — vd tr_sanpham):
+  // sau re-migrate, entity mang tên bảng nguồn nên tìm theo tên kỹ thuật là
+  // thao tác thường xuyên khi đối chiếu với DQHF/SQL.
+  const filterBySearch = <T extends { name: string; techName?: string }>(arr: T[]): T[] => {
+    const q = search.trim().toLowerCase();
+    if (!q) return arr;
+    return arr.filter(
+      (i) => i.name.toLowerCase().includes(q) || (i.techName ?? "").toLowerCase().includes(q),
+    );
+  };
   const effectiveSectionsOpen = search.trim()
     ? {
         ...sectionsOpen,
