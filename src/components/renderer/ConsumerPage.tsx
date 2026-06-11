@@ -360,6 +360,10 @@ interface EditableListWidgetProps {
   visibleFields: EntityField[];
   batchEdit: boolean;
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
+  /** Chọn dòng (selectionStateKey) — click row set page-state, nút header
+   *  (Xem chi tiết...) đọc theo. Double-click cell vẫn là sửa inline. */
+  onRowClick?: (row: Record<string, unknown>) => void;
+  isRowSelected?: (row: Record<string, unknown>) => boolean;
 }
 
 function EditableListWidget({
@@ -371,6 +375,8 @@ function EditableListWidget({
   visibleFields,
   batchEdit,
   onSave,
+  onRowClick,
+  isRowSelected,
 }: EditableListWidgetProps) {
   const t = useT();
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
@@ -493,10 +499,21 @@ function EditableListWidget({
                 const rowId = row.id;
                 const rowIdStr = rowId != null ? String(rowId) : "";
                 const isDirty = pending.has(rowIdStr);
+                const isSel = isRowSelected?.(row) === true;
                 return (
                   <tr
                     key={rowIdStr || r}
-                    className={isDirty ? "bg-warning/5" : r % 2 === 0 ? "" : "bg-bg-soft/40"}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={cn(
+                      onRowClick && "cursor-pointer",
+                      isSel
+                        ? "bg-accent/10 outline outline-1 -outline-offset-1 outline-accent/40"
+                        : isDirty
+                          ? "bg-warning/5"
+                          : r % 2 === 0
+                            ? ""
+                            : "bg-bg-soft/40",
+                    )}
                   >
                     {visibleFields.map((f) => {
                       const k: CellKey = `${r}:${f.name}`;
@@ -793,6 +810,8 @@ function ListWidget({
         visibleFields={visibleFields}
         batchEdit={!!batchEdit}
         onSave={saveRecord}
+        onRowClick={onRowClick}
+        isRowSelected={isRowSelected}
       />
     );
   }
