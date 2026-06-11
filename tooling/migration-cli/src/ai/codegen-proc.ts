@@ -90,6 +90,10 @@ function buildMappingDoc(m: Manifest, proc: ManifestProc): string {
     .map((t) => {
       const entity =
         t.suggestedKind === "enum" ? `${t.suggestedEntityName} (ENUM)` : t.suggestedEntityName;
+      // HYBRID: bảng thật PG (storageTier=table trong manifest) — agent query
+      // TRỰC TIẾP bảng vật lý (cột typed cùng tên field), KHÔNG entity_records.
+      const tier = (t as { storageTier?: string; physicalTable?: string }).storageTier;
+      const phys = (t as { physicalTable?: string }).physicalTable ?? t.suggestedEntityName;
       const rows = t.columns
         .map((c) => {
           const field = c.mapTo?.field ?? "(chưa map — suy từ tên cột)";
@@ -97,7 +101,11 @@ function buildMappingDoc(m: Manifest, proc: ManifestProc): string {
           return `| ${c.name}${pk} | ${field} | ${c.type} |`;
         })
         .join("\n");
-      return `### Bảng MSSQL \`${t.name}\` → entity \`${entity}\`\n| Cột MSSQL | Field entity (data->>) | Kiểu |\n|---|---|---|\n${rows}`;
+      const header =
+        tier === "table"
+          ? `### Bảng MSSQL \`${t.name}\` → **BẢNG THẬT PostgreSQL \`${phys}\`** (cột typed cùng tên field — query trực tiếp, KHÔNG dùng entity_records)\n| Cột MSSQL | Cột PG | Kiểu |`
+          : `### Bảng MSSQL \`${t.name}\` → entity \`${entity}\` (EAV)\n| Cột MSSQL | Field entity (data->>) | Kiểu |`;
+      return `${header}\n|---|---|---|\n${rows}`;
     })
     .join("\n\n");
 }
@@ -263,11 +271,16 @@ export async function runCodegenProc(
       // env REPLACE toàn bộ env subprocess (theo doc SDK) → phải spread
       // process.env để giữ PATH/HOME. Trỏ CLI về bridge, không cần key thật;
       // placeholder ANTHROPIC_API_KEY để CLI chạy API-mode (bridge bỏ qua key).
-      env: {
-        ...process.env,
-        ANTHROPIC_BASE_URL: bridgeUrl,
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "bridge",
-      },
+      // MIGRATION_CODEGEN_DIRECT=1: bỏ qua bridge, dùng thẳng claude CLI local
+      // (login Pro/Max trên máy dev) — khi bridge container thiếu model/auth cũ.
+      env:
+        process.env.MIGRATION_CODEGEN_DIRECT === "1"
+          ? { ...process.env }
+          : {
+              ...process.env,
+              ANTHROPIC_BASE_URL: bridgeUrl,
+              ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "bridge",
+            },
     },
   });
 
