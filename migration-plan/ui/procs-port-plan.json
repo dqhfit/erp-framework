@@ -1,0 +1,4353 @@
+{
+ "sequence_field": [
+  {
+   "proc": "TR_DONDATHANG_NEWID",
+   "usedBy": 9,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan",
+    "don_hang/frm_Dao_dondathang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_NEWID2",
+   "usedBy": 9,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan",
+    "don_hang/frm_Dao_dondathang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_NEWID",
+   "usedBy": 4,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "kho_vat_tu/frmLenhCapPhat_HangTrang",
+    "kho_vat_tu/frmLenhCapPhat_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_NEWID",
+   "usedBy": 4,
+   "forms": [
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_NEWID",
+   "usedBy": 3,
+   "forms": [
+    "de_xuat/frmDeXuatPhoiAdd3",
+    "de_xuat/frmDeXuatPhoiAdd4",
+    "de_xuat/frmDeXuatPhoiAdd5"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_NEWID",
+   "usedBy": 2,
+   "forms": [
+    "bang_mau_banve/frmDeXuatBangMauAdd",
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUBAOGIA_NEWID",
+   "usedBy": 2,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuAdd",
+    "bao_gia/frmBaoGiaVatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_NEWID",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmOrderNumberAdd2",
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_NEWID",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmWarehouseInput2"
+   ]
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_NEWID",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_NEWID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUKIEMKE_NEWID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuKiemKeAdd"
+   ]
+  }
+ ],
+ "print_template": [
+  {
+   "proc": "TR_PHIEUNHAP_PRINT",
+   "usedBy": 7,
+   "forms": [
+    "danh_muc/frmListWHSInOut",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmWarehouseInput",
+    "kho_vat_tu/frmWarehouseInput2",
+    "kho_vat_tu/frmWarehouseOutput",
+    "kho_vat_tu/frmWarehouseOutputMaterial",
+    "kho_vat_tu/frmWarehouseReturn"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNXUAT_PRINT",
+   "usedBy": 7,
+   "forms": [
+    "danh_muc/frmListWHSInOut",
+    "kho_vat_tu/frmWarehouseOutput",
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmWarehouseOutputMaterial",
+    "kho_vat_tu/frmXuatKho",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_PRINT",
+   "usedBy": 4,
+   "forms": [
+    "don_hang/frmOrderExample",
+    "don_hang/frmOrderNumberInfomation",
+    "san_xuat/frm_tiendo_sanxuat",
+    "san_xuat/frm_tiendo_sanxuat_hangtrang"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_PRINT4",
+   "usedBy": 3,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3",
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_PRINT",
+   "usedBy": 2,
+   "forms": [
+    "pallet/frmDanhSachPallet",
+    "san_pham/frmDanhSachPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_PRINT",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach",
+    "san_xuat/frm_quytrinh_sanxuat_ver2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_EXPORT",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_EXPORT2",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_GIAONHAN_THANHPHAM_PRINT",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_EXPORT_DGO",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_export"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_EXPORT_GVA",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_export"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_EXPORT_NKI",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_export"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_EXPORT_SON",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_export"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_EXPORT_THANHPHAM",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_export"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_DANHSACH_EXPORT",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmDanhSachBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_PRINT3",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberInfomation"
+   ]
+  },
+  {
+   "proc": "TR_CONT_PRINT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatCont"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_PRINT3",
+   "usedBy": 1,
+   "forms": [
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_PRINT2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmDanhSachPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_GIAONHAN_CHITIET_PRINT2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  }
+ ],
+ "write_logic": [
+  {
+   "proc": "TR_DONDATHANG_INSERT2",
+   "usedBy": 8,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_M3TOTAL",
+   "usedBy": 6,
+   "forms": [
+    "bang_mau_banve/frm_banve",
+    "bang_mau_banve/frm_banve_donggoi",
+    "bao_cao/frmThongKeXuatHangThanhPham",
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2",
+    "dinh_muc/frm_kiemtra_dinhmuc"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_INSERT2",
+   "usedBy": 6,
+   "forms": [
+    "danh_muc/frmDanhSachHoaDon2",
+    "kho_vat_tu/frmPhieuXuatKhoAdd",
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI"
+   ]
+  },
+  {
+   "proc": "UpdateMaterialPrice",
+   "usedBy": 6,
+   "forms": [
+    "don_hang/frmPurchaseOrderEdit",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_ISLOCK",
+   "usedBy": 6,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang2",
+    "kho_vat_tu/frmWarehouseFinishGoodInput",
+    "kho_vat_tu/frmWarehouseFinishGoodInput2",
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_COMPONENTS_DELETEBYID",
+   "usedBy": 5,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang",
+    "bao_gia/frmBaoGiaPhoi",
+    "bao_gia/frm_baogia_sanpham_ver2",
+    "bao_gia/frm_baogia_sanpham_ver3",
+    "bao_gia/frm_baogia_sanpham_ver4"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_UPDATE3",
+   "usedBy": 4,
+   "forms": [
+    "bang_mau_banve/frmDanhSachBanVe",
+    "bang_mau_banve/frmUploadBanVe2",
+    "bang_mau_banve/frm_banve",
+    "bang_mau_banve/frm_banve_donggoi"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_INSERT2",
+   "usedBy": 4,
+   "forms": [
+    "bao_gia/frmBaoGiaChiTietNhaCungCapAdd",
+    "dinh_muc/frmDinhMucCatVan",
+    "ke_toan/frmQuyTrinhLanUVAdd",
+    "san_pham/frmCreateMaterialCode_Ver3"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_INSERT2",
+   "usedBy": 4,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "kho_vat_tu/frmLenhCapPhat_HangTrang",
+    "kho_vat_tu/frmLenhCapPhat_TheoHoSo"
+   ]
+  },
+  {
+   "proc": "TR_KHACHHANG_INSERT3",
+   "usedBy": 4,
+   "forms": [
+    "don_hang/frmTuDongTaoDonHang",
+    "don_hang/frm_banhanggo_khachhang",
+    "khach_hang_ncc/frmKhachHangAdd",
+    "khach_hang_ncc/frmKhachHangAdd2"
+   ]
+  },
+  {
+   "proc": "TR_KHACHHANG_UPDATE3",
+   "usedBy": 4,
+   "forms": [
+    "don_hang/frm_banhanggo_khachhang",
+    "khach_hang_ncc/frmKhachHang",
+    "khach_hang_ncc/frmKhachHangAdd",
+    "khach_hang_ncc/frmkhachhang"
+   ]
+  },
+  {
+   "proc": "TR_NHACC_INSERT2",
+   "usedBy": 4,
+   "forms": [
+    "don_hang/frm_banhanggo_ncc",
+    "khach_hang_ncc/frmNhaCungCapAdd",
+    "kho_vat_tu/frmNhapKhoBaoTri",
+    "kho_vat_tu/frmNhapKhoCNTT"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_UPDATESTATUS",
+   "usedBy": 4,
+   "forms": [
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_SUMBYMACT",
+   "usedBy": 3,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_UPDATE2",
+   "usedBy": 3,
+   "forms": [
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_UPDATE2",
+   "usedBy": 3,
+   "forms": [
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Edit"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_INSERT2",
+   "usedBy": 3,
+   "forms": [
+    "don_hang/frmOrderNumberAdd2",
+    "don_hang/frmOrderNumberAdd3",
+    "don_hang/frmTuDongTaoDonHang"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETNGUOIDUYET",
+   "usedBy": 3,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3",
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_TINHGIA_NGUYENLIEU",
+   "usedBy": 3,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang3",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_DELETEALL",
+   "usedBy": 3,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat",
+    "san_xuat/frmMucTieuSanXuatAdd",
+    "san_xuat/frmMucTieuSanXuatAdd2"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_INSERT3",
+   "usedBy": 2,
+   "forms": [
+    "bang_mau_banve/frmDanhSachBanVe",
+    "bang_mau_banve/frmUploadBanVe2"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_CONFIRM",
+   "usedBy": 2,
+   "forms": [
+    "bang_mau_banve/frmDeXuatBangMauAdd",
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_XACNHAN",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_FINAL_MUCKIEMTRA_DELETE2",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd",
+    "bao_cao/frmBaoCaoFinalAdd3"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUBAOGIA_CHITIET_DELETEBYID",
+   "usedBy": 2,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuAdd",
+    "bao_gia/frmBaoGiaVatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_CTPHIEUXUAT_INSERT2",
+   "usedBy": 2,
+   "forms": [
+    "danh_muc/frmDanhSachHoaDon2",
+    "kho_vat_tu/frmPhieuXuatKhoAdd"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_DELETEBYID",
+   "usedBy": 2,
+   "forms": [
+    "danh_muc/frmCaiDatDonGiaNguyenLieu",
+    "danh_muc/frmCaiDatDonGiaNguyenLieu2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_LOCK_GET2",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_UPDATE2",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmOrderNumberAdd2",
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_NHACC_UPDATE2",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_ncc",
+    "khach_hang_ncc/frmNhaCungCapAdd"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_DUYET",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmPhieuDeNghiThanhToan",
+    "kho_vat_tu/frmPhieuDeNghiThanhToanAdd"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_CONFIRM",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_CTPHIEUXUAT_UPDATE2",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatKhoAdd",
+    "kho_vat_tu/frmWarehouseOutputEdit"
+   ]
+  },
+  {
+   "proc": "TR_CTPHIEUXUAT_UPDATE3",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatKhoAdd",
+    "kho_vat_tu/frmWarehouseOutputEdit"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_UPDATESTATUS",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmWarehouseInput2"
+   ]
+  },
+  {
+   "proc": "UPDATEMATERIALCODE",
+   "usedBy": 2,
+   "forms": [
+    "san_pham/frmMaterialCodeEdit",
+    "san_pham/frmMaterialCodeEdit2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_TOTAL_CONT",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_TOTAL_CONT2",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_CHITIET_DELETE2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoHoanThienAdd"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_GETDATA",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoHoanThienAdd"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_CHUYENSON_HIENDIEN_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoHoanThienAdd"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_ROTCHUYEN_GETBYIDBAOCAO",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoRotChuyenAdd"
+   ]
+  },
+  {
+   "proc": "TR_LUUTRINH_SANXUAT_COPY2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongKeXuatHangThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_FINAL_DUYET",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoFinal"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_DELETE2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_ver2"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_TUDONG_TEMP_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_auto"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_CHIPHI_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_DONGGOI_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_GOVAN_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_NGUKIM_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_SON_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_TONGHOP_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_CHITIET_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_GETBYPRICE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_GOVAN_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_NGUKIM_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_TONG_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_PHOI_GOVAN_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaPhoi"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_PHOI_TONG_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaPhoi"
+   ]
+  },
+  {
+   "proc": "TINHGIA_DONGGOI_BY_MAVT",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_HEHANG_Update2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCaiDatHeSoHeHang"
+   ]
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_DUYET",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DANHSACH_DEXUAT_DUYET_BGD",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_CANCEL2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_THAYDOI_KYTHUAT_CANCEL",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_BOM_MIX_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon_MixAdd"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon3"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON_THEOMAU_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon_TheoMau2Add"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON_THEOMAU_INSERT2",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon_TheoMau2Add"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_SON_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSonEditor"
+   ]
+  },
+  {
+   "proc": "TR_SODO_CATVAN_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan"
+   ]
+  },
+  {
+   "proc": "TR_SODO_CATVAN_HEAD_DELETED",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon4"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CHIPHI_SANPHAM_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_SOCHE_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucGoVanSoChe"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_SOCHE_UPDATEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucGoVanSoChe"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_VATTU_TIEUHAO_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucVatTuTieuHao"
+   ]
+  },
+  {
+   "proc": "TR_COMMERCIAL_INVOICE_DETAIL_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmCommercial_InvoiceAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_DELETE2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_INSERT2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_DELETE2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_INSERT2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_INSERT2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_SETKHONGTINHSON",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_UPDATE3",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopDonHang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_SUMBYYEAR",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopDonHangTheoNam"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_DGO",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmBangDuTruChiPhi"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_GVA2",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmBangDuTruChiPhi"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_NKI",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmBangDuTruChiPhi"
+   ]
+  },
+  {
+   "proc": "TINHGIA_NGUYENLIEU_SON",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmBangDuTruChiPhi"
+   ]
+  },
+  {
+   "proc": "TR_NGUOIDUYET_BOPHAN_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmPhanQuyenKeHoach"
+   ]
+  },
+  {
+   "proc": "TR_NGUOIDUYET_BOPHAN_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmPhanQuyenKeHoach"
+   ]
+  },
+  {
+   "proc": "TR_GIAOHANG_CHITIET_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuGiaoNhan"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_CHUYENKHO",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmChuyenKho"
+   ]
+  },
+  {
+   "proc": "pb_chitiet_phieubuhang_UPDATESL",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuBuHangAdd"
+   ]
+  },
+  {
+   "proc": "TR_CONT_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatCont"
+   ]
+  },
+  {
+   "proc": "TR_CTCONT_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatCont"
+   ]
+  },
+  {
+   "proc": "TR_CTCONT_UPDATEBYID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuXuatCont"
+   ]
+  },
+  {
+   "proc": "TR_CTPHIEUNHAP_INSERT3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_SUM_NHAP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_CHITIET_XACNHAN",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKhoThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_LOCK_UNLOCK",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmXuatKhoLenhCapPhat"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_DUYET",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_LOCK_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_NGUKIM_TOTALMAVT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_INSERT3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_YEUCAU_CHATLUONG_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauChatLuongAdd"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_HUYDUYET",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuDeNghiThanhToan"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_UPDATE3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu_xacnhan"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_OTHER_DELETEBYCODE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmDanhSachVatTuKhac"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_YEUCAU_CHATLUONG_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_TEM_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2Add"
+   ]
+  },
+  {
+   "proc": "TRMATERIALCLASS_DELETE2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmCreateMaterialCode_Ver2"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmMaterialCodeEdit3"
+   ]
+  },
+  {
+   "proc": "TINHGIA_HANGMUC_LAIVAY",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmTinhChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "TINHGIA_HANGMUC_SANPHAM",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmTinhChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HIENDIEN4_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_UPDATE2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_TINHTOAN",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_CONFIRM",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_DELETEALL",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG3_DELETEBYID",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang_Ver3"
+   ]
+  },
+  {
+   "proc": "TR_TIENDO_CHUYENSON_GETBYKHUVUC",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoChuyenSon"
+   ]
+  },
+  {
+   "proc": "TR_TIENDO_CHUYENSON_GETBYKHUVUC2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoChuyenSon"
+   ]
+  },
+  {
+   "proc": "TR_TINHGIA_BY_DDH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTinhGiaSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_TINHGIA_BY_DDH2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTinhGiaSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_GIAOHANG_INSERT2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmLichGiaoHangTrang"
+   ]
+  }
+ ],
+ "query_datasource": [
+  {
+   "proc": "TR_MATERIAL_GETCHITIETBYKHO",
+   "usedBy": 51,
+   "forms": [
+    "bao_cao/frmTongHopSonUV",
+    "bao_gia/frmBaoGia3",
+    "bao_gia/frmBaoGia3_NguKim",
+    "bao_gia/frmBaoGiaChiTietNhaCungCapAdd",
+    "bao_gia/frmBaoGiaHangTrang",
+    "bao_gia/frmBaoGiaVatTuAdd",
+    "bao_gia/frmBaoGiaVatTuAdd2",
+    "bao_gia/frm_baogia_sanpham_ver2",
+    "bao_gia/frm_baogia_sanpham_ver3",
+    "bao_gia/frm_baogia_sanpham_ver4",
+    "danh_muc/frmNhomAIAdd",
+    "de_xuat/frmDeXuatMuahang",
+    "de_xuat/frmDeXuatMuahangAdd",
+    "de_xuat/frm_DeXuatVan",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frmDinhMucSon3",
+    "dinh_muc/frmDinhMucSon_MixAdd",
+    "dinh_muc/frmDinhMucSon_TheoMau",
+    "dinh_muc/frmDinhMucSon_TheoMau2Add",
+    "dinh_muc/frmDinhMucVatTuTieuHao",
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "ke_toan/frmQuyTrinhLanUVAdd",
+    "khach_hang_ncc/frm_sosanhgia_nvt_ncc_print2",
+    "kho_vat_tu/frmChiaTonKho",
+    "kho_vat_tu/frmDanhSachCapPhatYeuCau",
+    "kho_vat_tu/frmLenhCapPhatAI",
+    "kho_vat_tu/frmLenhCapPhat_HangTrang",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmNhapKhoBaoTri",
+    "kho_vat_tu/frmNhapKhoCNTT",
+    "kho_vat_tu/frmNhapKhoGoVan",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmWarehouseInput2",
+    "kho_vat_tu/frmWarehouseInput_HTR",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmWarehouseOutputMaterial",
+    "kho_vat_tu/frmWarehouseReturn",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_vattu",
+    "kho_vat_tu/frm_vattu_info",
+    "san_pham/frmCreateMaterialCode_Ver3",
+    "san_pham/frmMaterialCodeEdit",
+    "san_pham/frmMaterialCodeEdit3",
+    "san_pham/frmMaterialCodeEdit4"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GET2",
+   "usedBy": 35,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd",
+    "bao_cao/frmBaoCaoFinalAdd2",
+    "bao_cao/frmBaoCaoLapRap1Add",
+    "bao_cao/frmBaoCaoNguyenPhuLieuAdd",
+    "bao_cao/frmThongKeSoLuongAdd",
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "bao_cao/frmTongHopXuatHopChatSon",
+    "danh_muc/frmDanhMucDeXuat2",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver2",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver3",
+    "don_hang/frmCommercial_InvoiceAdd",
+    "don_hang/frmDonHangBuAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmOrderExample",
+    "don_hang/frmOrderNumberAdd",
+    "don_hang/frmOrderNumberAdd2",
+    "don_hang/frmOrderNumberAdd3",
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frmProformaInvoice",
+    "don_hang/frmProformaInvoiceAdd",
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "don_hang/frmThongKeChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang2",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_nhap_chitiet_ver2",
+    "san_xuat/frmBaoCaoHangTrangAdd",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd",
+    "san_xuat/frmHoSoSanXuat",
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETBYSTATUS",
+   "usedBy": 28,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd2",
+    "bao_cao/frmBaoCaoLapRap1Add",
+    "bao_cao/frmBaoCaoNguyenPhuLieuAdd",
+    "bao_cao/frmThongKeSoLuongAdd",
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "bao_cao/frmTongHopXuatHopChatSon",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver3",
+    "don_hang/frmCommercial_InvoiceAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmOrderExample",
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frmThongKeChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang2",
+    "kho_vat_tu/frmNhapKhoThanhPham",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmPhieuXuatCont",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_nhap_chitiet_ver2",
+    "san_xuat/frmBaoCaoHangTrangAdd",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd",
+    "san_xuat/frmHoSoSanXuat",
+    "san_xuat/frmKeHoachSanXuatPO",
+    "san_xuat/frmTienDoChuyenSonAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_Get3",
+   "usedBy": 28,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd2",
+    "bao_cao/frmBaoCaoLapRap1Add",
+    "bao_cao/frmBaoCaoNguyenPhuLieuAdd",
+    "bao_cao/frmThongKeSoLuongAdd",
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "bao_cao/frmTongHopXuatHopChatSon",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver3",
+    "don_hang/frmCommercial_InvoiceAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmOrderExample",
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frmThongKeChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang2",
+    "kho_vat_tu/frmNhapKhoThanhPham",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmPhieuXuatCont",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_nhap_chitiet_ver2",
+    "san_xuat/frmBaoCaoHangTrangAdd",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd",
+    "san_xuat/frmHoSoSanXuat",
+    "san_xuat/frmKeHoachSanXuatPO",
+    "san_xuat/frmTienDoChuyenSonAdd"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETLISTHTR",
+   "usedBy": 25,
+   "forms": [
+    "bao_cao/frmBaoCaoHangLoi",
+    "bao_cao/frmBaoCaoKiemTraChatLuong2",
+    "bao_cao/frmTheoDoiKiemTra",
+    "bao_cao/frmTongHopSonUV",
+    "bao_cao/frmTonghopsoluongUV",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmDanhMucDeXuat2",
+    "de_xuat/frmDeXuatPhoiAdd",
+    "de_xuat/frmDeXuatPhoiAdd3",
+    "de_xuat/frmDeXuatPhoiAdd4",
+    "de_xuat/frmDeXuatPhoiAdd5",
+    "don_hang/frmChiPhiDonHang",
+    "don_hang/frmTheoDoiDonHangChiTiet",
+    "ke_toan/frmBangDuTruChiPhi",
+    "kho_vat_tu/frmLenhCapPhat_HangTrang",
+    "kho_vat_tu/frmNhapHangLoiAdd",
+    "kho_vat_tu/frmNhapTienDoHangTrang",
+    "kho_vat_tu/frmPhieuBuHangAdd",
+    "kho_vat_tu/frmPhieuTraHangAdd",
+    "kho_vat_tu/frmTonKhoGoVan_XuatKho",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "san_xuat/frmGiaoNhanHangTrang",
+    "san_xuat/frmTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang3",
+    "san_xuat/frmTienDoHangTrang5"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETLISTBYORDER",
+   "usedBy": 24,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd",
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "danh_muc/frmDanhMucDeXuat2",
+    "don_hang/frmChiTietDonHang",
+    "don_hang/frmDonHangBuAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmOrderExampleAdd",
+    "don_hang/frmOrderNumberAdd3",
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frmProformaInvoiceAdd_OrderNo",
+    "kho_vat_tu/frmLenhCapPhatAI",
+    "kho_vat_tu/frmLenhCapPhatAdd",
+    "kho_vat_tu/frmNhapHangLoi2",
+    "kho_vat_tu/frmNhapHangLoiAdd",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmPhieuXuatCont",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "san_pham/frmDanhSachPhieuSanPham",
+    "san_pham/frmTaoPhieuSanPham",
+    "san_xuat/frmTienDoChuyenSonAdd",
+    "san_xuat/frmTongHopChiTiet_HangTrang",
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETALLBYCUSTOMER",
+   "usedBy": 19,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd2",
+    "bao_cao/frmBaoCaoNguyenPhuLieuAdd",
+    "bao_cao/frmThongKeSoLuongAdd",
+    "bao_cao/frmTongHopXuatHopChatSon",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver3",
+    "don_hang/frmCommercial_InvoiceAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmThongKeChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang2",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_nhap_chitiet_ver2",
+    "san_xuat/frmBaoCaoHangTrangAdd",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd",
+    "san_xuat/frmHoSoSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETCONTAINER",
+   "usedBy": 19,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd2",
+    "bao_cao/frmBaoCaoNguyenPhuLieuAdd",
+    "bao_cao/frmThongKeSoLuongAdd",
+    "bao_cao/frmTongHopXuatHopChatSon",
+    "dinh_muc/frmDinhMucCatVan",
+    "dinh_muc/frm_kiemtra_dinhmuc_ver3",
+    "don_hang/frmCommercial_InvoiceAdd",
+    "don_hang/frmDonHangSon",
+    "don_hang/frmThongKeChiTietDonHang",
+    "don_hang/frmTongHopChiTietDonHang2",
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "kho_vat_tu/frm_nhap_chitiet_ver2",
+    "san_xuat/frmBaoCaoHangTrangAdd",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd",
+    "san_xuat/frmHoSoSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GET3",
+   "usedBy": 17,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong",
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmDanhMucDeXuat2",
+    "danh_muc/frmListMaterialRequest1",
+    "dinh_muc/frmDinhMucCatVan",
+    "don_hang/frmBanHangGo",
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "don_hang/frm_Dao_dondathang",
+    "kho_vat_tu/frmLenhCapPhat_HangTrang",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Edit",
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTinhGiaSanXuat",
+    "san_xuat/frmTrangThaiSanXuatHTR",
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_NCC_GET2",
+   "usedBy": 8,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuAdd2",
+    "dinh_muc/frmDinhMucCatVan",
+    "don_hang/frmPurchaseOrderEdit2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac"
+   ]
+  },
+  {
+   "proc": "TR_BIEUMAU_FRIDAY_GETBYREPORTID",
+   "usedBy": 8,
+   "forms": [
+    "danh_muc/frmListMaterialRequest1",
+    "don_hang/frmOrderExample",
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frm_Dao_dondathang",
+    "kho_vat_tu/frmNhapHangLoi3",
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet",
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_GET2",
+   "usedBy": 8,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmListMaterialRequest1",
+    "kho_vat_tu/frmTheoDoiLenhCapPhat",
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI",
+    "san_xuat/frmScan110"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_CHITIET_GETLISTBYMACT",
+   "usedBy": 8,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmListMaterialRequest1",
+    "kho_vat_tu/frmChiaTonKho",
+    "kho_vat_tu/frmWarehouseOutput2",
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frm_vattu",
+    "san_xuat/frmScan110"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_GET2",
+   "usedBy": 7,
+   "forms": [
+    "bang_mau_banve/frmDanhSachBanVe",
+    "bang_mau_banve/frmUploadBanVe2",
+    "bang_mau_banve/frm_banve",
+    "bang_mau_banve/frm_banve_donggoi",
+    "don_hang/frmDoDonHang",
+    "san_pham/frm_sanpham",
+    "san_pham/tr_sanpham_hide"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_NHAMAY_GETBYSTATUS",
+   "usedBy": 7,
+   "forms": [
+    "bao_gia/frmBaoGia3",
+    "danh_muc/frmDanhSachMaNhaMay",
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2",
+    "ke_toan/frmDanhSachQuyTrinh2",
+    "ke_toan/frmNhomQuyCachPhoi",
+    "san_pham/frmSanPhamAdd3"
+   ]
+  },
+  {
+   "proc": "TR_EMAIL_SUBSCRIBER2_GETBYTOPIC",
+   "usedBy": 7,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTu",
+    "de_xuat/frmDeXuatMuahangAdd",
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2",
+    "kho_vat_tu/frmDanhSachCapPhatYeuCau",
+    "kho_vat_tu/frmPhieuDeNghiThanhToan",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETBYMACT2",
+   "usedBy": 6,
+   "forms": [
+    "de_xuat/frmDeXuatMuahangAdd",
+    "kho_vat_tu/frmNhapHangLoi3",
+    "kho_vat_tu/frmNhapHangLoiAdd",
+    "kho_vat_tu/frmPhieuBuHangAdd",
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETBYSP2",
+   "usedBy": 5,
+   "forms": [
+    "bang_mau_banve/frm_banve",
+    "bang_mau_banve/frm_banve_donggoi",
+    "bao_cao/frmThongKeXuatHangThanhPham",
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_GRIDVIEW_COLUMN_GETALL2",
+   "usedBy": 5,
+   "forms": [
+    "don_hang/frmKeHoachDonHangMau",
+    "don_hang/frmPurchaseOrderEdit",
+    "don_hang/frmPurchaseOrderEdit2",
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETBYKHO",
+   "usedBy": 5,
+   "forms": [
+    "don_hang/frmDonHangBuAdd",
+    "don_hang/frmOrderExampleAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2",
+    "san_xuat/frmScan110_1"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETBYSTATUS",
+   "usedBy": 5,
+   "forms": [
+    "don_hang/frm_theodoi_dondathang",
+    "kho_vat_tu/frmPhieuDeNghiThanhToanAdd",
+    "kho_vat_tu/frmTaoYeuCauMuaHang2",
+    "san_xuat/frmTinhGiaSanXuat",
+    "san_xuat/frmTrangThaiSanXuatHTR"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETBYSP",
+   "usedBy": 4,
+   "forms": [
+    "bao_cao/frmBaoCaoHangLoi",
+    "bao_cao/frmThongKeXuatHangThanhPham",
+    "de_xuat/frmDeXuatMuahangAdd",
+    "kho_vat_tu/frmNhapHangLoi2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GetByWS",
+   "usedBy": 4,
+   "forms": [
+    "don_hang/frmListPurchaseOrderList",
+    "don_hang/frmTheoDoiDonHangPhoi",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmNhapKhoGoVan"
+   ]
+  },
+  {
+   "proc": "TR_LISTMATERIAL_ONHAND",
+   "usedBy": 4,
+   "forms": [
+    "kho_vat_tu/frmWarehouseInput2",
+    "kho_vat_tu/frmWarehouseOutput3",
+    "kho_vat_tu/frmWarehouseOutputMaterial",
+    "kho_vat_tu/frmWarehouseReturn"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET2_GROUP",
+   "usedBy": 4,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_GVA2",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Khac",
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG2",
+   "usedBy": 4,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang3",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG3",
+   "usedBy": 4,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang3",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG4",
+   "usedBy": 4,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang3",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_GetAll2",
+   "usedBy": 3,
+   "forms": [
+    "bang_mau_banve/frm_banve2",
+    "bang_mau_banve/frm_banve_view2",
+    "bang_mau_banve/frm_banve_view3"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYMULTIPLEORDER",
+   "usedBy": 3,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd3",
+    "don_hang/frmThongKeChiTietDonHang",
+    "san_xuat/frmBaoCaoTienDoChuyenSonAdd"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUBAOGIA_GETBYNUMBER",
+   "usedBy": 3,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTu",
+    "bao_gia/frmBaoGiaVatTuAdd",
+    "bao_gia/frmBaoGiaVatTuAdd2"
+   ]
+  },
+  {
+   "proc": "GETVENDORBYMADDH",
+   "usedBy": 3,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_GETLISTBYTYPE",
+   "usedBy": 3,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequestOther",
+    "danh_muc/frmListMaterialRequest1",
+    "kho_vat_tu/frmTheoDoiLenhCapPhat"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SOKHOI_DDH",
+   "usedBy": 3,
+   "forms": [
+    "de_xuat/frmDeXuatPhoiAdd4",
+    "de_xuat/frmDeXuatPhoiAdd5",
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi3"
+   ]
+  },
+  {
+   "proc": "TR_BOM_MIX_GETBYPARENT",
+   "usedBy": 3,
+   "forms": [
+    "dinh_muc/frmDinhMucSonEditor",
+    "dinh_muc/frmDinhMucSon_Mix",
+    "dinh_muc/frmDinhMucSon_MixAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETLISTBYID",
+   "usedBy": 3,
+   "forms": [
+    "don_hang/frmOrderNumberAdd3",
+    "kho_vat_tu/frmLenhCapPhatAdd",
+    "san_xuat/frmTongHopChiTiet_HangTrang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETBYTYPE2",
+   "usedBy": 3,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangPhoi",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmNhapKhoGoVan"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETGROUP",
+   "usedBy": 3,
+   "forms": [
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd",
+    "san_pham/frmCreateMaterialCode_Ver2",
+    "san_pham/frmCreateMaterialCode_Ver3"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG6",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_OTHER_GETBYCODE",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraMayMoc",
+    "san_pham/frmCreateMaterialCode_Ver4"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_SON_GET2",
+   "usedBy": 2,
+   "forms": [
+    "bao_gia/frm_baogia_export",
+    "bao_gia/frm_baogia_sanpham_info"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_FIND4",
+   "usedBy": 2,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang",
+    "bao_gia/frm_baogia_sanpham_ver3"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETPRICEZERO_HEHANG",
+   "usedBy": 2,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_ver3",
+    "bao_gia/frm_baogia_sanpham_ver4"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_GETBYNGUYENLIEU",
+   "usedBy": 2,
+   "forms": [
+    "danh_muc/frmCaiDatDonGiaNguyenLieu",
+    "danh_muc/frmCaiDatDonGiaNguyenLieu2"
+   ]
+  },
+  {
+   "proc": "MES_QUYTRINH_SANPHAM_GETALL2",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "MES_QUYTRINH_SANPHAM_GETCATEGORY",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GetByOrder",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmOrderNumberAdd",
+    "don_hang/frmOrderNumberInfomation"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangChiTiet",
+    "san_xuat/frmThongKeCongDoan"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST4",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangChiTiet",
+    "san_xuat/frmThongKeCongDoan"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_NGUKIM_Get2",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmDonHangBuAdd",
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL3",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi",
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi2"
+   ]
+  },
+  {
+   "proc": "TR_NGANHANG_GETDEFAULT",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmOrderNumberInfomation",
+    "don_hang/frmProformaInvoice"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_NGUONGOC",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_PhieudoihangAdd",
+    "don_hang/frm_banhanggo_PhieutrahangAdd"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_NGUONGOC_NULL",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_PhieudoihangAdd",
+    "don_hang/frm_banhanggo_PhieutrahangAdd"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_ByCurrentDate",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodInput",
+    "kho_vat_tu/frmWarehouseFinishGoodInput2"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_ByDate",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodInput",
+    "kho_vat_tu/frmWarehouseFinishGoodInput2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_NHAP",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmWarehouseInput",
+    "kho_vat_tu/frmWarehouseInput_HTR"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL2",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmTonKhoGoVan_ChonQuyCach",
+    "kho_vat_tu/frmTonKhoGoVan_XuatKho"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_CHITIET_XUAT",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_CHITIET_XUAT2",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "kho_vat_tu/frmXuatVatTuAI"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETNEWITEM",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETNEWITEM2",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_GETBYKHO",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmXuatKhoLenhCapPhat",
+    "san_xuat/frmScan110"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETALL3",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmNhapTienDoHangTrang",
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYPCARD",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmNhapTienDoHangTrang",
+    "san_xuat/frmTienDoHangTrang"
+   ]
+  },
+  {
+   "proc": "TRTB_M_LOCATION_GETALL2",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_GETALL4",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat",
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL6",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL7",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL8",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL9",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_GRIDVIEW_COLUMN_GETDEPT",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE2",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang2"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE3",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan",
+    "san_xuat/frmTienDoHangTrang2"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_GETBYNUMBER",
+   "usedBy": 1,
+   "forms": [
+    "bang_mau_banve/frmChiTietDeXuatBangMau"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_GETBYTYPE",
+   "usedBy": 1,
+   "forms": [
+    "bang_mau_banve/frmBanVeDao"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "bang_mau_banve/frmDanhSachBanVe2"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SANLUONG_HOANTHIEN_BYDATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoFinalAdd"
+   ]
+  },
+  {
+   "proc": "HR_NHANVIEN2_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongTinNhanVienEdit"
+   ]
+  },
+  {
+   "proc": "HR_NHANVIEN2_GETBYMANV",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongTinNhanVienEdit"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HIENDIEN4_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoHienDien"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETDAY",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoSanLuongUV"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_FINAL_BAOCAOCHATLUONG",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_BIEUMAU_FRIDAY_CONGDOAN_GET2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_THAYDOI_KYTHUAT_BAOCAOCHATLUONG",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_BAOCAO",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_BAOCAO2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_CHONIN",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_CHONIN2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETALL4",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong2"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_PHIEUXUAT_THEONGAY",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmTongHopSonTheoNgay"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_SON_GET4",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_ver2"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_DONGGOI_GET2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_info"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_GOVAN_GET2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_info"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_NGUKIM_GET2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_info"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_THANHPHAM_GET2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_info"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_FIND",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frm_baogia_sanpham_ver3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_GIAPHOI_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_TONGHOP_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "SAL_BAOGIA_GOVAN_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTuGoVan"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUBAOGIA_CHITIET_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTu"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUBAOGIA_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaVatTu"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GetListID",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_GETBYACTIVE",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "ListWHSInOut_Detail",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListWHSInOut"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GET2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest_GVA_ver2"
+   ]
+  },
+  {
+   "proc": "RPT_BAOCAO_NHAPXUAT",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListMaterialInOut"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_XUAT_HOPCHAT_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhSachTongHopXuatHopChatSon"
+   ]
+  },
+  {
+   "proc": "TRTB_M_OP_GETLIST3",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmNhomMay"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_GETBYNUMBER2",
+   "usedBy": 1,
+   "forms": [
+    "de_xuat/frmChiTietDeXuatPhoi"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_MUAHANG_GETBYNUMBER2",
+   "usedBy": 1,
+   "forms": [
+    "de_xuat/frmChiTietDeXuatMuaHang"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETLISTSP",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSoChe"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGHOP",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon3"
+   ]
+  },
+  {
+   "proc": "ListOrderNumber",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucDonHang"
+   ]
+  },
+  {
+   "proc": "TONGHOP_DONHANG",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucDonHang"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON2_GETLISTBYMASP",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSonEditor"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_MIX_GETBYCOLOR",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSonEditor"
+   ]
+  },
+  {
+   "proc": "TR_SODO_CATVAN_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucCatVan"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_METVUONG_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon4"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CHIPHI_SANPHAM_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "TR_LIST_SHIPPING_GETBYDESTINATION",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberAdd"
+   ]
+  },
+  {
+   "proc": "DQT_PALLET_GETBYDONHANG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangChiTiet"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST5",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangChiTiet"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAILEXAMPLE__GETLISTBYID",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_DETAIL_GETLISTBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_EXAMPLE_GET2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderExampleAdd"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_GETBYORDER2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi3"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_CHITIET_DONHANG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmThongKeChiTietDonHang"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETLISTBYTYPE",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmPurchaseOrderEdit2"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_TONGHOPCHITIET_BYDONHANG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopChiTietDonHang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_BYDAY",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_theodoi_dondathang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_BY_MACT",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_theodoi_dondathang"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL4",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhsachDeXuatPhoi_NgayGiaoPhoi"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_CHITIET_DONHANG_SX",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopChiTietDonHang2"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_CHITIET_DONHANG2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDanhSachVatTuDonHang"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_TONGHOPBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDanhSachDonHangTheoNgay"
+   ]
+  },
+  {
+   "proc": "SR_BAOCAOBANHANG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmbaocaobanhang"
+   ]
+  },
+  {
+   "proc": "SR_BAOCAOBANHANG_SP",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmbaocaobanhang"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETLISTEXAMPLE",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmKeHoachDonHangMau"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYMULTIPLEORDER2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmCommercial_InvoiceAddNewItem"
+   ]
+  },
+  {
+   "proc": "TR_PROFORMA_INVOICE_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmProformaInvoice"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopDonHang"
+   ]
+  },
+  {
+   "proc": "TR_LUUTRINH_SANXUAT_GETUV",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmQuyTrinhUV"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_GETBYNUMBER",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmChiTietDeNghiThanhToan"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_SANPHAM2_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmDanhSachQuyTrinh"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GETBYROUTING",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmDanhSachQuyTrinh"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_NHACC_GETMNCC",
+   "usedBy": 1,
+   "forms": [
+    "ke_toan/frmDeNghiTT"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYCUSTOMER_PIVOT",
+   "usedBy": 1,
+   "forms": [
+    "khach_hang_ncc/frmKhachHangInfo"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_GETBYSP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodInput"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_GETBYSP2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodInput"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_Get2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseInput_HTR"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_GET2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseInput"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETLISTBOM",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu_info"
+   ]
+  },
+  {
+   "proc": "DQT_DINHMUC_GOVAN_GET2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuTraHangAdd"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET2_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Edit"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETGROUP3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd2"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_GET2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmChiTietDeNghiXuatKho"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SOLUONG_GETBYDEPT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_nhap_chitiet_ver2"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SON_CHITIET_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_nhap_chitiet_ver2"
+   ]
+  },
+  {
+   "proc": "TR_NGUYENLIEU_TENKHOAHOC_GETBYNL",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTonKhoGoVan_NhapKho"
+   ]
+  },
+  {
+   "proc": "TR_CONT_DETAIL_Get2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodOutput"
+   ]
+  },
+  {
+   "proc": "TR_CONT_DETAIL_Search",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodOutput"
+   ]
+  },
+  {
+   "proc": "TR_CONT_List",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodOutput"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_CHITIET_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuGiaoThanhPhamAdd"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_NCC_GETBYGROUP_PV",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmSoSanhGiaVatTu"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUKIEMKE_CHITIET_NEWDATA",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuKiemKeAdd"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_VIEW",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmKiemTraPhieuNhap"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_CHITIET_NHAP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseInput2"
+   ]
+  },
+  {
+   "proc": "RST_NHAP_NGUYENLIEU_GETBYCODE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmRSTNhapNguyenLieuAdd"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuPallet"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETALL4",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuPallet"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_GETBYSTATUS",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKhoThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_CHITIET_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuGiaoThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuGiaoThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_THANHPHAM2_CHITIET_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuGiaoThanhPham"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_GETBYMACT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTheoDoiNhapXuat_ChiTiet"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETBYMACT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTheoDoiNhapXuat_ChiTiet"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTheoDoiPhieuYeuCau"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_CREATE_PALLET",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL4",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_HUONGXULY",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYPCARD2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi3"
+   ]
+  },
+  {
+   "proc": "RPT_TONGHOP_VATTU_MUAHANG",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTongHopVatTu"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_VATTU_YEUCAUXUAT_CHITIET",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTongHopYeuCauXuatKho_ChiTiet"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_UPLOAD_IMAGE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETALLBYWHS",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmContainerPhieuXuat"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETALLBYWHS2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmContainerPhieuXuat"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_GETBYKHO2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseOutput2"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GETLISTBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GETLISTBYSP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_DONGGOI_TONGCHITIET",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_MUAHANG_CHITIET_GETDX",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang_DeXuatMuaHang"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_YEUCAU_CHATLUONG_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauChatLuongAdd"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_GETBYSTATUS",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuDeNghiThanhToan"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu_xacnhan"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_GETBYMONTH",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTheoDoiNhapXuat"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETBYMONTH",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTheoDoiNhapXuat"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETLISTBYLCP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmThongTinPhieuXuat_TheoPYC"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETLISTBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETLISTBYMONTH",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETLISTBYYEAR",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapHangLoi"
+   ]
+  },
+  {
+   "proc": "TR_AI_BOM_GETBYSP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAI"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_NGUKIM_Get3",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhat_HangTrang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_PHOI_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTaoYeuCauMuaHang_Phoi"
+   ]
+  },
+  {
+   "proc": "TR_NGUYENLIEU_NGUKIM_GETMASP",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmSanPhamAdd3"
+   ]
+  },
+  {
+   "proc": "TR_NGUYENLIEU_TEM_GETMASP",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmSanPhamAdd3"
+   ]
+  },
+  {
+   "proc": "TR_NGUYENLIEU_VATTU_GETMASP",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmSanPhamAdd3"
+   ]
+  },
+  {
+   "proc": "TR_NGUYENLIEU_VENNER_GETMASP",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmSanPhamAdd3"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_NHAMAY_GETBYHEHANG",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmSanPhamAdd2"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETGROUP2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmCreateMaterialCode_Ver3"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GetHaveOrder",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frm_sanpham"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GetNotOrder",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frm_sanpham"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETNEWORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmTaoPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETNEWORDER2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmTaoPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GetAll2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/tr_sanpham_hide"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_DANHSACH_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_MAUSON_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_NGUYENLIEU_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_NGUYENLIEU_GET3",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_VATTU_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_YEUCAUKHAC_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmThongTinSanPham2"
+   ]
+  },
+  {
+   "proc": "TR_CHIPHI_SANXUAT_SP_GETBYSP",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmTinhChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmDanhSachPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETBYORDER2",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmDanhSachPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frmDanhSachPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "TRTB_M_LOCATION_GETLIST3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_LUUTRINH_SANXUAT_GET2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_ver2"
+   ]
+  },
+  {
+   "proc": "TR_NHOM_NGUYENLIEU_SEARCH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_ver2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETBYMACT",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_import"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETBYSP3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoChuyenSonAdd"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HIENDIEN4_CREATE2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_CHITIET_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_GETBYMONTH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_GETBYMONTH2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT2_GETM3_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_LSX",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETLISTCHITIET",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_CHITIET_LANUV",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_TIENDO_THANHPHAM_BY_ORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL5",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETBYCOLUMN",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL4",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETBYCOLUMN_DDH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_SHOWINREPORT_DDH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG5",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmThongKeCongDoan"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmBaoCaoSanXuatHTR"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYMONTH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmBaoCaoSanXuatHTR"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmGiaoNhanHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmGiaoNhanHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_GETBYORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SANPHAM_MONITORING3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmBaoCaoSanLuongTheoMucTieu"
+   ]
+  },
+  {
+   "proc": "TRTB_M_LOCATION_GETBYDEPARTMENT",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang3"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_BAOCAO_THEONGAY",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_REPORT5",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoSanXuat"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_GETALL2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuatAdd"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_GETALL3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmMucTieuSanXuatAdd2"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_GIAOHANG_GETLISTBYSTATUS",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmLichGiaoHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG7",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang5"
+   ]
+  }
+ ],
+ "other": [
+  {
+   "proc": "TR_PHIEUNHAP_HTR",
+   "usedBy": 7,
+   "forms": [
+    "danh_muc/frmListWHSInOut",
+    "kho_vat_tu/frmNhapKho2",
+    "kho_vat_tu/frmWarehouseInput",
+    "kho_vat_tu/frmWarehouseInput_HTR",
+    "kho_vat_tu/frmWarehouseOutput",
+    "kho_vat_tu/frmWarehouseOutputMaterial",
+    "kho_vat_tu/frmWarehouseReturn"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_EditCode",
+   "usedBy": 3,
+   "forms": [
+    "san_pham/frmSanPhamAdd2",
+    "san_pham/frmSanPhamAdd3",
+    "san_pham/frmSanPhamEditCode"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_BANGMAU_EXISTS",
+   "usedBy": 2,
+   "forms": [
+    "bang_mau_banve/frmDeXuatBangMauAdd",
+    "danh_muc/frmDanhMucDeXuat2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_RELEASE",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2",
+    "san_xuat/frmTienDoChuyenSonAdd"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHECK_FSC",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong",
+    "san_xuat/frmTienDoHangTrang4"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_DATHANG_THEODONHANG",
+   "usedBy": 2,
+   "forms": [
+    "bao_cao/frmTheoDoi_DatHang",
+    "don_hang/frmThongTinDatHang_ByOrder"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_SON",
+   "usedBy": 2,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest",
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "MES_QUYTRINH_SANPHAM_PHATHANH",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_BANVE_CREATE",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_CLEAN",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_CREATE",
+   "usedBy": 2,
+   "forms": [
+    "dinh_muc/frmPhatHanhDinhMuc",
+    "dinh_muc/frmPhatHanhDinhMuc2"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_FINISH",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi",
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi2"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_NOT_FINISH",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi",
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi2"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_FINISH",
+   "usedBy": 2,
+   "forms": [
+    "don_hang/frmOrderExample",
+    "don_hang/frmTongHopDonHang"
+   ]
+  },
+  {
+   "proc": "GWHS_Catelog",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmWarehouseFinishGoodInput",
+    "kho_vat_tu/frmWarehouseFinishGoodInput2"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_HSD_XUAT",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmWarehouseOutput",
+    "kho_vat_tu/frmWarehouseOutputMaterial"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_CREATE",
+   "usedBy": 2,
+   "forms": [
+    "kho_vat_tu/frmTaoPhieuPallet",
+    "san_pham/frmTaoPhieuSanPham"
+   ]
+  },
+  {
+   "proc": "rptLuuTrinhSanXuat",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach",
+    "san_xuat/frm_quytrinh_sanxuat_ver2"
+   ]
+  },
+  {
+   "proc": "CHART_THEODOI_SOLUONG_DONHANG",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat",
+    "san_xuat/frm_tiendo_sanxuat_hangtrang"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_TACHDONHANG",
+   "usedBy": 2,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2",
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_KIEMTRA_SON",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongKeSoLuongAdd2"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_SHOWEXP",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmThongBao"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_IMPORT",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmBaoCaoKiemTraChatLuong"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_DATHANG_THEONGAY",
+   "usedBy": 1,
+   "forms": [
+    "bao_cao/frmTheoDoi_DatHang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_GOVAN_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGia3"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_GOVAN_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_HTR_NGUKIM_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA_PHOI_GOVAN_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "bao_gia/frmBaoGiaPhoi"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_HEAD_SETFINISH",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListMaterialRequest1"
+   ]
+  },
+  {
+   "proc": "CreateMaterialRequest_NonBOM",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest_NonBOM"
+   ]
+  },
+  {
+   "proc": "CreateMaterialRequest_Ver2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest"
+   ]
+  },
+  {
+   "proc": "LENHCAPPHAT_HANGTRANG",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequestOther"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GOVAN",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest_GVA"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GOVAN_2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest_GVA"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_GOVAN_VER2",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmCreateMaterialRequest_GVA_ver2"
+   ]
+  },
+  {
+   "proc": "MATERIAL_INOUT",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmListMaterialInOut"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_NHAMAY_DUPLICATE",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhSachMaNhaMay"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_NHAMAY_HIDE",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhSachMaNhaMay"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_NGUYENNHAN_KHAC",
+   "usedBy": 1,
+   "forms": [
+    "danh_muc/frmDanhMucLoiAdd"
+   ]
+  },
+  {
+   "proc": "KIEMTRA_DINHMUC_GVA",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frm_kiemtra_dinhmuc_ver2"
+   ]
+  },
+  {
+   "proc": "KIEMTRA_DINHMUC_NKIDGO",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frm_kiemtra_dinhmuc_ver2"
+   ]
+  },
+  {
+   "proc": "KIEMTRA_DINHMUC_SON",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frm_kiemtra_dinhmuc_ver2"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_METVUONG_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon3"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_AUTOCREATE",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon4"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_METVUONG_CREATE2",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucSon4"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CHIPHI_SANPHAM_AUTO",
+   "usedBy": 1,
+   "forms": [
+    "dinh_muc/frmDinhMucChiPhiSanPham"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_AUTOFILL",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmOrderNumberAdd3"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_METVUONG_GHICHU",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGBUOCSON",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGKHOILUONG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGKHOILUONG2",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGMETVUONG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmDonHangSon"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_AUTOFINISH",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhSachDeXuatPhoi3"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_AUTO_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTuDongTaoDonHang"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_NGAYGIAOPHOI",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frm_banhanggo_DanhsachDeXuatPhoi_NgayGiaoPhoi"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_MAU2_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmKeHoachDonHangMau"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_MAU2_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmKeHoachDonHangMau"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_MAU2_SORT",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmKeHoachDonHangMau"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_SORTORDER",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTongHopDonHang"
+   ]
+  },
+  {
+   "proc": "TR_CHIPHI_DONHANGTRANG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmChiPhiDonHang"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_PHOI_GIACONG",
+   "usedBy": 1,
+   "forms": [
+    "don_hang/frmTheoDoiDonHangPhoi2"
+   ]
+  },
+  {
+   "proc": "SYS_ORDER_PERMISSION_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "khach_hang_ncc/frmCustomerPermission"
+   ]
+  },
+  {
+   "proc": "TR_DENGHI_THANHTOAN_NHACC",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmPhieuDeNghiThanhToanAdd"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_ISFINISH",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmYeuCauXuat_VatTuAdd"
+   ]
+  },
+  {
+   "proc": "TR_CAPPHAT_VATTU2_XUAT",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmWarehouseOutput"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_TIMKIEM",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu_info"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_GOVAN_XUATKHO",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmTonKhoGoVan_XuatKho"
+   ]
+  },
+  {
+   "proc": "AutoGenerateBatchNoPN",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2"
+   ]
+  },
+  {
+   "proc": "TR_TONKHO_NHAP",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmNhapKho2"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_BARCODE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frm_vattu"
+   ]
+  },
+  {
+   "proc": "DanhSachYeuCauCapPhat",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmDanhSachCapPhatYeuCau"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CAPPHAT_XEMTRUOC",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_LENHCAPPHAT_EXISTS",
+   "usedBy": 1,
+   "forms": [
+    "kho_vat_tu/frmLenhCapPhatAdd"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_QUYTRINH",
+   "usedBy": 1,
+   "forms": [
+    "pallet/frmDanhSachPallet"
+   ]
+  },
+  {
+   "proc": "TRANGTHAI_DINHMUC",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frm_sanpham"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_INTEM",
+   "usedBy": 1,
+   "forms": [
+    "san_pham/frm_sanpham"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_PHANTRAM_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_SOKHOI_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTienDoHangTrang"
+   ]
+  },
+  {
+   "proc": "DQT_DONDATHANG_HTR",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach"
+   ]
+  },
+  {
+   "proc": "rptPalletDinhHinh_2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach"
+   ]
+  },
+  {
+   "proc": "rptPalletDinhPhoi_2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach"
+   ]
+  },
+  {
+   "proc": "rptPheiCatPhoi",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_quytrinh_sanxuat_danhsach"
+   ]
+  },
+  {
+   "proc": "CHART_THEODOI_SOLUONG_DONHANG2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TIENDO_SANXUAT",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_CHECK_FSC",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_LSX",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_CREATE",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_CREATE2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_HOANTHANH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_SUASOLUONG",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_CREATE3",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_HOANTHANH_DDH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_SUASOLUONG_DDH",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachSanXuatPO2_HTR"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CAPPHAT_XEMTRUOC2",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmTongHopChiTiet_HangTrang"
+   ]
+  },
+  {
+   "proc": "TIENDO_SANXUAT_HTR",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frm_tiendo_sanxuat_hangtrang"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG2_HEAD_SETORDER",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang_SapXep"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_AUTOCREATE",
+   "usedBy": 1,
+   "forms": [
+    "san_xuat/frmKeHoachHangTrang3"
+   ]
+  }
+ ]
+}
