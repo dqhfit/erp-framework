@@ -1,0 +1,657 @@
+{
+ "core": [
+  {
+   "tableName": "dbo.SYS_USER",
+   "pkColumn": "USERID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.SYS_USER_RULE",
+   "pkColumn": "UserName",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.dqt_pallet_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.dqt_pallet_yeucauxuat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.dqt_pallet_yeucauxuat_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.dqt_thongke_phoi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.hr_congty",
+   "pkColumn": "MaCty",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_chiphi",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_chiphi_bophan",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_chiphi_bophan_giantiep",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_ketqua_kinhdoanh",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_ketqua_kinhdoanh_tuan",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_ketqua_kinhdoanh_tuan_cpcd",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_ketqua_kinhdoanh_tuan_cpphoi",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_loai_giaodich",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_nhom_chiphi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_sohieutaikhoan",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.kt_soquy_tienmat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_banve",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_danhsach_maymoc",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_danhsach_maymoc_group",
+   "pkColumn": "id_maymoc",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_son",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_veneer",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_bangmau",
+   "pkColumn": "ma",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_bangmau_baocao_duyet",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_bangmau_baocao_luachon",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_banve",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_banve_ai",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baocao_final",
+   "pkColumn": "report_id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baocao_final_hinhanh",
+   "pkColumn": "image_id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baocao_final_muckiemtra",
+   "pkColumn": "item_id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baocao_hangloi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia2_danhsach",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_chiphi",
+   "pkColumn": "ID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_chiphi_nguyenlieu",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_chiphi_nhancong",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_chiphi_other",
+   "pkColumn": "ID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_chiphi_veneer",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_donggoi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_govan_giacong",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_levelson",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_ngukim",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_nhancong",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_other",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_son",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_summary",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_thanhpham",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_bophan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_chucvu",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_color",
+   "pkColumn": "code",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_common",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_denghi_thanhtoan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_denghi_thanhtoan_file",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuat_bangmau",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuat_bangmau_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuat_phoi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuat_phoi_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuatdichvu",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dexuatdichvu_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_son2",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_son3",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_son3_metvuong",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_veneer",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dondathang",
+   "pkColumn": "maddh",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_hehang",
+   "pkColumn": "tenhh",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_honhop_son",
+   "pkColumn": "master_code",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_honhop_son_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_khachhang",
+   "pkColumn": "customer_id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_khachhang_giantiep",
+   "pkColumn": "customer_id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_khuvuc",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_lenhcapphat_head",
+   "pkColumn": "LenhCapPhatID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_list_destination",
+   "pkColumn": "destination_code",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_list_paymentterm",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_list_shipment",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_list_shipping",
+   "pkColumn": "destination_code",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_loai_dexuat",
+   "pkColumn": "madexuat",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_loaidh",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_loaincc",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_loaisp",
+   "pkColumn": "maloaisp",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_material",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_material_ncc",
+   "pkColumn": "ID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_material_nocode",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_material_other",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_muctieu_sanxuat2",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_muctieu_sanxuat2_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_nganhang",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_nguoiduyet",
+   "pkColumn": "Id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_nguoiduyet_bophan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_nguyenlieu_gva",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_nhacc",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_order",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_order_detail",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_order_replacement",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_order_replacement_detail",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_pallet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_pallet_card",
+   "pkColumn": "card_no",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieubaogia",
+   "pkColumn": "ID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieubaogia_chitiet",
+   "pkColumn": "ID",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieunhap",
+   "pkColumn": "sopn",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieuxuat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieuyeucau",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieuyeucau_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieuyeucau_muahang",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_phieuyeucau_muahang_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_reftype",
+   "pkColumn": "RefType",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_reftype_category",
+   "pkColumn": "RefTypeCategory",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_sanpham",
+   "pkColumn": "masp",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_sanpham_carton",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_sanpham_nhamay",
+   "pkColumn": "masp_nhamay",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_site",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_thaydoi_kythuat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_tonkho_sum",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.trtb_m_location",
+   "pkColumn": "c_location",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.trtb_m_op",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.trtb_scan_op",
+   "pkColumn": "id",
+   "mode": "rescan"
+  }
+ ],
+ "heavy": [
+  {
+   "tableName": "dbo.kt_chiphi_kinhdoanh",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_donggoi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_govan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_govan_ghichu",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_dinhmuc_ngukim",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.mes_quytrinh_sanpham",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_baogia_govan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_ctphieunhap",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_ctphieuxuat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_donggoi",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_govan",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_ngukim",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_dondathang_chitiet",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_lenhcapphat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  },
+  {
+   "tableName": "dbo.tr_trangthai_sanxuat",
+   "pkColumn": "id",
+   "mode": "rescan"
+  }
+ ],
+ "skipNoPk": []
+}

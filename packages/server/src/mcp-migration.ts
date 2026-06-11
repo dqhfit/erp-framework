@@ -285,6 +285,23 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "entity_set_source",
+    description:
+      "Gắn meta.source (kind=migration, mssqlTable, connectionId) cho 1 entity — dùng khi " +
+      "entity import bị thiếu source (bug cũ / promote crash) khiến rename + sync-link bỏ qua. " +
+      "Merge jsonb, không ghi đè meta khác.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Tên entity hiện tại" },
+        mssqlTable: { type: "string", description: "vd 'dbo.tr_khachhang'" },
+        connectionId: { type: "string", description: "UUID kết nối MSSQL (tuỳ chọn)" },
+      },
+      required: ["name", "mssqlTable"],
+    },
+  },
+  {
     name: "migration_skip_job_table",
     description:
       "Đánh dấu SKIPPED các bảng trong 1 job full-import (bảng treo/lỗi vĩnh viễn — " +
@@ -902,6 +919,33 @@ async function callMigrationTool(
         }
       }
       return { results, renamed: results.filter((r) => r.status === "renamed").length };
+    }
+
+    /* ── entity_set_source (apply) ──────────────────────────── */
+    case "entity_set_source": {
+      const entityName = String(args.name ?? "");
+      const mssqlTable = String(args.mssqlTable ?? "");
+      if (!entityName || !mssqlTable) throw new McpError("name + mssqlTable bắt buộc");
+      const source: Record<string, unknown> = {
+        kind: "migration",
+        mssqlTable,
+        ...(args.connectionId ? { connectionId: String(args.connectionId) } : {}),
+      };
+      const updated = await db
+        .update(entities)
+        .set({
+          meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({ source })}::jsonb`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(entities.companyId, companyId),
+            sql`lower(${entities.name}) = lower(${entityName})`,
+          ),
+        )
+        .returning({ id: entities.id });
+      if (updated.length === 0) throw new McpError(`Entity '${entityName}' không tồn tại`, -32602);
+      return { ok: true, entityId: updated[0]?.id, source };
     }
 
     /* ── migration_skip_job_table (apply) ───────────────────── */

@@ -929,7 +929,7 @@ export async function enableModuleSyncForCompany(
     else unlinked.push(tbl.tableName);
 
     const exists = await db
-      .select({ id: migrationSyncTables.id })
+      .select({ id: migrationSyncTables.id, entityId: migrationSyncTables.entityId })
       .from(migrationSyncTables)
       .where(
         and(
@@ -952,6 +952,13 @@ export async function enableModuleSyncForCompany(
         enabled: true,
       });
       created.push(tbl.tableName);
+    } else if (!exists[0].entityId && entityId) {
+      // Re-run sau khi entity được tạo/sửa source: vá link entityId còn null
+      // (idempotent — row có link rồi thì không đổi).
+      await db
+        .update(migrationSyncTables)
+        .set({ entityId, updatedAt: new Date() })
+        .where(eq(migrationSyncTables.id, exists[0].id));
     }
 
     // meta.sync.state='mirror' — merge jsonb (bai hoc #20), KHONG ghi de meta.
