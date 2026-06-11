@@ -35,6 +35,7 @@ tablesMissingInErp:
 forms:
   - form: frmListJobAdd
     title: Giao việc
+    inScope: true
     entities:
       - sys_user
     repos: []
@@ -77,6 +78,7 @@ forms:
         caption: Thoát
   - form: frmDanhSachMayMocAdd
     title: Cập nhật máy móc
+    inScope: false
     entities: []
     repos: []
     procs:
@@ -105,6 +107,7 @@ forms:
         caption: Đóng
   - form: frmListMaterialRequest1
     title: Danh sách lệnh cấp phát
+    inScope: true
     entities:
       - hr_congty
       - sys_user
@@ -262,6 +265,7 @@ forms:
     buttons: []
   - form: frmLoaiTB_Add
     title: Loại thiết bị
+    inScope: false
     entities: []
     repos: []
     procs:
@@ -282,6 +286,7 @@ forms:
         caption: Lưu
   - form: frmCreateMaterialRequest_NonBOM
     title: Cấp phát vật tư vượt định mức
+    inScope: true
     entities:
       - hr_congty
       - tr_lenhcapphat
@@ -329,6 +334,7 @@ forms:
     buttons: []
   - form: frmNhomAIAdd
     title: Cập nhật nhóm AI
+    inScope: true
     entities:
       - sys_user
       - tr_hehang
@@ -418,6 +424,7 @@ forms:
         caption: Lưu
   - form: frmDanhGiaNhanVien
     title: Đánh giá nhân viên
+    inScope: true
     entities:
       - sys_user
       - sys_user_rule
@@ -468,6 +475,7 @@ forms:
     buttons: []
   - form: frmDanhsachCongno_Thu_Tra
     title: Danh sách công nợ phải Thu - Trả Showroom
+    inScope: false
     entities: []
     repos: []
     procs:
@@ -540,6 +548,7 @@ forms:
     buttons: []
   - form: frmDanhSachHoaDon
     title: frmDanhSachHoaDon
+    inScope: true
     entities:
       - tr_khachhang
     repos:
@@ -619,6 +628,7 @@ forms:
         caption: Chọn tất cả
   - form: frmListWHSInOut
     title: frmListWHSInOut
+    inScope: true
     entities:
       - hr_congty
       - sys_user
@@ -724,6 +734,7 @@ forms:
     buttons: []
   - form: frmListContainer
     title: Danh sách cont
+    inScope: true
     entities:
       - sys_user
     repos:
@@ -773,6 +784,7 @@ forms:
     buttons: []
   - form: frmCreateMaterialRequest
     title: Tạo lệnh cấp phát
+    inScope: true
     entities:
       - hr_congty
       - sys_user
@@ -900,6 +912,7 @@ forms:
     buttons: []
   - form: frmCreateMaterialRequestOther
     title: Cấp phát vật tư cho hàng trắng
+    inScope: true
     entities:
       - hr_congty
       - sys_user
@@ -1029,6 +1042,7 @@ forms:
     buttons: []
   - form: frmCreateMaterialRequest_GVA
     title: frmCreateMaterialRequest_GVA
+    inScope: true
     entities:
       - tr_lenhcapphat
     tablesMissing:
@@ -1078,6 +1092,7 @@ forms:
     buttons: []
   - form: frmCreateMaterialRequest_GVA_1
     title: Cấp phát gỗ ván
+    inScope: true
     entities:
       - hr_congty
     tablesMissing:
@@ -1119,6 +1134,7 @@ forms:
         caption: Xuất
   - form: frmCreateMaterialRequest_GVA_ver2
     title: Lệnh cấp phát gỗ ván
+    inScope: true
     entities:
       - tr_dondathang
       - tr_lenhcapphat
@@ -1195,6 +1211,7 @@ forms:
     buttons: []
   - form: frmDanhSachHoaDon
     title: frmDanhSachHoaDon
+    inScope: true
     entities:
       - tr_khachhang
     repos:
@@ -1274,6 +1291,7 @@ forms:
         caption: Chọn tất cả
   - form: frmDanhSachCongNo
     title: Công nợ khách hàng
+    inScope: true
     entities:
       - tr_khachhang
     repos:
@@ -1311,6 +1329,7 @@ forms:
     buttons: []
   - form: frmDanhSachHoaDon2
     title: Hóa đơn bán hàng
+    inScope: true
     entities:
       - sys_user
       - tr_bophan
@@ -1430,6 +1449,7 @@ forms:
     buttons: []
   - form: frmDanhSachCongViec
     title: Công việc hàng ngày
+    inScope: false
     entities: []
     tablesMissing:
       - tr_baocao_congviec_hangngay
@@ -1478,6 +1498,7 @@ forms:
     buttons: []
   - form: frmDanhSachXuatGoVan
     title: Danh sách phiếu xuất gỗ ván
+    inScope: true
     entities:
       - tr_phieuxuat
     tablesMissing:
@@ -1533,6 +1554,7 @@ forms:
     buttons: []
   - form: frmNhomAI
     title: Nhóm AI
+    inScope: true
     entities:
       - tr_hehang
       - tr_khachhang
@@ -1584,6 +1606,7 @@ forms:
     buttons: []
   - form: frmDanhGiaTongHop
     title: Đánh giá tổng hợp
+    inScope: true
     entities:
       - sys_user_rule
       - sys_user
@@ -1639,6 +1662,7 @@ forms:
     buttons: []
   - form: frmCaiDatBieuMauAdd
     title: Cài đặt quy trình duyệt
+    inScope: false
     entities: []
     tablesMissing:
       - tr_loai_xetduyet
@@ -1685,6 +1709,7 @@ forms:
         caption: CẬP NHẬT
   - form: frmCaiDatDonGiaNguyenLieu
     title: Cài đặt đơn giá
+    inScope: true
     entities:
       - tr_hehang
       - tr_khachhang
@@ -1775,6 +1800,7 @@ forms:
         caption: Lưu
   - form: frmCaiDatDonGiaNguyenLieu2
     title: Cài đặt đơn giá
+    inScope: true
     entities:
       - tr_hehang
       - tr_khachhang
@@ -1870,6 +1896,7 @@ forms:
         caption: Đóng
   - form: frmListJob
     title: Danh sách công việc
+    inScope: false
     entities: []
     repos: []
     procs:
@@ -1910,6 +1937,7 @@ forms:
     buttons: []
   - form: frmListMaterialInOut
     title: frmListMaterialInOut
+    inScope: true
     entities:
       - hr_congty
       - sys_user_rule
@@ -1975,6 +2003,7 @@ forms:
     buttons: []
   - form: frmRSTNhomNguyenLieu
     title: Cập nhật nhóm nguyên liệu
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -1992,6 +2021,7 @@ forms:
         caption: Thêm
   - form: frmCaiDatHeSoHeHang
     title: Cài đặt hệ số
+    inScope: true
     entities:
       - tr_hehang
       - tr_khachhang
@@ -2018,6 +2048,7 @@ forms:
         caption: Đóng
   - form: frmNhomDanhGiaAdd
     title: Nhóm đánh giá
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2037,6 +2068,7 @@ forms:
         caption: Thêm mới
   - form: frmListProgramInstall
     title: frmListProgramInstall
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2058,6 +2090,7 @@ forms:
     buttons: []
   - form: frmDanhSachHoaDonLuuTam
     title: Hóa đơn lưu tạm
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2079,6 +2112,7 @@ forms:
     buttons: []
   - form: frmCaiDatBieuMau
     title: Cài đặt biểu mẫu
+    inScope: false
     entities: []
     tablesMissing:
       - tr_loai_xetduyet
@@ -2110,6 +2144,7 @@ forms:
     buttons: []
   - form: frmDanhSachCongViec
     title: Công việc hàng ngày
+    inScope: false
     entities: []
     tablesMissing:
       - tr_baocao_congviec_hangngay
@@ -2158,6 +2193,7 @@ forms:
     buttons: []
   - form: frmDanhMucDeXuat2
     title: frmDanhMucDeXuat2
+    inScope: true
     entities:
       - sys_user
       - tr_bangmau
@@ -2319,6 +2355,7 @@ forms:
     buttons: []
   - form: frmDanhSachMaNhaMay
     title: Danh sách mã nhà máy
+    inScope: true
     entities:
       - sys_user_rule
       - tr_hehang
@@ -2363,6 +2400,7 @@ forms:
     buttons: []
   - form: frmDanhSachTongHopXuatHopChatSon
     title: Tổng hợp xuất hợp chất sơn
+    inScope: true
     entities:
       - tr_trangthai_sanxuat
     fingerprintScore: 0.67
@@ -2398,6 +2436,7 @@ forms:
     buttons: []
   - form: frmDanhSachTongHopXuatHopChatSon2
     title: Tổng hợp xuất hỗn hợp sơn
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2411,6 +2450,7 @@ forms:
     buttons: []
   - form: frmListGWHSInOut
     title: frmListGWHSInOut
+    inScope: false
     entities: []
     repos: []
     procs:
@@ -2434,6 +2474,7 @@ forms:
     buttons: []
   - form: frmDanhSachMayMoc
     title: Danh sách máy móc
+    inScope: true
     entities:
       - mes_danhsach_maymoc
     fingerprintScore: 0.75
@@ -2463,6 +2504,7 @@ forms:
     buttons: []
   - form: frmListBomEditor
     title: Danh sách sản phẩm
+    inScope: true
     entities:
       - tr_hehang
       - tr_khachhang
@@ -2495,6 +2537,7 @@ forms:
     buttons: []
   - form: frmNhomMay
     title: Nhóm máy
+    inScope: true
     entities:
       - trtb_m_op
     tablesMissing:
@@ -2532,6 +2575,7 @@ forms:
     buttons: []
   - form: frmRoutList
     title: Danh sách quy trình
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2561,6 +2605,7 @@ forms:
     buttons: []
   - form: frmDanhMucLoi
     title: Danh mục lỗi
+    inScope: false
     entities: []
     tablesMissing:
       - tr_tieuchuan_nguyennhan
@@ -2581,6 +2626,7 @@ forms:
     buttons: []
   - form: frmDanhMucLoiAdd
     title: Cập nhật danh mục lỗi
+    inScope: true
     entities:
       - tr_baocao_hangloi
     fingerprintScore: 0.75
@@ -2620,6 +2666,7 @@ forms:
     buttons: []
   - form: frmDanhSachLoi
     title: "Khai báo lỗi "
+    inScope: true
     entities:
       - tr_bophan
     repos:
@@ -2651,6 +2698,7 @@ forms:
     buttons: []
   - form: frmDanhSachBanGiao
     title: Danh sách bàn giao
+    inScope: true
     entities:
       - sys_user
       - tr_bophan
@@ -2686,6 +2734,7 @@ forms:
     buttons: []
   - form: frmDanhSachSuaChua
     title: Danh sách sửa chữa
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2709,6 +2758,7 @@ forms:
     buttons: []
   - form: frmDanhSachTaiSan
     title: Danh sách tài sản
+    inScope: true
     entities:
       - tr_loaincc
       - tr_nhacc
@@ -2759,6 +2809,7 @@ forms:
     buttons: []
   - form: frmListMaterialRequest
     title: Danh sách lệnh cấp phát
+    inScope: true
     entities:
       - tr_lenhcapphat
     fingerprintScore: 1
@@ -2780,6 +2831,7 @@ forms:
     buttons: []
   - form: frmDanhsachkho
     title: Danh sách kho
+    inScope: false
     entities: []
     repos: []
     procs: []
@@ -2797,6 +2849,7 @@ forms:
     buttons: []
   - form: frm_Danhsachnhacungcap
     title: Danh sách nhà cung cấp
+    inScope: true
     entities:
       - tr_loaincc
       - tr_nhacc

@@ -218,6 +218,9 @@ for (const name of formNames) {
   out.push({
     form: name,
     title: meta?.title ?? "",
+    // Quy tắc đã chốt (2026-06-11): form không liên quan 130 bảng đã migrate
+    // → LOẠI khỏi phạm vi chuyển đổi (inScope=false, không scaffold).
+    inScope: entityList.length > 0,
     entities: entityList,
     ...(fingerprint ? { fingerprintScore: Math.round(fingerprint.score * 100) / 100 } : {}),
     ...(missing.length ? { tablesMissing: [...new Set(missing)] } : {}),
