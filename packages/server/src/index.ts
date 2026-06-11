@@ -35,6 +35,7 @@ import { knowledgeSearch } from "./knowledge-search";
 import { makeCallTool } from "./mcp-client";
 import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
+import { registerMigrationMcp } from "./mcp-migration";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
 import { getRecordStore } from "./record-store";
@@ -258,6 +259,11 @@ async function main(): Promise<void> {
   // đổi trạng thái / XOÁ trực tiếp (xem mcp-errors.ts). Khác /mcp Phản hồi:
   // ở đây AI mutate trực tiếp (cần errors:write, deny-by-default).
   registerErrorsMcp(app, db);
+
+  // MCP server cho module Migration — POST /mcp/migration (JSON-RPC), auth X-API-Key
+  // scope migration:read. AI đọc trạng thái delta-sync, full-import job, entity
+  // schema (storage tier, field mapping) để phân tích và gợi ý tối ưu.
+  registerMigrationMcp(app, db);
 
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.
