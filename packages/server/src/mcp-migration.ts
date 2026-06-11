@@ -271,6 +271,19 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "entity_rename_to_source",
+    description:
+      "Đổi entities.name của mọi entity import (có meta.source.mssqlTable) theo TÊN BẢNG NGUỒN " +
+      "(bỏ schema 'dbo.', lowercase, sanitize) — vd 'chi_tiet_don_hang_e43806' → 'tr_order_detail'. " +
+      "Label tiếng Việt GIỮ NGUYÊN (chỉ đổi định danh máy). Idempotent: đã đúng tên / trùng tên " +
+      "entity khác → skip. Tham chiếu nội bộ theo UUID không ảnh hưởng.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "migration_start_full_import",
     description:
       "Tạo job full-import từ MSSQL. items = [{tableName, entityName, label, fields:[{name,label,type}]}] " +
@@ -758,6 +771,62 @@ async function callMigrationTool(
         results,
         deleted: results.filter((r) => r.status === "deleted").length,
       };
+    }
+
+    /* ── entity_rename_to_source (apply) ────────────────────── */
+    case "entity_rename_to_source": {
+      const rows = await db
+        .select({ id: entities.id, name: entities.name, meta: entities.meta })
+        .from(entities)
+        .where(eq(entities.companyId, companyId))
+        .orderBy(entities.name);
+
+      const results: Array<{
+        from: string;
+        to: string;
+        status: "renamed" | "skip" | "error";
+        reason?: string;
+      }> = [];
+      for (const e of rows) {
+        const meta = (e.meta ?? {}) as EntityMeta & { source?: { mssqlTable?: string } };
+        const src = meta.source?.mssqlTable;
+        if (!src) continue;
+        // "dbo.tr_order_detail" → "tr_order_detail"; sanitize về ^[a-z][a-z0-9_]*$.
+        const base = (src.includes(".") ? (src.split(".").pop() ?? src) : src)
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "_");
+        const to = /^[a-z]/.test(base) ? base : `t_${base}`;
+        if (to === e.name) {
+          results.push({ from: e.name, to, status: "skip", reason: "đã đúng tên" });
+          continue;
+        }
+        // Unique (companyId, lower(name)) — trùng entity khác → skip an toàn.
+        const [dup] = await db
+          .select({ id: entities.id })
+          .from(entities)
+          .where(
+            and(eq(entities.companyId, companyId), sql`lower(${entities.name}) = lower(${to})`),
+          );
+        if (dup) {
+          results.push({
+            from: e.name,
+            to,
+            status: "skip",
+            reason: "tên đã được entity khác dùng",
+          });
+          continue;
+        }
+        try {
+          await db
+            .update(entities)
+            .set({ name: to, updatedAt: new Date() })
+            .where(and(eq(entities.id, e.id), eq(entities.companyId, companyId)));
+          results.push({ from: e.name, to, status: "renamed" });
+        } catch (err) {
+          results.push({ from: e.name, to, status: "error", reason: (err as Error).message });
+        }
+      }
+      return { results, renamed: results.filter((r) => r.status === "renamed").length };
     }
 
     /* ── migration_start_full_import (apply) ────────────────── */
