@@ -9,10 +9,62 @@ export function formatVND(n: number): string {
 }
 
 import type { EntityField, FieldFormat } from "@/lib/object-types";
+import { useLocale } from "@/stores/locale";
+
+/* ── Mặc định theo ngôn ngữ người dùng chọn (vi/en) ──────────
+   Chỉ áp khi field KHÔNG cấu hình format riêng — per-field override
+   (fmt.dateFormat/timeFormat/trueLabel...) luôn thắng. Pattern cứng
+   (không Intl) để deterministic giữa môi trường/test. */
+const LOCALE_DEFAULTS = {
+  vi: {
+    dateFormat: "dd/MM/yyyy",
+    timeFormat: "HH:mm",
+    trueLabel: "Có",
+    falseLabel: "Không",
+    rel: {
+      now: "vừa xong",
+      m: (n: number) => `${n} phút trước`,
+      h: (n: number) => `${n} giờ trước`,
+      d: (n: number) => `${n} ngày trước`,
+      mo: (n: number) => `${n} tháng trước`,
+      y: (n: number) => `${n} năm trước`,
+    },
+  },
+  en: {
+    dateFormat: "MM/dd/yyyy",
+    timeFormat: "hh:mm a",
+    trueLabel: "Yes",
+    falseLabel: "No",
+    rel: {
+      now: "just now",
+      m: (n: number) => `${n} min ago`,
+      h: (n: number) => `${n}h ago`,
+      d: (n: number) => `${n}d ago`,
+      mo: (n: number) => `${n}mo ago`,
+      y: (n: number) => `${n}y ago`,
+    },
+  },
+} as const;
+
+function localeDefaults() {
+  const lang = useLocale.getState().lang;
+  return LOCALE_DEFAULTS[lang === "en" ? "en" : "vi"];
+}
+
+/** Parse giá trị ngày an toàn: chuỗi date-only "YYYY-MM-DD" dựng LOCAL
+ *  date theo từng phần (new Date(str) parse UTC → lệch ±1 ngày ở tz≠0 —
+ *  bài học #9). Chuỗi có giờ → parse bình thường. */
+function parseDateValue(value: unknown): Date {
+  const s = String(value);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(s);
+}
 
 /**
  * Áp dụng FieldFormat lên giá trị thô để hiển thị. Chỉ dùng ở read-only
  * contexts (table cell, detail view) — input form dùng giá trị thô.
+ * Mặc định ngày/giờ/boolean đổi theo ngôn ngữ người dùng (useLocale).
  */
 export function applyFieldFormat(field: EntityField, value: unknown): string {
   if (value == null) return "—";
@@ -46,10 +98,10 @@ export function applyFieldFormat(field: EntityField, value: unknown): string {
 
   // ── Ngày ─────────────────────────────────────────────
   if (type === "date") {
-    const df = fmt.dateFormat ?? "dd/MM/yyyy";
+    const df = fmt.dateFormat ?? localeDefaults().dateFormat;
     if (df === "relative") return relativeDate(String(value));
     try {
-      const d = new Date(String(value));
+      const d = parseDateValue(value);
       if (Number.isNaN(d.getTime())) return String(value);
       return formatDate(d, df);
     } catch {
@@ -61,10 +113,10 @@ export function applyFieldFormat(field: EntityField, value: unknown): string {
   if (type === "datetime") {
     if (fmt.timeFormat === "relative") return relativeDate(String(value));
     try {
-      const d = new Date(String(value));
+      const d = parseDateValue(value);
       if (Number.isNaN(d.getTime())) return String(value);
-      const df = fmt.dateFormat ?? "dd/MM/yyyy";
-      const tf = fmt.timeFormat ?? "HH:mm";
+      const df = fmt.dateFormat ?? localeDefaults().dateFormat;
+      const tf = fmt.timeFormat ?? localeDefaults().timeFormat;
       return `${formatDate(d, df)} ${formatTime(d, tf)}`;
     } catch {
       return String(value);
@@ -83,7 +135,9 @@ export function applyFieldFormat(field: EntityField, value: unknown): string {
   // ── Boolean ──────────────────────────────────────────
   if (type === "bool" || type === "boolean") {
     const bv = value === true || value === "true" || value === 1 || value === "1";
-    return bv ? (fmt.trueLabel ?? "Có") : (fmt.falseLabel ?? "Không");
+    return bv
+      ? (fmt.trueLabel ?? localeDefaults().trueLabel)
+      : (fmt.falseLabel ?? localeDefaults().falseLabel);
   }
 
   // Mảng → join
@@ -111,16 +165,17 @@ function formatTime(d: Date, fmt: string): string {
 }
 
 function relativeDate(iso: string): string {
+  const rel = localeDefaults().rel;
   const diff = Date.now() - new Date(iso).getTime();
   const secs = Math.round(diff / 1000);
-  if (secs < 60) return "vừa xong";
+  if (secs < 60) return rel.now;
   const mins = Math.round(secs / 60);
-  if (mins < 60) return `${mins} phút trước`;
+  if (mins < 60) return rel.m(mins);
   const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs} giờ trước`;
+  if (hrs < 24) return rel.h(hrs);
   const days = Math.round(hrs / 24);
-  if (days < 30) return `${days} ngày trước`;
+  if (days < 30) return rel.d(days);
   const months = Math.round(days / 30);
-  if (months < 12) return `${months} tháng trước`;
-  return `${Math.round(months / 12)} năm trước`;
+  if (months < 12) return rel.mo(months);
+  return rel.y(Math.round(months / 12));
 }

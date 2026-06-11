@@ -17,3 +17,41 @@ describe("formatVND", () => {
     expect(/\D/.test(formatVND(1000).replace(" ₫", ""))).toBe(true);
   });
 });
+
+import type { EntityField } from "@/lib/object-types";
+import { useLocale } from "@/stores/locale";
+import { applyFieldFormat } from "./format";
+
+const dateField = { id: "f1", name: "ngay", label: "Ngày", type: "date" } as EntityField;
+const dtField = { id: "f2", name: "luc", label: "Lúc", type: "datetime" } as EntityField;
+const boolField = { id: "f3", name: "ok", label: "OK", type: "boolean" } as EntityField;
+
+describe("applyFieldFormat theo ngôn ngữ (useLocale)", () => {
+  it("vi: dd/MM/yyyy + Có/Không", () => {
+    useLocale.setState({ lang: "vi" });
+    expect(applyFieldFormat(dateField, "2026-05-01")).toBe("01/05/2026");
+    expect(applyFieldFormat(boolField, true)).toBe("Có");
+    expect(applyFieldFormat(boolField, false)).toBe("Không");
+  });
+
+  it("en: MM/dd/yyyy + Yes/No + 12h", () => {
+    useLocale.setState({ lang: "en" });
+    expect(applyFieldFormat(dateField, "2026-05-01")).toBe("05/01/2026");
+    expect(applyFieldFormat(boolField, true)).toBe("Yes");
+    expect(applyFieldFormat(dtField, "2026-05-01T15:30:00")).toMatch(/05\/01\/2026 03:30 PM/);
+    useLocale.setState({ lang: "vi" });
+  });
+
+  it("date-only KHÔNG lệch ngày theo timezone (bài học #9)", () => {
+    useLocale.setState({ lang: "vi" });
+    // Parse theo phần LOCAL — mọi tz đều ra đúng 01/05.
+    expect(applyFieldFormat(dateField, "2026-05-01")).toBe("01/05/2026");
+  });
+
+  it("per-field format override thắng locale default", () => {
+    useLocale.setState({ lang: "en" });
+    const f = { ...dateField, format: { dateFormat: "dd/MM/yyyy" } } as EntityField;
+    expect(applyFieldFormat(f, "2026-05-01")).toBe("01/05/2026");
+    useLocale.setState({ lang: "vi" });
+  });
+});
