@@ -51,7 +51,10 @@ function scopeCovers(a: string, b: string): boolean {
     return false; // errors:read chỉ bao chính nó
   }
   if (pa[0] === "migration" && pb[0] === "migration") {
-    return pa[1] === "*"; // migration:* bao migration:read
+    if (pa[1] === "*") return true;
+    // apply (tool ghi) bao luôn read — khớp hasMigrationScope.
+    if (pa[1] === "apply") return pb[1] === "read" || pb[1] === "apply";
+    return false; // migration:read chỉ bao chính nó
   }
   return false;
 }
@@ -82,6 +85,7 @@ function ScopeEditor({
   const [write, setWrite] = useState(false);
   const [fbLevel, setFbLevel] = useState<"read" | "propose" | "apply">("propose");
   const [errLevel, setErrLevel] = useState<"read" | "write">("read");
+  const [migLevel, setMigLevel] = useState<"read" | "apply">("read");
 
   // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
   // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
@@ -94,7 +98,7 @@ function ScopeEditor({
     if (kind === "all") return addScopes(["*"]);
     if (kind === "feedback") return addScopes([`feedback:${fbLevel}`]);
     if (kind === "errors") return addScopes([`errors:${errLevel}`]);
-    if (kind === "migration") return addScopes(["migration:read"]);
+    if (kind === "migration") return addScopes([`migration:${migLevel}`]);
     const name = entityName.trim() || "*";
     const out: string[] = [];
     if (read) out.push(`entity:${name}:read`);
@@ -212,9 +216,18 @@ function ScopeEditor({
         )}
 
         {kind === "migration" && (
-          <span className="text-xs text-muted self-end pb-1">
-            migration:read — AI đọc trạng thái sync, job import, schema entity
-          </span>
+          <label className="text-xs text-muted flex flex-col gap-1">
+            Mức
+            <Select
+              value={migLevel}
+              disabled={disabled}
+              onChange={(e) => setMigLevel(e.target.value as typeof migLevel)}
+              className="w-72"
+            >
+              <option value="read">read — đọc trạng thái sync / job / entity</option>
+              <option value="apply">apply — đọc + bật agentSearchable, rename bảng</option>
+            </Select>
+          </label>
         )}
 
         <Button

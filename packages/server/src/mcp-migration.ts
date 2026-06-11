@@ -3,11 +3,14 @@
 
    Mục tiêu: cho AI kết nối, đọc trạng thái đồng bộ DQHF→ERP (delta-sync
    + full-import) và schema entity (storage tier, field mapping) để phân
-   tích, phát hiện lỗi, gợi ý tối ưu. AI chỉ READ — không trigger action.
+   tích, phát hiện lỗi, gợi ý tối ưu. Tool ghi giới hạn ở thao tác AN TOÀN
+   + idempotent (bật agentSearchable, rename bảng promote) — KHÔNG có tool
+   import/promote/delete data.
 
    Endpoint: POST /mcp/migration   (JSON-RPC 2.0)
    Auth:     header X-API-Key (api_keys), scope:
-     - migration:read  → mọi tool đọc
+     - migration:read   → tool đọc
+     - migration:apply  → tool ghi (kèm quyền đọc)
      - "*" / "migration:*" → toàn quyền migration
    Deny-by-default: scope rỗng = không gì.
    ========================================================== */
@@ -24,12 +27,16 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
 import type { DB } from "./db";
+import { renamePromotedTablesForCompany } from "./entity-promote";
+import { isHybridTablesEnabled } from "./record-store";
 
 /* ── Scope helper ───────────────────────────────────────────── */
-export function hasMigrationScope(scopes: string[]): boolean {
-  return (
-    scopes.includes("*") || scopes.includes("migration:*") || scopes.includes("migration:read")
-  );
+export function hasMigrationScope(scopes: string[], level: "read" | "apply" = "read"): boolean {
+  if (scopes.includes("*") || scopes.includes("migration:*")) return true;
+  // apply = thao tác ghi (bật agentSearchable, rename bảng) — chỉ migration:apply.
+  if (level === "apply") return scopes.includes("migration:apply");
+  // read = apply bao luôn read.
+  return scopes.includes("migration:read") || scopes.includes("migration:apply");
 }
 
 /* ── Lỗi tool ───────────────────────────────────────────────── */
@@ -45,6 +52,7 @@ class McpError extends Error {
 interface ToolDef {
   name: string;
   description: string;
+  level: "read" | "apply";
   inputSchema: Record<string, unknown>;
 }
 
@@ -55,6 +63,7 @@ const TOOLS: ToolDef[] = [
       "Liệt kê các module delta-sync (MSSQL→PG) của công ty. Trả: module name, enabled, " +
       "heartbeatAt (null=không có job đang chạy), createdAt. Dùng để xem module nào đang " +
       "hoạt động, module nào bị kẹt (heartbeat stale > 10 phút).",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -71,6 +80,7 @@ const TOOLS: ToolDef[] = [
       "Lấy chi tiết 1 module delta-sync: danh sách bảng (tableName, mode, status, " +
       "pendingChanges, ctLastVersion, insertsCount, updatesCount, deletesCount, " +
       "lastSyncedAt, lastError). Dùng để chẩn đoán bảng bị lỗi hoặc lag cao.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -85,6 +95,7 @@ const TOOLS: ToolDef[] = [
       "Lịch sử các lần sync gần nhất của 1 module (mặc định 50 run). " +
       "Trả: module, tableName, startedAt, durationMs, inserts, updates, deletes, error. " +
       "Dùng để xem trend lag, tần suất lỗi, hiệu năng mỗi chu kỳ.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -105,6 +116,7 @@ const TOOLS: ToolDef[] = [
       "Liệt kê các job full-import (seed dữ liệu ban đầu). Trả: id, status, " +
       "totalTables, completedTables, totalRowsImported, startedAt, completedAt, error. " +
       "Dùng để kiểm tra tiến độ seed trước khi bật delta-sync.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -123,6 +135,7 @@ const TOOLS: ToolDef[] = [
       "Chi tiết 1 job full-import kèm tiến độ từng bảng: tableName, entityName, " +
       "rowsImported, status, lastPk, srcCount, tgtCount, reconcile (ok|drift|skip|null), error. " +
       "Dùng để xác định bảng nào bị kẹt hoặc drift sau import.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -138,6 +151,7 @@ const TOOLS: ToolDef[] = [
       "storageTier (eav|table), tableName (nếu là bảng thật), fieldCount, " +
       "agentSearchable, syncState (nếu có module sync gắn). " +
       "Dùng để xem entity nào đã promote thành bảng thật, entity nào đang được sync.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -155,6 +169,7 @@ const TOOLS: ToolDef[] = [
       "Chi tiết 1 entity: fields (name, type, label, required, indexed), " +
       "meta.storage (tier, tableName), meta.sync (state, module, lastSyncedAt). " +
       "Dùng để kiểm tra field mapping và trạng thái sync của entity cụ thể.",
+    level: "read",
     inputSchema: {
       type: "object",
       properties: {
@@ -174,6 +189,39 @@ const TOOLS: ToolDef[] = [
     description:
       "Liệt kê kết nối MSSQL đã cấu hình: id, name, host, port, database, isDefault. " +
       "Không trả password. Dùng để biết connectionId khi gọi các tool khác.",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "entity_set_agent_searchable",
+    description:
+      "BẬT/TẮT cho phép agent AI tra cứu entity qua tool records_search " +
+      "(meta.agentSearchable, deny-by-default). Truyền danh sách tên entity + enabled. " +
+      "Trả kết quả từng entity (ok | not_found).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        names: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tên kỹ thuật các entity (vd ['san_pham_ab9208'])",
+        },
+        enabled: { type: "boolean", description: "true = cho agent tra cứu" },
+      },
+      required: ["names", "enabled"],
+    },
+  },
+  {
+    name: "migration_rename_promoted_tables",
+    description:
+      "Đổi tên các bảng thật đã promote (er_<hash>) sang đúng tên bảng DB cũ " +
+      "(meta.source.mssqlTable). Idempotent: bỏ qua mục đã đúng tên / trùng tên / " +
+      "không có nguồn. Trả danh sách kết quả (renamed | skip | error) từng bảng.",
+    level: "apply",
     inputSchema: {
       type: "object",
       properties: {},
@@ -197,10 +245,17 @@ type EntityMeta = { storage?: StorageMeta; sync?: SyncMeta; agentSearchable?: bo
 async function callMigrationTool(
   db: DB,
   companyId: string,
+  scopes: string[],
   name: string,
   rawArgs: unknown,
 ): Promise<unknown> {
   const args = asObj(rawArgs);
+
+  // Tool ghi yêu cầu scope migration:apply (deny-by-default).
+  const def = TOOLS.find((t) => t.name === name);
+  if (def?.level === "apply" && !hasMigrationScope(scopes, "apply")) {
+    throw new McpError("Thiếu scope migration:apply cho tool ghi.", -32602);
+  }
 
   switch (name) {
     /* ── migration_list_modules ─────────────────────────────── */
@@ -474,6 +529,42 @@ async function callMigrationTool(
         .orderBy(mssqlConnections.name);
     }
 
+    /* ── entity_set_agent_searchable (apply) ────────────────── */
+    case "entity_set_agent_searchable": {
+      const names = Array.isArray(args.names) ? args.names.map(String) : [];
+      const enabled = args.enabled === true;
+      if (names.length === 0) throw new McpError("names bắt buộc (mảng tên entity)");
+      if (names.length > 50) throw new McpError("Tối đa 50 entity mỗi lần");
+
+      const results: Array<{ name: string; status: "ok" | "not_found" }> = [];
+      for (const entityName of names) {
+        // Merge jsonb — KHÔNG ghi đè meta (giữ storage/source/sync, bài học #20).
+        const updated = await db
+          .update(entities)
+          .set({
+            meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({ agentSearchable: enabled })}::jsonb`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(entities.companyId, companyId),
+              sql`lower(${entities.name}) = lower(${entityName})`,
+            ),
+          )
+          .returning({ id: entities.id });
+        results.push({ name: entityName, status: updated.length > 0 ? "ok" : "not_found" });
+      }
+      return { enabled, results };
+    }
+
+    /* ── migration_rename_promoted_tables (apply) ───────────── */
+    case "migration_rename_promoted_tables": {
+      if (!isHybridTablesEnabled()) {
+        throw new McpError("Cần bật ERP_HYBRID_TABLES=1 trên server.", -32603);
+      }
+      return renamePromotedTablesForCompany(db, companyId);
+    }
+
     default:
       throw new McpError(`Tool chưa cài đặt: ${name}`, -32601);
   }
@@ -526,7 +617,7 @@ export function registerMigrationMcp(app: FastifyInstance, db: DB): void {
         case "tools/call": {
           const p = asObj(body.params);
           const name = String(p.name ?? "");
-          const data = await callMigrationTool(db, auth.companyId, name, p.arguments);
+          const data = await callMigrationTool(db, auth.companyId, auth.scopes, name, p.arguments);
           return ok({
             content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
           });

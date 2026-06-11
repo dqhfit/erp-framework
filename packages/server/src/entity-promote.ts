@@ -25,11 +25,12 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import {
   applyColumnLabels,
-  ensureEntityTable,
   type EntityStorage,
+  ensureEntityTable,
+  renameTableDDL,
+  SYSTEM_TABLES,
   safeTableIdent,
   splitDataForStorage,
-  SYSTEM_TABLES,
   tableNameForEntity,
 } from "./entity-table-ddl";
 import { getRecordStore, isHybridTablesEnabled } from "./record-store";
@@ -354,4 +355,99 @@ export async function cleanupEavForEntity(
     .where(and(eq(entityRecords.companyId, companyId), eq(entityRecords.entityId, entityId)))
     .returning({ id: entityRecords.id });
   return { deleted: res.length, kept: false };
+}
+
+export interface RenameTableResult {
+  entityId: string;
+  label: string;
+  from: string;
+  to: string;
+  status: "renamed" | "skip" | "error";
+  reason?: string;
+}
+
+/**
+ * Đổi tên các bảng thật đã promote (er_<id>) sang ĐÚNG tên bảng DB cũ
+ * (meta.source.mssqlTable). Bỏ qua mục đã đúng tên / không có nguồn / tên
+ * trùng (system, entity khác, bảng vật lý đã tồn tại). Cập nhật
+ * meta.storage.tableName + ghi lại COMMENT nhãn cột.
+ * Logic dùng chung cho tRPC migration.renamePromotedTablesToSource và
+ * MCP /mcp/migration (tool migration_rename_promoted_tables).
+ */
+export async function renamePromotedTablesForCompany(
+  db: DB,
+  companyId: string,
+): Promise<{ results: RenameTableResult[]; renamed: number }> {
+  const rows = await db
+    .select({
+      id: entities.id,
+      label: entities.label,
+      fields: entities.fields,
+      meta: entities.meta,
+    })
+    .from(entities)
+    .where(eq(entities.companyId, companyId));
+
+  const results: RenameTableResult[] = [];
+
+  for (const e of rows) {
+    const meta = (e.meta ?? {}) as Record<string, unknown>;
+    const storage = (meta as { storage?: EntityStorage }).storage;
+    const source = (meta as { source?: { mssqlTable?: string } }).source?.mssqlTable;
+    if (storage?.tier !== "table" || !source) continue;
+    const from = storage.tableName;
+    const to = await resolveTableName(db, e.id, source);
+    if (to === from) {
+      results.push({
+        entityId: e.id,
+        label: e.label,
+        from,
+        to,
+        status: "skip",
+        reason: "đã đúng tên",
+      });
+      continue;
+    }
+    // Bảng đích đã tồn tại → RENAME sẽ lỗi; bỏ qua an toàn.
+    const reg = (await db.execute(sql`SELECT to_regclass(${to}) AS reg`)) as unknown as
+      | Array<{ reg: string | null }>
+      | { rows: Array<{ reg: string | null }> };
+    const regList = Array.isArray(reg) ? reg : (reg.rows ?? []);
+    if (regList[0]?.reg != null) {
+      results.push({
+        entityId: e.id,
+        label: e.label,
+        from,
+        to,
+        status: "skip",
+        reason: `bảng "${to}" đã tồn tại`,
+      });
+      continue;
+    }
+    try {
+      await db.execute(sql.raw(renameTableDDL(from, to)));
+      const nextStorage: EntityStorage = { ...storage, tableName: to };
+      await db
+        .update(entities)
+        .set({ meta: { ...meta, storage: nextStorage }, updatedAt: new Date() })
+        .where(eq(entities.id, e.id));
+      await applyColumnLabels(
+        db,
+        nextStorage,
+        e.fields as Parameters<typeof applyColumnLabels>[2],
+        e.label ?? undefined,
+      );
+      results.push({ entityId: e.id, label: e.label, from, to, status: "renamed" });
+    } catch (err) {
+      results.push({
+        entityId: e.id,
+        label: e.label,
+        from,
+        to,
+        status: "error",
+        reason: (err as Error).message,
+      });
+    }
+  }
+  return { results, renamed: results.filter((r) => r.status === "renamed").length };
 }
