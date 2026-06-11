@@ -1,11 +1,10 @@
+# syntax=docker/dockerfile:1
 # @erp-framework/server — self-host trong monorepo pnpm.
 # node:22-slim (Debian/glibc) — tránh rắc rối native module trên Alpine/musl.
 FROM node:22-slim
 
-# postgresql-client = pg_dump cho backup module (chạy server-side qua
-# DATABASE_URL). chromium + font = engine in PDF (Puppeteer dùng Chromium hệ
-# thống, KHÔNG tải Chromium bundled — xem PUPPETEER_* env). fonts-dejavu-core
-# có glyph tiếng Việt cho báo cáo. apt clean để image gọn.
+# Gộp tất cả apt-get vào 1 RUN để giảm số layer + kích thước image.
+# python3/make/g++ cần cho node-gyp khi build isolated-vm từ source.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   postgresql-client \
   chromium fonts-liberation fonts-dejavu-core \
@@ -13,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # Puppeteer: bỏ tải Chromium bundled (đã có chromium hệ thống ở /usr/bin/chromium).
+# htmlToPdf đọc PUPPETEER_EXECUTABLE_PATH; thiếu Chromium → fallback in HTML.
 ENV PUPPETEER_SKIP_DOWNLOAD=1 \
   PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
@@ -21,31 +21,17 @@ RUN pnpm config set minimum-release-age 0 \
   && pnpm config set verify-deps-before-run false
 
 WORKDIR /app
+COPY . .
 
-# ── LAYER CACHING: tách manifest ra trước source ──────────────
-# Chỉ copy pnpm-lock + workspace config + package.json của các package
-# server phụ thuộc. Layer này CHỈ invalid khi deps thay đổi (không phải
-# khi sửa code) → pnpm install được cache giữa các lần deploy code.
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/server/package.json packages/server/
-COPY packages/core/package.json packages/core/
-COPY packages/db/package.json packages/db/
-COPY packages/client/package.json packages/client/
-COPY packages/mssql-client/package.json packages/mssql-client/
-COPY packages/plugins/package.json packages/plugins/
-
-# Cài deps — cache hit khi chỉ thay đổi source code (không đổi package.json).
-# --filter "@erp-framework/server..." kéo theo workspace dep (core, db...).
-RUN pnpm install --filter "@erp-framework/server..." --ignore-scripts \
-  --config.minimum-release-age=0
+# --mount=type=cache: pnpm store persist trên server Coolify giữa các build.
+# --filter "@erp-framework/server..." kéo theo workspace dep (core, db, ...).
+RUN --mount=type=cache,id=pnpm-store-server,target=/pnpm-store \
+    pnpm install --store-dir=/pnpm-store \
+    --filter "@erp-framework/server..." --ignore-scripts \
+    --config.minimum-release-age=0
 
 # Rebuild native binaries — isolated-vm (code-runner sandbox), esbuild.
-# Layer này cache cùng với install ở trên (deps không đổi → skip).
 RUN pnpm rebuild esbuild isolated-vm
-
-# ── Copy source sau khi install đã cache ──────────────────────
-# Invalidate chỉ từ đây trở xuống khi code thay đổi.
-COPY . .
 
 EXPOSE 8910
 CMD ["sh", "-c", "pnpm --filter @erp-framework/server seed && pnpm --filter @erp-framework/server start"]
