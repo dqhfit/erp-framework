@@ -1,0 +1,1641 @@
+generatedAt: '2026-06-11'
+sourceRepo: D:/code/DotNET/DQHF (project DQHF — ban active, commit cuoi 2026-05-22)
+totalBusinessForms: 956
+note: dialog_chon = popup chon → thay bang lookup widget, KHONG can page rieng
+modules:
+  khac:
+    forms: 364
+    directProcs: 151
+    topForms:
+    - form: frmKeHoachHangMau
+      title: Tiến độ mẫu
+      grids: 4
+      inputs: 8
+      procs: 0
+    - form: frm_BC_ChiTietMotPhanCom_AddMenu
+      title: frm_BC_ChiTietMotPhanCom_OneDayMenu
+      grids: 7
+      inputs: 0
+      procs: 0
+    - form: frmTB110_1
+      title: Thông tin thiết bị
+      grids: 0
+      inputs: 14
+      procs: 3
+    - form: frm_quytrinh_son
+      title: Quy trình sơn
+      grids: 2
+      inputs: 5
+      procs: 5
+    - form: frmContainerAdd
+      title: Lệnh xuất cont
+      grids: 1
+      inputs: 4
+      procs: 7
+    - form: frmGiamGiaHangBanAdd
+      title: Trả hàng mua
+      grids: 1
+      inputs: 12
+      procs: 0
+    - form: frm_muahangAdd
+      title: Thông tin mua hàng
+      grids: 1
+      inputs: 12
+      procs: 0
+    - form: frmChiTietHTRAdd
+      title: Thêm chi tiết hàng trắng
+      grids: 0
+      inputs: 10
+      procs: 2
+    allForms:
+    - frmKeHoachHangMau
+    - frm_BC_ChiTietMotPhanCom_AddMenu
+    - frmTB110_1
+    - frm_quytrinh_son
+    - frmContainerAdd
+    - frmGiamGiaHangBanAdd
+    - frm_muahangAdd
+    - frmChiTietHTRAdd
+    - frmGiamGiaHangMuaAdd
+    - frmBomHelp
+    - frmAdminModify
+    - frmWHSInOut_Edit
+    - frmDashBoard2
+    - frmINV138
+    - frmRPT160_1
+    - frmBGD110
+    - frmBOMEditor4
+    - frm_thongtin_dathang_ver2
+    - frmINV120
+    - frmINV131
+    - frmINV111
+    - frmINV112
+    - frmINV129
+    - frmINV145_Add3
+    - frmHelp_1
+    - frmSAL110Add
+    - frmVendorAdd
+    - frm_lapkehoach_2
+    - frmSearchBOMGVA
+    - frmChuyenkhoAdd
+    - frmCongTyAdd
+    - frmINV127
+    - frmMES110
+    - frmKT120
+    - frmShippingAgentAdd
+    - frmProgram
+    - frmHonHopSonAdd
+    - frm_dongia_goc
+    - frmSAL110
+    - frmRPT110
+    - frmContAdd
+    - frmKeHoachPhoiAdd
+    - frmNhanVien_Add
+    - frmCauHinhEmail
+    - frmINV126
+    - frmINV128
+    - frmINV14610
+    - frmCommonAdd
+    - frm_add_stdoperation
+    - frm_thongtin_donhang_2
+    - frmRPT180
+    - frmKiemTraMayMoc
+    - frm_add_nhacc
+    - frm_line_plan
+    - frmXuatKhoChiTiet
+    - frm_add_chitiet_son
+    - frmRSTMuaHang
+    - frmBarcodeThanhPhamAdd
+    - frmDiaDiem_Add
+    - frmTables
+    - z_MenuAdd
+    - frmINV121_1
+    - frmINV136
+    - frmINV141
+    - frmINV144
+    - frmINV145
+    - frmINV136_v2
+    - frmChiTietNguKimAdd
+    - frmCutting
+    - frmRPT140
+    - frmBTR_Baocaocongviec_Add
+    - frmMC110
+    - frmKeHoachTangCaAdd
+    - frm_rpm_plan_1
+    - frmGWHS_Barcode
+    - frmXuatKhoBaoTri
+    - frmXuatKhoCNTT
+    - frmKeHoachChatContAdd
+    - frmBOM110
+    - frm_add_chitiet_vt
+    - frm_BC_ChiTietMotPhanCom_ApDung
+    - frmTinhPhoi
+    - frmVPSDanhSachKeHoachAdd
+    - frm_upc_import
+    - frmBangTinhLuongHoanThien
+    - frm_DangKyTangCaTuNguyen_Add
+    - frmnhacungcapAdd
+    - frmGoodsStockOutputAdd
+    - z_MenuAdd_old
+    - frmNoidung_Version
+    - frmINV134_Minus
+    - frmINV143
+    - frmINV148_v2
+    - frm170
+    - frm_chiake_1
+    - frm_material_request_info_1
+    - frmKeHoach2Add
+    - frmRPT120
+    - frmBGD190
+    - frmDashboardPO
+    - frmDongGoiHW
+    - frmGiaoNhanHangAdd
+    - frm_thongke_soluong
+    - frmGWHSInOut
+    - frmXuatKhoAdd
+    - frmItemNumberPrice_1
+    - frmBOMEditor
+    - frm_add_cumct
+    - frm_add_nhomvt
+    - frm_quytrinh_uv_add
+    - frmRSTMuaHangAdd
+    - frmBangTinhLuongHoanThien_SanLuong
+    - frmSochitietmuahangSearch
+    - frmChiTietThayDoiKyThuat
+    - frmLuongSonSuDungAdd
+    - frmBaseImport
+    - frmPermissionObjectAdd
+    - frm_phanquyen_scan
+    - frmINV110
+    - frmINV114
+    - frmINV117
+    - frmINV117_1
+    - frmINV124
+    - frmINV124_1
+    - frmINV135_Add
+    - frmINV135_Minus
+    - frmINV136_Minus
+    - frmINV140_IN1
+    - frmINV145_Add2
+    - frmINV145_Xuat
+    - frmINV148
+    - frmINV136_Minus_v2
+    - frmRPT280_2
+    - frmBTRChiTietBaoTriAdd
+    - frmBGD210
+    - frmDongGoiHWAdd
+    - frmHuongDanLapRap_Add
+    - frm_plan
+    - frmXuatKho2
+    - frmMaterialMix2Add
+    - frmRoutAdd
+    - frmRouting3
+    - frm_na_xuat_nguyenvatlieu
+    - frm_StabilityTestAdd
+    - frm_dao_chitiet
+    - frmHangRotCont_Add
+    - frmTB110
+    - frmTraTienNCC
+    - frmStockInputAdd
+    - frmStockOutputAdd
+    - frmBanLamViec
+    - frmBoard
+    - frmUpdateOnhand
+    - xfmTinhGiaDien
+    - frmBieuMauAdd
+    - frmGridViewColumnAdd
+    - frmPermissionMobile
+    - frmTopicSubcribe
+    - frmINV124_2
+    - frmINV134
+    - frmINV135_2
+    - frmINV139
+    - frmINV140_IN2
+    - frmINV140_OUT
+    - frmINV145_Add
+    - frmINV136_Add_v2
+    - frmNangSuatMayCatAdd
+    - frmNangSuatNhamThungAdd
+    - frmNangXuatGhepCaoAdd
+    - frmNguyenPhuLieuAdd
+    - frm150
+    - frmRPT170
+    - frmRPT260
+    - frmRPT290
+    - frmBTRDanhSachMayMoc
+    - frm_add_bemat
+    - frm_add_binh_PCCC
+    - frm_baocaocongviecAdd
+    - frmKT110Add2
+    - frmKeHoachChatCont
+    - frmPaymentTermAdd
+    - frmReleaseJob
+    - frmBOMEditor_add_mact
+    - frmMaterialMix2
+    - frmTaoChiTiet
+    - frm_add_vitri_son
+    - frm_import_dmbb
+    - frm_import_dmnk
+    - frm_import_dmson
+    - frm_import_dmvt
+    - frmRSTMonAn
+    - frmRSTXuatNguyenLieu
+    - frmRSTXuatNguyenLieuAdd
+    - frmOperation
+    - frmBangTinhLuongHoanThien_MucThuong
+    - frmChuyenkho
+    - frmGiamGiaHangBan
+    - frmGiamGiaHangMua
+    - frm_muahang
+    - frmChatLuongAdd
+    - frmCuttingOptimized
+    - frmTraHangBan
+    - frmINV113
+    - frmINV115
+    - frmINV116
+    - frmINV118
+    - frmINV119
+    - frmINV130
+    - frmINV136_Add
+    - frmINV146
+    - frmINV136_Add
+    - frm_CapnhatgiaMau
+    - frmRPT130
+    - frmRPT270
+    - frmRPT280
+    - frmRPT280_1
+    - frmBTRDanhSachMayMoc2Add
+    - frmKeHoachBaoTriAdd2
+    - frmMC110Info
+    - frmBGD140
+    - frmBGD140_NguyenLieu
+    - frmDonGiaNguyenLieuAdd
+    - frmHuongDanLapRap
+    - frmTinhSoLuongVan
+    - frm_add_donvitinh
+    - frm_add_menu_form
+    - frm_add_user
+    - frmKeHoachHangMauAdd
+    - frm_rpm_plan
+    - frm_rpm_plan_confirm
+    - frmGWHSInOut2
+    - frmGWHSOnhand
+    - frmOnhandMaterial
+    - frmItemNumberPrice
+    - frm_chitiet_htr
+    - frm_cumchitiet
+    - frm_quytrinh_uv
+    - frm_BC_ChiTietMotPhanCom_NguyenVatLieu
+    - frmMonitor110
+    - frmOperationAdd2
+    - frmVPSNoiDungCongViecAdd
+    - frmCapPhatHutAmSetup
+    - frmDonGiaXop_Setup
+    - frmXuatKhoGoVan
+    - frmAppsettings
+    - frmChamCong
+    - frmSoChiTietCongNoNCC_Search
+    - frmBatchNo
+    - frmContainerNhanVien
+    - FormMain
+    - frmRPM120
+    - frm_thongbao
+    - frmDonGiaGiaCong
+    - frmDonGiaGoVan
+    - frmDonGiaSonAdd
+    - frmBGD230
+    - frmLichFinalAdd
+    - frmOperationAdd3
+    - frmCalendarAdd
+    - frmCheckValidMaterial
+    - frmSaveImageFromDatabase
+    - frmSocketNotifications
+    - frm_BanLamViec_DEXUATCHUADUYET
+    - xfmProcess
+    - frmBieuMau
+    - frmConvertImage
+    - frmLogs
+    - frmMenuMobile
+    - frmTopic
+    - frmINV125
+    - frmINV132
+    - frmINV133
+    - frmINV135
+    - frmINV135_1
+    - frmINV137
+    - frmINV138_1
+    - frmINV140
+    - frmINV145_1
+    - frmINV147
+    - frmMsgError
+    - frmRPM110
+    - frm_INV_136_baocao
+    - frmEmailSubscriber
+    - frmHelp
+    - frmHonHopSon
+    - frmTenKhoaHocAdd
+    - frm_login_history_detail
+    - frm_tiendo_donhang
+    - frm_tongsokhoi_gva
+    - frm_tygia_usd
+    - frm_xuathang_2_detail
+    - view_m3total
+    - frmRPT150
+    - frmRPT160
+    - frmRPT190
+    - frmRPT200
+    - frmRPT220
+    - frmRPT240
+    - frmRPT250
+    - frmBTRChiTietBaoTri
+    - frmBTRDoDienMayNenKhi
+    - frmBTRKiemTraMayMoc
+    - frmBTR_Baocaocongviec
+    - frmKeHoachBaoTri
+    - frmBGD10
+    - frmBGD130
+    - frmBGD150
+    - frmBGD160
+    - frmBGD170
+    - frmBGD180
+    - frmBGD220
+    - frmChungChiGoVan
+    - frmGiaoNhanHang
+    - frmGiaoNhanHang_Find
+    - frmRaVaoCongTy
+    - frmTamAnChiTiet
+    - frmThayDoiKyThuat
+    - frmKeHoachTangCa
+    - frm_calendar
+    - frm_line_plan_1
+    - frmKT110
+    - frmLichFinal
+    - frmTinhGiaNguyenLieu
+    - frm_TemDongGoi
+    - frmBOMCopy
+    - frmBOMEditor3
+    - frmKyThuat110
+    - frmmaterialclassstddtail
+    - frmNguyenLieuGVA
+    - frmRouting2
+    - frmRoutingUV
+    - frmUpLoadCNC
+    - frmRSTNguyenLieu
+    - frmRSTThucDonTuan
+    - frmRSTThucDonTuan2
+    - frm_StabilityTest
+    - frm_dao_danhsach
+    - frmKeHoachKyThuat
+    - frmKeHoachPhoi
+    - frmBarcodeThanhPham
+    - frmLabel
+    - frmLabel_V2
+    - frmCapPhatHutAm
+    - frmDonGiaChiTiet
+    - frmDonGiaGoc
+    - frmKeHoachDinhHinh
+    - frmKiemTraDonGiaHTR
+    - frmMaterialPrice
+    - frmHangRotCont
+    - frmShippingPlan
+    - frmBangTinhLuongHoanThien_Import
+    - frmChamCong2
+    - frmDangKyTangCaTuNguyen
+    - frmHRNhanVien
+    - frmNguoIDanhGia
+    - frmPhongChyChuaChay
+    - frmThePhep
+    - frmkho
+    - frmnhacungcap
+    - frmNhanVien
+    - frmSoChiTietCongNoNCC
+    - frmSoChiTietMuaHang
+    - frmPermission
+    - frmBOMEditor2
+  kho_vat_tu:
+    forms: 138
+    directProcs: 52
+    topForms:
+    - form: frmWarehouseFinishGoodInput2
+      title: Nhập kho thành phẩm
+      grids: 2
+      inputs: 9
+      procs: 5
+    - form: frmTraLaiHangMuaAdd
+      title: Trả hàng mua
+      grids: 1
+      inputs: 20
+      procs: 0
+    - form: frmTraLaiHangBanAdd
+      title: frmTraLaiHangBanAdd
+      grids: 1
+      inputs: 16
+      procs: 0
+    - form: frmPhieuDeNghiThanhToanAdd
+      title: Phiếu đề nghị thanh toán
+      grids: 1
+      inputs: 11
+      procs: 2
+    - form: frmYeuCauXuat_VatTuAdd
+      title: ''
+      grids: 3
+      inputs: 1
+      procs: 4
+    - form: frmWarehouseFinishGoodInput
+      title: Nhập thành phẩm
+      grids: 2
+      inputs: 7
+      procs: 2
+    - form: frmWarehouseInput_HTR
+      title: Nhập kho hàng trắng
+      grids: 2
+      inputs: 0
+      procs: 6
+    - form: frmWarehouseInput
+      title: Nhập kho theo đơn đặt hàng
+      grids: 1
+      inputs: 0
+      procs: 7
+    allForms:
+    - frmWarehouseFinishGoodInput2
+    - frmTraLaiHangMuaAdd
+    - frmTraLaiHangBanAdd
+    - frmPhieuDeNghiThanhToanAdd
+    - frmYeuCauXuat_VatTuAdd
+    - frmWarehouseFinishGoodInput
+    - frmWarehouseInput_HTR
+    - frmWarehouseInput
+    - frmWarehouseOutput
+    - frmWarehouseOutputMaterial
+    - frmWarehouseReturn
+    - frmPhieunhapkhoAdd
+    - frmPhieuGiaoNhanHang
+    - frm_add_vattu_ver2
+    - frmPhieuXuatKhoAdd
+    - frm_vattu_info
+    - frmPhieuTraHang
+    - frmPhieuTraHangAdd
+    - frmTaoYeuCauMuaHang_Edit
+    - frmTaoPhieuGiaoNhan
+    - frmChuyenKho
+    - frmWarehouseOutputEdit
+    - frmYeuCauXuat_VatTuAdd2
+    - frmChiTietDeNghiXuatKho
+    - frmPhieuBuHangAdd
+    - frmDieuChinhTonKho
+    - frmPhieuXuatKhoAdd
+    - frmPhieuTraHangNhapAdd
+    - frm_nhap_chitiet_ver2
+    - frmChiaTonKho
+    - frmTonKhoGoVan_NhapKho
+    - frmWarehouseFinishGoodOutput
+    - frmPhieuXuatCont
+    - frmPhieuNhapKhoAdd
+    - frm_nhap_chitiet
+    - frm_nhap_workcenter
+    - frmPhieuTraHangAdd1
+    - frmPhieuGiaoThanhPhamAdd
+    - frmTonKhoGoVan_XuatKho
+    - frmNhapHangLoiAdd
+    - frmSoSanhGiaVatTu
+    - frmDanhsachtonkho_Search
+    - frmPhieunhapkhoAdd2
+    - frm_LichsuNhapXuat_Search
+    - frmPhieuKiemKeAdd
+    - frmKiemTraPhieuNhap
+    - frm_vattu_update_price_supplier
+    - frmNhapKho2
+    - frmWarehouseInput2
+    - frmWarehouseOutput3
+    - frmXuatVatTuAI
+    - frmRSTNhapNguyenLieuAdd
+    - frm_na_nhap_nguyenvatlieu
+    - frmTaoPhieuPallet
+    - frmDanhSachNhapKho
+    - frmDanhSachPhieuChi
+    - frmDanhSachPhieuThu
+    - frmDanhSachXuatKho
+    - frmPhieuChiAdd
+    - frmPhieuThuAdd
+    - frmYeuCauCongViec
+    - frmPhieuTraHangTrang_Nhap
+    - frmDanhSachNhapGoVan
+    - frmNhapKhoBaoTri
+    - frmNhapKhoCNTT
+    - frmNhapKhoThanhPham
+    - frmPhieuGiaoThanhPham
+    - frmTheoDoiLenhCapPhat
+    - frmTheoDoiNhapXuat_ChiTiet
+    - frmTheoDoiPhieuYeuCau
+    - frmXuatKho
+    - frmXuatKhoLenhCapPhat
+    - frmNhapHangLoi2
+    - frmNhapHangLoi3
+    - frmNhapTienDoHangTrang
+    - frmPhieuBanGiaoTaiSan
+    - frmNhapKhoGoVan
+    - frm_xuatnhapgo_lichsu
+    - frmPhieuNhapKho
+    - frmPhieuXuatKho
+    - frmTraLaiHangBan
+    - frmTraLaiHangMua
+    - frm_LichsuNhapXuat
+    - frmTongHopVatTu
+    - frmTongHopYeuCauXuatKho
+    - frmTongHopYeuCauXuatKho_ChiTiet
+    - frm_vattu
+    - frmPhieuTraHangTrangNhapAdd
+    - frm_nhap_chitiet_edit
+    - frmContainerPhieuXuat
+    - frmDanhSachCapPhatYeuCau
+    - frmTonKhoBaoTri_Print
+    - frmWarehouseOutput2
+    - frm_tonkho_theothang
+    - frmLenhCapPhatAdd
+    - frmLenhCapPhat_TheoHoSo
+    - frmTaoYeuCauMuaHang
+    - frmTaoYeuCauMuaHang_DeXuatMuaHang
+    - frmWarehouseOutput2
+    - frmCapnhattonkho
+    - frmYeuCauChatLuongAdd
+    - frmDanhsachtonkho
+    - frm_phieunhapkho_chitiet
+    - frm_sr_tonkho
+    - frmDanhSachDieuChinhKho
+    - frmDanhSachTonKho
+    - frmKho
+    - frmTongHopNhapXuat
+    - fmTonKhoThuongMaiGo
+    - frmPhieuDeNghiThanhToan
+    - frm_CapPhat_VatTu
+    - frmBaoCaoNhapHangTrang
+    - frmTongHopNhapXuat
+    - frm_vattu_xacnhan
+    - frmPhieuTraHang_Nhap
+    - frmNhapHangTrang
+    - frmTheoDoiNhapXuat
+    - frmThongTinPhieuXuat_TheoPYC
+    - frmTonKhoBaoTri
+    - frmTonKhoCNTT
+    - frmTonKhoGoVan
+    - frmTonKhoGoVan_ChonQuyCach
+    - frmYeuCauXuat_VatTu
+    - frmDanhSachVatTuKhac
+    - frmYeuCauChatLuong
+    - frmRSTNhapNguyenLieu
+    - frmRSTThongKeNhapXuat
+    - frm_na_tonkho_nguyenvatlieu
+    - frmNhapHangLoi
+    - frmLenhCapPhatAI
+    - frmLenhCapPhat_HangTrang
+    - frmTaoYeuCauMuaHang2
+    - frmTaoYeuCauMuaHang_GVA
+    - frmTaoYeuCauMuaHang_GVA2
+    - frmTaoYeuCauMuaHang_Khac
+    - frmTaoYeuCauMuaHang_Phoi
+    - frmTaoYeuCauMuaHang_TheoHoSo
+    - frmDanhsachtonkho
+  don_hang:
+    forms: 85
+    directProcs: 34
+    topForms:
+    - form: frm_banhangAdd
+      title: Bán hàng
+      grids: 1
+      inputs: 22
+      procs: 0
+    - form: frmOrderNumberAdd
+      title: Tạo đơn hàng
+      grids: 1
+      inputs: 7
+      procs: 8
+    - form: frm_banhangAdd2
+      title: Chứng từ bán hàng
+      grids: 1
+      inputs: 20
+      procs: 0
+    - form: frmTheoDoiDonHangChiTiet
+      title: Theo dõi chi tiết đơn hàng
+      grids: 8
+      inputs: 0
+      procs: 0
+    - form: frmPurchaseOrderEdit
+      title: Đơn đặt hàng
+      grids: 2
+      inputs: 4
+      procs: 6
+    - form: frmDoDonHang_XemTruoc
+      title: Phát hành hồ sơ
+      grids: 7
+      inputs: 0
+      procs: 0
+    - form: frmCommercial_InvoiceAdd
+      title: Commercial Invoice
+      grids: 1
+      inputs: 13
+      procs: 0
+    - form: frm_banhanggo_khachhang
+      title: Thông tin khách hàng
+      grids: 1
+      inputs: 14
+      procs: 0
+    allForms:
+    - frm_banhangAdd
+    - frmOrderNumberAdd
+    - frm_banhangAdd2
+    - frmTheoDoiDonHangChiTiet
+    - frmPurchaseOrderEdit
+    - frmDoDonHang_XemTruoc
+    - frmCommercial_InvoiceAdd
+    - frm_banhanggo_khachhang
+    - frmOrderNumberAdd3
+    - frm_banhanggo_khachhang
+    - frmOrderExampleAdd
+    - frmDonHangSon
+    - frm_banhanggo_DanhSachDeXuatPhoi3
+    - frmDonHangBuAdd
+    - frmOrderNumberAdd2
+    - frm_banhanggo_DanhSachDeXuatPhoi2
+    - frmBanHangGo
+    - frmHoaDonBanHangAdd
+    - frmProformaInvoiceAdd
+    - frmThongKeChiTietDonHang
+    - frm_banhanggo_CongnoKH_ver2
+    - frmProformaInvoiceAdd
+    - frmHoadonbanhangAdd
+    - frmChiTietDonHang
+    - frmOrderNumberInfomation
+    - frm_banhanggo_DanhSachDeXuatPhoi
+    - frmOrderSchedule
+    - frmDoDonHang
+    - frmPurchaseOrderEdit2
+    - frm_banhanggo_ncc
+    - frm_banhanggo_Phieunhapkho
+    - frm_banhanggo_ncc
+    - frmTuDongTaoDonHang
+    - frmTongHopChiTietDonHang
+    - frm_Dao_dondathang
+    - frm_theodoi_dondathang
+    - frm_banhanggo_PhieuGiaCongAdd
+    - frm_banhanggo_DanhsachDeXuatPhoi_NgayGiaoPhoi
+    - frmSochitietbanhangSearch
+    - frm_banhang_chitiet
+    - frm_banhanggo_Danhsachdonhang
+    - frmDonHangBu
+    - frmOrderExample
+    - frmTongHopChiTietDonHang2
+    - frmTheoDoiDonHangPhoi
+    - frm_banhanggo_DanhsachdonhangAdd
+    - frm_banhanggo_Danhsachdonhang_ver02
+    - frm_banhanggo_nhapkho
+    - frm_banhanggo_PhieuGiaCong_Add
+    - frm_banhanggo_Thongtinphieunhap
+    - frm_banhanggo_PhieuGiaCong
+    - frm_banhanggo_PhieuGiaCong
+    - frm_banhanggo_PhieuGiaCong_Add
+    - frm_banhanggo_Phieutrahang_ver2
+    - frm_banhanggo_Phieudoihang_ver2
+    - frmHoadonbanhang
+    - frm_banhang
+    - frmDanhSachVatTuDonHang
+    - frmDanhSachDonHangTheoNgay
+    - frmProformaInvoiceAdd_1
+    - frmListPurchaseOrderList
+    - frmThongTinDatHang_ByOrder
+    - frm_banhanggo_PhieutrahangAdd
+    - frm_banhanggo_PhieudoihangAdd
+    - frm_banhanggo_loaigo
+    - frm_banhanggo_nguongoc
+    - frmbaocaobanhang
+    - frmNhanVienBanHang
+    - frmDashboardOrder
+    - frmKeHoachDonHangMau
+    - frmCommercial_Invoice
+    - frmCommercial_InvoiceAddNewItem
+    - frmProformaInvoice
+    - frmTongHopDonHang
+    - frmChiPhiDonHang
+    - frmKeHoachHangTrang_DonHang
+    - frmTheoDoiDonHangPhoi2
+    - frmTongHopDonHangTheoNam
+    - frm_banhanggo_tonkho
+    - frm_banhangho_tonkho2
+    - frm_banhanggo_nguongoc
+    - frm_banhanggo_congno
+    - frmProformaInvoiceAdd_OrderNo
+    - frmSoChiTietBanHang
+    - dondathang_uodate
+  san_xuat:
+    forms: 65
+    directProcs: 22
+    topForms:
+    - form: frmRegCalendars
+      title: Lịch sản xuất
+      grids: 0
+      inputs: 44
+      procs: 1
+    - form: frmTienDoHangTrang4
+      title: Nhập tiến độ hàng trắng
+      grids: 4
+      inputs: 0
+      procs: 0
+    - form: frm_quytrinh_sanxuat_ver2
+      title: Quy trình sản xuất
+      grids: 2
+      inputs: 0
+      procs: 5
+    - form: frm_quytrinh_sanxuat_copy
+      title: Sao chép quy trình sản xuất
+      grids: 2
+      inputs: 2
+      procs: 1
+    - form: frmScan120
+      title: Quét phiếu pallet
+      grids: 1
+      inputs: 11
+      procs: 0
+    - form: frm_quytrinh_sanxuat_copy2
+      title: Copy quy trình sản xuất
+      grids: 3
+      inputs: 0
+      procs: 2
+    - form: frmTienDoHangTrang
+      title: Tiến độ hàng trắng
+      grids: 4
+      inputs: 0
+      procs: 0
+    - form: frm_quytrinh_sanxuat_import
+      title: Nạp quy trình sản xuất
+      grids: 1
+      inputs: 2
+      procs: 1
+    allForms:
+    - frmRegCalendars
+    - frmTienDoHangTrang4
+    - frm_quytrinh_sanxuat_ver2
+    - frm_quytrinh_sanxuat_copy
+    - frmScan120
+    - frm_quytrinh_sanxuat_copy2
+    - frmTienDoHangTrang
+    - frm_quytrinh_sanxuat_import
+    - frm_quytrinh_sanxuat_danhsach
+    - frm_quytrinh_sanxuat_resource
+    - frmTienDoChuyenSonAdd
+    - frmMucTieuSanXuat
+    - frmMucTieuSanXuat2
+    - frmKeHoachSanXuatPO2_HTR_SapXep
+    - frmBaoCaoTienDoChuyenSonAdd
+    - frm_tiendo_sanxuat
+    - frmScan110
+    - frmHoSoSanXuat
+    - frmKeHoachHangTrangAdd
+    - frmKeHoachHangTrang_Ver2
+    - frmKeHoachSanXuatPO2
+    - frmKeHoachSanXuatPO2_HTR
+    - frmLichSuGiaoNhanHangTrang
+    - frmThongKeCongDoan
+    - frmTienDoHangTrang2
+    - frmBaoCaoHangTrangAdd
+    - frmTongHopChiTiet_HangTrang
+    - frm_quytrinh_sanxuat_danhsach2
+    - frm_tiendo_sanxuat_hangtrang
+    - frmKeHoachSanXuatPO2_HTR_Add
+    - frmTieuChuanGoVan
+    - frmTieuChuanVeneerAdd
+    - frmThongKeSanLuongMucTieu
+    - frmTrangThaiSanXuatHTR
+    - frmScan110_1
+    - frmKeHoachHangTrang_SapXep
+    - frmQuanLyTieuChuan
+    - frm_quytrinh_sanxuat_reprint
+    - frm_QuyTrinh_SanXuat
+    - frmTieuChuanChatLuong
+    - frmTieuChuanChatLuong2
+    - frmBaoCaoSanXuatHTR
+    - frmDanhSachHoSoSanXuat
+    - frmGiaoNhanHangTrang
+    - frmKeHoachHangTrang
+    - frmKeHoachHangTrang3
+    - frmKeHoachHangTrang_Ver3
+    - frmKeHoachSanXuatPO
+    - frmCongDoan
+    - frmTieuChuanVeneer
+    - frmBaoCaoSanLuongTheoMucTieu
+    - frmTienDoChuyenSon
+    - frmTienDoChuyenSon2
+    - frmTienDoHangTrang3
+    - frmTienDoSanXuat
+    - frmTinhGiaCongDoanSanXuat
+    - frmTinhGiaSanXuat
+    - frmTrangThaiSanXuat2
+    - frmXacNhanHoanThanhHangTrang
+    - frmKeHoachHangTrang
+    - frmMucTieuSanXuatAdd
+    - frmMucTieuSanXuatAdd2
+    - frmLichGiaoHangTrang
+    - frmTieuChiDanhGia
+    - frmTienDoHangTrang5
+  danh_muc:
+    forms: 53
+    directProcs: 27
+    topForms:
+    - form: frmListJobAdd
+      title: Giao việc
+      grids: 0
+      inputs: 3
+      procs: 4
+    - form: frmDanhSachMayMocAdd
+      title: Thêm máy móc
+      grids: 0
+      inputs: 2
+      procs: 3
+    - form: frmListMaterialRequest1
+      title: Danh sách lệnh cấp phát
+      grids: 2
+      inputs: 0
+      procs: 2
+    - form: frmLoaiTB_Add
+      title: Loại thiết bị
+      grids: 0
+      inputs: 2
+      procs: 3
+    - form: frmCreateMaterialRequest_NonBOM
+      title: Cấp phát vật tư vượt định mức
+      grids: 1
+      inputs: 0
+      procs: 3
+    - form: frmNhomAIAdd
+      title: Cập nhật nhóm AI
+      grids: 1
+      inputs: 3
+      procs: 0
+    - form: frmDanhGiaNhanVien
+      title: Đánh giá nhân viên
+      grids: 2
+      inputs: 2
+      procs: 0
+    - form: frmDanhsachCongno_Thu_Tra
+      title: Danh sách công nợ phải Thu - Trả Showroom
+      grids: 2
+      inputs: 0
+      procs: 1
+    allForms:
+    - frmListJobAdd
+    - frmDanhSachMayMocAdd
+    - frmListMaterialRequest1
+    - frmLoaiTB_Add
+    - frmCreateMaterialRequest_NonBOM
+    - frmNhomAIAdd
+    - frmDanhGiaNhanVien
+    - frmDanhsachCongno_Thu_Tra
+    - frmDanhSachHoaDon
+    - frmListWHSInOut
+    - frmListContainer
+    - frmCreateMaterialRequest
+    - frmCreateMaterialRequestOther
+    - frmCreateMaterialRequest_GVA
+    - frmCreateMaterialRequest_GVA_1
+    - frmCreateMaterialRequest_GVA_ver2
+    - frmDanhSachHoaDon
+    - frmDanhSachCongNo
+    - frmDanhSachHoaDon2
+    - frmDanhSachCongViec
+    - frmDanhSachXuatGoVan
+    - frmNhomAI
+    - frmDanhGiaTongHop
+    - frmCaiDatBieuMauAdd
+    - frmCaiDatDonGiaNguyenLieu
+    - frmCaiDatDonGiaNguyenLieu2
+    - frmListJob
+    - frmListMaterialInOut
+    - frmRSTNhomNguyenLieu
+    - frmCaiDatHeSoHeHang
+    - frmNhomDanhGiaAdd
+    - frmListProgramInstall
+    - frmDanhSachHoaDonLuuTam
+    - frmCaiDatBieuMau
+    - frmDanhSachCongViec
+    - frmDanhMucDeXuat2
+    - frmDanhSachMaNhaMay
+    - frmDanhSachTongHopXuatHopChatSon
+    - frmDanhSachTongHopXuatHopChatSon2
+    - frmListGWHSInOut
+    - frmDanhSachMayMoc
+    - frmListBomEditor
+    - frmNhomMay
+    - frmRoutList
+    - frmDanhMucLoi
+    - frmDanhMucLoiAdd
+    - frmDanhSachLoi
+    - frmDanhSachBanGiao
+    - frmDanhSachSuaChua
+    - frmDanhSachTaiSan
+    - frmListMaterialRequest
+    - frmDanhsachkho
+    - frm_Danhsachnhacungcap
+  san_pham:
+    forms: 47
+    directProcs: 39
+    topForms:
+    - form: frmThongTinSanPham2Add
+      title: Thêm thông tin sản phẩm
+      grids: 9
+      inputs: 3
+      procs: 14
+    - form: frmSanPhamAdd3
+      title: Cập nhật thông tin sản phẩm
+      grids: 6
+      inputs: 24
+      procs: 0
+    - form: frmCreateMaterialCode_Ver2
+      title: Tạo mã chi tiết
+      grids: 3
+      inputs: 1
+      procs: 8
+    - form: frmSanPhamEditCode
+      title: Sửa mã sản phẩm
+      grids: 0
+      inputs: 14
+      procs: 2
+    - form: frmMaterialCodeEdit3
+      title: Sửa thông tin chi tiết
+      grids: 0
+      inputs: 16
+      procs: 0
+    - form: frm_add_sanpham
+      title: Cập nhật sản phẩm
+      grids: 0
+      inputs: 14
+      procs: 0
+    - form: frmMaterialCodeEdit2
+      title: Sửa thông tin chi tiết
+      grids: 0
+      inputs: 10
+      procs: 2
+    - form: frmSanPhamAdd2
+      title: Cập nhật sản phẩm
+      grids: 0
+      inputs: 12
+      procs: 0
+    allForms:
+    - frmThongTinSanPham2Add
+    - frmSanPhamAdd3
+    - frmCreateMaterialCode_Ver2
+    - frmSanPhamEditCode
+    - frmMaterialCodeEdit3
+    - frm_add_sanpham
+    - frmMaterialCodeEdit2
+    - frmSanPhamAdd2
+    - frmQuyTrinhSanPhamCopy
+    - frmCreateMaterialCode
+    - frmCreateMaterialCode_Ver3
+    - frmThongTinSanPham_Add
+    - frm_sanpham
+    - frm_sanpham_multiselect
+    - frmMaterialCodeEdit
+    - frmTaoPhieuSanPham
+    - frmQuyTrinhSanPham
+    - frmQuyTrinhSanPham2
+    - frmDanhSachDonGiaSanPhamAdd
+    - frmNhapSanPhamMau
+    - frmSanPhamMauAdd
+    - frmDienTichSanPham
+    - frmThongTinSanPham
+    - frmDonGiaSanPhamEdit
+    - frmCreateMaterialCode_Ver4
+    - frmBoSuuTapSanPhamAdd
+    - frmNhomSanPhamAdd
+    - frmSanPhamMultipleAdd
+    - frmSanPhamEdit
+    - tr_sanpham_hide
+    - frmTinhChiPhiSanPham2
+    - frm_sanpham_thaythe
+    - frmMaterialCodeEdit4
+    - frmSanPham
+    - frmKhoiLuongSanPham
+    - frmThongTinSanPham2
+    - frmChiPhiSanXuatSanPham
+    - frmDanhSachDonGiaSanPham
+    - frmLayoutSanPham
+    - frmSanPhamMau
+    - frmSanPhamMau_NhapXuat
+    - frmTinhChiPhiSanPham
+    - frmTonSanPhamMau
+    - frmDanhSachPhieuSanPham
+    - frmThongtinsanpham
+    - frm_DanhSachNhomSanPham
+    - frm_sr_sanpham
+  bao_cao:
+    forms: 45
+    directProcs: 12
+    topForms:
+    - form: frmThongKeSoLuongAdd2
+      title: Thống kê sản lượng (Sơn, Đóng gói)
+      grids: 5
+      inputs: 0
+      procs: 1
+    - form: frmBaoCaoHoanThienAdd
+      title: Báo cáo hàng ngày
+      grids: 6
+      inputs: 1
+      procs: 0
+    - form: frmBaoCaoFinalAdd3
+      title: Chi tiết báo cáo final
+      grids: 2
+      inputs: 8
+      procs: 0
+    - form: frmThongTinLanUV_Add
+      title: Thông tịn lăn UV
+      grids: 1
+      inputs: 3
+      procs: 3
+    - form: frmBaoCaoFinalAdd
+      title: Nhập Báo cáo Kiểm tra
+      grids: 1
+      inputs: 6
+      procs: 0
+    - form: frm_BaoCaoXemMau_Add
+      title: Duyệt thay đổi
+      grids: 1
+      inputs: 0
+      procs: 2
+    - form: frmThongKeSoLuongAdd
+      title: Thống kê số lượng
+      grids: 2
+      inputs: 1
+      procs: 0
+    - form: frmThongBao
+      title: Thông báo
+      grids: 2
+      inputs: 0
+      procs: 1
+    allForms:
+    - frmThongKeSoLuongAdd2
+    - frmBaoCaoHoanThienAdd
+    - frmBaoCaoFinalAdd3
+    - frmThongTinLanUV_Add
+    - frmBaoCaoFinalAdd
+    - frm_BaoCaoXemMau_Add
+    - frmThongKeSoLuongAdd
+    - frmThongBao
+    - frmBaoCaoHangLoi
+    - frmThongTinNhanVienEdit
+    - frmBaoCaoHienDienAdd
+    - frmBaoCaoFinalAdd2
+    - frmBaoCaoHienDien
+    - frmTongHopXuatHopChatSon
+    - frmBaoCaoHangLoi2
+    - frmThongKeSoLuong
+    - frmBaoCaoNSTuan
+    - frmBaoCaoLapRap1Add
+    - frmBaoCaoNguyenPhuLieuAdd
+    - frmBaoCaoRotChuyenAdd
+    - frmThongKeXuatHangThanhPham
+    - frm_BaoCaoXemMau
+    - frmTongHop_XNT
+    - frmBaoCaoSanLuongUV
+    - frm_ThongTinNguoiPhuTrach_KyThuat_Add2
+    - frmThongTinMayTinh
+    - frmBaoCaoFinal
+    - frmBaoCaoKiemTraChatLuong
+    - frmBaoCaoKiemTraChatLuong2
+    - frmTongHopSonTheoNgay
+    - frmBaoCaoKiemTraMayMoc
+    - frmThongTinInterlock
+    - frmThongTinSoanHW
+    - frm_ThongTinNguoiPhuTrach_KyThuat
+    - frm_ThongTinNguoiPhuTrach_KyThuat2
+    - frmThongKeMuaHang
+    - frmTheoDoiHangLoi
+    - frmTheoDoiKiemTra
+    - frmTongHopHangLoi
+    - frmBaoCaoHoanThien
+    - frmThongTinNhanVien
+    - frmTonghopsoluongUV
+    - frmTongHopSonUV
+    - frmBaoCaoNhanSu
+    - frmTheoDoi_DatHang
+  bao_gia:
+    forms: 33
+    directProcs: 18
+    topForms:
+    - form: frm_baogia_sanpham_ver2
+      title: Báo giá sản phẩm
+      grids: 7
+      inputs: 6
+      procs: 5
+    - form: frm_baogia_sanpham_auto
+      title: Báo giá tự động
+      grids: 12
+      inputs: 0
+      procs: 0
+    - form: frm_baogia_sanpham_info
+      title: Thông tin chi tiết báo giá sản phẩm
+      grids: 5
+      inputs: 7
+      procs: 5
+    - form: frm_baogia_sanpham_ver3
+      title: Báo giá sản phẩm
+      grids: 8
+      inputs: 5
+      procs: 0
+    - form: frm_baogia_sanpham_ver4
+      title: Báo giá sản phẩm
+      grids: 7
+      inputs: 5
+      procs: 0
+    - form: frmBaoGia2DanhSachAdd
+      title: Báo giá sản phẩm
+      grids: 6
+      inputs: 3
+      procs: 0
+    - form: frmBaoGia3
+      title: Báo giá sản phẩm
+      grids: 5
+      inputs: 1
+      procs: 0
+    - form: frmBaoGiaVatTuGoVan
+      title: Báo giá vật tư gỗ ván
+      grids: 3
+      inputs: 4
+      procs: 0
+    allForms:
+    - frm_baogia_sanpham_ver2
+    - frm_baogia_sanpham_auto
+    - frm_baogia_sanpham_info
+    - frm_baogia_sanpham_ver3
+    - frm_baogia_sanpham_ver4
+    - frmBaoGia2DanhSachAdd
+    - frmBaoGia3
+    - frmBaoGiaVatTuGoVan
+    - frmBaoGiaHangTrang
+    - frmBaoGiaVatTu
+    - frm_baogia_export
+    - frmBaoGiaPhoi
+    - frm_baogia_chiphi_add
+    - frmBaoGiaChiTietNhaCungCapAdd
+    - frm_baogia_danhsach
+    - frmBaoGiaVatTuAdd
+    - frmBaoGiaVatTuAdd2
+    - frmBaoGia2ChiPhiKhacAdd
+    - frmBaoGiaHangTrang_Export
+    - frmBaoGiaChiPhi_NhanCong
+    - frmBaoGia2ChiPhiAdd
+    - frmBaoGia2DanhSachSetup
+    - frmBaoGiaChiTietGoVan
+    - frmDanhSachBaoGiaVatTu
+    - frmBaoGia3_NguKim
+    - frmBaoGia2DanhSach
+    - frmDanhSachBaoGia3
+    - frmDanhSachBaoGia3_2
+    - frmDanhSachBaoGiaChiTietGoVan
+    - frmDanhSachBaoGiaHangTrang
+    - frmDanhSachBaoGiaPhoi
+    - frmDanhSachBaoGia_HTR
+    - frmBaoGiaChiTietNhaCungCap
+  ke_toan:
+    forms: 28
+    directProcs: 18
+    topForms:
+    - form: frmQuyTrinhLanUV_Add
+      title: Quy trình lăn UV
+      grids: 1
+      inputs: 3
+      procs: 6
+    - form: frm_denghi_thanhtoan_ncc_add
+      title: Thông tin người cần thanh toán
+      grids: 0
+      inputs: 9
+      procs: 2
+    - form: frmPhanQuyenCongViec
+      title: frmPhanQuyenCongViec
+      grids: 1
+      inputs: 3
+      procs: 3
+    - form: frmQuyTrinhUV
+      title: Quy trình UV
+      grids: 1
+      inputs: 0
+      procs: 3
+    - form: frmQuyTrinhDanhSachAdd
+      title: Danh sách quy trình
+      grids: 1
+      inputs: 5
+      procs: 0
+    - form: frmNganHangAdd
+      title: Cập nhật ngân hàng
+      grids: 0
+      inputs: 8
+      procs: 0
+    - form: frmChiTietDeNghiThanhToan
+      title: Đề nghị thanh toán
+      grids: 0
+      inputs: 7
+      procs: 1
+    - form: frmQuyTrinhLanUVAdd
+      title: Quy trình lăn UV
+      grids: 1
+      inputs: 3
+      procs: 0
+    allForms:
+    - frmQuyTrinhLanUV_Add
+    - frm_denghi_thanhtoan_ncc_add
+    - frmPhanQuyenCongViec
+    - frmQuyTrinhUV
+    - frmQuyTrinhDanhSachAdd
+    - frmNganHangAdd
+    - frmChiTietDeNghiThanhToan
+    - frmQuyTrinhLanUVAdd
+    - frmGiaoDichThanhToan
+    - frmBangDuTruChiPhi
+    - frmPhanQuyenKeHoach
+    - frmQuyTrinhDanhSach
+    - frmDanhSachQuyTrinh
+    - frmQuyTrinhLanUV
+    - frmNhomQuyCachPhoi
+    - frmDeXuatPhoi_ChonQuyCach
+    - frmPhanQuyen2
+    - frmDeNghiTT
+    - view_QuyCachCarton
+    - frmDeNghiKiemTraMayMoc
+    - frmBaoCaoKinhDoanh
+    - frmChiPhiKhauHao
+    - frmChiPhiNhanCong
+    - frm_denghi_thanhtoan_tonghop
+    - frmDanhSachQuyTrinh2
+    - frmQuyTrinhSon
+    - frm_na_chiphicodinh_nguyenvatlieu
+    - frmLichSuThongKe
+  dinh_muc:
+    forms: 25
+    directProcs: 12
+    topForms:
+    - form: frmPhatHanhDinhMuc2
+      title: Phát hành định mức
+      grids: 6
+      inputs: 5
+      procs: 0
+    - form: frm_kiemtra_dinhmuc_ver2
+      title: Kiểm tra định mức theo đơn hàng
+      grids: 4
+      inputs: 4
+      procs: 3
+    - form: frmPhatHanhDinhMuc
+      title: Phát hành định mức
+      grids: 2
+      inputs: 5
+      procs: 0
+    - form: frm_kiemtra_dinhmuc
+      title: frm_kiemtra_dinhmuc
+      grids: 4
+      inputs: 0
+      procs: 0
+    - form: frmDinhMucSoChe
+      title: Định mức sơ chế
+      grids: 2
+      inputs: 3
+      procs: 1
+    - form: frmDinhMucSon_MixAdd
+      title: Hỗn hợp sơn
+      grids: 1
+      inputs: 5
+      procs: 0
+    - form: frmDinhMucSon_TheoMau
+      title: Quy trình sơn theo màu
+      grids: 1
+      inputs: 0
+      procs: 4
+    - form: frm_add_dinhmuc_nk
+      title: Định mức ngũ kim
+      grids: 1
+      inputs: 8
+      procs: 0
+    allForms:
+    - frmPhatHanhDinhMuc2
+    - frm_kiemtra_dinhmuc_ver2
+    - frmPhatHanhDinhMuc
+    - frm_kiemtra_dinhmuc
+    - frmDinhMucSoChe
+    - frmDinhMucSon_MixAdd
+    - frmDinhMucSon_TheoMau
+    - frm_add_dinhmuc_nk
+    - frm_add_dinhmuc_son
+    - frmDinhMucSon3
+    - frm_add_dinhmuc_vt_ver2
+    - frm_kiemtra_dinhmuc_ver3
+    - frm_DinhMuc_HeHang
+    - frmDinhMucSon_TheoMau2Add
+    - frmDinhMucDonHang
+    - frmDinhMucSonEditor
+    - frmDinhMucCatVan
+    - frmDinhMucSon4
+    - frmDinhMucSon_Mix
+    - frmDinhMucSon_TheoMau2
+    - frmDinhMucChiPhiSanPham
+    - frmDinhMucGoVanSoChe
+    - frmDinhMucHistory
+    - frmDinhMucLock
+    - frmDinhMucVatTuTieuHao
+  khach_hang_ncc:
+    forms: 20
+    directProcs: 2
+    topForms:
+    - form: frmKhachHangInfo
+      title: Thông tin khách hàng
+      grids: 3
+      inputs: 5
+      procs: 0
+    - form: frmKhachHangAdd
+      title: Thêm khách hàng
+      grids: 0
+      inputs: 10
+      procs: 0
+    - form: frmNhaCungCapAdd2
+      title: Nhà cung cấp
+      grids: 1
+      inputs: 6
+      procs: 0
+    - form: frmNhaCungCapAdd
+      title: Cập nhật nhà cung cấp
+      grids: 0
+      inputs: 8
+      procs: 0
+    - form: frmKhachHangAdd2
+      title: Thông tin khách  hàng
+      grids: 0
+      inputs: 8
+      procs: 0
+    - form: frm_add_ncc
+      title: Cập nhật nhà cung cấp
+      grids: 0
+      inputs: 8
+      procs: 0
+    - form: frmCustomerPermission
+      title: Phân quyền khách hàng
+      grids: 0
+      inputs: 1
+      procs: 2
+    - form: frmNhaCungCapAdd
+      title: Nhà cung cấp
+      grids: 0
+      inputs: 5
+      procs: 0
+    allForms:
+    - frmKhachHangInfo
+    - frmKhachHangAdd
+    - frmNhaCungCapAdd2
+    - frmNhaCungCapAdd
+    - frmKhachHangAdd2
+    - frm_add_ncc
+    - frmCustomerPermission
+    - frmNhaCungCapAdd
+    - frmThuTienKhachHang
+    - frm_sosanhgia_nvt_ncc_print
+    - frmSoChiTietCongNoKhachHang_Search
+    - frmChiTietCongNoNhaCungCap
+    - frmKhachHang
+    - frmNhaCungCap
+    - frmKhachHang
+    - frm_sosanhgia_nvt_ncc
+    - frm_sosanhgia_nvt_ncc_print2
+    - frmDanhsachkhachhang
+    - frmkhachhang
+    - frmSoChiTietCongNoKhachHang
+  dialog_chon:
+    forms: 16
+    directProcs: 0
+    topForms:
+    - form: frmDonHangBuChiTietSelect
+      title: Chọn chi tiết
+      grids: 3
+      inputs: 0
+      procs: 0
+    - form: frmChonDonHangChiTiet
+      title: Chọn đơn hàng
+      grids: 2
+      inputs: 0
+      procs: 0
+    - form: frmSelectKhachHang
+      title: Chọn khách hàng
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmChonDeXuatPhoi
+      title: Đề xuất phôi
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmChonDonDatHang
+      title: Chọn đơn đặt hàng
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmDonHangSelectDialog
+      title: Chọn đơn hàng
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmSelectColor
+      title: Chọn màu sắc
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmSelectedNhaCungCap
+      title: Nhà cung cấp
+      grids: 1
+      inputs: 0
+      procs: 0
+    allForms:
+    - frmDonHangBuChiTietSelect
+    - frmChonDonHangChiTiet
+    - frmSelectKhachHang
+    - frmChonDeXuatPhoi
+    - frmChonDonDatHang
+    - frmDonHangSelectDialog
+    - frmSelectColor
+    - frmSelectedNhaCungCap
+    - frmSelectPaymentTerm
+    - frmSelectMaterialPrice
+    - frmChonCotKeHoach
+    - frmChonBenNhanHang
+    - frmChonSanPham
+    - frmChonTieuChuanLoi
+    - frmChonTonKho
+    - frmChonNguoiNhan
+  de_xuat:
+    forms: 15
+    directProcs: 7
+    topForms:
+    - form: frmDepartment_Add
+      title: Bộ phận
+      grids: 0
+      inputs: 4
+      procs: 3
+    - form: frmChiTietDeXuatPhoi
+      title: Đề xuất phôi
+      grids: 1
+      inputs: 5
+      procs: 2
+    - form: frmDeXuatPhoiAdd5
+      title: Đề xuất phôi
+      grids: 2
+      inputs: 2
+      procs: 0
+    - form: frmDeXuatPhoiAdd4
+      title: Đề xuất phôi
+      grids: 2
+      inputs: 1
+      procs: 0
+    - form: frmDeXuatMuahangAdd
+      title: Thêm đề xuất mua hàng
+      grids: 1
+      inputs: 4
+      procs: 0
+    - form: frmDeXuatDichVuAdd
+      title: Thông tin đề xuất dịch vụ
+      grids: 1
+      inputs: 3
+      procs: 0
+    - form: frm_DeXuatVan
+      title: Thông tin đề xuất ván
+      grids: 1
+      inputs: 5
+      procs: 0
+    - form: frmChiTietDeXuatMuaHang
+      title: Đề xuất mua hàng
+      grids: 1
+      inputs: 3
+      procs: 1
+    allForms:
+    - frmDepartment_Add
+    - frmChiTietDeXuatPhoi
+    - frmDeXuatPhoiAdd5
+    - frmDeXuatPhoiAdd4
+    - frmDeXuatMuahangAdd
+    - frmDeXuatDichVuAdd
+    - frm_DeXuatVan
+    - frmChiTietDeXuatMuaHang
+    - frmDeXuatPhoiAdd
+    - frmDeXuatPhoiAdd3
+    - frmDestinationAdd
+    - frmRSTDeXuatNguyenLieuAdd
+    - frmDeXuatPhoiChiTiet
+    - frmDeXuatMuahang
+    - frmRSTDeXuatNguyenLieu
+  bang_mau_banve:
+    forms: 14
+    directProcs: 8
+    topForms:
+    - form: frmUploadBanVe2
+      title: Tải bản vẽ
+      grids: 1
+      inputs: 3
+      procs: 2
+    - form: frm_banve_view2
+      title: Xem bản vẽ
+      grids: 2
+      inputs: 0
+      procs: 3
+    - form: frm_banve_view3
+      title: frm_banve_view3
+      grids: 2
+      inputs: 0
+      procs: 3
+    - form: frmChiTietDeXuatBangMau
+      title: Đề xuất bảng màu
+      grids: 1
+      inputs: 4
+      procs: 2
+    - form: frmBangMauAdd
+      title: Thông tin bảng màu
+      grids: 0
+      inputs: 3
+      procs: 2
+    - form: frmDeXuatBangMauAdd
+      title: Đề xuất bảng màu
+      grids: 1
+      inputs: 3
+      procs: 0
+    - form: frm_banve2
+      title: Danh sách bản vẽ
+      grids: 1
+      inputs: 0
+      procs: 2
+    - form: frm_banve_mau
+      title: frm_banve_mau
+      grids: 1
+      inputs: 0
+      procs: 0
+    allForms:
+    - frmUploadBanVe2
+    - frm_banve_view2
+    - frm_banve_view3
+    - frmChiTietDeXuatBangMau
+    - frmBangMauAdd
+    - frmDeXuatBangMauAdd
+    - frm_banve2
+    - frm_banve_mau
+    - frm_banve_test
+    - frmBanVeDao
+    - frmDanhSachBanVe
+    - frmDanhSachBanVe2
+    - frm_banve
+    - frm_banve_donggoi
+  he_thong:
+    forms: 5
+    directProcs: 4
+    topForms:
+    - form: z_UserAdd
+      title: Cập nhật người dùng
+      grids: 0
+      inputs: 6
+      procs: 2
+    - form: xfmDatabaseConfig
+      title: Cấu Hình Cơ Sở Dữ Liệu
+      grids: 0
+      inputs: 9
+      procs: 0
+    - form: z_UserAdd_old
+      title: Cập nhật người dùng
+      grids: 0
+      inputs: 6
+      procs: 0
+    - form: frmUser
+      title: Tài khoản đăng nhập
+      grids: 1
+      inputs: 0
+      procs: 2
+    - form: frmEmailConfig
+      title: Cài đặt mail
+      grids: 1
+      inputs: 0
+      procs: 0
+    allForms:
+    - z_UserAdd
+    - xfmDatabaseConfig
+    - z_UserAdd_old
+    - frmUser
+    - frmEmailConfig
+  pallet:
+    forms: 3
+    directProcs: 0
+    topForms:
+    - form: frm_In_Pallet_2
+      title: In Phiếu Pallet
+      grids: 2
+      inputs: 0
+      procs: 0
+    - form: frm_In_Pallet
+      title: In Phiếu Pallet
+      grids: 1
+      inputs: 0
+      procs: 0
+    - form: frmDanhSachPallet
+      title: Danh sách phiếu pallet
+      grids: 1
+      inputs: 0
+      procs: 0
+    allForms:
+    - frm_In_Pallet_2
+    - frm_In_Pallet
+    - frmDanhSachPallet
