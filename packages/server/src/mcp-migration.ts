@@ -246,8 +246,10 @@ const TOOLS: ToolDef[] = [
   {
     name: "migration_delete_imported_entities",
     description:
-      "XOÁ vĩnh viễn các entity import theo danh sách tên. GUARD: chỉ xoá entity có " +
+      "XOÁ vĩnh viễn các entity import theo danh sách tên. GUARD mặc định: chỉ xoá entity có " +
       "meta.source.mssqlTable (entity tạo tay bị từ chối — skipped_no_source). " +
+      "force=true: bỏ guard nguồn — dùng khi meta.source bị mất do bug ghi-đè meta cũ " +
+      "(danh sách vẫn phải tường minh, đã được người dùng duyệt). " +
       "Entity tier=table: DROP bảng thật + dọn locator trước. Cascade xoá entity_records, " +
       "saved_views, templates... Trả kết quả từng entity (deleted | skipped_no_source | not_found).",
     level: "apply",
@@ -259,6 +261,10 @@ const TOOLS: ToolDef[] = [
           items: { type: "string" },
           maxItems: 200,
           description: "Tên kỹ thuật các entity cần xoá (danh sách đã được duyệt)",
+        },
+        force: {
+          type: "boolean",
+          description: "true = cho phép xoá entity KHÔNG có meta.source (mặc định false)",
         },
       },
       required: ["names"],
@@ -709,6 +715,7 @@ async function callMigrationTool(
       const names = Array.isArray(args.names) ? args.names.map(String) : [];
       if (names.length === 0) throw new McpError("names bắt buộc (mảng tên entity)");
       if (names.length > 200) throw new McpError("Tối đa 200 entity mỗi lần");
+      const force = args.force === true;
 
       const results: Array<{
         name: string;
@@ -731,7 +738,9 @@ async function callMigrationTool(
         }
         const meta = (e.meta ?? {}) as EntityMeta & { source?: { mssqlTable?: string } };
         // GUARD: chỉ xoá entity import (có nguồn MSSQL) — entity tạo tay từ chối.
-        if (!meta.source?.mssqlTable) {
+        // force=true bỏ guard: import cũ bị bug ghi-đè meta xoá mất source
+        // (danh sách names vẫn tường minh, user duyệt trước).
+        if (!force && !meta.source?.mssqlTable) {
           results.push({ name: entityName, status: "skipped_no_source" });
           continue;
         }
