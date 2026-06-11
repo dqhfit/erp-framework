@@ -190,6 +190,26 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_inspect_table",
+    description:
+      "Soi schema VẬT LÝ bảng thật PostgreSQL của 1 entity tier=table: cột thực tế từ " +
+      "information_schema (column_name, data_type, nullable) + map field→cột trong " +
+      "meta.storage.columns + danh sách field ext-tier (nằm trong ext jsonb) + row count. " +
+      "Dùng khi port proc Tier D / viết SQL thô để biết CHÍNH XÁC tên cột vật lý " +
+      "(cột field có prefix f_, field type ngoài built-in nằm ở ext).",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entityName: {
+          type: "string",
+          description: "Tên kỹ thuật entity (vd 'tr_order') — phải là entity tier=table",
+        },
+      },
+      required: ["entityName"],
+    },
+  },
+  {
     name: "migration_list_connections",
     description:
       "Liệt kê kết nối MSSQL đã cấu hình: id, name, host, port, database, isDefault. " +
@@ -754,9 +774,76 @@ async function callMigrationTool(
         fields: row.fields,
         storageTier: meta.storage?.tier ?? "eav",
         tableName: meta.storage?.tableName,
+        // Map field→cột vật lý (tier=table) — nguồn sự thật khi viết SQL thô.
+        storageColumns: (meta.storage as EntityStorage | undefined)?.columns ?? null,
         agentSearchable: meta.agentSearchable ?? false,
         sync: meta.sync ?? null,
         updatedAt: row.updatedAt,
+      };
+    }
+
+    /* ── migration_inspect_table ────────────────────────────── */
+    case "migration_inspect_table": {
+      const entityName = String(args.entityName ?? "").trim();
+      if (!entityName) throw new McpError("entityName bắt buộc");
+
+      const [row] = await db
+        .select()
+        .from(entities)
+        .where(
+          and(
+            eq(entities.companyId, companyId),
+            sql`lower(${entities.name}) = lower(${entityName})`,
+          ),
+        );
+      if (!row) throw new McpError(`Entity '${entityName}' không tồn tại trong công ty`, -32602);
+
+      const meta = (row.meta ?? {}) as EntityMeta;
+      const storage = meta.storage as EntityStorage | undefined;
+      if (storage?.tier !== "table" || !storage.tableName) {
+        throw new McpError(
+          `Entity '${entityName}' không phải tier=table (đang ${storage?.tier ?? "eav"})`,
+        );
+      }
+      // tableName lấy từ meta đã qua assertIdent khi tạo — re-validate trước khi
+      // nội suy (chống meta hỏng), KHÔNG nhận tên bảng trực tiếp từ caller.
+      const tbl = assertIdent(storage.tableName);
+
+      const colsRes = (await db.execute(
+        sql`SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = ${tbl}
+            ORDER BY ordinal_position`,
+      )) as unknown as
+        | Array<{ column_name: string; data_type: string; is_nullable: string }>
+        | { rows: Array<{ column_name: string; data_type: string; is_nullable: string }> };
+      const physicalColumns = Array.isArray(colsRes) ? colsRes : (colsRes.rows ?? []);
+
+      let rowCount = -1;
+      try {
+        const r = (await db.execute(
+          sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${tbl}"`)} WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL`,
+        )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
+        const list = Array.isArray(r) ? r : (r.rows ?? []);
+        rowCount = Number(list[0]?.n ?? 0);
+      } catch {
+        /* đếm lỗi không chặn introspect */
+      }
+
+      // Field không có cột typed → nằm trong ext jsonb (key = tên field).
+      const fieldDefs = (row.fields ?? []) as Array<{ name: string; type: string }>;
+      const colMap = storage.columns ?? {};
+      const extFields = fieldDefs
+        .filter((f) => !colMap[f.name])
+        .map((f) => ({ field: f.name, type: f.type, access: `ext->>'${f.name}'` }));
+
+      return {
+        entityName: row.name,
+        tableName: tbl,
+        physicalColumns,
+        fieldColumnMap: colMap,
+        extFields,
+        rowCount,
       };
     }
 
