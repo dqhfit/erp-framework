@@ -285,6 +285,41 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_skip_job_table",
+    description:
+      "Đánh dấu SKIPPED các bảng trong 1 job full-import (bảng treo/lỗi vĩnh viễn — " +
+      "vd bảng hệ thống nguồn không đọc được). skipped KHÔNG chặn job hoàn thành và " +
+      "không retry. Dùng kèm migration_resume_full_job để job chạy tiếp các bảng còn lại.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        jobId: { type: "string", description: "UUID job" },
+        tableNames: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tên bảng cần skip, vd ['dbo.SYS_USER']",
+        },
+      },
+      required: ["jobId", "tableNames"],
+    },
+  },
+  {
+    name: "migration_resume_full_job",
+    description:
+      "Re-enqueue 1 job full-import đang kẹt (worker chết, heartbeat stale): reset bảng " +
+      "failed→pending, job→queued, đẩy lại vào queue. Bảng done/skipped không chạy lại; " +
+      "bảng dở dang tiếp tục từ checkpoint lastPk.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        jobId: { type: "string", description: "UUID job" },
+      },
+      required: ["jobId"],
+    },
+  },
+  {
     name: "migration_enable_sync",
     description:
       "BẬT delta-sync cho 1 module (nhóm bảng): tạo module row (cron) + đăng ký từng bảng " +
@@ -867,6 +902,71 @@ async function callMigrationTool(
         }
       }
       return { results, renamed: results.filter((r) => r.status === "renamed").length };
+    }
+
+    /* ── migration_skip_job_table (apply) ───────────────────── */
+    case "migration_skip_job_table": {
+      const jobId = String(args.jobId ?? "");
+      const tableNames = Array.isArray(args.tableNames) ? args.tableNames.map(String) : [];
+      if (!jobId || tableNames.length === 0) throw new McpError("jobId + tableNames bắt buộc");
+
+      const [job] = await db
+        .select({ id: migrationFullJobs.id })
+        .from(migrationFullJobs)
+        .where(and(eq(migrationFullJobs.id, jobId), eq(migrationFullJobs.companyId, companyId)));
+      if (!job) throw new McpError(`Job '${jobId}' không tồn tại`, -32602);
+
+      const results: Array<{ tableName: string; status: "skipped" | "not_found" }> = [];
+      for (const t of tableNames) {
+        const updated = await db
+          .update(migrationFullJobTables)
+          .set({ status: "skipped", error: null, updatedAt: new Date() })
+          .where(
+            and(eq(migrationFullJobTables.jobId, jobId), eq(migrationFullJobTables.tableName, t)),
+          )
+          .returning({ id: migrationFullJobTables.id });
+        results.push({ tableName: t, status: updated.length > 0 ? "skipped" : "not_found" });
+      }
+      return { results };
+    }
+
+    /* ── migration_resume_full_job (apply) ──────────────────── */
+    case "migration_resume_full_job": {
+      if (!apiKeyCreatedBy) {
+        throw new McpError("API key không có người tạo — không xác định được userId.", -32603);
+      }
+      const jobId = String(args.jobId ?? "");
+      if (!jobId) throw new McpError("jobId bắt buộc");
+
+      const [job] = await db
+        .select({ id: migrationFullJobs.id, status: migrationFullJobs.status })
+        .from(migrationFullJobs)
+        .where(and(eq(migrationFullJobs.id, jobId), eq(migrationFullJobs.companyId, companyId)));
+      if (!job) throw new McpError(`Job '${jobId}' không tồn tại`, -32602);
+      if (job.status === "canceled") throw new McpError("Job đã canceled — không resume được");
+
+      // failed (tạm) → pending để retry; done/skipped giữ nguyên.
+      await db
+        .update(migrationFullJobTables)
+        .set({ status: "pending", error: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(migrationFullJobTables.jobId, jobId),
+            sql`${migrationFullJobTables.status} = 'failed'`,
+          ),
+        );
+      await db
+        .update(migrationFullJobs)
+        .set({ status: "queued", completedAt: null, error: null, updatedAt: new Date() })
+        .where(eq(migrationFullJobs.id, jobId));
+      await enqueueMigrationJob({
+        action: "full-import",
+        module: jobId,
+        args: {},
+        userId: apiKeyCreatedBy,
+        companyId,
+      });
+      return { jobId, status: "queued" };
     }
 
     /* ── migration_enable_sync (apply) ──────────────────────── */
