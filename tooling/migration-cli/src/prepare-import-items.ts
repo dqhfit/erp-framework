@@ -85,11 +85,19 @@ try {
       noSinglePk.push(`${want} (pk: ${info.primaryKey.join("+") || "KHÔNG có"})`);
       continue;
     }
+    // LOẠI cột binary (varbinary/image/rowversion): driver trả Buffer →
+    // JSON.stringify thành mảng byte khổng lồ trong ext jsonb → OOM worker
+    // (đã dính: tr_tieuchuan.NoiDung 2MB/row, tr_thongtin_sanpham_nguyenlieu
+    // .HinhAnh 6.5MB/row). Ảnh nhúng không dùng được trong web UI — cần
+    // đường migrate file riêng (uploads) nếu muốn giữ.
+    const usable = info.columns.filter(
+      (c) => !/^(varbinary|image|timestamp|rowversion)$/i.test(c.dataType),
+    );
     items.push({
       tableName: `dbo.${realName}`,
       entityName: want,
       label: realName,
-      fields: info.columns.map((c) => ({
+      fields: usable.map((c) => ({
         name: c.name.toLowerCase(),
         label: c.name,
         type: mapType(c.dataType),
