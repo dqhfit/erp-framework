@@ -1,0 +1,48 @@
+{
+  "name": "ds_tonkho_vattu",
+  "label": "Tồn kho vật tư (join vật tư)",
+  "icon": "Package",
+  "_note": "Thay 3 proc đọc: TR_TONKHO_SUM_GETALL2 (filter vt_xoa='N'), TR_TONKHO_SUM_GETALL3 (filter soluong >/</=0 + makho), TR_TONKHO_SUM_GETBYPRICE (filter makho, cột vt_dongia/vt_loaitien). Base tr_tonkho_sum INNER JOIN tr_material theo mavt. Filter đặt ở widget loadFilters, không bake vào DS.",
+  "config": {
+    "baseEntityId": "e998bee3-c822-472a-8406-b80cafa37056",
+    "relations": [
+      {
+        "id": "r_vt",
+        "alias": "vat_tu",
+        "fromRelationId": null,
+        "fromField": "mavt",
+        "toField": "mavt",
+        "targetEntityId": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "joinKind": "inner"
+      }
+    ],
+    "fields": [
+      { "key": "mavt", "sourceRelationId": "base", "sourceField": "mavt", "label": "Mã vật tư", "type": "text" },
+      { "key": "makho", "sourceRelationId": "base", "sourceField": "makho", "label": "Mã kho", "type": "text" },
+      { "key": "soluong", "sourceRelationId": "base", "sourceField": "soluong", "label": "Số lượng", "type": "number" },
+      { "key": "soluong_toithieu", "sourceRelationId": "base", "sourceField": "soluong_toithieu", "label": "SL tối thiểu", "type": "number" },
+      { "key": "ghichu", "sourceRelationId": "base", "sourceField": "ghichu", "label": "Ghi chú", "type": "text" },
+      { "key": "ngaynhapkho", "sourceRelationId": "base", "sourceField": "ngaynhapkho", "label": "Ngày nhập kho", "type": "date" },
+      { "key": "nhapton", "sourceRelationId": "base", "sourceField": "nhapton", "label": "Nhập tồn", "type": "number" },
+      { "key": "vt_mota", "sourceRelationId": "r_vt", "sourceField": "mota", "label": "Mô tả", "type": "text" },
+      { "key": "vt_quycach", "sourceRelationId": "r_vt", "sourceField": "quycach", "label": "Quy cách", "type": "text" },
+      { "key": "vt_mausac", "sourceRelationId": "r_vt", "sourceField": "mausac", "label": "Màu sắc", "type": "text" },
+      { "key": "vt_nhom", "sourceRelationId": "r_vt", "sourceField": "nhom", "label": "Nhóm", "type": "text" },
+      { "key": "vt_dvt", "sourceRelationId": "r_vt", "sourceField": "dvt", "label": "ĐVT", "type": "text" },
+      { "key": "vt_dongia", "sourceRelationId": "r_vt", "sourceField": "dongia", "label": "Đơn giá", "type": "currency" },
+      { "key": "vt_loaitien", "sourceRelationId": "r_vt", "sourceField": "loaitien", "label": "Loại tiền", "type": "text" },
+      { "key": "vt_van_mat1", "sourceRelationId": "r_vt", "sourceField": "van_mat1", "label": "Ván mặt 1", "type": "text" },
+      { "key": "vt_van_mat2", "sourceRelationId": "r_vt", "sourceField": "van_mat2", "label": "Ván mặt 2", "type": "text" },
+      { "key": "vt_tieuchuan", "sourceRelationId": "r_vt", "sourceField": "tieuchuan", "label": "Tiêu chuẩn", "type": "text" },
+      { "key": "vt_van_tieuchuan", "sourceRelationId": "r_vt", "sourceField": "van_tieuchuan", "label": "Ván tiêu chuẩn", "type": "text" },
+      { "key": "vt_soluong1kg", "sourceRelationId": "r_vt", "sourceField": "soluong1kg", "label": "SL/1kg", "type": "number" },
+      { "key": "vt_dacdiem", "sourceRelationId": "r_vt", "sourceField": "dacdiem", "label": "Đặc điểm", "type": "text" },
+      { "key": "vt_dayy", "sourceRelationId": "r_vt", "sourceField": "dayy", "label": "Dày", "type": "text" },
+      { "key": "vt_rong", "sourceRelationId": "r_vt", "sourceField": "rong", "label": "Rộng", "type": "text" },
+      { "key": "vt_dai", "sourceRelationId": "r_vt", "sourceField": "dai", "label": "Dài", "type": "text" },
+      { "key": "vt_xoa", "sourceRelationId": "r_vt", "sourceField": "xoa", "label": "Đã xoá (vật tư)", "type": "text" }
+    ],
+    "sort": { "key": "mavt", "dir": "asc" },
+    "defaultLimit": 200
+  }
+}

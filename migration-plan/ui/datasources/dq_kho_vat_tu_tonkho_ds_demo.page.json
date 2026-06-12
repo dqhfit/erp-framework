@@ -1,0 +1,34 @@
+{
+  "name": "dq_kho_vat_tu_tonkho_ds_demo",
+  "label": "Tồn kho vật tư (DataSource demo)",
+  "icon": "Package",
+  "_note": "Page draft demo pattern proc đọc → DataSource. Đã tạo trên prod (pageId 344c3984-3966-40d6-82c9-fef8e350662a, dataSourceId 019eb947-da23-79c2-b8f7-dc2bf22dcfa2). Filter vt_xoa='N' tái hiện TR_TONKHO_SUM_GETALL2; thêm filter makho/soluong ở widget là ra GETALL3/GETBYPRICE.",
+  "content": [
+    {
+      "id": "w_list",
+      "kind": "list",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "dataSourceId": "019eb947-da23-79c2-b8f7-dc2bf22dcfa2",
+        "title": "Tồn kho vật tư (DataSource)",
+        "fields": [
+          "mavt",
+          "vt_mota",
+          "vt_quycach",
+          "vt_mausac",
+          "vt_dvt",
+          "makho",
+          "soluong",
+          "soluong_toithieu",
+          "vt_dongia",
+          "vt_loaitien"
+        ],
+        "loadFilters": { "vt_xoa": { "op": "=", "value": "N" } },
+        "pageSize": 25
+      }
+    }
+  ]
+}
