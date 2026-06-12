@@ -68,8 +68,11 @@ export async function findExistingInTable(
 /** Separator ghép khoá composite — control char không xuất hiện trong data. */
 export const COMPOSITE_KEY_SEP = "\u0001";
 
-/** Token đại diện NULL trong khoá ghép (tránh trộn với chuỗi "null" thật). */
-const COMPOSITE_NULL = "\u0000";
+/** Token đại diện NULL trong khoá ghép. CHÚ Ý: KHÔNG dùng NUL (u0000) —
+ *  PostgreSQL text TỪ CHỐI NUL byte trong bind param (query dedupe
+ *  chết/treo — đã dính ở job composite đầu tiên). Cột PK vốn NOT NULL
+ *  nên token gần như không bao giờ dùng — chuỗi rỗng là đủ. */
+const COMPOSITE_NULL = "";
 
 /** Khoá ghép của 1 row data theo danh sách pkFields. */
 export function compositeKeyOf(data: Record<string, unknown>, pkFields: string[]): string {
