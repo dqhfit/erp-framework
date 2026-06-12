@@ -10,10 +10,7 @@
   "TR_DINHMUC_GOVAN_GETBYSP3",
   "TR_DINHMUC_GOVAN_Get2"
  ],
- "_warnings": [
-  "bỏ join tr_loai_uv (entity chưa migrate)",
-  "bỏ join tr_tinhtrang_fsc (entity chưa migrate)"
- ],
+ "_warnings": [],
  "config": {
   "baseEntityId": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
   "relations": [
@@ -33,6 +30,24 @@
     "fromField": "veneer_matchinh",
     "toField": "id",
     "targetEntityId": "1a08019a-55fa-46ff-b723-16a2e80f13ed",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_loai_uv",
+    "alias": "loai_uv",
+    "fromRelationId": null,
+    "fromField": "uv_matchinh1",
+    "toField": "id",
+    "targetEntityId": "c0a34cb4-be63-4ac6-ba71-e7bec68eed88",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_tinhtrang_fsc",
+    "alias": "tinhtrang_fsc",
+    "fromRelationId": null,
+    "fromField": "fsc_id",
+    "toField": "fsc_id",
+    "targetEntityId": "e264881f-b2fa-44eb-8133-099335cf2adf",
     "joinKind": "left"
    }
   ],
@@ -1478,6 +1493,76 @@
     "sourceField": "ngaytao",
     "label": "Ngày tạo",
     "type": "datetime"
+   },
+   {
+    "key": "loai_uv_id",
+    "sourceRelationId": "r_loai_uv",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "loai_uv_loai_uv",
+    "sourceRelationId": "r_loai_uv",
+    "sourceField": "loai_uv",
+    "label": "loai_uv",
+    "type": "text"
+   },
+   {
+    "key": "loai_uv_heso",
+    "sourceRelationId": "r_loai_uv",
+    "sourceField": "heso",
+    "label": "heso",
+    "type": "number"
+   },
+   {
+    "key": "loai_uv_dongia",
+    "sourceRelationId": "r_loai_uv",
+    "sourceField": "dongia",
+    "label": "dongia",
+    "type": "number"
+   },
+   {
+    "key": "tinhtrang_fsc_fsc_id",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "fsc_id",
+    "label": "fsc_id",
+    "type": "number"
+   },
+   {
+    "key": "tinhtrang_fsc_fsc_name",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "fsc_name",
+    "label": "fsc_name",
+    "type": "text"
+   },
+   {
+    "key": "tinhtrang_fsc_ngaytao",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "ngaytao",
+    "label": "ngaytao",
+    "type": "datetime"
+   },
+   {
+    "key": "tinhtrang_fsc_nguoitao",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "nguoitao",
+    "label": "nguoitao",
+    "type": "text"
+   },
+   {
+    "key": "tinhtrang_fsc_active",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "active",
+    "label": "active",
+    "type": "boolean"
+   },
+   {
+    "key": "tinhtrang_fsc_phantram_tang",
+    "sourceRelationId": "r_tinhtrang_fsc",
+    "sourceField": "phantram_tang",
+    "label": "phantram_tang",
+    "type": "number"
    }
   ],
   "defaultLimit": 200

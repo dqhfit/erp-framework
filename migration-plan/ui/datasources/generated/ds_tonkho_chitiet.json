@@ -1,0 +1,86 @@
+{
+ "name": "ds_tonkho_chitiet",
+ "label": "tr_tonkho_chitiet (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_TONKHO_CHITIET_GETLISTBYMACT"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "03bbc05c-0318-4595-8fa5-416256b3cc0a",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "makho",
+    "sourceRelationId": "base",
+    "sourceField": "makho",
+    "label": "makho",
+    "type": "text"
+   },
+   {
+    "key": "mavt",
+    "sourceRelationId": "base",
+    "sourceField": "mavt",
+    "label": "mavt",
+    "type": "text"
+   },
+   {
+    "key": "keso",
+    "sourceRelationId": "base",
+    "sourceField": "keso",
+    "label": "keso",
+    "type": "text"
+   },
+   {
+    "key": "vitri",
+    "sourceRelationId": "base",
+    "sourceField": "vitri",
+    "label": "vitri",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "soluong",
+    "type": "number"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "ngaytao",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "nguoitao",
+    "type": "text"
+   },
+   {
+    "key": "update_date",
+    "sourceRelationId": "base",
+    "sourceField": "update_date",
+    "label": "update_date",
+    "type": "datetime"
+   },
+   {
+    "key": "update_by",
+    "sourceRelationId": "base",
+    "sourceField": "update_by",
+    "label": "update_by",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

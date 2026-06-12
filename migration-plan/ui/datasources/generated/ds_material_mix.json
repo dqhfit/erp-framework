@@ -1,0 +1,100 @@
+{
+ "name": "ds_material_mix",
+ "label": "Hỗn Hợp Vật Liệu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_MATERIAL_MIX_GETBYCOLOR"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "d3f4c5db-dd87-4d17-aba6-f0f9d62d81af",
+  "relations": [],
+  "fields": [
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "tenct",
+    "sourceRelationId": "base",
+    "sourceField": "tenct",
+    "label": "Tên Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "mausac",
+    "sourceRelationId": "base",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "soluong_honhop",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_honhop",
+    "label": "Số Lượng Hỗn Hợp",
+    "type": "number"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "att1",
+    "sourceRelationId": "base",
+    "sourceField": "att1",
+    "label": "Thuộc Tính 1",
+    "type": "text"
+   },
+   {
+    "key": "att2",
+    "sourceRelationId": "base",
+    "sourceField": "att2",
+    "label": "Thuộc Tính 2",
+    "type": "text"
+   },
+   {
+    "key": "att3",
+    "sourceRelationId": "base",
+    "sourceField": "att3",
+    "label": "Thuộc Tính 3",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

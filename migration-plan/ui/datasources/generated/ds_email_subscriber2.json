@@ -1,0 +1,51 @@
+{
+ "name": "ds_email_subscriber2",
+ "label": "Danh Sách Đăng Ký Email (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_EMAIL_SUBSCRIBER2_GETBYTOPIC"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "07c4bc3e-fe97-44f4-8585-c0f0d61f4d66",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "username",
+    "sourceRelationId": "base",
+    "sourceField": "username",
+    "label": "Tên đăng nhập",
+    "type": "text"
+   },
+   {
+    "key": "name",
+    "sourceRelationId": "base",
+    "sourceField": "name",
+    "label": "Họ và tên",
+    "type": "text"
+   },
+   {
+    "key": "email",
+    "sourceRelationId": "base",
+    "sourceField": "email",
+    "label": "Địa chỉ email",
+    "type": "email"
+   },
+   {
+    "key": "topic",
+    "sourceRelationId": "base",
+    "sourceField": "topic",
+    "label": "Chủ đề",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

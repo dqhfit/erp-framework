@@ -5,9 +5,7 @@
  "_procs": [
   "MES_QUYTRINH_SANPHAM_GETALL2"
  ],
- "_warnings": [
-  "bỏ join tr_khuvuc_sanxuat (entity chưa migrate)"
- ],
+ "_warnings": [],
  "config": {
   "baseEntityId": "0e0cffc0-79c3-41c9-81b1-58cace57fc1d",
   "relations": [
@@ -18,6 +16,15 @@
     "fromField": "quytrinh",
     "toField": "c_op",
     "targetEntityId": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_khuvuc_sanxuat",
+    "alias": "khuvuc_sanxuat",
+    "fromRelationId": "r_m_op",
+    "fromField": "department",
+    "toField": "makhuvuc",
+    "targetEntityId": "f35cb658-fdff-42d5-9798-3c3daa6b5ea2",
     "joinKind": "left"
    }
   ],
@@ -378,6 +385,41 @@
     "sourceField": "yeucau_kythuat",
     "label": "Yêu cầu kỹ thuật",
     "type": "longtext"
+   },
+   {
+    "key": "khuvuc_sanxuat_makhuvuc",
+    "sourceRelationId": "r_khuvuc_sanxuat",
+    "sourceField": "makhuvuc",
+    "label": "Mã Khu Vực",
+    "type": "text"
+   },
+   {
+    "key": "khuvuc_sanxuat_tenkhuvuc",
+    "sourceRelationId": "r_khuvuc_sanxuat",
+    "sourceField": "tenkhuvuc",
+    "label": "Tên Khu Vực",
+    "type": "text"
+   },
+   {
+    "key": "khuvuc_sanxuat_active",
+    "sourceRelationId": "r_khuvuc_sanxuat",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "khuvuc_sanxuat_stt",
+    "sourceRelationId": "r_khuvuc_sanxuat",
+    "sourceField": "stt",
+    "label": "Số Thứ Tự",
+    "type": "integer"
+   },
+   {
+    "key": "khuvuc_sanxuat_tenxuong",
+    "sourceRelationId": "r_khuvuc_sanxuat",
+    "sourceField": "tenxuong",
+    "label": "Tên Xưởng",
+    "type": "text"
    }
   ],
   "defaultLimit": 200

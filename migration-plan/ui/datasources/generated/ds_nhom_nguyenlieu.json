@@ -1,0 +1,58 @@
+{
+ "name": "ds_nhom_nguyenlieu",
+ "label": "tr_nhom_nguyenlieu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NHOM_NGUYENLIEU_SEARCH"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "b035a2ff-f72c-4167-93d6-42d838a289bc",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "nguyenlieu",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan",
+    "label": "tieuchuan",
+    "type": "text"
+   },
+   {
+    "key": "nhom",
+    "sourceRelationId": "base",
+    "sourceField": "nhom",
+    "label": "nhom",
+    "type": "text"
+   },
+   {
+    "key": "heso_haohut",
+    "sourceRelationId": "base",
+    "sourceField": "heso_haohut",
+    "label": "heso_haohut",
+    "type": "number"
+   },
+   {
+    "key": "heso_phoi",
+    "sourceRelationId": "base",
+    "sourceField": "heso_phoi",
+    "label": "heso_phoi",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

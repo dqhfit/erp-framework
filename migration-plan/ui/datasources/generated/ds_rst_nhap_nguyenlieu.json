@@ -1,0 +1,72 @@
+{
+ "name": "ds_rst_nhap_nguyenlieu",
+ "label": "Nhập Nguyên Liệu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "RST_NHAP_NGUYENLIEU_GETBYCODE"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "af64baa6-d2ad-4c87-b06f-79ea40c05e16",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "sophieu",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu",
+    "label": "Số Phiếu",
+    "type": "text"
+   },
+   {
+    "key": "maddh",
+    "sourceRelationId": "base",
+    "sourceField": "maddh",
+    "label": "Mã Đặt Hàng",
+    "type": "text"
+   },
+   {
+    "key": "mancc",
+    "sourceRelationId": "base",
+    "sourceField": "mancc",
+    "label": "Mã Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "tenncc",
+    "sourceRelationId": "base",
+    "sourceField": "tenncc",
+    "label": "Tên Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "bool"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

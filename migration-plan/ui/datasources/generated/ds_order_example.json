@@ -1,0 +1,254 @@
+{
+ "name": "ds_order_example",
+ "label": "tr_order_example (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_ORDER_EXAMPLE_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "0810f754-b3e1-4ed2-b788-c5f3d5a7c341",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "order_number",
+    "sourceRelationId": "base",
+    "sourceField": "order_number",
+    "label": "order_number",
+    "type": "text"
+   },
+   {
+    "key": "customer",
+    "sourceRelationId": "base",
+    "sourceField": "customer",
+    "label": "customer",
+    "type": "text"
+   },
+   {
+    "key": "order_date",
+    "sourceRelationId": "base",
+    "sourceField": "order_date",
+    "label": "order_date",
+    "type": "date"
+   },
+   {
+    "key": "ship_date",
+    "sourceRelationId": "base",
+    "sourceField": "ship_date",
+    "label": "ship_date",
+    "type": "date"
+   },
+   {
+    "key": "etd",
+    "sourceRelationId": "base",
+    "sourceField": "etd",
+    "label": "etd",
+    "type": "date"
+   },
+   {
+    "key": "cont_date",
+    "sourceRelationId": "base",
+    "sourceField": "cont_date",
+    "label": "cont_date",
+    "type": "date"
+   },
+   {
+    "key": "f_cancelled",
+    "sourceRelationId": "base",
+    "sourceField": "f_cancelled",
+    "label": "f_cancelled",
+    "type": "text"
+   },
+   {
+    "key": "choduyet",
+    "sourceRelationId": "base",
+    "sourceField": "choduyet",
+    "label": "choduyet",
+    "type": "number"
+   },
+   {
+    "key": "islock",
+    "sourceRelationId": "base",
+    "sourceField": "islock",
+    "label": "IsLock",
+    "type": "boolean"
+   },
+   {
+    "key": "finished",
+    "sourceRelationId": "base",
+    "sourceField": "finished",
+    "label": "Finished",
+    "type": "boolean"
+   },
+   {
+    "key": "ispay",
+    "sourceRelationId": "base",
+    "sourceField": "ispay",
+    "label": "IsPay",
+    "type": "boolean"
+   },
+   {
+    "key": "isexample",
+    "sourceRelationId": "base",
+    "sourceField": "isexample",
+    "label": "IsExample",
+    "type": "boolean"
+   },
+   {
+    "key": "destination_port",
+    "sourceRelationId": "base",
+    "sourceField": "destination_port",
+    "label": "destination_port",
+    "type": "text"
+   },
+   {
+    "key": "ship_to",
+    "sourceRelationId": "base",
+    "sourceField": "ship_to",
+    "label": "ship_to",
+    "type": "text"
+   },
+   {
+    "key": "remark",
+    "sourceRelationId": "base",
+    "sourceField": "remark",
+    "label": "remark",
+    "type": "text"
+   },
+   {
+    "key": "payment_term",
+    "sourceRelationId": "base",
+    "sourceField": "payment_term",
+    "label": "payment_term",
+    "type": "text"
+   },
+   {
+    "key": "carton_marking",
+    "sourceRelationId": "base",
+    "sourceField": "carton_marking",
+    "label": "carton_marking",
+    "type": "text"
+   },
+   {
+    "key": "cont_qty",
+    "sourceRelationId": "base",
+    "sourceField": "cont_qty",
+    "label": "cont_qty",
+    "type": "number"
+   },
+   {
+    "key": "cust_po_number",
+    "sourceRelationId": "base",
+    "sourceField": "cust_po_number",
+    "label": "cust_po_number",
+    "type": "text"
+   },
+   {
+    "key": "range",
+    "sourceRelationId": "base",
+    "sourceField": "range",
+    "label": "range",
+    "type": "text"
+   },
+   {
+    "key": "create_date",
+    "sourceRelationId": "base",
+    "sourceField": "create_date",
+    "label": "create_date",
+    "type": "datetime"
+   },
+   {
+    "key": "create_by",
+    "sourceRelationId": "base",
+    "sourceField": "create_by",
+    "label": "create_by",
+    "type": "text"
+   },
+   {
+    "key": "update_date",
+    "sourceRelationId": "base",
+    "sourceField": "update_date",
+    "label": "update_date",
+    "type": "datetime"
+   },
+   {
+    "key": "update_by",
+    "sourceRelationId": "base",
+    "sourceField": "update_by",
+    "label": "update_by",
+    "type": "text"
+   },
+   {
+    "key": "nguoiduyet",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiduyet",
+    "label": "nguoiduyet",
+    "type": "text"
+   },
+   {
+    "key": "ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "ngayduyet",
+    "label": "ngayduyet",
+    "type": "date"
+   },
+   {
+    "key": "bangiamdoc_duyet",
+    "sourceRelationId": "base",
+    "sourceField": "bangiamdoc_duyet",
+    "label": "bangiamdoc_duyet",
+    "type": "text"
+   },
+   {
+    "key": "bangiamdoc_ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "bangiamdoc_ngayduyet",
+    "label": "bangiamdoc_ngayduyet",
+    "type": "date"
+   },
+   {
+    "key": "ngay_hangtrang",
+    "sourceRelationId": "base",
+    "sourceField": "ngay_hangtrang",
+    "label": "ngay_hangtrang",
+    "type": "datetime"
+   },
+   {
+    "key": "ngay_son",
+    "sourceRelationId": "base",
+    "sourceField": "ngay_son",
+    "label": "ngay_son",
+    "type": "datetime"
+   },
+   {
+    "key": "ngay_donggoi",
+    "sourceRelationId": "base",
+    "sourceField": "ngay_donggoi",
+    "label": "ngay_donggoi",
+    "type": "datetime"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "nguyenlieu",
+    "type": "text"
+   },
+   {
+    "key": "bemat",
+    "sourceRelationId": "base",
+    "sourceField": "bemat",
+    "label": "bemat",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

@@ -1,0 +1,205 @@
+{
+ "name": "ds_cont",
+ "label": "tr_cont (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_CONT_List"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "f755ec8f-19d2-4b92-9b17-c53d455be7fd",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "cont_id",
+    "sourceRelationId": "base",
+    "sourceField": "cont_id",
+    "label": "cont_id",
+    "type": "text"
+   },
+   {
+    "key": "cont_number",
+    "sourceRelationId": "base",
+    "sourceField": "cont_number",
+    "label": "cont_number",
+    "type": "text"
+   },
+   {
+    "key": "cont_name",
+    "sourceRelationId": "base",
+    "sourceField": "cont_name",
+    "label": "cont_name",
+    "type": "text"
+   },
+   {
+    "key": "description",
+    "sourceRelationId": "base",
+    "sourceField": "description",
+    "label": "description",
+    "type": "text"
+   },
+   {
+    "key": "seal_number",
+    "sourceRelationId": "base",
+    "sourceField": "seal_number",
+    "label": "seal_number",
+    "type": "text"
+   },
+   {
+    "key": "order_number",
+    "sourceRelationId": "base",
+    "sourceField": "order_number",
+    "label": "order_number",
+    "type": "text"
+   },
+   {
+    "key": "cust_po",
+    "sourceRelationId": "base",
+    "sourceField": "cust_po",
+    "label": "cust_po",
+    "type": "text"
+   },
+   {
+    "key": "ngaycontve",
+    "sourceRelationId": "base",
+    "sourceField": "ngaycontve",
+    "label": "ngaycontve",
+    "type": "datetime"
+   },
+   {
+    "key": "ngaychatcont",
+    "sourceRelationId": "base",
+    "sourceField": "ngaychatcont",
+    "label": "ngaychatcont",
+    "type": "datetime"
+   },
+   {
+    "key": "ngayxuat",
+    "sourceRelationId": "base",
+    "sourceField": "ngayxuat",
+    "label": "ngayxuat",
+    "type": "date"
+   },
+   {
+    "key": "trangthai",
+    "sourceRelationId": "base",
+    "sourceField": "trangthai",
+    "label": "trangthai",
+    "type": "boolean"
+   },
+   {
+    "key": "count_print",
+    "sourceRelationId": "base",
+    "sourceField": "count_print",
+    "label": "count_print",
+    "type": "number"
+   },
+   {
+    "key": "remark",
+    "sourceRelationId": "base",
+    "sourceField": "remark",
+    "label": "remark",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "nguoitao",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "ngaytao",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "nguoisua",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "ngaysua",
+    "type": "datetime"
+   },
+   {
+    "key": "isfinish",
+    "sourceRelationId": "base",
+    "sourceField": "isfinish",
+    "label": "IsFinish",
+    "type": "boolean"
+   },
+   {
+    "key": "ispay",
+    "sourceRelationId": "base",
+    "sourceField": "ispay",
+    "label": "IsPay",
+    "type": "boolean"
+   },
+   {
+    "key": "sodocont",
+    "sourceRelationId": "base",
+    "sourceField": "sodocont",
+    "label": "sodocont",
+    "type": "text"
+   },
+   {
+    "key": "si_id",
+    "sourceRelationId": "base",
+    "sourceField": "si_id",
+    "label": "si_id",
+    "type": "text"
+   },
+   {
+    "key": "cont_targe",
+    "sourceRelationId": "base",
+    "sourceField": "cont_targe",
+    "label": "cont_targe",
+    "type": "number"
+   },
+   {
+    "key": "cont_gross",
+    "sourceRelationId": "base",
+    "sourceField": "cont_gross",
+    "label": "cont_Gross",
+    "type": "text"
+   },
+   {
+    "key": "cont_type",
+    "sourceRelationId": "base",
+    "sourceField": "cont_type",
+    "label": "cont_type",
+    "type": "text"
+   },
+   {
+    "key": "vgm_cont_owner",
+    "sourceRelationId": "base",
+    "sourceField": "vgm_cont_owner",
+    "label": "vgm_cont_owner",
+    "type": "text"
+   },
+   {
+    "key": "perpono",
+    "sourceRelationId": "base",
+    "sourceField": "perpono",
+    "label": "PerPONo",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

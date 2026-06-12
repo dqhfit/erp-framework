@@ -1,0 +1,79 @@
+{
+ "name": "ds_tonghop_xuat_hopchat",
+ "label": "tr_tonghop_xuat_hopchat (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_TONGHOP_XUAT_HOPCHAT_GETBYDATE"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "cbefa5d5-e531-4590-8902-9f081b638e5d",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "ngaythang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaythang",
+    "label": "ngaythang",
+    "type": "date"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "madonhang",
+    "type": "text"
+   },
+   {
+    "key": "buocson",
+    "sourceRelationId": "base",
+    "sourceField": "buocson",
+    "label": "buocson",
+    "type": "text"
+   },
+   {
+    "key": "tongsoluong",
+    "sourceRelationId": "base",
+    "sourceField": "tongsoluong",
+    "label": "tongsoluong",
+    "type": "number"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "ngaytao",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "nguoitao",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "ngaysua",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "nguoisua",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

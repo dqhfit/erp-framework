@@ -1,0 +1,149 @@
+{
+ "name": "ds_nhap_thanhpham",
+ "label": "Nhập Thành Phẩm (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NHAP_THANHPHAM_ByCurrentDate"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "ef3c73ae-c9a2-4501-b788-e21ecbdb398d",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "Mã Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "madonhang_khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang_khachhang",
+    "label": "Mã Đơn Hàng Khách Hàng",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "tensp",
+    "sourceRelationId": "base",
+    "sourceField": "tensp",
+    "label": "Tên Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "hehang",
+    "sourceRelationId": "base",
+    "sourceField": "hehang",
+    "label": "Hệ Hàng",
+    "type": "text"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "ghichu2",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu2",
+    "label": "Ghi Chú 2",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "carton_qty",
+    "sourceRelationId": "base",
+    "sourceField": "carton_qty",
+    "label": "Số Lượng Carton",
+    "type": "number"
+   },
+   {
+    "key": "soluong_yeucau",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_yeucau",
+    "label": "Số Lượng Yêu Cầu",
+    "type": "number"
+   },
+   {
+    "key": "ngaynhap",
+    "sourceRelationId": "base",
+    "sourceField": "ngaynhap",
+    "label": "Ngày Nhập",
+    "type": "date"
+   },
+   {
+    "key": "cardno",
+    "sourceRelationId": "base",
+    "sourceField": "cardno",
+    "label": "Số Thẻ",
+    "type": "text"
+   },
+   {
+    "key": "tonkho_id",
+    "sourceRelationId": "base",
+    "sourceField": "tonkho_id",
+    "label": "Mã Tồn Kho",
+    "type": "text"
+   },
+   {
+    "key": "isupdated",
+    "sourceRelationId": "base",
+    "sourceField": "isupdated",
+    "label": "Đã Cập Nhật",
+    "type": "bool"
+   },
+   {
+    "key": "cartonindex",
+    "sourceRelationId": "base",
+    "sourceField": "cartonindex",
+    "label": "Chỉ Số Carton",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

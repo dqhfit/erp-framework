@@ -1,0 +1,128 @@
+{
+ "name": "ds_kehoach_giaohang",
+ "label": "tr_kehoach_giaohang (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_KEHOACH_GIAOHANG_GETLISTBYSTATUS"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "e5dc0502-181a-42b3-a660-b8b05ff57f5b",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "maddh",
+    "sourceRelationId": "base",
+    "sourceField": "maddh",
+    "label": "maddh",
+    "type": "text"
+   },
+   {
+    "key": "ngaygiaohang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaygiaohang",
+    "label": "ngaygiaohang",
+    "type": "date"
+   },
+   {
+    "key": "mancc",
+    "sourceRelationId": "base",
+    "sourceField": "mancc",
+    "label": "mancc",
+    "type": "text"
+   },
+   {
+    "key": "tenncc",
+    "sourceRelationId": "base",
+    "sourceField": "tenncc",
+    "label": "tenncc",
+    "type": "text"
+   },
+   {
+    "key": "cbm",
+    "sourceRelationId": "base",
+    "sourceField": "cbm",
+    "label": "cbm",
+    "type": "number"
+   },
+   {
+    "key": "soluong_cont",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_cont",
+    "label": "soluong_cont",
+    "type": "number"
+   },
+   {
+    "key": "batdau",
+    "sourceRelationId": "base",
+    "sourceField": "batdau",
+    "label": "batdau",
+    "type": "date"
+   },
+   {
+    "key": "ketthuc",
+    "sourceRelationId": "base",
+    "sourceField": "ketthuc",
+    "label": "ketthuc",
+    "type": "date"
+   },
+   {
+    "key": "loaiddh",
+    "sourceRelationId": "base",
+    "sourceField": "loaiddh",
+    "label": "loaiddh",
+    "type": "text"
+   },
+   {
+    "key": "donhang",
+    "sourceRelationId": "base",
+    "sourceField": "donhang",
+    "label": "donhang",
+    "type": "text"
+   },
+   {
+    "key": "hehang",
+    "sourceRelationId": "base",
+    "sourceField": "hehang",
+    "label": "hehang",
+    "type": "text"
+   },
+   {
+    "key": "khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "khachhang",
+    "label": "khachhang",
+    "type": "text"
+   },
+   {
+    "key": "trangthai",
+    "sourceRelationId": "base",
+    "sourceField": "trangthai",
+    "label": "trangthai",
+    "type": "number"
+   },
+   {
+    "key": "ngaycanvan",
+    "sourceRelationId": "base",
+    "sourceField": "ngaycanvan",
+    "label": "ngaycanvan",
+    "type": "date"
+   },
+   {
+    "key": "ngayhoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "ngayhoanthanh",
+    "label": "ngayhoanthanh",
+    "type": "date"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

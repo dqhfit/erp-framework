@@ -1,0 +1,58 @@
+{
+ "name": "ds_sanpham_tem",
+ "label": "Tem Sản Phẩm (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGUYENLIEU_TEM_GETMASP"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "cf6f2c6e-24cc-4834-8bff-c8ed5c5d95c5",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "tem",
+    "sourceRelationId": "base",
+    "sourceField": "tem",
+    "label": "Tem",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "vitri",
+    "sourceRelationId": "base",
+    "sourceField": "vitri",
+    "label": "Vị Trí",
+    "type": "text"
+   },
+   {
+    "key": "hinhanh",
+    "sourceRelationId": "base",
+    "sourceField": "hinhanh",
+    "label": "Hình Ảnh",
+    "type": "image"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

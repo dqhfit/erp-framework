@@ -1,0 +1,173 @@
+{
+ "name": "ds_gridview_column",
+ "label": "Cấu Hình Cột Lưới (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_GRIDVIEW_COLUMN_GETDEPT"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "55acf914-c290-46c1-8b60-771df6dcd7d5",
+  "relations": [
+   {
+    "id": "r_bophan",
+    "alias": "bophan",
+    "fromRelationId": null,
+    "fromField": "mabophan",
+    "toField": "mabophan",
+    "targetEntityId": "76e346b6-7d98-4fda-a93b-a82fd8d42816",
+    "joinKind": "inner"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "columnname",
+    "sourceRelationId": "base",
+    "sourceField": "columnname",
+    "label": "Tên Cột",
+    "type": "text"
+   },
+   {
+    "key": "columncaption",
+    "sourceRelationId": "base",
+    "sourceField": "columncaption",
+    "label": "Tiêu Đề Cột",
+    "type": "text"
+   },
+   {
+    "key": "formname",
+    "sourceRelationId": "base",
+    "sourceField": "formname",
+    "label": "Tên Form",
+    "type": "text"
+   },
+   {
+    "key": "visibleindex",
+    "sourceRelationId": "base",
+    "sourceField": "visibleindex",
+    "label": "Thứ Tự Hiển Thị",
+    "type": "number"
+   },
+   {
+    "key": "macongdoan",
+    "sourceRelationId": "base",
+    "sourceField": "macongdoan",
+    "label": "Mã Công Đoạn",
+    "type": "text"
+   },
+   {
+    "key": "mabophan",
+    "sourceRelationId": "base",
+    "sourceField": "mabophan",
+    "label": "Mã Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "columnname_next",
+    "sourceRelationId": "base",
+    "sourceField": "columnname_next",
+    "label": "Tên Cột Tiếp Theo",
+    "type": "text"
+   },
+   {
+    "key": "istext",
+    "sourceRelationId": "base",
+    "sourceField": "istext",
+    "label": "Là Văn Bản",
+    "type": "bool"
+   },
+   {
+    "key": "ngaytruoc",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytruoc",
+    "label": "Ngày Trước",
+    "type": "text"
+   },
+   {
+    "key": "ngaysau",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysau",
+    "label": "Ngày Sau",
+    "type": "text"
+   },
+   {
+    "key": "tinhngay",
+    "sourceRelationId": "base",
+    "sourceField": "tinhngay",
+    "label": "Tính Ngày",
+    "type": "bool"
+   },
+   {
+    "key": "tinhtong",
+    "sourceRelationId": "base",
+    "sourceField": "tinhtong",
+    "label": "Tính Tổng",
+    "type": "bool"
+   },
+   {
+    "key": "bophan_id",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "bophan_phanloai",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "phanloai",
+    "label": "Phân loại",
+    "type": "text"
+   },
+   {
+    "key": "bophan_mabophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "mabophan",
+    "label": "Mã bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "bophan_tenbophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "tenbophan",
+    "label": "Tên bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "bophan_ghichu",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "bophan_stt",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "number"
+   },
+   {
+    "key": "bophan_tenkhac",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "tenkhac",
+    "label": "Tên khác",
+    "type": "text"
+   },
+   {
+    "key": "bophan_truongbophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "truongbophan",
+    "label": "Trưởng bộ phận",
+    "type": "lookup"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

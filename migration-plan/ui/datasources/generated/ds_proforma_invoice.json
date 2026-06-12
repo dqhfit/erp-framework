@@ -1,0 +1,187 @@
+{
+ "name": "ds_proforma_invoice",
+ "label": "Hóa Đơn Proforma (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_PROFORMA_INVOICE_GETALL2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "9e00aed7-7266-4ce3-9729-e59493a9ccb9",
+  "relations": [
+   {
+    "id": "r_list_destination",
+    "alias": "list_destination",
+    "fromRelationId": null,
+    "fromField": "cangden",
+    "toField": "destination_code",
+    "targetEntityId": "5fc46c26-f7ef-4121-8be5-e7aaf9cabecd",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "donhang",
+    "sourceRelationId": "base",
+    "sourceField": "donhang",
+    "label": "Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "ngaydonhang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaydonhang",
+    "label": "Ngày Đơn Hàng",
+    "type": "date"
+   },
+   {
+    "key": "bank_id",
+    "sourceRelationId": "base",
+    "sourceField": "bank_id",
+    "label": "Ngân Hàng",
+    "type": "text"
+   },
+   {
+    "key": "tongsokhoi",
+    "sourceRelationId": "base",
+    "sourceField": "tongsokhoi",
+    "label": "Tổng Số Khối",
+    "type": "number"
+   },
+   {
+    "key": "tongsoluong",
+    "sourceRelationId": "base",
+    "sourceField": "tongsoluong",
+    "label": "Tổng Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "thanhtien",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien",
+    "label": "Thành Tiền",
+    "type": "currency"
+   },
+   {
+    "key": "cangxuat",
+    "sourceRelationId": "base",
+    "sourceField": "cangxuat",
+    "label": "Cảng Xuất",
+    "type": "text"
+   },
+   {
+    "key": "cangden",
+    "sourceRelationId": "base",
+    "sourceField": "cangden",
+    "label": "Cảng Đến",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "donhang_dikem",
+    "sourceRelationId": "base",
+    "sourceField": "donhang_dikem",
+    "label": "Đơn Hàng Đi Kèm",
+    "type": "text"
+   },
+   {
+    "key": "ngaygiao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaygiao",
+    "label": "Ngày Giao",
+    "type": "date"
+   },
+   {
+    "key": "list_destination_id",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "list_destination_destination_code",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "destination_code",
+    "label": "Mã điểm đến",
+    "type": "text"
+   },
+   {
+    "key": "list_destination_destination_name",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "destination_name",
+    "label": "Tên điểm đến",
+    "type": "text"
+   },
+   {
+    "key": "list_destination_description",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "description",
+    "label": "Mô tả",
+    "type": "text"
+   },
+   {
+    "key": "list_destination_active",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "active",
+    "label": "Đang hoạt động",
+    "type": "bool"
+   },
+   {
+    "key": "list_destination_create_date",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "list_destination_create_by",
+    "sourceRelationId": "r_list_destination",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "name": "ds_nguyenlieu_tenkhoahoc",
+ "label": "Tên Khoa Học Nguyên Liệu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGUYENLIEU_TENKHOAHOC_GETBYNL"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "8860237f-6963-4a0c-8804-2621b280a50f",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "id_nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "id_nguyenlieu",
+    "label": "Mã Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "tenkhoahoc",
+    "sourceRelationId": "base",
+    "sourceField": "tenkhoahoc",
+    "label": "Tên Khoa Học",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

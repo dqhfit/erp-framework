@@ -1,0 +1,128 @@
+{
+ "name": "ds_luutrinh_sanxuat",
+ "label": "Lưu Trình Sản Xuất (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_LUUTRINH_SANXUAT_GETUV"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "066ac029-9e54-4c71-a36f-88ce600287ad",
+  "relations": [],
+  "fields": [
+   {
+    "key": "routid",
+    "sourceRelationId": "base",
+    "sourceField": "routid",
+    "label": "Mã Lưu Trình",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số Thứ Tự",
+    "type": "number"
+   },
+   {
+    "key": "xuong",
+    "sourceRelationId": "base",
+    "sourceField": "xuong",
+    "label": "Xưởng",
+    "type": "text"
+   },
+   {
+    "key": "tonhom",
+    "sourceRelationId": "base",
+    "sourceField": "tonhom",
+    "label": "Tổ Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "may",
+    "sourceRelationId": "base",
+    "sourceField": "may",
+    "label": "Máy",
+    "type": "text"
+   },
+   {
+    "key": "thongtin",
+    "sourceRelationId": "base",
+    "sourceField": "thongtin",
+    "label": "Thông Tin",
+    "type": "text"
+   },
+   {
+    "key": "luuy",
+    "sourceRelationId": "base",
+    "sourceField": "luuy",
+    "label": "Lưu Ý",
+    "type": "text"
+   },
+   {
+    "key": "lanuv",
+    "sourceRelationId": "base",
+    "sourceField": "lanuv",
+    "label": "Lần UV",
+    "type": "text"
+   },
+   {
+    "key": "somat",
+    "sourceRelationId": "base",
+    "sourceField": "somat",
+    "label": "Số Mặt",
+    "type": "number"
+   },
+   {
+    "key": "socanh",
+    "sourceRelationId": "base",
+    "sourceField": "socanh",
+    "label": "Số Cạnh",
+    "type": "number"
+   },
+   {
+    "key": "sodau",
+    "sourceRelationId": "base",
+    "sourceField": "sodau",
+    "label": "Số Đầu",
+    "type": "number"
+   },
+   {
+    "key": "solop",
+    "sourceRelationId": "base",
+    "sourceField": "solop",
+    "label": "Số Lớp",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "id_rout",
+    "sourceRelationId": "base",
+    "sourceField": "id_rout",
+    "label": "ID Lưu Trình",
+    "type": "number"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Đang Hoạt Động",
+    "type": "bool"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

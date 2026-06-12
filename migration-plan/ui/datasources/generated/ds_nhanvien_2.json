@@ -1,0 +1,502 @@
+{
+ "name": "ds_nhanvien_2",
+ "label": "Nhân Viên (joined)",
+ "icon": "Database",
+ "_procs": [
+  "HR_NHANVIEN2_GETALL5",
+  "HR_NHANVIEN2_GETBYMANV"
+ ],
+ "_warnings": [
+  "bỏ join tr_chucvu (không resolve được ON: A.MACHUCVU COLLATE SQL_Latin1_General_CP1_CI_AI = D.machucvu COLLATE SQL_Latin1_General_CP1_CI_AI)"
+ ],
+ "config": {
+  "baseEntityId": "f9a784d0-39d4-4217-831e-0f0bb7e72ad3",
+  "relations": [
+   {
+    "id": "r_bophan_2",
+    "alias": "bophan_2",
+    "fromRelationId": null,
+    "fromField": "bophan",
+    "toField": "id",
+    "targetEntityId": "52d09d25-f981-4d9c-a87c-622abd72a340",
+    "joinKind": "inner"
+   },
+   {
+    "id": "r_congty",
+    "alias": "congty",
+    "fromRelationId": null,
+    "fromField": "macongty",
+    "toField": "macty",
+    "targetEntityId": "b476a120-27b5-4949-9e33-954a3ba26f31",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_m_op",
+    "alias": "m_op",
+    "fromRelationId": null,
+    "fromField": "macongdoan",
+    "toField": "c_op",
+    "targetEntityId": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "text"
+   },
+   {
+    "key": "manv",
+    "sourceRelationId": "base",
+    "sourceField": "manv",
+    "label": "Mã Nhân Viên",
+    "type": "text"
+   },
+   {
+    "key": "hoten",
+    "sourceRelationId": "base",
+    "sourceField": "hoten",
+    "label": "Họ Tên",
+    "type": "text"
+   },
+   {
+    "key": "hoten_en",
+    "sourceRelationId": "base",
+    "sourceField": "hoten_en",
+    "label": "Họ Tên (Tiếng Anh)",
+    "type": "text"
+   },
+   {
+    "key": "ngaysinh",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysinh",
+    "label": "Ngày Sinh",
+    "type": "date"
+   },
+   {
+    "key": "ngayvaolam",
+    "sourceRelationId": "base",
+    "sourceField": "ngayvaolam",
+    "label": "Ngày Vào Làm",
+    "type": "date"
+   },
+   {
+    "key": "danghiviec",
+    "sourceRelationId": "base",
+    "sourceField": "danghiviec",
+    "label": "Đang Nghỉ Việc",
+    "type": "bool"
+   },
+   {
+    "key": "lydothoiviec",
+    "sourceRelationId": "base",
+    "sourceField": "lydothoiviec",
+    "label": "Lý Do Thôi Việc",
+    "type": "longtext"
+   },
+   {
+    "key": "ngaynghiviec",
+    "sourceRelationId": "base",
+    "sourceField": "ngaynghiviec",
+    "label": "Ngày Nghỉ Việc",
+    "type": "date"
+   },
+   {
+    "key": "machamcong",
+    "sourceRelationId": "base",
+    "sourceField": "machamcong",
+    "label": "Mã Chấm Công",
+    "type": "text"
+   },
+   {
+    "key": "personid",
+    "sourceRelationId": "base",
+    "sourceField": "personid",
+    "label": "Mã Định Danh Cá Nhân",
+    "type": "text"
+   },
+   {
+    "key": "bophan",
+    "sourceRelationId": "base",
+    "sourceField": "bophan",
+    "label": "Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "calamviec",
+    "sourceRelationId": "base",
+    "sourceField": "calamviec",
+    "label": "Ca Làm Việc",
+    "type": "text"
+   },
+   {
+    "key": "machucvu",
+    "sourceRelationId": "base",
+    "sourceField": "machucvu",
+    "label": "Mã Chức Vụ",
+    "type": "text"
+   },
+   {
+    "key": "macongty",
+    "sourceRelationId": "base",
+    "sourceField": "macongty",
+    "label": "Mã Công Ty",
+    "type": "text"
+   },
+   {
+    "key": "ngaynopdon",
+    "sourceRelationId": "base",
+    "sourceField": "ngaynopdon",
+    "label": "Ngày Nộp Đơn",
+    "type": "date"
+   },
+   {
+    "key": "luongcoban",
+    "sourceRelationId": "base",
+    "sourceField": "luongcoban",
+    "label": "Lương Cơ Bản",
+    "type": "currency"
+   },
+   {
+    "key": "hieuquacongviec",
+    "sourceRelationId": "base",
+    "sourceField": "hieuquacongviec",
+    "label": "Hiệu Quả Công Việc",
+    "type": "number"
+   },
+   {
+    "key": "chuyencan",
+    "sourceRelationId": "base",
+    "sourceField": "chuyencan",
+    "label": "Chuyên Cần",
+    "type": "number"
+   },
+   {
+    "key": "phucap",
+    "sourceRelationId": "base",
+    "sourceField": "phucap",
+    "label": "Phụ Cấp",
+    "type": "currency"
+   },
+   {
+    "key": "macongdoan",
+    "sourceRelationId": "base",
+    "sourceField": "macongdoan",
+    "label": "Mã Công Đoạn",
+    "type": "text"
+   },
+   {
+    "key": "tonhom",
+    "sourceRelationId": "base",
+    "sourceField": "tonhom",
+    "label": "Tổ Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "sodienthoai",
+    "sourceRelationId": "base",
+    "sourceField": "sodienthoai",
+    "label": "Số Điện Thoại",
+    "type": "phone"
+   },
+   {
+    "key": "congdoan",
+    "sourceRelationId": "base",
+    "sourceField": "congdoan",
+    "label": "Công Đoạn",
+    "type": "text"
+   },
+   {
+    "key": "bophan_2_id",
+    "sourceRelationId": "r_bophan_2",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "text"
+   },
+   {
+    "key": "bophan_2_tenbophan",
+    "sourceRelationId": "r_bophan_2",
+    "sourceField": "tenbophan",
+    "label": "Tên Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "bophan_2_tenbophan2",
+    "sourceRelationId": "r_bophan_2",
+    "sourceField": "tenbophan2",
+    "label": "Tên Bộ Phận 2",
+    "type": "text"
+   },
+   {
+    "key": "bophan_2_khuvuc",
+    "sourceRelationId": "r_bophan_2",
+    "sourceField": "khuvuc",
+    "label": "Khu Vực",
+    "type": "text"
+   },
+   {
+    "key": "bophan_2_calamviec",
+    "sourceRelationId": "r_bophan_2",
+    "sourceField": "calamviec",
+    "label": "Ca Làm Việc",
+    "type": "text"
+   },
+   {
+    "key": "congty_macty",
+    "sourceRelationId": "r_congty",
+    "sourceField": "macty",
+    "label": "Mã công ty",
+    "type": "text"
+   },
+   {
+    "key": "congty_tencty",
+    "sourceRelationId": "r_congty",
+    "sourceField": "tencty",
+    "label": "Tên công ty",
+    "type": "text"
+   },
+   {
+    "key": "congty_mst",
+    "sourceRelationId": "r_congty",
+    "sourceField": "mst",
+    "label": "Mã số thuế",
+    "type": "text"
+   },
+   {
+    "key": "congty_diachi",
+    "sourceRelationId": "r_congty",
+    "sourceField": "diachi",
+    "label": "Địa chỉ",
+    "type": "text"
+   },
+   {
+    "key": "congty_giamdoc",
+    "sourceRelationId": "r_congty",
+    "sourceField": "giamdoc",
+    "label": "Giám đốc",
+    "type": "text"
+   },
+   {
+    "key": "congty_hinhanh",
+    "sourceRelationId": "r_congty",
+    "sourceField": "hinhanh",
+    "label": "Hình ảnh",
+    "type": "image"
+   },
+   {
+    "key": "congty_ghichu",
+    "sourceRelationId": "r_congty",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "longtext"
+   },
+   {
+    "key": "congty_maquocgia",
+    "sourceRelationId": "r_congty",
+    "sourceField": "maquocgia",
+    "label": "Mã quốc gia",
+    "type": "text"
+   },
+   {
+    "key": "congty_madoanhnghiep",
+    "sourceRelationId": "r_congty",
+    "sourceField": "madoanhnghiep",
+    "label": "Mã doanh nghiệp",
+    "type": "text"
+   },
+   {
+    "key": "congty_diachikho",
+    "sourceRelationId": "r_congty",
+    "sourceField": "diachikho",
+    "label": "Địa chỉ kho",
+    "type": "text"
+   },
+   {
+    "key": "congty_sodienthoai",
+    "sourceRelationId": "r_congty",
+    "sourceField": "sodienthoai",
+    "label": "Số điện thoại",
+    "type": "phone"
+   },
+   {
+    "key": "congty_email",
+    "sourceRelationId": "r_congty",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "congty_tenctyen",
+    "sourceRelationId": "r_congty",
+    "sourceField": "tenctyen",
+    "label": "Tên công ty (tiếng Anh)",
+    "type": "text"
+   },
+   {
+    "key": "congty_diachien",
+    "sourceRelationId": "r_congty",
+    "sourceField": "diachien",
+    "label": "Địa chỉ (tiếng Anh)",
+    "type": "text"
+   },
+   {
+    "key": "congty_website",
+    "sourceRelationId": "r_congty",
+    "sourceField": "website",
+    "label": "Website",
+    "type": "url"
+   },
+   {
+    "key": "m_op_id",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "m_op_c_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_op",
+    "label": "Mã công đoạn",
+    "type": "lookup"
+   },
+   {
+    "key": "m_op_n_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "n_op",
+    "label": "Tên công đoạn",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_location",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_location",
+    "label": "Vị trí hiện tại",
+    "type": "text"
+   },
+   {
+    "key": "m_op_f_out_yn",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "f_out_yn",
+    "label": "Xuất kho",
+    "type": "bool"
+   },
+   {
+    "key": "m_op_c_prod_loc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_prod_loc",
+    "label": "Vị trí sản xuất",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_out_loc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_out_loc",
+    "label": "Vị trí xuất",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_line",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_line",
+    "label": "Dây chuyền",
+    "type": "text"
+   },
+   {
+    "key": "m_op_org",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "org",
+    "label": "Tổ chức",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute3",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute3",
+    "label": "Thuộc tính 3",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute4",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute4",
+    "label": "Thuộc tính 4",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute5",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute5",
+    "label": "Thuộc tính 5",
+    "type": "text"
+   },
+   {
+    "key": "m_op_department",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "department",
+    "label": "Bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "m_op_stt",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "integer"
+   },
+   {
+    "key": "m_op_active",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "bool"
+   },
+   {
+    "key": "m_op_mathaythe",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "mathaythe",
+    "label": "Mã thay thế",
+    "type": "text"
+   },
+   {
+    "key": "m_op_p_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "p_op",
+    "label": "Công đoạn trước",
+    "type": "text"
+   },
+   {
+    "key": "m_op_matonhom",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "matonhom",
+    "label": "Mã tổ nhóm",
+    "type": "text"
+   },
+   {
+    "key": "m_op_yeucau_chatluong",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "yeucau_chatluong",
+    "label": "Yêu cầu chất lượng",
+    "type": "longtext"
+   },
+   {
+    "key": "m_op_id_maymoc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "id_maymoc",
+    "label": "Máy móc",
+    "type": "lookup"
+   },
+   {
+    "key": "m_op_yeucau_kythuat",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "yeucau_kythuat",
+    "label": "Yêu cầu kỹ thuật",
+    "type": "longtext"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

@@ -6,12 +6,19 @@
   "TR_DENGHI_THANHTOAN_GETBYNUMBER",
   "TR_DENGHI_THANHTOAN_NHACC_GETMNCC"
  ],
- "_warnings": [
-  "bỏ join tr_phieudenghi_thanhtoan_nhacc (entity chưa migrate)"
- ],
+ "_warnings": [],
  "config": {
   "baseEntityId": "ae54f72c-0658-43eb-a50e-e974bc557468",
   "relations": [
+   {
+    "id": "r_phieudenghi_thanhtoan_nhacc",
+    "alias": "phieudenghi_thanhtoan_nhacc",
+    "fromRelationId": null,
+    "fromField": "nguoican_thanhtoan",
+    "toField": "mancc",
+    "targetEntityId": "37695b3a-747d-4d6f-b206-9dd312744003",
+    "joinKind": "left"
+   },
    {
     "id": "r_nhacc",
     "alias": "nhacc",
@@ -319,6 +326,83 @@
     "sourceRelationId": "base",
     "sourceField": "benthanhtoan",
     "label": "Bên thanh toán",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_id",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_mancc",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "mancc",
+    "label": "Mã Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_tenncc",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "tenncc",
+    "label": "Tên Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_diachi",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "diachi",
+    "label": "Địa Chỉ",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_area",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "area",
+    "label": "Khu Vực",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_dienthoai",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "dienthoai",
+    "label": "Điện Thoại",
+    "type": "phone"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_email",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_website",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "website",
+    "label": "Website",
+    "type": "url"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_stk",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "stk",
+    "label": "Số Tài Khoản",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_nganhang",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "nganhang",
+    "label": "Ngân Hàng",
+    "type": "text"
+   },
+   {
+    "key": "phieudenghi_thanhtoan_nhacc_tentk",
+    "sourceRelationId": "r_phieudenghi_thanhtoan_nhacc",
+    "sourceField": "tentk",
+    "label": "Tên Tài Khoản",
     "type": "text"
    },
    {

@@ -1,0 +1,72 @@
+{
+ "name": "ds_sanpham_vattu",
+ "label": "Sản Phẩm Vật Tư (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGUYENLIEU_VATTU_GETMASP"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "20474d2d-9893-4e71-982b-f76fc8e611ce",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "ma_san_pham",
+    "sourceRelationId": "base",
+    "sourceField": "ma_san_pham",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mo_ta",
+    "sourceRelationId": "base",
+    "sourceField": "mo_ta",
+    "label": "Mô Tả",
+    "type": "longtext"
+   },
+   {
+    "key": "hinh_anh",
+    "sourceRelationId": "base",
+    "sourceField": "hinh_anh",
+    "label": "Hình Ảnh",
+    "type": "image"
+   },
+   {
+    "key": "mau_sac",
+    "sourceRelationId": "base",
+    "sourceField": "mau_sac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "quy_cach",
+    "sourceRelationId": "base",
+    "sourceField": "quy_cach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "so_luong",
+    "sourceRelationId": "base",
+    "sourceField": "so_luong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "ghi_chu",
+    "sourceRelationId": "base",
+    "sourceField": "ghi_chu",
+    "label": "Ghi Chú",
+    "type": "longtext"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

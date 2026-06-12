@@ -1,0 +1,72 @@
+{
+ "name": "ds_sanpham_ngukim",
+ "label": "tr_sanpham_ngukim (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGUYENLIEU_NGUKIM_GETMASP"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "9f10c3dd-a88b-4c9c-92f6-cfe6c6151996",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "masp",
+    "type": "text"
+   },
+   {
+    "key": "mota",
+    "sourceRelationId": "base",
+    "sourceField": "mota",
+    "label": "mota",
+    "type": "text"
+   },
+   {
+    "key": "hinhanh",
+    "sourceRelationId": "base",
+    "sourceField": "hinhanh",
+    "label": "hinhanh",
+    "type": "text"
+   },
+   {
+    "key": "mausac",
+    "sourceRelationId": "base",
+    "sourceField": "mausac",
+    "label": "mausac",
+    "type": "text"
+   },
+   {
+    "key": "quycach",
+    "sourceRelationId": "base",
+    "sourceField": "quycach",
+    "label": "quycach",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "soluong",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "ghichu",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

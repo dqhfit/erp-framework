@@ -1,0 +1,44 @@
+{
+ "name": "ds_baogia3_giaphoi",
+ "label": "Báo Giá Giá Phôi (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOGIA3_GIAPHOI_GETALL2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "30c16897-dd22-44a1-8632-f1778ffce6ec",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "daitc",
+    "sourceRelationId": "base",
+    "sourceField": "daitc",
+    "label": "Dài TC",
+    "type": "number"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn Giá",
+    "type": "currency"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

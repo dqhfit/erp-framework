@@ -1,0 +1,79 @@
+{
+ "name": "ds_sanpham_venner",
+ "label": "Sản Phẩm Veneer (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGUYENLIEU_VENNER_GETMASP"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "cd78c075-f1ca-4a71-990a-0ec6a7242960",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "tennl",
+    "sourceRelationId": "base",
+    "sourceField": "tennl",
+    "label": "Tên Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "doday",
+    "sourceRelationId": "base",
+    "sourceField": "doday",
+    "label": "Độ Dày",
+    "type": "text"
+   },
+   {
+    "key": "vango",
+    "sourceRelationId": "base",
+    "sourceField": "vango",
+    "label": "Ván Gỗ",
+    "type": "text"
+   },
+   {
+    "key": "mauvenner",
+    "sourceRelationId": "base",
+    "sourceField": "mauvenner",
+    "label": "Màu Veneer",
+    "type": "text"
+   },
+   {
+    "key": "matgo",
+    "sourceRelationId": "base",
+    "sourceField": "matgo",
+    "label": "Mặt Gỗ",
+    "type": "text"
+   },
+   {
+    "key": "chieuvenner",
+    "sourceRelationId": "base",
+    "sourceField": "chieuvenner",
+    "label": "Chiều Veneer",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan",
+    "label": "Tiêu Chuẩn",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

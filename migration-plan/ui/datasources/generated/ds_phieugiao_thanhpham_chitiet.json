@@ -1,0 +1,114 @@
+{
+ "name": "ds_phieugiao_thanhpham_chitiet",
+ "label": "Chi Tiết Phiếu Giao Thành Phẩm (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_PHIEUGIAO_THANHPHAM_CHITIET_GETBYORDER"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "5b413196-7436-4122-a201-4c4e34d0c900",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "phieugiao_id",
+    "sourceRelationId": "base",
+    "sourceField": "phieugiao_id",
+    "label": "Phiếu Giao",
+    "type": "number"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "Mã Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mathung",
+    "sourceRelationId": "base",
+    "sourceField": "mathung",
+    "label": "Mã Thùng",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "xacnhan",
+    "sourceRelationId": "base",
+    "sourceField": "xacnhan",
+    "label": "Xác Nhận",
+    "type": "bool"
+   },
+   {
+    "key": "nguoixacnhan",
+    "sourceRelationId": "base",
+    "sourceField": "nguoixacnhan",
+    "label": "Người Xác Nhận",
+    "type": "text"
+   },
+   {
+    "key": "ngayxacnhan",
+    "sourceRelationId": "base",
+    "sourceField": "ngayxacnhan",
+    "label": "Ngày Xác Nhận",
+    "type": "datetime"
+   },
+   {
+    "key": "nhomsanpham",
+    "sourceRelationId": "base",
+    "sourceField": "nhomsanpham",
+    "label": "Nhóm Sản Phẩm",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

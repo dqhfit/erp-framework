@@ -1,0 +1,128 @@
+{
+ "name": "ds_kehoach_hangtrang",
+ "label": "tr_kehoach_hangtrang (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_KEHOACH_HANGTRANG_GETBYORDER"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "d38a6bde-0604-40d2-8fc0-75228a1c4b1f",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id_kehoach",
+    "sourceRelationId": "base",
+    "sourceField": "id_kehoach",
+    "label": "id_kehoach",
+    "type": "number"
+   },
+   {
+    "key": "congdoan",
+    "sourceRelationId": "base",
+    "sourceField": "congdoan",
+    "label": "congdoan",
+    "type": "text"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "madonhang",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "masp",
+    "type": "text"
+   },
+   {
+    "key": "soluong_donhang",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_donhang",
+    "label": "soluong_donhang",
+    "type": "number"
+   },
+   {
+    "key": "soluong_kehoach_chuyen",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_kehoach_chuyen",
+    "label": "soluong_kehoach_chuyen",
+    "type": "number"
+   },
+   {
+    "key": "soluong_kehoach_sanpham",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_kehoach_sanpham",
+    "label": "soluong_kehoach_sanpham",
+    "type": "number"
+   },
+   {
+    "key": "ngaybatdau_sanxuat",
+    "sourceRelationId": "base",
+    "sourceField": "ngaybatdau_sanxuat",
+    "label": "ngaybatdau_sanxuat",
+    "type": "date"
+   },
+   {
+    "key": "ngaybatdau_kehoach",
+    "sourceRelationId": "base",
+    "sourceField": "ngaybatdau_kehoach",
+    "label": "ngaybatdau_kehoach",
+    "type": "date"
+   },
+   {
+    "key": "ngayketthuc_kehoach",
+    "sourceRelationId": "base",
+    "sourceField": "ngayketthuc_kehoach",
+    "label": "ngayketthuc_kehoach",
+    "type": "date"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "ngaytao",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "nguoitao",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "ngaysua",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "nguoisua",
+    "type": "text"
+   },
+   {
+    "key": "hoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "hoanthanh",
+    "label": "hoanthanh",
+    "type": "boolean"
+   },
+   {
+    "key": "xacnhan",
+    "sourceRelationId": "base",
+    "sourceField": "xacnhan",
+    "label": "xacnhan",
+    "type": "boolean"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

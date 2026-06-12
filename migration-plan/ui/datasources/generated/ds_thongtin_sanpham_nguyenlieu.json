@@ -1,0 +1,107 @@
+{
+ "name": "ds_thongtin_sanpham_nguyenlieu",
+ "label": "tr_thongtin_sanpham_nguyenlieu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_THONGTIN_SANPHAM_NGUYENLIEU_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "407eb0b5-b707-4ea8-ac46-0ec20bbbeab9",
+  "relations": [],
+  "fields": [
+   {
+    "key": "idbosanpham",
+    "sourceRelationId": "base",
+    "sourceField": "idbosanpham",
+    "label": "IDBoSanPham",
+    "type": "text"
+   },
+   {
+    "key": "chitiet",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet",
+    "label": "ChiTiet",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "NguyenLieu",
+    "type": "text"
+   },
+   {
+    "key": "hinhanh",
+    "sourceRelationId": "base",
+    "sourceField": "hinhanh",
+    "label": "HinhAnh",
+    "type": "text"
+   },
+   {
+    "key": "loainguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "loainguyenlieu",
+    "label": "LoaiNguyenLieu",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "GhiChu",
+    "type": "text"
+   },
+   {
+    "key": "phanloai",
+    "sourceRelationId": "base",
+    "sourceField": "phanloai",
+    "label": "PhanLoai",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "MaSP",
+    "type": "text"
+   },
+   {
+    "key": "tensp",
+    "sourceRelationId": "base",
+    "sourceField": "tensp",
+    "label": "TenSP",
+    "type": "text"
+   },
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan",
+    "label": "tieuchuan",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan_veneer",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan_veneer",
+    "label": "tieuchuan_veneer",
+    "type": "text"
+   },
+   {
+    "key": "bemat_sanpham",
+    "sourceRelationId": "base",
+    "sourceField": "bemat_sanpham",
+    "label": "bemat_sanpham",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}
