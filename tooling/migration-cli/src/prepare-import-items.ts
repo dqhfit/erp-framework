@@ -81,7 +81,8 @@ try {
       notFound.push(want);
       continue;
     }
-    if (info.primaryKey.length !== 1) {
+    // PK 1-3 cột đều stream được (composite keyset); >3 hoặc không PK → skip.
+    if (info.primaryKey.length < 1 || info.primaryKey.length > 3) {
       noSinglePk.push(`${want} (pk: ${info.primaryKey.join("+") || "KHÔNG có"})`);
       continue;
     }

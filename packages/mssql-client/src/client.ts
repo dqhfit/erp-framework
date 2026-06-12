@@ -186,39 +186,84 @@ export class MssqlClient {
    *  (chỉ a-z, 0-9, _, space). Bracket-escape trước khi đưa vào SQL.
    *  lastPk parameterized — chống injection. */
   async streamReadByPk<T = Record<string, unknown>>(opts: {
+    /** 1 cột PK, HOẶC PK GHÉP dạng "col1,col2[,col3]" (keyset tuple). */
     schemaTable: string;
     pkColumn: string;
+    /** PK đơn: giá trị thô. PK ghép: chuỗi JSON mảng giá trị (do chính
+     *  method này trả ở nextLastPk — caller chỉ cần truyền lại nguyên văn). */
     lastPk?: string | number | null;
     batchSize?: number;
   }): Promise<{ rows: T[]; nextLastPk: string | null; isEnd: boolean }> {
     const batchSize = Math.min(Math.max(opts.batchSize ?? 5_000, 1), 50_000);
     const safeName = escapeMssqlIdentifier(opts.schemaTable);
-    // Validate pkColumn: chỉ word + space chars.
-    if (!/^[\w\s]+$/.test(opts.pkColumn) || opts.pkColumn.trim() === "") {
-      throw new Error(`Invalid pkColumn: "${opts.pkColumn}"`);
+    // Tách PK ghép "a,b,c" — mỗi cột validate riêng (word + space).
+    const pkCols = opts.pkColumn
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (pkCols.length === 0 || pkCols.length > 3) {
+      throw new Error(`Invalid pkColumn: "${opts.pkColumn}" (cần 1-3 cột)`);
     }
-    const safePk = `[${opts.pkColumn.replace(/]/g, "]]")}]`;
+    for (const c of pkCols) {
+      if (!/^[\w\s]+$/.test(c)) throw new Error(`Invalid pkColumn: "${c}"`);
+    }
+    const safeCols = pkCols.map((c) => `[${c.replace(/]/g, "]]")}]`);
+    const orderBy = safeCols.map((c) => `${c} ASC`).join(", ");
 
     const pool = this.requirePool();
     const req = pool.request();
     let where = "";
     if (opts.lastPk !== undefined && opts.lastPk !== null && opts.lastPk !== "") {
-      req.input("lastPk", opts.lastPk);
-      where = ` WHERE ${safePk} > @lastPk`;
+      if (pkCols.length === 1) {
+        req.input("lastPk", opts.lastPk);
+        where = ` WHERE ${safeCols[0]} > @lastPk`;
+      } else {
+        // PK ghép: lastPk là JSON mảng giá trị theo thứ tự cột. Keyset tuple:
+        // (k1 > @p0) OR (k1 = @p0 AND k2 > @p1) [OR (k1=@p0 AND k2=@p1 AND k3 > @p2)]
+        let vals: unknown[];
+        try {
+          vals = JSON.parse(String(opts.lastPk)) as unknown[];
+        } catch {
+          throw new Error(`lastPk PK ghép phải là JSON mảng, nhận: "${opts.lastPk}"`);
+        }
+        if (!Array.isArray(vals) || vals.length !== pkCols.length) {
+          throw new Error(
+            `lastPk PK ghép cần đúng ${pkCols.length} giá trị, nhận ${Array.isArray(vals) ? vals.length : "không phải mảng"}`,
+          );
+        }
+        vals.forEach((v, i) => req.input(`p${i}`, v as string | number));
+        const branches: string[] = [];
+        for (let i = 0; i < pkCols.length; i++) {
+          const eqs = safeCols
+            .slice(0, i)
+            .map((c, j) => `${c} = @p${j}`)
+            .concat(`${safeCols[i]} > @p${i}`);
+          branches.push(`(${eqs.join(" AND ")})`);
+        }
+        where = ` WHERE ${branches.join(" OR ")}`;
+      }
     }
-    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName}${where} ORDER BY ${safePk} ASC`;
+    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName}${where} ORDER BY ${orderBy}`;
     const r = await req.query<T>(queryText);
     const rows = r.recordset as T[];
     let nextLastPk: string | null = null;
     if (rows.length > 0) {
       const lastRow = rows[rows.length - 1] as Record<string, unknown>;
-      // Tìm key match pkColumn case-insensitive (MSSQL có thể trả khác case).
-      const pkKey = Object.keys(lastRow).find(
-        (k) => k.toLowerCase() === opts.pkColumn.toLowerCase(),
-      );
-      if (pkKey) {
-        const v = lastRow[pkKey];
+      // Tìm key match cột case-insensitive (MSSQL có thể trả khác case).
+      const valOf = (col: string): unknown => {
+        const k = Object.keys(lastRow).find((x) => x.toLowerCase() === col.toLowerCase());
+        return k == null ? null : lastRow[k];
+      };
+      if (pkCols.length === 1) {
+        const v = valOf(pkCols[0] ?? "");
         nextLastPk = v == null ? null : String(v);
+      } else {
+        const vals = pkCols.map((c) => {
+          const v = valOf(c);
+          return v == null ? null : v instanceof Date ? v.toISOString() : String(v);
+        });
+        // Bất kỳ thành phần nào null → không checkpoint an toàn được.
+        nextLastPk = vals.some((v) => v == null) ? null : JSON.stringify(vals);
       }
     }
     return {

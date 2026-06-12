@@ -65,6 +65,53 @@ export async function findExistingInTable(
   return map;
 }
 
+/** Separator ghép khoá composite — control char không xuất hiện trong data. */
+export const COMPOSITE_KEY_SEP = "\u0001";
+
+/** Token đại diện NULL trong khoá ghép (tránh trộn với chuỗi "null" thật). */
+const COMPOSITE_NULL = "\u0000";
+
+/** Khoá ghép của 1 row data theo danh sách pkFields. */
+export function compositeKeyOf(data: Record<string, unknown>, pkFields: string[]): string {
+  return pkFields
+    .map((f) => {
+      const v = data[f];
+      return v == null ? COMPOSITE_NULL : String(v);
+    })
+    .join(COMPOSITE_KEY_SEP);
+}
+
+/** Bản PK GHÉP của findExistingInTable: khớp theo CONCAT các biểu thức
+ *  text của từng pkField (cột typed hoặc ext) với cùng separator. */
+export async function findExistingInTableComposite(
+  storage: EntityStorage,
+  companyId: string,
+  pkFields: string[],
+  keys: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (keys.length === 0) return map;
+  const tbl = sql.raw(`"${storage.tableName}"`);
+  const parts = pkFields.map((f) => {
+    const colMap = storage.columns[f];
+    const e = colMap ? sql.raw(`"${colMap.col}"::text`) : sql`(ext->>${f})`;
+    return sql`COALESCE(${e}, ${COMPOSITE_NULL}::text)`;
+  });
+  const pkExpr = sql.join(parts, sql` || ${COMPOSITE_KEY_SEP} || `);
+  const inList = sql.join(
+    keys.map((v) => sql`${v}`),
+    sql`, `,
+  );
+  const res = (await db.execute(
+    sql`SELECT id, ${pkExpr} AS pk FROM ${tbl} WHERE company_id = ${companyId}::uuid AND ${pkExpr} IN (${inList})`,
+  )) as unknown as
+    | Array<{ id: string; pk: string | null }>
+    | { rows: Array<{ id: string; pk: string | null }> };
+  const list = Array.isArray(res) ? res : (res.rows ?? []);
+  for (const r of list) if (r.pk != null) map.set(String(r.pk), r.id);
+  return map;
+}
+
 /** tsvector từ field searchable (giữ FTS khi import vào bảng thật). */
 function tsvFor(storage: EntityStorage, data: Record<string, unknown>) {
   const tsv = (storage.searchable ?? [])
@@ -246,7 +293,11 @@ export async function prepareFullJobTables(
         ? it.tableName.split(".")
         : ["dbo", it.tableName];
       const info = await client.getTable(schema ?? "dbo", name ?? it.tableName);
-      const pkColumn = info?.primaryKey?.[0] ?? null;
+      // PK đơn hoặc GHÉP (tối đa 3 cột — streamReadByPk keyset tuple).
+      // CHÚ Ý: trước đây lấy primaryKey[0] kể cả khi PK ghép → stream theo
+      // 1 cột KHÔNG unique = keyset nhảy cóc mất dữ liệu im lặng.
+      const pkCols = info?.primaryKey ?? [];
+      const pkColumn = pkCols.length >= 1 && pkCols.length <= 3 ? pkCols.join(",") : null;
 
       // Resolve/tạo entity với guard meta.source.kind=migration.
       let entityId: string | null = null;
@@ -348,7 +399,7 @@ export async function prepareFullJobTables(
         status: pkColumn ? "pending" : "skipped",
         error: pkColumn
           ? null
-          : "Không tìm thấy primary key — full stream cần single-column PK. Dùng Quick migrate thường (limit) thay vì Full.",
+          : "Không tìm thấy primary key (hoặc PK > 3 cột) — full stream cần PK 1-3 cột. Dùng Quick migrate thường (limit) thay vì Full.",
       });
     }
 
@@ -524,17 +575,43 @@ export async function runFullImportJob(data: FullJobData): Promise<{
             );
 
             // UPSERT theo PK chống duplicate khi user tạo job lại (vd cancel
-            // rồi start cùng bảng). Detect pkField = pkColumn lower-case.
-            const pkField = t.pkColumn.toLowerCase();
+            // rồi start cùng bảng). PK đơn: pkField = pkColumn lower-case;
+            // PK GHÉP ("a,b"): khoá = compositeKeyOf (concat giá trị các cột).
+            const pkFields = t.pkColumn
+              .toLowerCase()
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            const isComposite = pkFields.length > 1;
+            const pkField = pkFields[0] ?? t.pkColumn.toLowerCase();
+            const keyOf = (d: Record<string, unknown>): string | null => {
+              if (isComposite) {
+                // Mọi thành phần null → coi như không có khoá (insert thẳng).
+                return pkFields.every((f) => d[f] == null) ? null : compositeKeyOf(d, pkFields);
+              }
+              const v = d[pkField];
+              return v == null ? null : String(v);
+            };
             const pkValues: string[] = [];
             for (const d of mapped) {
-              const v = d[pkField];
-              if (v != null) pkValues.push(String(v));
+              const k = keyOf(d);
+              if (k != null) pkValues.push(k);
             }
-            let existingMap: Map<string, string>; // pkValue → record.id
+            let existingMap: Map<string, string>; // khoá → record.id
             if (useTable && storage) {
-              existingMap = await findExistingInTable(storage, job.companyId, pkField, pkValues);
+              existingMap = isComposite
+                ? await findExistingInTableComposite(storage, job.companyId, pkFields, pkValues)
+                : await findExistingInTable(storage, job.companyId, pkField, pkValues);
             } else {
+              // EAV: PK đơn khớp data->>field; PK ghép concat cùng separator.
+              const keyExpr = isComposite
+                ? sql.join(
+                    pkFields.map(
+                      (f) => sql`COALESCE((${entityRecords.data}->>${f}), ${COMPOSITE_NULL}::text)`,
+                    ),
+                    sql` || ${COMPOSITE_KEY_SEP}::text || `,
+                  )
+                : sql`(${entityRecords.data}->>${pkField})`;
               const existingRows =
                 pkValues.length > 0
                   ? await db
@@ -544,26 +621,26 @@ export async function runFullImportJob(data: FullJobData): Promise<{
                         and(
                           eq(entityRecords.companyId, job.companyId),
                           eq(entityRecords.entityId, tableEntityId),
-                          inArray(sql`(${entityRecords.data}->>${pkField})`, pkValues),
+                          inArray(keyExpr, pkValues),
                         ),
                       )
                   : [];
               existingMap = new Map<string, string>();
               for (const r of existingRows) {
-                const pkVal = (r.data as Record<string, unknown>)[pkField];
-                if (pkVal != null) existingMap.set(String(pkVal), r.id);
+                const k = keyOf(r.data as Record<string, unknown>);
+                if (k != null) existingMap.set(k, r.id);
               }
             }
 
             const toInsert: Array<Record<string, unknown>> = [];
             const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
             for (const d of mapped) {
-              const pkVal = d[pkField];
-              if (pkVal == null) {
+              const k = keyOf(d);
+              if (k == null) {
                 toInsert.push(d);
                 continue;
               }
-              const existingId = existingMap.get(String(pkVal));
+              const existingId = existingMap.get(k);
               if (existingId) toUpdate.push({ id: existingId, data: d });
               else toInsert.push(d);
             }
