@@ -1,0 +1,233 @@
+{
+ "name": "ds_dinhmuc_son2",
+ "label": "Định mức sơn 2 (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_DINHMUC_SON2_GETLISTBYMASP"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "cc9c6d0f-5a33-49f6-9405-99c87cc15cfa",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "tenchitiet",
+    "sourceRelationId": "base",
+    "sourceField": "tenchitiet",
+    "label": "Tên chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "metvuong",
+    "sourceRelationId": "base",
+    "sourceField": "metvuong",
+    "label": "Mét vuông",
+    "type": "number"
+   },
+   {
+    "key": "buoc1",
+    "sourceRelationId": "base",
+    "sourceField": "buoc1",
+    "label": "Bước 1",
+    "type": "text"
+   },
+   {
+    "key": "buoc2",
+    "sourceRelationId": "base",
+    "sourceField": "buoc2",
+    "label": "Bước 2",
+    "type": "text"
+   },
+   {
+    "key": "buoc3",
+    "sourceRelationId": "base",
+    "sourceField": "buoc3",
+    "label": "Bước 3",
+    "type": "text"
+   },
+   {
+    "key": "buoc4",
+    "sourceRelationId": "base",
+    "sourceField": "buoc4",
+    "label": "Bước 4",
+    "type": "text"
+   },
+   {
+    "key": "buoc5",
+    "sourceRelationId": "base",
+    "sourceField": "buoc5",
+    "label": "Bước 5",
+    "type": "text"
+   },
+   {
+    "key": "buoc6",
+    "sourceRelationId": "base",
+    "sourceField": "buoc6",
+    "label": "Bước 6",
+    "type": "text"
+   },
+   {
+    "key": "buoc7",
+    "sourceRelationId": "base",
+    "sourceField": "buoc7",
+    "label": "Bước 7",
+    "type": "text"
+   },
+   {
+    "key": "buoc8",
+    "sourceRelationId": "base",
+    "sourceField": "buoc8",
+    "label": "Bước 8",
+    "type": "text"
+   },
+   {
+    "key": "buoc9",
+    "sourceRelationId": "base",
+    "sourceField": "buoc9",
+    "label": "Bước 9",
+    "type": "text"
+   },
+   {
+    "key": "buoc10",
+    "sourceRelationId": "base",
+    "sourceField": "buoc10",
+    "label": "Bước 10",
+    "type": "text"
+   },
+   {
+    "key": "buoc11",
+    "sourceRelationId": "base",
+    "sourceField": "buoc11",
+    "label": "Bước 11",
+    "type": "text"
+   },
+   {
+    "key": "buoc12",
+    "sourceRelationId": "base",
+    "sourceField": "buoc12",
+    "label": "Bước 12",
+    "type": "text"
+   },
+   {
+    "key": "buoc13",
+    "sourceRelationId": "base",
+    "sourceField": "buoc13",
+    "label": "Bước 13",
+    "type": "text"
+   },
+   {
+    "key": "buoc14",
+    "sourceRelationId": "base",
+    "sourceField": "buoc14",
+    "label": "Bước 14",
+    "type": "text"
+   },
+   {
+    "key": "buoc15",
+    "sourceRelationId": "base",
+    "sourceField": "buoc15",
+    "label": "Bước 15",
+    "type": "text"
+   },
+   {
+    "key": "buoc16",
+    "sourceRelationId": "base",
+    "sourceField": "buoc16",
+    "label": "Bước 16",
+    "type": "text"
+   },
+   {
+    "key": "buoc17",
+    "sourceRelationId": "base",
+    "sourceField": "buoc17",
+    "label": "Bước 17",
+    "type": "text"
+   },
+   {
+    "key": "buoc18",
+    "sourceRelationId": "base",
+    "sourceField": "buoc18",
+    "label": "Bước 18",
+    "type": "text"
+   },
+   {
+    "key": "buoc19",
+    "sourceRelationId": "base",
+    "sourceField": "buoc19",
+    "label": "Bước 19",
+    "type": "text"
+   },
+   {
+    "key": "buoc20",
+    "sourceRelationId": "base",
+    "sourceField": "buoc20",
+    "label": "Bước 20",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

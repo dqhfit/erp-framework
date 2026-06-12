@@ -1,0 +1,1485 @@
+{
+ "name": "ds_dinhmuc_govan",
+ "label": "Định Mức Gỗ Ván (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_DINHMUC_GOVAN_GETBYMACT",
+  "TR_DINHMUC_GOVAN_GETBYMACT2",
+  "TR_DINHMUC_GOVAN_GETBYSP",
+  "TR_DINHMUC_GOVAN_GETBYSP2",
+  "TR_DINHMUC_GOVAN_GETBYSP3",
+  "TR_DINHMUC_GOVAN_Get2"
+ ],
+ "_warnings": [
+  "bỏ join tr_loai_uv (entity chưa migrate)",
+  "bỏ join tr_tinhtrang_fsc (entity chưa migrate)"
+ ],
+ "config": {
+  "baseEntityId": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+  "relations": [
+   {
+    "id": "r_sanpham",
+    "alias": "sanpham",
+    "fromRelationId": null,
+    "fromField": "masp",
+    "toField": "masp",
+    "targetEntityId": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "joinKind": "inner"
+   },
+   {
+    "id": "r_baogia_chiphi_veneer",
+    "alias": "baogia_chiphi_veneer",
+    "fromRelationId": null,
+    "fromField": "veneer_matchinh",
+    "toField": "id",
+    "targetEntityId": "1a08019a-55fa-46ff-b723-16a2e80f13ed",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "pcode",
+    "sourceRelationId": "base",
+    "sourceField": "pcode",
+    "label": "Mã phôi",
+    "type": "text"
+   },
+   {
+    "key": "c_level",
+    "sourceRelationId": "base",
+    "sourceField": "c_level",
+    "label": "Cấp độ",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "lookup"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "text"
+   },
+   {
+    "key": "chitiet",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet",
+    "label": "Chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "chatluong",
+    "sourceRelationId": "base",
+    "sourceField": "chatluong",
+    "label": "Chất lượng",
+    "type": "text"
+   },
+   {
+    "key": "long",
+    "sourceRelationId": "base",
+    "sourceField": "long",
+    "label": "Lóng",
+    "type": "text"
+   },
+   {
+    "key": "loainguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "loainguyenlieu",
+    "label": "Loại nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "dayy_tc",
+    "sourceRelationId": "base",
+    "sourceField": "dayy_tc",
+    "label": "Dày (TC)",
+    "type": "number"
+   },
+   {
+    "key": "rong_tc",
+    "sourceRelationId": "base",
+    "sourceField": "rong_tc",
+    "label": "Rộng (TC)",
+    "type": "number"
+   },
+   {
+    "key": "dai_tc",
+    "sourceRelationId": "base",
+    "sourceField": "dai_tc",
+    "label": "Dài (TC)",
+    "type": "number"
+   },
+   {
+    "key": "soluong_tc",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_tc",
+    "label": "Số lượng (TC)",
+    "type": "number"
+   },
+   {
+    "key": "m2_tc",
+    "sourceRelationId": "base",
+    "sourceField": "m2_tc",
+    "label": "M² (TC)",
+    "type": "number"
+   },
+   {
+    "key": "m3_tc",
+    "sourceRelationId": "base",
+    "sourceField": "m3_tc",
+    "label": "M³ (TC)",
+    "type": "number"
+   },
+   {
+    "key": "dayy_sc",
+    "sourceRelationId": "base",
+    "sourceField": "dayy_sc",
+    "label": "Dày (SC)",
+    "type": "number"
+   },
+   {
+    "key": "rong_sc",
+    "sourceRelationId": "base",
+    "sourceField": "rong_sc",
+    "label": "Rộng (SC)",
+    "type": "number"
+   },
+   {
+    "key": "dai_sc",
+    "sourceRelationId": "base",
+    "sourceField": "dai_sc",
+    "label": "Dài (SC)",
+    "type": "number"
+   },
+   {
+    "key": "soluong_sc",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_sc",
+    "label": "Số lượng (SC)",
+    "type": "number"
+   },
+   {
+    "key": "m3_sc",
+    "sourceRelationId": "base",
+    "sourceField": "m3_sc",
+    "label": "M³ (SC)",
+    "type": "number"
+   },
+   {
+    "key": "dayy_phoi",
+    "sourceRelationId": "base",
+    "sourceField": "dayy_phoi",
+    "label": "Dày phôi",
+    "type": "number"
+   },
+   {
+    "key": "cachlayphoi",
+    "sourceRelationId": "base",
+    "sourceField": "cachlayphoi",
+    "label": "Cách lấy phôi",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "quytrinhgiacong",
+    "sourceRelationId": "base",
+    "sourceField": "quytrinhgiacong",
+    "label": "Quy trình gia công",
+    "type": "text"
+   },
+   {
+    "key": "hinhanh",
+    "sourceRelationId": "base",
+    "sourceField": "hinhanh",
+    "label": "Hình ảnh",
+    "type": "text"
+   },
+   {
+    "key": "hoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "hoanthanh",
+    "label": "Hoàn thành",
+    "type": "boolean"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "maspid",
+    "sourceRelationId": "base",
+    "sourceField": "maspid",
+    "label": "id mã SP",
+    "type": "text"
+   },
+   {
+    "key": "maspmasp",
+    "sourceRelationId": "base",
+    "sourceField": "maspmasp",
+    "label": "Mã SP",
+    "type": "text"
+   },
+   {
+    "key": "soluong_mong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_mong",
+    "label": "Số lượng móng",
+    "type": "number"
+   },
+   {
+    "key": "kichthuoc_mong",
+    "sourceRelationId": "base",
+    "sourceField": "kichthuoc_mong",
+    "label": "Kích thước móng",
+    "type": "number"
+   },
+   {
+    "key": "mong1",
+    "sourceRelationId": "base",
+    "sourceField": "mong1",
+    "label": "Móng 1",
+    "type": "number"
+   },
+   {
+    "key": "mong2",
+    "sourceRelationId": "base",
+    "sourceField": "mong2",
+    "label": "Móng 2",
+    "type": "number"
+   },
+   {
+    "key": "veneer_matchinh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_matchinh",
+    "label": "Veneer mặt chính",
+    "type": "lookup"
+   },
+   {
+    "key": "veneer_matphu",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_matphu",
+    "label": "Veneer mặt phụ",
+    "type": "lookup"
+   },
+   {
+    "key": "veneer_canhngan",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_canhngan",
+    "label": "Veneer cạnh ngắn",
+    "type": "number"
+   },
+   {
+    "key": "veneer_canhdai",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_canhdai",
+    "label": "Veneer cạnh dài",
+    "type": "number"
+   },
+   {
+    "key": "selection",
+    "sourceRelationId": "base",
+    "sourceField": "selection",
+    "label": "Lựa chọn",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_mat1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_mat1",
+    "label": "UV mặt 1",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_mat2",
+    "sourceRelationId": "base",
+    "sourceField": "uv_mat2",
+    "label": "UV mặt 2",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_canh1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canh1",
+    "label": "UV cạnh 1",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_canh2",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canh2",
+    "label": "UV cạnh 2",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_dau1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_dau1",
+    "label": "UV đầu 1",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_dau2",
+    "sourceRelationId": "base",
+    "sourceField": "uv_dau2",
+    "label": "UV đầu 2",
+    "type": "boolean"
+   },
+   {
+    "key": "m2_uv",
+    "sourceRelationId": "base",
+    "sourceField": "m2_uv",
+    "label": "M² UV",
+    "type": "number"
+   },
+   {
+    "key": "thoigian",
+    "sourceRelationId": "base",
+    "sourceField": "thoigian",
+    "label": "Thời gian",
+    "type": "number"
+   },
+   {
+    "key": "uv_code",
+    "sourceRelationId": "base",
+    "sourceField": "uv_code",
+    "label": "Mã UV",
+    "type": "text"
+   },
+   {
+    "key": "uv_quytrinh",
+    "sourceRelationId": "base",
+    "sourceField": "uv_quytrinh",
+    "label": "Quy trình UV",
+    "type": "text"
+   },
+   {
+    "key": "bemat",
+    "sourceRelationId": "base",
+    "sourceField": "bemat",
+    "label": "Bề mặt",
+    "type": "text"
+   },
+   {
+    "key": "chitiet_ghep",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet_ghep",
+    "label": "Chi tiết ghép",
+    "type": "text"
+   },
+   {
+    "key": "chitiet_ghep2",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet_ghep2",
+    "label": "Chi tiết ghép 2",
+    "type": "boolean"
+   },
+   {
+    "key": "objecttype",
+    "sourceRelationId": "base",
+    "sourceField": "objecttype",
+    "label": "Loại đối tượng",
+    "type": "number"
+   },
+   {
+    "key": "phoi_ghep",
+    "sourceRelationId": "base",
+    "sourceField": "phoi_ghep",
+    "label": "Phôi ghép",
+    "type": "number"
+   },
+   {
+    "key": "somat_giacong",
+    "sourceRelationId": "base",
+    "sourceField": "somat_giacong",
+    "label": "Số mặt gia công",
+    "type": "number"
+   },
+   {
+    "key": "t_sort",
+    "sourceRelationId": "base",
+    "sourceField": "t_sort",
+    "label": "Thứ tự sắp xếp",
+    "type": "number"
+   },
+   {
+    "key": "cum_trai",
+    "sourceRelationId": "base",
+    "sourceField": "cum_trai",
+    "label": "Cụm trái",
+    "type": "number"
+   },
+   {
+    "key": "cum_phai",
+    "sourceRelationId": "base",
+    "sourceField": "cum_phai",
+    "label": "Cụm phải",
+    "type": "number"
+   },
+   {
+    "key": "cum_truoc",
+    "sourceRelationId": "base",
+    "sourceField": "cum_truoc",
+    "label": "Cụm trước",
+    "type": "number"
+   },
+   {
+    "key": "cum_sau",
+    "sourceRelationId": "base",
+    "sourceField": "cum_sau",
+    "label": "Cụm sau",
+    "type": "number"
+   },
+   {
+    "key": "cum_dinh",
+    "sourceRelationId": "base",
+    "sourceField": "cum_dinh",
+    "label": "Cụm đỉnh",
+    "type": "number"
+   },
+   {
+    "key": "cum_day",
+    "sourceRelationId": "base",
+    "sourceField": "cum_day",
+    "label": "Cụm đáy",
+    "type": "number"
+   },
+   {
+    "key": "ischitietroi",
+    "sourceRelationId": "base",
+    "sourceField": "ischitietroi",
+    "label": "Là chi tiết rời",
+    "type": "boolean"
+   },
+   {
+    "key": "son_mat1",
+    "sourceRelationId": "base",
+    "sourceField": "son_mat1",
+    "label": "Sơn mặt 1",
+    "type": "text"
+   },
+   {
+    "key": "son_mat2",
+    "sourceRelationId": "base",
+    "sourceField": "son_mat2",
+    "label": "Sơn mặt 2",
+    "type": "text"
+   },
+   {
+    "key": "son_canh1",
+    "sourceRelationId": "base",
+    "sourceField": "son_canh1",
+    "label": "Sơn cạnh 1",
+    "type": "text"
+   },
+   {
+    "key": "son_canh2",
+    "sourceRelationId": "base",
+    "sourceField": "son_canh2",
+    "label": "Sơn cạnh 2",
+    "type": "text"
+   },
+   {
+    "key": "son_dau1",
+    "sourceRelationId": "base",
+    "sourceField": "son_dau1",
+    "label": "Sơn đầu 1",
+    "type": "text"
+   },
+   {
+    "key": "son_dau2",
+    "sourceRelationId": "base",
+    "sourceField": "son_dau2",
+    "label": "Sơn đầu 2",
+    "type": "text"
+   },
+   {
+    "key": "m2_son",
+    "sourceRelationId": "base",
+    "sourceField": "m2_son",
+    "label": "M² sơn",
+    "type": "number"
+   },
+   {
+    "key": "thoidiem",
+    "sourceRelationId": "base",
+    "sourceField": "thoidiem",
+    "label": "Thời điểm",
+    "type": "number"
+   },
+   {
+    "key": "cc_mat1",
+    "sourceRelationId": "base",
+    "sourceField": "cc_mat1",
+    "label": "CC mặt 1",
+    "type": "boolean"
+   },
+   {
+    "key": "cc_mat2",
+    "sourceRelationId": "base",
+    "sourceField": "cc_mat2",
+    "label": "CC mặt 2",
+    "type": "boolean"
+   },
+   {
+    "key": "cc_canh1",
+    "sourceRelationId": "base",
+    "sourceField": "cc_canh1",
+    "label": "CC cạnh 1",
+    "type": "boolean"
+   },
+   {
+    "key": "cc_canh2",
+    "sourceRelationId": "base",
+    "sourceField": "cc_canh2",
+    "label": "CC cạnh 2",
+    "type": "boolean"
+   },
+   {
+    "key": "cc_dau1",
+    "sourceRelationId": "base",
+    "sourceField": "cc_dau1",
+    "label": "CC đầu 1",
+    "type": "boolean"
+   },
+   {
+    "key": "cc_dau2",
+    "sourceRelationId": "base",
+    "sourceField": "cc_dau2",
+    "label": "CC đầu 2",
+    "type": "boolean"
+   },
+   {
+    "key": "isconverted",
+    "sourceRelationId": "base",
+    "sourceField": "isconverted",
+    "label": "Đã chuyển đổi",
+    "type": "boolean"
+   },
+   {
+    "key": "isgroup",
+    "sourceRelationId": "base",
+    "sourceField": "isgroup",
+    "label": "Là nhóm",
+    "type": "boolean"
+   },
+   {
+    "key": "mact_v2",
+    "sourceRelationId": "base",
+    "sourceField": "mact_v2",
+    "label": "Mã chi tiết V2",
+    "type": "text"
+   },
+   {
+    "key": "danveneer",
+    "sourceRelationId": "base",
+    "sourceField": "danveneer",
+    "label": "Dán veneer",
+    "type": "text"
+   },
+   {
+    "key": "veneer_canh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_canh",
+    "label": "Veneer cạnh",
+    "type": "text"
+   },
+   {
+    "key": "loaiveneer",
+    "sourceRelationId": "base",
+    "sourceField": "loaiveneer",
+    "label": "Loại veneer",
+    "type": "number"
+   },
+   {
+    "key": "veneer_1_mat",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_1_mat",
+    "label": "Veneer 1 mặt",
+    "type": "text"
+   },
+   {
+    "key": "veneer_2_mat",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_2_mat",
+    "label": "Veneer 2 mặt",
+    "type": "text"
+   },
+   {
+    "key": "veneer_dan_canh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_dan_canh",
+    "label": "Veneer dán cạnh",
+    "type": "lookup"
+   },
+   {
+    "key": "uv_matchinh",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matchinh",
+    "label": "UV mặt chính",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_matphu",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matphu",
+    "label": "UV mặt phụ",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_canhngan",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhngan",
+    "label": "UV cạnh ngắn",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhdai",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhdai",
+    "label": "UV cạnh dài",
+    "type": "number"
+   },
+   {
+    "key": "id_nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "id_nguyenlieu",
+    "label": "id Nguyên liệu",
+    "type": "lookup"
+   },
+   {
+    "key": "phoi_tructiep",
+    "sourceRelationId": "base",
+    "sourceField": "phoi_tructiep",
+    "label": "Phôi trực tiếp",
+    "type": "boolean"
+   },
+   {
+    "key": "phoi_ghep_ngang",
+    "sourceRelationId": "base",
+    "sourceField": "phoi_ghep_ngang",
+    "label": "Phôi ghép ngang",
+    "type": "boolean"
+   },
+   {
+    "key": "phoi_ghep_finger",
+    "sourceRelationId": "base",
+    "sourceField": "phoi_ghep_finger",
+    "label": "Phôi ghép finger",
+    "type": "boolean"
+   },
+   {
+    "key": "ghepthanh",
+    "sourceRelationId": "base",
+    "sourceField": "ghepthanh",
+    "label": "Ghép thanh",
+    "type": "boolean"
+   },
+   {
+    "key": "gheptam",
+    "sourceRelationId": "base",
+    "sourceField": "gheptam",
+    "label": "Ghép tấm",
+    "type": "boolean"
+   },
+   {
+    "key": "idtieuchuanphoi",
+    "sourceRelationId": "base",
+    "sourceField": "idtieuchuanphoi",
+    "label": "id Tiêu chuẩn phôi",
+    "type": "number"
+   },
+   {
+    "key": "gioihan_boiso_tam",
+    "sourceRelationId": "base",
+    "sourceField": "gioihan_boiso_tam",
+    "label": "Giới hạn bội số tấm",
+    "type": "boolean"
+   },
+   {
+    "key": "phoi_giacong_ngoai",
+    "sourceRelationId": "base",
+    "sourceField": "phoi_giacong_ngoai",
+    "label": "Phôi gia công ngoài",
+    "type": "boolean"
+   },
+   {
+    "key": "banve",
+    "sourceRelationId": "base",
+    "sourceField": "banve",
+    "label": "Bản vẽ",
+    "type": "text"
+   },
+   {
+    "key": "fsc_100",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_100",
+    "label": "FSC 100%",
+    "type": "boolean"
+   },
+   {
+    "key": "fsc_mix",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_mix",
+    "label": "FSC Mix",
+    "type": "boolean"
+   },
+   {
+    "key": "fsc_cw",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_cw",
+    "label": "FSC CW",
+    "type": "boolean"
+   },
+   {
+    "key": "uv_matchinh1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matchinh1",
+    "label": "UV mặt chính 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_matphu1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matphu1",
+    "label": "UV mặt phụ 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhngan1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhngan1",
+    "label": "UV cạnh ngắn 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhdai1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhdai1",
+    "label": "UV cạnh dài 1",
+    "type": "number"
+   },
+   {
+    "key": "fsc_recycled",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_recycled",
+    "label": "FSC Tái chế",
+    "type": "boolean"
+   },
+   {
+    "key": "non_fsc",
+    "sourceRelationId": "base",
+    "sourceField": "non_fsc",
+    "label": "Không FSC",
+    "type": "boolean"
+   },
+   {
+    "key": "fsc_id",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_id",
+    "label": "id FSC",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_id",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_masp",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_masp_khachhang",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "masp_khachhang",
+    "label": "Mã SP khách hàng",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_masp_nhamay",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "masp_nhamay",
+    "label": "Mã SP nhà máy",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tensp",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tensp",
+    "label": "Tên sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tensp_vn",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tensp_vn",
+    "label": "Tên sản phẩm (tiếng Việt)",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_hehang",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "hehang",
+    "label": "Hệ hàng",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_mausac",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "mausac",
+    "label": "Màu sắc",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_mauuv",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "mauuv",
+    "label": "Màu UV",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_loaisp",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "loaisp",
+    "label": "Loại sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_ketcau",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ketcau",
+    "label": "Kết cấu",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_bemat_sanpham",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "bemat_sanpham",
+    "label": "Bề mặt sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_ghichu",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_dai",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dai",
+    "label": "Dài (mm)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_rong",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "rong",
+    "label": "Rộng (mm)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_cao",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "cao",
+    "label": "Cao (mm)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_kichthuoc",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "kichthuoc",
+    "label": "Kích thước",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_nguyenlieu",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_dvt",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dvt",
+    "label": "Đơn vị tính",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_quycach",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "quycach",
+    "label": "Quy cách",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_m2",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "m2",
+    "label": "Diện tích (m²)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_m3",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "m3",
+    "label": "Thể tích (m³)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_dai_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dai_carton",
+    "label": "Dài thùng carton",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_rong_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "rong_carton",
+    "label": "Rộng thùng carton",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_cao_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "cao_carton",
+    "label": "Cao thùng carton",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_cbm",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "cbm",
+    "label": "CBM (m³)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_carton_qty",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "carton_qty",
+    "label": "Số lượng / thùng",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_dongia",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_loaitien",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "loaitien",
+    "label": "Loại tiền",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_vendor",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "vendor",
+    "label": "Nhà cung cấp",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_customer",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "customer",
+    "label": "Khách hàng",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_dacdiem",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dacdiem",
+    "label": "Đặc điểm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_hinhanh",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "hinhanh",
+    "label": "Hình ảnh",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_hinhanh1",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "hinhanh1",
+    "label": "Hình ảnh 1",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_thumbnail",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "thumbnail",
+    "label": "Ảnh thu nhỏ",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_isgovan",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isgovan",
+    "label": "Là gò van",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isngukim",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isngukim",
+    "label": "Là ngũ kim",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isson",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isson",
+    "label": "Là sơn",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isbaobi",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isbaobi",
+    "label": "Là bao bì",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_ishangtrang",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ishangtrang",
+    "label": "Là hàng trắng",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_banve",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "banve",
+    "label": "Bản vẽ",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_ngaybaogia",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ngaybaogia",
+    "label": "Ngày báo giá",
+    "type": "datetime"
+   },
+   {
+    "key": "sanpham_hanbaogia",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "hanbaogia",
+    "label": "Hạn báo giá",
+    "type": "datetime"
+   },
+   {
+    "key": "sanpham_create_by",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_create_date",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "sanpham_update_by",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "update_by",
+    "label": "Người cập nhật",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_update_date",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "update_date",
+    "label": "Ngày cập nhật",
+    "type": "datetime"
+   },
+   {
+    "key": "sanpham_hinhanh2",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "hinhanh2",
+    "label": "Hình ảnh 2",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_heso_mam",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "heso_mam",
+    "label": "Hệ số mầm",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_dongia_mam",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dongia_mam",
+    "label": "Đơn giá mầm",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_active",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "active",
+    "label": "Đang hoạt động",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_n_weight",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "n_weight",
+    "label": "Trọng lượng tịnh (kg)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_g_weight",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "g_weight",
+    "label": "Trọng lượng cả bì (kg)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_thoidiem",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "thoidiem",
+    "label": "Thời điểm",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_ma_btp",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ma_btp",
+    "label": "Mã bán thành phẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_ma_erp",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "ma_erp",
+    "label": "Mã ERP",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_isveneer",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isveneer",
+    "label": "Là veneer",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_mautrong",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "mautrong",
+    "label": "Màu trong",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_isastm",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isastm",
+    "label": "Đạt chuẩn ASTM",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isbvkt",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isbvkt",
+    "label": "Có bản vẽ kỹ thuật",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isbvdg",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isbvdg",
+    "label": "Có bản vẽ đóng gói",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isbvai",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isbvai",
+    "label": "Có bản vẽ AI",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_maustaincanh",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "maustaincanh",
+    "label": "Màu stain cạnh",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tieuchuan",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tieuchuan",
+    "label": "Tiêu chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_sothung_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "sothung_carton",
+    "label": "Số thùng carton",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tieuchuan_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tieuchuan_carton",
+    "label": "Tiêu chuẩn carton",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_solop_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "solop_carton",
+    "label": "Số lớp carton",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_dobuc_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dobuc_carton",
+    "label": "Độ bục carton",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_nguyenlieu_vatchen",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "nguyenlieu_vatchen",
+    "label": "Nguyên liệu vật chêm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_dinhluong_vatchen",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dinhluong_vatchen",
+    "label": "Định lượng vật chêm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tuichongdo",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tuichongdo",
+    "label": "Túi chống ẩm",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_droptest",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "droptest",
+    "label": "Kiểm tra thả rơi",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_interlock",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "interlock",
+    "label": "Interlock",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_tiptest",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "tiptest",
+    "label": "Kiểm tra tip",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_m3_tc",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "m3_tc",
+    "label": "Thể tích tiêu chuẩn (m³)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_dongia_son",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "dongia_son",
+    "label": "Đơn giá sơn",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_quycach_carton",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "quycach_carton",
+    "label": "Quy cách carton",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_iscreatedcosting",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "iscreatedcosting",
+    "label": "Đã tạo costing",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_isquytrinh",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "isquytrinh",
+    "label": "Có quy trình",
+    "type": "boolean"
+   },
+   {
+    "key": "sanpham_m2_tc",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "m2_tc",
+    "label": "Diện tích tiêu chuẩn (m²)",
+    "type": "number"
+   },
+   {
+    "key": "sanpham_masp_thaythe",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "masp_thaythe",
+    "label": "Mã SP thay thế",
+    "type": "text"
+   },
+   {
+    "key": "sanpham_oast_date",
+    "sourceRelationId": "r_sanpham",
+    "sourceField": "oast_date",
+    "label": "Ngày OAST",
+    "type": "date"
+   },
+   {
+    "key": "baogia_chiphi_veneer_id",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "baogia_chiphi_veneer_loaihang",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "loaihang",
+    "label": "Loại hàng",
+    "type": "text"
+   },
+   {
+    "key": "baogia_chiphi_veneer_dvt",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "dvt",
+    "label": "Đơn vị tính",
+    "type": "text"
+   },
+   {
+    "key": "baogia_chiphi_veneer_dongia1",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "dongia1",
+    "label": "Đơn giá 1",
+    "type": "number"
+   },
+   {
+    "key": "baogia_chiphi_veneer_dongia2",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "dongia2",
+    "label": "Đơn giá 2",
+    "type": "number"
+   },
+   {
+    "key": "baogia_chiphi_veneer_mancc",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "mancc",
+    "label": "Mã nhà cung cấp",
+    "type": "text"
+   },
+   {
+    "key": "baogia_chiphi_veneer_dongia3",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "dongia3",
+    "label": "Đơn giá 3",
+    "type": "number"
+   },
+   {
+    "key": "baogia_chiphi_veneer_ghichu",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "baogia_chiphi_veneer_actived",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "actived",
+    "label": "Kích hoạt",
+    "type": "bool"
+   },
+   {
+    "key": "baogia_chiphi_veneer_ngaytao",
+    "sourceRelationId": "r_baogia_chiphi_veneer",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

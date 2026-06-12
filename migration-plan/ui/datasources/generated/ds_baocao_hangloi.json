@@ -1,0 +1,366 @@
+{
+ "name": "ds_baocao_hangloi",
+ "label": "Báo cáo hàng lỗi (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOCAO_HANGLOI_GETLISTBYDATE",
+  "TR_BAOCAO_HANGLOI_GETLISTBYMONTH",
+  "TR_BAOCAO_HANGLOI_GETLISTBYYEAR"
+ ],
+ "_warnings": [
+  "bỏ join tr_sanpham (không resolve được ON: (select dbo.ufn_MaHTR_To_MaSP( A.masp)) = B.masp)"
+ ],
+ "config": {
+  "baseEntityId": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+  "relations": [
+   {
+    "id": "r_bophan",
+    "alias": "bophan",
+    "fromRelationId": null,
+    "fromField": "bophantra",
+    "toField": "mabophan",
+    "targetEntityId": "76e346b6-7d98-4fda-a93b-a82fd8d42816",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "donhang",
+    "sourceRelationId": "base",
+    "sourceField": "donhang",
+    "label": "Đơn hàng",
+    "type": "text"
+   },
+   {
+    "key": "ngaythang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaythang",
+    "label": "Ngày tháng",
+    "type": "date"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "tenct",
+    "sourceRelationId": "base",
+    "sourceField": "tenct",
+    "label": "Tên chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "dayy",
+    "sourceRelationId": "base",
+    "sourceField": "dayy",
+    "label": "Dày",
+    "type": "number"
+   },
+   {
+    "key": "rong",
+    "sourceRelationId": "base",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "number"
+   },
+   {
+    "key": "dai",
+    "sourceRelationId": "base",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "number"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "tinhtrang",
+    "sourceRelationId": "base",
+    "sourceField": "tinhtrang",
+    "label": "Tình trạng",
+    "type": "text"
+   },
+   {
+    "key": "nguyennhan",
+    "sourceRelationId": "base",
+    "sourceField": "nguyennhan",
+    "label": "Nguyên nhân",
+    "type": "text"
+   },
+   {
+    "key": "nguoiphutrach",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiphutrach",
+    "label": "Người phụ trách",
+    "type": "text"
+   },
+   {
+    "key": "huongxuly",
+    "sourceRelationId": "base",
+    "sourceField": "huongxuly",
+    "label": "Hướng xử lý",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "xuongphoi",
+    "sourceRelationId": "base",
+    "sourceField": "xuongphoi",
+    "label": "Xưởng phôi",
+    "type": "text"
+   },
+   {
+    "key": "xuongdinhhinh",
+    "sourceRelationId": "base",
+    "sourceField": "xuongdinhhinh",
+    "label": "Xưởng định hình",
+    "type": "text"
+   },
+   {
+    "key": "xuonghoanthien",
+    "sourceRelationId": "base",
+    "sourceField": "xuonghoanthien",
+    "label": "Xưởng hoàn thiện",
+    "type": "text"
+   },
+   {
+    "key": "soluong_xuly",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_xuly",
+    "label": "Số lượng xử lý",
+    "type": "number"
+   },
+   {
+    "key": "bophantra",
+    "sourceRelationId": "base",
+    "sourceField": "bophantra",
+    "label": "Bộ phận trả",
+    "type": "text"
+   },
+   {
+    "key": "congdoan",
+    "sourceRelationId": "base",
+    "sourceField": "congdoan",
+    "label": "Công đoạn",
+    "type": "text"
+   },
+   {
+    "key": "daxuly",
+    "sourceRelationId": "base",
+    "sourceField": "daxuly",
+    "label": "Đã xử lý",
+    "type": "bool"
+   },
+   {
+    "key": "masp1",
+    "sourceRelationId": "base",
+    "sourceField": "masp1",
+    "label": "Mã sản phẩm 1",
+    "type": "text"
+   },
+   {
+    "key": "pallet_id",
+    "sourceRelationId": "base",
+    "sourceField": "pallet_id",
+    "label": "Mã pallet",
+    "type": "number"
+   },
+   {
+    "key": "nguoiduyet",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiduyet",
+    "label": "Người duyệt",
+    "type": "text"
+   },
+   {
+    "key": "loailoi",
+    "sourceRelationId": "base",
+    "sourceField": "loailoi",
+    "label": "Loại lỗi",
+    "type": "text"
+   },
+   {
+    "key": "tacnhangayloi",
+    "sourceRelationId": "base",
+    "sourceField": "tacnhangayloi",
+    "label": "Tác nhân gây lỗi",
+    "type": "text"
+   },
+   {
+    "key": "nguyennhanloi",
+    "sourceRelationId": "base",
+    "sourceField": "nguyennhanloi",
+    "label": "Nguyên nhân lỗi",
+    "type": "text"
+   },
+   {
+    "key": "nguyennhankhac",
+    "sourceRelationId": "base",
+    "sourceField": "nguyennhankhac",
+    "label": "Nguyên nhân khác",
+    "type": "text"
+   },
+   {
+    "key": "bophanlamloi",
+    "sourceRelationId": "base",
+    "sourceField": "bophanlamloi",
+    "label": "Bộ phận làm lỗi",
+    "type": "text"
+   },
+   {
+    "key": "iscreatecard",
+    "sourceRelationId": "base",
+    "sourceField": "iscreatecard",
+    "label": "Tạo thẻ",
+    "type": "bool"
+   },
+   {
+    "key": "card_no",
+    "sourceRelationId": "base",
+    "sourceField": "card_no",
+    "label": "Số thẻ",
+    "type": "text"
+   },
+   {
+    "key": "congdoanhientai",
+    "sourceRelationId": "base",
+    "sourceField": "congdoanhientai",
+    "label": "Công đoạn hiện tại",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan",
+    "label": "Tiêu chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "danhmucloi",
+    "sourceRelationId": "base",
+    "sourceField": "danhmucloi",
+    "label": "Danh mục lỗi",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "bophan_id",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "bophan_phanloai",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "phanloai",
+    "label": "Phân loại",
+    "type": "text"
+   },
+   {
+    "key": "bophan_mabophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "mabophan",
+    "label": "Mã bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "bophan_tenbophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "tenbophan",
+    "label": "Tên bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "bophan_ghichu",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "bophan_stt",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "number"
+   },
+   {
+    "key": "bophan_tenkhac",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "tenkhac",
+    "label": "Tên khác",
+    "type": "text"
+   },
+   {
+    "key": "bophan_truongbophan",
+    "sourceRelationId": "r_bophan",
+    "sourceField": "truongbophan",
+    "label": "Trưởng bộ phận",
+    "type": "lookup"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

@@ -1,0 +1,72 @@
+{
+ "name": "ds_material_ncc",
+ "label": "Giá Nguyên Vật Liệu Theo Nhà Cung Cấp (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_MATERIAL_NCC_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "3f5011ae-ef28-4dc7-baba-41e751ef5086",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "ma_nvl",
+    "sourceRelationId": "base",
+    "sourceField": "ma_nvl",
+    "label": "Mã nguyên vật liệu",
+    "type": "text"
+   },
+   {
+    "key": "ma_ncc",
+    "sourceRelationId": "base",
+    "sourceField": "ma_ncc",
+    "label": "Mã nhà cung cấp",
+    "type": "text"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "currency"
+   },
+   {
+    "key": "tungay",
+    "sourceRelationId": "base",
+    "sourceField": "tungay",
+    "label": "Từ ngày",
+    "type": "date"
+   },
+   {
+    "key": "denngay",
+    "sourceRelationId": "base",
+    "sourceField": "denngay",
+    "label": "Đến ngày",
+    "type": "date"
+   },
+   {
+    "key": "macdinh",
+    "sourceRelationId": "base",
+    "sourceField": "macdinh",
+    "label": "Mặc định",
+    "type": "bool"
+   },
+   {
+    "key": "tigia",
+    "sourceRelationId": "base",
+    "sourceField": "tigia",
+    "label": "Tỉ giá",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

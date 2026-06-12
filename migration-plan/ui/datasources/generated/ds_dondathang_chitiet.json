@@ -1,0 +1,296 @@
+{
+ "name": "ds_dondathang_chitiet",
+ "label": "Chi tiết đơn đặt hàng (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_DONDATHANG_CHITIET_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "bbebb6f3-0208-4f10-af62-557491c42f49",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "id_maddh",
+    "sourceRelationId": "base",
+    "sourceField": "id_maddh",
+    "label": "id_maddh",
+    "type": "number"
+   },
+   {
+    "key": "maddh",
+    "sourceRelationId": "base",
+    "sourceField": "maddh",
+    "label": "Mã đặt hàng",
+    "type": "lookup"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "lookup"
+   },
+   {
+    "key": "chitiet",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet",
+    "label": "Chi tiết",
+    "type": "lookup"
+   },
+   {
+    "key": "tenchitiet",
+    "sourceRelationId": "base",
+    "sourceField": "tenchitiet",
+    "label": "Tên chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn vị tính",
+    "type": "text"
+   },
+   {
+    "key": "sl_danhan",
+    "sourceRelationId": "base",
+    "sourceField": "sl_danhan",
+    "label": "Số lượng đã nhận",
+    "type": "number"
+   },
+   {
+    "key": "sl_conlai",
+    "sourceRelationId": "base",
+    "sourceField": "sl_conlai",
+    "label": "Số lượng còn lại",
+    "type": "number"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "currency"
+   },
+   {
+    "key": "thanhtien",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien",
+    "label": "Thành tiền",
+    "type": "currency"
+   },
+   {
+    "key": "loaitien",
+    "sourceRelationId": "base",
+    "sourceField": "loaitien",
+    "label": "Loại tiền",
+    "type": "text"
+   },
+   {
+    "key": "donhang",
+    "sourceRelationId": "base",
+    "sourceField": "donhang",
+    "label": "Đơn hàng",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "hoanthanh_htr",
+    "sourceRelationId": "base",
+    "sourceField": "hoanthanh_htr",
+    "label": "Hoàn thành HTR",
+    "type": "bool"
+   },
+   {
+    "key": "create_date",
+    "sourceRelationId": "base",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "create_by",
+    "sourceRelationId": "base",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "update_by",
+    "sourceRelationId": "base",
+    "sourceField": "update_by",
+    "label": "Người cập nhật",
+    "type": "text"
+   },
+   {
+    "key": "update_date",
+    "sourceRelationId": "base",
+    "sourceField": "update_date",
+    "label": "Ngày cập nhật",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Kích hoạt",
+    "type": "bool"
+   },
+   {
+    "key": "id_maddhid",
+    "sourceRelationId": "base",
+    "sourceField": "id_maddhid",
+    "label": "id_maddhid",
+    "type": "text"
+   },
+   {
+    "key": "id_maddhmaddh",
+    "sourceRelationId": "base",
+    "sourceField": "id_maddhmaddh",
+    "label": "id_maddhmaddh",
+    "type": "text"
+   },
+   {
+    "key": "maddhid",
+    "sourceRelationId": "base",
+    "sourceField": "maddhid",
+    "label": "maddhid",
+    "type": "text"
+   },
+   {
+    "key": "maddhmaddh",
+    "sourceRelationId": "base",
+    "sourceField": "maddhmaddh",
+    "label": "maddhmaddh",
+    "type": "text"
+   },
+   {
+    "key": "dayy",
+    "sourceRelationId": "base",
+    "sourceField": "dayy",
+    "label": "Dày",
+    "type": "number"
+   },
+   {
+    "key": "rong",
+    "sourceRelationId": "base",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "number"
+   },
+   {
+    "key": "dai",
+    "sourceRelationId": "base",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "number"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên liệu",
+    "type": "text"
+   },
+   {
+    "key": "ngaycangiao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaycangiao",
+    "label": "Ngày cần giao",
+    "type": "datetime"
+   },
+   {
+    "key": "sophieu_dexuat",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu_dexuat",
+    "label": "Số phiếu đề xuất",
+    "type": "text"
+   },
+   {
+    "key": "dongia_m3",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_m3",
+    "label": "Đơn giá m³",
+    "type": "currency"
+   },
+   {
+    "key": "icreatedcard",
+    "sourceRelationId": "base",
+    "sourceField": "icreatedcard",
+    "label": "Đã tạo thẻ",
+    "type": "bool"
+   },
+   {
+    "key": "iprintedcard",
+    "sourceRelationId": "base",
+    "sourceField": "iprintedcard",
+    "label": "Đã in thẻ",
+    "type": "bool"
+   },
+   {
+    "key": "fsc_id",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_id",
+    "label": "fsc_id",
+    "type": "number"
+   },
+   {
+    "key": "idchitiet2",
+    "sourceRelationId": "base",
+    "sourceField": "idchitiet2",
+    "label": "idchitiet2",
+    "type": "text"
+   },
+   {
+    "key": "tygia",
+    "sourceRelationId": "base",
+    "sourceField": "tygia",
+    "label": "Tỷ giá",
+    "type": "number"
+   },
+   {
+    "key": "ischecked",
+    "sourceRelationId": "base",
+    "sourceField": "ischecked",
+    "label": "Đã kiểm tra",
+    "type": "bool"
+   },
+   {
+    "key": "pid",
+    "sourceRelationId": "base",
+    "sourceField": "pid",
+    "label": "pid",
+    "type": "number"
+   },
+   {
+    "key": "ngayhoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "ngayhoanthanh",
+    "label": "Ngày hoàn thành",
+    "type": "date"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

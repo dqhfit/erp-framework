@@ -1,0 +1,65 @@
+{
+ "name": "ds_list_shipping",
+ "label": "Danh sách vận chuyển (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_LIST_SHIPPING_GETBYDESTINATION"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "e5ba6ce4-46d0-4e63-b8ab-07a24f104d05",
+  "relations": [],
+  "fields": [
+   {
+    "key": "destination_code",
+    "sourceRelationId": "base",
+    "sourceField": "destination_code",
+    "label": "destination_code",
+    "type": "text"
+   },
+   {
+    "key": "shipping_code",
+    "sourceRelationId": "base",
+    "sourceField": "shipping_code",
+    "label": "Mã vận chuyển",
+    "type": "text"
+   },
+   {
+    "key": "shipping_name",
+    "sourceRelationId": "base",
+    "sourceField": "shipping_name",
+    "label": "Tên vận chuyển",
+    "type": "text"
+   },
+   {
+    "key": "description",
+    "sourceRelationId": "base",
+    "sourceField": "description",
+    "label": "Mô tả",
+    "type": "text"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "boolean"
+   },
+   {
+    "key": "create_date",
+    "sourceRelationId": "base",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "create_by",
+    "sourceRelationId": "base",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

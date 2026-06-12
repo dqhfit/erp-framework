@@ -1,0 +1,291 @@
+{
+ "name": "ds_trangthai_sanxuat",
+ "label": "Trạng Thái Sản Xuất (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_TRANGTHAI_SANXUAT_GETBYPCARD",
+  "TR_TRANGTHAI_SANXUAT_GETDAY",
+  "TR_TRANGTHAI_SANXUAT_GETLIST2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "lookup"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "Mã Đơn Hàng",
+    "type": "lookup"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "lookup"
+   },
+   {
+    "key": "masp1",
+    "sourceRelationId": "base",
+    "sourceField": "masp1",
+    "label": "Mã Sản Phẩm 1",
+    "type": "lookup"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "tenct",
+    "sourceRelationId": "base",
+    "sourceField": "tenct",
+    "label": "Tên Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "dayy",
+    "sourceRelationId": "base",
+    "sourceField": "dayy",
+    "label": "Dày",
+    "type": "number"
+   },
+   {
+    "key": "rong",
+    "sourceRelationId": "base",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "number"
+   },
+   {
+    "key": "dai",
+    "sourceRelationId": "base",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "number"
+   },
+   {
+    "key": "congdoan",
+    "sourceRelationId": "base",
+    "sourceField": "congdoan",
+    "label": "Công Đoạn",
+    "type": "lookup"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "sokhoi",
+    "sourceRelationId": "base",
+    "sourceField": "sokhoi",
+    "label": "Số Khối",
+    "type": "number"
+   },
+   {
+    "key": "ngaythang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaythang",
+    "label": "Ngày Tháng",
+    "type": "lookup"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "batdau",
+    "sourceRelationId": "base",
+    "sourceField": "batdau",
+    "label": "Bắt Đầu",
+    "type": "datetime"
+   },
+   {
+    "key": "hoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "hoanthanh",
+    "label": "Hoàn Thành",
+    "type": "datetime"
+   },
+   {
+    "key": "vitrimay",
+    "sourceRelationId": "base",
+    "sourceField": "vitrimay",
+    "label": "Vị Trí Máy",
+    "type": "text"
+   },
+   {
+    "key": "tenvitri",
+    "sourceRelationId": "base",
+    "sourceField": "tenvitri",
+    "label": "Tên Vị Trí",
+    "type": "text"
+   },
+   {
+    "key": "thoidiem",
+    "sourceRelationId": "base",
+    "sourceField": "thoidiem",
+    "label": "Thời Điểm",
+    "type": "text"
+   },
+   {
+    "key": "nguoilam",
+    "sourceRelationId": "base",
+    "sourceField": "nguoilam",
+    "label": "Người Làm",
+    "type": "text"
+   },
+   {
+    "key": "iscum",
+    "sourceRelationId": "base",
+    "sourceField": "iscum",
+    "label": "Là Cụm",
+    "type": "boolean"
+   },
+   {
+    "key": "ngaygiao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaygiao",
+    "label": "Ngày Giao",
+    "type": "datetime"
+   },
+   {
+    "key": "sophut",
+    "sourceRelationId": "base",
+    "sourceField": "sophut",
+    "label": "Số Phút",
+    "type": "number"
+   },
+   {
+    "key": "somatuv",
+    "sourceRelationId": "base",
+    "sourceField": "somatuv",
+    "label": "Số Mã Tuv",
+    "type": "number"
+   },
+   {
+    "key": "pcard",
+    "sourceRelationId": "base",
+    "sourceField": "pcard",
+    "label": "Phiếu Card",
+    "type": "lookup"
+   },
+   {
+    "key": "chiphikinhdoanh",
+    "sourceRelationId": "base",
+    "sourceField": "chiphikinhdoanh",
+    "label": "Chi Phí Kinh Doanh",
+    "type": "text"
+   },
+   {
+    "key": "oday",
+    "sourceRelationId": "base",
+    "sourceField": "oday",
+    "label": "Dày Gốc",
+    "type": "number"
+   },
+   {
+    "key": "orong",
+    "sourceRelationId": "base",
+    "sourceField": "orong",
+    "label": "Rộng Gốc",
+    "type": "number"
+   },
+   {
+    "key": "odai",
+    "sourceRelationId": "base",
+    "sourceField": "odai",
+    "label": "Dài Gốc",
+    "type": "number"
+   },
+   {
+    "key": "congdoantieptheo",
+    "sourceRelationId": "base",
+    "sourceField": "congdoantieptheo",
+    "label": "Công Đoạn Tiếp Theo",
+    "type": "lookup"
+   },
+   {
+    "key": "diqua",
+    "sourceRelationId": "base",
+    "sourceField": "diqua",
+    "label": "Đi Qua",
+    "type": "number"
+   },
+   {
+    "key": "gianguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "gianguyenlieu",
+    "label": "Giá Nguyên Liệu",
+    "type": "number"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "ishoanthanh",
+    "sourceRelationId": "base",
+    "sourceField": "ishoanthanh",
+    "label": "Đã Hoàn Thành",
+    "type": "boolean"
+   },
+   {
+    "key": "donhang_sanxuat",
+    "sourceRelationId": "base",
+    "sourceField": "donhang_sanxuat",
+    "label": "Đơn Hàng Sản Xuất",
+    "type": "text"
+   },
+   {
+    "key": "nguoinhan",
+    "sourceRelationId": "base",
+    "sourceField": "nguoinhan",
+    "label": "Người Nhận",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

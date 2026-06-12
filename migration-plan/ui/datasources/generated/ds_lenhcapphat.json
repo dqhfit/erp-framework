@@ -1,0 +1,198 @@
+{
+ "name": "ds_lenhcapphat",
+ "label": "Lệnh cấp phát (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_LENHCAPPHAT_GetListID"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "0f32009d-1702-4404-9db9-da65395490d4",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "lenhcapphatid",
+    "sourceRelationId": "base",
+    "sourceField": "lenhcapphatid",
+    "label": "Lệnh Cấp Phát ID",
+    "type": "text"
+   },
+   {
+    "key": "loaidonhang",
+    "sourceRelationId": "base",
+    "sourceField": "loaidonhang",
+    "label": "Loại Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "loaicapphat",
+    "sourceRelationId": "base",
+    "sourceField": "loaicapphat",
+    "label": "Loại Cấp Phát",
+    "type": "text"
+   },
+   {
+    "key": "madondathang",
+    "sourceRelationId": "base",
+    "sourceField": "madondathang",
+    "label": "Mã Đơn Đặt Hàng",
+    "type": "text"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "Mã Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "master_code",
+    "sourceRelationId": "base",
+    "sourceField": "master_code",
+    "label": "Mã Chính",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mavt",
+    "sourceRelationId": "base",
+    "sourceField": "mavt",
+    "label": "Mã Vật Tư",
+    "type": "text"
+   },
+   {
+    "key": "mota",
+    "sourceRelationId": "base",
+    "sourceField": "mota",
+    "label": "Mô Tả",
+    "type": "text"
+   },
+   {
+    "key": "quycach",
+    "sourceRelationId": "base",
+    "sourceField": "quycach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "mausac",
+    "sourceRelationId": "base",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "soluong_donhang",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_donhang",
+    "label": "Số Lượng Đơn Hàng",
+    "type": "number"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "soluong_daphat",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_daphat",
+    "label": "Số Lượng Đã Phát",
+    "type": "number"
+   },
+   {
+    "key": "soluong_conlai",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_conlai",
+    "label": "Số Lượng Còn Lại",
+    "type": "number"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "nhom",
+    "sourceRelationId": "base",
+    "sourceField": "nhom",
+    "label": "Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "capphat",
+    "sourceRelationId": "base",
+    "sourceField": "capphat",
+    "label": "Cấp Phát",
+    "type": "bool"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "vuotdinhmuc",
+    "sourceRelationId": "base",
+    "sourceField": "vuotdinhmuc",
+    "label": "Vượt Định Mức",
+    "type": "bool"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

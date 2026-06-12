@@ -1,0 +1,320 @@
+{
+ "name": "ds_dexuat_bangmau",
+ "label": "Đề xuất bảng màu (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_DEXUAT_BANGMAU_GETBYNUMBER"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+  "relations": [
+   {
+    "id": "r_user",
+    "alias": "user",
+    "fromRelationId": null,
+    "fromField": "nguoitao",
+    "toField": "username",
+    "targetEntityId": "9b219a74-4e96-4bea-a8a9-b4e18924af7b",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "sophieu",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu",
+    "label": "Số phiếu",
+    "type": "text"
+   },
+   {
+    "key": "ngaydexuat",
+    "sourceRelationId": "base",
+    "sourceField": "ngaydexuat",
+    "label": "Ngày đề xuất",
+    "type": "date"
+   },
+   {
+    "key": "ngayhoanthien",
+    "sourceRelationId": "base",
+    "sourceField": "ngayhoanthien",
+    "label": "Ngày hoàn thiện",
+    "type": "date"
+   },
+   {
+    "key": "ngaythucte",
+    "sourceRelationId": "base",
+    "sourceField": "ngaythucte",
+    "label": "Ngày thực tế",
+    "type": "date"
+   },
+   {
+    "key": "mucdich",
+    "sourceRelationId": "base",
+    "sourceField": "mucdich",
+    "label": "Mục đích",
+    "type": "text"
+   },
+   {
+    "key": "bangiamdoc_duyet",
+    "sourceRelationId": "base",
+    "sourceField": "bangiamdoc_duyet",
+    "label": "Ban giám đốc duyệt",
+    "type": "text"
+   },
+   {
+    "key": "bangiamdoc_ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "bangiamdoc_ngayduyet",
+    "label": "Ban giám đốc ngày duyệt",
+    "type": "datetime"
+   },
+   {
+    "key": "truongbophan_duyet",
+    "sourceRelationId": "base",
+    "sourceField": "truongbophan_duyet",
+    "label": "Trưởng bộ phận duyệt",
+    "type": "text"
+   },
+   {
+    "key": "truongbophan_ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "truongbophan_ngayduyet",
+    "label": "Trưởng bộ phận ngày duyệt",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "bool"
+   },
+   {
+    "key": "tieuchuan_go",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan_go",
+    "label": "Tiêu chuẩn gỗ",
+    "type": "text"
+   },
+   {
+    "key": "tieuchuan_veneer",
+    "sourceRelationId": "base",
+    "sourceField": "tieuchuan_veneer",
+    "label": "Tiêu chuẩn veneer",
+    "type": "text"
+   },
+   {
+    "key": "sophieu2",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu2",
+    "label": "Số phiếu 2",
+    "type": "text"
+   },
+   {
+    "key": "user_userid",
+    "sourceRelationId": "r_user",
+    "sourceField": "userid",
+    "label": "ID Người Dùng",
+    "type": "number"
+   },
+   {
+    "key": "user_employeecode",
+    "sourceRelationId": "r_user",
+    "sourceField": "employeecode",
+    "label": "Mã Nhân Viên",
+    "type": "text"
+   },
+   {
+    "key": "user_username",
+    "sourceRelationId": "r_user",
+    "sourceField": "username",
+    "label": "Tên Đăng Nhập",
+    "type": "text"
+   },
+   {
+    "key": "user_fullname",
+    "sourceRelationId": "r_user",
+    "sourceField": "fullname",
+    "label": "Họ Và Tên",
+    "type": "text"
+   },
+   {
+    "key": "user_password",
+    "sourceRelationId": "r_user",
+    "sourceField": "password",
+    "label": "Mật Khẩu",
+    "type": "text"
+   },
+   {
+    "key": "user_email",
+    "sourceRelationId": "r_user",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "user_group_id",
+    "sourceRelationId": "r_user",
+    "sourceField": "group_id",
+    "label": "Group_ID",
+    "type": "text"
+   },
+   {
+    "key": "user_departmentcode",
+    "sourceRelationId": "r_user",
+    "sourceField": "departmentcode",
+    "label": "Mã Phòng Ban",
+    "type": "text"
+   },
+   {
+    "key": "user_position",
+    "sourceRelationId": "r_user",
+    "sourceField": "position",
+    "label": "Chức Vụ",
+    "type": "text"
+   },
+   {
+    "key": "user_managerid",
+    "sourceRelationId": "r_user",
+    "sourceField": "managerid",
+    "label": "ManagerID",
+    "type": "text"
+   },
+   {
+    "key": "user_chuky",
+    "sourceRelationId": "r_user",
+    "sourceField": "chuky",
+    "label": "Chữ Ký",
+    "type": "text"
+   },
+   {
+    "key": "user_active",
+    "sourceRelationId": "r_user",
+    "sourceField": "active",
+    "label": "Đang Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "user_createby",
+    "sourceRelationId": "r_user",
+    "sourceField": "createby",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "user_createdate",
+    "sourceRelationId": "r_user",
+    "sourceField": "createdate",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "user_board",
+    "sourceRelationId": "r_user",
+    "sourceField": "board",
+    "label": "Ban Giám Đốc",
+    "type": "bool"
+   },
+   {
+    "key": "user_customer_user",
+    "sourceRelationId": "r_user",
+    "sourceField": "customer_user",
+    "label": "Tài Khoản Khách Hàng",
+    "type": "bool"
+   },
+   {
+    "key": "user_token",
+    "sourceRelationId": "r_user",
+    "sourceField": "token",
+    "label": "Mã Token",
+    "type": "text"
+   },
+   {
+    "key": "user_bophan",
+    "sourceRelationId": "r_user",
+    "sourceField": "bophan",
+    "label": "Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "user_nhomdanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nhomdanhgia",
+    "label": "Nhóm Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_admintieuchuan",
+    "sourceRelationId": "r_user",
+    "sourceField": "admintieuchuan",
+    "label": "Quản Trị Tiêu Chuẩn",
+    "type": "bool"
+   },
+   {
+    "key": "user_adminhangloi",
+    "sourceRelationId": "r_user",
+    "sourceField": "adminhangloi",
+    "label": "Quản Trị Hàng Lỗi",
+    "type": "bool"
+   },
+   {
+    "key": "user_nguoidanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nguoidanhgia",
+    "label": "Người Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtoken",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtoken",
+    "label": "Mã Làm Mới Token",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtokenexpirytime",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtokenexpirytime",
+    "label": "Thời Hạn Token Làm Mới",
+    "type": "datetime"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

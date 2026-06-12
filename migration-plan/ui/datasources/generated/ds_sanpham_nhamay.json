@@ -1,0 +1,143 @@
+{
+ "name": "ds_sanpham_nhamay",
+ "label": "Sản phẩm nhà máy (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_SANPHAM_NHAMAY_GETBYHEHANG",
+  "TR_SANPHAM_NHAMAY_GETBYSTATUS"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+  "relations": [],
+  "fields": [
+   {
+    "key": "masp_nhamay",
+    "sourceRelationId": "base",
+    "sourceField": "masp_nhamay",
+    "label": "Mã sản phẩm - nhà máy",
+    "type": "text"
+   },
+   {
+    "key": "tensp",
+    "sourceRelationId": "base",
+    "sourceField": "tensp",
+    "label": "Tên sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Đang hoạt động",
+    "type": "bool"
+   },
+   {
+    "key": "hehang",
+    "sourceRelationId": "base",
+    "sourceField": "hehang",
+    "label": "Hệ hàng",
+    "type": "text"
+   },
+   {
+    "key": "isgovan",
+    "sourceRelationId": "base",
+    "sourceField": "isgovan",
+    "label": "Có gỗ ván",
+    "type": "bool"
+   },
+   {
+    "key": "isngukim",
+    "sourceRelationId": "base",
+    "sourceField": "isngukim",
+    "label": "Có ngũ kim",
+    "type": "bool"
+   },
+   {
+    "key": "isbaobi",
+    "sourceRelationId": "base",
+    "sourceField": "isbaobi",
+    "label": "Có bao bì",
+    "type": "bool"
+   },
+   {
+    "key": "isson",
+    "sourceRelationId": "base",
+    "sourceField": "isson",
+    "label": "Có sơn",
+    "type": "bool"
+   },
+   {
+    "key": "isveneer",
+    "sourceRelationId": "base",
+    "sourceField": "isveneer",
+    "label": "Có Veneer",
+    "type": "bool"
+   },
+   {
+    "key": "isbvkt",
+    "sourceRelationId": "base",
+    "sourceField": "isbvkt",
+    "label": "Có bản vẽ kỹ thuật",
+    "type": "bool"
+   },
+   {
+    "key": "isbvdg",
+    "sourceRelationId": "base",
+    "sourceField": "isbvdg",
+    "label": "Có bản vẽ đồ gỗ",
+    "type": "bool"
+   },
+   {
+    "key": "isbvai",
+    "sourceRelationId": "base",
+    "sourceField": "isbvai",
+    "label": "Có bản vẽ AI",
+    "type": "bool"
+   },
+   {
+    "key": "phienban",
+    "sourceRelationId": "base",
+    "sourceField": "phienban",
+    "label": "Phiên bản",
+    "type": "number"
+   },
+   {
+    "key": "masp_goc",
+    "sourceRelationId": "base",
+    "sourceField": "masp_goc",
+    "label": "Mã sản phẩm gốc",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

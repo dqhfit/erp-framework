@@ -1,0 +1,128 @@
+{
+ "name": "ds_baogia_son",
+ "label": "Báo giá sơn (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOGIA_SON_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "d88b5828-a408-4599-b5e7-ecd3a034135f",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "currency"
+   },
+   {
+    "key": "kichthuoc",
+    "sourceRelationId": "base",
+    "sourceField": "kichthuoc",
+    "label": "Kích thước",
+    "type": "text"
+   },
+   {
+    "key": "dientich",
+    "sourceRelationId": "base",
+    "sourceField": "dientich",
+    "label": "Diện tích",
+    "type": "number"
+   },
+   {
+    "key": "dokho",
+    "sourceRelationId": "base",
+    "sourceField": "dokho",
+    "label": "Độ khô",
+    "type": "number"
+   },
+   {
+    "key": "giason",
+    "sourceRelationId": "base",
+    "sourceField": "giason",
+    "label": "Giá sơn",
+    "type": "currency"
+   },
+   {
+    "key": "cumson",
+    "sourceRelationId": "base",
+    "sourceField": "cumson",
+    "label": "Cụm sơn",
+    "type": "text"
+   },
+   {
+    "key": "matson",
+    "sourceRelationId": "base",
+    "sourceField": "matson",
+    "label": "Màu sơn",
+    "type": "text"
+   },
+   {
+    "key": "phantram_son",
+    "sourceRelationId": "base",
+    "sourceField": "phantram_son",
+    "label": "Phần trăm sơn",
+    "type": "number"
+   },
+   {
+    "key": "baogiaid",
+    "sourceRelationId": "base",
+    "sourceField": "baogiaid",
+    "label": "Mã báo giá",
+    "type": "text"
+   },
+   {
+    "key": "dai",
+    "sourceRelationId": "base",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "number"
+   },
+   {
+    "key": "rong",
+    "sourceRelationId": "base",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "number"
+   },
+   {
+    "key": "cao",
+    "sourceRelationId": "base",
+    "sourceField": "cao",
+    "label": "Cao",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

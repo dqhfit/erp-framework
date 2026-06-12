@@ -1,0 +1,537 @@
+{
+ "name": "ds_baogia_ngukim",
+ "label": "Báo giá - Ngũ kim (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOGIA_NGUKIM_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "e8f68378-5a40-4bf0-9a15-f0d45c3124c0",
+  "relations": [
+   {
+    "id": "r_material",
+    "alias": "material",
+    "fromRelationId": null,
+    "fromField": "mact",
+    "toField": "idxuong",
+    "targetEntityId": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "text"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "chitiet",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet",
+    "label": "Chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "currency"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn vị tính",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "baogiaid",
+    "sourceRelationId": "base",
+    "sourceField": "baogiaid",
+    "label": "Mã báo giá",
+    "type": "text"
+   },
+   {
+    "key": "material_id",
+    "sourceRelationId": "r_material",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "material_idxuong",
+    "sourceRelationId": "r_material",
+    "sourceField": "idxuong",
+    "label": "Xưởng",
+    "type": "lookup"
+   },
+   {
+    "key": "material_mavt",
+    "sourceRelationId": "r_material",
+    "sourceField": "mavt",
+    "label": "Mã Vật Tư",
+    "type": "lookup"
+   },
+   {
+    "key": "material_tenvt",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenvt",
+    "label": "Tên Vật Tư",
+    "type": "text"
+   },
+   {
+    "key": "material_tenvt_en",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenvt_en",
+    "label": "Tên Vật Tư (Tiếng Anh)",
+    "type": "text"
+   },
+   {
+    "key": "material_mota",
+    "sourceRelationId": "r_material",
+    "sourceField": "mota",
+    "label": "Mô Tả",
+    "type": "text"
+   },
+   {
+    "key": "material_quycach",
+    "sourceRelationId": "r_material",
+    "sourceField": "quycach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "material_dayy",
+    "sourceRelationId": "r_material",
+    "sourceField": "dayy",
+    "label": "Dày",
+    "type": "text"
+   },
+   {
+    "key": "material_rong",
+    "sourceRelationId": "r_material",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "text"
+   },
+   {
+    "key": "material_dai",
+    "sourceRelationId": "r_material",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "text"
+   },
+   {
+    "key": "material_cao",
+    "sourceRelationId": "r_material",
+    "sourceField": "cao",
+    "label": "Cao",
+    "type": "text"
+   },
+   {
+    "key": "material_dacdiem",
+    "sourceRelationId": "r_material",
+    "sourceField": "dacdiem",
+    "label": "Đặc Điểm",
+    "type": "text"
+   },
+   {
+    "key": "material_mausac",
+    "sourceRelationId": "r_material",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "material_dvt",
+    "sourceRelationId": "r_material",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "material_soluong1kg",
+    "sourceRelationId": "r_material",
+    "sourceField": "soluong1kg",
+    "label": "Số Lượng 1 Kg",
+    "type": "number"
+   },
+   {
+    "key": "material_nguyenlieu",
+    "sourceRelationId": "r_material",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "material_nhom",
+    "sourceRelationId": "r_material",
+    "sourceField": "nhom",
+    "label": "Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "material_mancc",
+    "sourceRelationId": "r_material",
+    "sourceField": "mancc",
+    "label": "Mã Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "material_tenncc",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenncc",
+    "label": "Tên Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "material_dongia",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia",
+    "label": "Đơn Giá",
+    "type": "currency"
+   },
+   {
+    "key": "material_dongia_goc",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia_goc",
+    "label": "Đơn Giá Gốc",
+    "type": "currency"
+   },
+   {
+    "key": "material_dongia_ban",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia_ban",
+    "label": "Đơn Giá Bán",
+    "type": "currency"
+   },
+   {
+    "key": "material_loaitien",
+    "sourceRelationId": "r_material",
+    "sourceField": "loaitien",
+    "label": "Loại Tiền",
+    "type": "text"
+   },
+   {
+    "key": "material_hinhanh",
+    "sourceRelationId": "r_material",
+    "sourceField": "hinhanh",
+    "label": "Hình Ảnh",
+    "type": "image"
+   },
+   {
+    "key": "material_hinhanh1",
+    "sourceRelationId": "r_material",
+    "sourceField": "hinhanh1",
+    "label": "Hình Ảnh 2",
+    "type": "image"
+   },
+   {
+    "key": "material_ghichu",
+    "sourceRelationId": "r_material",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "longtext"
+   },
+   {
+    "key": "material_kho",
+    "sourceRelationId": "r_material",
+    "sourceField": "kho",
+    "label": "Kho",
+    "type": "text"
+   },
+   {
+    "key": "material_dobuc",
+    "sourceRelationId": "r_material",
+    "sourceField": "dobuc",
+    "label": "Độ Bức",
+    "type": "text"
+   },
+   {
+    "key": "material_solop",
+    "sourceRelationId": "r_material",
+    "sourceField": "solop",
+    "label": "Số Lớp",
+    "type": "text"
+   },
+   {
+    "key": "material_seq7",
+    "sourceRelationId": "r_material",
+    "sourceField": "seq7",
+    "label": "seq7",
+    "type": "text"
+   },
+   {
+    "key": "material_seg8",
+    "sourceRelationId": "r_material",
+    "sourceField": "seg8",
+    "label": "seg8",
+    "type": "text"
+   },
+   {
+    "key": "material_seg9",
+    "sourceRelationId": "r_material",
+    "sourceField": "seg9",
+    "label": "seg9",
+    "type": "text"
+   },
+   {
+    "key": "material_seq10",
+    "sourceRelationId": "r_material",
+    "sourceField": "seq10",
+    "label": "seq10",
+    "type": "text"
+   },
+   {
+    "key": "material_xuatxu",
+    "sourceRelationId": "r_material",
+    "sourceField": "xuatxu",
+    "label": "Xuất Xứ",
+    "type": "text"
+   },
+   {
+    "key": "material_xoa",
+    "sourceRelationId": "r_material",
+    "sourceField": "xoa",
+    "label": "Xóa",
+    "type": "text"
+   },
+   {
+    "key": "material_create_by",
+    "sourceRelationId": "r_material",
+    "sourceField": "create_by",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "material_create_date",
+    "sourceRelationId": "r_material",
+    "sourceField": "create_date",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "material_update_by",
+    "sourceRelationId": "r_material",
+    "sourceField": "update_by",
+    "label": "Người Cập Nhật",
+    "type": "text"
+   },
+   {
+    "key": "material_update_date",
+    "sourceRelationId": "r_material",
+    "sourceField": "update_date",
+    "label": "Ngày Cập Nhật",
+    "type": "datetime"
+   },
+   {
+    "key": "material_van_tieuchuan",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_tieuchuan",
+    "label": "Ván Tiêu Chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "material_van_mat1",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_mat1",
+    "label": "Ván Mặt 1",
+    "type": "text"
+   },
+   {
+    "key": "material_van_mat2",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_mat2",
+    "label": "Ván Mặt 2",
+    "type": "text"
+   },
+   {
+    "key": "material_duongkinhtrong",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinhtrong",
+    "label": "Đường Kính Trong",
+    "type": "number"
+   },
+   {
+    "key": "material_duongkinhngoai",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinhngoai",
+    "label": "Đường Kính Ngoài",
+    "type": "number"
+   },
+   {
+    "key": "material_heren",
+    "sourceRelationId": "r_material",
+    "sourceField": "heren",
+    "label": "He Ren",
+    "type": "text"
+   },
+   {
+    "key": "material_duongkinh",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinh",
+    "label": "Đường Kính",
+    "type": "text"
+   },
+   {
+    "key": "material_temp_rong",
+    "sourceRelationId": "r_material",
+    "sourceField": "temp_rong",
+    "label": "Rộng Tạm",
+    "type": "text"
+   },
+   {
+    "key": "material_temp_cao",
+    "sourceRelationId": "r_material",
+    "sourceField": "temp_cao",
+    "label": "Cao Tạm",
+    "type": "text"
+   },
+   {
+    "key": "material_material_id",
+    "sourceRelationId": "r_material",
+    "sourceField": "material_id",
+    "label": "material_id",
+    "type": "number"
+   },
+   {
+    "key": "material_mavach",
+    "sourceRelationId": "r_material",
+    "sourceField": "mavach",
+    "label": "Mã Vạch",
+    "type": "text"
+   },
+   {
+    "key": "material_tieuchuan",
+    "sourceRelationId": "r_material",
+    "sourceField": "tieuchuan",
+    "label": "Tiêu Chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "material_xacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "xacnhan",
+    "label": "Xác Nhận",
+    "type": "bool"
+   },
+   {
+    "key": "material_nguoixacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "nguoixacnhan",
+    "label": "Người Xác Nhận",
+    "type": "text"
+   },
+   {
+    "key": "material_ngayxacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngayxacnhan",
+    "label": "Ngày Xác Nhận",
+    "type": "datetime"
+   },
+   {
+    "key": "material_ngayhethan",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngayhethan",
+    "label": "Ngày Hết Hạn",
+    "type": "date"
+   },
+   {
+    "key": "material_thue_gtgt",
+    "sourceRelationId": "r_material",
+    "sourceField": "thue_gtgt",
+    "label": "Thuế GTGT",
+    "type": "number"
+   },
+   {
+    "key": "material_thuenhapkhau",
+    "sourceRelationId": "r_material",
+    "sourceField": "thuenhapkhau",
+    "label": "Thuế Nhập Khẩu",
+    "type": "number"
+   },
+   {
+    "key": "material_chiphi_vanchuyen",
+    "sourceRelationId": "r_material",
+    "sourceField": "chiphi_vanchuyen",
+    "label": "Chi Phí Vận Chuyển",
+    "type": "currency"
+   },
+   {
+    "key": "material_chiphikhac",
+    "sourceRelationId": "r_material",
+    "sourceField": "chiphikhac",
+    "label": "Chi Phí Khác",
+    "type": "currency"
+   },
+   {
+    "key": "material_giatri_quydoi",
+    "sourceRelationId": "r_material",
+    "sourceField": "giatri_quydoi",
+    "label": "Giá Trị Quy Đổi",
+    "type": "number"
+   },
+   {
+    "key": "material_dvt_quydoi",
+    "sourceRelationId": "r_material",
+    "sourceField": "dvt_quydoi",
+    "label": "Đơn Vị Tính Quy Đổi",
+    "type": "text"
+   },
+   {
+    "key": "material_id_xuatxu",
+    "sourceRelationId": "r_material",
+    "sourceField": "id_xuatxu",
+    "label": "id_xuatxu",
+    "type": "text"
+   },
+   {
+    "key": "material_ngaycapnhat_dongia",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngaycapnhat_dongia",
+    "label": "Ngày Cập Nhật Đơn Giá",
+    "type": "date"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

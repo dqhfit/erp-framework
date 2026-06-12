@@ -1,0 +1,121 @@
+{
+ "name": "ds_material_other",
+ "label": "Vật liệu khác (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_MATERIAL_OTHER_GETBYCODE"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "tenct",
+    "sourceRelationId": "base",
+    "sourceField": "tenct",
+    "label": "Tên chi tiết",
+    "type": "text"
+   },
+   {
+    "key": "quycach",
+    "sourceRelationId": "base",
+    "sourceField": "quycach",
+    "label": "Quy cách",
+    "type": "text"
+   },
+   {
+    "key": "mausac",
+    "sourceRelationId": "base",
+    "sourceField": "mausac",
+    "label": "Màu sắc",
+    "type": "text"
+   },
+   {
+    "key": "dvt",
+    "sourceRelationId": "base",
+    "sourceField": "dvt",
+    "label": "Đơn vị tính",
+    "type": "text"
+   },
+   {
+    "key": "makho",
+    "sourceRelationId": "base",
+    "sourceField": "makho",
+    "label": "Mã kho",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "boolean"
+   },
+   {
+    "key": "hangsanxuat",
+    "sourceRelationId": "base",
+    "sourceField": "hangsanxuat",
+    "label": "Hãng sản xuất",
+    "type": "text"
+   },
+   {
+    "key": "dacdiem",
+    "sourceRelationId": "base",
+    "sourceField": "dacdiem",
+    "label": "Đặc điểm",
+    "type": "text"
+   },
+   {
+    "key": "nhomvattu",
+    "sourceRelationId": "base",
+    "sourceField": "nhomvattu",
+    "label": "Nhóm vật tư",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

@@ -1,0 +1,440 @@
+[
+ {
+  "name": "ds_material",
+  "status": "created",
+  "procs": 5,
+  "note": ""
+ },
+ {
+  "name": "ds_lenhcapphat_head",
+  "status": "created",
+  "procs": 7,
+  "note": ""
+ },
+ {
+  "name": "ds_dinhmuc_govan",
+  "status": "created",
+  "procs": 6,
+  "note": "bỏ join tr_loai_uv (entity chưa migrate); bỏ join tr_tinhtrang_fsc (entity chưa migrate)"
+ },
+ {
+  "name": "ds_order",
+  "status": "created",
+  "procs": 5,
+  "note": ""
+ },
+ {
+  "name": "ds_dondathang",
+  "status": "created",
+  "procs": 5,
+  "note": ""
+ },
+ {
+  "name": "ds_trangthai_sanxuat",
+  "status": "created",
+  "procs": 3,
+  "note": ""
+ },
+ {
+  "name": "ds_baocao_hangloi",
+  "status": "created",
+  "procs": 3,
+  "note": "bỏ join tr_sanpham (không resolve được ON: (select dbo.ufn_MaHTR_To_MaSP( A.masp)) = B.masp)"
+ },
+ {
+  "name": "ds_banve",
+  "status": "created",
+  "procs": 3,
+  "note": ""
+ },
+ {
+  "name": "ds_sanpham_nhamay",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_phieubaogia",
+  "status": "created",
+  "procs": 3,
+  "note": ""
+ },
+ {
+  "name": "ds_dinhmuc_ngukim",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_khuvuc_sanxuat",
+  "status": "skipped_base_missing",
+  "procs": 2,
+  "note": "entity tr_khuvuc_sanxuat chưa migrate"
+ },
+ {
+  "name": "ds_tieuchuan_chatluong",
+  "status": "skipped_base_missing",
+  "procs": 3,
+  "note": "entity tr_tieuchuan_chatluong chưa migrate"
+ },
+ {
+  "name": "ds_order_example_detail",
+  "status": "skipped_base_missing",
+  "procs": 2,
+  "note": "entity tr_order_example_detail chưa migrate"
+ },
+ {
+  "name": "ds_pallet_card",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_phieuxuat",
+  "status": "created",
+  "procs": 3,
+  "note": ""
+ },
+ {
+  "name": "ds_material_ncc",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_bieumau_friday",
+  "status": "skipped_base_missing",
+  "procs": 2,
+  "note": "entity tr_bieumau_friday chưa migrate"
+ },
+ {
+  "name": "ds_tonkho_chitiet",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_tonkho_chitiet chưa migrate"
+ },
+ {
+  "name": "ds_email_subscriber2",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_email_subscriber2 chưa migrate"
+ },
+ {
+  "name": "ds_sanpham",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_bom_mix",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_bom_mix chưa migrate"
+ },
+ {
+  "name": "ds_order_detail",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_material_other",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia_son",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_quytrinh_sanpham",
+  "status": "created",
+  "procs": 1,
+  "note": "bỏ join tr_khuvuc_sanxuat (entity chưa migrate)"
+ },
+ {
+  "name": "ds_nganhang",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_nhap_thanhpham",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_nhap_thanhpham chưa migrate"
+ },
+ {
+  "name": "ds_dexuat_phoi_chitiet",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_gridview_column",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_gridview_column chưa migrate"
+ },
+ {
+  "name": "ds_dexuat_bangmau",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baocao_final_muckiemtra",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_nhanvien_2",
+  "status": "skipped_base_missing",
+  "procs": 2,
+  "note": "entity hr_nhanvien_2 chưa migrate"
+ },
+ {
+  "name": "ds_baocao_final",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_thaydoi_kythuat",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia_donggoi",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia_govan",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia_ngukim",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia_thanhpham",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_baogia3_giaphoi",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_baogia3_giaphoi chưa migrate"
+ },
+ {
+  "name": "ds_sal_baogia_govan",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity sal_baogia_govan chưa migrate"
+ },
+ {
+  "name": "ds_lenhcapphat",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_tonghop_xuat_hopchat",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_tonghop_xuat_hopchat chưa migrate"
+ },
+ {
+  "name": "ds_m_op",
+  "status": "created",
+  "procs": 2,
+  "note": "bỏ join tr_khuvuc_sanxuat (entity chưa migrate)"
+ },
+ {
+  "name": "ds_dexuat_phoi",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_phieuyeucau_muahang",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_dinhmuc_son2",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_material_mix",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_material_mix chưa migrate"
+ },
+ {
+  "name": "ds_list_shipping",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_order_example",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_order_example chưa migrate"
+ },
+ {
+  "name": "ds_proforma_invoice",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_proforma_invoice chưa migrate"
+ },
+ {
+  "name": "ds_luutrinh_sanxuat",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_luutrinh_sanxuat chưa migrate"
+ },
+ {
+  "name": "ds_denghi_thanhtoan",
+  "status": "created",
+  "procs": 2,
+  "note": "bỏ join tr_phieudenghi_thanhtoan_nhacc (entity chưa migrate)"
+ },
+ {
+  "name": "ds_dondathang_chitiet",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_phieuyeucau",
+  "status": "created",
+  "procs": 2,
+  "note": ""
+ },
+ {
+  "name": "ds_nguyenlieu_tenkhoahoc",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_nguyenlieu_tenkhoahoc chưa migrate"
+ },
+ {
+  "name": "ds_cont",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_cont chưa migrate"
+ },
+ {
+  "name": "ds_phieugiao_thanhpham_chitiet",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_phieugiao_thanhpham_chitiet chưa migrate"
+ },
+ {
+  "name": "ds_stockbalances",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity stockbalances chưa migrate"
+ },
+ {
+  "name": "ds_rst_nhap_nguyenlieu",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity rst_nhap_nguyenlieu chưa migrate"
+ },
+ {
+  "name": "ds_phieuxuat_thanhpham2",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_phieuxuat_thanhpham2 chưa migrate"
+ },
+ {
+  "name": "ds_phieunhap",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_quytrinh_yeucau_chatluong",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_quytrinh_yeucau_chatluong chưa migrate"
+ },
+ {
+  "name": "ds_sanpham_ngukim",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_sanpham_ngukim chưa migrate"
+ },
+ {
+  "name": "ds_sanpham_tem",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_sanpham_tem chưa migrate"
+ },
+ {
+  "name": "ds_sanpham_vattu",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_sanpham_vattu chưa migrate"
+ },
+ {
+  "name": "ds_sanpham_venner",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_sanpham_venner chưa migrate"
+ },
+ {
+  "name": "ds_thongtin_sanpham_nguyenlieu",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_thongtin_sanpham_nguyenlieu chưa migrate"
+ },
+ {
+  "name": "ds_pallet",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_nhom_nguyenlieu",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_nhom_nguyenlieu chưa migrate"
+ },
+ {
+  "name": "ds_muctieu_sanxuat2",
+  "status": "created",
+  "procs": 1,
+  "note": ""
+ },
+ {
+  "name": "ds_kehoach_hangtrang",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_kehoach_hangtrang chưa migrate"
+ },
+ {
+  "name": "ds_kehoach_giaohang",
+  "status": "skipped_base_missing",
+  "procs": 1,
+  "note": "entity tr_kehoach_giaohang chưa migrate"
+ }
+]

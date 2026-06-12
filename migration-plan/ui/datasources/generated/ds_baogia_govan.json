@@ -1,0 +1,618 @@
+{
+ "name": "ds_baogia_govan",
+ "label": "Báo Giá Gỗ Ván (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOGIA_GOVAN_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "362a86d6-99f9-433c-84ed-280a5fcd8f95",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "trangso",
+    "sourceRelationId": "base",
+    "sourceField": "trangso",
+    "label": "Trang Số",
+    "type": "text"
+   },
+   {
+    "key": "mact",
+    "sourceRelationId": "base",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số Thứ Tự",
+    "type": "text"
+   },
+   {
+    "key": "chitiet",
+    "sourceRelationId": "base",
+    "sourceField": "chitiet",
+    "label": "Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "danveneer",
+    "sourceRelationId": "base",
+    "sourceField": "danveneer",
+    "label": "Dán Veneer",
+    "type": "text"
+   },
+   {
+    "key": "veneer_canh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_canh",
+    "label": "Veneer Cạnh",
+    "type": "text"
+   },
+   {
+    "key": "loaiveneer",
+    "sourceRelationId": "base",
+    "sourceField": "loaiveneer",
+    "label": "Loại Veneer",
+    "type": "number"
+   },
+   {
+    "key": "dayy_tc",
+    "sourceRelationId": "base",
+    "sourceField": "dayy_tc",
+    "label": "Dày Tiêu Chuẩn",
+    "type": "number"
+   },
+   {
+    "key": "rong_tc",
+    "sourceRelationId": "base",
+    "sourceField": "rong_tc",
+    "label": "Rộng Tiêu Chuẩn",
+    "type": "number"
+   },
+   {
+    "key": "dai_tc",
+    "sourceRelationId": "base",
+    "sourceField": "dai_tc",
+    "label": "Dài Tiêu Chuẩn",
+    "type": "number"
+   },
+   {
+    "key": "mong",
+    "sourceRelationId": "base",
+    "sourceField": "mong",
+    "label": "Mộng",
+    "type": "number"
+   },
+   {
+    "key": "soluong_tc",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_tc",
+    "label": "Số Lượng Tiêu Chuẩn",
+    "type": "number"
+   },
+   {
+    "key": "sldh",
+    "sourceRelationId": "base",
+    "sourceField": "sldh",
+    "label": "Số Lượng Đơn Hàng",
+    "type": "number"
+   },
+   {
+    "key": "m3",
+    "sourceRelationId": "base",
+    "sourceField": "m3",
+    "label": "Khối (m³)",
+    "type": "number"
+   },
+   {
+    "key": "go_ngoai_a",
+    "sourceRelationId": "base",
+    "sourceField": "go_ngoai_a",
+    "label": "Gỗ Ngoài A",
+    "type": "text"
+   },
+   {
+    "key": "go_trong_b",
+    "sourceRelationId": "base",
+    "sourceField": "go_trong_b",
+    "label": "Gỗ Trong B",
+    "type": "text"
+   },
+   {
+    "key": "plywood_3",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_3",
+    "label": "Plywood 3mm",
+    "type": "text"
+   },
+   {
+    "key": "plywood_5",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_5",
+    "label": "Plywood 5mm",
+    "type": "text"
+   },
+   {
+    "key": "plywood_9",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_9",
+    "label": "Plywood 9mm",
+    "type": "text"
+   },
+   {
+    "key": "plywood_12",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_12",
+    "label": "Plywood 12mm",
+    "type": "text"
+   },
+   {
+    "key": "plywood_15",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_15",
+    "label": "Plywood 15mm",
+    "type": "text"
+   },
+   {
+    "key": "plywood_18",
+    "sourceRelationId": "base",
+    "sourceField": "plywood_18",
+    "label": "Plywood 18mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_3",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_3",
+    "label": "MDF 3mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_4_5",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_4_5",
+    "label": "MDF 4.5mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_5",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_5",
+    "label": "MDF 5mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_9",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_9",
+    "label": "MDF 9mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_12",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_12",
+    "label": "MDF 12mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_15",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_15",
+    "label": "MDF 15mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_17",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_17",
+    "label": "MDF 17mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_18",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_18",
+    "label": "MDF 18mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_20",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_20",
+    "label": "MDF 20mm",
+    "type": "text"
+   },
+   {
+    "key": "mdf_25",
+    "sourceRelationId": "base",
+    "sourceField": "mdf_25",
+    "label": "MDF 25mm",
+    "type": "text"
+   },
+   {
+    "key": "veneer_1_mat",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_1_mat",
+    "label": "Veneer 1 Mặt",
+    "type": "text"
+   },
+   {
+    "key": "veneer_2_mat",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_2_mat",
+    "label": "Veneer 2 Mặt",
+    "type": "text"
+   },
+   {
+    "key": "veneer_dan_canh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_dan_canh",
+    "label": "Veneer Dán Cạnh",
+    "type": "number"
+   },
+   {
+    "key": "mat_a",
+    "sourceRelationId": "base",
+    "sourceField": "mat_a",
+    "label": "Mặt A",
+    "type": "text"
+   },
+   {
+    "key": "mat_b",
+    "sourceRelationId": "base",
+    "sourceField": "mat_b",
+    "label": "Mặt B",
+    "type": "text"
+   },
+   {
+    "key": "mat_c",
+    "sourceRelationId": "base",
+    "sourceField": "mat_c",
+    "label": "Mặt C",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "caosu_03",
+    "sourceRelationId": "base",
+    "sourceField": "caosu_03",
+    "label": "Cao Su 0.3mm",
+    "type": "text"
+   },
+   {
+    "key": "bachduong_03",
+    "sourceRelationId": "base",
+    "sourceField": "bachduong_03",
+    "label": "Bạch Dương 0.3mm",
+    "type": "text"
+   },
+   {
+    "key": "oak",
+    "sourceRelationId": "base",
+    "sourceField": "oak",
+    "label": "Gỗ Sồi (Oak)",
+    "type": "text"
+   },
+   {
+    "key": "ash",
+    "sourceRelationId": "base",
+    "sourceField": "ash",
+    "label": "Gỗ Tần Bì (Ash)",
+    "type": "text"
+   },
+   {
+    "key": "walnut_03",
+    "sourceRelationId": "base",
+    "sourceField": "walnut_03",
+    "label": "Óc Chó 0.3mm (Walnut)",
+    "type": "text"
+   },
+   {
+    "key": "veneer_matchinh",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_matchinh",
+    "label": "Veneer Mặt Chính",
+    "type": "number"
+   },
+   {
+    "key": "veneer_matphu",
+    "sourceRelationId": "base",
+    "sourceField": "veneer_matphu",
+    "label": "Veneer Mặt Phụ",
+    "type": "number"
+   },
+   {
+    "key": "baogiaid",
+    "sourceRelationId": "base",
+    "sourceField": "baogiaid",
+    "label": "Mã Báo Giá",
+    "type": "text"
+   },
+   {
+    "key": "t_sort",
+    "sourceRelationId": "base",
+    "sourceField": "t_sort",
+    "label": "Thứ Tự Sắp Xếp",
+    "type": "number"
+   },
+   {
+    "key": "uv_matchinh",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matchinh",
+    "label": "UV Mặt Chính",
+    "type": "bool"
+   },
+   {
+    "key": "uv_matphu",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matphu",
+    "label": "UV Mặt Phụ",
+    "type": "bool"
+   },
+   {
+    "key": "uv_canhdai",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhdai",
+    "label": "UV Cạnh Dài",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhngan",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhngan",
+    "label": "UV Cạnh Ngắn",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nguyenlieu",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nguyenlieu",
+    "label": "Đơn Giá Nguyên Liệu",
+    "type": "number"
+   },
+   {
+    "key": "thanhtien_govan",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien_govan",
+    "label": "Thành Tiền Gỗ Ván",
+    "type": "number"
+   },
+   {
+    "key": "thanhtien_veneer",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien_veneer",
+    "label": "Thành Tiền Veneer",
+    "type": "number"
+   },
+   {
+    "key": "dongia_son",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_son",
+    "label": "Đơn Giá Sơn",
+    "type": "number"
+   },
+   {
+    "key": "dientich",
+    "sourceRelationId": "base",
+    "sourceField": "dientich",
+    "label": "Diện Tích",
+    "type": "number"
+   },
+   {
+    "key": "tyle_haohut",
+    "sourceRelationId": "base",
+    "sourceField": "tyle_haohut",
+    "label": "Tỷ Lệ Hao Hụt",
+    "type": "number"
+   },
+   {
+    "key": "dokho_giacong",
+    "sourceRelationId": "base",
+    "sourceField": "dokho_giacong",
+    "label": "Độ Khó Gia Công",
+    "type": "number"
+   },
+   {
+    "key": "idchiphigiacong",
+    "sourceRelationId": "base",
+    "sourceField": "idchiphigiacong",
+    "label": "Mã Chi Phí Gia Công",
+    "type": "number"
+   },
+   {
+    "key": "dongia_giacong",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_giacong",
+    "label": "Đơn Giá Gia Công",
+    "type": "number"
+   },
+   {
+    "key": "thanhtien_giacong",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien_giacong",
+    "label": "Thành Tiền Gia Công",
+    "type": "number"
+   },
+   {
+    "key": "uv_matchinh1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matchinh1",
+    "label": "UV Mặt Chính 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_matphu1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_matphu1",
+    "label": "UV Mặt Phụ 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhngan1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhngan1",
+    "label": "UV Cạnh Ngắn 1",
+    "type": "number"
+   },
+   {
+    "key": "uv_canhdai1",
+    "sourceRelationId": "base",
+    "sourceField": "uv_canhdai1",
+    "label": "UV Cạnh Dài 1",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong",
+    "label": "Đơn Giá Nhân Công",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong1",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong1",
+    "label": "Đơn Giá Nhân Công 1",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong2",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong2",
+    "label": "Đơn Giá Nhân Công 2",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong3",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong3",
+    "label": "Đơn Giá Nhân Công 3",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong4",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong4",
+    "label": "Đơn Giá Nhân Công 4",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong5",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong5",
+    "label": "Đơn Giá Nhân Công 5",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong6",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong6",
+    "label": "Đơn Giá Nhân Công 6",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong7",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong7",
+    "label": "Đơn Giá Nhân Công 7",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong8",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong8",
+    "label": "Đơn Giá Nhân Công 8",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong9",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong9",
+    "label": "Đơn Giá Nhân Công 9",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong10",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong10",
+    "label": "Đơn Giá Nhân Công 10",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong11",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong11",
+    "label": "Đơn Giá Nhân Công 11",
+    "type": "number"
+   },
+   {
+    "key": "dongia_nhancong12",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_nhancong12",
+    "label": "Đơn Giá Nhân Công 12",
+    "type": "number"
+   },
+   {
+    "key": "trongluongrieng",
+    "sourceRelationId": "base",
+    "sourceField": "trongluongrieng",
+    "label": "Trọng Lượng Riêng",
+    "type": "number"
+   },
+   {
+    "key": "fsc_id",
+    "sourceRelationId": "base",
+    "sourceField": "fsc_id",
+    "label": "Mã FSC",
+    "type": "number"
+   },
+   {
+    "key": "phantram_tang",
+    "sourceRelationId": "base",
+    "sourceField": "phantram_tang",
+    "label": "Phần Trăm Tăng",
+    "type": "number"
+   },
+   {
+    "key": "dongia_goc",
+    "sourceRelationId": "base",
+    "sourceField": "dongia_goc",
+    "label": "Đơn Giá Gốc",
+    "type": "number"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

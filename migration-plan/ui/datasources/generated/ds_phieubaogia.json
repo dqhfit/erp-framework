@@ -1,0 +1,585 @@
+{
+ "name": "ds_phieubaogia",
+ "label": "Phiếu báo giá (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_PHIEUBAOGIA_CHITIET_GETALL3",
+  "TR_PHIEUBAOGIA_GETBYDATE",
+  "TR_PHIEUBAOGIA_GETBYNUMBER"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "970fe901-8c71-46eb-9efc-55ae6f0e8e99",
+  "relations": [
+   {
+    "id": "r_nhacc",
+    "alias": "nhacc",
+    "fromRelationId": null,
+    "fromField": "khachhang",
+    "toField": "vendor_id",
+    "targetEntityId": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_phieubaogia_chitiet",
+    "alias": "phieubaogia_chitiet",
+    "fromRelationId": null,
+    "fromField": "sophieu",
+    "toField": "sophieu",
+    "targetEntityId": "9b94683d-7a94-4ef6-9ef4-832a559af23c",
+    "joinKind": "inner"
+   },
+   {
+    "id": "r_user",
+    "alias": "user",
+    "fromRelationId": null,
+    "fromField": "nguoitao",
+    "toField": "username",
+    "targetEntityId": "9b219a74-4e96-4bea-a8a9-b4e18924af7b",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "text"
+   },
+   {
+    "key": "sophieu",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu",
+    "label": "Số Phiếu",
+    "type": "text"
+   },
+   {
+    "key": "tieude",
+    "sourceRelationId": "base",
+    "sourceField": "tieude",
+    "label": "Tiêu Đề",
+    "type": "text"
+   },
+   {
+    "key": "khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "khachhang",
+    "label": "Khách Hàng",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người Sửa",
+    "type": "text"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "boolean"
+   },
+   {
+    "key": "ngayky1",
+    "sourceRelationId": "base",
+    "sourceField": "ngayky1",
+    "label": "Ngày Ký 1",
+    "type": "datetime"
+   },
+   {
+    "key": "ngayky2",
+    "sourceRelationId": "base",
+    "sourceField": "ngayky2",
+    "label": "Ngày Ký 2",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoiky1",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiky1",
+    "label": "Người Ký 1",
+    "type": "text"
+   },
+   {
+    "key": "nguoiky2",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiky2",
+    "label": "Người Ký 2",
+    "type": "text"
+   },
+   {
+    "key": "chuky1",
+    "sourceRelationId": "base",
+    "sourceField": "chuky1",
+    "label": "Chữ Ký 1",
+    "type": "text"
+   },
+   {
+    "key": "chuky2",
+    "sourceRelationId": "base",
+    "sourceField": "chuky2",
+    "label": "Chữ Ký 2",
+    "type": "text"
+   },
+   {
+    "key": "choduyet",
+    "sourceRelationId": "base",
+    "sourceField": "choduyet",
+    "label": "Chờ Duyệt",
+    "type": "number"
+   },
+   {
+    "key": "loaitien",
+    "sourceRelationId": "base",
+    "sourceField": "loaitien",
+    "label": "Loại Tiền",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_id",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "nhacc_vendor_id",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "vendor_id",
+    "label": "vendor_id",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_vendor_name",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "vendor_name",
+    "label": "Tên nhà cung cấp",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_address",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "address",
+    "label": "Địa chỉ",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_area",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "area",
+    "label": "Khu vực",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_phone",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "phone",
+    "label": "Điện thoại",
+    "type": "phone"
+   },
+   {
+    "key": "nhacc_email",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "nhacc_website",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "website",
+    "label": "Website",
+    "type": "url"
+   },
+   {
+    "key": "nhacc_loaincc",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "loaincc",
+    "label": "Loại nhà cung cấp",
+    "type": "lookup"
+   },
+   {
+    "key": "nhacc_create_by",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_create_date",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nhacc_sotaikhoan",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "sotaikhoan",
+    "label": "Số tài khoản",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_tentaikhoan",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "tentaikhoan",
+    "label": "Tên tài khoản",
+    "type": "text"
+   },
+   {
+    "key": "nhacc_tennganhang",
+    "sourceRelationId": "r_nhacc",
+    "sourceField": "tennganhang",
+    "label": "Tên ngân hàng",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_id",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "id",
+    "label": "ID",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_sophieu",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "sophieu",
+    "label": "Số Phiếu",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_mact",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_dongiacu",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "dongiacu",
+    "label": "Đơn Giá Cũ",
+    "type": "number"
+   },
+   {
+    "key": "phieubaogia_chitiet_dongiamoi",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "dongiamoi",
+    "label": "Đơn Giá Mới",
+    "type": "number"
+   },
+   {
+    "key": "phieubaogia_chitiet_loaitien",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "loaitien",
+    "label": "Loại Tiền",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_active",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "boolean"
+   },
+   {
+    "key": "phieubaogia_chitiet_tenct",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "tenct",
+    "label": "Tên Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_quycach",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "quycach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_mausac",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_soluong",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "phieubaogia_chitiet_dvt",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_ngayapdung",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "ngayapdung",
+    "label": "Ngày Áp Dụng",
+    "type": "datetime"
+   },
+   {
+    "key": "phieubaogia_chitiet_nguoiduyet",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "nguoiduyet",
+    "label": "Người Duyệt",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_ngayduyet",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "ngayduyet",
+    "label": "Ngày Duyệt",
+    "type": "datetime"
+   },
+   {
+    "key": "phieubaogia_chitiet_lydokhongduyet",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "lydokhongduyet",
+    "label": "Lý Do Không Duyệt",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_isnotduyet",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "isnotduyet",
+    "label": "Không Duyệt",
+    "type": "boolean"
+   },
+   {
+    "key": "phieubaogia_chitiet_isupdateprice",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "isupdateprice",
+    "label": "Cập Nhật Giá",
+    "type": "boolean"
+   },
+   {
+    "key": "phieubaogia_chitiet_ghichu",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_mancc",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "mancc",
+    "label": "Mã Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "phieubaogia_chitiet_ngaytao",
+    "sourceRelationId": "r_phieubaogia_chitiet",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "user_userid",
+    "sourceRelationId": "r_user",
+    "sourceField": "userid",
+    "label": "ID Người Dùng",
+    "type": "number"
+   },
+   {
+    "key": "user_employeecode",
+    "sourceRelationId": "r_user",
+    "sourceField": "employeecode",
+    "label": "Mã Nhân Viên",
+    "type": "text"
+   },
+   {
+    "key": "user_username",
+    "sourceRelationId": "r_user",
+    "sourceField": "username",
+    "label": "Tên Đăng Nhập",
+    "type": "text"
+   },
+   {
+    "key": "user_fullname",
+    "sourceRelationId": "r_user",
+    "sourceField": "fullname",
+    "label": "Họ Và Tên",
+    "type": "text"
+   },
+   {
+    "key": "user_password",
+    "sourceRelationId": "r_user",
+    "sourceField": "password",
+    "label": "Mật Khẩu",
+    "type": "text"
+   },
+   {
+    "key": "user_email",
+    "sourceRelationId": "r_user",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "user_group_id",
+    "sourceRelationId": "r_user",
+    "sourceField": "group_id",
+    "label": "Group_ID",
+    "type": "text"
+   },
+   {
+    "key": "user_departmentcode",
+    "sourceRelationId": "r_user",
+    "sourceField": "departmentcode",
+    "label": "Mã Phòng Ban",
+    "type": "text"
+   },
+   {
+    "key": "user_position",
+    "sourceRelationId": "r_user",
+    "sourceField": "position",
+    "label": "Chức Vụ",
+    "type": "text"
+   },
+   {
+    "key": "user_managerid",
+    "sourceRelationId": "r_user",
+    "sourceField": "managerid",
+    "label": "ManagerID",
+    "type": "text"
+   },
+   {
+    "key": "user_chuky",
+    "sourceRelationId": "r_user",
+    "sourceField": "chuky",
+    "label": "Chữ Ký",
+    "type": "text"
+   },
+   {
+    "key": "user_active",
+    "sourceRelationId": "r_user",
+    "sourceField": "active",
+    "label": "Đang Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "user_createby",
+    "sourceRelationId": "r_user",
+    "sourceField": "createby",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "user_createdate",
+    "sourceRelationId": "r_user",
+    "sourceField": "createdate",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "user_board",
+    "sourceRelationId": "r_user",
+    "sourceField": "board",
+    "label": "Ban Giám Đốc",
+    "type": "bool"
+   },
+   {
+    "key": "user_customer_user",
+    "sourceRelationId": "r_user",
+    "sourceField": "customer_user",
+    "label": "Tài Khoản Khách Hàng",
+    "type": "bool"
+   },
+   {
+    "key": "user_token",
+    "sourceRelationId": "r_user",
+    "sourceField": "token",
+    "label": "Mã Token",
+    "type": "text"
+   },
+   {
+    "key": "user_bophan",
+    "sourceRelationId": "r_user",
+    "sourceField": "bophan",
+    "label": "Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "user_nhomdanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nhomdanhgia",
+    "label": "Nhóm Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_admintieuchuan",
+    "sourceRelationId": "r_user",
+    "sourceField": "admintieuchuan",
+    "label": "Quản Trị Tiêu Chuẩn",
+    "type": "bool"
+   },
+   {
+    "key": "user_adminhangloi",
+    "sourceRelationId": "r_user",
+    "sourceField": "adminhangloi",
+    "label": "Quản Trị Hàng Lỗi",
+    "type": "bool"
+   },
+   {
+    "key": "user_nguoidanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nguoidanhgia",
+    "label": "Người Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtoken",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtoken",
+    "label": "Mã Làm Mới Token",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtokenexpirytime",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtokenexpirytime",
+    "label": "Thời Hạn Token Làm Mới",
+    "type": "datetime"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

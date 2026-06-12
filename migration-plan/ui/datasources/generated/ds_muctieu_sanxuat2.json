@@ -1,0 +1,404 @@
+{
+ "name": "ds_muctieu_sanxuat2",
+ "label": "Mục Tiêu Sản Xuất 2 (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_MUCTIEU_SANXUAT2_GETBYMONTH"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "25b35065-00a9-4a26-b5c7-8198d209e9e7",
+  "relations": [
+   {
+    "id": "r_m_op",
+    "alias": "m_op",
+    "fromRelationId": null,
+    "fromField": "mabophan",
+    "toField": "c_op",
+    "targetEntityId": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "joinKind": "inner"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "nam",
+    "sourceRelationId": "base",
+    "sourceField": "nam",
+    "label": "Năm",
+    "type": "number"
+   },
+   {
+    "key": "thang",
+    "sourceRelationId": "base",
+    "sourceField": "thang",
+    "label": "Tháng",
+    "type": "number"
+   },
+   {
+    "key": "mabophan",
+    "sourceRelationId": "base",
+    "sourceField": "mabophan",
+    "label": "Mã Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "songuoi",
+    "sourceRelationId": "base",
+    "sourceField": "songuoi",
+    "label": "Số Người",
+    "type": "number"
+   },
+   {
+    "key": "songay",
+    "sourceRelationId": "base",
+    "sourceField": "songay",
+    "label": "Số Ngày",
+    "type": "number"
+   },
+   {
+    "key": "mucthuong",
+    "sourceRelationId": "base",
+    "sourceField": "mucthuong",
+    "label": "Mức Thưởng",
+    "type": "number"
+   },
+   {
+    "key": "phantram_tang",
+    "sourceRelationId": "base",
+    "sourceField": "phantram_tang",
+    "label": "Phần Trăm Tăng",
+    "type": "number"
+   },
+   {
+    "key": "col1",
+    "sourceRelationId": "base",
+    "sourceField": "col1",
+    "label": "Cột 1",
+    "type": "number"
+   },
+   {
+    "key": "col2",
+    "sourceRelationId": "base",
+    "sourceField": "col2",
+    "label": "Cột 2",
+    "type": "number"
+   },
+   {
+    "key": "col3",
+    "sourceRelationId": "base",
+    "sourceField": "col3",
+    "label": "Cột 3",
+    "type": "number"
+   },
+   {
+    "key": "col4",
+    "sourceRelationId": "base",
+    "sourceField": "col4",
+    "label": "Cột 4",
+    "type": "number"
+   },
+   {
+    "key": "col5",
+    "sourceRelationId": "base",
+    "sourceField": "col5",
+    "label": "Cột 5",
+    "type": "number"
+   },
+   {
+    "key": "col6",
+    "sourceRelationId": "base",
+    "sourceField": "col6",
+    "label": "Cột 6",
+    "type": "number"
+   },
+   {
+    "key": "col7",
+    "sourceRelationId": "base",
+    "sourceField": "col7",
+    "label": "Cột 7",
+    "type": "number"
+   },
+   {
+    "key": "col8",
+    "sourceRelationId": "base",
+    "sourceField": "col8",
+    "label": "Cột 8",
+    "type": "number"
+   },
+   {
+    "key": "col9",
+    "sourceRelationId": "base",
+    "sourceField": "col9",
+    "label": "Cột 9",
+    "type": "number"
+   },
+   {
+    "key": "col10",
+    "sourceRelationId": "base",
+    "sourceField": "col10",
+    "label": "Cột 10",
+    "type": "number"
+   },
+   {
+    "key": "col11",
+    "sourceRelationId": "base",
+    "sourceField": "col11",
+    "label": "Cột 11",
+    "type": "number"
+   },
+   {
+    "key": "col12",
+    "sourceRelationId": "base",
+    "sourceField": "col12",
+    "label": "Cột 12",
+    "type": "number"
+   },
+   {
+    "key": "col13",
+    "sourceRelationId": "base",
+    "sourceField": "col13",
+    "label": "Cột 13",
+    "type": "number"
+   },
+   {
+    "key": "col14",
+    "sourceRelationId": "base",
+    "sourceField": "col14",
+    "label": "Cột 14",
+    "type": "number"
+   },
+   {
+    "key": "col15",
+    "sourceRelationId": "base",
+    "sourceField": "col15",
+    "label": "Cột 15",
+    "type": "number"
+   },
+   {
+    "key": "col16",
+    "sourceRelationId": "base",
+    "sourceField": "col16",
+    "label": "Cột 16",
+    "type": "number"
+   },
+   {
+    "key": "col17",
+    "sourceRelationId": "base",
+    "sourceField": "col17",
+    "label": "Cột 17",
+    "type": "number"
+   },
+   {
+    "key": "col18",
+    "sourceRelationId": "base",
+    "sourceField": "col18",
+    "label": "Cột 18",
+    "type": "text"
+   },
+   {
+    "key": "col19",
+    "sourceRelationId": "base",
+    "sourceField": "col19",
+    "label": "Cột 19",
+    "type": "number"
+   },
+   {
+    "key": "col20",
+    "sourceRelationId": "base",
+    "sourceField": "col20",
+    "label": "Cột 20",
+    "type": "number"
+   },
+   {
+    "key": "col21",
+    "sourceRelationId": "base",
+    "sourceField": "col21",
+    "label": "Cột 21",
+    "type": "number"
+   },
+   {
+    "key": "col22",
+    "sourceRelationId": "base",
+    "sourceField": "col22",
+    "label": "Cột 22",
+    "type": "number"
+   },
+   {
+    "key": "col23",
+    "sourceRelationId": "base",
+    "sourceField": "col23",
+    "label": "Cột 23",
+    "type": "number"
+   },
+   {
+    "key": "col24",
+    "sourceRelationId": "base",
+    "sourceField": "col24",
+    "label": "Cột 24",
+    "type": "number"
+   },
+   {
+    "key": "col25",
+    "sourceRelationId": "base",
+    "sourceField": "col25",
+    "label": "Cột 25",
+    "type": "number"
+   },
+   {
+    "key": "m_op_id",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "m_op_c_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_op",
+    "label": "Mã công đoạn",
+    "type": "lookup"
+   },
+   {
+    "key": "m_op_n_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "n_op",
+    "label": "Tên công đoạn",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_location",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_location",
+    "label": "Vị trí hiện tại",
+    "type": "text"
+   },
+   {
+    "key": "m_op_f_out_yn",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "f_out_yn",
+    "label": "Xuất kho",
+    "type": "bool"
+   },
+   {
+    "key": "m_op_c_prod_loc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_prod_loc",
+    "label": "Vị trí sản xuất",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_out_loc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_out_loc",
+    "label": "Vị trí xuất",
+    "type": "text"
+   },
+   {
+    "key": "m_op_c_line",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "c_line",
+    "label": "Dây chuyền",
+    "type": "text"
+   },
+   {
+    "key": "m_op_org",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "org",
+    "label": "Tổ chức",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute3",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute3",
+    "label": "Thuộc tính 3",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute4",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute4",
+    "label": "Thuộc tính 4",
+    "type": "text"
+   },
+   {
+    "key": "m_op_attribute5",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "attribute5",
+    "label": "Thuộc tính 5",
+    "type": "text"
+   },
+   {
+    "key": "m_op_department",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "department",
+    "label": "Bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "m_op_stt",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "integer"
+   },
+   {
+    "key": "m_op_active",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "bool"
+   },
+   {
+    "key": "m_op_mathaythe",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "mathaythe",
+    "label": "Mã thay thế",
+    "type": "text"
+   },
+   {
+    "key": "m_op_p_op",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "p_op",
+    "label": "Công đoạn trước",
+    "type": "text"
+   },
+   {
+    "key": "m_op_matonhom",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "matonhom",
+    "label": "Mã tổ nhóm",
+    "type": "text"
+   },
+   {
+    "key": "m_op_yeucau_chatluong",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "yeucau_chatluong",
+    "label": "Yêu cầu chất lượng",
+    "type": "longtext"
+   },
+   {
+    "key": "m_op_id_maymoc",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "id_maymoc",
+    "label": "Máy móc",
+    "type": "lookup"
+   },
+   {
+    "key": "m_op_yeucau_kythuat",
+    "sourceRelationId": "r_m_op",
+    "sourceField": "yeucau_kythuat",
+    "label": "Yêu cầu kỹ thuật",
+    "type": "longtext"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

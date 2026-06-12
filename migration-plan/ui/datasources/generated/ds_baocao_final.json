@@ -1,0 +1,128 @@
+{
+ "name": "ds_baocao_final",
+ "label": "Báo cáo cuối (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOCAO_FINAL_BAOCAOCHATLUONG"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+  "relations": [],
+  "fields": [
+   {
+    "key": "report_id",
+    "sourceRelationId": "base",
+    "sourceField": "report_id",
+    "label": "Mã báo cáo",
+    "type": "text"
+   },
+   {
+    "key": "khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "khachhang",
+    "label": "Khách hàng",
+    "type": "text"
+   },
+   {
+    "key": "hehang",
+    "sourceRelationId": "base",
+    "sourceField": "hehang",
+    "label": "Hệ hàng",
+    "type": "text"
+   },
+   {
+    "key": "ngaykiemtra",
+    "sourceRelationId": "base",
+    "sourceField": "ngaykiemtra",
+    "label": "Ngày kiểm tra",
+    "type": "date"
+   },
+   {
+    "key": "po_khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "po_khachhang",
+    "label": "PO khách hàng",
+    "type": "text"
+   },
+   {
+    "key": "madonhang",
+    "sourceRelationId": "base",
+    "sourceField": "madonhang",
+    "label": "Mã đơn hàng",
+    "type": "text"
+   },
+   {
+    "key": "qc_khachhang",
+    "sourceRelationId": "base",
+    "sourceField": "qc_khachhang",
+    "label": "QC khách hàng",
+    "type": "text"
+   },
+   {
+    "key": "ketluan",
+    "sourceRelationId": "base",
+    "sourceField": "ketluan",
+    "label": "Kết luận",
+    "type": "text"
+   },
+   {
+    "key": "nguoitao",
+    "sourceRelationId": "base",
+    "sourceField": "nguoitao",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoisua",
+    "sourceRelationId": "base",
+    "sourceField": "nguoisua",
+    "label": "Người sửa",
+    "type": "text"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "dexuat",
+    "sourceRelationId": "base",
+    "sourceField": "dexuat",
+    "label": "Đề xuất",
+    "type": "text"
+   },
+   {
+    "key": "reftype",
+    "sourceRelationId": "base",
+    "sourceField": "reftype",
+    "label": "Loại tham chiếu",
+    "type": "number"
+   },
+   {
+    "key": "nguoiduyet",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiduyet",
+    "label": "Người duyệt",
+    "type": "text"
+   },
+   {
+    "key": "ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "ngayduyet",
+    "label": "Ngày duyệt",
+    "type": "datetime"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

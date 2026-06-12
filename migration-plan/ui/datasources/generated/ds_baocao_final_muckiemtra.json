@@ -1,0 +1,124 @@
+{
+ "name": "ds_baocao_final_muckiemtra",
+ "label": "Báo cáo múc kiểm tra (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "fc2c58f7-98bf-40f7-9af8-91b840e028b2",
+  "relations": [
+   {
+    "id": "r_baocao_final_hinhanh",
+    "alias": "baocao_final_hinhanh",
+    "fromRelationId": null,
+    "fromField": "item_id",
+    "toField": "item_id",
+    "targetEntityId": "92b11688-95ed-4f8d-9f92-854731e41000",
+    "joinKind": "left"
+   }
+  ],
+  "fields": [
+   {
+    "key": "item_id",
+    "sourceRelationId": "base",
+    "sourceField": "item_id",
+    "label": "item_id",
+    "type": "text"
+   },
+   {
+    "key": "report_id",
+    "sourceRelationId": "base",
+    "sourceField": "report_id",
+    "label": "report_id",
+    "type": "text"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "number"
+   },
+   {
+    "key": "diengiai",
+    "sourceRelationId": "base",
+    "sourceField": "diengiai",
+    "label": "Diễn giải",
+    "type": "text"
+   },
+   {
+    "key": "soluong_kiemtra",
+    "sourceRelationId": "base",
+    "sourceField": "soluong_kiemtra",
+    "label": "Số lượng kiểm tra",
+    "type": "number"
+   },
+   {
+    "key": "danhgia",
+    "sourceRelationId": "base",
+    "sourceField": "danhgia",
+    "label": "Đánh giá",
+    "type": "text"
+   },
+   {
+    "key": "hanhdong",
+    "sourceRelationId": "base",
+    "sourceField": "hanhdong",
+    "label": "Hành động",
+    "type": "text"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "text"
+   },
+   {
+    "key": "tensp",
+    "sourceRelationId": "base",
+    "sourceField": "tensp",
+    "label": "Tên sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "baocao_final_hinhanh_image_id",
+    "sourceRelationId": "r_baocao_final_hinhanh",
+    "sourceField": "image_id",
+    "label": "ID hình ảnh",
+    "type": "number"
+   },
+   {
+    "key": "baocao_final_hinhanh_item_id",
+    "sourceRelationId": "r_baocao_final_hinhanh",
+    "sourceField": "item_id",
+    "label": "ID mục",
+    "type": "text"
+   },
+   {
+    "key": "baocao_final_hinhanh_image_path",
+    "sourceRelationId": "r_baocao_final_hinhanh",
+    "sourceField": "image_path",
+    "label": "Đường dẫn hình ảnh",
+    "type": "text"
+   },
+   {
+    "key": "baocao_final_hinhanh_image_name",
+    "sourceRelationId": "r_baocao_final_hinhanh",
+    "sourceField": "image_name",
+    "label": "Tên hình ảnh",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

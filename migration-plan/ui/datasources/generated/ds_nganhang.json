@@ -1,0 +1,114 @@
+{
+ "name": "ds_nganhang",
+ "label": "Ngân hàng (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_NGANHANG_GETDEFAULT"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "name",
+    "sourceRelationId": "base",
+    "sourceField": "name",
+    "label": "Tên ngân hàng",
+    "type": "text"
+   },
+   {
+    "key": "abbr_name",
+    "sourceRelationId": "base",
+    "sourceField": "abbr_name",
+    "label": "Tên viết tắt",
+    "type": "text"
+   },
+   {
+    "key": "branch",
+    "sourceRelationId": "base",
+    "sourceField": "branch",
+    "label": "Chi nhánh",
+    "type": "text"
+   },
+   {
+    "key": "address",
+    "sourceRelationId": "base",
+    "sourceField": "address",
+    "label": "Địa chỉ",
+    "type": "text"
+   },
+   {
+    "key": "swift",
+    "sourceRelationId": "base",
+    "sourceField": "swift",
+    "label": "Mã SWIFT",
+    "type": "text"
+   },
+   {
+    "key": "create_by",
+    "sourceRelationId": "base",
+    "sourceField": "create_by",
+    "label": "Người tạo",
+    "type": "text"
+   },
+   {
+    "key": "create_date",
+    "sourceRelationId": "base",
+    "sourceField": "create_date",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "update_by",
+    "sourceRelationId": "base",
+    "sourceField": "update_by",
+    "label": "Người cập nhật",
+    "type": "text"
+   },
+   {
+    "key": "update_date",
+    "sourceRelationId": "base",
+    "sourceField": "update_date",
+    "label": "Ngày cập nhật",
+    "type": "datetime"
+   },
+   {
+    "key": "isdefault",
+    "sourceRelationId": "base",
+    "sourceField": "isdefault",
+    "label": "Mặc định",
+    "type": "bool"
+   },
+   {
+    "key": "acc_name",
+    "sourceRelationId": "base",
+    "sourceField": "acc_name",
+    "label": "Tên tài khoản",
+    "type": "text"
+   },
+   {
+    "key": "acc_address",
+    "sourceRelationId": "base",
+    "sourceField": "acc_address",
+    "label": "Địa chỉ tài khoản",
+    "type": "text"
+   },
+   {
+    "key": "acc_number",
+    "sourceRelationId": "base",
+    "sourceField": "acc_number",
+    "label": "Số tài khoản",
+    "type": "text"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

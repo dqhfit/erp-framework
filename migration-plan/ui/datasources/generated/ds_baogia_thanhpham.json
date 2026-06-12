@@ -1,0 +1,107 @@
+{
+ "name": "ds_baogia_thanhpham",
+ "label": "Báo Giá Thành Phẩm (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_BAOGIA_THANHPHAM_GET2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "eb92cd50-73f0-4bfb-b558-170433f4f0ca",
+  "relations": [],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "masp",
+    "sourceRelationId": "base",
+    "sourceField": "masp",
+    "label": "Mã sản phẩm",
+    "type": "text"
+   },
+   {
+    "key": "tenchiphi",
+    "sourceRelationId": "base",
+    "sourceField": "tenchiphi",
+    "label": "Tên chi phí",
+    "type": "text"
+   },
+   {
+    "key": "dongia",
+    "sourceRelationId": "base",
+    "sourceField": "dongia",
+    "label": "Đơn giá",
+    "type": "currency"
+   },
+   {
+    "key": "soluong",
+    "sourceRelationId": "base",
+    "sourceField": "soluong",
+    "label": "Số lượng",
+    "type": "number"
+   },
+   {
+    "key": "tigia",
+    "sourceRelationId": "base",
+    "sourceField": "tigia",
+    "label": "Tỉ giá",
+    "type": "currency"
+   },
+   {
+    "key": "thanhtien",
+    "sourceRelationId": "base",
+    "sourceField": "thanhtien",
+    "label": "Thành tiền",
+    "type": "currency"
+   },
+   {
+    "key": "phantram",
+    "sourceRelationId": "base",
+    "sourceField": "phantram",
+    "label": "Phần trăm",
+    "type": "text"
+   },
+   {
+    "key": "daxem",
+    "sourceRelationId": "base",
+    "sourceField": "daxem",
+    "label": "Đã xem",
+    "type": "bool"
+   },
+   {
+    "key": "nhom",
+    "sourceRelationId": "base",
+    "sourceField": "nhom",
+    "label": "Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "baogiaid",
+    "sourceRelationId": "base",
+    "sourceField": "baogiaid",
+    "label": "Mã báo giá",
+    "type": "text"
+   },
+   {
+    "key": "revision",
+    "sourceRelationId": "base",
+    "sourceField": "revision",
+    "label": "Lần sửa đổi",
+    "type": "integer"
+   },
+   {
+    "key": "ghichu",
+    "sourceRelationId": "base",
+    "sourceField": "ghichu",
+    "label": "Ghi chú",
+    "type": "longtext"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}

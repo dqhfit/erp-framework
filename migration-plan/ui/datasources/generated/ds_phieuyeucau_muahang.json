@@ -1,0 +1,975 @@
+{
+ "name": "ds_phieuyeucau_muahang",
+ "label": "Phiếu yêu cầu mua hàng (joined)",
+ "icon": "Database",
+ "_procs": [
+  "TR_PHIEUYEUCAU_MUAHANG_GETBYNUMBER2"
+ ],
+ "_warnings": [],
+ "config": {
+  "baseEntityId": "df43f687-497b-4d22-9b92-c521324bb7d4",
+  "relations": [
+   {
+    "id": "r_user",
+    "alias": "user",
+    "fromRelationId": null,
+    "fromField": "nguoiyeucau",
+    "toField": "username",
+    "targetEntityId": "9b219a74-4e96-4bea-a8a9-b4e18924af7b",
+    "joinKind": "left"
+   },
+   {
+    "id": "r_phieuyeucau_muahang_chitiet",
+    "alias": "phieuyeucau_muahang_chitiet",
+    "fromRelationId": null,
+    "fromField": "id",
+    "toField": "dexuat_id",
+    "targetEntityId": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+    "joinKind": "inner"
+   },
+   {
+    "id": "r_material",
+    "alias": "material",
+    "fromRelationId": "r_phieuyeucau_muahang_chitiet",
+    "fromField": "mact",
+    "toField": "mavt",
+    "targetEntityId": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "joinKind": "inner"
+   }
+  ],
+  "fields": [
+   {
+    "key": "id",
+    "sourceRelationId": "base",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "ngaythang",
+    "sourceRelationId": "base",
+    "sourceField": "ngaythang",
+    "label": "Ngày tháng",
+    "type": "date"
+   },
+   {
+    "key": "bophan",
+    "sourceRelationId": "base",
+    "sourceField": "bophan",
+    "label": "Bộ phận",
+    "type": "text"
+   },
+   {
+    "key": "nguoiyeucau",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiyeucau",
+    "label": "Người yêu cầu",
+    "type": "text"
+   },
+   {
+    "key": "noidung",
+    "sourceRelationId": "base",
+    "sourceField": "noidung",
+    "label": "Nội dung",
+    "type": "text"
+   },
+   {
+    "key": "loaidexuat",
+    "sourceRelationId": "base",
+    "sourceField": "loaidexuat",
+    "label": "Loại đề xuất",
+    "type": "text"
+   },
+   {
+    "key": "issend",
+    "sourceRelationId": "base",
+    "sourceField": "issend",
+    "label": "Đã gửi",
+    "type": "boolean"
+   },
+   {
+    "key": "nguoiduyet",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiduyet",
+    "label": "Người duyệt",
+    "type": "text"
+   },
+   {
+    "key": "ngayduyet",
+    "sourceRelationId": "base",
+    "sourceField": "ngayduyet",
+    "label": "Ngày duyệt",
+    "type": "datetime"
+   },
+   {
+    "key": "nguoiky",
+    "sourceRelationId": "base",
+    "sourceField": "nguoiky",
+    "label": "Người ký",
+    "type": "text"
+   },
+   {
+    "key": "ngayky",
+    "sourceRelationId": "base",
+    "sourceField": "ngayky",
+    "label": "Ngày ký",
+    "type": "datetime"
+   },
+   {
+    "key": "ngaytao",
+    "sourceRelationId": "base",
+    "sourceField": "ngaytao",
+    "label": "Ngày tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "ngaysua",
+    "sourceRelationId": "base",
+    "sourceField": "ngaysua",
+    "label": "Ngày sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "iscancel",
+    "sourceRelationId": "base",
+    "sourceField": "iscancel",
+    "label": "Đã hủy",
+    "type": "boolean"
+   },
+   {
+    "key": "lydohuy",
+    "sourceRelationId": "base",
+    "sourceField": "lydohuy",
+    "label": "Lý do hủy",
+    "type": "text"
+   },
+   {
+    "key": "active",
+    "sourceRelationId": "base",
+    "sourceField": "active",
+    "label": "Hoạt động",
+    "type": "boolean"
+   },
+   {
+    "key": "messageid",
+    "sourceRelationId": "base",
+    "sourceField": "messageid",
+    "label": "Mã tin nhắn",
+    "type": "text"
+   },
+   {
+    "key": "sophieu",
+    "sourceRelationId": "base",
+    "sourceField": "sophieu",
+    "label": "Số phiếu",
+    "type": "text"
+   },
+   {
+    "key": "stt",
+    "sourceRelationId": "base",
+    "sourceField": "stt",
+    "label": "Số thứ tự",
+    "type": "number"
+   },
+   {
+    "key": "mucdich",
+    "sourceRelationId": "base",
+    "sourceField": "mucdich",
+    "label": "Mục đích",
+    "type": "text"
+   },
+   {
+    "key": "ngaycan",
+    "sourceRelationId": "base",
+    "sourceField": "ngaycan",
+    "label": "Ngày cần",
+    "type": "date"
+   },
+   {
+    "key": "uutien",
+    "sourceRelationId": "base",
+    "sourceField": "uutien",
+    "label": "Ưu tiên",
+    "type": "text"
+   },
+   {
+    "key": "user_userid",
+    "sourceRelationId": "r_user",
+    "sourceField": "userid",
+    "label": "ID Người Dùng",
+    "type": "number"
+   },
+   {
+    "key": "user_employeecode",
+    "sourceRelationId": "r_user",
+    "sourceField": "employeecode",
+    "label": "Mã Nhân Viên",
+    "type": "text"
+   },
+   {
+    "key": "user_username",
+    "sourceRelationId": "r_user",
+    "sourceField": "username",
+    "label": "Tên Đăng Nhập",
+    "type": "text"
+   },
+   {
+    "key": "user_fullname",
+    "sourceRelationId": "r_user",
+    "sourceField": "fullname",
+    "label": "Họ Và Tên",
+    "type": "text"
+   },
+   {
+    "key": "user_password",
+    "sourceRelationId": "r_user",
+    "sourceField": "password",
+    "label": "Mật Khẩu",
+    "type": "text"
+   },
+   {
+    "key": "user_email",
+    "sourceRelationId": "r_user",
+    "sourceField": "email",
+    "label": "Email",
+    "type": "email"
+   },
+   {
+    "key": "user_group_id",
+    "sourceRelationId": "r_user",
+    "sourceField": "group_id",
+    "label": "Group_ID",
+    "type": "text"
+   },
+   {
+    "key": "user_departmentcode",
+    "sourceRelationId": "r_user",
+    "sourceField": "departmentcode",
+    "label": "Mã Phòng Ban",
+    "type": "text"
+   },
+   {
+    "key": "user_position",
+    "sourceRelationId": "r_user",
+    "sourceField": "position",
+    "label": "Chức Vụ",
+    "type": "text"
+   },
+   {
+    "key": "user_managerid",
+    "sourceRelationId": "r_user",
+    "sourceField": "managerid",
+    "label": "ManagerID",
+    "type": "text"
+   },
+   {
+    "key": "user_chuky",
+    "sourceRelationId": "r_user",
+    "sourceField": "chuky",
+    "label": "Chữ Ký",
+    "type": "text"
+   },
+   {
+    "key": "user_active",
+    "sourceRelationId": "r_user",
+    "sourceField": "active",
+    "label": "Đang Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "user_createby",
+    "sourceRelationId": "r_user",
+    "sourceField": "createby",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "user_createdate",
+    "sourceRelationId": "r_user",
+    "sourceField": "createdate",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "user_board",
+    "sourceRelationId": "r_user",
+    "sourceField": "board",
+    "label": "Ban Giám Đốc",
+    "type": "bool"
+   },
+   {
+    "key": "user_customer_user",
+    "sourceRelationId": "r_user",
+    "sourceField": "customer_user",
+    "label": "Tài Khoản Khách Hàng",
+    "type": "bool"
+   },
+   {
+    "key": "user_token",
+    "sourceRelationId": "r_user",
+    "sourceField": "token",
+    "label": "Mã Token",
+    "type": "text"
+   },
+   {
+    "key": "user_bophan",
+    "sourceRelationId": "r_user",
+    "sourceField": "bophan",
+    "label": "Bộ Phận",
+    "type": "text"
+   },
+   {
+    "key": "user_nhomdanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nhomdanhgia",
+    "label": "Nhóm Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_admintieuchuan",
+    "sourceRelationId": "r_user",
+    "sourceField": "admintieuchuan",
+    "label": "Quản Trị Tiêu Chuẩn",
+    "type": "bool"
+   },
+   {
+    "key": "user_adminhangloi",
+    "sourceRelationId": "r_user",
+    "sourceField": "adminhangloi",
+    "label": "Quản Trị Hàng Lỗi",
+    "type": "bool"
+   },
+   {
+    "key": "user_nguoidanhgia",
+    "sourceRelationId": "r_user",
+    "sourceField": "nguoidanhgia",
+    "label": "Người Đánh Giá",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtoken",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtoken",
+    "label": "Mã Làm Mới Token",
+    "type": "text"
+   },
+   {
+    "key": "user_refreshtokenexpirytime",
+    "sourceRelationId": "r_user",
+    "sourceField": "refreshtokenexpirytime",
+    "label": "Thời Hạn Token Làm Mới",
+    "type": "datetime"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_id",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "id",
+    "label": "id",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_dexuat_id",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "dexuat_id",
+    "label": "dexuat_id",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_mact",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "mact",
+    "label": "Mã Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_mota",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "mota",
+    "label": "Mô Tả",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_quycach",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "quycach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_mausac",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_dvt",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_soluong",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "soluong",
+    "label": "Số Lượng",
+    "type": "number"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_ghichu",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_ngaytao",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "ngaytao",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_ngaysua",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "ngaysua",
+    "label": "Ngày Sửa",
+    "type": "datetime"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_active",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "active",
+    "label": "Hoạt Động",
+    "type": "bool"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_tinhchiphi",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "tinhchiphi",
+    "label": "Tính Chi Phí",
+    "type": "bool"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_idmaymoc",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "idmaymoc",
+    "label": "ID Máy Móc",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_id_phieuyeucau_chitiet",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "id_phieuyeucau_chitiet",
+    "label": "ID Phiếu Yêu Cầu Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_iscancel",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "iscancel",
+    "label": "Đã Hủy",
+    "type": "bool"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_cumchitiet",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_cumchitiet",
+    "label": "GVA - Cụm Chi Tiết",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_stt",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_stt",
+    "label": "GVA - Số Thứ Tự",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_nguyenlieu",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_nguyenlieu",
+    "label": "GVA - Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_dayy",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_dayy",
+    "label": "GVA - Dày",
+    "type": "number"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_rong",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_rong",
+    "label": "GVA - Rộng",
+    "type": "number"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_dai",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_dai",
+    "label": "GVA - Dài",
+    "type": "number"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_gva_masp",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "gva_masp",
+    "label": "GVA - Mã Sản Phẩm",
+    "type": "text"
+   },
+   {
+    "key": "phieuyeucau_muahang_chitiet_donhang",
+    "sourceRelationId": "r_phieuyeucau_muahang_chitiet",
+    "sourceField": "donhang",
+    "label": "Đơn Hàng",
+    "type": "text"
+   },
+   {
+    "key": "material_id",
+    "sourceRelationId": "r_material",
+    "sourceField": "id",
+    "label": "id",
+    "type": "number"
+   },
+   {
+    "key": "material_idxuong",
+    "sourceRelationId": "r_material",
+    "sourceField": "idxuong",
+    "label": "Xưởng",
+    "type": "lookup"
+   },
+   {
+    "key": "material_mavt",
+    "sourceRelationId": "r_material",
+    "sourceField": "mavt",
+    "label": "Mã Vật Tư",
+    "type": "lookup"
+   },
+   {
+    "key": "material_tenvt",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenvt",
+    "label": "Tên Vật Tư",
+    "type": "text"
+   },
+   {
+    "key": "material_tenvt_en",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenvt_en",
+    "label": "Tên Vật Tư (Tiếng Anh)",
+    "type": "text"
+   },
+   {
+    "key": "material_mota",
+    "sourceRelationId": "r_material",
+    "sourceField": "mota",
+    "label": "Mô Tả",
+    "type": "text"
+   },
+   {
+    "key": "material_quycach",
+    "sourceRelationId": "r_material",
+    "sourceField": "quycach",
+    "label": "Quy Cách",
+    "type": "text"
+   },
+   {
+    "key": "material_dayy",
+    "sourceRelationId": "r_material",
+    "sourceField": "dayy",
+    "label": "Dày",
+    "type": "text"
+   },
+   {
+    "key": "material_rong",
+    "sourceRelationId": "r_material",
+    "sourceField": "rong",
+    "label": "Rộng",
+    "type": "text"
+   },
+   {
+    "key": "material_dai",
+    "sourceRelationId": "r_material",
+    "sourceField": "dai",
+    "label": "Dài",
+    "type": "text"
+   },
+   {
+    "key": "material_cao",
+    "sourceRelationId": "r_material",
+    "sourceField": "cao",
+    "label": "Cao",
+    "type": "text"
+   },
+   {
+    "key": "material_dacdiem",
+    "sourceRelationId": "r_material",
+    "sourceField": "dacdiem",
+    "label": "Đặc Điểm",
+    "type": "text"
+   },
+   {
+    "key": "material_mausac",
+    "sourceRelationId": "r_material",
+    "sourceField": "mausac",
+    "label": "Màu Sắc",
+    "type": "text"
+   },
+   {
+    "key": "material_dvt",
+    "sourceRelationId": "r_material",
+    "sourceField": "dvt",
+    "label": "Đơn Vị Tính",
+    "type": "text"
+   },
+   {
+    "key": "material_soluong1kg",
+    "sourceRelationId": "r_material",
+    "sourceField": "soluong1kg",
+    "label": "Số Lượng 1 Kg",
+    "type": "number"
+   },
+   {
+    "key": "material_nguyenlieu",
+    "sourceRelationId": "r_material",
+    "sourceField": "nguyenlieu",
+    "label": "Nguyên Liệu",
+    "type": "text"
+   },
+   {
+    "key": "material_nhom",
+    "sourceRelationId": "r_material",
+    "sourceField": "nhom",
+    "label": "Nhóm",
+    "type": "text"
+   },
+   {
+    "key": "material_mancc",
+    "sourceRelationId": "r_material",
+    "sourceField": "mancc",
+    "label": "Mã Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "material_tenncc",
+    "sourceRelationId": "r_material",
+    "sourceField": "tenncc",
+    "label": "Tên Nhà Cung Cấp",
+    "type": "text"
+   },
+   {
+    "key": "material_dongia",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia",
+    "label": "Đơn Giá",
+    "type": "currency"
+   },
+   {
+    "key": "material_dongia_goc",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia_goc",
+    "label": "Đơn Giá Gốc",
+    "type": "currency"
+   },
+   {
+    "key": "material_dongia_ban",
+    "sourceRelationId": "r_material",
+    "sourceField": "dongia_ban",
+    "label": "Đơn Giá Bán",
+    "type": "currency"
+   },
+   {
+    "key": "material_loaitien",
+    "sourceRelationId": "r_material",
+    "sourceField": "loaitien",
+    "label": "Loại Tiền",
+    "type": "text"
+   },
+   {
+    "key": "material_hinhanh",
+    "sourceRelationId": "r_material",
+    "sourceField": "hinhanh",
+    "label": "Hình Ảnh",
+    "type": "image"
+   },
+   {
+    "key": "material_hinhanh1",
+    "sourceRelationId": "r_material",
+    "sourceField": "hinhanh1",
+    "label": "Hình Ảnh 2",
+    "type": "image"
+   },
+   {
+    "key": "material_ghichu",
+    "sourceRelationId": "r_material",
+    "sourceField": "ghichu",
+    "label": "Ghi Chú",
+    "type": "longtext"
+   },
+   {
+    "key": "material_kho",
+    "sourceRelationId": "r_material",
+    "sourceField": "kho",
+    "label": "Kho",
+    "type": "text"
+   },
+   {
+    "key": "material_dobuc",
+    "sourceRelationId": "r_material",
+    "sourceField": "dobuc",
+    "label": "Độ Bức",
+    "type": "text"
+   },
+   {
+    "key": "material_solop",
+    "sourceRelationId": "r_material",
+    "sourceField": "solop",
+    "label": "Số Lớp",
+    "type": "text"
+   },
+   {
+    "key": "material_seq7",
+    "sourceRelationId": "r_material",
+    "sourceField": "seq7",
+    "label": "seq7",
+    "type": "text"
+   },
+   {
+    "key": "material_seg8",
+    "sourceRelationId": "r_material",
+    "sourceField": "seg8",
+    "label": "seg8",
+    "type": "text"
+   },
+   {
+    "key": "material_seg9",
+    "sourceRelationId": "r_material",
+    "sourceField": "seg9",
+    "label": "seg9",
+    "type": "text"
+   },
+   {
+    "key": "material_seq10",
+    "sourceRelationId": "r_material",
+    "sourceField": "seq10",
+    "label": "seq10",
+    "type": "text"
+   },
+   {
+    "key": "material_xuatxu",
+    "sourceRelationId": "r_material",
+    "sourceField": "xuatxu",
+    "label": "Xuất Xứ",
+    "type": "text"
+   },
+   {
+    "key": "material_xoa",
+    "sourceRelationId": "r_material",
+    "sourceField": "xoa",
+    "label": "Xóa",
+    "type": "text"
+   },
+   {
+    "key": "material_create_by",
+    "sourceRelationId": "r_material",
+    "sourceField": "create_by",
+    "label": "Người Tạo",
+    "type": "text"
+   },
+   {
+    "key": "material_create_date",
+    "sourceRelationId": "r_material",
+    "sourceField": "create_date",
+    "label": "Ngày Tạo",
+    "type": "datetime"
+   },
+   {
+    "key": "material_update_by",
+    "sourceRelationId": "r_material",
+    "sourceField": "update_by",
+    "label": "Người Cập Nhật",
+    "type": "text"
+   },
+   {
+    "key": "material_update_date",
+    "sourceRelationId": "r_material",
+    "sourceField": "update_date",
+    "label": "Ngày Cập Nhật",
+    "type": "datetime"
+   },
+   {
+    "key": "material_van_tieuchuan",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_tieuchuan",
+    "label": "Ván Tiêu Chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "material_van_mat1",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_mat1",
+    "label": "Ván Mặt 1",
+    "type": "text"
+   },
+   {
+    "key": "material_van_mat2",
+    "sourceRelationId": "r_material",
+    "sourceField": "van_mat2",
+    "label": "Ván Mặt 2",
+    "type": "text"
+   },
+   {
+    "key": "material_duongkinhtrong",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinhtrong",
+    "label": "Đường Kính Trong",
+    "type": "number"
+   },
+   {
+    "key": "material_duongkinhngoai",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinhngoai",
+    "label": "Đường Kính Ngoài",
+    "type": "number"
+   },
+   {
+    "key": "material_heren",
+    "sourceRelationId": "r_material",
+    "sourceField": "heren",
+    "label": "He Ren",
+    "type": "text"
+   },
+   {
+    "key": "material_duongkinh",
+    "sourceRelationId": "r_material",
+    "sourceField": "duongkinh",
+    "label": "Đường Kính",
+    "type": "text"
+   },
+   {
+    "key": "material_temp_rong",
+    "sourceRelationId": "r_material",
+    "sourceField": "temp_rong",
+    "label": "Rộng Tạm",
+    "type": "text"
+   },
+   {
+    "key": "material_temp_cao",
+    "sourceRelationId": "r_material",
+    "sourceField": "temp_cao",
+    "label": "Cao Tạm",
+    "type": "text"
+   },
+   {
+    "key": "material_material_id",
+    "sourceRelationId": "r_material",
+    "sourceField": "material_id",
+    "label": "material_id",
+    "type": "number"
+   },
+   {
+    "key": "material_mavach",
+    "sourceRelationId": "r_material",
+    "sourceField": "mavach",
+    "label": "Mã Vạch",
+    "type": "text"
+   },
+   {
+    "key": "material_tieuchuan",
+    "sourceRelationId": "r_material",
+    "sourceField": "tieuchuan",
+    "label": "Tiêu Chuẩn",
+    "type": "text"
+   },
+   {
+    "key": "material_xacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "xacnhan",
+    "label": "Xác Nhận",
+    "type": "bool"
+   },
+   {
+    "key": "material_nguoixacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "nguoixacnhan",
+    "label": "Người Xác Nhận",
+    "type": "text"
+   },
+   {
+    "key": "material_ngayxacnhan",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngayxacnhan",
+    "label": "Ngày Xác Nhận",
+    "type": "datetime"
+   },
+   {
+    "key": "material_ngayhethan",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngayhethan",
+    "label": "Ngày Hết Hạn",
+    "type": "date"
+   },
+   {
+    "key": "material_thue_gtgt",
+    "sourceRelationId": "r_material",
+    "sourceField": "thue_gtgt",
+    "label": "Thuế GTGT",
+    "type": "number"
+   },
+   {
+    "key": "material_thuenhapkhau",
+    "sourceRelationId": "r_material",
+    "sourceField": "thuenhapkhau",
+    "label": "Thuế Nhập Khẩu",
+    "type": "number"
+   },
+   {
+    "key": "material_chiphi_vanchuyen",
+    "sourceRelationId": "r_material",
+    "sourceField": "chiphi_vanchuyen",
+    "label": "Chi Phí Vận Chuyển",
+    "type": "currency"
+   },
+   {
+    "key": "material_chiphikhac",
+    "sourceRelationId": "r_material",
+    "sourceField": "chiphikhac",
+    "label": "Chi Phí Khác",
+    "type": "currency"
+   },
+   {
+    "key": "material_giatri_quydoi",
+    "sourceRelationId": "r_material",
+    "sourceField": "giatri_quydoi",
+    "label": "Giá Trị Quy Đổi",
+    "type": "number"
+   },
+   {
+    "key": "material_dvt_quydoi",
+    "sourceRelationId": "r_material",
+    "sourceField": "dvt_quydoi",
+    "label": "Đơn Vị Tính Quy Đổi",
+    "type": "text"
+   },
+   {
+    "key": "material_id_xuatxu",
+    "sourceRelationId": "r_material",
+    "sourceField": "id_xuatxu",
+    "label": "id_xuatxu",
+    "type": "text"
+   },
+   {
+    "key": "material_ngaycapnhat_dongia",
+    "sourceRelationId": "r_material",
+    "sourceField": "ngaycapnhat_dongia",
+    "label": "Ngày Cập Nhật Đơn Giá",
+    "type": "date"
+   }
+  ],
+  "defaultLimit": 200
+ }
+}
