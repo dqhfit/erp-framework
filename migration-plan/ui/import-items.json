@@ -1,0 +1,5943 @@
+{
+ "items": [
+  {
+   "tableName": "dbo.hr_bophan_2",
+   "entityName": "hr_bophan_2",
+   "label": "hr_bophan_2",
+   "fields": [
+    {
+     "name": "id",
+     "label": "ID",
+     "type": "text"
+    },
+    {
+     "name": "tenbophan",
+     "label": "TENBOPHAN",
+     "type": "text"
+    },
+    {
+     "name": "tenbophan2",
+     "label": "TENBOPHAN2",
+     "type": "text"
+    },
+    {
+     "name": "khuvuc",
+     "label": "KHUVUC",
+     "type": "text"
+    },
+    {
+     "name": "calamviec",
+     "label": "CALAMVIEC",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.hr_nhanvien_2",
+   "entityName": "hr_nhanvien_2",
+   "label": "hr_nhanvien_2",
+   "fields": [
+    {
+     "name": "id",
+     "label": "ID",
+     "type": "text"
+    },
+    {
+     "name": "manv",
+     "label": "MANV",
+     "type": "text"
+    },
+    {
+     "name": "hoten",
+     "label": "HOTEN",
+     "type": "text"
+    },
+    {
+     "name": "hoten_en",
+     "label": "HOTEN_EN",
+     "type": "text"
+    },
+    {
+     "name": "ngaysinh",
+     "label": "NGAYSINH",
+     "type": "datetime"
+    },
+    {
+     "name": "ngayvaolam",
+     "label": "NGAYVAOLAM",
+     "type": "datetime"
+    },
+    {
+     "name": "danghiviec",
+     "label": "DANGHIVIEC",
+     "type": "text"
+    },
+    {
+     "name": "lydothoiviec",
+     "label": "LYDOTHOIVIEC",
+     "type": "text"
+    },
+    {
+     "name": "ngaynghiviec",
+     "label": "NGAYNGHIVIEC",
+     "type": "datetime"
+    },
+    {
+     "name": "machamcong",
+     "label": "MACHAMCONG",
+     "type": "text"
+    },
+    {
+     "name": "personid",
+     "label": "PERSONID",
+     "type": "text"
+    },
+    {
+     "name": "bophan",
+     "label": "BOPHAN",
+     "type": "text"
+    },
+    {
+     "name": "calamviec",
+     "label": "CALAMVIEC",
+     "type": "text"
+    },
+    {
+     "name": "machucvu",
+     "label": "MACHUCVU",
+     "type": "text"
+    },
+    {
+     "name": "macongty",
+     "label": "MACONGTY",
+     "type": "text"
+    },
+    {
+     "name": "ngaynopdon",
+     "label": "NGAYNOPDON",
+     "type": "date"
+    },
+    {
+     "name": "luongcoban",
+     "label": "LUONGCOBAN",
+     "type": "number"
+    },
+    {
+     "name": "hieuquacongviec",
+     "label": "HIEUQUACONGVIEC",
+     "type": "number"
+    },
+    {
+     "name": "chuyencan",
+     "label": "CHUYENCAN",
+     "type": "number"
+    },
+    {
+     "name": "phucap",
+     "label": "PHUCAP",
+     "type": "number"
+    },
+    {
+     "name": "macongdoan",
+     "label": "MACONGDOAN",
+     "type": "text"
+    },
+    {
+     "name": "tonhom",
+     "label": "TONHOM",
+     "type": "text"
+    },
+    {
+     "name": "sodienthoai",
+     "label": "SODIENTHOAI",
+     "type": "text"
+    },
+    {
+     "name": "congdoan",
+     "label": "CONGDOAN",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.pb_chitiet_phieubuhang",
+   "entityName": "pb_chitiet_phieubuhang",
+   "label": "pb_chitiet_phieubuhang",
+   "fields": [
+    {
+     "name": "id_chitiet_phieubu",
+     "label": "id_chitiet_phieubu",
+     "type": "text"
+    },
+    {
+     "name": "id_phieubu",
+     "label": "id_phieubu",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masanpham",
+     "label": "masanpham",
+     "type": "text"
+    },
+    {
+     "name": "machitiet",
+     "label": "machitiet",
+     "type": "text"
+    },
+    {
+     "name": "tenchitiet",
+     "label": "tenchitiet",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy",
+     "label": "dayy",
+     "type": "number"
+    },
+    {
+     "name": "rong",
+     "label": "rong",
+     "type": "number"
+    },
+    {
+     "name": "dai",
+     "label": "dai",
+     "type": "number"
+    },
+    {
+     "name": "soluongbu",
+     "label": "soluongbu",
+     "type": "number"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "number"
+    },
+    {
+     "name": "soluongdaxuly",
+     "label": "soluongdaxuly",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "bophantra",
+     "label": "bophantra",
+     "type": "text"
+    },
+    {
+     "name": "bophannhan",
+     "label": "bophannhan",
+     "type": "text"
+    },
+    {
+     "name": "xacnhanhoanthanh",
+     "label": "xacnhanhoanthanh",
+     "type": "boolean"
+    },
+    {
+     "name": "soluong_yeucau_dagiao",
+     "label": "soluong_yeucau_dagiao",
+     "type": "number"
+    },
+    {
+     "name": "ghichu1",
+     "label": "ghichu1",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.rst_nhap_nguyenlieu",
+   "entityName": "rst_nhap_nguyenlieu",
+   "label": "rst_nhap_nguyenlieu",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "sophieu",
+     "label": "sophieu",
+     "type": "text"
+    },
+    {
+     "name": "maddh",
+     "label": "maddh",
+     "type": "text"
+    },
+    {
+     "name": "mancc",
+     "label": "mancc",
+     "type": "text"
+    },
+    {
+     "name": "tenncc",
+     "label": "tenncc",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.sal_baogia_govan",
+   "entityName": "sal_baogia_govan",
+   "label": "sal_baogia_govan",
+   "fields": [
+    {
+     "name": "idbaogia",
+     "label": "idBaoGia",
+     "type": "text"
+    },
+    {
+     "name": "sophieu",
+     "label": "sophieu",
+     "type": "text"
+    },
+    {
+     "name": "ngaybaogia",
+     "label": "ngaybaogia",
+     "type": "date"
+    },
+    {
+     "name": "makhachhang",
+     "label": "makhachhang",
+     "type": "text"
+    },
+    {
+     "name": "tenkhachhang",
+     "label": "tenkhachhang",
+     "type": "text"
+    },
+    {
+     "name": "nguoilienhe",
+     "label": "nguoilienhe",
+     "type": "text"
+    },
+    {
+     "name": "dienthoailienhe",
+     "label": "dienthoailienhe",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.sal_baogia_govan_chitiet",
+   "entityName": "sal_baogia_govan_chitiet",
+   "label": "sal_baogia_govan_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "idbaogia",
+     "label": "idBaoGia",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "dongia",
+     "label": "dongia",
+     "type": "number"
+    },
+    {
+     "name": "dongia_m3",
+     "label": "dongia_m3",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.sr_banhang",
+   "entityName": "sr_banhang",
+   "label": "sr_banhang",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "loaichungtu",
+     "label": "loaichungtu",
+     "type": "text"
+    },
+    {
+     "name": "kemphieuxuatkho",
+     "label": "kemphieuxuatkho",
+     "type": "boolean"
+    },
+    {
+     "name": "laphoadon",
+     "label": "laphoadon",
+     "type": "boolean"
+    },
+    {
+     "name": "chuathutien",
+     "label": "chuathutien",
+     "type": "boolean"
+    },
+    {
+     "name": "thutienngay",
+     "label": "thutienngay",
+     "type": "boolean"
+    },
+    {
+     "name": "hinhthucthanhtoan",
+     "label": "hinhthucthanhtoan",
+     "type": "text"
+    },
+    {
+     "name": "ngayhachtoan",
+     "label": "ngayhachtoan",
+     "type": "datetime"
+    },
+    {
+     "name": "ngaychungtu",
+     "label": "ngaychungtu",
+     "type": "datetime"
+    },
+    {
+     "name": "sochungtu",
+     "label": "sochungtu",
+     "type": "text"
+    },
+    {
+     "name": "sohoadon",
+     "label": "sohoadon",
+     "type": "text"
+    },
+    {
+     "name": "sophieuxuat",
+     "label": "sophieuxuat",
+     "type": "text"
+    },
+    {
+     "name": "id_khachhang",
+     "label": "id_khachhang",
+     "type": "text"
+    },
+    {
+     "name": "nguoi",
+     "label": "nguoi",
+     "type": "text"
+    },
+    {
+     "name": "diachi",
+     "label": "diachi",
+     "type": "text"
+    },
+    {
+     "name": "lydonop",
+     "label": "lydonop",
+     "type": "text"
+    },
+    {
+     "name": "id_nv",
+     "label": "id_NV",
+     "type": "text"
+    },
+    {
+     "name": "kemtheo",
+     "label": "kemtheo",
+     "type": "number"
+    },
+    {
+     "name": "loaitien",
+     "label": "loaitien",
+     "type": "text"
+    },
+    {
+     "name": "tigia",
+     "label": "tigia",
+     "type": "number"
+    },
+    {
+     "name": "tongtienthanhtoan",
+     "label": "tongtienthanhtoan",
+     "type": "number"
+    },
+    {
+     "name": "tongtiendathanhtoan",
+     "label": "tongtiendathanhtoan",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "number"
+    },
+    {
+     "name": "tralai_giamtru",
+     "label": "tralai_giamtru",
+     "type": "number"
+    },
+    {
+     "name": "tralai_chitien",
+     "label": "tralai_chitien",
+     "type": "number"
+    },
+    {
+     "name": "giamgia_giamtru",
+     "label": "giamgia_giamtru",
+     "type": "number"
+    },
+    {
+     "name": "giamgia_chitien",
+     "label": "giamgia_chitien",
+     "type": "number"
+    },
+    {
+     "name": "ngaythutien",
+     "label": "ngaythutien",
+     "type": "date"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngayxoa",
+     "label": "ngayxoa",
+     "type": "datetime"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_baocao_chuyenson_chitiet",
+   "entityName": "tr_baocao_chuyenson_chitiet",
+   "label": "tr_baocao_chuyenson_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "id_baocao",
+     "label": "id_baocao",
+     "type": "text"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "songuoi",
+     "label": "songuoi",
+     "type": "number"
+    },
+    {
+     "name": "hiendien",
+     "label": "hiendien",
+     "type": "number"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "dayy",
+     "label": "dayy",
+     "type": "number"
+    },
+    {
+     "name": "rong",
+     "label": "rong",
+     "type": "number"
+    },
+    {
+     "name": "dai",
+     "label": "dai",
+     "type": "number"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "noidung_congviec",
+     "label": "noidung_congviec",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_baocao_chuyenson_hiendien",
+   "entityName": "tr_baocao_chuyenson_hiendien",
+   "label": "tr_baocao_chuyenson_hiendien",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "id_baocao",
+     "label": "id_baocao",
+     "type": "text"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "songuoi",
+     "label": "songuoi",
+     "type": "number"
+    },
+    {
+     "name": "hiendien",
+     "label": "hiendien",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_baogia_tudong_temp",
+   "entityName": "tr_baogia_tudong_temp",
+   "label": "tr_baogia_tudong_temp",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "tigia",
+     "label": "tigia",
+     "type": "number"
+    },
+    {
+     "name": "tongtien_usd",
+     "label": "tongtien_usd",
+     "type": "number"
+    },
+    {
+     "name": "username",
+     "label": "username",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_baogia3_giaphoi",
+   "entityName": "tr_baogia3_giaphoi",
+   "label": "tr_baogia3_giaphoi",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "daitc",
+     "label": "daiTC",
+     "type": "number"
+    },
+    {
+     "name": "dongia",
+     "label": "dongia",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_bieumau_friday_congdoan",
+   "entityName": "tr_bieumau_friday_congdoan",
+   "label": "tr_bieumau_friday_congdoan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "id_bieumau",
+     "label": "id_bieumau",
+     "type": "number"
+    },
+    {
+     "name": "title",
+     "label": "title",
+     "type": "text"
+    },
+    {
+     "name": "attribute1",
+     "label": "attribute1",
+     "type": "text"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_bosanpham",
+   "entityName": "tr_bosanpham",
+   "label": "tr_bosanpham",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "bosanpham",
+     "label": "bosanpham",
+     "type": "text"
+    },
+    {
+     "name": "khachhang",
+     "label": "khachhang",
+     "type": "text"
+    },
+    {
+     "name": "ngayphathanh",
+     "label": "ngayphathanh",
+     "type": "datetime"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "duongdan",
+     "label": "duongdan",
+     "type": "text"
+    },
+    {
+     "name": "mauuv",
+     "label": "mauuv",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan_chung",
+     "label": "tieuchuan_chung",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan_govan",
+     "label": "tieuchuan_govan",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan_veneer",
+     "label": "tieuchuan_veneer",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_chiphi_khauhao",
+   "entityName": "tr_chiphi_khauhao",
+   "label": "tr_chiphi_khauhao",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "tiendien",
+     "label": "tiendien",
+     "type": "number"
+    },
+    {
+     "name": "maymoc_nhaxuong",
+     "label": "maymoc_nhaxuong",
+     "type": "number"
+    },
+    {
+     "name": "suachua",
+     "label": "suachua",
+     "type": "number"
+    },
+    {
+     "name": "baohiem_taisan",
+     "label": "baohiem_taisan",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "maxuong",
+     "label": "maxuong",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_chiphi_nhancong",
+   "entityName": "tr_chiphi_nhancong",
+   "label": "tr_chiphi_nhancong",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "khuvuc",
+     "label": "khuvuc",
+     "type": "text"
+    },
+    {
+     "name": "bophan",
+     "label": "bophan",
+     "type": "text"
+    },
+    {
+     "name": "songuoi",
+     "label": "songuoi",
+     "type": "number"
+    },
+    {
+     "name": "quyluong",
+     "label": "quyluong",
+     "type": "number"
+    },
+    {
+     "name": "giocong",
+     "label": "giocong",
+     "type": "number"
+    },
+    {
+     "name": "luonghanhchanh",
+     "label": "luonghanhchanh",
+     "type": "number"
+    },
+    {
+     "name": "luongtangca_thuong",
+     "label": "luongtangca_thuong",
+     "type": "number"
+    },
+    {
+     "name": "luongtangca_chunhat",
+     "label": "luongtangca_chunhat",
+     "type": "number"
+    },
+    {
+     "name": "congkhac",
+     "label": "congkhac",
+     "type": "number"
+    },
+    {
+     "name": "tienluong",
+     "label": "tienluong",
+     "type": "number"
+    },
+    {
+     "name": "bhxh_congdoan",
+     "label": "bhxh_congdoan",
+     "type": "number"
+    },
+    {
+     "name": "phepnam",
+     "label": "phepnam",
+     "type": "number"
+    },
+    {
+     "name": "luongthang_13",
+     "label": "luongthang_13",
+     "type": "number"
+    },
+    {
+     "name": "tiencom",
+     "label": "tiencom",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_chiphi_sanxuat_sp",
+   "entityName": "tr_chiphi_sanxuat_sp",
+   "label": "tr_chiphi_sanxuat_sp",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "hangmuc_id",
+     "label": "hangmuc_id",
+     "type": "number"
+    },
+    {
+     "name": "chitiet",
+     "label": "chitiet",
+     "type": "text"
+    },
+    {
+     "name": "chiphi1",
+     "label": "chiphi1",
+     "type": "number"
+    },
+    {
+     "name": "chiphi2",
+     "label": "chiphi2",
+     "type": "number"
+    },
+    {
+     "name": "phantram",
+     "label": "phantram",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_commercial_invoice_detail",
+   "entityName": "tr_commercial_invoice_detail",
+   "label": "tr_commercial_invoice_detail",
+   "fields": [
+    {
+     "name": "detailid",
+     "label": "DetailId",
+     "type": "text"
+    },
+    {
+     "name": "commercialinvoiceid",
+     "label": "CommercialInvoiceID",
+     "type": "number"
+    },
+    {
+     "name": "mastercode",
+     "label": "MasterCode",
+     "type": "text"
+    },
+    {
+     "name": "itemnumber",
+     "label": "ItemNumber",
+     "type": "text"
+    },
+    {
+     "name": "custproductcode",
+     "label": "CustProductCode",
+     "type": "text"
+    },
+    {
+     "name": "description",
+     "label": "Description",
+     "type": "text"
+    },
+    {
+     "name": "description_vn",
+     "label": "Description_VN",
+     "type": "text"
+    },
+    {
+     "name": "cartonsize",
+     "label": "CartonSize",
+     "type": "text"
+    },
+    {
+     "name": "quantity",
+     "label": "Quantity",
+     "type": "number"
+    },
+    {
+     "name": "meas",
+     "label": "Meas",
+     "type": "number"
+    },
+    {
+     "name": "unit",
+     "label": "Unit",
+     "type": "text"
+    },
+    {
+     "name": "price",
+     "label": "Price",
+     "type": "number"
+    },
+    {
+     "name": "amount",
+     "label": "Amount",
+     "type": "number"
+    },
+    {
+     "name": "createby",
+     "label": "CreateBy",
+     "type": "text"
+    },
+    {
+     "name": "createdate",
+     "label": "CreateDate",
+     "type": "datetime"
+    },
+    {
+     "name": "updateby",
+     "label": "UpdateBy",
+     "type": "text"
+    },
+    {
+     "name": "updatedate",
+     "label": "UpdateDate",
+     "type": "datetime"
+    },
+    {
+     "name": "actived",
+     "label": "Actived",
+     "type": "boolean"
+    },
+    {
+     "name": "ordernumber",
+     "label": "OrderNumber",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_cont",
+   "entityName": "tr_cont",
+   "label": "tr_cont",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "cont_id",
+     "label": "cont_id",
+     "type": "text"
+    },
+    {
+     "name": "cont_number",
+     "label": "cont_number",
+     "type": "text"
+    },
+    {
+     "name": "cont_name",
+     "label": "cont_name",
+     "type": "text"
+    },
+    {
+     "name": "description",
+     "label": "description",
+     "type": "text"
+    },
+    {
+     "name": "seal_number",
+     "label": "seal_number",
+     "type": "text"
+    },
+    {
+     "name": "order_number",
+     "label": "order_number",
+     "type": "text"
+    },
+    {
+     "name": "cust_po",
+     "label": "cust_po",
+     "type": "text"
+    },
+    {
+     "name": "ngaycontve",
+     "label": "ngaycontve",
+     "type": "datetime"
+    },
+    {
+     "name": "ngaychatcont",
+     "label": "ngaychatcont",
+     "type": "datetime"
+    },
+    {
+     "name": "ngayxuat",
+     "label": "ngayxuat",
+     "type": "date"
+    },
+    {
+     "name": "trangthai",
+     "label": "trangthai",
+     "type": "boolean"
+    },
+    {
+     "name": "count_print",
+     "label": "count_print",
+     "type": "number"
+    },
+    {
+     "name": "remark",
+     "label": "remark",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "isfinish",
+     "label": "IsFinish",
+     "type": "boolean"
+    },
+    {
+     "name": "ispay",
+     "label": "IsPay",
+     "type": "boolean"
+    },
+    {
+     "name": "sodocont",
+     "label": "sodocont",
+     "type": "text"
+    },
+    {
+     "name": "si_id",
+     "label": "si_id",
+     "type": "text"
+    },
+    {
+     "name": "cont_targe",
+     "label": "cont_targe",
+     "type": "number"
+    },
+    {
+     "name": "cont_gross",
+     "label": "cont_Gross",
+     "type": "text"
+    },
+    {
+     "name": "cont_type",
+     "label": "cont_type",
+     "type": "text"
+    },
+    {
+     "name": "vgm_cont_owner",
+     "label": "vgm_cont_owner",
+     "type": "text"
+    },
+    {
+     "name": "perpono",
+     "label": "PerPONo",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_ctcont",
+   "entityName": "tr_ctcont",
+   "label": "tr_ctcont",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "cont_id",
+     "label": "cont_id",
+     "type": "text"
+    },
+    {
+     "name": "order_id",
+     "label": "order_id",
+     "type": "number"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "makhachhang",
+     "label": "makhachhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "masp2",
+     "label": "masp2",
+     "type": "text"
+    },
+    {
+     "name": "macont",
+     "label": "macont",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "dvt",
+     "label": "dvt",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "proformainvoice",
+     "label": "ProformaInvoice",
+     "type": "text"
+    },
+    {
+     "name": "proformainvoicedetail",
+     "label": "ProformaInvoiceDetail",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_danhsach_dexuat_process",
+   "entityName": "tr_danhsach_dexuat_process",
+   "label": "tr_danhsach_dexuat_process",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "nhom_dexuat",
+     "label": "nhom_dexuat",
+     "type": "text"
+    },
+    {
+     "name": "ma_dexuat",
+     "label": "ma_dexuat",
+     "type": "text"
+    },
+    {
+     "name": "id_xetduyet",
+     "label": "id_xetduyet",
+     "type": "number"
+    },
+    {
+     "name": "value_xetduyet",
+     "label": "value_xetduyet",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    },
+    {
+     "name": "ngay_xetduyet",
+     "label": "ngay_xetduyet",
+     "type": "datetime"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_danhsach_xetduyet_user",
+   "entityName": "tr_danhsach_xetduyet_user",
+   "label": "tr_danhsach_xetduyet_user",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "username",
+     "label": "username",
+     "type": "text"
+    },
+    {
+     "name": "id_nhom_xetduyet",
+     "label": "id_nhom_xetduyet",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_govan_soche",
+   "entityName": "tr_dinhmuc_govan_soche",
+   "label": "tr_dinhmuc_govan_soche",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "chitiet",
+     "label": "chitiet",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy_sc",
+     "label": "dayy_sc",
+     "type": "number"
+    },
+    {
+     "name": "rong_sc",
+     "label": "rong_sc",
+     "type": "number"
+    },
+    {
+     "name": "dai_sc",
+     "label": "dai_sc",
+     "type": "number"
+    },
+    {
+     "name": "soluong_sc",
+     "label": "soluong_sc",
+     "type": "number"
+    },
+    {
+     "name": "m3_sc",
+     "label": "m3_sc",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "veneer_matchinh",
+     "label": "veneer_matchinh",
+     "type": "text"
+    },
+    {
+     "name": "veneer_matphu",
+     "label": "veneer_matphu",
+     "type": "text"
+    },
+    {
+     "name": "veneer_dan_canh",
+     "label": "veneer_dan_canh",
+     "type": "text"
+    },
+    {
+     "name": "uv_matchinh",
+     "label": "uv_matchinh",
+     "type": "boolean"
+    },
+    {
+     "name": "uv_matphu",
+     "label": "uv_matphu",
+     "type": "boolean"
+    },
+    {
+     "name": "uv_canhngan",
+     "label": "uv_canhngan",
+     "type": "number"
+    },
+    {
+     "name": "uv_canhdai",
+     "label": "uv_canhdai",
+     "type": "number"
+    },
+    {
+     "name": "veneer_canhdai",
+     "label": "veneer_canhdai",
+     "type": "number"
+    },
+    {
+     "name": "veneer_canhngan",
+     "label": "veneer_canhngan",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_lock",
+   "entityName": "tr_dinhmuc_lock",
+   "label": "tr_dinhmuc_lock",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "loaidinhmuc",
+     "label": "loaidinhmuc",
+     "type": "text"
+    },
+    {
+     "name": "islock",
+     "label": "isLock",
+     "type": "boolean"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_son",
+   "entityName": "tr_dinhmuc_son",
+   "label": "tr_dinhmuc_son",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "pcode",
+     "label": "pcode",
+     "type": "text"
+    },
+    {
+     "name": "ccode",
+     "label": "ccode",
+     "type": "text"
+    },
+    {
+     "name": "c_level",
+     "label": "c_level",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "buoc",
+     "label": "buoc",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "m2",
+     "label": "m2",
+     "type": "number"
+    },
+    {
+     "name": "sl_m2",
+     "label": "sl_m2",
+     "type": "number"
+    },
+    {
+     "name": "sl_sp",
+     "label": "sl_sp",
+     "type": "number"
+    },
+    {
+     "name": "dvt",
+     "label": "dvt",
+     "type": "text"
+    },
+    {
+     "name": "nhom",
+     "label": "nhom",
+     "type": "text"
+    },
+    {
+     "name": "bophan_sudung",
+     "label": "bophan_sudung",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "sontrongsanpham",
+     "label": "sontrongsanpham",
+     "type": "boolean"
+    },
+    {
+     "name": "hoanthanh",
+     "label": "hoanthanh",
+     "type": "boolean"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "t_sort",
+     "label": "t_sort",
+     "type": "number"
+    },
+    {
+     "name": "mamau",
+     "label": "mamau",
+     "type": "text"
+    },
+    {
+     "name": "id_dinhmuc",
+     "label": "id_dinhmuc",
+     "type": "text"
+    },
+    {
+     "name": "id_buocson",
+     "label": "id_buocson",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_dinhmuc_son_theomau",
+   "entityName": "tr_dinhmuc_son_theomau",
+   "label": "tr_dinhmuc_son_theomau",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "mamau",
+     "label": "mamau",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "buoc",
+     "label": "buoc",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "ngayquytrinh",
+     "label": "ngayquytrinh",
+     "type": "date"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "t_sort",
+     "label": "t_sort",
+     "type": "number"
+    },
+    {
+     "name": "dongia",
+     "label": "dongia",
+     "type": "number"
+    },
+    {
+     "name": "thanhtien",
+     "label": "thanhtien",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_dongia_nguyenlieu_gva",
+   "entityName": "tr_dongia_nguyenlieu_gva",
+   "label": "tr_dongia_nguyenlieu_gva",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "id_nguyenlieu",
+     "label": "id_nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy",
+     "label": "dayy",
+     "type": "number"
+    },
+    {
+     "name": "dai_tu",
+     "label": "dai_tu",
+     "type": "number"
+    },
+    {
+     "name": "dai_den",
+     "label": "dai_den",
+     "type": "number"
+    },
+    {
+     "name": "dongia",
+     "label": "dongia",
+     "type": "number"
+    },
+    {
+     "name": "loaitien",
+     "label": "loaitien",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "nhancong",
+     "label": "nhancong",
+     "type": "number"
+    },
+    {
+     "name": "nhancong1",
+     "label": "nhancong1",
+     "type": "number"
+    },
+    {
+     "name": "nhancong2",
+     "label": "nhancong2",
+     "type": "number"
+    },
+    {
+     "name": "nhancong3",
+     "label": "nhancong3",
+     "type": "number"
+    },
+    {
+     "name": "nhancong4",
+     "label": "nhancong4",
+     "type": "number"
+    },
+    {
+     "name": "nhancong5",
+     "label": "nhancong5",
+     "type": "number"
+    },
+    {
+     "name": "nhancong6",
+     "label": "nhancong6",
+     "type": "number"
+    },
+    {
+     "name": "nhancong7",
+     "label": "nhancong7",
+     "type": "number"
+    },
+    {
+     "name": "nhancong8",
+     "label": "nhancong8",
+     "type": "number"
+    },
+    {
+     "name": "nhancong9",
+     "label": "nhancong9",
+     "type": "number"
+    },
+    {
+     "name": "nhancong10",
+     "label": "nhancong10",
+     "type": "number"
+    },
+    {
+     "name": "nhancong11",
+     "label": "nhancong11",
+     "type": "number"
+    },
+    {
+     "name": "nhancong12",
+     "label": "nhancong12",
+     "type": "number"
+    },
+    {
+     "name": "haohut",
+     "label": "haohut",
+     "type": "number"
+    },
+    {
+     "name": "gianhap",
+     "label": "gianhap",
+     "type": "number"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "fsc_id",
+     "label": "fsc_id",
+     "type": "number"
+    },
+    {
+     "name": "phantram_tang",
+     "label": "phantram_tang",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_email_subscriber2",
+   "entityName": "tr_email_subscriber2",
+   "label": "tr_email_subscriber2",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "username",
+     "label": "username",
+     "type": "text"
+    },
+    {
+     "name": "name",
+     "label": "name",
+     "type": "text"
+    },
+    {
+     "name": "email",
+     "label": "email",
+     "type": "text"
+    },
+    {
+     "name": "topic",
+     "label": "topic",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_giaohang_chitiet",
+   "entityName": "tr_giaohang_chitiet",
+   "label": "tr_giaohang_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "id_giaohang",
+     "label": "id_giaohang",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "dvt",
+     "label": "dvt",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_gridview_column",
+   "entityName": "tr_gridview_column",
+   "label": "tr_gridview_column",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "columnname",
+     "label": "columnName",
+     "type": "text"
+    },
+    {
+     "name": "columncaption",
+     "label": "columnCaption",
+     "type": "text"
+    },
+    {
+     "name": "formname",
+     "label": "formName",
+     "type": "text"
+    },
+    {
+     "name": "visibleindex",
+     "label": "visibleIndex",
+     "type": "number"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "mabophan",
+     "label": "mabophan",
+     "type": "text"
+    },
+    {
+     "name": "columnname_next",
+     "label": "columnName_Next",
+     "type": "text"
+    },
+    {
+     "name": "istext",
+     "label": "isText",
+     "type": "boolean"
+    },
+    {
+     "name": "ngaytruoc",
+     "label": "ngaytruoc",
+     "type": "text"
+    },
+    {
+     "name": "ngaysau",
+     "label": "ngaysau",
+     "type": "text"
+    },
+    {
+     "name": "tinhngay",
+     "label": "tinhngay",
+     "type": "boolean"
+    },
+    {
+     "name": "tinhtong",
+     "label": "tinhtong",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_hangmuc_chiphi",
+   "entityName": "tr_hangmuc_chiphi",
+   "label": "tr_hangmuc_chiphi",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "p_id",
+     "label": "p_id",
+     "type": "number"
+    },
+    {
+     "name": "hangmuc",
+     "label": "hangmuc",
+     "type": "text"
+    },
+    {
+     "name": "giatri",
+     "label": "giatri",
+     "type": "number"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_kehoach_giaohang",
+   "entityName": "tr_kehoach_giaohang",
+   "label": "tr_kehoach_giaohang",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "maddh",
+     "label": "maddh",
+     "type": "text"
+    },
+    {
+     "name": "ngaygiaohang",
+     "label": "ngaygiaohang",
+     "type": "date"
+    },
+    {
+     "name": "mancc",
+     "label": "mancc",
+     "type": "text"
+    },
+    {
+     "name": "tenncc",
+     "label": "tenncc",
+     "type": "text"
+    },
+    {
+     "name": "cbm",
+     "label": "cbm",
+     "type": "number"
+    },
+    {
+     "name": "soluong_cont",
+     "label": "soluong_cont",
+     "type": "number"
+    },
+    {
+     "name": "batdau",
+     "label": "batdau",
+     "type": "date"
+    },
+    {
+     "name": "ketthuc",
+     "label": "ketthuc",
+     "type": "date"
+    },
+    {
+     "name": "loaiddh",
+     "label": "loaiddh",
+     "type": "text"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "khachhang",
+     "label": "khachhang",
+     "type": "text"
+    },
+    {
+     "name": "trangthai",
+     "label": "trangthai",
+     "type": "number"
+    },
+    {
+     "name": "ngaycanvan",
+     "label": "ngaycanvan",
+     "type": "date"
+    },
+    {
+     "name": "ngayhoanthanh",
+     "label": "ngayhoanthanh",
+     "type": "date"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_kehoach_hangtrang",
+   "entityName": "tr_kehoach_hangtrang",
+   "label": "tr_kehoach_hangtrang",
+   "fields": [
+    {
+     "name": "id_kehoach",
+     "label": "id_kehoach",
+     "type": "number"
+    },
+    {
+     "name": "congdoan",
+     "label": "congdoan",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "soluong_donhang",
+     "label": "soluong_donhang",
+     "type": "number"
+    },
+    {
+     "name": "soluong_kehoach_chuyen",
+     "label": "soluong_kehoach_chuyen",
+     "type": "number"
+    },
+    {
+     "name": "soluong_kehoach_sanpham",
+     "label": "soluong_kehoach_sanpham",
+     "type": "number"
+    },
+    {
+     "name": "ngaybatdau_sanxuat",
+     "label": "ngaybatdau_sanxuat",
+     "type": "date"
+    },
+    {
+     "name": "ngaybatdau_kehoach",
+     "label": "ngaybatdau_kehoach",
+     "type": "date"
+    },
+    {
+     "name": "ngayketthuc_kehoach",
+     "label": "ngayketthuc_kehoach",
+     "type": "date"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "hoanthanh",
+     "label": "hoanthanh",
+     "type": "boolean"
+    },
+    {
+     "name": "xacnhan",
+     "label": "xacnhan",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_kehoach_hangtrang_chitiet",
+   "entityName": "tr_kehoach_hangtrang_chitiet",
+   "label": "tr_kehoach_hangtrang_chitiet",
+   "fields": [
+    {
+     "name": "id_chitiet",
+     "label": "id_chitiet",
+     "type": "text"
+    },
+    {
+     "name": "id_kehoach",
+     "label": "id_kehoach",
+     "type": "number"
+    },
+    {
+     "name": "congdoan",
+     "label": "congdoan",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "soluong_kehoach",
+     "label": "soluong_kehoach",
+     "type": "number"
+    },
+    {
+     "name": "xacnhan",
+     "label": "xacnhan",
+     "type": "boolean"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_kehoach_hangtrang3",
+   "entityName": "tr_kehoach_hangtrang3",
+   "label": "tr_kehoach_hangtrang3",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "donhang_sanxuat",
+     "label": "donhang_sanxuat",
+     "type": "text"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "khachhang",
+     "label": "khachhang",
+     "type": "text"
+    },
+    {
+     "name": "socont_donhang",
+     "label": "socont_donhang",
+     "type": "number"
+    },
+    {
+     "name": "ngayyeucau",
+     "label": "ngayyeucau",
+     "type": "date"
+    },
+    {
+     "name": "songayxuat",
+     "label": "songayxuat",
+     "type": "number"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "sokhoi_tinhche",
+     "label": "sokhoi_tinhche",
+     "type": "number"
+    },
+    {
+     "name": "phoi1_batdau",
+     "label": "phoi1_batdau",
+     "type": "date"
+    },
+    {
+     "name": "phoi1_ketthuc",
+     "label": "phoi1_ketthuc",
+     "type": "date"
+    },
+    {
+     "name": "phoi1_tongngaylam",
+     "label": "phoi1_tongngaylam",
+     "type": "number"
+    },
+    {
+     "name": "phoi1_sokhoi_theongay",
+     "label": "phoi1_sokhoi_theongay",
+     "type": "number"
+    },
+    {
+     "name": "phoi1_songuoi",
+     "label": "phoi1_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "phoi1_sokhoi_songuoi",
+     "label": "phoi1_sokhoi_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "phoi2_batdau",
+     "label": "phoi2_batdau",
+     "type": "date"
+    },
+    {
+     "name": "phoi2_ketthuc",
+     "label": "phoi2_ketthuc",
+     "type": "date"
+    },
+    {
+     "name": "phoi2_tongngaylam",
+     "label": "phoi2_tongngaylam",
+     "type": "number"
+    },
+    {
+     "name": "phoi2_sokhoi_theongay",
+     "label": "phoi2_sokhoi_theongay",
+     "type": "number"
+    },
+    {
+     "name": "phoi2_songuoi",
+     "label": "phoi2_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "phoi2_sokhoi_songuoi",
+     "label": "phoi2_sokhoi_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "dln_batdau",
+     "label": "dln_batdau",
+     "type": "date"
+    },
+    {
+     "name": "dln_ketthuc",
+     "label": "dln_ketthuc",
+     "type": "date"
+    },
+    {
+     "name": "dln_tongngaylam",
+     "label": "dln_tongngaylam",
+     "type": "number"
+    },
+    {
+     "name": "dln_sokhoi_theongay",
+     "label": "dln_sokhoi_theongay",
+     "type": "number"
+    },
+    {
+     "name": "dln_songuoi",
+     "label": "dln_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "dln_sokhoi_songuoi",
+     "label": "dln_sokhoi_songuoi",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "trangthai",
+     "label": "trangthai",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_khuvuc_sanxuat",
+   "entityName": "tr_khuvuc_sanxuat",
+   "label": "tr_khuvuc_sanxuat",
+   "fields": [
+    {
+     "name": "makhuvuc",
+     "label": "makhuvuc",
+     "type": "text"
+    },
+    {
+     "name": "tenkhuvuc",
+     "label": "tenkhuvuc",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    },
+    {
+     "name": "tenxuong",
+     "label": "tenxuong",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_loai_uv",
+   "entityName": "tr_loai_uv",
+   "label": "tr_loai_uv",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "loai_uv",
+     "label": "loai_uv",
+     "type": "text"
+    },
+    {
+     "name": "heso",
+     "label": "heso",
+     "type": "number"
+    },
+    {
+     "name": "dongia",
+     "label": "dongia",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_luutrinh_sanxuat",
+   "entityName": "tr_luutrinh_sanxuat",
+   "label": "tr_luutrinh_sanxuat",
+   "fields": [
+    {
+     "name": "routid",
+     "label": "RoutID",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "STT",
+     "type": "number"
+    },
+    {
+     "name": "xuong",
+     "label": "Xuong",
+     "type": "text"
+    },
+    {
+     "name": "tonhom",
+     "label": "ToNhom",
+     "type": "text"
+    },
+    {
+     "name": "may",
+     "label": "May",
+     "type": "text"
+    },
+    {
+     "name": "thongtin",
+     "label": "ThongTin",
+     "type": "text"
+    },
+    {
+     "name": "luuy",
+     "label": "LuuY",
+     "type": "text"
+    },
+    {
+     "name": "lanuv",
+     "label": "LanUV",
+     "type": "text"
+    },
+    {
+     "name": "somat",
+     "label": "SoMat",
+     "type": "number"
+    },
+    {
+     "name": "socanh",
+     "label": "SoCanh",
+     "type": "number"
+    },
+    {
+     "name": "sodau",
+     "label": "SoDau",
+     "type": "number"
+    },
+    {
+     "name": "solop",
+     "label": "SoLop",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "MaSP",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "MaCT",
+     "type": "text"
+    },
+    {
+     "name": "id_rout",
+     "label": "id_rout",
+     "type": "number"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_material_mix",
+   "entityName": "tr_material_mix",
+   "label": "tr_material_mix",
+   "fields": [
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "dvt",
+     "label": "dvt",
+     "type": "text"
+    },
+    {
+     "name": "soluong_honhop",
+     "label": "soluong_honhop",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "att1",
+     "label": "att1",
+     "type": "text"
+    },
+    {
+     "name": "att2",
+     "label": "att2",
+     "type": "text"
+    },
+    {
+     "name": "att3",
+     "label": "att3",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_muctieu_sanxuat",
+   "entityName": "tr_muctieu_sanxuat",
+   "label": "tr_muctieu_sanxuat",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "muctieu",
+     "label": "muctieu",
+     "type": "number"
+    },
+    {
+     "name": "songuoi",
+     "label": "songuoi",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "sogio",
+     "label": "sogio",
+     "type": "number"
+    },
+    {
+     "name": "heso",
+     "label": "heso",
+     "type": "number"
+    },
+    {
+     "name": "day_names",
+     "label": "day_names",
+     "type": "text"
+    },
+    {
+     "name": "rowver",
+     "label": "RowVer",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_nguoiphutrach_kythuat",
+   "entityName": "tr_nguoiphutrach_kythuat",
+   "label": "tr_nguoiphutrach_kythuat",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "khachhang",
+     "label": "khachhang",
+     "type": "text"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "nguoipt",
+     "label": "nguoiPT",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_nguyenlieu_tenkhoahoc",
+   "entityName": "tr_nguyenlieu_tenkhoahoc",
+   "label": "tr_nguyenlieu_tenkhoahoc",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "id_nguyenlieu",
+     "label": "id_nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "tenkhoahoc",
+     "label": "tenkhoahoc",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_nhap_thanhpham",
+   "entityName": "tr_nhap_thanhpham",
+   "label": "tr_nhap_thanhpham",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "madonhang_khachhang",
+     "label": "madonhang_khachhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "tensp",
+     "label": "tensp",
+     "type": "text"
+    },
+    {
+     "name": "hehang",
+     "label": "hehang",
+     "type": "text"
+    },
+    {
+     "name": "dvt",
+     "label": "dvt",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "ghichu2",
+     "label": "ghichu2",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "carton_qty",
+     "label": "CARTON_QTY",
+     "type": "number"
+    },
+    {
+     "name": "soluong_yeucau",
+     "label": "soluong_yeucau",
+     "type": "number"
+    },
+    {
+     "name": "ngaynhap",
+     "label": "NgayNhap",
+     "type": "number"
+    },
+    {
+     "name": "cardno",
+     "label": "CardNo",
+     "type": "text"
+    },
+    {
+     "name": "tonkho_id",
+     "label": "TonKho_ID",
+     "type": "text"
+    },
+    {
+     "name": "isupdated",
+     "label": "IsUpdated",
+     "type": "boolean"
+    },
+    {
+     "name": "cartonindex",
+     "label": "CartonIndex",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_nhom_nguyenlieu",
+   "entityName": "tr_nhom_nguyenlieu",
+   "label": "tr_nhom_nguyenlieu",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan",
+     "label": "tieuchuan",
+     "type": "text"
+    },
+    {
+     "name": "nhom",
+     "label": "nhom",
+     "type": "text"
+    },
+    {
+     "name": "heso_haohut",
+     "label": "heso_haohut",
+     "type": "number"
+    },
+    {
+     "name": "heso_phoi",
+     "label": "heso_phoi",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_nhom_xetduyet",
+   "entityName": "tr_nhom_xetduyet",
+   "label": "tr_nhom_xetduyet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "name",
+     "label": "name",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "isbgd",
+     "label": "isBGD",
+     "type": "boolean"
+    },
+    {
+     "name": "display",
+     "label": "display",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_order_example",
+   "entityName": "tr_order_example",
+   "label": "tr_order_example",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "order_number",
+     "label": "order_number",
+     "type": "text"
+    },
+    {
+     "name": "customer",
+     "label": "customer",
+     "type": "text"
+    },
+    {
+     "name": "order_date",
+     "label": "order_date",
+     "type": "date"
+    },
+    {
+     "name": "ship_date",
+     "label": "ship_date",
+     "type": "date"
+    },
+    {
+     "name": "etd",
+     "label": "etd",
+     "type": "date"
+    },
+    {
+     "name": "cont_date",
+     "label": "cont_date",
+     "type": "date"
+    },
+    {
+     "name": "f_cancelled",
+     "label": "f_cancelled",
+     "type": "text"
+    },
+    {
+     "name": "choduyet",
+     "label": "choduyet",
+     "type": "number"
+    },
+    {
+     "name": "islock",
+     "label": "IsLock",
+     "type": "boolean"
+    },
+    {
+     "name": "finished",
+     "label": "Finished",
+     "type": "boolean"
+    },
+    {
+     "name": "ispay",
+     "label": "IsPay",
+     "type": "boolean"
+    },
+    {
+     "name": "isexample",
+     "label": "IsExample",
+     "type": "boolean"
+    },
+    {
+     "name": "destination_port",
+     "label": "destination_port",
+     "type": "text"
+    },
+    {
+     "name": "ship_to",
+     "label": "ship_to",
+     "type": "text"
+    },
+    {
+     "name": "remark",
+     "label": "remark",
+     "type": "text"
+    },
+    {
+     "name": "payment_term",
+     "label": "payment_term",
+     "type": "text"
+    },
+    {
+     "name": "carton_marking",
+     "label": "carton_marking",
+     "type": "text"
+    },
+    {
+     "name": "cont_qty",
+     "label": "cont_qty",
+     "type": "number"
+    },
+    {
+     "name": "cust_po_number",
+     "label": "cust_po_number",
+     "type": "text"
+    },
+    {
+     "name": "range",
+     "label": "range",
+     "type": "text"
+    },
+    {
+     "name": "create_date",
+     "label": "create_date",
+     "type": "datetime"
+    },
+    {
+     "name": "create_by",
+     "label": "create_by",
+     "type": "text"
+    },
+    {
+     "name": "update_date",
+     "label": "update_date",
+     "type": "datetime"
+    },
+    {
+     "name": "update_by",
+     "label": "update_by",
+     "type": "text"
+    },
+    {
+     "name": "nguoiduyet",
+     "label": "nguoiduyet",
+     "type": "text"
+    },
+    {
+     "name": "ngayduyet",
+     "label": "ngayduyet",
+     "type": "date"
+    },
+    {
+     "name": "bangiamdoc_duyet",
+     "label": "bangiamdoc_duyet",
+     "type": "text"
+    },
+    {
+     "name": "bangiamdoc_ngayduyet",
+     "label": "bangiamdoc_ngayduyet",
+     "type": "date"
+    },
+    {
+     "name": "ngay_hangtrang",
+     "label": "ngay_hangtrang",
+     "type": "datetime"
+    },
+    {
+     "name": "ngay_son",
+     "label": "ngay_son",
+     "type": "datetime"
+    },
+    {
+     "name": "ngay_donggoi",
+     "label": "ngay_donggoi",
+     "type": "datetime"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "bemat",
+     "label": "bemat",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_order_example_detail",
+   "entityName": "tr_order_example_detail",
+   "label": "tr_order_example_detail",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "customer",
+     "label": "customer",
+     "type": "text"
+    },
+    {
+     "name": "agent",
+     "label": "agent",
+     "type": "text"
+    },
+    {
+     "name": "range",
+     "label": "range",
+     "type": "text"
+    },
+    {
+     "name": "order_number",
+     "label": "order_number",
+     "type": "text"
+    },
+    {
+     "name": "item_number",
+     "label": "item_number",
+     "type": "text"
+    },
+    {
+     "name": "cust_item_number",
+     "label": "cust_item_number",
+     "type": "text"
+    },
+    {
+     "name": "description",
+     "label": "description",
+     "type": "text"
+    },
+    {
+     "name": "color",
+     "label": "color",
+     "type": "text"
+    },
+    {
+     "name": "material",
+     "label": "material",
+     "type": "text"
+    },
+    {
+     "name": "order_qty",
+     "label": "order_qty",
+     "type": "number"
+    },
+    {
+     "name": "cbm",
+     "label": "cbm",
+     "type": "number"
+    },
+    {
+     "name": "price",
+     "label": "price",
+     "type": "number"
+    },
+    {
+     "name": "currency",
+     "label": "currency",
+     "type": "text"
+    },
+    {
+     "name": "amount",
+     "label": "amount",
+     "type": "number"
+    },
+    {
+     "name": "bill_to",
+     "label": "bill_to",
+     "type": "text"
+    },
+    {
+     "name": "ship_to",
+     "label": "ship_to",
+     "type": "text"
+    },
+    {
+     "name": "input_qty",
+     "label": "input_qty",
+     "type": "number"
+    },
+    {
+     "name": "destination_port",
+     "label": "destination_port",
+     "type": "text"
+    },
+    {
+     "name": "etd",
+     "label": "etd",
+     "type": "date"
+    },
+    {
+     "name": "ship_date",
+     "label": "ship_date",
+     "type": "date"
+    },
+    {
+     "name": "ship_qty",
+     "label": "ship_qty",
+     "type": "number"
+    },
+    {
+     "name": "order_date",
+     "label": "order_date",
+     "type": "date"
+    },
+    {
+     "name": "cont_date",
+     "label": "cont_date",
+     "type": "date"
+    },
+    {
+     "name": "container_size",
+     "label": "container_size",
+     "type": "text"
+    },
+    {
+     "name": "nccht",
+     "label": "nccht",
+     "type": "text"
+    },
+    {
+     "name": "payment_term",
+     "label": "payment_term",
+     "type": "text"
+    },
+    {
+     "name": "remark",
+     "label": "remark",
+     "type": "text"
+    },
+    {
+     "name": "cust_po_number",
+     "label": "cust_po_number",
+     "type": "text"
+    },
+    {
+     "name": "attribute4",
+     "label": "attribute4",
+     "type": "text"
+    },
+    {
+     "name": "choduyet",
+     "label": "choduyet",
+     "type": "text"
+    },
+    {
+     "name": "f_cancelled",
+     "label": "f_cancelled",
+     "type": "text"
+    },
+    {
+     "name": "finished",
+     "label": "Finished",
+     "type": "boolean"
+    },
+    {
+     "name": "isrelease",
+     "label": "IsRelease",
+     "type": "boolean"
+    },
+    {
+     "name": "create_by",
+     "label": "create_by",
+     "type": "text"
+    },
+    {
+     "name": "create_date",
+     "label": "create_date",
+     "type": "datetime"
+    },
+    {
+     "name": "update_by",
+     "label": "update_by",
+     "type": "text"
+    },
+    {
+     "name": "update_date",
+     "label": "update_date",
+     "type": "datetime"
+    },
+    {
+     "name": "test_run_qty",
+     "label": "test_run_qty",
+     "type": "number"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "nguyenbo",
+     "label": "nguyenbo",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_phieudenghi_thanhtoan_nhacc",
+   "entityName": "tr_phieudenghi_thanhtoan_nhacc",
+   "label": "tr_phieudenghi_thanhtoan_nhacc",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "mancc",
+     "label": "mancc",
+     "type": "text"
+    },
+    {
+     "name": "tenncc",
+     "label": "tenncc",
+     "type": "text"
+    },
+    {
+     "name": "diachi",
+     "label": "diachi",
+     "type": "text"
+    },
+    {
+     "name": "area",
+     "label": "area",
+     "type": "text"
+    },
+    {
+     "name": "dienthoai",
+     "label": "dienthoai",
+     "type": "text"
+    },
+    {
+     "name": "email",
+     "label": "email",
+     "type": "text"
+    },
+    {
+     "name": "website",
+     "label": "website",
+     "type": "text"
+    },
+    {
+     "name": "stk",
+     "label": "stk",
+     "type": "text"
+    },
+    {
+     "name": "nganhang",
+     "label": "nganhang",
+     "type": "text"
+    },
+    {
+     "name": "tentk",
+     "label": "tentk",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_phieugiao_thanhpham",
+   "entityName": "tr_phieugiao_thanhpham",
+   "label": "tr_phieugiao_thanhpham",
+   "fields": [
+    {
+     "name": "phieugiao_id",
+     "label": "phieugiao_id",
+     "type": "number"
+    },
+    {
+     "name": "sophieu",
+     "label": "sophieu",
+     "type": "text"
+    },
+    {
+     "name": "tenphieu",
+     "label": "tenphieu",
+     "type": "text"
+    },
+    {
+     "name": "ngaygiao",
+     "label": "ngaygiao",
+     "type": "date"
+    },
+    {
+     "name": "reftype_id",
+     "label": "reftype_id",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_phieugiao_thanhpham_chitiet",
+   "entityName": "tr_phieugiao_thanhpham_chitiet",
+   "label": "tr_phieugiao_thanhpham_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "phieugiao_id",
+     "label": "phieugiao_id",
+     "type": "number"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mathung",
+     "label": "mathung",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "xacnhan",
+     "label": "xacnhan",
+     "type": "boolean"
+    },
+    {
+     "name": "nguoixacnhan",
+     "label": "nguoixacnhan",
+     "type": "text"
+    },
+    {
+     "name": "ngayxacnhan",
+     "label": "ngayxacnhan",
+     "type": "datetime"
+    },
+    {
+     "name": "nhomsanpham",
+     "label": "nhomsanpham",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_phieuxuat_thanhpham2",
+   "entityName": "tr_phieuxuat_thanhpham2",
+   "label": "tr_phieuxuat_thanhpham2",
+   "fields": [
+    {
+     "name": "phieuxuat_id",
+     "label": "phieuxuat_id",
+     "type": "number"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "ngayxuat",
+     "label": "ngayxuat",
+     "type": "date"
+    },
+    {
+     "name": "sophieu",
+     "label": "sophieu",
+     "type": "text"
+    },
+    {
+     "name": "bennhan",
+     "label": "bennhan",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "loaiphieu",
+     "label": "loaiphieu",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_phieuxuat_thanhpham2_chitiet",
+   "entityName": "tr_phieuxuat_thanhpham2_chitiet",
+   "label": "tr_phieuxuat_thanhpham2_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "phieuxuat_id",
+     "label": "phieuxuat_id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mathung",
+     "label": "mathung",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "tonkho_id",
+     "label": "tonkho_id",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_proforma_invoice",
+   "entityName": "tr_proforma_invoice",
+   "label": "tr_proforma_invoice",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "ngaydonhang",
+     "label": "ngaydonhang",
+     "type": "date"
+    },
+    {
+     "name": "bank_id",
+     "label": "bank_id",
+     "type": "text"
+    },
+    {
+     "name": "tongsokhoi",
+     "label": "tongsokhoi",
+     "type": "number"
+    },
+    {
+     "name": "tongsoluong",
+     "label": "tongsoluong",
+     "type": "number"
+    },
+    {
+     "name": "thanhtien",
+     "label": "thanhtien",
+     "type": "number"
+    },
+    {
+     "name": "cangxuat",
+     "label": "cangxuat",
+     "type": "text"
+    },
+    {
+     "name": "cangden",
+     "label": "cangden",
+     "type": "text"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "donhang_dikem",
+     "label": "donhang_dikem",
+     "type": "text"
+    },
+    {
+     "name": "ngaygiao",
+     "label": "ngaygiao",
+     "type": "date"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_quytrinh_sanpham2",
+   "entityName": "tr_quytrinh_sanpham2",
+   "label": "tr_quytrinh_sanpham2",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy_tc",
+     "label": "dayy_tc",
+     "type": "number"
+    },
+    {
+     "name": "rong_tc",
+     "label": "rong_tc",
+     "type": "number"
+    },
+    {
+     "name": "dai_tc",
+     "label": "dai_tc",
+     "type": "number"
+    },
+    {
+     "name": "buoc",
+     "label": "buoc",
+     "type": "number"
+    },
+    {
+     "name": "quytrinh",
+     "label": "quytrinh",
+     "type": "text"
+    },
+    {
+     "name": "maymoc",
+     "label": "maymoc",
+     "type": "text"
+    },
+    {
+     "name": "attribute1",
+     "label": "attribute1",
+     "type": "number"
+    },
+    {
+     "name": "attribute2",
+     "label": "attribute2",
+     "type": "text"
+    },
+    {
+     "name": "attribute3",
+     "label": "attribute3",
+     "type": "text"
+    },
+    {
+     "name": "attribute4",
+     "label": "attribute4",
+     "type": "text"
+    },
+    {
+     "name": "attribute5",
+     "label": "attribute5",
+     "type": "text"
+    },
+    {
+     "name": "attribute6",
+     "label": "attribute6",
+     "type": "text"
+    },
+    {
+     "name": "attribute7",
+     "label": "attribute7",
+     "type": "text"
+    },
+    {
+     "name": "attribute8",
+     "label": "attribute8",
+     "type": "text"
+    },
+    {
+     "name": "attribute9",
+     "label": "attribute9",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "nguoichiutrachnhiem",
+     "label": "nguoichiutrachnhiem",
+     "type": "text"
+    },
+    {
+     "name": "nguoikiemtra",
+     "label": "nguoikiemtra",
+     "type": "text"
+    },
+    {
+     "name": "id_maymoc",
+     "label": "id_maymoc",
+     "type": "number"
+    },
+    {
+     "name": "quytrinh2",
+     "label": "quytrinh2",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_quytrinh_xetduyet",
+   "entityName": "tr_quytrinh_xetduyet",
+   "label": "tr_quytrinh_xetduyet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "nhom_dexuat",
+     "label": "nhom_dexuat",
+     "type": "text"
+    },
+    {
+     "name": "id_xetduyet",
+     "label": "id_xetduyet",
+     "type": "number"
+    },
+    {
+     "name": "ten_xetduyet",
+     "label": "ten_xetduyet",
+     "type": "text"
+    },
+    {
+     "name": "id_xetduyet_next",
+     "label": "id_xetduyet_next",
+     "type": "number"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_quytrinh_yeucau_chatluong",
+   "entityName": "tr_quytrinh_yeucau_chatluong",
+   "label": "tr_quytrinh_yeucau_chatluong",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "tieude",
+     "label": "tieude",
+     "type": "text"
+    },
+    {
+     "name": "mucdo",
+     "label": "mucdo",
+     "type": "number"
+    },
+    {
+     "name": "yeucau_chatluong",
+     "label": "yeucau_chatluong",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_release_govan",
+   "entityName": "tr_release_govan",
+   "label": "tr_release_govan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "soluong_donhang",
+     "label": "soluong_donhang",
+     "type": "number"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy_tc",
+     "label": "dayy_tc",
+     "type": "number"
+    },
+    {
+     "name": "rong_tc",
+     "label": "rong_tc",
+     "type": "number"
+    },
+    {
+     "name": "dai_tc",
+     "label": "dai_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong_tc",
+     "label": "soluong_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong_can",
+     "label": "soluong_can",
+     "type": "number"
+    },
+    {
+     "name": "pcode",
+     "label": "pcode",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sanpham_ngukim",
+   "entityName": "tr_sanpham_ngukim",
+   "label": "tr_sanpham_ngukim",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mota",
+     "label": "mota",
+     "type": "text"
+    },
+    {
+     "name": "hinhanh",
+     "label": "hinhanh",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sanpham_tem",
+   "entityName": "tr_sanpham_tem",
+   "label": "tr_sanpham_tem",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "tem",
+     "label": "tem",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "vitri",
+     "label": "vitri",
+     "type": "text"
+    },
+    {
+     "name": "hinhanh",
+     "label": "hinhanh",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sanpham_vattu",
+   "entityName": "tr_sanpham_vattu",
+   "label": "tr_sanpham_vattu",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mota",
+     "label": "mota",
+     "type": "text"
+    },
+    {
+     "name": "hinhanh",
+     "label": "hinhanh",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sanpham_venner",
+   "entityName": "tr_sanpham_venner",
+   "label": "tr_sanpham_venner",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "tennl",
+     "label": "tennl",
+     "type": "text"
+    },
+    {
+     "name": "doday",
+     "label": "doday",
+     "type": "text"
+    },
+    {
+     "name": "vango",
+     "label": "vango",
+     "type": "text"
+    },
+    {
+     "name": "mauvenner",
+     "label": "mauvenner",
+     "type": "text"
+    },
+    {
+     "name": "matgo",
+     "label": "matgo",
+     "type": "text"
+    },
+    {
+     "name": "chieuvenner",
+     "label": "chieuvenner",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan",
+     "label": "tieuchuan",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sodo_catvan",
+   "entityName": "tr_sodo_catvan",
+   "label": "tr_sodo_catvan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "chitiet",
+     "label": "chitiet",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy_tc",
+     "label": "dayy_tc",
+     "type": "number"
+    },
+    {
+     "name": "rong_tc",
+     "label": "rong_tc",
+     "type": "number"
+    },
+    {
+     "name": "dai_tc",
+     "label": "dai_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong_tc",
+     "label": "soluong_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong_donhang",
+     "label": "soluong_donhang",
+     "type": "number"
+    },
+    {
+     "name": "soluong_can",
+     "label": "soluong_can",
+     "type": "number"
+    },
+    {
+     "name": "sokhoi",
+     "label": "sokhoi",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "veneer_matchinh",
+     "label": "veneer_matchinh",
+     "type": "number"
+    },
+    {
+     "name": "veneer_matphu",
+     "label": "veneer_matphu",
+     "type": "number"
+    },
+    {
+     "name": "veneer_dan_canh",
+     "label": "veneer_dan_canh",
+     "type": "number"
+    },
+    {
+     "name": "veneer_canhdai",
+     "label": "veneer_canhdai",
+     "type": "number"
+    },
+    {
+     "name": "veneer_canhngan",
+     "label": "veneer_canhngan",
+     "type": "number"
+    },
+    {
+     "name": "vannen_ncc",
+     "label": "vannen_ncc",
+     "type": "text"
+    },
+    {
+     "name": "vannen_mavt",
+     "label": "vannen_mavt",
+     "type": "text"
+    },
+    {
+     "name": "vannen_soluong",
+     "label": "vannen_soluong",
+     "type": "number"
+    },
+    {
+     "name": "vannen_ddh",
+     "label": "vannen_ddh",
+     "type": "text"
+    },
+    {
+     "name": "catvan_ncc",
+     "label": "catvan_ncc",
+     "type": "text"
+    },
+    {
+     "name": "catvan_mavt",
+     "label": "catvan_mavt",
+     "type": "text"
+    },
+    {
+     "name": "catvan_ddh",
+     "label": "catvan_ddh",
+     "type": "text"
+    },
+    {
+     "name": "vnm_ncc",
+     "label": "vnm_ncc",
+     "type": "text"
+    },
+    {
+     "name": "vnm_mavt",
+     "label": "vnm_mavt",
+     "type": "text"
+    },
+    {
+     "name": "vnm_ddh",
+     "label": "vnm_ddh",
+     "type": "text"
+    },
+    {
+     "name": "vnc_ncc",
+     "label": "vnc_ncc",
+     "type": "text"
+    },
+    {
+     "name": "vnc_mavt",
+     "label": "vnc_mavt",
+     "type": "text"
+    },
+    {
+     "name": "vnc_ddh",
+     "label": "vnc_ddh",
+     "type": "text"
+    },
+    {
+     "name": "head_id",
+     "label": "head_id",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_sodo_catvan_head",
+   "entityName": "tr_sodo_catvan_head",
+   "label": "tr_sodo_catvan_head",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    },
+    {
+     "name": "sophieu",
+     "label": "sophieu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_thongke_soluong",
+   "entityName": "tr_thongke_soluong",
+   "label": "tr_thongke_soluong",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "stt",
+     "label": "STT",
+     "type": "text"
+    },
+    {
+     "name": "bophan",
+     "label": "BOPHAN",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "MADONHANG",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "MASP",
+     "type": "text"
+    },
+    {
+     "name": "tensp",
+     "label": "TENSP",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "MACT",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "TENCT",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "SOLUONG",
+     "type": "number"
+    },
+    {
+     "name": "madonhang_khachhang",
+     "label": "MADONHANG_KHACHHANG",
+     "type": "text"
+    },
+    {
+     "name": "order_id",
+     "label": "ORDER_ID",
+     "type": "text"
+    },
+    {
+     "name": "ngaynhap",
+     "label": "NGAYNHAP",
+     "type": "date"
+    },
+    {
+     "name": "nguoinhap",
+     "label": "NGUOINHAP",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "NGAYTAO",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "NGUOISUA",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "NGAYSUA",
+     "type": "datetime"
+    },
+    {
+     "name": "sokhoi_tinhche",
+     "label": "SOKHOI_TINHCHE",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_thongke_son_chitiet",
+   "entityName": "tr_thongke_son_chitiet",
+   "label": "tr_thongke_son_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "macongdoan",
+     "label": "macongdoan",
+     "type": "text"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "nguyenlieu",
+     "type": "text"
+    },
+    {
+     "name": "dayy_tc",
+     "label": "dayy_tc",
+     "type": "number"
+    },
+    {
+     "name": "rong_tc",
+     "label": "rong_tc",
+     "type": "number"
+    },
+    {
+     "name": "dai_tc",
+     "label": "dai_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "metvuong",
+     "label": "metvuong",
+     "type": "number"
+    },
+    {
+     "name": "metkhoi",
+     "label": "metkhoi",
+     "type": "number"
+    },
+    {
+     "name": "ngaynhap",
+     "label": "ngaynhap",
+     "type": "date"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_thongtin_sanpham_nguyenlieu",
+   "entityName": "tr_thongtin_sanpham_nguyenlieu",
+   "label": "tr_thongtin_sanpham_nguyenlieu",
+   "fields": [
+    {
+     "name": "idbosanpham",
+     "label": "IDBoSanPham",
+     "type": "text"
+    },
+    {
+     "name": "chitiet",
+     "label": "ChiTiet",
+     "type": "text"
+    },
+    {
+     "name": "nguyenlieu",
+     "label": "NguyenLieu",
+     "type": "text"
+    },
+    {
+     "name": "hinhanh",
+     "label": "HinhAnh",
+     "type": "text"
+    },
+    {
+     "name": "loainguyenlieu",
+     "label": "LoaiNguyenLieu",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "GhiChu",
+     "type": "text"
+    },
+    {
+     "name": "phanloai",
+     "label": "PhanLoai",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "MaSP",
+     "type": "text"
+    },
+    {
+     "name": "tensp",
+     "label": "TenSP",
+     "type": "text"
+    },
+    {
+     "name": "id",
+     "label": "ID",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan",
+     "label": "tieuchuan",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan_veneer",
+     "label": "tieuchuan_veneer",
+     "type": "text"
+    },
+    {
+     "name": "bemat_sanpham",
+     "label": "bemat_sanpham",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_thongtin_sanpham_tem",
+   "entityName": "tr_thongtin_sanpham_tem",
+   "label": "tr_thongtin_sanpham_tem",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "idbosanpham",
+     "label": "IDBoSanPham",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "tensp",
+     "label": "tensp",
+     "type": "text"
+    },
+    {
+     "name": "idtem",
+     "label": "idtem",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "vitri",
+     "label": "vitri",
+     "type": "text"
+    },
+    {
+     "name": "hinhanh",
+     "label": "hinhanh",
+     "type": "text"
+    },
+    {
+     "name": "loaisp",
+     "label": "loaisp",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tiendo_chuyenson",
+   "entityName": "tr_tiendo_chuyenson",
+   "label": "tr_tiendo_chuyenson",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "text"
+    },
+    {
+     "name": "makhuvuc",
+     "label": "makhuvuc",
+     "type": "text"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "donhang",
+     "label": "donhang",
+     "type": "text"
+    },
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mact",
+     "label": "mact",
+     "type": "text"
+    },
+    {
+     "name": "tenct",
+     "label": "tenct",
+     "type": "text"
+    },
+    {
+     "name": "dayy_tc",
+     "label": "dayy_tc",
+     "type": "number"
+    },
+    {
+     "name": "rong_tc",
+     "label": "rong_tc",
+     "type": "number"
+    },
+    {
+     "name": "dai_tc",
+     "label": "dai_tc",
+     "type": "number"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "buocson",
+     "label": "buocson",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan",
+   "entityName": "tr_tieuchuan",
+   "label": "tr_tieuchuan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "tieuchi",
+     "label": "tieuchi",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan",
+     "label": "tieuchuan",
+     "type": "text"
+    },
+    {
+     "name": "tanxuat",
+     "label": "tanxuat",
+     "type": "text"
+    },
+    {
+     "name": "dungcu",
+     "label": "dungcu",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    },
+    {
+     "name": "noidung",
+     "label": "NoiDung",
+     "type": "text"
+    },
+    {
+     "name": "phanloai",
+     "label": "phanloai",
+     "type": "text"
+    },
+    {
+     "name": "soluongkiem",
+     "label": "soluongkiem",
+     "type": "number"
+    },
+    {
+     "name": "stt",
+     "label": "stt",
+     "type": "text"
+    },
+    {
+     "name": "aql",
+     "label": "AQL",
+     "type": "boolean"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "aqlcapdo",
+     "label": "AQLCapDo",
+     "type": "number"
+    },
+    {
+     "name": "nhomloi",
+     "label": "nhomloi",
+     "type": "text"
+    },
+    {
+     "name": "tennhomloi",
+     "label": "tennhomloi",
+     "type": "text"
+    },
+    {
+     "name": "maloi",
+     "label": "maloi",
+     "type": "text"
+    },
+    {
+     "name": "tacnhangayloi",
+     "label": "TacNhanGayLoi",
+     "type": "text"
+    },
+    {
+     "name": "tenloi",
+     "label": "TenLoi",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan_baocao_qc",
+   "entityName": "tr_tieuchuan_baocao_qc",
+   "label": "tr_tieuchuan_baocao_qc",
+   "fields": [
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "tbmlocation",
+     "label": "TbMLocation",
+     "type": "text"
+    },
+    {
+     "name": "tenbaocao",
+     "label": "TenBaoCao",
+     "type": "text"
+    },
+    {
+     "name": "ngaylap",
+     "label": "NgayLap",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoilap",
+     "label": "NguoiLap",
+     "type": "text"
+    },
+    {
+     "name": "dondathang",
+     "label": "Dondathang",
+     "type": "text"
+    },
+    {
+     "name": "order",
+     "label": "Order",
+     "type": "text"
+    },
+    {
+     "name": "pallet",
+     "label": "Pallet",
+     "type": "number"
+    },
+    {
+     "name": "ghichu",
+     "label": "GhiChu",
+     "type": "text"
+    },
+    {
+     "name": "dagui",
+     "label": "DaGui",
+     "type": "boolean"
+    },
+    {
+     "name": "ngaygui",
+     "label": "NgayGui",
+     "type": "datetime"
+    },
+    {
+     "name": "dondathangchitiet",
+     "label": "DondathangChitiet",
+     "type": "number"
+    },
+    {
+     "name": "nhomchitiet",
+     "label": "NhomChiTiet",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan_chatluong",
+   "entityName": "tr_tieuchuan_chatluong",
+   "label": "tr_tieuchuan_chatluong",
+   "fields": [
+    {
+     "name": "createdby",
+     "label": "CreatedBy",
+     "type": "text"
+    },
+    {
+     "name": "createdon",
+     "label": "CreatedOn",
+     "type": "datetime"
+    },
+    {
+     "name": "updatedby",
+     "label": "UpdatedBy",
+     "type": "text"
+    },
+    {
+     "name": "updatedon",
+     "label": "UpdatedOn",
+     "type": "datetime"
+    },
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuancongdoan",
+     "label": "tieuchuancongdoan",
+     "type": "text"
+    },
+    {
+     "name": "pallet_id",
+     "label": "pallet_id",
+     "type": "number"
+    },
+    {
+     "name": "ngay",
+     "label": "ngay",
+     "type": "datetime"
+    },
+    {
+     "name": "thoigian",
+     "label": "thoigian",
+     "type": "datetime"
+    },
+    {
+     "name": "soluongdat",
+     "label": "soluongdat",
+     "type": "number"
+    },
+    {
+     "name": "soluongloi",
+     "label": "soluongloi",
+     "type": "number"
+    },
+    {
+     "name": "tileloi",
+     "label": "tileloi",
+     "type": "number"
+    },
+    {
+     "name": "congdoan",
+     "label": "congdoan",
+     "type": "text"
+    },
+    {
+     "name": "maymoc",
+     "label": "maymoc",
+     "type": "text"
+    },
+    {
+     "name": "manguoilam",
+     "label": "manguoilam",
+     "type": "text"
+    },
+    {
+     "name": "tennguoilam",
+     "label": "tennguoilam",
+     "type": "text"
+    },
+    {
+     "name": "ketqua",
+     "label": "ketqua",
+     "type": "text"
+    },
+    {
+     "name": "soluongkiem",
+     "label": "soluongkiem",
+     "type": "number"
+    },
+    {
+     "name": "sauxuly",
+     "label": "sauxuly",
+     "type": "text"
+    },
+    {
+     "name": "dotkiem",
+     "label": "dotkiem",
+     "type": "number"
+    },
+    {
+     "name": "nguyennhan",
+     "label": "nguyennhan",
+     "type": "text"
+    },
+    {
+     "name": "nguyennhankhac",
+     "label": "nguyennhankhac",
+     "type": "text"
+    },
+    {
+     "name": "ishoanthanh",
+     "label": "IsHoanthanh",
+     "type": "boolean"
+    },
+    {
+     "name": "huongxuly",
+     "label": "huongxuly",
+     "type": "text"
+    },
+    {
+     "name": "dongkiem",
+     "label": "dongkiem",
+     "type": "text"
+    },
+    {
+     "name": "loailoi",
+     "label": "loailoi",
+     "type": "text"
+    },
+    {
+     "name": "soluongchitietloi",
+     "label": "soluongChiTietloi",
+     "type": "number"
+    },
+    {
+     "name": "tacnhangayloi",
+     "label": "TacNhanGayLoi",
+     "type": "text"
+    },
+    {
+     "name": "tinhtrang",
+     "label": "tinhtrang",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuanloi",
+     "label": "TieuChuanLoi",
+     "type": "text"
+    },
+    {
+     "name": "baocaoqc",
+     "label": "BaoCaoQC",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan_congdoan",
+   "entityName": "tr_tieuchuan_congdoan",
+   "label": "tr_tieuchuan_congdoan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "congdoan",
+     "label": "congdoan",
+     "type": "text"
+    },
+    {
+     "name": "tieuchuan",
+     "label": "tieuchuan",
+     "type": "text"
+    },
+    {
+     "name": "aqlngoaiquan",
+     "label": "AQLNgoaiQuan",
+     "type": "text"
+    },
+    {
+     "name": "aqlkythuat",
+     "label": "AQLKyThuat",
+     "type": "text"
+    },
+    {
+     "name": "gayloi",
+     "label": "gayloi",
+     "type": "boolean"
+    },
+    {
+     "name": "xuathienloi",
+     "label": "xuathienloi",
+     "type": "boolean"
+    },
+    {
+     "name": "aqlcapdo",
+     "label": "AQLCapDo",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan_loi",
+   "entityName": "tr_tieuchuan_loi",
+   "label": "tr_tieuchuan_loi",
+   "fields": [
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "maloi",
+     "label": "MaLoi",
+     "type": "text"
+    },
+    {
+     "name": "tenloi",
+     "label": "TenLoi",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tieuchuan_nguyennhan",
+   "entityName": "tr_tieuchuan_nguyennhan",
+   "label": "tr_tieuchuan_nguyennhan",
+   "fields": [
+    {
+     "name": "id",
+     "label": "Id",
+     "type": "text"
+    },
+    {
+     "name": "name",
+     "label": "Name",
+     "type": "text"
+    },
+    {
+     "name": "tacnhangayloi",
+     "label": "TacNhanGayLoi",
+     "type": "text"
+    },
+    {
+     "name": "actived",
+     "label": "Actived",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tinhtrang_fsc",
+   "entityName": "tr_tinhtrang_fsc",
+   "label": "tr_tinhtrang_fsc",
+   "fields": [
+    {
+     "name": "fsc_id",
+     "label": "fsc_id",
+     "type": "number"
+    },
+    {
+     "name": "fsc_name",
+     "label": "fsc_name",
+     "type": "text"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "phantram_tang",
+     "label": "phantram_tang",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tonghop_xuat_hopchat",
+   "entityName": "tr_tonghop_xuat_hopchat",
+   "label": "tr_tonghop_xuat_hopchat",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "ngaythang",
+     "label": "ngaythang",
+     "type": "date"
+    },
+    {
+     "name": "madonhang",
+     "label": "madonhang",
+     "type": "text"
+    },
+    {
+     "name": "buocson",
+     "label": "buocson",
+     "type": "text"
+    },
+    {
+     "name": "tongsoluong",
+     "label": "tongsoluong",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "ngaysua",
+     "label": "ngaysua",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoisua",
+     "label": "nguoisua",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.tr_tonkho_chitiet",
+   "entityName": "tr_tonkho_chitiet",
+   "label": "tr_tonkho_chitiet",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "makho",
+     "label": "makho",
+     "type": "text"
+    },
+    {
+     "name": "mavt",
+     "label": "mavt",
+     "type": "text"
+    },
+    {
+     "name": "keso",
+     "label": "keso",
+     "type": "text"
+    },
+    {
+     "name": "vitri",
+     "label": "vitri",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "number"
+    },
+    {
+     "name": "ngaytao",
+     "label": "ngaytao",
+     "type": "datetime"
+    },
+    {
+     "name": "nguoitao",
+     "label": "nguoitao",
+     "type": "text"
+    },
+    {
+     "name": "update_date",
+     "label": "update_date",
+     "type": "datetime"
+    },
+    {
+     "name": "update_by",
+     "label": "update_by",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.trmaterialclass",
+   "entityName": "trmaterialclass",
+   "label": "trmaterialclass",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "code",
+     "label": "code",
+     "type": "text"
+    },
+    {
+     "name": "name",
+     "label": "name",
+     "type": "text"
+    },
+    {
+     "name": "p_id",
+     "label": "p_id",
+     "type": "text"
+    },
+    {
+     "name": "levelclass",
+     "label": "levelclass",
+     "type": "text"
+    },
+    {
+     "name": "description",
+     "label": "description",
+     "type": "text"
+    },
+    {
+     "name": "active",
+     "label": "active",
+     "type": "boolean"
+    },
+    {
+     "name": "uom",
+     "label": "uom",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.trmaterialclassstd",
+   "entityName": "trmaterialclassstd",
+   "label": "trmaterialclassstd",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "name",
+     "label": "name",
+     "type": "text"
+    },
+    {
+     "name": "description",
+     "label": "description",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "tableName": "dbo.trmaterialclassstddtail",
+   "entityName": "trmaterialclassstddtail",
+   "label": "trmaterialclassstddtail",
+   "fields": [
+    {
+     "name": "id",
+     "label": "id",
+     "type": "number"
+    },
+    {
+     "name": "idstd",
+     "label": "idstd",
+     "type": "number"
+    },
+    {
+     "name": "value",
+     "label": "value",
+     "type": "text"
+    },
+    {
+     "name": "uom",
+     "label": "uom",
+     "type": "text"
+    }
+   ]
+  }
+ ],
+ "notFound": [
+  "dqt_dexuat_phoi",
+  "tr_ai_code",
+  "tr_baocao_hiendien4",
+  "tr_baocao_rotchuyen",
+  "tr_dinhmuc_vattu_tieuhao",
+  "v_orders_summary"
+ ],
+ "noSinglePk": [
+  "ps_kehoach_donhang (pk: KHÔNG có)",
+  "sr_giamtrucongno_chitiet (pk: KHÔNG có)",
+  "stockbalances (pk: WarehouseCode+MaterialCode+BatchNo)",
+  "tr_baogia_htr_govan (pk: costGVAID+baoGiaID)",
+  "tr_baogia_htr_ngukim (pk: costNKIId+baoGiaID)",
+  "tr_baogia_htr_tong (pk: costTotalID+baoGiaID)",
+  "tr_baogia_phoi_govan (pk: costGVAID+baoGiaID+masp)",
+  "tr_baogia_phoi_tong (pk: costTotalID+baoGiaID)",
+  "tr_baogia3_chiphi (pk: id+baoGiaID+idChiPhi)",
+  "tr_baogia3_donggoi (pk: id+baoGiaID)",
+  "tr_baogia3_govan (pk: id+baoGiaID)",
+  "tr_baogia3_ngukim (pk: id+baoGiaID)",
+  "tr_baogia3_son (pk: id+baoGiaID)",
+  "tr_baogia3_tonghop (pk: id+baoGiaID)",
+  "tr_bieumau_friday (pk: id+report_id)",
+  "tr_bom_mix (pk: mact_mix+mact)",
+  "tr_congthuc_donggoi (pk: KHÔNG có)",
+  "tr_danhsach_dexuat (pk: nhom_dexuat+ma_dexuat)",
+  "tr_dinhmuc_chiphi_sanpham (pk: id+masp)",
+  "tr_dinhmuc_son3_mauson (pk: id+mamau)",
+  "trtb_m_location_process (pk: c_op+c_location)"
+ ]
+}

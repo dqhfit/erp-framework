@@ -124,7 +124,7 @@ export async function trOrderDetailUpdate2(
   if (remaining.length === 0) {
     const tOrder = await procTable(db, companyId, "tr_order");
     await tOrder.updateWhere(
-      { Finished: true },
+      { finished: true },
       sql`${tOrder.text("order_number")} = ${args.order_number}`,
     );
     orderFinished = true;

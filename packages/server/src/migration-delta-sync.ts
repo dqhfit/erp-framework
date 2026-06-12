@@ -62,6 +62,17 @@ interface TableSyncStats {
 
 type SyncTableRow = typeof migrationSyncTables.$inferSelect;
 
+/** Chuẩn hoá key row MSSQL về lowercase — ĐỒNG NHẤT với full-import
+ *  (worker import đã lowercase từ đầu). MssqlClient trả key giữ nguyên
+ *  case cột nguồn (vd "IsLock") trong khi entity field + ext key của data
+ *  import là lowercase → không normalize sẽ trộn ext['IsLock'] lẫn
+ *  ext['islock'] trong cùng bảng, reads theo field trượt data. */
+function lowerKeys(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) out[k.toLowerCase()] = v;
+  return out;
+}
+
 /** Watermark CT an toàn sau 1 batch keyset (version, pk).
  *  - Batch hết (isEnd): cả nhóm version cuối đã trọn → persist max version.
  *  - Batch bị TOP cắt: nhóm version cuối CÓ THỂ còn dở → chỉ persist tới
@@ -277,8 +288,11 @@ async function syncTableCt(
     }
 
     const pkLower = t.pkColumn.toLowerCase();
-    const toUpsert = batch.rows.filter((r) => r._ct_operation !== "D");
-    const toDelete = batch.rows.filter((r) => r._ct_operation === "D");
+    // Normalize key 1 LẦN ngay sau fetch — pkLower lookup trên row thô sẽ
+    // trượt (undefined → skip im lặng) khi cột PK nguồn viết hoa.
+    const rowsLower = (batch.rows as Array<Record<string, unknown>>).map(lowerKeys);
+    const toUpsert = rowsLower.filter((r) => r._ct_operation !== "D");
+    const toDelete = rowsLower.filter((r) => r._ct_operation === "D");
     // Watermark an toàn: batch chưa hết → nhóm version cuối có thể còn dở
     // (TOP cắt giữa nhóm) → chỉ persist tới maxVersion - 1; không bao giờ lùi.
     // Crash giữa nhóm → resume re-đọc cả nhóm, upsert/soft-delete idempotent.
@@ -323,7 +337,7 @@ async function syncTableCt(
     await db.transaction(async (tx) => {
       // Upsert I/U rows.
       for (const row of toUpsert) {
-        const rawData = { ...(row as Record<string, unknown>) };
+        const rawData = { ...row }; // đã lowercase ở rowsLower
         delete rawData._ct_operation;
         delete rawData._ct_version;
         const pkVal = rawData[pkLower];
@@ -494,7 +508,9 @@ async function syncTableRescan(
       );
     }
 
-    const pkValues = (batch.rows as Array<Record<string, unknown>>)
+    // Normalize key 1 LẦN — pkLower lookup trên row thô trượt khi cột PK hoa.
+    const rowsLower = (batch.rows as Array<Record<string, unknown>>).map(lowerKeys);
+    const pkValues = rowsLower
       .map((r) => {
         const v = r[pkLower];
         return v != null ? String(v) : null;
@@ -532,7 +548,7 @@ async function syncTableRescan(
     let batchInserts = 0;
     let batchUpdates = 0;
     await db.transaction(async (tx) => {
-      for (const row of batch.rows as Array<Record<string, unknown>>) {
+      for (const row of rowsLower) {
         const pkVal = row[pkLower];
         if (pkVal == null) continue;
         const pkStr = String(pkVal);

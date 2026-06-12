@@ -366,6 +366,28 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_normalize_field_case",
+    description:
+      "Chuẩn hoá tên field entity về LOWERCASE + sửa lệch case dữ liệu trên bảng thật. " +
+      "Bối cảnh: full-import lowercase key row, delta-sync (trước fix) giữ case cột MSSQL, " +
+      "field mixed-case (vd tr_order.IsLock) → data nằm lẫn ext['islock']/ext['IsLock'] và " +
+      "reads theo field trượt. Tool: (1) rename fields[].name → lowercase (check trùng), " +
+      "(2) sửa key meta.storage.columns + searchable, (3) repair data: field cột-tier đổ " +
+      "ext['cũ'] vào cột typed (COALESCE), field ext-tier gom về key lowercase. " +
+      "dryRun=true trả kế hoạch không ghi. Bỏ entityName = quét mọi entity tier=table.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entityName: {
+          type: "string",
+          description: "Chỉ chuẩn hoá 1 entity (bỏ trống = tất cả tier=table)",
+        },
+        dryRun: { type: "boolean", description: "true = chỉ trả kế hoạch, không ghi gì" },
+      },
+    },
+  },
+  {
     name: "datasource_list",
     description:
       "Liệt kê DataSource (Nguồn dữ liệu) của công ty: id, name, label, baseEntityId, " +
@@ -1190,6 +1212,126 @@ async function callMigrationTool(
         })
         .returning({ id: pages.id });
       return { status: "created", pageId: row?.id, name: pageName };
+    }
+
+    /* ── migration_normalize_field_case (apply) ─────────────── */
+    case "migration_normalize_field_case": {
+      const onlyName = args.entityName ? String(args.entityName).trim().toLowerCase() : null;
+      const dryRun = args.dryRun === true;
+
+      const rows = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.companyId, companyId))
+        .orderBy(entities.name);
+
+      const report: Array<Record<string, unknown>> = [];
+
+      for (const e of rows) {
+        if (onlyName && e.name.toLowerCase() !== onlyName) continue;
+        const meta = (e.meta ?? {}) as EntityMeta;
+        const storage = meta.storage as EntityStorage | undefined;
+        if (storage?.tier !== "table" || !storage.tableName) continue;
+
+        const fields = (e.fields ?? []) as Array<Record<string, unknown> & { name: string }>;
+        const renames = fields
+          .map((f) => f.name)
+          .filter((n) => n !== n.toLowerCase())
+          .map((n) => ({ from: n, to: n.toLowerCase() }));
+        if (renames.length === 0) continue;
+
+        // Check trùng sau lowercase (vd có cả "IsLock" lẫn "islock").
+        const lowerCounts = new Map<string, number>();
+        for (const f of fields) {
+          const k = f.name.toLowerCase();
+          lowerCounts.set(k, (lowerCounts.get(k) ?? 0) + 1);
+        }
+        const collisions = renames.filter((r) => (lowerCounts.get(r.to) ?? 0) > 1);
+        if (collisions.length > 0) {
+          report.push({
+            entity: e.name,
+            status: "skipped_collision",
+            collisions: collisions.map((c) => c.from),
+          });
+          continue;
+        }
+
+        if (dryRun) {
+          report.push({ entity: e.name, status: "plan", renames });
+          continue;
+        }
+
+        const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+        const newFields = fields.map((f) =>
+          f.name === f.name.toLowerCase() ? f : { ...f, name: f.name.toLowerCase() },
+        );
+        const newColumns: Record<string, { col: string; pgType: string }> = {};
+        for (const [k, v] of Object.entries(storage.columns ?? {})) {
+          newColumns[k.toLowerCase()] = v;
+        }
+        const newSearchable = (storage.searchable ?? []).map((s) => s.toLowerCase());
+        const repaired: Array<{ field: string; rows: number }> = [];
+
+        await db.transaction(async (tx) => {
+          for (const r of renames) {
+            const colMap = (storage.columns ?? {})[r.from] ?? (storage.columns ?? {})[r.to];
+            // Giá trị có thể nằm ở ext theo key cũ (sync ghi case gốc) hoặc
+            // key lowercase (import ghi lowercase nhưng field lúc đó mixed-case
+            // → không match → rớt vào ext lowercase).
+            const oldKey = r.from;
+            const lowKey = r.to;
+            let res: unknown;
+            if (colMap) {
+              // Cột-tier: đổ giá trị ext (ưu tiên key gốc) vào cột typed nếu
+              // cột đang NULL, rồi dọn cả 2 key ext.
+              const col = sql.raw(`"${assertIdent(colMap.col)}"`);
+              const castVal =
+                colMap.pgType === "numeric"
+                  ? sql`nullif(COALESCE(ext->>${oldKey}, ext->>${lowKey}), '')::numeric`
+                  : colMap.pgType === "boolean"
+                    ? sql`nullif(COALESCE(ext->>${oldKey}, ext->>${lowKey}), '')::boolean`
+                    : sql`COALESCE(ext->>${oldKey}, ext->>${lowKey})`;
+              res = await tx.execute(
+                sql`UPDATE ${tbl}
+                    SET ${col} = COALESCE(${col}, ${castVal}),
+                        ext = (ext - ${oldKey}) - ${lowKey},
+                        updated_at = now()
+                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey} OR ext ? ${lowKey})
+                    RETURNING id`,
+              );
+            } else {
+              // Ext-tier: gom về key lowercase (ưu tiên giá trị key gốc nếu cả 2 có).
+              res = await tx.execute(
+                sql`UPDATE ${tbl}
+                    SET ext = ((ext - ${oldKey}) - ${lowKey})
+                          || jsonb_build_object(${lowKey}, COALESCE(ext->${oldKey}, ext->${lowKey})),
+                        updated_at = now()
+                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey} OR ext ? ${lowKey})
+                    RETURNING id`,
+              );
+            }
+            const list = Array.isArray(res)
+              ? (res as unknown[])
+              : ((res as { rows?: unknown[] }).rows ?? []);
+            repaired.push({ field: r.from, rows: list.length });
+          }
+
+          // Merge meta (bài học #20 — không ghi đè meta).
+          const nextStorage = { ...storage, columns: newColumns, searchable: newSearchable };
+          await tx
+            .update(entities)
+            .set({
+              fields: newFields,
+              meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({ storage: nextStorage })}::jsonb`,
+              updatedAt: new Date(),
+            })
+            .where(eq(entities.id, e.id));
+        });
+
+        report.push({ entity: e.name, status: "normalized", renames, repaired });
+      }
+
+      return { count: report.length, report };
     }
 
     /* ── datasource_list (read) ─────────────────────────────── */

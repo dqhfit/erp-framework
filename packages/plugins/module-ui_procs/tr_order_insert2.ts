@@ -2,8 +2,8 @@
    Nguồn: migration-plan/ui/proc-bodies/tr_order_insert2.sql
    Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
    của bảng thật, tự version/updated_at/search_tsv, guard mirror).
-   Lưu ý: tr_order có field CASE-SENSITIVE theo field-map: IsLock, Finished,
-   IsPay, IsExample, IsPhoi, IsUV, IsOutsource — args giữ shape snake cũ.
+   Lưu ý: field tr_order đã chuẩn hoá LOWERCASE (islock, finished, ispay...)
+   qua migration_normalize_field_case — args giữ shape snake cũ.
    Semantic đổi: @id OUTPUT int (SCOPE_IDENTITY) của nguồn không tồn tại cho
    row mới — trả id uuid của row mới; trùng order_number → trả mảng rỗng. */
 import type { DB } from "@erp-framework/server/db";
@@ -75,12 +75,12 @@ export async function trOrderInsert2(
     cont_date: args.cont_date,
     f_cancelled: args.f_cancelled,
     choduyet: args.choduyet,
-    IsLock: args.is_lock,
-    Finished: args.finished,
-    IsPay: args.is_pay,
-    IsExample: args.is_example,
-    IsPhoi: args.is_phoi,
-    IsUV: args.is_uv,
+    islock: args.is_lock,
+    finished: args.finished,
+    ispay: args.is_pay,
+    isexample: args.is_example,
+    isphoi: args.is_phoi,
+    isuv: args.is_uv,
     destination_port: args.destination_port,
     ship_to: args.ship_to,
     remark: args.remark,
@@ -98,7 +98,7 @@ export async function trOrderInsert2(
     ngay_donggoi: args.ngay_donggoi ?? null,
     nguyenlieu: args.nguyenlieu ?? null,
     bemat: args.bemat ?? null,
-    IsOutsource: args.is_outsource ?? null,
+    isoutsource: args.is_outsource ?? null,
     vendor_id: args.vendor_id ?? null,
     noisanxuat: args.noisanxuat ?? true,
     loaidonhangmau: args.loaidonhangmau ?? null,

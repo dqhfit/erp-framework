@@ -1,6 +1,7 @@
 /* Port TR_ORDER_ISLOCK — danh sách đơn hàng theo trạng thái khoá.
    Nguồn: migration-plan/ui/proc-bodies/tr_order_islock.sql
-   Đọc qua procTable: field "IsLock" (type bool, ext-tier) + f_cancelled,
+   Đọc qua procTable: field "islock" (type bool, ext-tier — đã chuẩn hoá
+   lowercase qua migration_normalize_field_case) + f_cancelled,
    choduyet — biểu thức cột compose theo meta.storage lúc runtime. */
 import type { DB } from "@erp-framework/server/db";
 import { sql } from "drizzle-orm";
@@ -19,12 +20,12 @@ export async function trOrderIslock(
   }
 
   const t = await procTable(db, companyId, "tr_order");
-  // Proc gốc: WHERE f_cancelled = 'N' AND choduyet = 1 AND IsLock = @IsLock
+  // Proc gốc: WHERE f_cancelled = 'N' AND choduyet = 1 AND islock = @IsLock
   // ORDER BY order_number — trả mọi cột (SELECT *).
   return t.listWhere(
     sql`${t.text("f_cancelled")} = 'N'
         AND ${t.num("choduyet")} = 1
-        AND ${t.bool("IsLock")} = ${args.is_lock}`,
+        AND ${t.bool("islock")} = ${args.is_lock}`,
     { orderBy: sql`${t.text("order_number")} ASC` },
   );
 }

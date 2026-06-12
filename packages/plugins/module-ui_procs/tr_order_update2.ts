@@ -2,8 +2,8 @@
    Nguồn: migration-plan/ui/proc-bodies/tr_order_update2.sql
    Ghi qua procTable (đọc meta.storage.columns lúc runtime — đúng cột vật lý
    f_... hoặc ext của bảng thật, tự version/updated_at/search_tsv, guard mirror).
-   CHÚ Ý case field theo field-map: IsLock/Finished/IsPay/IsExample/IsPhoi/
-   IsUV/IsOutsource viết hoa chữ đầu — sai case sẽ bị helper reject.
+   Field tr_order đã chuẩn hoá LOWERCASE (islock/finished/ispay/isexample/
+   isphoi/isuv/isoutsource) qua migration_normalize_field_case.
    Proc gốc nhận @create_date/@create_by nhưng KHÔNG đưa vào SET — giữ nguyên
    (args vẫn nhận để khớp chữ ký proc, không ghi). */
 import type { DB } from "@erp-framework/server/db";
@@ -69,12 +69,12 @@ export async function trOrderUpdate2(
       cont_date: args.cont_date ?? null,
       f_cancelled: args.f_cancelled ?? null,
       choduyet: args.choduyet ?? null,
-      IsLock: args.islock ?? null,
-      Finished: args.finished ?? null,
-      IsPay: args.ispay ?? null,
-      IsExample: args.isexample ?? null,
-      IsPhoi: args.isphoi ?? null,
-      IsUV: args.isuv ?? null,
+      islock: args.islock ?? null,
+      finished: args.finished ?? null,
+      ispay: args.ispay ?? null,
+      isexample: args.isexample ?? null,
+      isphoi: args.isphoi ?? null,
+      isuv: args.isuv ?? null,
       destination_port: args.destination_port ?? null,
       ship_to: args.ship_to ?? null,
       remark: args.remark ?? null,
@@ -90,7 +90,7 @@ export async function trOrderUpdate2(
       ngay_donggoi: args.ngay_donggoi ?? null,
       nguyenlieu: args.nguyenlieu ?? null,
       bemat: args.bemat ?? null,
-      IsOutsource: args.isoutsource ?? null,
+      isoutsource: args.isoutsource ?? null,
       vendor_id: args.vendor_id ?? null,
       // T-SQL default @noisanxuat bit = 1
       noisanxuat: args.noisanxuat ?? true,
