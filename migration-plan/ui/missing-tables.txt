@@ -104,3 +104,4 @@ trmaterialclassstd
 trmaterialclassstddtail
 trtb_m_location_process
 v_orders_summary
+tr_chitiet_hangtrang
