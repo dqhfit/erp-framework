@@ -33,6 +33,7 @@ import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
 import { assertIdent, type EntityStorage } from "./entity-table-ddl";
 import { enableModuleSyncForCompany } from "./migration-delta-sync";
+import { getModuleProc, getModuleProcByName } from "./module-procs";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
 import { enqueueMigrationJob } from "./migration-worker";
 import { isHybridTablesEnabled } from "./record-store";
@@ -385,6 +386,27 @@ const TOOLS: ToolDef[] = [
         },
         dryRun: { type: "boolean", description: "true = chỉ trả kế hoạch, không ghi gì" },
       },
+    },
+  },
+  {
+    name: "migration_invoke_module_proc",
+    description:
+      "Gọi 1 proc Tier D đã port (module-procs registry) với args — phục vụ VERIFY " +
+      "runtime so với golden MSSQL. CHÚ Ý: proc GHI sẽ ghi thật vào bảng (entity mirror " +
+      "bị guard chặn sẵn) — chỉ dùng cho proc ĐỌC khi verify. Trả {ok, durationMs, " +
+      "rowCount?, result} (result cắt 200KB).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        module: { type: "string", description: "Module plugin, mặc định 'ui_procs'" },
+        name: {
+          type: "string",
+          description: "exportName của hàm (vd trOrderIslock) hoặc basename file (tr_order_islock)",
+        },
+        args: { type: "object", description: "Args truyền cho proc" },
+      },
+      required: ["name"],
     },
   },
   {
@@ -1335,6 +1357,49 @@ async function callMigrationTool(
       }
 
       return { count: report.length, report };
+    }
+
+    /* ── migration_invoke_module_proc (apply) ───────────────── */
+    case "migration_invoke_module_proc": {
+      const module = String(args.module ?? "ui_procs");
+      const procName = String(args.name ?? "").trim();
+      if (!procName) throw new McpError("name bắt buộc");
+      const procArgs = asObj(args.args);
+
+      const entry =
+        (await getModuleProc(module, procName)) ?? (await getModuleProcByName(procName));
+      if (!entry) {
+        throw new McpError(`Không tìm thấy proc "${procName}" (module ${module}) trong registry`);
+      }
+      const t0 = Date.now();
+      try {
+        const result = await entry.fn(db, companyId, procArgs);
+        const durationMs = Date.now() - t0;
+        let out: unknown = result;
+        let truncated = false;
+        const json = JSON.stringify(result ?? null);
+        if (json.length > 200_000) {
+          out = `${json.slice(0, 200_000)}…(cắt)`;
+          truncated = true;
+        }
+        return {
+          ok: true,
+          module: entry.module,
+          name: entry.name,
+          durationMs,
+          rowCount: Array.isArray(result) ? result.length : undefined,
+          truncated,
+          result: out,
+        };
+      } catch (e) {
+        return {
+          ok: false,
+          module: entry.module,
+          name: entry.name,
+          durationMs: Date.now() - t0,
+          error: (e as Error).message,
+        };
+      }
     }
 
     /* ── datasource_list (read) ─────────────────────────────── */
