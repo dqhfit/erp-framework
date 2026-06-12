@@ -63,7 +63,9 @@ const dsComputed = z.object({
   type: z.string().optional(),
 });
 
-const dsConfig = z.object({
+/** Schema config DataSource — export để MCP migration (datasource_create_draft)
+ *  validate cùng MỘT hợp đồng với tRPC, tránh 2 đường vào lệch nhau. */
+export const dsConfig = z.object({
   baseEntityId: z.string().default(""), // "" khi datasource vừa tạo, chưa cấu hình
   relations: z.array(dsRelation).default([]),
   fields: z.array(dsField).default([]),

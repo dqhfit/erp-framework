@@ -15,6 +15,7 @@
    Deny-by-default: scope rỗng = không gì.
    ========================================================== */
 import {
+  dataSources,
   entities,
   migrationFullJobs,
   migrationFullJobTables,
@@ -27,6 +28,7 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
+import { dsConfig as dataSourceConfigSchema } from "./datasources-router";
 import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
 import { assertIdent, type EntityStorage } from "./entity-table-ddl";
@@ -361,6 +363,40 @@ const TOOLS: ToolDef[] = [
         },
       },
       required: ["names"],
+    },
+  },
+  {
+    name: "datasource_list",
+    description:
+      "Liệt kê DataSource (Nguồn dữ liệu) của công ty: id, name, label, baseEntityId, " +
+      "số relation/field. Dùng để rà soát trước khi tạo mới (idempotent check).",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "datasource_create_draft",
+    description:
+      "Tạo DataSource (Nguồn dữ liệu) — join nhiều entity dạng cây many-to-one + projection " +
+      "field phẳng, thay proc SELECT cũ (nhóm query_datasource trong migrate). " +
+      "config theo schema DataSourceConfig: { baseEntityId, relations[{id,alias,fromRelationId," +
+      "fromField,toField,targetEntityId,joinKind}], fields[{key,sourceRelationId,sourceField," +
+      "label,type,writable}], baseFilters?, sort?, defaultLimit? }. " +
+      "Idempotent: name đã tồn tại → skip (overwrite=true mới ghi đè). " +
+      "Mọi entityId trong config phải thuộc công ty (validate trước khi ghi).",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Định danh máy ^[a-z][a-z0-9_]*$" },
+        label: { type: "string", description: "Nhãn hiển thị" },
+        icon: { type: "string" },
+        config: { type: "object", description: "DataSourceConfig (xem mô tả)" },
+        overwrite: { type: "boolean", description: "true = ghi đè datasource trùng tên" },
+      },
+      required: ["name", "label", "config"],
     },
   },
   {
@@ -1154,6 +1190,105 @@ async function callMigrationTool(
         })
         .returning({ id: pages.id });
       return { status: "created", pageId: row?.id, name: pageName };
+    }
+
+    /* ── datasource_list (read) ─────────────────────────────── */
+    case "datasource_list": {
+      const rows = await db
+        .select()
+        .from(dataSources)
+        .where(eq(dataSources.companyId, companyId))
+        .orderBy(dataSources.name);
+      return rows.map((r) => {
+        const cfg = (r.config ?? {}) as {
+          baseEntityId?: string;
+          relations?: unknown[];
+          fields?: unknown[];
+        };
+        return {
+          id: r.id,
+          name: r.name,
+          label: r.label,
+          baseEntityId: cfg.baseEntityId ?? "",
+          relationCount: cfg.relations?.length ?? 0,
+          fieldCount: cfg.fields?.length ?? 0,
+        };
+      });
+    }
+
+    /* ── datasource_create_draft (apply) ────────────────────── */
+    case "datasource_create_draft": {
+      const dsName = String(args.name ?? "");
+      const label = String(args.label ?? "");
+      if (!/^[a-z][a-z0-9_]*$/.test(dsName)) {
+        throw new McpError("name sai định dạng (^[a-z][a-z0-9_]*$)");
+      }
+      if (!label) throw new McpError("label bắt buộc");
+      // Validate config qua đúng zod của datasources-router (cùng hợp đồng UI).
+      const parsed = dataSourceConfigSchema.safeParse(args.config);
+      if (!parsed.success) {
+        throw new McpError(
+          `config không hợp lệ: ${parsed.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`,
+        );
+      }
+      const cfg = parsed.data;
+      if (!cfg.baseEntityId) throw new McpError("config.baseEntityId bắt buộc");
+
+      // Mọi entityId tham chiếu phải thuộc công ty — chống nối chéo tenant.
+      const refIds = new Set<string>([cfg.baseEntityId]);
+      for (const r of cfg.relations) refIds.add(r.targetEntityId);
+      for (const a of cfg.aggregates ?? []) {
+        refIds.add(a.targetEntityId);
+        if (a.via) refIds.add(a.via.farEntityId);
+      }
+      const owned = await db
+        .select({ id: entities.id })
+        .from(entities)
+        .where(eq(entities.companyId, companyId));
+      const ownedSet = new Set(owned.map((e) => e.id));
+      const alien = [...refIds].filter((id) => !ownedSet.has(id));
+      if (alien.length > 0) {
+        throw new McpError(`entityId không thuộc công ty: ${alien.join(", ")}`);
+      }
+
+      const [exists] = await db
+        .select({ id: dataSources.id })
+        .from(dataSources)
+        .where(
+          and(
+            eq(dataSources.companyId, companyId),
+            sql`lower(${dataSources.name}) = lower(${dsName})`,
+          ),
+        );
+      if (exists) {
+        if (args.overwrite === true) {
+          await db
+            .update(dataSources)
+            .set({
+              label,
+              ...(args.icon ? { icon: String(args.icon) } : {}),
+              config: cfg,
+              updatedAt: new Date(),
+            })
+            .where(eq(dataSources.id, exists.id));
+          return { status: "overwritten", dataSourceId: exists.id, name: dsName };
+        }
+        return { status: "skipped_exists", dataSourceId: exists.id, name: dsName };
+      }
+
+      const [row] = await db
+        .insert(dataSources)
+        .values({
+          companyId,
+          name: dsName,
+          label,
+          icon: args.icon ? String(args.icon) : null,
+          config: cfg,
+        })
+        .returning({ id: dataSources.id });
+      return { status: "created", dataSourceId: row?.id, name: dsName };
     }
 
     /* ── entity_set_source (apply) ──────────────────────────── */
