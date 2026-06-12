@@ -35,6 +35,7 @@ import {
   ReactFlowProvider,
   useNodesState,
   useReactFlow,
+  useUpdateNodeInternals,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -78,6 +79,11 @@ interface DSNodeData extends Record<string, unknown> {
   projected: Set<string>;
   /** Hiển thị tên cột (name) hay nhãn (label) của trường trên node. */
   fieldMode: "name" | "label";
+  /** Tên field tham gia cạnh liên kết trên node này (fromField khi là cha,
+   *  toField khi là con) — GHIM lên đầu danh sách để handle luôn nằm trong
+   *  vùng nhìn thấy của hộp cuộn 240px; field bị cuộn khuất làm cạnh neo
+   *  sai chỗ ("nối quan hệ không rõ ràng" với entity nhiều cột). */
+  joinFields: string[];
   onToggleField: (nodeId: string, fieldName: string) => void;
   onSelect: (nodeId: string) => void;
   onRemove: (nodeId: string) => void;
@@ -85,10 +91,27 @@ interface DSNodeData extends Record<string, unknown> {
 }
 type DSNodeType = Node<DSNodeData>;
 
-function DSNode({ data, selected }: NodeProps<DSNodeType>) {
+function DSNode({ data, selected, id }: NodeProps<DSNodeType>) {
   const entities = useUserObjects((s) => s.entities);
   const ent = entities.find((e) => e.id === data.entityId);
-  const fields = ent?.fields ?? [];
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  // Ghim field tham gia liên kết lên ĐẦU danh sách (giữ thứ tự gốc trong
+  // từng nhóm) — handle của cạnh luôn hiện trong hộp cuộn.
+  const joinSet = useMemo(() => new Set(data.joinFields), [data.joinFields]);
+  const fields = useMemo(() => {
+    const all = ent?.fields ?? [];
+    if (joinSet.size === 0) return all;
+    return [...all.filter((f) => joinSet.has(f.name)), ...all.filter((f) => !joinSet.has(f.name))];
+  }, [ent?.fields, joinSet]);
+
+  // Thứ tự field đổi → vị trí handle trong node đổi → báo ReactFlow đo lại
+  // để cạnh bám đúng dòng (không tự re-anchor khi kích thước node không đổi).
+  const joinSig = data.joinFields.join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: joinSig là tín hiệu đo lại có chủ ý
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [joinSig, id, updateNodeInternals]);
 
   return (
     <div
@@ -172,13 +195,17 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
         )}
         {fields.map((f) => {
           const on = data.projected.has(f.name);
+          const isJoin = joinSet.has(f.name);
           // Hiển thị theo chế độ: nhãn (label) hoặc tên cột (name); tooltip hiện cái còn lại.
           const disp = data.fieldMode === "label" ? f.label || f.name : f.name;
           const alt = data.fieldMode === "label" ? f.name : f.label || f.name;
           return (
             <div
               key={f.id}
-              className="relative flex items-center gap-1.5 px-3 py-[3px] hover:bg-hover/20"
+              className={cn(
+                "relative flex items-center gap-1.5 px-3 py-[3px] hover:bg-hover/20",
+                isJoin && "bg-accent/10",
+              )}
             >
               {/* target handle (trái) — node này là con, khớp trên cột này */}
               <Handle
@@ -217,6 +244,11 @@ function DSNode({ data, selected }: NodeProps<DSNodeType>) {
                 >
                   {disp}
                 </span>
+                {isJoin && (
+                  <span className="text-accent shrink-0" title="Cột tham gia liên kết">
+                    <I.Link size={9} />
+                  </span>
+                )}
                 <span className="text-[10px] text-muted shrink-0">{f.type}</span>
               </label>
             </div>
@@ -300,7 +332,8 @@ function nodeDataSig(n: Node): string {
     return `agg|${d.entityName ?? ""}|${d.badge ?? ""}|${d.fn ?? ""}|${d.byField ?? ""}|${d.valueField ?? ""}`;
   }
   const proj = d.projected ? [...d.projected].sort().join(",") : "";
-  return `ds|${d.entityId ?? ""}|${d.alias ?? ""}|${d.isBase ? 1 : 0}|${d.fieldMode ?? ""}|${proj}`;
+  const joins = Array.isArray(d.joinFields) ? d.joinFields.join(",") : "";
+  return `ds|${d.entityId ?? ""}|${d.alias ?? ""}|${d.isBase ? 1 : 0}|${d.fieldMode ?? ""}|${proj}|${joins}`;
 }
 
 /* ── Add-object dialog state ──────────────────────────────── */
@@ -543,6 +576,21 @@ function Canvas({ id }: { id: string }) {
   const onRemoveStable = useCallback((rid: string) => removeRelationRef.current(rid), []);
 
   const buildNodes = useCallback((): Node[] => {
+    // nodeId → tên field tham gia cạnh (fromField phía cha, toField phía con)
+    // — DSNode ghim các field này lên đầu để handle không bị cuộn khuất.
+    const joinFieldsByNode = new Map<string, string[]>();
+    const addJoin = (rid: string, fname: string) => {
+      const arr = joinFieldsByNode.get(rid) ?? [];
+      if (!arr.includes(fname)) arr.push(fname);
+      joinFieldsByNode.set(rid, arr);
+    };
+    for (const rel of cfg.relations) {
+      if (!rel.fromField) continue;
+      addJoin(rel.fromRelationId ?? "base", rel.fromField);
+      // toField "id" dùng handle header (tgt-id) — không phải dòng field.
+      if (rel.toField && rel.toField !== "id") addJoin(rel.id, rel.toField);
+    }
+
     const joinNodes: Node[] = nodeIds.map((rid, i) => ({
       id: rid,
       type: "dsNode" as const,
@@ -554,6 +602,7 @@ function Canvas({ id }: { id: string }) {
         isBase: rid === "base",
         projected: projectedByNode.get(rid) ?? new Set<string>(),
         fieldMode,
+        joinFields: joinFieldsByNode.get(rid) ?? [],
         onToggleField: onToggleFieldStable,
         onSelect: setSelectedNodeId,
         onRemove: onRemoveStable,
@@ -604,6 +653,7 @@ function Canvas({ id }: { id: string }) {
     onToggleFieldStable,
     onRemoveStable,
     cfg.aggregates,
+    cfg.relations,
     entById,
   ]);
 
