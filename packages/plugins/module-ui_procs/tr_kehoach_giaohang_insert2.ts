@@ -17,11 +17,10 @@
    - JOIN tách thành các query đơn bảng + ghép trong JS (procTable không
      compose join đa bảng vì scope company_id không alias được).
 
-   TODO: proc gốc dùng dbo.ufn_MaHTR_To_MaSP(chitiet) suy masp khi
-   chitiet không có masp — function CHƯA được port (không có định nghĩa
-   trong migration-plan). Tạm fallback dùng thẳng chitiet làm masp lookup;
-   dòng không khớp tr_sanpham sẽ bị loại như INNER JOIN miss. Khi có định
-   nghĩa function, thay tại resolveMasp bên dưới.
+   ufn_MaHTR_To_MaSP ĐÃ port inline (nguồn: proc-bodies/ufn_mahtr_to_masp.sql,
+   bảng tr_chitiet_hangtrang đã import): masp rỗng → tra chi tiết hàng
+   trắng theo mact, chọn masp đầu tiên có định mức gỗ ván; không có →
+   dòng bị loại như INNER JOIN miss của nguồn.
    Nguồn: migration-plan/ui/proc-bodies/tr_kehoach_giaohang_insert2.sql */
 import type { DB } from "@erp-framework/server/db";
 import { sql } from "drizzle-orm";
@@ -63,11 +62,54 @@ export async function trKehoachGiaohangInsert2(
   const headerOk = ddh.active === true && [0, 1, 2].includes(trangthai) && pheduyet === 1;
   if (!headerOk || details.length === 0) return; // tập tạm rỗng → không đổi gì (xem chú thích đầu file)
 
-  // 4. Resolve sản phẩm cho từng dòng — masp rỗng thì fallback chitiet
-  //    (TODO ufn_MaHTR_To_MaSP, xem đầu file).
+  // 4. Resolve sản phẩm cho từng dòng — masp rỗng thì suy qua
+  //    ufn_MaHTR_To_MaSP (ĐÃ port, xem proc-bodies/ufn_mahtr_to_masp.sql):
+  //    tra tr_chitiet_hangtrang (mact = chitiet) lấy các masp, chọn masp
+  //    ĐẦU TIÊN có định mức gỗ ván (tr_dinhmuc_govan). Không có → null →
+  //    dòng bị loại như INNER JOIN miss của nguồn.
+  const needLookup = [
+    ...new Set(
+      details
+        .filter((d) => String(d.masp ?? "").length === 0)
+        .map((d) => String(d.chitiet ?? ""))
+        .filter(Boolean),
+    ),
+  ];
+  const htrToMasp = new Map<string, string>();
+  if (needLookup.length > 0) {
+    const tHtr = await procTable(db, companyId, "tr_chitiet_hangtrang");
+    const htrRows = await tHtr.listWhere(
+      sql`${tHtr.text("mact")} IN (${sql.join(
+        needLookup.map((v) => sql`${v}`),
+        sql`, `,
+      )})`,
+    );
+    const candidates = [...new Set(htrRows.map((r) => String(r.masp ?? "")).filter(Boolean))];
+    const coDinhmuc = new Set<string>();
+    if (candidates.length > 0) {
+      const tDm = await procTable(db, companyId, "tr_dinhmuc_govan");
+      const dmRows = await tDm.listWhere(
+        sql`${tDm.text("masp")} IN (${sql.join(
+          candidates.map((v) => sql`${v}`),
+          sql`, `,
+        )})`,
+      );
+      for (const r of dmRows) {
+        if (r.masp != null) coDinhmuc.add(String(r.masp));
+      }
+    }
+    // Map mact → masp đầu tiên (theo thứ tự trả về) có định mức gỗ ván.
+    for (const r of htrRows) {
+      const mact = String(r.mact ?? "");
+      const masp = String(r.masp ?? "");
+      if (!mact || !masp || htrToMasp.has(mact)) continue;
+      if (coDinhmuc.has(masp)) htrToMasp.set(mact, masp);
+    }
+  }
   const resolveMasp = (d: Record<string, unknown>): string => {
     const masp = d.masp == null ? "" : String(d.masp);
-    return masp.length > 0 ? masp : String(d.chitiet ?? "");
+    if (masp.length > 0) return masp;
+    return htrToMasp.get(String(d.chitiet ?? "")) ?? "";
   };
   const maspList = [...new Set(details.map(resolveMasp).filter(Boolean))];
   if (maspList.length === 0) return;
