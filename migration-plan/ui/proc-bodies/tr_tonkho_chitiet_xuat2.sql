@@ -1,0 +1,32 @@
+-- PARAMS:
+-- @MAVT nvarchar
+-- @KESO nvarchar
+-- @SOLUONG_XUAT decimal
+
+
+CREATE PROC [dbo].[TR_TONKHO_CHITIET_XUAT2]
+(
+    @MAVT NVARCHAR(200),
+    @KESO NVARCHAR(50),
+    @SOLUONG_XUAT DECIMAL(18, 5)
+)
+AS
+DECLARE @ID INT
+DECLARE @SOLUONG_TON DECIMAL(18, 5)
+
+SELECT @SOLUONG_TON = soluong
+    , @ID = id
+FROM tr_tonkho_chitiet
+WHERE mavt = @MAVT
+    AND keso = @KESO
+
+IF @SOLUONG_TON IS NULL
+    SET @SOLUONG_TON = 0
+
+IF @SOLUONG_TON > 0
+BEGIN
+    UPDATE tr_tonkho_chitiet
+    SET soluong = CASE WHEN @SOLUONG_TON - @SOLUONG_XUAT <= 0 THEN 0 ELSE @SOLUONG_TON - @SOLUONG_XUAT END
+    WHERE id = @ID
+END
+

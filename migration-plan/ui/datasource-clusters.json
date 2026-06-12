@@ -1,0 +1,2813 @@
+{
+ "counts": {
+  "total": 275,
+  "simple": 121,
+  "complex": 114,
+  "write": 40,
+  "missingSource": 0,
+  "clusters": 93
+ },
+ "clusters": [
+  {
+   "key": "tr_material|",
+   "base": "tr_material",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_MATERIAL_GETGROUP",
+    "TR_MATERIAL_GETLISTBYTYPE",
+    "TR_MATERIAL_GETGROUP3",
+    "TR_MATERIAL_GETALL3",
+    "TR_MATERIAL_GETGROUP2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_material"
+  },
+  {
+   "key": "tr_lenhcapphat_head|",
+   "base": "tr_lenhcapphat_head",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_LENHCAPPHAT_HEAD_GET2",
+    "TR_LENHCAPPHAT_HEAD_GETLISTBYTYPE",
+    "TR_LENHCAPPHAT_HEAD_GETBYKHO",
+    "TR_LENHCAPPHAT_HEAD_GETBYACTIVE"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_lenhcapphat_head"
+  },
+  {
+   "key": "tr_dinhmuc_govan|",
+   "base": "tr_dinhmuc_govan",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_DINHMUC_GOVAN_GETBYMACT2",
+    "TR_DINHMUC_GOVAN_Get2",
+    "TR_DINHMUC_GOVAN_GETBYMACT",
+    "TR_DINHMUC_GOVAN_GETBYSP3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dinhmuc_govan"
+  },
+  {
+   "key": "tr_order|",
+   "base": "tr_order",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_ORDER_GET2",
+    "TR_ORDER_GETBYSTATUS",
+    "TR_ORDER_GETALLBYCUSTOMER"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_order"
+  },
+  {
+   "key": "tr_dondathang|",
+   "base": "tr_dondathang",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_DONDATHANG_GET3",
+    "TR_DONDATHANG_GetByWS",
+    "TR_DONDATHANG_GETBYTYPE2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dondathang"
+  },
+  {
+   "key": "tr_trangthai_sanxuat|",
+   "base": "tr_trangthai_sanxuat",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_TRANGTHAI_SANXUAT_GETBYPCARD",
+    "TR_TRANGTHAI_SANXUAT_GETDAY",
+    "TR_TRANGTHAI_SANXUAT_GETLIST2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_trangthai_sanxuat"
+  },
+  {
+   "key": "tr_baocao_hangloi|tr_bophan,tr_sanpham",
+   "base": "tr_baocao_hangloi",
+   "joinTables": [
+    "tr_bophan",
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "(select dbo.ufn_MaHTR_To_MaSP( A.masp)) = B.masp"
+     ]
+    },
+    "tr_bophan": {
+     "kind": "left",
+     "on": [
+      "a.bophantra = c.mabophan"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BAOCAO_HANGLOI_GETLISTBYDATE",
+    "TR_BAOCAO_HANGLOI_GETLISTBYMONTH",
+    "TR_BAOCAO_HANGLOI_GETLISTBYYEAR"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baocao_hangloi_full"
+  },
+  {
+   "key": "tr_banve|",
+   "base": "tr_banve",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BANVE_GET2",
+    "TR_BANVE_GETBYTYPE"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_banve"
+  },
+  {
+   "key": "tr_sanpham_nhamay|",
+   "base": "tr_sanpham_nhamay",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_SANPHAM_NHAMAY_GETBYSTATUS",
+    "TR_SANPHAM_NHAMAY_GETBYHEHANG"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_sanpham_nhamay"
+  },
+  {
+   "key": "tr_phieubaogia|tr_nhacc",
+   "base": "tr_phieubaogia",
+   "joinTables": [
+    "tr_nhacc"
+   ],
+   "joinEdges": {
+    "tr_nhacc": {
+     "kind": "left",
+     "on": [
+      "A.KhachHang = B.vendor_id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUBAOGIA_GETBYNUMBER",
+    "TR_PHIEUBAOGIA_GETBYDATE"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieubaogia_full"
+  },
+  {
+   "key": "tr_dinhmuc_ngukim|tr_material",
+   "base": "tr_dinhmuc_ngukim",
+   "joinTables": [
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "A.mavt = B.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DINHMUC_NGUKIM_Get2",
+    "TR_DINHMUC_NGUKIM_Get3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dinhmuc_ngukim_full"
+  },
+  {
+   "key": "tr_khuvuc_sanxuat|trtb_m_location,trtb_m_op",
+   "base": "tr_khuvuc_sanxuat",
+   "joinTables": [
+    "trtb_m_location",
+    "trtb_m_op"
+   ],
+   "joinEdges": {
+    "trtb_m_op": {
+     "kind": "inner",
+     "on": [
+      "A.makhuvuc = B.department"
+     ]
+    },
+    "trtb_m_location": {
+     "kind": "inner",
+     "on": [
+      "B.c_op = C.c_op"
+     ]
+    }
+   },
+   "procs": [
+    "TRTB_M_LOCATION_GETALL2",
+    "TRTB_M_LOCATION_GETBYDEPARTMENT"
+   ],
+   "missingEntities": [
+    "tr_khuvuc_sanxuat"
+   ],
+   "suggestedName": "ds_khuvuc_sanxuat_full"
+  },
+  {
+   "key": "tr_tieuchuan_chatluong|tr_pallet,tr_tieuchuan,tr_tieuchuan_congdoan",
+   "base": "tr_tieuchuan_chatluong",
+   "joinTables": [
+    "tr_pallet",
+    "tr_tieuchuan",
+    "tr_tieuchuan_congdoan"
+   ],
+   "joinEdges": {
+    "tr_tieuchuan_congdoan": {
+     "kind": "inner",
+     "on": [
+      "A.tieuchuancongdoan = B.Id"
+     ]
+    },
+    "tr_tieuchuan": {
+     "kind": "inner",
+     "on": [
+      "B.tieuchuan = C.Id"
+     ]
+    },
+    "tr_pallet": {
+     "kind": "inner",
+     "on": [
+      "A.pallet_id = D.id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_TIEUCHUAN_CHATLUONG_GETALL2",
+    "TR_TIEUCHUAN_CHATLUONG_GETALL3"
+   ],
+   "missingEntities": [
+    "tr_tieuchuan_chatluong",
+    "tr_tieuchuan",
+    "tr_tieuchuan_congdoan"
+   ],
+   "suggestedName": "ds_tieuchuan_chatluong_full"
+  },
+  {
+   "key": "tr_order_example_detail|tr_sanpham",
+   "base": "tr_order_example_detail",
+   "joinTables": [
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "A.item_number = B.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_ORDER_DETAILEXAMPLE__GETLISTBYID",
+    "TR_ORDER_EXAMPLE_DETAIL_GETLISTBYORDER"
+   ],
+   "missingEntities": [
+    "tr_order_example_detail"
+   ],
+   "suggestedName": "ds_order_example_detail_full"
+  },
+  {
+   "key": "tr_pallet_card|tr_pallet",
+   "base": "tr_pallet_card",
+   "joinTables": [
+    "tr_pallet"
+   ],
+   "joinEdges": {
+    "tr_pallet": {
+     "kind": "inner",
+     "on": [
+      "A.pallet_id = B.id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PALLET_CARD_GETALL2",
+    "TR_PALLET_CARD_GETALL4"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_pallet_card_full"
+  },
+  {
+   "key": "tr_phieuxuat|tr_ctphieuxuat,tr_material",
+   "base": "tr_phieuxuat",
+   "joinTables": [
+    "tr_ctphieuxuat",
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_ctphieuxuat": {
+     "kind": "inner",
+     "on": [
+      "A.sopx = B.phieuxuat"
+     ]
+    },
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "B.mact = C.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUXUAT_GETBYMACT",
+    "TR_PHIEUXUAT_GETLISTBYLCP"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieuxuat_full"
+  },
+  {
+   "key": "tr_lenhcapphat_head|tr_lenhcapphat,tr_material",
+   "base": "tr_lenhcapphat_head",
+   "joinTables": [
+    "tr_lenhcapphat",
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_lenhcapphat": {
+     "kind": "inner",
+     "on": [
+      "A.LenhCapPhatID = B.LenhCapPhatID"
+     ]
+    },
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "B.mavt = C.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_LENHCAPPHAT_GETLISTBYORDER",
+    "TR_LENHCAPPHAT_GETLISTBYSP"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_lenhcapphat_head_full"
+  },
+  {
+   "key": "tr_material_ncc|",
+   "base": "tr_material_ncc",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_MATERIAL_NCC_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_material_ncc"
+  },
+  {
+   "key": "tr_bieumau_friday|",
+   "base": "tr_bieumau_friday",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BIEUMAU_FRIDAY_GETBYREPORTID"
+   ],
+   "missingEntities": [
+    "tr_bieumau_friday"
+   ],
+   "suggestedName": "ds_bieumau_friday"
+  },
+  {
+   "key": "tr_tonkho_chitiet|",
+   "base": "tr_tonkho_chitiet",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_TONKHO_CHITIET_GETLISTBYMACT"
+   ],
+   "missingEntities": [
+    "tr_tonkho_chitiet"
+   ],
+   "suggestedName": "ds_tonkho_chitiet"
+  },
+  {
+   "key": "tr_email_subscriber2|",
+   "base": "tr_email_subscriber2",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_EMAIL_SUBSCRIBER2_GETBYTOPIC"
+   ],
+   "missingEntities": [
+    "tr_email_subscriber2"
+   ],
+   "suggestedName": "ds_email_subscriber2"
+  },
+  {
+   "key": "tr_dinhmuc_govan|tr_baogia_chiphi_veneer,tr_loai_uv,tr_sanpham",
+   "base": "tr_dinhmuc_govan",
+   "joinTables": [
+    "tr_baogia_chiphi_veneer",
+    "tr_loai_uv",
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "A.masp = B.masp"
+     ]
+    },
+    "tr_baogia_chiphi_veneer": {
+     "kind": "left",
+     "on": [
+      "A.veneer_matchinh = C.id"
+     ]
+    },
+    "tr_loai_uv": {
+     "kind": "left",
+     "on": [
+      "A.uv_matchinh1 = UVMC.id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DINHMUC_GOVAN_GETBYSP2"
+   ],
+   "missingEntities": [
+    "tr_loai_uv"
+   ],
+   "suggestedName": "ds_dinhmuc_govan_full"
+  },
+  {
+   "key": "tr_dondathang|sys_user",
+   "base": "tr_dondathang",
+   "joinTables": [
+    "sys_user"
+   ],
+   "joinEdges": {
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.create_by = B.UserName"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DONDATHANG_GETBYSTATUS"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dondathang_full"
+  },
+  {
+   "key": "tr_dinhmuc_govan|tr_baogia_chiphi_veneer,tr_tinhtrang_fsc",
+   "base": "tr_dinhmuc_govan",
+   "joinTables": [
+    "tr_baogia_chiphi_veneer",
+    "tr_tinhtrang_fsc"
+   ],
+   "joinEdges": {
+    "tr_tinhtrang_fsc": {
+     "kind": "left",
+     "on": [
+      "A.fsc_id = B.fsc_id"
+     ]
+    },
+    "tr_baogia_chiphi_veneer": {
+     "kind": "left",
+     "on": [
+      "A.veneer_matchinh = VMC.id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DINHMUC_GOVAN_GETBYSP"
+   ],
+   "missingEntities": [
+    "tr_tinhtrang_fsc"
+   ],
+   "suggestedName": "ds_dinhmuc_govan_full"
+  },
+  {
+   "key": "tr_sanpham|tr_banve",
+   "base": "tr_sanpham",
+   "joinTables": [
+    "tr_banve"
+   ],
+   "joinEdges": {
+    "tr_banve": {
+     "kind": "inner",
+     "on": [
+      "A.masp = B.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BANVE_GetAll2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_sanpham_full"
+  },
+  {
+   "key": "tr_bom_mix|",
+   "base": "tr_bom_mix",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BOM_MIX_GETBYPARENT"
+   ],
+   "missingEntities": [
+    "tr_bom_mix"
+   ],
+   "suggestedName": "ds_bom_mix"
+  },
+  {
+   "key": "tr_order_detail|tr_sanpham",
+   "base": "tr_order_detail",
+   "joinTables": [
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "A.item_number = B.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_ORDER_DETAIL_GETLISTBYID"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_order_detail_full"
+  },
+  {
+   "key": "tr_material_other|",
+   "base": "tr_material_other",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_MATERIAL_OTHER_GETBYCODE"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_material_other"
+  },
+  {
+   "key": "tr_baogia_son|",
+   "base": "tr_baogia_son",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BAOGIA_SON_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baogia_son"
+  },
+  {
+   "key": "mes_quytrinh_sanpham|tr_khuvuc_sanxuat,trtb_m_op",
+   "base": "mes_quytrinh_sanpham",
+   "joinTables": [
+    "tr_khuvuc_sanxuat",
+    "trtb_m_op"
+   ],
+   "joinEdges": {
+    "trtb_m_op": {
+     "kind": "left",
+     "on": [
+      "A.quytrinh = B.c_op"
+     ]
+    },
+    "tr_khuvuc_sanxuat": {
+     "kind": "left",
+     "on": [
+      "B.department = C.makhuvuc"
+     ]
+    }
+   },
+   "procs": [
+    "MES_QUYTRINH_SANPHAM_GETALL2"
+   ],
+   "missingEntities": [
+    "tr_khuvuc_sanxuat"
+   ],
+   "suggestedName": "ds_mes_quytrinh_sanpham_full"
+  },
+  {
+   "key": "tr_nganhang|",
+   "base": "tr_nganhang",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGANHANG_GETDEFAULT"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_nganhang"
+  },
+  {
+   "key": "tr_nhap_thanhpham|",
+   "base": "tr_nhap_thanhpham",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NHAP_THANHPHAM_ByCurrentDate"
+   ],
+   "missingEntities": [
+    "tr_nhap_thanhpham"
+   ],
+   "suggestedName": "ds_nhap_thanhpham"
+  },
+  {
+   "key": "tr_dexuat_phoi_chitiet|",
+   "base": "tr_dexuat_phoi_chitiet",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_DEXUAT_PHOI_CHITIET_GETALL2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dexuat_phoi_chitiet"
+  },
+  {
+   "key": "tr_gridview_column|tr_bophan",
+   "base": "tr_gridview_column",
+   "joinTables": [
+    "tr_bophan"
+   ],
+   "joinEdges": {
+    "tr_bophan": {
+     "kind": "inner",
+     "on": [
+      "A.mabophan = B.mabophan"
+     ]
+    }
+   },
+   "procs": [
+    "TR_GRIDVIEW_COLUMN_GETDEPT"
+   ],
+   "missingEntities": [
+    "tr_gridview_column"
+   ],
+   "suggestedName": "ds_gridview_column_full"
+  },
+  {
+   "key": "tr_dexuat_bangmau|sys_user",
+   "base": "tr_dexuat_bangmau",
+   "joinTables": [
+    "sys_user"
+   ],
+   "joinEdges": {
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.nguoitao = B.UserName"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DEXUAT_BANGMAU_GETBYNUMBER"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dexuat_bangmau_full"
+  },
+  {
+   "key": "tr_banve|tr_sanpham",
+   "base": "tr_banve",
+   "joinTables": [
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "A.masp = B.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BANVE_GETALL3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_banve_full"
+  },
+  {
+   "key": "tr_baocao_final_muckiemtra|tr_baocao_final_hinhanh",
+   "base": "tr_baocao_final_muckiemtra",
+   "joinTables": [
+    "tr_baocao_final_hinhanh"
+   ],
+   "joinEdges": {
+    "tr_baocao_final_hinhanh": {
+     "kind": "left",
+     "on": [
+      "A.item_id = B.item_id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BAOCAO_FINAL_MUCKIEMTRA_GETALL2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baocao_final_muckiemtra_full"
+  },
+  {
+   "key": "hr_nhanvien_2|hr_bophan_2,hr_congty,tr_chucvu,trtb_m_op",
+   "base": "hr_nhanvien_2",
+   "joinTables": [
+    "hr_bophan_2",
+    "hr_congty",
+    "tr_chucvu",
+    "trtb_m_op"
+   ],
+   "joinEdges": {
+    "hr_bophan_2": {
+     "kind": "inner",
+     "on": [
+      "A.BOPHAN = B.ID"
+     ]
+    },
+    "hr_congty": {
+     "kind": "left",
+     "on": [
+      "A.MACONGTY = C.MaCty"
+     ]
+    },
+    "tr_chucvu": {
+     "kind": "left",
+     "on": [
+      "A.MACHUCVU COLLATE SQL_Latin1_General_CP1_CI_AI = D.machucvu COLLATE SQL_Latin1_General_CP1_CI_AI"
+     ]
+    },
+    "trtb_m_op": {
+     "kind": "left",
+     "on": [
+      "A.MACONGDOAN = OP.c_op"
+     ]
+    }
+   },
+   "procs": [
+    "HR_NHANVIEN2_GETALL5"
+   ],
+   "missingEntities": [
+    "hr_nhanvien_2",
+    "hr_bophan_2"
+   ],
+   "suggestedName": "ds_hr_nhanvien_2_full"
+  },
+  {
+   "key": "hr_nhanvien_2|",
+   "base": "hr_nhanvien_2",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "HR_NHANVIEN2_GETBYMANV"
+   ],
+   "missingEntities": [
+    "hr_nhanvien_2"
+   ],
+   "suggestedName": "ds_hr_nhanvien_2"
+  },
+  {
+   "key": "tr_baocao_final|",
+   "base": "tr_baocao_final",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BAOCAO_FINAL_BAOCAOCHATLUONG"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baocao_final"
+  },
+  {
+   "key": "tr_bieumau_friday|tr_bieumau_friday_congdoan",
+   "base": "tr_bieumau_friday",
+   "joinTables": [
+    "tr_bieumau_friday_congdoan"
+   ],
+   "joinEdges": {
+    "tr_bieumau_friday_congdoan": {
+     "kind": "inner",
+     "on": [
+      "A.id = B.id_bieumau"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BIEUMAU_FRIDAY_CONGDOAN_GET2"
+   ],
+   "missingEntities": [
+    "tr_bieumau_friday",
+    "tr_bieumau_friday_congdoan"
+   ],
+   "suggestedName": "ds_bieumau_friday_full"
+  },
+  {
+   "key": "tr_thaydoi_kythuat|tr_sanpham",
+   "base": "tr_thaydoi_kythuat",
+   "joinTables": [
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_sanpham": {
+     "kind": "left",
+     "on": [
+      "A.masp = B.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_THAYDOI_KYTHUAT_BAOCAOCHATLUONG"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_thaydoi_kythuat_full"
+  },
+  {
+   "key": "tr_tieuchuan_chatluong|sys_user,tr_pallet,tr_tieuchuan,tr_tieuchuan_congdoan,tr_tieuchuan_nguyennhan",
+   "base": "tr_tieuchuan_chatluong",
+   "joinTables": [
+    "sys_user",
+    "tr_pallet",
+    "tr_tieuchuan",
+    "tr_tieuchuan_congdoan",
+    "tr_tieuchuan_nguyennhan"
+   ],
+   "joinEdges": {
+    "tr_tieuchuan_congdoan": {
+     "kind": "inner",
+     "on": [
+      "A.tieuchuancongdoan = B.Id"
+     ]
+    },
+    "tr_tieuchuan": {
+     "kind": "inner",
+     "on": [
+      "B.tieuchuan = C.Id"
+     ]
+    },
+    "tr_pallet": {
+     "kind": "inner",
+     "on": [
+      "A.pallet_id = D.id"
+     ]
+    },
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.CreatedBy = E.UserName"
+     ]
+    },
+    "tr_tieuchuan_nguyennhan": {
+     "kind": "left",
+     "on": [
+      "A.nguyennhan = F.Id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_TIEUCHUAN_CHATLUONG_GETALL4"
+   ],
+   "missingEntities": [
+    "tr_tieuchuan_chatluong",
+    "tr_tieuchuan",
+    "tr_tieuchuan_congdoan",
+    "tr_tieuchuan_nguyennhan"
+   ],
+   "suggestedName": "ds_tieuchuan_chatluong_full"
+  },
+  {
+   "key": "tr_baogia_donggoi|tr_material",
+   "base": "tr_baogia_donggoi",
+   "joinTables": [
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_material": {
+     "kind": "left",
+     "on": [
+      "A.mact = B.idxuong"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BAOGIA_DONGGOI_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baogia_donggoi_full"
+  },
+  {
+   "key": "tr_baogia_govan|",
+   "base": "tr_baogia_govan",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BAOGIA_GOVAN_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baogia_govan"
+  },
+  {
+   "key": "tr_baogia_ngukim|tr_material",
+   "base": "tr_baogia_ngukim",
+   "joinTables": [
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_material": {
+     "kind": "left",
+     "on": [
+      "A.mact = B.idxuong"
+     ]
+    }
+   },
+   "procs": [
+    "TR_BAOGIA_NGUKIM_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baogia_ngukim_full"
+  },
+  {
+   "key": "tr_baogia_thanhpham|",
+   "base": "tr_baogia_thanhpham",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BAOGIA_THANHPHAM_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_baogia_thanhpham"
+  },
+  {
+   "key": "tr_baogia3_giaphoi|",
+   "base": "tr_baogia3_giaphoi",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_BAOGIA3_GIAPHOI_GETALL2"
+   ],
+   "missingEntities": [
+    "tr_baogia3_giaphoi"
+   ],
+   "suggestedName": "ds_baogia3_giaphoi"
+  },
+  {
+   "key": "sal_baogia_govan|sys_user",
+   "base": "sal_baogia_govan",
+   "joinTables": [
+    "sys_user"
+   ],
+   "joinEdges": {
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.nguoitao = B.UserName"
+     ]
+    }
+   },
+   "procs": [
+    "SAL_BAOGIA_GOVAN_GETBYDATE"
+   ],
+   "missingEntities": [
+    "sal_baogia_govan"
+   ],
+   "suggestedName": "ds_sal_baogia_govan_full"
+  },
+  {
+   "key": "tr_phieubaogia|sys_user,tr_nhacc,tr_phieubaogia_chitiet",
+   "base": "tr_phieubaogia",
+   "joinTables": [
+    "sys_user",
+    "tr_nhacc",
+    "tr_phieubaogia_chitiet"
+   ],
+   "joinEdges": {
+    "tr_phieubaogia_chitiet": {
+     "kind": "inner",
+     "on": [
+      "A.SoPhieu = B.SoPhieu"
+     ]
+    },
+    "tr_nhacc": {
+     "kind": "left",
+     "on": [
+      "B.mancc = C.vendor_id"
+     ]
+    },
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.NguoiTao = D.UserName"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUBAOGIA_CHITIET_GETALL3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieubaogia_full"
+  },
+  {
+   "key": "tr_lenhcapphat|",
+   "base": "tr_lenhcapphat",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_LENHCAPPHAT_GetListID"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_lenhcapphat"
+  },
+  {
+   "key": "tr_tonghop_xuat_hopchat|",
+   "base": "tr_tonghop_xuat_hopchat",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_TONGHOP_XUAT_HOPCHAT_GETBYDATE"
+   ],
+   "missingEntities": [
+    "tr_tonghop_xuat_hopchat"
+   ],
+   "suggestedName": "ds_tonghop_xuat_hopchat"
+  },
+  {
+   "key": "trtb_m_op|tr_khuvuc_sanxuat",
+   "base": "trtb_m_op",
+   "joinTables": [
+    "tr_khuvuc_sanxuat"
+   ],
+   "joinEdges": {
+    "tr_khuvuc_sanxuat": {
+     "kind": "inner",
+     "on": [
+      "A.department = B.makhuvuc"
+     ]
+    }
+   },
+   "procs": [
+    "TRTB_M_OP_GETLIST3"
+   ],
+   "missingEntities": [
+    "tr_khuvuc_sanxuat"
+   ],
+   "suggestedName": "ds_m_op_full"
+  },
+  {
+   "key": "tr_dexuat_phoi|sys_user,tr_loai_dexuat",
+   "base": "tr_dexuat_phoi",
+   "joinTables": [
+    "sys_user",
+    "tr_loai_dexuat"
+   ],
+   "joinEdges": {
+    "tr_loai_dexuat": {
+     "kind": "left",
+     "on": [
+      "A.loaidexuat = B.madexuat"
+     ]
+    },
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.nguoidexuat = C.UserName"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DEXUAT_PHOI_GETBYNUMBER2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dexuat_phoi_full"
+  },
+  {
+   "key": "tr_phieuyeucau_muahang|sys_user,tr_material,tr_phieuyeucau_muahang_chitiet",
+   "base": "tr_phieuyeucau_muahang",
+   "joinTables": [
+    "sys_user",
+    "tr_material",
+    "tr_phieuyeucau_muahang_chitiet"
+   ],
+   "joinEdges": {
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.nguoiyeucau = B.UserName"
+     ]
+    },
+    "tr_phieuyeucau_muahang_chitiet": {
+     "kind": "inner",
+     "on": [
+      "A.id = B.dexuat_id"
+     ]
+    },
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "B.mact = C.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUYEUCAU_MUAHANG_GETBYNUMBER2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieuyeucau_muahang_full"
+  },
+  {
+   "key": "tr_order_detail|",
+   "base": "tr_order_detail",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "ListOrderNumber"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_order_detail"
+  },
+  {
+   "key": "tr_dinhmuc_son2|",
+   "base": "tr_dinhmuc_son2",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_DINHMUC_SON2_GETLISTBYMASP"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dinhmuc_son2"
+  },
+  {
+   "key": "tr_material_mix|",
+   "base": "tr_material_mix",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_MATERIAL_MIX_GETBYCOLOR"
+   ],
+   "missingEntities": [
+    "tr_material_mix"
+   ],
+   "suggestedName": "ds_material_mix"
+  },
+  {
+   "key": "tr_list_shipping|",
+   "base": "tr_list_shipping",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_LIST_SHIPPING_GETBYDESTINATION"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_list_shipping"
+  },
+  {
+   "key": "tr_order_example|",
+   "base": "tr_order_example",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_ORDER_EXAMPLE_GET2"
+   ],
+   "missingEntities": [
+    "tr_order_example"
+   ],
+   "suggestedName": "ds_order_example"
+  },
+  {
+   "key": "tr_dexuat_phoi_chitiet|tr_dexuat_phoi",
+   "base": "tr_dexuat_phoi_chitiet",
+   "joinTables": [
+    "tr_dexuat_phoi"
+   ],
+   "joinEdges": {
+    "tr_dexuat_phoi": {
+     "kind": "left",
+     "on": [
+      "a.dexuat_id = b.id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DEXUAT_PHOI_CHITIET_GETALL4"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dexuat_phoi_chitiet_full"
+  },
+  {
+   "key": "tr_order|tr_order_detail,tr_sanpham",
+   "base": "tr_order",
+   "joinTables": [
+    "tr_order_detail",
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_order_detail": {
+     "kind": "inner",
+     "on": [
+      "A.order_number = B.order_number"
+     ]
+    },
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "B.item_number = C.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_ORDER_DETAIL_TONGHOPBYDATE"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_order_full"
+  },
+  {
+   "key": "tr_proforma_invoice|tr_list_destination",
+   "base": "tr_proforma_invoice",
+   "joinTables": [
+    "tr_list_destination"
+   ],
+   "joinEdges": {
+    "tr_list_destination": {
+     "kind": "left",
+     "on": [
+      "A.cangden = B.destination_code"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PROFORMA_INVOICE_GETALL2"
+   ],
+   "missingEntities": [
+    "tr_proforma_invoice"
+   ],
+   "suggestedName": "ds_proforma_invoice_full"
+  },
+  {
+   "key": "tr_order|tr_khachhang",
+   "base": "tr_order",
+   "joinTables": [
+    "tr_khachhang"
+   ],
+   "joinEdges": {
+    "tr_khachhang": {
+     "kind": "left",
+     "on": [
+      "A.customer = B.customer_id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_ORDER_GETALL2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_order_full"
+  },
+  {
+   "key": "tr_luutrinh_sanxuat|",
+   "base": "tr_luutrinh_sanxuat",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_LUUTRINH_SANXUAT_GETUV"
+   ],
+   "missingEntities": [
+    "tr_luutrinh_sanxuat"
+   ],
+   "suggestedName": "ds_luutrinh_sanxuat"
+  },
+  {
+   "key": "tr_denghi_thanhtoan|hr_congty,tr_nhacc,tr_phieudenghi_thanhtoan_nhacc",
+   "base": "tr_denghi_thanhtoan",
+   "joinTables": [
+    "hr_congty",
+    "tr_nhacc",
+    "tr_phieudenghi_thanhtoan_nhacc"
+   ],
+   "joinEdges": {
+    "tr_phieudenghi_thanhtoan_nhacc": {
+     "kind": "left",
+     "on": [
+      "A.nguoican_thanhtoan = B.mancc"
+     ]
+    },
+    "tr_nhacc": {
+     "kind": "left",
+     "on": [
+      "A.nguoican_thanhtoan = C.vendor_id"
+     ]
+    },
+    "hr_congty": {
+     "kind": "left",
+     "on": [
+      "A.benthanhtoan = D.MaCty"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DENGHI_THANHTOAN_GETBYNUMBER"
+   ],
+   "missingEntities": [
+    "tr_phieudenghi_thanhtoan_nhacc"
+   ],
+   "suggestedName": "ds_denghi_thanhtoan_full"
+  },
+  {
+   "key": "tr_denghi_thanhtoan|tr_dondathang",
+   "base": "tr_denghi_thanhtoan",
+   "joinTables": [
+    "tr_dondathang"
+   ],
+   "joinEdges": {
+    "tr_dondathang": {
+     "kind": "left",
+     "on": [
+      "a.chungtu = b.maddh"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DENGHI_THANHTOAN_NHACC_GETMNCC"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_denghi_thanhtoan_full"
+  },
+  {
+   "key": "tr_dondathang_chitiet|",
+   "base": "tr_dondathang_chitiet",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_DONDATHANG_CHITIET_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dondathang_chitiet"
+  },
+  {
+   "key": "tr_phieuyeucau|sys_user,tr_loai_dexuat,tr_material,tr_phieuyeucau_chitiet",
+   "base": "tr_phieuyeucau",
+   "joinTables": [
+    "sys_user",
+    "tr_loai_dexuat",
+    "tr_material",
+    "tr_phieuyeucau_chitiet"
+   ],
+   "joinEdges": {
+    "tr_loai_dexuat": {
+     "kind": "left",
+     "on": [
+      "A.loaidexuat = B.madexuat"
+     ]
+    },
+    "sys_user": {
+     "kind": "left",
+     "on": [
+      "A.nguoitao = C.UserName"
+     ]
+    },
+    "tr_phieuyeucau_chitiet": {
+     "kind": "inner",
+     "on": [
+      "A.id = B.phieuyeucau_id"
+     ]
+    },
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "B.mact = C.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUYEUCAU_GET2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieuyeucau_full"
+  },
+  {
+   "key": "tr_nguyenlieu_tenkhoahoc|",
+   "base": "tr_nguyenlieu_tenkhoahoc",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGUYENLIEU_TENKHOAHOC_GETBYNL"
+   ],
+   "missingEntities": [
+    "tr_nguyenlieu_tenkhoahoc"
+   ],
+   "suggestedName": "ds_nguyenlieu_tenkhoahoc"
+  },
+  {
+   "key": "tr_cont|",
+   "base": "tr_cont",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_CONT_List"
+   ],
+   "missingEntities": [
+    "tr_cont"
+   ],
+   "suggestedName": "ds_cont"
+  },
+  {
+   "key": "tr_phieugiao_thanhpham_chitiet|",
+   "base": "tr_phieugiao_thanhpham_chitiet",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_PHIEUGIAO_THANHPHAM_CHITIET_GETBYORDER"
+   ],
+   "missingEntities": [
+    "tr_phieugiao_thanhpham_chitiet"
+   ],
+   "suggestedName": "ds_phieugiao_thanhpham_chitiet"
+  },
+  {
+   "key": "stockbalances|tr_material",
+   "base": "stockbalances",
+   "joinTables": [
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "A.MaterialCode = B.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUKIEMKE_CHITIET_NEWDATA"
+   ],
+   "missingEntities": [
+    "stockbalances"
+   ],
+   "suggestedName": "ds_stockbalances_full"
+  },
+  {
+   "key": "rst_nhap_nguyenlieu|",
+   "base": "rst_nhap_nguyenlieu",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "RST_NHAP_NGUYENLIEU_GETBYCODE"
+   ],
+   "missingEntities": [
+    "rst_nhap_nguyenlieu"
+   ],
+   "suggestedName": "ds_rst_nhap_nguyenlieu"
+  },
+  {
+   "key": "tr_phieuxuat_thanhpham2|tr_order,tr_phieuxuat_thanhpham2_chitiet,tr_sanpham,tr_tinhtrang_fsc",
+   "base": "tr_phieuxuat_thanhpham2",
+   "joinTables": [
+    "tr_order",
+    "tr_phieuxuat_thanhpham2_chitiet",
+    "tr_sanpham",
+    "tr_tinhtrang_fsc"
+   ],
+   "joinEdges": {
+    "tr_phieuxuat_thanhpham2_chitiet": {
+     "kind": "inner",
+     "on": [
+      "A.phieuxuat_id = B.phieuxuat_id"
+     ]
+    },
+    "tr_order": {
+     "kind": "inner",
+     "on": [
+      "A.madonhang = C.order_number"
+     ]
+    },
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "B.masp = D.masp"
+     ]
+    },
+    "tr_tinhtrang_fsc": {
+     "kind": "left",
+     "on": [
+      "C.fsc_id = FSC.fsc_id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUXUAT_THANHPHAM2_CHITIET_GETALL2"
+   ],
+   "missingEntities": [
+    "tr_phieuxuat_thanhpham2",
+    "tr_phieuxuat_thanhpham2_chitiet",
+    "tr_tinhtrang_fsc"
+   ],
+   "suggestedName": "ds_phieuxuat_thanhpham2_full"
+  },
+  {
+   "key": "tr_phieunhap|tr_ctphieunhap,tr_material",
+   "base": "tr_phieunhap",
+   "joinTables": [
+    "tr_ctphieunhap",
+    "tr_material"
+   ],
+   "joinEdges": {
+    "tr_ctphieunhap": {
+     "kind": "inner",
+     "on": [
+      "A.sopn = B.sopn"
+     ]
+    },
+    "tr_material": {
+     "kind": "inner",
+     "on": [
+      "B.mavt = C.mavt"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUNHAP_GETBYMACT"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieunhap_full"
+  },
+  {
+   "key": "tr_phieuyeucau|sys_user,tr_bophan,tr_site",
+   "base": "tr_phieuyeucau",
+   "joinTables": [
+    "sys_user",
+    "tr_bophan",
+    "tr_site"
+   ],
+   "joinEdges": {
+    "sys_user": {
+     "kind": "inner",
+     "on": [
+      "A.nguoitao = B.UserName"
+     ]
+    },
+    "tr_bophan": {
+     "kind": "inner",
+     "on": [
+      "A.bophan = C.mabophan"
+     ]
+    },
+    "tr_site": {
+     "kind": "inner",
+     "on": [
+      "A.makho = D.[name]"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUYEUCAU_GETALL3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieuyeucau_full"
+  },
+  {
+   "key": "tr_phieuxuat|tr_reftype",
+   "base": "tr_phieuxuat",
+   "joinTables": [
+    "tr_reftype"
+   ],
+   "joinEdges": {
+    "tr_reftype": {
+     "kind": "left",
+     "on": [
+      "A.RefType = B.RefType"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PHIEUXUAT_GETALLBYWHS"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_phieuxuat_full"
+  },
+  {
+   "key": "tr_lenhcapphat_head|tr_lenhcapphat",
+   "base": "tr_lenhcapphat_head",
+   "joinTables": [
+    "tr_lenhcapphat"
+   ],
+   "joinEdges": {
+    "tr_lenhcapphat": {
+     "kind": "inner",
+     "on": [
+      "A.LenhCapPhatID = B.LenhCapPhatID"
+     ]
+    }
+   },
+   "procs": [
+    "TR_LENHCAPPHAT_HEAD_GETBYKHO2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_lenhcapphat_head_full"
+  },
+  {
+   "key": "tr_quytrinh_yeucau_chatluong|trtb_m_op",
+   "base": "tr_quytrinh_yeucau_chatluong",
+   "joinTables": [
+    "trtb_m_op"
+   ],
+   "joinEdges": {
+    "trtb_m_op": {
+     "kind": "inner",
+     "on": [
+      "A.macongdoan = B.c_op"
+     ]
+    }
+   },
+   "procs": [
+    "TR_QUYTRINH_YEUCAU_CHATLUONG_GETALL2"
+   ],
+   "missingEntities": [
+    "tr_quytrinh_yeucau_chatluong"
+   ],
+   "suggestedName": "ds_quytrinh_yeucau_chatluong_full"
+  },
+  {
+   "key": "tr_sanpham_ngukim|",
+   "base": "tr_sanpham_ngukim",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGUYENLIEU_NGUKIM_GETMASP"
+   ],
+   "missingEntities": [
+    "tr_sanpham_ngukim"
+   ],
+   "suggestedName": "ds_sanpham_ngukim"
+  },
+  {
+   "key": "tr_sanpham_tem|",
+   "base": "tr_sanpham_tem",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGUYENLIEU_TEM_GETMASP"
+   ],
+   "missingEntities": [
+    "tr_sanpham_tem"
+   ],
+   "suggestedName": "ds_sanpham_tem"
+  },
+  {
+   "key": "tr_sanpham_vattu|",
+   "base": "tr_sanpham_vattu",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGUYENLIEU_VATTU_GETMASP"
+   ],
+   "missingEntities": [
+    "tr_sanpham_vattu"
+   ],
+   "suggestedName": "ds_sanpham_vattu"
+  },
+  {
+   "key": "tr_sanpham_venner|",
+   "base": "tr_sanpham_venner",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NGUYENLIEU_VENNER_GETMASP"
+   ],
+   "missingEntities": [
+    "tr_sanpham_venner"
+   ],
+   "suggestedName": "ds_sanpham_venner"
+  },
+  {
+   "key": "tr_sanpham|tr_color,tr_khachhang,tr_loaisp",
+   "base": "tr_sanpham",
+   "joinTables": [
+    "tr_color",
+    "tr_khachhang",
+    "tr_loaisp"
+   ],
+   "joinEdges": {
+    "tr_loaisp": {
+     "kind": "left",
+     "on": [
+      "A.loaisp = B.maloaisp"
+     ]
+    },
+    "tr_color": {
+     "kind": "left",
+     "on": [
+      "A.mausac = D.code"
+     ]
+    },
+    "tr_khachhang": {
+     "kind": "left",
+     "on": [
+      "A.customer = E.customer_id"
+     ]
+    }
+   },
+   "procs": [
+    "TR_SANPHAM_GetAll2"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_sanpham_full"
+  },
+  {
+   "key": "tr_thongtin_sanpham_nguyenlieu|",
+   "base": "tr_thongtin_sanpham_nguyenlieu",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_THONGTIN_SANPHAM_NGUYENLIEU_GET2"
+   ],
+   "missingEntities": [
+    "tr_thongtin_sanpham_nguyenlieu"
+   ],
+   "suggestedName": "ds_thongtin_sanpham_nguyenlieu"
+  },
+  {
+   "key": "tr_pallet|tr_pallet_card,tr_sanpham",
+   "base": "tr_pallet",
+   "joinTables": [
+    "tr_pallet_card",
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_pallet_card": {
+     "kind": "inner",
+     "on": [
+      "A.id = B.pallet_id"
+     ]
+    },
+    "tr_sanpham": {
+     "kind": "inner",
+     "on": [
+      "A.masp = C.masp"
+     ]
+    }
+   },
+   "procs": [
+    "TR_PALLET_CARD_GETBYORDER"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_pallet_full"
+  },
+  {
+   "key": "trtb_m_op|trtb_m_location",
+   "base": "trtb_m_op",
+   "joinTables": [
+    "trtb_m_location"
+   ],
+   "joinEdges": {
+    "trtb_m_location": {
+     "kind": "inner",
+     "on": [
+      "A.c_op = B.c_op"
+     ]
+    }
+   },
+   "procs": [
+    "TRTB_M_LOCATION_GETLIST3"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_m_op_full"
+  },
+  {
+   "key": "tr_nhom_nguyenlieu|",
+   "base": "tr_nhom_nguyenlieu",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_NHOM_NGUYENLIEU_SEARCH"
+   ],
+   "missingEntities": [
+    "tr_nhom_nguyenlieu"
+   ],
+   "suggestedName": "ds_nhom_nguyenlieu"
+  },
+  {
+   "key": "tr_muctieu_sanxuat2|trtb_m_op",
+   "base": "tr_muctieu_sanxuat2",
+   "joinTables": [
+    "trtb_m_op"
+   ],
+   "joinEdges": {
+    "trtb_m_op": {
+     "kind": "inner",
+     "on": [
+      "A.mabophan = B.c_op"
+     ]
+    }
+   },
+   "procs": [
+    "TR_MUCTIEU_SANXUAT2_GETBYMONTH"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_muctieu_sanxuat2_full"
+  },
+  {
+   "key": "tr_dondathang|tr_dondathang_chitiet,tr_order_detail,tr_sanpham",
+   "base": "tr_dondathang",
+   "joinTables": [
+    "tr_dondathang_chitiet",
+    "tr_order_detail",
+    "tr_sanpham"
+   ],
+   "joinEdges": {
+    "tr_dondathang_chitiet": {
+     "kind": "inner",
+     "on": [
+      "A.maddh = B.maddh"
+     ]
+    },
+    "tr_sanpham": {
+     "kind": "left",
+     "on": [
+      "B.masp = SP.masp"
+     ]
+    },
+    "tr_order_detail": {
+     "kind": "left",
+     "on": [
+      "B.masp = DH.item_number",
+      "B.donhang = DH.order_number"
+     ]
+    }
+   },
+   "procs": [
+    "TR_DONDATHANG_CHITIET_LSX"
+   ],
+   "missingEntities": [],
+   "suggestedName": "ds_dondathang_full"
+  },
+  {
+   "key": "tr_kehoach_hangtrang|",
+   "base": "tr_kehoach_hangtrang",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_KEHOACH_HANGTRANG_GETBYORDER"
+   ],
+   "missingEntities": [
+    "tr_kehoach_hangtrang"
+   ],
+   "suggestedName": "ds_kehoach_hangtrang"
+  },
+  {
+   "key": "tr_kehoach_giaohang|",
+   "base": "tr_kehoach_giaohang",
+   "joinTables": [],
+   "joinEdges": {},
+   "procs": [
+    "TR_KEHOACH_GIAOHANG_GETLISTBYSTATUS"
+   ],
+   "missingEntities": [
+    "tr_kehoach_giaohang"
+   ],
+   "suggestedName": "ds_kehoach_giaohang"
+  }
+ ],
+ "complexProcs": [
+  {
+   "proc": "TR_MATERIAL_GETCHITIETBYKHO",
+   "base": "tr_site",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_Get3",
+   "base": "tr_order",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETLISTHTR",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETLISTBYORDER",
+   "base": "tr_order_detail",
+   "flags": [
+    "exec-proc"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETCONTAINER",
+   "base": "tr_order",
+   "flags": [
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_GRIDVIEW_COLUMN_GETALL2",
+   "base": "tr_gridview_column",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETBYKHO",
+   "base": "tr_site",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_LISTMATERIAL_ONHAND",
+   "base": "tr_site",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG2",
+   "base": "trtb_m_location",
+   "flags": [
+    "dynamic-sql",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG3",
+   "base": "tr_pallet",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG4",
+   "base": "trtb_m_location_process",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYMULTIPLEORDER",
+   "base": "tr_order",
+   "flags": [
+    "group-by",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "GETVENDORBYMADDH",
+   "base": "tr_dondathang",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SOKHOI_DDH",
+   "base": "tr_dondathang_chitiet",
+   "flags": [
+    "group-by",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG6",
+   "base": null,
+   "flags": [
+    "dynamic-sql"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_FIND4",
+   "base": "tr_dongia_nguyenlieu_gva",
+   "flags": [
+    "scalar-assign",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETPRICEZERO_HEHANG",
+   "base": "tr_sanpham",
+   "flags": [
+    "group-by",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_GETBYNGUYENLIEU",
+   "base": "tr_dongia_nguyenlieu_gva",
+   "flags": [
+    "exec-proc"
+   ]
+  },
+  {
+   "proc": "MES_QUYTRINH_SANPHAM_GETCATEGORY",
+   "base": "tr_sanpham_nhamay",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GetByOrder",
+   "base": "tr_order_detail",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST4",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL3",
+   "base": "tr_dexuat_phoi_chitiet",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_ByDate",
+   "base": "tr_nhap_thanhpham",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETALL3",
+   "base": "tr_pallet",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL6",
+   "base": "tr_gridview_column",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL7",
+   "base": "tr_gridview_column",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL8",
+   "base": "tr_gridview_column",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETALL9",
+   "base": "tr_gridview_column",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE2",
+   "base": "trtb_m_location_process",
+   "flags": [
+    "dynamic-sql",
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE3",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SANLUONG_HOANTHIEN_BYDATE",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HIENDIEN4_CREATE",
+   "base": "daterangecte",
+   "flags": [
+    "cte",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_BAOCAO",
+   "base": "tr_tieuchuan_loi",
+   "flags": [
+    "group-by",
+    "scalar-assign",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_BAOCAO2",
+   "base": "tr_tieuchuan_loi",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_CHONIN",
+   "base": "tr_tieuchuan_baocao_qc",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_BAOCAO_QC_CHONIN2",
+   "base": "tr_tieuchuan_baocao_qc",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETBYDATE",
+   "base": "tr_tieuchuan_chatluong",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TIEUCHUAN_CHATLUONG_GETALL5",
+   "base": "trtb_m_location_process",
+   "flags": [
+    "dynamic-sql"
+   ]
+  },
+  {
+   "proc": "TR_TONGHOP_PHIEUXUAT_THEONGAY",
+   "base": "tr_phieunhap",
+   "flags": [
+    "group-by",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_DONGIA_NGUYENLIEU_GVA_FIND",
+   "base": "tr_dongia_nguyenlieu_gva",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_BAOGIA3_TONGHOP_CREATE",
+   "base": "tr_sanpham",
+   "flags": [
+    "dynamic-sql",
+    "group-by"
+   ]
+  },
+  {
+   "proc": "ListWHSInOut_Detail",
+   "base": "tr_ctphieunhap",
+   "flags": [
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GET2",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "RPT_BAOCAO_NHAPXUAT",
+   "base": "tr_phieuxuat",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_GOVAN_GETLISTSP",
+   "base": "tr_dinhmuc_govan",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_TONGHOP",
+   "base": "tr_dinhmuc_son3",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TONGHOP_DONHANG",
+   "base": "tr_sanpham",
+   "flags": [
+    "group-by",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_METVUONG_GETALL2",
+   "base": "tr_sanpham",
+   "flags": [
+    "pivot"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_CHIPHI_SANPHAM_GETALL2",
+   "base": "tr_dinhmuc_chiphi_sanpham",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "DQT_PALLET_GETBYDONHANG",
+   "base": "dqt_pallet_chitiet",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST5",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_GETBYORDER",
+   "base": "tr_order_detail",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_SON3_MAUSON_GETBYORDER2",
+   "base": "tr_order_detail",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_DEXUAT_PHOI_CHITIET_GETALL5",
+   "base": "tr_dexuat_phoi",
+   "flags": [
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_TONGHOPCHITIET_BYDONHANG",
+   "base": "tr_order_detail",
+   "flags": [
+    "group-by",
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_BYDAY",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET_BY_MACT",
+   "base": "tr_dondathang",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "SR_BAOCAOBANHANG",
+   "base": "sr_banhang",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "SR_BAOCAOBANHANG_SP",
+   "base": "sr_giamtrucongno_chitiet",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_GETLISTEXAMPLE",
+   "base": "tr_order",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYMULTIPLEORDER2",
+   "base": "tr_order",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_QUYTRINH_SANPHAM2_GETALL3",
+   "base": "tr_quytrinh_sanpham2",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GETBYROUTING",
+   "base": "tr_sanpham",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETBYCUSTOMER_PIVOT",
+   "base": "v_orders_summary",
+   "flags": [
+    "group-by",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_GETBYSP",
+   "base": "tr_nhap_thanhpham",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_NHAP_THANHPHAM_GETBYSP2",
+   "base": "tr_nhap_thanhpham",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETLISTBOM",
+   "base": "tr_dinhmuc_ngukim",
+   "flags": [
+    "group-by",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_CHITIET2_GETALL2",
+   "base": "tr_dondathang",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETBYORDER",
+   "base": "tr_order",
+   "flags": [
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_THONGKE_SON_CHITIET_GETBYORDER",
+   "base": "tr_thongke_son_chitiet",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_CONT_DETAIL_Get2",
+   "base": "tr_ctcont",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_CONT_DETAIL_Search",
+   "base": "tr_order",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_NCC_GETBYGROUP_PV",
+   "base": "tr_material_ncc",
+   "flags": [
+    "dynamic-sql",
+    "group-by",
+    "scalar-assign",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_VIEW",
+   "base": "tr_phieunhap",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_GETBYSTATUS",
+   "base": "tr_phieugiao_thanhpham",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_CHITIET_GETALL3",
+   "base": "tr_phieugiao_thanhpham_chitiet",
+   "flags": [
+    "cursor",
+    "exec-proc",
+    "group-by",
+    "temp-table",
+    "while"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUGIAO_THANHPHAM_GETBYDATE",
+   "base": "tr_phieugiao_thanhpham",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL2",
+   "base": "tr_baocao_hangloi",
+   "flags": [
+    "group-by",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL3",
+   "base": "tr_baocao_hangloi",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL4",
+   "base": "tr_baocao_hangloi",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_BAOCAO_HANGLOI_GETALL5",
+   "base": "tr_baocao_hangloi",
+   "flags": [
+    "cursor",
+    "exec-proc",
+    "group-by",
+    "temp-table",
+    "while",
+    "window"
+   ]
+  },
+  {
+   "proc": "RPT_TONGHOP_VATTU_MUAHANG",
+   "base": "tr_dondathang_chitiet",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETALL2",
+   "base": "tr_dinhmuc_son",
+   "flags": [
+    "group-by",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_MATERIAL_GETALL5",
+   "base": "tr_dinhmuc_son",
+   "flags": [
+    "group-by",
+    "temp-table",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETALLBYWHS2",
+   "base": "tr_phieuxuat",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_DINHMUC_DONGGOI_TONGCHITIET",
+   "base": "tr_dinhmuc_donggoi",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUYEUCAU_MUAHANG_CHITIET_GETDX",
+   "base": "tr_phieuyeucau_muahang_chitiet",
+   "flags": [
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUNHAP_GETBYMONTH",
+   "base": "tr_phieunhap",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_PHIEUXUAT_GETBYMONTH",
+   "base": "tr_phieuxuat",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_AI_BOM_GETBYSP",
+   "base": "tr_ai_code",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_DONDATHANG_GETBYORDER",
+   "base": "tr_order",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GetHaveOrder",
+   "base": "tr_sanpham",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_SANPHAM_GetNotOrder",
+   "base": "tr_sanpham",
+   "flags": [
+    "subquery"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_VATTU_GET2",
+   "base": "tr_bosanpham",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_THONGTIN_SANPHAM_YEUCAUKHAC_GET2",
+   "base": "tr_bosanpham",
+   "flags": [
+    "scalar-assign"
+   ]
+  },
+  {
+   "proc": "TR_CHIPHI_SANXUAT_SP_GETBYSP",
+   "base": "tr_chiphi_sanxuat_sp",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_CARD_GETBYORDER2",
+   "base": "tr_pallet",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_PALLET_GETORDER",
+   "base": "tr_pallet",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_ORDER_DETAIL_GETLISTCHITIET",
+   "base": "tr_order_detail",
+   "flags": [
+    "exec-proc"
+   ]
+  },
+  {
+   "proc": "TR_TIENDO_THANHPHAM_BY_ORDER",
+   "base": "tr_order_detail",
+   "flags": [
+    "group-by",
+    "subquery",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETBYCOLUMN",
+   "base": "ps_kehoach_donhang",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "PS_KEHOACH_DONHANG_GETBYCOLUMN_DDH",
+   "base": "ps_kehoach_donhang",
+   "flags": [
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG5",
+   "base": "tr_dondathang",
+   "flags": [
+    "group-by",
+    "pivot",
+    "subquery",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDATE",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYMONTH",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETLIST3",
+   "base": "dqhf.dbo.tr_trangthai_sanxuat",
+   "flags": [
+    "group-by",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_CHITIET_GETALL2",
+   "base": "tr_kehoach_hangtrang",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_KEHOACH_HANGTRANG_GETALL2",
+   "base": "tr_kehoach_hangtrang",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_BAOCAO_THEONGAY",
+   "base": "tr_muctieu_sanxuat2_chitiet",
+   "flags": [
+    "group-by",
+    "temp-table",
+    "window"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_REPORT5",
+   "base": "tr_muctieu_sanxuat2_chitiet",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_GETALL2",
+   "base": "tr_muctieu_sanxuat",
+   "flags": [
+    "group-by"
+   ]
+  },
+  {
+   "proc": "TR_MUCTIEU_SANXUAT_GETALL3",
+   "base": "daterangecte",
+   "flags": [
+    "cte",
+    "union"
+   ]
+  },
+  {
+   "proc": "TR_TRANGTHAI_SANXUAT_GETBYDONHANG7",
+   "base": "tr_trangthai_sanxuat",
+   "flags": [
+    "group-by",
+    "temp-table"
+   ]
+  }
+ ],
+ "writeProcs": [
+  "TR_DONDATHANG_CHITIET2_GROUP",
+  "TR_DEXUAT_PHOI_CHITIET_NGUONGOC",
+  "TR_DEXUAT_PHOI_CHITIET_NGUONGOC_NULL",
+  "TR_DONDATHANG_CHITIET_NHAP",
+  "TR_TONKHO_CHITIET_XUAT",
+  "TR_TONKHO_CHITIET_XUAT2",
+  "TR_PALLET_GETNEWITEM",
+  "TR_PALLET_GETNEWITEM2",
+  "TR_MUCTIEU_SANXUAT_GETALL4",
+  "TR_BAOGIA_SON_GET4",
+  "TR_SODO_CATVAN_GETBYORDER",
+  "TR_TONGHOP_CHITIET_DONHANG",
+  "TR_TONGHOP_CHITIET_DONHANG_SX",
+  "TR_TONGHOP_CHITIET_DONHANG2",
+  "DQT_DINHMUC_GOVAN_GET2",
+  "TR_THONGKE_SOLUONG_GETBYDEPT",
+  "TR_TONKHO_CHITIET_NHAP",
+  "TR_BAOCAO_HANGLOI_CREATE_PALLET",
+  "TR_BAOCAO_HANGLOI_HOANTHANH",
+  "TR_BAOCAO_HANGLOI_HUONGXULY",
+  "TR_TRANGTHAI_SANXUAT_GETBYPCARD2",
+  "TR_TONGHOP_VATTU_YEUCAUXUAT_CHITIET",
+  "TR_MATERIAL_UPLOAD_IMAGE",
+  "TR_DENGHI_THANHTOAN_GETBYSTATUS",
+  "TR_DONDATHANG_PHOI_GETBYORDER",
+  "TR_PALLET_GETNEWORDER",
+  "TR_PALLET_GETNEWORDER2",
+  "TR_THONGTIN_SANPHAM_DANHSACH_GET2",
+  "TR_THONGTIN_SANPHAM_MAUSON_GET2",
+  "TR_THONGTIN_SANPHAM_NGUYENLIEU_GET3",
+  "TR_LUUTRINH_SANXUAT_GET2",
+  "TR_BAOCAO_HIENDIEN4_CREATE2",
+  "TR_MUCTIEU_SANXUAT2_CHITIET_CREATE",
+  "TR_MUCTIEU_SANXUAT2_GETBYMONTH2",
+  "TR_MUCTIEU_SANXUAT2_GETM3_HOANTHANH",
+  "TR_THONGKE_CHITIET_LANUV",
+  "PS_KEHOACH_DONHANG_GETALL5",
+  "PS_KEHOACH_DONHANG_GETALL4",
+  "PS_KEHOACH_DONHANG_SHOWINREPORT_DDH",
+  "TR_THONGKE_SANPHAM_MONITORING3"
+ ],
+ "missingSource": []
+}

@@ -1,0 +1,15 @@
+-- PARAMS:
+-- @GROUP nvarchar
+
+CREATE PROC [dbo].[TR_MATERIAL_GETGROUP2](@GROUP NVARCHAR(200))
+AS
+SELECT *
+FROM tr_material WITH(NOLOCK)
+WHERE ISNULL(nhom, '') = @GROUP
+	--seg8 = @GROUP
+	AND ISNULL(xoa, 'N') = 'N'
+ORDER BY mavt
+
+
+
+

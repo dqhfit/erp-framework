@@ -1,0 +1,55 @@
+-- PARAMS:
+-- @MAVT nvarchar
+-- @SOLUONG_XUAT decimal
+
+
+CREATE PROC TR_TONKHO_CHITIET_XUAT
+(
+    @MAVT NVARCHAR(200),
+    @SOLUONG_XUAT DECIMAL(18, 5)
+)
+AS
+DECLARE @ID INT
+DECLARE @KESO NVARCHAR(50)
+DECLARE @VITRI NVARCHAR(50)
+DECLARE @SOLUONG_TON DECIMAL(18, 5)
+
+--SET @mavt = 'NBLDE0001'
+--SET @SOLUONG_XUAT = 152
+
+DECLARE CS CURSOR FOR
+    SELECT id, keso, vitri, soluong
+    FROM tr_tonkho_chitiet
+    WHERE mavt = @MAVT
+	   AND soluong > 0
+    ORDER BY keso, soluong
+OPEN CS 
+FETCH NEXT FROM CS INTO @ID, @KESO, @VITRI, @SOLUONG_TON
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    IF @SOLUONG_XUAT <= 0
+	   BREAK
+
+    IF @SOLUONG_TON <= @SOLUONG_XUAT
+    BEGIN
+	   UPDATE tr_tonkho_chitiet
+	   SET soluong = 0
+	   WHERE id = @ID
+
+	   SET @SOLUONG_XUAT = ABS(@SOLUONG_XUAT - @SOLUONG_TON)
+    END
+    ELSE
+    BEGIN
+	   UPDATE tr_tonkho_chitiet
+	   SET soluong = soluong - @SOLUONG_XUAT
+	   WHERE id = @ID
+	   
+	   SET @SOLUONG_XUAT = 0
+    END
+
+    FETCH NEXT FROM CS INTO @ID, @KESO, @VITRI, @SOLUONG_TON
+END
+CLOSE CS
+DEALLOCATE CS
+
+
