@@ -1413,7 +1413,7 @@ async function callMigrationTool(
           const col = sql.raw(colIdent);
           if (dryRun) {
             const res = (await db.execute(
-              sql`SELECT count(*)::int AS n FROM ${tbl} WHERE company_id = ${companyId}::uuid AND ${col} ~ ${LOCALE_RE}`,
+              sql`SELECT count(*)::int AS n FROM ${tbl} WHERE company_id = ${companyId}::uuid AND ${col}::text ~ ${LOCALE_RE}::text`,
             )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
             const list = Array.isArray(res) ? res : (res.rows ?? []);
             const n = Number(list[0]?.n ?? 0);
@@ -1437,7 +1437,7 @@ async function callMigrationTool(
                   substring(${col} from 17 for 8) ||
                   substring(${col} from 29 for 3) || ':' ||
                   substring(${col} from 32 for 2)
-                WHERE company_id = ${companyId}::uuid AND ${col} ~ ${LOCALE_RE}
+                WHERE company_id = ${companyId}::uuid AND ${col}::text ~ ${LOCALE_RE}::text
                 RETURNING id`,
           )) as unknown as Array<unknown> | { rows: Array<unknown> };
           const list = Array.isArray(res) ? res : (res.rows ?? []);
