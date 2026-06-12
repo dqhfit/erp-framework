@@ -227,27 +227,25 @@ export async function procTable(
     scope,
     hasColumn: (field) => Boolean(ent.columns[field]),
     text: exprText,
+    // Cast PHẢI fail-safe (dữ liệu xấu → NULL, không vỡ query — same triết lý
+    // coerceColumnValue): mirror data từng chứa 'Invalid Date', text '2' cho
+    // cột bit... — cast trần ::timestamptz/::boolean nổ cả câu SELECT.
     num: (field) => {
       const m = colOf(field);
-      return m
-        ? m.pgType === "numeric"
-          ? sql.raw(`"${assertIdent(m.col)}"`)
-          : sql.raw(`nullif("${assertIdent(m.col)}"::text, '')::numeric`)
-        : sql`nullif(ext->>${field}, '')::numeric`;
+      const raw = m ? sql.raw(`"${assertIdent(m.col)}"`) : sql`(ext->>${field})`;
+      if (m?.pgType === "numeric") return raw;
+      return sql`(CASE WHEN ${raw}::text ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN ${raw}::text::numeric END)`;
     },
     bool: (field) => {
       const m = colOf(field);
-      return m
-        ? m.pgType === "boolean"
-          ? sql.raw(`"${assertIdent(m.col)}"`)
-          : sql.raw(`nullif("${assertIdent(m.col)}"::text, '')::boolean`)
-        : sql`nullif(ext->>${field}, '')::boolean`;
+      const raw = m ? sql.raw(`"${assertIdent(m.col)}"`) : sql`(ext->>${field})`;
+      if (m?.pgType === "boolean") return raw;
+      return sql`(CASE lower(${raw}::text) WHEN 'true' THEN true WHEN '1' THEN true WHEN 'false' THEN false WHEN '0' THEN false END)`;
     },
     ts: (field) => {
       const m = colOf(field);
-      return m
-        ? sql.raw(`nullif("${assertIdent(m.col)}"::text, '')::timestamptz`)
-        : sql`nullif(ext->>${field}, '')::timestamptz`;
+      const raw = m ? sql.raw(`"${assertIdent(m.col)}"::text`) : sql`(ext->>${field})`;
+      return sql`(CASE WHEN ${raw} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN ${raw}::timestamptz END)`;
     },
     raw: (field) => {
       const m = colOf(field);

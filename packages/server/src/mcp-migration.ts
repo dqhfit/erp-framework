@@ -389,6 +389,22 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_query_readonly",
+    description:
+      "Chạy 1 câu SELECT/WITH CHỈ-ĐỌC trên PG prod để debug data migrate (so giá trị " +
+      "mirror vs nguồn khi verify lệch). Guard: 1 statement, bắt đầu SELECT/WITH, không " +
+      "dấu chấm phẩy giữa câu, tự bọc LIMIT 500. KHÔNG scope company tự động — caller " +
+      "tự filter company_id khi đụng bảng dữ liệu.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sql: { type: "string", description: "Câu SELECT/WITH duy nhất" },
+      },
+      required: ["sql"],
+    },
+  },
+  {
     name: "migration_repair_datetime_text",
     description:
       "REPAIR data: đổi giá trị cột date/datetime (text trên bảng thật) từ chuỗi locale JS " +
@@ -1374,6 +1390,32 @@ async function callMigrationTool(
       }
 
       return { count: report.length, report };
+    }
+
+    /* ── migration_query_readonly (apply) ───────────────────── */
+    case "migration_query_readonly": {
+      const raw = String(args.sql ?? "").trim();
+      if (!raw) throw new McpError("sql bắt buộc");
+      // Guard chỉ-đọc: 1 statement SELECT/WITH, chặn chấm phẩy (đa câu) +
+      // các từ khoá ghi ở mức token đầu. (Không chống được mọi trò — tool
+      // gated scope migration:apply, cùng mức tin cậy start_full_import.)
+      const oneStmt = raw.replace(/;\s*$/, "");
+      if (oneStmt.includes(";")) throw new McpError("Chỉ 1 statement (không dấu chấm phẩy)");
+      if (!/^(select|with)\b/i.test(oneStmt)) throw new McpError("Chỉ SELECT/WITH");
+      if (/\b(insert|update|delete|merge|drop|truncate|alter|create|grant|copy)\b/i.test(oneStmt)) {
+        throw new McpError("Phát hiện từ khoá ghi — từ chối");
+      }
+      const limited = `SELECT * FROM (${oneStmt}) _q LIMIT 500`;
+      const res = (await db.execute(sql.raw(limited))) as unknown as
+        | Array<Record<string, unknown>>
+        | { rows: Array<Record<string, unknown>> };
+      const list = Array.isArray(res) ? res : (res.rows ?? []);
+      const json = JSON.stringify(list);
+      return {
+        rowCount: list.length,
+        rows: json.length > 150_000 ? JSON.parse(`${json.slice(0, 0)}[]`) : list,
+        truncatedNote: json.length > 150_000 ? "kết quả quá lớn — thu hẹp SELECT" : undefined,
+      };
     }
 
     /* ── migration_repair_datetime_text (apply) ─────────────── */

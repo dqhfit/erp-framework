@@ -50,9 +50,9 @@ export async function trDondathangSumbyyear(
 ): Promise<SumByYearRow[]> {
   if (args.year == null) throw new Error("Thiếu year");
 
-  // Bước 1: header đơn đặt hàng trong năm — active=1 + pheduyet=1 của
-  // T-SQL (bit) → so sánh boolean (pheduyet là cột text '1'/'0' → t.bool
-  // cast text::boolean chấp nhận cả '1'/'true').
+  // Bước 1: header đơn đặt hàng trong năm. pheduyet là nvarchar(2) chứa
+  // '0'/'1'/'2'/'-1' — T-SQL `pheduyet = 1` ép nvarchar→int nên so SỐ
+  // (= 1), KHÔNG so boolean ('2' không phải bool, phải bị loại êm).
   const ddh = await procTable(db, companyId, "tr_dondathang");
   const headRes = await db.execute(sql`
     SELECT
@@ -65,7 +65,7 @@ export async function trDondathangSumbyyear(
     FROM ${ddh.tbl}
     WHERE ${ddh.scope}
       AND ${ddh.bool("active")} = true
-      AND ${ddh.bool("pheduyet")} = true
+      AND ${ddh.num("pheduyet")} = 1
       AND EXTRACT(YEAR FROM ${ddh.ts("ngaydat")}) = ${args.year}
   `);
   const heads = rows<{
