@@ -87,6 +87,13 @@ export function coerceColumnValue(pgType: ColumnPgType, value: unknown): unknown
     if (value === false || value === "false" || value === 0 || value === "0") return false;
     return null;
   }
+  // Date PHẢI ra ISO — String(Date) là chuỗi locale ("Mon Jun 08 2026 ...
+  // GMT+0000 (Coordinated...)") làm vỡ cast ::timestamptz + sort/so sánh.
+  // Đã dính trên toàn bộ data import/sync (repair qua MCP
+  // migration_repair_datetime_text).
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
   return typeof value === "string" ? value : String(value);
 }
 

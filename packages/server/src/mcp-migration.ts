@@ -389,6 +389,23 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_repair_datetime_text",
+    description:
+      "REPAIR data: đổi giá trị cột date/datetime (text trên bảng thật) từ chuỗi locale JS " +
+      "('Mon Jun 08 2026 07:59:26 GMT+0000 (...)' — do bug String(Date) cũ trong coerce) về " +
+      "ISO ('2026-06-08T07:59:26+00:00'). Quét mọi entity tier=table, field type date/datetime " +
+      "có cột typed; chỉ UPDATE row khớp pattern locale (idempotent, format-only). " +
+      "dryRun=true trả số row ảnh hưởng per bảng/cột, không ghi.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entityName: { type: "string", description: "Chỉ repair 1 entity (bỏ trống = tất cả)" },
+        dryRun: { type: "boolean", description: "true = chỉ đếm, không ghi" },
+      },
+    },
+  },
+  {
     name: "migration_invoke_module_proc",
     description:
       "Gọi 1 proc Tier D đã port (module-procs registry) với args — phục vụ VERIFY " +
@@ -1357,6 +1374,81 @@ async function callMigrationTool(
       }
 
       return { count: report.length, report };
+    }
+
+    /* ── migration_repair_datetime_text (apply) ─────────────── */
+    case "migration_repair_datetime_text": {
+      const onlyName = args.entityName ? String(args.entityName).trim().toLowerCase() : null;
+      const dryRun = args.dryRun === true;
+
+      // Chuỗi locale JS fixed-width: "Mon Jun 08 2026 07:59:26 GMT+0000 (...)"
+      // vị trí: thứ 1-3, tháng 5-7, ngày 9-10, năm 12-15, giờ 17-24,
+      // 'GMT' 26-28, dấu 29, tz-giờ 30-31, tz-phút 32-33.
+      const LOCALE_RE =
+        "^[A-Z][a-z]{2} [A-Z][a-z]{2} \\d{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT[+-]\\d{4}";
+
+      const rows2 = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.companyId, companyId))
+        .orderBy(entities.name);
+
+      const report: Array<{ entity: string; field: string; col: string; rows: number }> = [];
+      let totalRows = 0;
+
+      for (const e of rows2) {
+        if (onlyName && e.name.toLowerCase() !== onlyName) continue;
+        const meta = (e.meta ?? {}) as EntityMeta;
+        const storage = meta.storage as EntityStorage | undefined;
+        if (storage?.tier !== "table" || !storage.tableName) continue;
+        const fields = (e.fields ?? []) as Array<{ name: string; type: string }>;
+        const dateFields = fields.filter((f) => f.type === "date" || f.type === "datetime");
+        if (dateFields.length === 0) continue;
+        const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+
+        for (const f of dateFields) {
+          const colMap = storage.columns?.[f.name];
+          if (!colMap) continue; // ext-tier (hiếm) — bỏ qua
+          const colIdent = `"${assertIdent(colMap.col)}"`;
+          const col = sql.raw(colIdent);
+          if (dryRun) {
+            const res = (await db.execute(
+              sql`SELECT count(*)::int AS n FROM ${tbl} WHERE company_id = ${companyId}::uuid AND ${col} ~ ${LOCALE_RE}`,
+            )) as unknown as Array<{ n: number }> | { rows: Array<{ n: number }> };
+            const list = Array.isArray(res) ? res : (res.rows ?? []);
+            const n = Number(list[0]?.n ?? 0);
+            if (n > 0) {
+              report.push({ entity: e.name, field: f.name, col: colMap.col, rows: n });
+              totalRows += n;
+            }
+            continue;
+          }
+          const mc = sql.raw(
+            `CASE substring(${colIdent} from 5 for 3) ` +
+              `WHEN 'Jan' THEN '01' WHEN 'Feb' THEN '02' WHEN 'Mar' THEN '03' ` +
+              `WHEN 'Apr' THEN '04' WHEN 'May' THEN '05' WHEN 'Jun' THEN '06' ` +
+              `WHEN 'Jul' THEN '07' WHEN 'Aug' THEN '08' WHEN 'Sep' THEN '09' ` +
+              `WHEN 'Oct' THEN '10' WHEN 'Nov' THEN '11' WHEN 'Dec' THEN '12' END`,
+          );
+          const res = (await db.execute(
+            sql`UPDATE ${tbl} SET ${col} =
+                  substring(${col} from 12 for 4) || '-' || ${mc} || '-' ||
+                  substring(${col} from 9 for 2) || 'T' ||
+                  substring(${col} from 17 for 8) ||
+                  substring(${col} from 29 for 3) || ':' ||
+                  substring(${col} from 32 for 2)
+                WHERE company_id = ${companyId}::uuid AND ${col} ~ ${LOCALE_RE}
+                RETURNING id`,
+          )) as unknown as Array<unknown> | { rows: Array<unknown> };
+          const list = Array.isArray(res) ? res : (res.rows ?? []);
+          if (list.length > 0) {
+            report.push({ entity: e.name, field: f.name, col: colMap.col, rows: list.length });
+            totalRows += list.length;
+          }
+        }
+      }
+
+      return { dryRun, totalRows, entries: report.length, report };
     }
 
     /* ── migration_invoke_module_proc (apply) ───────────────── */

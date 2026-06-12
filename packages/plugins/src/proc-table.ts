@@ -69,6 +69,11 @@ function coerce(pgType: ColumnPgType, value: unknown): unknown {
     if (value === false || value === "false" || value === 0 || value === "0") return false;
     return null;
   }
+  // Date → ISO (String(Date) là chuỗi locale, vỡ cast/sort — same fix
+  // coerceColumnValue của server).
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
   return typeof value === "string" ? value : String(value);
 }
 
