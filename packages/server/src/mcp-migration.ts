@@ -1285,28 +1285,31 @@ async function callMigrationTool(
               // Cột-tier: đổ giá trị ext (ưu tiên key gốc) vào cột typed nếu
               // cột đang NULL, rồi dọn cả 2 key ext.
               const col = sql.raw(`"${assertIdent(colMap.col)}"`);
+              // ::text BẮT BUỘC trên mọi bind param làm key jsonb — toán tử
+              // `jsonb - ?` / `jsonb -> ?` nhập nhằng (text vs integer) với
+              // param không kiểu → PG fail "could not determine data type".
               const castVal =
                 colMap.pgType === "numeric"
-                  ? sql`nullif(COALESCE(ext->>${oldKey}, ext->>${lowKey}), '')::numeric`
+                  ? sql`nullif(COALESCE(ext->>${oldKey}::text, ext->>${lowKey}::text), '')::numeric`
                   : colMap.pgType === "boolean"
-                    ? sql`nullif(COALESCE(ext->>${oldKey}, ext->>${lowKey}), '')::boolean`
-                    : sql`COALESCE(ext->>${oldKey}, ext->>${lowKey})`;
+                    ? sql`nullif(COALESCE(ext->>${oldKey}::text, ext->>${lowKey}::text), '')::boolean`
+                    : sql`COALESCE(ext->>${oldKey}::text, ext->>${lowKey}::text)`;
               res = await tx.execute(
                 sql`UPDATE ${tbl}
                     SET ${col} = COALESCE(${col}, ${castVal}),
-                        ext = (ext - ${oldKey}) - ${lowKey},
+                        ext = (ext - ${oldKey}::text) - ${lowKey}::text,
                         updated_at = now()
-                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey} OR ext ? ${lowKey})
+                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey}::text OR ext ? ${lowKey}::text)
                     RETURNING id`,
               );
             } else {
               // Ext-tier: gom về key lowercase (ưu tiên giá trị key gốc nếu cả 2 có).
               res = await tx.execute(
                 sql`UPDATE ${tbl}
-                    SET ext = ((ext - ${oldKey}) - ${lowKey})
-                          || jsonb_build_object(${lowKey}, COALESCE(ext->${oldKey}, ext->${lowKey})),
+                    SET ext = ((ext - ${oldKey}::text) - ${lowKey}::text)
+                          || jsonb_build_object(${lowKey}::text, COALESCE(ext->${oldKey}::text, ext->${lowKey}::text)),
                         updated_at = now()
-                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey} OR ext ? ${lowKey})
+                    WHERE company_id = ${companyId}::uuid AND (ext ? ${oldKey}::text OR ext ? ${lowKey}::text)
                     RETURNING id`,
               );
             }
