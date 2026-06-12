@@ -18,6 +18,10 @@
 import type { DB } from "@erp-framework/server/db";
 import { sql, type SQL } from "drizzle-orm";
 import { procTable, rows } from "../src/proc-table";
+import { tinhgiaNguyenlieuDgo } from "./tinhgia_nguyenlieu_dgo";
+import { tinhgiaNguyenlieuGva } from "./tinhgia_nguyenlieu_gva";
+import { tinhgiaNguyenlieuNki } from "./tinhgia_nguyenlieu_nki";
+import { tinhgiaNguyenlieuSon } from "./tinhgia_nguyenlieu_son";
 
 /** FORMAT(x, '#,0.##') của T-SQL → ngăn cách hàng nghìn + tối đa N lẻ. */
 const fmt = (v: number, maxFrac = 2): string =>
@@ -33,31 +37,8 @@ export async function tinhgiaHangmucSanpham(
   const id = args.id_hangmuc;
   const tigia = args.tigia ?? 25400; // T-SQL: @tigia float = 25400
 
-  // Fail-fast các nhánh cần proc OUTPUT chưa port — trước khi tốn query.
-  if (id === 10) {
-    // TODO: EXEC TINHGIA_NGUYENLIEU_GVA @masp, @tigia, @tongdongia_vnd OUT, @tongkhoitinhche OUT — chưa port
-    throw new Error(
-      "TINHGIA_HANGMUC_SANPHAM id_hangmuc=10 (GỖ VÁN) cần TINHGIA_NGUYENLIEU_GVA — chưa port",
-    );
-  }
-  if (id === 22) {
-    // TODO: EXEC TINHGIA_NGUYENLIEU_SON @masp, @tigia, @dongia_son1 OUT, @dongia_son2 OUT — chưa port
-    throw new Error(
-      "TINHGIA_HANGMUC_SANPHAM id_hangmuc=22 (CHI PHÍ SƠN) cần TINHGIA_NGUYENLIEU_SON — chưa port",
-    );
-  }
-  if (id === 24) {
-    // TODO: EXEC TINHGIA_NGUYENLIEU_NKI @masp, @tigia, @dongia_ngukim OUT — chưa port
-    throw new Error(
-      "TINHGIA_HANGMUC_SANPHAM id_hangmuc=24 (NGŨ KIM) cần TINHGIA_NGUYENLIEU_NKI — chưa port",
-    );
-  }
-  if (id === 25) {
-    // TODO: EXEC TINHGIA_NGUYENLIEU_DGO @masp, @tigia, @dongia_donggoi OUT — chưa port
-    throw new Error(
-      "TINHGIA_HANGMUC_SANPHAM id_hangmuc=25 (ĐÓNG GÓI) cần TINHGIA_NGUYENLIEU_DGO — chưa port",
-    );
-  }
+  // Các nhánh 10/22/24/25 gọi proc TINHGIA_NGUYENLIEU_* — đã port,
+  // wire trực tiếp trong chuỗi dispatch bên dưới (cần m3 tính trước).
 
   // Khung 6 tháng: DATEFROMPARTS(YEAR/MONTH của (now - 6 tháng), 1) .. EOMONTH(now)
   const now = new Date();
@@ -204,6 +185,34 @@ export async function tinhgiaHangmucSanpham(
     chiphi1 = dongiaSp * tigia * 0.01;
     chiphi2 = m3 === 0 ? 0 : chiphi1 / m3;
     ghichu = "CP 1 SP = [Giá bán] x 1%";
+  } else if (id === 10) {
+    // GỖ VÁN — EXEC TINHGIA_NGUYENLIEU_GVA @masp, @tigia, 2 OUTPUT
+    const [gva] = await tinhgiaNguyenlieuGva(db, companyId, { masp: args.masp, tigia });
+    chiphi1 = gva?.tongdongia_vnd ?? 0;
+    const khoi = gva?.tongkhoitinhche ?? 0;
+    chiphi2 = khoi === 0 ? 0 : chiphi1 / khoi; // IIF(@tongkhoitinhche = 0, 0, ...)
+    ghichu =
+      "CP 1 SP = SUM([Số khối NL theo định mức] * [Đơn giá nguyên liệu]); [Đơn giá NL] lấy theo chi phí nguyên liệu trong báo giá hoàn thiện";
+  } else if (id === 22) {
+    // CHI PHÍ SƠN — EXEC TINHGIA_NGUYENLIEU_SON (OUT1 = tổng theo sản phẩm)
+    const [son] = await tinhgiaNguyenlieuSon(db, companyId, { masp: args.masp, tigia });
+    chiphi1 = son?.tongdongia_sanpham ?? 0;
+    // Proc gốc: chỉ set chiphi2 khi @m3_tc > 0 (không có ELSE — giữ 0)
+    if (m3 > 0) chiphi2 = chiphi1 / m3;
+    // Giữ nguyên chuỗi gốc kể cả thiếu ngoặc đóng
+    ghichu = "CP 1 SP = ([Đơn giá 1 khối] * [Số khối TC 1 SP]";
+  } else if (id === 24) {
+    // NGŨ KIM — EXEC TINHGIA_NGUYENLIEU_NKI (OUTPUT tongdonagia_vnd — typo gốc)
+    const [nki] = await tinhgiaNguyenlieuNki(db, companyId, { masp: args.masp, tigia });
+    chiphi1 = nki?.tongdonagia_vnd ?? 0;
+    chiphi2 = m3 === 0 ? 0 : chiphi1 / m3; // IIF(@m3_tc = 0, 0, ...)
+    ghichu = "CP 1 SP = [Số lượng theo định mức] * [Đơn giá vật tư]";
+  } else if (id === 25) {
+    // ĐÓNG GÓI — EXEC TINHGIA_NGUYENLIEU_DGO
+    const [dgo] = await tinhgiaNguyenlieuDgo(db, companyId, { masp: args.masp, tigia });
+    chiphi1 = dgo?.tongdonagia_vnd ?? 0;
+    chiphi2 = m3 === 0 ? 0 : chiphi1 / m3;
+    ghichu = "CP 1 SP = [Số lượng theo định mức] * [Đơn giá vật tư]";
   } else if (id === 15) {
     // Khấu hao máy móc, nhà xưởng
     const maymoc = await sumKhauhao("maymoc_nhaxuong");
