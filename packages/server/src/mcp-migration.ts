@@ -31,7 +31,7 @@ import { authApiKey } from "./api-key-auth";
 import { dsConfig as dataSourceConfigSchema } from "./datasources-router";
 import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
-import { assertIdent, type EntityStorage } from "./entity-table-ddl";
+import { assertIdent, type EntityStorage, syncEntityTableSchema } from "./entity-table-ddl";
 import { enableModuleSyncForCompany } from "./migration-delta-sync";
 import { getModuleProc, getModuleProcByName } from "./module-procs";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
@@ -386,6 +386,37 @@ const TOOLS: ToolDef[] = [
         },
         dryRun: { type: "boolean", description: "true = chỉ trả kế hoạch, không ghi gì" },
       },
+    },
+  },
+  {
+    name: "migration_sync_entity_schema",
+    description:
+      "Đồng bộ schema entity tier=table: (a) MERGE các field mới (name/label/type) vào " +
+      "entities.fields nếu chưa có; (b) chạy syncEntityTableSchema — ADD cột typed còn " +
+      "thiếu cho MỌI field column-tier + cập nhật meta.storage.columns (merge jsonb). " +
+      "Dùng sửa 2 loại gap do prepare tái dùng entity cũ: field thiếu so cột nguồn, và " +
+      "field có nhưng storage.columns thiếu (data import bị vứt — vd dongia GVA). " +
+      "Sau sync cần RE-IMPORT bảng để lấp giá trị.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entityName: { type: "string", description: "Tên entity" },
+        addFields: {
+          type: "array",
+          description: "Field cần bổ sung (bỏ qua nếu đã tồn tại)",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              label: { type: "string" },
+              type: { type: "string" },
+            },
+            required: ["name", "label", "type"],
+          },
+        },
+      },
+      required: ["entityName"],
     },
   },
   {
@@ -1390,6 +1421,71 @@ async function callMigrationTool(
       }
 
       return { count: report.length, report };
+    }
+
+    /* ── migration_sync_entity_schema (apply) ───────────────── */
+    case "migration_sync_entity_schema": {
+      const entityName = String(args.entityName ?? "").trim();
+      if (!entityName) throw new McpError("entityName bắt buộc");
+      const addFields = Array.isArray(args.addFields)
+        ? (args.addFields as Array<{ name: string; label: string; type: string }>)
+        : [];
+
+      const [row] = await db
+        .select()
+        .from(entities)
+        .where(
+          and(
+            eq(entities.companyId, companyId),
+            sql`lower(${entities.name}) = lower(${entityName})`,
+          ),
+        );
+      if (!row) throw new McpError(`Entity '${entityName}' không tồn tại`);
+      const meta = (row.meta ?? {}) as EntityMeta;
+      const storage = meta.storage as EntityStorage | undefined;
+      if (storage?.tier !== "table" || !storage.tableName) {
+        throw new McpError(`Entity '${entityName}' không phải tier=table`);
+      }
+
+      // (a) merge field mới (theo name lowercase, không trùng).
+      const fields = [...((row.fields ?? []) as Array<Record<string, unknown> & { name: string }>)];
+      const have = new Set(fields.map((f) => f.name.toLowerCase()));
+      const added: string[] = [];
+      for (const f of addFields) {
+        const n = String(f.name ?? "").toLowerCase();
+        if (!n || have.has(n)) continue;
+        fields.push({
+          id: `mf_${n}`,
+          name: n,
+          label: String(f.label ?? n),
+          type: String(f.type ?? "text"),
+        });
+        have.add(n);
+        added.push(n);
+      }
+
+      // (b) sync schema: ADD cột typed thiếu + meta.storage mới.
+      const nextStorage = await syncEntityTableSchema(
+        db,
+        storage,
+        fields as unknown as Parameters<typeof syncEntityTableSchema>[2],
+      );
+      await db
+        .update(entities)
+        .set({
+          fields,
+          // Merge jsonb — KHÔNG ghi đè meta (bài học #20).
+          meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({ storage: nextStorage })}::jsonb`,
+          updatedAt: new Date(),
+        })
+        .where(eq(entities.id, row.id));
+
+      return {
+        entity: row.name,
+        addedFields: added,
+        columnsBefore: Object.keys(storage.columns ?? {}).length,
+        columnsAfter: Object.keys(nextStorage.columns ?? {}).length,
+      };
     }
 
     /* ── migration_query_readonly (apply) ───────────────────── */

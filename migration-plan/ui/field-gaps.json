@@ -1,0 +1,111 @@
+{
+ "count": 6,
+ "gaps": [
+  {
+   "entity": "tr_color",
+   "missing": [
+    {
+     "name": "isbgd_duyet",
+     "label": "IsBGD_Duyet",
+     "type": "boolean"
+    },
+    {
+     "name": "bgd_nguoiduyet",
+     "label": "BGD_NguoiDuyet",
+     "type": "text"
+    },
+    {
+     "name": "bgd_ngayduyet",
+     "label": "BGD_NgayDuyet",
+     "type": "datetime"
+    }
+   ],
+   "rowsInMssql": 572
+  },
+  {
+   "entity": "tr_dexuat_bangmau",
+   "missing": [
+    {
+     "name": "messageid",
+     "label": "MessageId",
+     "type": "text"
+    }
+   ],
+   "rowsInMssql": 312
+  },
+  {
+   "entity": "tr_material",
+   "missing": [
+    {
+     "name": "mavt_ncc",
+     "label": "mavt_ncc",
+     "type": "text"
+    }
+   ],
+   "rowsInMssql": 36084
+  },
+  {
+   "entity": "tr_order",
+   "missing": [
+    {
+     "name": "messageid",
+     "label": "MessageId",
+     "type": "text"
+    }
+   ],
+   "rowsInMssql": 2328
+  },
+  {
+   "entity": "tr_sanpham",
+   "missing": [
+    {
+     "name": "m2_son",
+     "label": "m2_son",
+     "type": "number"
+    },
+    {
+     "name": "cachtinhson",
+     "label": "cachtinhson",
+     "type": "number"
+    }
+   ],
+   "rowsInMssql": 6758
+  },
+  {
+   "entity": "tr_sanpham_vattu",
+   "missing": [
+    {
+     "name": "masp",
+     "label": "masp",
+     "type": "text"
+    },
+    {
+     "name": "mota",
+     "label": "mota",
+     "type": "text"
+    },
+    {
+     "name": "mausac",
+     "label": "mausac",
+     "type": "text"
+    },
+    {
+     "name": "quycach",
+     "label": "quycach",
+     "type": "text"
+    },
+    {
+     "name": "soluong",
+     "label": "soluong",
+     "type": "text"
+    },
+    {
+     "name": "ghichu",
+     "label": "ghichu",
+     "type": "text"
+    }
+   ],
+   "rowsInMssql": 0
+  }
+ ]
+}
