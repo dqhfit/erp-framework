@@ -70,3 +70,11 @@ tr_congthuc_donggoi, trmaterialclassstd, trmaterialclassstddtail
 (+ danh sách cũ: ps_kehoach_donhang, tr_gridview_column, tr_dinhmuc_lock,
 tr_dongia_nguyenlieu_gva, tr_dinhmuc_son, tr_muctieu_sanxuat,
 tr_sanpham_components)
+
+## NGUYÊN TẮC CHỐT (2026-06-12): DataSource-first
+
+Ưu tiên quy proc về DataSource hết mức. Chỉ port Tier D khi proc thật sự
+GHI hoặc trả scalar tính toán. Proc đọc phức tạp (group-by/union/pivot/
+subquery) → hướng ưu tiên là MỞ RỘNG DataSource (groupBy server-side...)
+thay vì port code đọc hàng loạt. Agent port phát hiện proc chỉ-đọc-đơn-giản
+→ dừng, báo lại làm ứng viên DataSource.
