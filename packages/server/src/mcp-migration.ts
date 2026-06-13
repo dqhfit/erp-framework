@@ -28,6 +28,7 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
+import { resolveList } from "./datasource-resolver";
 import { dsConfig as dataSourceConfigSchema } from "./datasources-router";
 import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
@@ -562,6 +563,28 @@ const TOOLS: ToolDef[] = [
         overwrite: { type: "boolean", description: "true = ghi đè datasource trùng tên" },
       },
       required: ["name", "label", "config"],
+    },
+  },
+  {
+    name: "datasource_preview",
+    description:
+      "Chạy THẬT resolver DataSource (resolveList — join batch-stitch / SQL join như app) trả " +
+      "N dòng mẫu phẳng theo projection. Dùng VERIFY wiring: xác nhận cột join (vd mota, tenncc) " +
+      "có data thật, không null hàng loạt. Role admin (không strip field). Chỉ ĐỌC. " +
+      "Trả {total, fields[], rows[]} (cắt khi lớn).",
+    level: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dataSourceName: { type: "string", description: "Tên DataSource (datasources.name)" },
+        limit: { type: "number", description: "Số dòng mẫu (mặc định 5, tối đa 50)" },
+        fields: {
+          type: "array",
+          items: { type: "string" },
+          description: "Chỉ trả các key này (rỗng = mọi field projection)",
+        },
+      },
+      required: ["dataSourceName"],
     },
   },
   {
@@ -1973,6 +1996,49 @@ async function callMigrationTool(
         })
         .returning({ id: dataSources.id });
       return { status: "created", dataSourceId: row?.id, name: dsName };
+    }
+
+    /* ── datasource_preview (read) ──────────────────────────── */
+    case "datasource_preview": {
+      const dsName = String(args.dataSourceName ?? "").trim();
+      if (!dsName) throw new McpError("dataSourceName bắt buộc");
+      const limit = Math.min(Math.max(Number(args.limit ?? 5), 1), 50);
+      const onlyFields = (Array.isArray(args.fields) ? args.fields : []).map((s) => String(s));
+
+      const [ds] = await db
+        .select({ config: dataSources.config })
+        .from(dataSources)
+        .where(
+          and(
+            eq(dataSources.companyId, companyId),
+            sql`lower(${dataSources.name}) = lower(${dsName})`,
+          ),
+        );
+      if (!ds) throw new McpError(`DataSource '${dsName}' không tồn tại`);
+      // Normalize config về DataSourceConfig (resolveList cần shape đầy đủ).
+      const parsed = dataSourceConfigSchema.safeParse(ds.config ?? {});
+      if (!parsed.success) throw new McpError("config DataSource không hợp lệ");
+      const cfg = parsed.data as unknown as Parameters<typeof resolveList>[3];
+
+      // Role admin → KHÔNG strip field (preview cần thấy hết để verify join).
+      const out = await resolveList(db, companyId, "admin", cfg, { limit });
+      const rows = onlyFields.length
+        ? out.rows.map((r) => {
+            const o: Record<string, unknown> = { id: (r as Record<string, unknown>).id };
+            for (const f of onlyFields) o[f] = (r as Record<string, unknown>)[f];
+            return o;
+          })
+        : out.rows;
+      // Đếm null per field để lộ cột join "rỗng hàng loạt".
+      const keys =
+        onlyFields.length > 0
+          ? onlyFields
+          : [...new Set(rows.flatMap((r) => Object.keys(r as Record<string, unknown>)))];
+      const nullCount: Record<string, number> = {};
+      for (const k of keys) {
+        nullCount[k] = rows.filter((r) => (r as Record<string, unknown>)[k] == null).length;
+      }
+      return { dataSource: dsName, total: out.total, sampled: rows.length, nullCount, rows };
     }
 
     /* ── entity_set_source (apply) ──────────────────────────── */
