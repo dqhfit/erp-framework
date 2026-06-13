@@ -112,6 +112,18 @@ export function createLegacyMenuClient(baseUrl: string) {
       }>,
     /** Cây menu legacy lồng. */
     listTree: () => trpc.legacyMenu.listTree.query() as Promise<LegacyMenuNode[]>,
+    /** Cây điều hướng END-USER: node + pageId (trang published) — cho portal. */
+    navTree: () =>
+      trpc.legacyMenu.navTree.query() as Promise<
+        Array<{
+          code: string;
+          name: string | null;
+          level: number | null;
+          parentCode: string | null;
+          sort: number;
+          pageId: string | null;
+        }>
+      >,
     /** Thống kê tiến độ port. */
     stats: () => trpc.legacyMenu.stats.query() as Promise<LegacyMenuStats>,
     /** Resolve source C# (env DQHF_SOURCE_DIR) → procs/controls/repos mỗi node. */

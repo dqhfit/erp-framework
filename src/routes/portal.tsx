@@ -9,9 +9,10 @@
      khôi phục khi mở lại hệ thống.
    Auto-redirect từ AppShell khi role === "viewer".
    ========================================================== */
+
+import { createLegacyMenuClient } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button } from "@/components/ui";
@@ -21,6 +22,137 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { usePreferences } from "@/stores/preferences";
 import { useUserObjects } from "@/stores/userObjects";
+
+interface NavNode {
+  code: string;
+  name: string | null;
+  level: number | null;
+  parentCode: string | null;
+  sort: number;
+  pageId: string | null;
+}
+
+/** Cây điều hướng menu DQHF: nhóm (collapsible) → mục (trang). Node lá có
+ *  pageId → click mở trang. Nhánh không có trang published đã lọc ở server. */
+function MenuTree({
+  nodes,
+  activeId,
+  onSelect,
+}: {
+  nodes: NavNode[];
+  activeId: string | null;
+  onSelect: (pageId: string) => void;
+}) {
+  const childrenOf = useMemo(() => {
+    const m = new Map<string, NavNode[]>();
+    for (const n of nodes) {
+      const k = n.parentCode ?? "__root";
+      const arr = m.get(k) ?? [];
+      arr.push(n);
+      m.set(k, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.sort - b.sort);
+    return m;
+  }, [nodes]);
+  const roots = useMemo(() => {
+    const codes = new Set(nodes.map((n) => n.code));
+    return nodes
+      .filter((n) => !n.parentCode || !codes.has(n.parentCode))
+      .sort((a, b) => a.sort - b.sort);
+  }, [nodes]);
+  return (
+    <ul className="py-1">
+      {roots.map((r) => (
+        <MenuBranch
+          key={r.code}
+          node={r}
+          childrenOf={childrenOf}
+          activeId={activeId}
+          onSelect={onSelect}
+          depth={0}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function MenuBranch({
+  node,
+  childrenOf,
+  activeId,
+  onSelect,
+  depth,
+}: {
+  node: NavNode;
+  childrenOf: Map<string, NavNode[]>;
+  activeId: string | null;
+  onSelect: (pageId: string) => void;
+  depth: number;
+}) {
+  const kids = childrenOf.get(node.code) ?? [];
+  const hasActiveDesc = useMemo(() => {
+    const stack = [...kids];
+    while (stack.length) {
+      const c = stack.pop();
+      if (!c) break;
+      if (c.pageId && c.pageId === activeId) return true;
+      stack.push(...(childrenOf.get(c.code) ?? []));
+    }
+    return false;
+  }, [kids, childrenOf, activeId]);
+  const [open, setOpen] = useState(depth === 0 || hasActiveDesc);
+  const isLeaf = kids.length === 0 && node.pageId;
+  const active = node.pageId != null && node.pageId === activeId;
+  if (isLeaf) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={() => node.pageId && onSelect(node.pageId)}
+          style={{ paddingLeft: 12 + depth * 12 }}
+          className={cn(
+            "w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 transition-colors",
+            active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
+          )}
+        >
+          <I.Layout size={13} className="shrink-0 text-muted" />
+          <span className="truncate">{node.name}</span>
+        </button>
+      </li>
+    );
+  }
+  if (kids.length === 0) return null; // nhóm rỗng (không có trang) — ẩn
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{ paddingLeft: 12 + depth * 12 }}
+        className="w-full text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted flex items-center gap-1.5 hover:bg-hover/40"
+      >
+        <I.ChevronRight
+          size={12}
+          className={cn("shrink-0 transition-transform", open && "rotate-90")}
+        />
+        <span className="truncate">{node.name}</span>
+      </button>
+      {open && (
+        <ul>
+          {kids.map((k) => (
+            <MenuBranch
+              key={k.code}
+              node={k}
+              childrenOf={childrenOf}
+              activeId={activeId}
+              onSelect={onSelect}
+              depth={depth + 1}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
 
 function PortalRoute() {
   const t = useT();
@@ -39,6 +171,31 @@ function PortalRoute() {
       ),
     [pages, myGroupIds],
   );
+
+  // Cây điều hướng theo MENU DQHF (legacy_menu_map) — node + pageId trang
+  // published. Rỗng (chưa link/publish) → fallback danh sách phẳng.
+  const [navNodes, setNavNodes] = useState<
+    Array<{
+      code: string;
+      name: string | null;
+      level: number | null;
+      parentCode: string | null;
+      sort: number;
+      pageId: string | null;
+    }>
+  >([]);
+  useEffect(() => {
+    let alive = true;
+    createLegacyMenuClient("")
+      .navTree()
+      .then((rows) => {
+        if (alive) setNavNodes(rows);
+      })
+      .catch(() => undefined); // fail-safe: thiếu menu → dùng danh sách phẳng
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const { prefs, loaded: prefsLoaded, save: savePrefs, load: loadPrefs } = usePreferences();
 
@@ -133,7 +290,11 @@ function PortalRoute() {
             <div className="p-4 text-xs text-muted text-center leading-relaxed">
               {t("portal.no_pages")}
             </div>
+          ) : navNodes.some((n) => n.pageId) ? (
+            // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
+            <MenuTree nodes={navNodes} activeId={activeId} onSelect={setActiveId} />
           ) : (
+            // Fallback: danh sách phẳng (chưa link menu / chưa publish).
             <ul className="py-1">
               {publishedPages.map((p) => {
                 const active = p.id === activeId;

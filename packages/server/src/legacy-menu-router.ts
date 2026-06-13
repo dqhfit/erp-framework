@@ -9,19 +9,61 @@
    ========================================================== */
 
 import { existsSync } from "node:fs";
-import { legacyMenuMap, legacyReports } from "@erp-framework/db";
+import { legacyMenuMap, legacyReports, pages } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { logActivity } from "./activity";
 import { importLegacyMenu, legacyMenuStats, listLegacyMenuTree } from "./legacy-menu";
 import { resolveAllMenuNodes, resolveTablesForProcs, slugifyModule } from "./legacy-menu-resolve";
 import { parseAllReports } from "./legacy-report-parse";
 import { openDefaultMssql } from "./migration-router";
 import { enqueueMigrationJob } from "./migration-worker";
-import { logActivity } from "./activity";
-import { rbacProcedure, router } from "./trpc";
+import { approvedProcedure, rbacProcedure, router } from "./trpc";
 
 export const legacyMenuRouter = router({
+  /** Cây điều hướng cho END-USER (portal): node active + trang ĐÃ PUBLISH liên
+   *  kết (page_id). Khác listTree (admin cockpit): chỉ trả thông tin nav tối
+   *  thiểu + lọc node có nhánh dẫn tới trang published (ẩn nhánh rỗng). */
+  navTree: approvedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        sourceCode: legacyMenuMap.sourceCode,
+        name: legacyMenuMap.name,
+        level: legacyMenuMap.level,
+        parentCode: legacyMenuMap.parentCode,
+        sort: legacyMenuMap.sort,
+        pageId: legacyMenuMap.pageId,
+        pageName: pages.name,
+        published: pages.published,
+      })
+      .from(legacyMenuMap)
+      .leftJoin(pages, eq(legacyMenuMap.pageId, pages.id))
+      .where(and(eq(legacyMenuMap.companyId, ctx.user.companyId), eq(legacyMenuMap.active, true)));
+    // Chỉ giữ node có trang published HOẶC node nhóm có hậu duệ dẫn tới trang.
+    const byCode = new Map(rows.map((r) => [r.sourceCode, r]));
+    const hasLeaf = new Set<string>();
+    for (const r of rows) {
+      if (r.pageId && r.published) {
+        let cur: string | null = r.sourceCode;
+        while (cur && !hasLeaf.has(cur)) {
+          hasLeaf.add(cur);
+          cur = byCode.get(cur)?.parentCode ?? null;
+        }
+      }
+    }
+    return rows
+      .filter((r) => hasLeaf.has(r.sourceCode))
+      .map((r) => ({
+        code: r.sourceCode,
+        name: r.name,
+        level: r.level,
+        parentCode: r.parentCode,
+        sort: r.sort,
+        pageId: r.pageId && r.published ? r.pageId : null,
+      }));
+  }),
+
   /** Kiểm tra trạng thái cấu hình cần thiết cho cockpit (DQHF_SOURCE_DIR, MSSQL). */
   checkSetup: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
     const dqhfDir = process.env.DQHF_SOURCE_DIR ?? null;

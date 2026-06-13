@@ -17,6 +17,7 @@
 import {
   dataSources,
   entities,
+  legacyMenuMap,
   migrationFullJobs,
   migrationFullJobTables,
   migrationSyncModules,
@@ -25,7 +26,7 @@ import {
   mssqlConnections,
   pages,
 } from "@erp-framework/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
 import { resolveList } from "./datasource-resolver";
@@ -365,6 +366,35 @@ const TOOLS: ToolDef[] = [
         },
       },
       required: ["names"],
+    },
+  },
+  {
+    name: "menu_link_pages",
+    description:
+      "Liên kết trang ↔ node menu DQHF (legacy_menu_map.page_id) để app render điều hướng " +
+      "theo menu. Mỗi link: {pageName, menuCodes[]} — resolve trang theo tên, set page_id + " +
+      "port_status='xong' cho các node có source_code khớp. publish=true cũng publish trang. " +
+      "dryRun=true (mặc định) trả kế hoạch.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        links: {
+          type: "array",
+          description: "[{pageName, menuCodes:[source_code]}]",
+          items: {
+            type: "object",
+            properties: {
+              pageName: { type: "string" },
+              menuCodes: { type: "array", items: { type: "string" } },
+            },
+            required: ["pageName", "menuCodes"],
+          },
+        },
+        publish: { type: "boolean", description: "true = publish trang đã link" },
+        dryRun: { type: "boolean", description: "true (mặc định) = chỉ trả kế hoạch" },
+      },
+      required: ["links"],
     },
   },
   {
@@ -1383,6 +1413,58 @@ async function callMigrationTool(
         })
         .returning({ id: pages.id });
       return { status: "created", pageId: row?.id, name: pageName };
+    }
+
+    /* ── menu_link_pages (apply) ────────────────────────────── */
+    case "menu_link_pages": {
+      const links = (Array.isArray(args.links) ? args.links : []) as Array<{
+        pageName?: string;
+        menuCodes?: string[];
+      }>;
+      if (links.length === 0) throw new McpError("links bắt buộc");
+      const doPublish = args.publish === true;
+      const dryRun = args.dryRun !== false;
+
+      // Resolve trang theo tên (company-scoped).
+      const allPages = await db
+        .select({ id: pages.id, name: pages.name })
+        .from(pages)
+        .where(eq(pages.companyId, companyId));
+      const pageByName = new Map(allPages.map((p) => [p.name.toLowerCase(), p.id]));
+
+      let linkedNodes = 0;
+      let publishedPages = 0;
+      const notFound: string[] = [];
+      for (const lk of links) {
+        const pname = String(lk.pageName ?? "").toLowerCase();
+        const codes = (Array.isArray(lk.menuCodes) ? lk.menuCodes : []).map((c) => String(c));
+        const pid = pageByName.get(pname);
+        if (!pid) {
+          notFound.push(lk.pageName ?? "");
+          continue;
+        }
+        if (codes.length === 0) continue;
+        if (!dryRun) {
+          const res = await db
+            .update(legacyMenuMap)
+            .set({ pageId: pid, portStatus: "xong", updatedAt: new Date() })
+            .where(
+              and(eq(legacyMenuMap.companyId, companyId), inArray(legacyMenuMap.sourceCode, codes)),
+            )
+            .returning({ id: legacyMenuMap.id });
+          linkedNodes += res.length;
+          if (doPublish) {
+            await db
+              .update(pages)
+              .set({ published: true, updatedAt: new Date() })
+              .where(eq(pages.id, pid));
+            publishedPages++;
+          }
+        } else {
+          linkedNodes += codes.length;
+        }
+      }
+      return { dryRun, links: links.length, linkedNodes, publishedPages, notFound };
     }
 
     /* ── page_wire_datasource (apply) ───────────────────────── */
