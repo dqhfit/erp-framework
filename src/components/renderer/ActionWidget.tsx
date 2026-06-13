@@ -3,7 +3,7 @@
    runActionSteps với context (pageState, procClient, dialog, toast,
    navigate). Tự disable khi user không có quyền run/procedure.
    ========================================================== */
-import { createProceduresClient } from "@erp-framework/client";
+import { createApiDataSource, createProceduresClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
@@ -18,6 +18,7 @@ import { useAuth } from "@/stores/auth";
 import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/types/page";
 
 const procClient = createProceduresClient("");
+const recordsApi = createApiDataSource("");
 
 interface Props {
   config: ActionConfig;
@@ -95,6 +96,7 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
       const ctx = {
         pageState,
         procClient,
+        deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
         dialog: { confirm: dialog.confirm },
         toast: { success: toast.success, error: toast.error, info: toast.info },
         navigate: (href: string) => void navigate({ to: href }),

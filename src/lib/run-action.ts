@@ -23,6 +23,9 @@ export interface PageStateLike {
 export interface ActionContext {
   pageState: PageStateLike;
   procClient: ProceduresClient;
+  /** Xoá 1 bản ghi theo recordId (records.deleteRecord). Optional — context
+   *  không cung cấp thì step delete-record báo lỗi nhẹ. */
+  deleteRecord?: (recordId: string) => Promise<void>;
   dialog: {
     confirm: (message: string, opts?: { title?: string; danger?: boolean }) => Promise<boolean>;
   };
@@ -148,6 +151,29 @@ export async function runActionSteps(
       const result = await ctx.openWizard(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      continue;
+    }
+    if (step.kind === "delete-record") {
+      if (!ctx.deleteRecord) {
+        ctx.toast.error("Xoá không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const rid = resolveBinding(step.recordIdBinding, rs.get);
+      if (rid == null || rid === "") {
+        ctx.toast.info("Chưa chọn bản ghi để xoá");
+        return { completed: false, procedureRuns };
+      }
+      try {
+        await ctx.deleteRecord(String(rid));
+        ctx.toast.success("Đã xoá");
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        ctx.toast.error(`Lỗi xoá: ${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      }
       continue;
     }
     if (step.kind === "procedure") {

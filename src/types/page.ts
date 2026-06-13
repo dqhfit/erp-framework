@@ -97,6 +97,16 @@ export interface ActionStepProcedure {
   /** Sau khi gọi xong → invalidate query records của entity (id). */
   invalidateEntities?: string[];
 }
+/** Xoá bản ghi đang chọn (records.deleteRecord theo recordId). Thường ghép
+ *  sau 1 step confirm. Nút "Xoá" của form DQHF map tới đây. */
+export interface ActionStepDeleteRecord {
+  id: string;
+  kind: "delete-record";
+  /** Nguồn recordId (thường state "sel" — dòng đang chọn trên list). */
+  recordIdBinding: BindingValue;
+  /** Invalidate records của entity sau khi xoá → list re-fetch. */
+  invalidateEntities?: string[];
+}
 export interface ActionStepNavigate {
   id: string;
   kind: "navigate";
@@ -156,6 +166,7 @@ export interface ActionStepOpenWizard {
 export type ActionStep =
   | ActionStepConfirm
   | ActionStepProcedure
+  | ActionStepDeleteRecord
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepOpenPopup

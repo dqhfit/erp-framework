@@ -76,7 +76,10 @@ function mapButton(b: Btn, entityId: string, title: string): Record<string, unkn
   if (/(xem|chi tiết|chi tiet|view|detail)/.test(c))
     return mk("act_view", b.caption, "Eye", "default", [{ id: "s", kind: "open-popup", popupMode: "detail", entity: entityId, title, recordIdBinding: { source: "state", key: "sel" } }]);
   if (/(xoá|xoa|xóa|delete|remove)/.test(c))
-    return mk("act_delete", b.caption, "Trash2", "danger", [{ id: "s", kind: "confirm", title: b.caption, message: "Xác nhận xoá bản ghi đang chọn?", danger: true }]);
+    return mk("act_delete", b.caption, "Trash2", "danger", [
+      { id: "s1", kind: "confirm", title: b.caption, message: "Xác nhận xoá bản ghi đang chọn?", danger: true },
+      { id: "s2", kind: "delete-record", recordIdBinding: { source: "state", key: "sel" }, invalidateEntities: [entityId] },
+    ]);
   if (/(duyệt|duyet|phê duyệt|phe duyet|approve|xác nhận|xac nhan)/.test(c))
     return mk("act_approve", b.caption, "Check", "default", [{ id: "s", kind: "confirm", title: b.caption, message: `${b.caption}?` }]);
   if (/(in |in$|print)/.test(c))
@@ -199,7 +202,7 @@ async function main() {
     console.log(`${pageName} — "${title}" [${c.menuNodes.length} menu-node, entity ${primary}]`);
     console.log(`    nút: ${actions.map((a) => a.label).join(", ")}`);
     if (APPLY) {
-      const r = await mcp<{ status: string }>("page_create_draft", { name: page.name, label: page.label, content: page.content, overwrite: true });
+      const r = await mcp<{ status: string }>("page_create_draft", { name: page.name, label: page.label, content: page.content, overwrite: true, overwritePublished: true });
       console.log(`    → ${r.status}`);
     }
   }

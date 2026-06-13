@@ -332,7 +332,12 @@ const TOOLS: ToolDef[] = [
         overwrite: {
           type: "boolean",
           description:
-            "true = ghi đè nếu page tồn tại VÀ còn draft (published=false). Page đã publish không bao giờ bị đè.",
+            "true = ghi đè nếu page tồn tại VÀ còn draft (published=false). Page đã publish không đè (trừ overwritePublished).",
+        },
+        overwritePublished: {
+          type: "boolean",
+          description:
+            "true (kèm overwrite) = đè cả page đã publish — dùng khi regenerate menu-driven sau publish.",
         },
       },
       required: ["name", "label", "content"],
@@ -1388,9 +1393,12 @@ async function callMigrationTool(
         .from(pages)
         .where(and(eq(pages.companyId, companyId), sql`lower(${pages.name}) = lower(${pageName})`));
       if (exists) {
-        // overwrite CHỈ áp cho draft — page đã publish (người dùng đang xài)
-        // tuyệt đối không đè.
-        if (args.overwrite === true && exists.published === false) {
+        // overwrite áp cho draft; page đã publish chỉ đè khi overwritePublished
+        // (flow regenerate menu-driven sau khi đã publish — cập nhật nút/cột).
+        const canOverwrite =
+          args.overwrite === true &&
+          (exists.published === false || args.overwritePublished === true);
+        if (canOverwrite) {
           await db
             .update(pages)
             .set({

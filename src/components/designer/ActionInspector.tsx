@@ -342,6 +342,7 @@ function StepRow({
   const kindLabel: Record<ActionStep["kind"], string> = {
     procedure: "Gọi procedure",
     confirm: "Hỏi xác nhận",
+    "delete-record": "Xoá bản ghi",
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
     "open-popup": "Mở popup",
