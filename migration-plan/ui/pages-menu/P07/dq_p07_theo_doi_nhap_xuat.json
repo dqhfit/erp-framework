@@ -1,0 +1,107 @@
+{
+ "name": "dq_p07_theo_doi_nhap_xuat",
+ "label": "Thống kê nhập - xuất (theo tháng)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+    "title": "Thống kê nhập - xuất (theo tháng)",
+    "fields": [
+     "makho",
+     "mact",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong_nhap",
+     "soluong_xuat",
+     "in_d1",
+     "in_d2",
+     "in_d3",
+     "in_d4",
+     "in_d5",
+     "in_d6",
+     "in_d7",
+     "in_d8"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+        "title": "Thêm — Thống kê nhập - xuất (theo tháng)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+        "title": "Thống kê nhập - xuất (theo tháng)",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1074"
+ ]
+}

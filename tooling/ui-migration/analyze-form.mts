@@ -131,15 +131,18 @@ function parseDesigner(text: string): FormUi {
         break;
       }
     }
-    if (/\.Button$|SimpleButton/.test(type!)) {
+    // WinForms SimpleButton/.Button (caption ở .Text) + DevExpress
+    // BarButtonItem (ribbon — caption ở .Caption). DQHF gần như TOÀN
+    // BarButtonItem nên trước đây bỏ lỡ hết nút (chỉ bắt .Text).
+    if (/\.Button$|SimpleButton|BarButtonItem|BarLargeButtonItem/.test(type!)) {
       ui.buttons.push({ control: name!, caption: "" });
     }
   }
-  // Caption nút: this.btnX.Text = "..."
+  // Caption nút: this.btnX.Text="..." (WinForms) HOẶC .Caption="..." (DevExpress).
   const btnByName = new Map(ui.buttons.map((b) => [b.control, b]));
-  for (const m of text.matchAll(/this\.(\w+)\.Text\s*=\s*"([^"]*)"/g)) {
+  for (const m of text.matchAll(/this\.(\w+)\.(?:Text|Caption)\s*=\s*"([^"]*)"/g)) {
     const b = btnByName.get(m[1]!);
-    if (b) b.caption = m[2]!;
+    if (b && !b.caption) b.caption = m[2]!;
   }
   // DataBindings: Binding("Text", <src>, "col") → field bind của input.
   const inputByName = new Map(ui.inputs.map((i) => [i.control, i]));

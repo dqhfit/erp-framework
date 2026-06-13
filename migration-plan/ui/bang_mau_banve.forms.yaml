@@ -265,7 +265,17 @@ forms:
         kind: text
       - control: txtGhiChu
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiViewM3
+        caption: Xem tổng số khối
+      - control: bbiView
+        caption: Xem bản vẽ
+      - control: bbiExcel
+        caption: Xuất danh sách bản vẽ
+      - control: bbiDownload
+        caption: Tải xuống
+      - control: bbiViewBrowser
+        caption: Xem bằng trình duyệt
   - form: frmChiTietDeXuatBangMau
     title: Đề xuất bảng màu
     inScope: true
@@ -456,7 +466,13 @@ forms:
         - field: id
           header: ID
     inputs: []
-    buttons: []
+    buttons:
+      - control: btnAdd
+        caption: Thêm bản vẽ
+      - control: btnView
+        caption: Xem bản vẽ
+      - control: btnDownload
+        caption: Tải xuống bản vẽ
   - form: frm_banve_mau
     title: frm_banve_mau
     inScope: true
@@ -488,7 +504,11 @@ forms:
         kind: text
       - control: repositoryItemTextEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiOpen
+        caption: Mở
+      - control: bbiDownload
+        caption: Tải về
   - form: frm_banve_test
     title: frm_banve_test
     inScope: true
@@ -563,7 +583,19 @@ forms:
         - field: id
           header: ID
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Tải xuống
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachBanVe
     title: Danh sách bản vẽ
     inScope: true
@@ -618,7 +650,21 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiUpdate
+        caption: Cập nhật bản vẽ
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiPrint
+        caption: In
+      - control: bbiCopyToBVKT
+        caption: Chuyển sang Bản vẽ kỹ thuật
   - form: frmDanhSachBanVe2
     title: Danh sách bản vẽ đã phát hành
     inScope: true
@@ -671,7 +717,15 @@ forms:
     inputs:
       - control: repTrangThai
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiDelete
+        caption: Xóa
   - form: frm_banve
     title: Chi tiết bản vẽ
     inScope: true
@@ -743,7 +797,35 @@ forms:
         kind: text
       - control: repositoryItemTextEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In bản vẽ
+      - control: bbiExport
+        caption: Xuất bản vẽ
+      - control: barButtonItem1
+        caption: Xuất định mức gỗ ván
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiView1
+        caption: Xem trên thẻ mới
+      - control: bbiExportPdf
+        caption: Xuất Pdf
+      - control: bbiView2
+        caption: Xem trên thẻ mới
+      - control: bbiViewBrowser2
+        caption: Xem bằng trình duyệt
+      - control: bbiViewBrowser1
+        caption: Xem bằng trình duyệt
+      - control: bbiCopyFile
+        caption: Cập nhật thư mục
   - form: frm_banve_donggoi
     title: Bản vẽ đóng gói
     inScope: true
@@ -804,4 +886,28 @@ forms:
         kind: select
       - control: repMaSP2
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In bản vẽ
+      - control: bbiExport
+        caption: Xuất bản vẽ
+      - control: bbiCopyFile
+        caption: Cập nhật thư mục
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiView1
+        caption: Xem trên thẻ mới
+      - control: bbiViewBrowser1
+        caption: Xem bằng trình duyệt
+      - control: bbiView2
+        caption: Xem trên thẻ mới
+      - control: bbiExportPdf
+        caption: Xuất Pdf

@@ -1,0 +1,51 @@
+{
+ "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
+ "label": "Tổng hợp xuất hỗn hợp sơn",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "fields": [
+     "ngaythang",
+     "madonhang",
+     "buocson",
+     "tongsoluong",
+     "ngaytao",
+     "nguoitao",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1310"
+ ]
+}

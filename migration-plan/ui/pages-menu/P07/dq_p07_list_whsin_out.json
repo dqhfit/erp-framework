@@ -1,0 +1,52 @@
+{
+ "name": "dq_p07_list_whsin_out",
+ "label": "Danh sách Nhập/Xuất",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Danh sách Nhập/Xuất",
+    "fields": [
+     "sophieu",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "soluong",
+     "dvt",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Danh sách Nhập/Xuất",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I62"
+ ]
+}

@@ -546,7 +546,17 @@ forms:
         kind: text
       - control: txtOrderNumber
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Xem
+      - control: bbiPrint
+        caption: In
+      - control: bbiExcel
+        caption: Excel
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiExport2
+        caption: Xuất excel
   - form: frmPhatHanhDinhMuc
     title: Phát hành định mức
     inScope: true
@@ -889,7 +899,15 @@ forms:
     inputs:
       - control: repMaSp
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Xem
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Excel
+      - control: bbiClose
+        caption: Thoát
   - form: frmDinhMucSoChe
     title: Định mức sơ chế
     inScope: true
@@ -965,7 +983,17 @@ forms:
         kind: text
       - control: txtQuyCach
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucSon_MixAdd
     title: Hỗn hợp sơn
     inScope: true
@@ -1104,7 +1132,15 @@ forms:
         kind: date
       - control: glkMaCT
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiExcel
+        caption: Excel
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
   - form: frm_add_dinhmuc_nk
     title: Định mức ngũ kim
     inScope: true
@@ -1166,7 +1202,11 @@ forms:
         kind: select
       - control: txtTenSP
         kind: text
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Lưu
+      - control: barButtonItem2
+        caption: Thoát
   - form: frm_add_dinhmuc_son
     title: Định mức sơn
     inScope: false
@@ -1224,7 +1264,11 @@ forms:
         kind: select
       - control: txtTenSP
         kind: text
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Lưu
+      - control: barButtonItem2
+        caption: Thoát
   - form: frmDinhMucSon3
     title: Quy trình sơn
     inScope: true
@@ -1386,7 +1430,17 @@ forms:
         kind: select
       - control: repositoryItemMemoEdit2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frm_add_dinhmuc_vt_ver2
     title: Cập nhật định mức gỗ ván
     inScope: true
@@ -1466,7 +1520,13 @@ forms:
         kind: text
       - control: txtQuyCach2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiImport
+        caption: Import
+      - control: bbiClose
+        caption: Thoát
   - form: frm_kiemtra_dinhmuc_ver3
     title: Kiểm tra định mức theo đơn hàng
     inScope: true
@@ -1544,7 +1604,13 @@ forms:
         - field: soluong
           header: Số lượng
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frm_DinhMuc_HeHang
     title: Kiểm tra định mức - bản vẽ - AI
     inScope: true
@@ -1592,7 +1658,39 @@ forms:
         kind: text
       - control: repositoryItemGridLookUpEdit1
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiGVA
+        caption: Định mức gỗ ván
+      - control: bbiNKI
+        caption: Định mức ngũ kim
+      - control: bbiDGO
+        caption: Định mức bao bì
+      - control: bbiSON
+        caption: Định mức sơn
+      - control: bbiHTR
+        caption: Định mức hàng trắng
+      - control: bbiVENEER
+        caption: Định mức Veneer
+      - control: barButtonItem1
+        caption: Định mức gỗ ván
+      - control: barButtonItem2
+        caption: Định mức ngũ kim
+      - control: barButtonItem3
+        caption: Định mức bao bì
+      - control: barButtonItem4
+        caption: Định mức sơn
+      - control: barButtonItem5
+        caption: Định mức hàng trắng
+      - control: barButtonItem6
+        caption: Định mức Veneer
+      - control: barButtonItem7
+        caption: Bản vẽ
+      - control: barButtonItem8
+        caption: Bản vẽ kỹ thuật
+      - control: barButtonItem9
+        caption: Bản vẽ đóng gói
+      - control: barButtonItem10
+        caption: AI
   - form: frmDinhMucSon_TheoMau2Add
     title: Thêm quy trình màu sơn
     inScope: true
@@ -1691,7 +1789,19 @@ forms:
     inputs:
       - control: cboOrderNumber
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Xem
+      - control: bbiPrint
+        caption: In
+      - control: bbiExcel
+        caption: Excel
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiCopy
+        caption: Copy
+      - control: bbiCopy2
+        caption: Copy with Headers
   - form: frmDinhMucSonEditor
     title: Định mức sơn
     inScope: true
@@ -1787,7 +1897,15 @@ forms:
         kind: text
       - control: txtMauSac
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiPrint
+        caption: In
   - form: frmDinhMucCatVan
     title: frmDinhMucCatVan
     inScope: true
@@ -1993,7 +2111,21 @@ forms:
         kind: select
       - control: repNhaCungCap
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: barButtonItem1
+        caption: Tạo mã ván cắt
+      - control: barButtonItem2
+        caption: Xóa
+      - control: barButtonItem3
+        caption: Nạp lại
   - form: frmDinhMucSon4
     title: Định mức màu sơn
     inScope: true
@@ -2140,7 +2272,15 @@ forms:
         kind: select
       - control: repCongDoan
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucSon_Mix
     title: Danh sách hỗn hợp sơn
     inScope: true
@@ -2185,7 +2325,21 @@ forms:
         - field: soluong
           header: Số lượng
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucSon_TheoMau2
     title: Danh sách quy trình sơn
     inScope: false
@@ -2234,7 +2388,21 @@ forms:
     inputs:
       - control: glkMaCT
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiUpdate
+        caption: Cập nhật quy trình
+      - control: bbiUpdateBOM
+        caption: Cập nhật cho tất cả sản phẩm
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucChiPhiSanPham
     title: Định mức chi phí sản phẩm
     inScope: true
@@ -2309,7 +2477,17 @@ forms:
         - field: id
           header: ID
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiTinhLai
+        caption: Tính lại
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucGoVanSoChe
     title: frmDinhMucGoVanSoChe
     inScope: true
@@ -2393,7 +2571,17 @@ forms:
         kind: select
       - control: repVeneer
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucHistory
     title: Lịch sử thay đổi định mức
     inScope: true
@@ -2430,7 +2618,13 @@ forms:
         - field: trangthai
           header: Trạng thái
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucLock
     title: Định mức đã khóa
     inScope: false
@@ -2468,7 +2662,19 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiLock
+        caption: Khóa
+      - control: bbiUnlock
+        caption: Mở khóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDinhMucVatTuTieuHao
     title: Định mức vật tư tiêu hao
     inScope: true
@@ -2542,4 +2748,14 @@ forms:
         kind: text
       - control: repChiTiet
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng

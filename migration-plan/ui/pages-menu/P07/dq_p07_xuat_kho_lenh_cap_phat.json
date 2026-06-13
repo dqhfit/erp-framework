@@ -1,0 +1,122 @@
+{
+ "name": "dq_p07_xuat_kho_lenh_cap_phat",
+ "label": "Xuất kho theo lệnh cấp phát",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Xuất kho theo lệnh cấp phát",
+    "fields": [
+     "username",
+     "fullname",
+     "lenhcapphatid",
+     "loaicapphat",
+     "madondathang",
+     "madonhang",
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "soluong_daphat",
+     "soluong_conlai",
+     "soluong_nhap"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_add",
+      "label": "Thêm một dòng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Thêm một dòng — Xuất kho theo lệnh cấp phát",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Nhập chi tiết đang chọn",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Xuất kho theo lệnh cấp phát",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_approve",
+      "label": "Xác nhận",
+      "icon": "Check",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xác nhận",
+        "message": "Xác nhận?"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I63",
+  "I1099"
+ ]
+}

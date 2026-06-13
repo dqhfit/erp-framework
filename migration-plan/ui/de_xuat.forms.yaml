@@ -1382,7 +1382,25 @@ forms:
         kind: select
       - control: repMemo
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiConfirm
+        caption: Duyệt đề xuất
+      - control: bbiCancel
+        caption: Huỷ đề xuất
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmRSTDeXuatNguyenLieu
     title: Đề xuất nguyên liệu
     inScope: false
@@ -1427,4 +1445,18 @@ forms:
     inputs:
       - control: repTrangThai
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng

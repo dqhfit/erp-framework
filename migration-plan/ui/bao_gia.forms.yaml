@@ -401,7 +401,25 @@ forms:
         kind: text
       - control: calSoMam
         kind: number
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSetup
+        caption: Cài đặt chi phí
+      - control: bbiSum
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiExcel
+        caption: Excel
+      - control: bbiCalculatorM2
+        caption: Tính diện tích sản phẩm
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiSumCBM
+        caption: Tính tổng CBM
+      - control: bbiCalculatorDGO
+        caption: Tính giá mút xốp, bao bì
   - form: frm_baogia_sanpham_auto
     title: Báo giá tự động
     inScope: true
@@ -570,7 +588,15 @@ forms:
         kind: select
       - control: repChiTiet_DongGoi
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiTinhGia
+        caption: Tính giá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSend
+        caption: Gửi yêu cầu cập nhật
+      - control: bbiClose
+        caption: Đóng
   - form: frm_baogia_sanpham_info
     title: Thông tin chi tiết báo giá sản phẩm
     inScope: true
@@ -933,7 +959,31 @@ forms:
         kind: select
       - control: repLoaiUV
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiChiPhiGoVan
+        caption: Chi phí nguyên liệu gỗ, ván
+      - control: bbiChiPhiKhac
+        caption: Chi phí khác
+      - control: bbiChiPhiNhanCong
+        caption: Chi phí nhân công
+      - control: bbiChatLuong
+        caption: Định mức nguyên liệu
+      - control: barButtonItem1
+        caption: Cập nhật khối lượng riêng của gỗ
+      - control: bbiCalcSummary
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiSendCurrent
+        caption: Chỉ những vật tư theo sản phẩm hiện tại
+      - control: bbiSendAll
+        caption: Quét toàn bộ vật tư theo hệ hàng hiện tại
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiSendMail
+        caption: Gửi yêu cầu cập nhật giá
   - form: frm_baogia_sanpham_ver4
     title: Báo giá sản phẩm
     inScope: true
@@ -1139,7 +1189,25 @@ forms:
         kind: select
       - control: repChiPhiGiaCong
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSettings
+        caption: Cài đặt chi phí
+      - control: bbiCalcSummary
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiSendCurrent
+        caption: Chỉ những vật tư theo sản phẩm hiện tại
+      - control: bbiSendAll
+        caption: Quét toàn bộ vật tư theo hệ hàng hiện tại
+      - control: bbiClose
+        caption: Đóng
+      - control: barButtonItem1
+        caption: Chi phí gia công
+      - control: bbiSendMail
+        caption: Gửi yêu cầu cập nhật giá
   - form: frmBaoGia2DanhSachAdd
     title: Báo giá sản phẩm
     inScope: false
@@ -1558,6 +1626,14 @@ forms:
       - control: calCBM
         kind: number
     buttons:
+      - control: bbiTinhTong
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu báo giá
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
       - control: btnDonGiaSon
         caption: Cập nhật giá sơn
       - control: btnDonGiaGo
@@ -1688,6 +1764,16 @@ forms:
         caption: Lưu báo giá
       - control: btnCreateNew
         caption: Tạo mới
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
   - form: frmBaoGiaHangTrang
     title: Báo giá hàng trắng
     inScope: true
@@ -1892,7 +1978,23 @@ forms:
         kind: text
       - control: calTyGia
         kind: number
-    buttons: []
+    buttons:
+      - control: bbiDanhSach
+        caption: Danh sách báo giá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSetup
+        caption: Cài đặt chi phí
+      - control: bbiSum
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiSumCBM
+        caption: Tính tổng CBM
+      - control: bbiCalculatorDGO
+        caption: Tính giá mút xốp, bao bì
   - form: frmBaoGiaVatTu
     title: Báo giá vật tư
     inScope: true
@@ -2045,7 +2147,21 @@ forms:
         kind: text
       - control: repositoryItemMemoEdit3
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frm_baogia_export
     title: Xuất báo giá
     inScope: true
@@ -2223,7 +2339,21 @@ forms:
         kind: number
       - control: repLoaiUV
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSetup
+        caption: Cài đặt chi phí
+      - control: bbiSum
+        caption: Tính tổng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiSumCBM
+        caption: Tính tổng CBM
+      - control: bbiCalculatorDGO
+        caption: Tính giá mút xốp, bao bì
   - form: frm_baogia_chiphi_add
     title: Cài đặt chi phí báo giá
     inScope: false
@@ -2455,7 +2585,31 @@ forms:
         kind: select
       - control: repMauSac
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiDelete
+        caption: Xóa báo giá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiPrintType1
+        caption: Mẫu Modus
+      - control: bbiPrintType2
+        caption: Mẫu GigaCloud
+      - control: bbiPrintType3
+        caption: Mẫu VFM
+      - control: bbiExcel
+        caption: Xuất
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiMultiSelection
+        caption: Chọn nhiều
+      - control: barButtonItem1
+        caption: Cell Select
+      - control: barButtonItem2
+        caption: Row Select
+      - control: barButtonItem3
+        caption: Check Box Row Select
   - form: frmBaoGiaVatTuAdd
     title: Báo giá vật tư
     inScope: true
@@ -2686,6 +2840,10 @@ forms:
         caption: Lưu
       - control: btnClose
         caption: Đóng
+      - control: bbiTinhGiaDongGoi
+        caption: Tính giá bao bì, mút xốp (Tất cả)
+      - control: bbiTinhGiaDongGoi2
+        caption: Tính giá bao bì, mút xốp
   - form: frmBaoGia2ChiPhiKhacAdd
     title: Chi phí báo giá khác
     inScope: true
@@ -3013,7 +3171,19 @@ forms:
         kind: select
       - control: repositoryItemDateEdit2
         kind: date
-    buttons: []
+    buttons:
+      - control: cbbReload
+        caption: Nạp lại
+      - control: btnDuyetAll
+        caption: Duyệt tất cả
+      - control: btnDuyetChon
+        caption: Duyệt mã đã chọn
+      - control: barButtonItem3
+        caption: Không duyệt
+      - control: NotAll
+        caption: Không duyệt tất cả
+      - control: NotChon
+        caption: Không duyệt mã đã chọn
   - form: frmBaoGia3_NguKim
     title: Giá ngũ kim
     inScope: true
@@ -3122,7 +3292,27 @@ forms:
     inputs:
       - control: repMemo
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiChiPhiNguyenLieu
+        caption: Chi phí nguyên liệu
+      - control: bbiChiPhiKhac
+        caption: Các loại chi phí khác
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiSetDefault
+        caption: Đặt làm báo giá mặc định
   - form: frmDanhSachBaoGia3
     title: Danh sách báo giá
     inScope: false
@@ -3163,7 +3353,17 @@ forms:
         - field: hehang
           header: Hệ hàng
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiAdd
+        caption: Thêm
   - form: frmDanhSachBaoGia3_2
     title: Danh sách báo giá
     inScope: false
@@ -3236,7 +3436,17 @@ forms:
         - field: nguyenlieu
           header: id_nguyenlieu
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiUpdate
+        caption: Cập nhật
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachBaoGiaHangTrang
     title: Danh sách báo giá hàng trắng
     inScope: true
@@ -3276,7 +3486,17 @@ forms:
         - field: fullname
           header: Người tạo
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiDelete
+        caption: Xóa báo giá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiExport_HH
+        caption: Xuất theo hệ hàng
   - form: frmDanhSachBaoGiaPhoi
     title: Danh sách báo giá phôi
     inScope: true
@@ -3311,7 +3531,17 @@ forms:
         - field: ngaytao
           header: Ngày tạo
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiDelete
+        caption: Xóa báo giá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachBaoGia_HTR
     title: Danh sách báo giá hàng trắng
     inScope: true
@@ -3385,4 +3615,18 @@ forms:
         - field: ngaybaogia
           header: Ngày báo giá
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng

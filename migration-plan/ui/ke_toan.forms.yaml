@@ -592,7 +592,11 @@ forms:
         kind: text
       - control: speTiGia
         kind: number
-    buttons: []
+    buttons:
+      - control: bbiReCalc
+        caption: Tính lại
+      - control: bbiClose
+        caption: Đóng
   - form: frmPhanQuyenKeHoach
     title: Phân quyền nhập kế hoạch
     inScope: true
@@ -680,7 +684,21 @@ forms:
         - field: bemat
           header: Bề mặt
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachQuyTrinh
     title: Danh sách quy trình đã phát hành
     inScope: true
@@ -720,7 +738,15 @@ forms:
         - field: mact
           header: Mã chi tiết
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmQuyTrinhLanUV
     title: Danh sách bảng màu
     inScope: true
@@ -762,7 +788,21 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Thoát
   - form: frmNhomQuyCachPhoi
     title: frmNhomQuyCachPhoi
     inScope: true
@@ -805,7 +845,11 @@ forms:
         kind: number
       - control: repositoryItemSpinEdit1
         kind: number
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Nạp lại
+      - control: barButtonItem2
+        caption: Nhóm
   - form: frmDeXuatPhoi_ChonQuyCach
     title: Tồn kho gỗ thông
     inScope: true
@@ -923,7 +967,13 @@ forms:
         kind: select
       - control: txtName2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiCopy
+        caption: Chuyển
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiClose
+        caption: Đóng
   - form: frmDeNghiTT
     title: frm_banhang
     inScope: true
@@ -946,7 +996,9 @@ forms:
         kind: text
       - control: repositoryItemGridLookUpEdit1
         kind: select
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Lưu
   - form: view_QuyCachCarton
     title: Quy cách thùng carton
     inScope: true
@@ -1025,7 +1077,23 @@ forms:
         kind: text
       - control: repositoryItemImageComboBox1
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: btnDuyet
+        caption: Duyệt
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiExport
+        caption: Xuất
   - form: frmBaoCaoKinhDoanh
     title: Báo cáo tình hình kinh doanh
     inScope: false
@@ -1125,7 +1193,15 @@ forms:
         kind: select
       - control: repMonth
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmChiPhiKhauHao
     title: Chi phí khấu hao
     inScope: false
@@ -1160,7 +1236,11 @@ forms:
         kind: select
       - control: repYear
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiClose
+        caption: Đóng
   - form: frmChiPhiNhanCong
     title: Chi phí nhân công
     inScope: false
@@ -1211,7 +1291,11 @@ forms:
     inputs:
       - control: repMonth
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiClose
+        caption: Đóng
   - form: frm_denghi_thanhtoan_tonghop
     title: frm_denghi_thanhtoan_tonghop
     inScope: true
@@ -1235,7 +1319,9 @@ forms:
         - field: loaitien
           header: Loại tiền
     inputs: []
-    buttons: []
+    buttons:
+      - control: btnNapLai
+        caption: Nạp lại
   - form: frmDanhSachQuyTrinh2
     title: Quy trình sản phẩm (theo mã nhà máy)
     inScope: true
@@ -1294,7 +1380,15 @@ forms:
         kind: select
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmQuyTrinhSon
     title: Quy trình sơn
     inScope: true
@@ -1387,7 +1481,15 @@ forms:
         kind: select
       - control: repMauson
         kind: select
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Lưu
+      - control: barButtonItem3
+        caption: Xoá
+      - control: barButtonItem5
+        caption: Nạp Lại
+      - control: barButtonItem4
+        caption: In
   - form: frm_na_chiphicodinh_nguyenvatlieu
     title: Danh sách chi phí cố định thay đổi theo tháng
     inScope: true
@@ -1409,7 +1511,9 @@ forms:
     inputs:
       - control: repositoryItemDateEdit1
         kind: date
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Tính lại
   - form: frmLichSuThongKe
     title: Chi tiết thống kê
     inScope: true

@@ -363,7 +363,11 @@ forms:
         kind: select
       - control: txtMaNCC
         kind: text
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Lưu
+      - control: barButtonItem2
+        caption: Thoát
   - form: frmCustomerPermission
     title: Phân quyền khách hàng
     inScope: true
@@ -616,7 +620,15 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmKhachHang
     title: Khách hàng
     inScope: true
@@ -646,7 +658,19 @@ forms:
         - field: active
           header: Tình trạng hoạt động
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiThongTin
+        caption: Thông tin khách hàng
   - form: frmNhaCungCap
     title: Danh sách nhà cung cấp
     inScope: true
@@ -676,7 +700,23 @@ forms:
         - field: totaldebt
           header: Nợ cũ
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: barButtonItem1
+        caption: Nhập
   - form: frmKhachHang
     title: Khách hàng
     inScope: true
@@ -706,7 +746,19 @@ forms:
         - field: active
           header: Tình trạng hoạt động
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiThongTin
+        caption: Thông tin khách hàng
   - form: frm_sosanhgia_nvt_ncc
     title: So sánh giá nguyên vật liệu nhà cung cấp
     inScope: true
@@ -748,7 +800,25 @@ forms:
     inputs:
       - control: repositoryItemCheckEdit1
         kind: boolean
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiSoSanhGiaTheoNam
+        caption: So sánh giá theo năm
+      - control: bbiSoSanhTheoNCC
+        caption: So sánh giá theo nhà cung cấp
   - form: frm_sosanhgia_nvt_ncc_print2
     title: So sánh giá nguyên liệu
     inScope: true
@@ -838,7 +908,13 @@ forms:
         - field: mst
           header: Mã số thuế
     inputs: []
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Thêm
+      - control: barButtonItem2
+        caption: Sửa
+      - control: barButtonItem3
+        caption: Xoá
   - form: frmkhachhang
     title: Danh sách nhà cung cấp
     inScope: true
@@ -868,7 +944,17 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: btnThem
+        caption: Thêm
+      - control: btnSua
+        caption: Sửa
+      - control: btnXoa
+        caption: Xoá
+      - control: barButtonItem1
+        caption: Nạp lại
+      - control: barButtonItem2
+        caption: Xuất Excel
   - form: frmSoChiTietCongNoKhachHang
     title: Sổ chi tiết công nợ khách hàng
     inScope: false
@@ -918,4 +1004,10 @@ forms:
         - field: nocu
           header: Nợ cũ
     inputs: []
-    buttons: []
+    buttons:
+      - control: btnthongke
+        caption: Thống kê
+      - control: btnIn
+        caption: In
+      - control: btnXuat
+        caption: Xuất Excel

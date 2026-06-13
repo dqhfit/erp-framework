@@ -428,7 +428,31 @@ forms:
         kind: select
       - control: repositoryItemImageComboBox1
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiDuyetLCP
+        caption: Duyệt lệnh cấp phát
+      - control: bbiDelete
+        caption: Hủy lệnh cấp phát
+      - control: bbiHoanThanh
+        caption: Đánh dấu hoàn thành
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiPrint1
+        caption: In
+      - control: bbiMaSP
+        caption: Tổng theo sản phẩm
+      - control: bbiMaCT
+        caption: Tổng theo chi tiết
+      - control: bbiPrintPivot
+        caption: Pivot theo sản phẩm
+      - control: barButtonItem1
+        caption: Lệnh cấp phát vật tư (BM-VFM-QT-19-04)
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmLoaiTB_Add
     title: Loại thiết bị
     inScope: false
@@ -498,7 +522,17 @@ forms:
         kind: select
       - control: cboOrderNumber
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmNhomAIAdd
     title: Cập nhật nhóm AI
     inScope: true
@@ -641,7 +675,11 @@ forms:
         kind: text
       - control: txtXacNhan
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhsachCongno_Thu_Tra
     title: Danh sách công nợ phải Thu - Trả Showroom
     inScope: false
@@ -793,6 +831,20 @@ forms:
       - control: repositoryItemMemoEdit2
         kind: text
     buttons:
+      - control: bbiAdd
+        caption: Tạo đơn hàng
+      - control: bbiEdit
+        caption: Sửa đơn hàng
+      - control: bbiDelete
+        caption: Xóa đơn hàng
+      - control: bbiIssueInventory
+        caption: Xuất kho
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiClose
+        caption: Đóng
       - control: btnCheckAll
         caption: Chọn tất cả
   - form: frmListWHSInOut
@@ -901,7 +953,17 @@ forms:
         kind: select
       - control: cboOrderNumber
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmListContainer
     title: Danh sách cont
     inScope: false
@@ -952,7 +1014,29 @@ forms:
     inputs:
       - control: repFilter
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Tạo phiếu xuất cont
+      - control: bbiEdit
+        caption: Sửa phiếu xuất cont
+      - control: bbiLock
+        caption: Đã xuất hàng
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiView
+        caption: Xem sơ đồ cont
+      - control: bbiDownload
+        caption: Tải xuống sơ đồ cont
+      - control: bbiViewOnWeb
+        caption: Xem trên trình duyệt
   - form: frmCreateMaterialRequest
     title: Tạo lệnh cấp phát
     inScope: true
@@ -1081,7 +1165,23 @@ forms:
         kind: select
       - control: repKeSo
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiTaoLenhCapPhat
+        caption: Tạo lệnh cấp phát
+      - control: bbiLCP_DonHang
+        caption: Lệnh cấp phát đơn hàng
+      - control: bbiLCP_TestRun
+        caption: Lệnh cấp phát test run
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmCreateMaterialRequestOther
     title: Cấp phát vật tư cho hàng trắng
     inScope: true
@@ -1212,7 +1312,17 @@ forms:
         kind: select
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmCreateMaterialRequest_GVA
     title: frmCreateMaterialRequest_GVA
     inScope: true
@@ -1262,7 +1372,13 @@ forms:
         kind: select
       - control: repTieuChuan
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiCalculator
+        caption: Tính toán
+      - control: bbiCreate
+        caption: Tạo lệnh cấp phát
+      - control: bbiClose
+        caption: Thoát
   - form: frmCreateMaterialRequest_GVA_1
     title: Cấp phát gỗ ván
     inScope: false
@@ -1382,7 +1498,17 @@ forms:
         kind: select
       - control: glkSanPham
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiView
+        caption: Xem đơn hàng
+      - control: bbiExcel
+        caption: Excel
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiHoanThanh
+        caption: Đánh dấu là Hoàn Thành
   - form: frmDanhSachHoaDon
     title: frmDanhSachHoaDon
     inScope: true
@@ -1461,6 +1587,20 @@ forms:
       - control: repositoryItemMemoEdit2
         kind: text
     buttons:
+      - control: bbiAdd
+        caption: Tạo đơn hàng
+      - control: bbiEdit
+        caption: Sửa đơn hàng
+      - control: bbiDelete
+        caption: Xóa đơn hàng
+      - control: bbiIssueInventory
+        caption: Xuất kho
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiClose
+        caption: Đóng
       - control: btnCheckAll
         caption: Chọn tất cả
   - form: frmDanhSachCongNo
@@ -1500,7 +1640,15 @@ forms:
     inputs:
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiTaoPhieuThu
+        caption: Phiếu thu
+      - control: bbiTaoPhieuChi
+        caption: Phiếu chi
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachHoaDon2
     title: Hóa đơn bán hàng
     inScope: true
@@ -1621,7 +1769,23 @@ forms:
         kind: date
       - control: repDenNgay
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiThanhToan
+        caption: Thanh toán và ghi nợ
+      - control: bbiRefund
+        caption: Trả hàng
+      - control: bbiInvoidceCancel
+        caption: Hủy
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachCongViec
     title: Công việc hàng ngày
     inScope: false
@@ -1670,7 +1834,23 @@ forms:
         kind: text
       - control: repositoryItemMemoEdit2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSendMail
+        caption: Gửi mail
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachXuatGoVan
     title: Danh sách phiếu xuất gỗ ván
     inScope: true
@@ -1726,7 +1906,17 @@ forms:
         - field: dexuat
           header: Xuất cho
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Xuất kho
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmNhomAI
     title: Nhóm AI
     inScope: true
@@ -1778,7 +1968,21 @@ forms:
         kind: text
       - control: repositoryItemMemoEdit2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhGiaTongHop
     title: Đánh giá tổng hợp
     inScope: false
@@ -1835,7 +2039,27 @@ forms:
         kind: text
       - control: repositoryItemSpinEdit1
         kind: number
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: barButtonItem1
+        caption: Kho
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiFinish
+        caption: Hoàn thành đánh giá
+      - control: bbiLock
+        caption: Khoá bảng đánh giá
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiPrint
+        caption: In
+      - control: bbiXacNhan
+        caption: Xác nhận
+      - control: btnDeNghiXemXet
+        caption: Đề nghị xem xét lại
   - form: frmCaiDatBieuMauAdd
     title: Cài đặt quy trình duyệt
     inScope: false
@@ -2110,7 +2334,25 @@ forms:
         kind: date
       - control: repFilter
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiClose
+        caption: Thoát
+      - control: bbiInformation
+        caption: Thông tin công việc
+      - control: bbiFinish
+        caption: Đánh dấu hoàn thành
+      - control: bbiUnCheck
+        caption: Bỏ đánh dấu hoàn thành
+      - control: bbiExport
+        caption: Excel
   - form: frmListMaterialInOut
     title: frmListMaterialInOut
     inScope: true
@@ -2177,7 +2419,19 @@ forms:
         kind: select
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: beiInput
+        caption: Báo cáo Nhập kho
+      - control: beiOutput
+        caption: Báo cáo Xuất kho
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmRSTNhomNguyenLieu
     title: Cập nhật nhóm nguyên liệu
     inScope: false
@@ -2264,7 +2518,13 @@ forms:
         - field: modifypath
           header: ModifyPath
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachHoaDonLuuTam
     title: Hóa đơn lưu tạm
     inScope: false
@@ -2318,7 +2578,17 @@ forms:
         - field: ngaytao
           header: Ngày tạo
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachCongViec
     title: Công việc hàng ngày
     inScope: false
@@ -2367,7 +2637,23 @@ forms:
         kind: text
       - control: repositoryItemMemoEdit2
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiSendMail
+        caption: Gửi mail
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhMucDeXuat2
     title: frmDanhMucDeXuat2
     inScope: true
@@ -2530,7 +2816,25 @@ forms:
         kind: select
       - control: repNhomDeXuat1
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiEdit
+        caption: Sửa đề xuất
+      - control: bbiCancel
+        caption: Huỷ đề xuất
+      - control: bbiDuyetDeXuat
+        caption: Duyệt đề xuất
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiCreate
+        caption: Tạo đề xuất
+      - control: bbiDaDuyet
+        caption: Đã duyệt
+      - control: bbiChuaDuyet
+        caption: Chưa duyệt
+      - control: bbiTatCaDeXuat
+        caption: Tất cả
   - form: frmDanhSachMaNhaMay
     title: Danh sách mã nhà máy
     inScope: true
@@ -2576,7 +2880,25 @@ forms:
         kind: select
       - control: repositoryItemMemoEdit1
         kind: text
-    buttons: []
+    buttons:
+      - control: bbiHide
+        caption: Ẩn sản phẩm
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiPrint
+        caption: In
+      - control: bbiDupplicate
+        caption: Tạo phiên bản mới
   - form: frmDanhSachTongHopXuatHopChatSon
     title: Tổng hợp xuất hợp chất sơn
     inScope: true
@@ -2612,7 +2934,17 @@ forms:
         kind: date
       - control: repDenNgay
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachTongHopXuatHopChatSon2
     title: Tổng hợp xuất hỗn hợp sơn
     inScope: false
@@ -2626,7 +2958,15 @@ forms:
         kind: date
       - control: repDenNgay
         kind: date
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmListGWHSInOut
     title: frmListGWHSInOut
     inScope: false
@@ -2650,7 +2990,15 @@ forms:
         kind: select
       - control: repositoryItemImageComboBox2
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiRefresh
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiCancel
+        caption: Thoát
   - form: frmDanhSachMayMoc
     title: Danh sách máy móc
     inScope: true
@@ -2680,7 +3028,21 @@ forms:
         - field: ngaysua
           header: Ngày sửa
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmListBomEditor
     title: Danh sách sản phẩm
     inScope: true
@@ -2751,7 +3113,13 @@ forms:
         kind: text
       - control: repMayMoc
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm công đoạn
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiEdit
+        caption: Sửa
   - form: frmRoutList
     title: Danh sách quy trình
     inScope: false
@@ -2781,7 +3149,21 @@ forms:
         - field: active
           header: Còn sử dụng
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhMucLoi
     title: Danh mục lỗi
     inScope: false
@@ -2802,7 +3184,17 @@ forms:
         - field: tacnhangayloi
           header: Tác nhân gây lỗi
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Cập nhật
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhMucLoiAdd
     title: Cập nhật danh mục lỗi
     inScope: true
@@ -2842,7 +3234,15 @@ forms:
         kind: select
       - control: repTacNhan
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiSave
+        caption: Lưu
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachLoi
     title: "Khai báo lỗi "
     inScope: false
@@ -2875,7 +3275,21 @@ forms:
     inputs:
       - control: repBoPhan
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachBanGiao
     title: Danh sách bàn giao
     inScope: false
@@ -2912,7 +3326,21 @@ forms:
         kind: select
       - control: repNguoiNhan
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachSuaChua
     title: Danh sách sửa chữa
     inScope: false
@@ -2936,7 +3364,21 @@ forms:
         - field: noidung
           header: Nội dung
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmDanhSachTaiSan
     title: Danh sách tài sản
     inScope: true
@@ -2987,7 +3429,21 @@ forms:
         kind: select
       - control: repTrangThai
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiAdd
+        caption: Thêm
+      - control: bbiEdit
+        caption: Sửa
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiPrint
+        caption: In
+      - control: bbiExport
+        caption: Xuất
+      - control: bbiClose
+        caption: Đóng
   - form: frmListMaterialRequest
     title: Danh sách lệnh cấp phát
     inScope: true
@@ -3027,7 +3483,13 @@ forms:
         - field: diachi
           header: Địa chỉ
     inputs: []
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Thêm
+      - control: barButtonItem2
+        caption: Sửa
+      - control: barButtonItem3
+        caption: Xoá
   - form: frm_Danhsachnhacungcap
     title: Danh sách nhà cung cấp
     inScope: true
@@ -3059,4 +3521,14 @@ forms:
         - field: id
           header: ID
     inputs: []
-    buttons: []
+    buttons:
+      - control: barButtonItem1
+        caption: Thêm
+      - control: barButtonItem2
+        caption: Sửa
+      - control: barButtonItem3
+        caption: Xoá
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiClose
+        caption: Đóng

@@ -1,0 +1,84 @@
+{
+ "name": "dq_p07_ton_kho_bao_tri",
+ "label": "Tồn kho bảo trì",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+    "title": "Tồn kho bảo trì",
+    "fields": [
+     "mact",
+     "serial",
+     "tenct",
+     "hangsanxuat",
+     "mausac",
+     "quycach",
+     "dacdiem",
+     "dvt",
+     "soluong",
+     "nhomvattu",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+        "title": "Thêm — Tồn kho bảo trì",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất kho",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1109",
+  "I1148"
+ ]
+}

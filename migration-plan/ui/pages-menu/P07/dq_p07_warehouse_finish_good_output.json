@@ -1,0 +1,85 @@
+{
+ "name": "dq_p07_warehouse_finish_good_output",
+ "label": "Xuất kho thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+    "title": "Xuất kho thành phẩm",
+    "fields": [
+     "id",
+     "order_number",
+     "cust_po_number",
+     "masp",
+     "description",
+     "dvt",
+     "quantity",
+     "order_qty",
+     "ship_qty",
+     "remain_qty",
+     "input_qty",
+     "cont_id",
+     "masp_khachhang"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo phiếu xuất kho",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+        "title": "Tạo phiếu xuất kho — Xuất kho thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I96"
+ ]
+}

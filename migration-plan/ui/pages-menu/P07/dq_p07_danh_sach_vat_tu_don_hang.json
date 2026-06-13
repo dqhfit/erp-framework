@@ -1,0 +1,57 @@
+{
+ "name": "dq_p07_danh_sach_vat_tu_don_hang",
+ "label": "Tổng hợp chi tiết theo đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Tổng hợp chi tiết theo đơn hàng",
+    "fields": [
+     "order_number",
+     "range",
+     "masp",
+     "tensp",
+     "donhang",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong_can",
+     "nhom",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Tổng hợp chi tiết theo đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1318"
+ ]
+}

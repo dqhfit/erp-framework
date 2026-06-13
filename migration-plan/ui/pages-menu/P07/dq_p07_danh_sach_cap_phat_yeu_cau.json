@@ -1,0 +1,73 @@
+{
+ "name": "dq_p07_danh_sach_cap_phat_yeu_cau",
+ "label": "Danh sách phiếu yêu cầu cấp phát",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+    "title": "Danh sách phiếu yêu cầu cấp phát",
+    "fields": [
+     "id",
+     "tenkho",
+     "sophieu",
+     "bophan",
+     "mact",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "soluong_daphat",
+     "ghichu",
+     "check",
+     "vendor_name",
+     "vendor_id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo đề xuất mua hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "Tạo đề xuất mua hàng — Danh sách phiếu yêu cầu cấp phát",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Phiếu yêu cầu xuất kho",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1261"
+ ]
+}

@@ -91,7 +91,15 @@ forms:
         - field: ghichu
           header: Ghi chú kỹ thuật
     inputs: []
-    buttons: []
+    buttons:
+      - control: bbiPrintGVA
+        caption: In Bảng Kê Gỗ ván
+      - control: bbiPrintPalletDPH
+        caption: In Phiếu Pallet Định Phôi
+      - control: bbiPrintPalletDHI
+        caption: In Phiếu Pallet Định Hình
+      - control: bbiQuyTrinh
+        caption: In Phiếu Lưu Trình
   - form: frm_In_Pallet
     title: In Phiếu Pallet
     inScope: true
@@ -256,4 +264,18 @@ forms:
         kind: select
       - control: repSanPham
         kind: select
-    buttons: []
+    buttons:
+      - control: bbiReLoad
+        caption: Nạp lại
+      - control: bbiDelete
+        caption: Xóa
+      - control: bbiPrint
+        caption: Mẫu 1
+      - control: bbiPrint2
+        caption: Mẫu 2 (BM-VFM-QT-19-05)
+      - control: bbiExport
+        caption: Xuất PDF
+      - control: barButtonItem1
+        caption: In không cần xem trước
+      - control: bbiClose
+        caption: Đóng

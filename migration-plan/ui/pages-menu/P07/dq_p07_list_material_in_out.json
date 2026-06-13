@@ -1,0 +1,60 @@
+{
+ "name": "dq_p07_list_material_in_out",
+ "label": "Thống kê nhập xuất",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "title": "Thống kê nhập xuất",
+    "fields": [
+     "trangthai",
+     "bengiao",
+     "sophieu",
+     "mact",
+     "mota",
+     "quycach",
+     "mausac",
+     "soluong",
+     "dvt",
+     "donhang",
+     "ngaythang",
+     "makho",
+     "ghichu",
+     "ghichu2",
+     "dongia",
+     "reftypename"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+        "title": "Thêm — Thống kê nhập xuất",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I95"
+ ]
+}
