@@ -183,6 +183,9 @@ services:
       - sh
       - -c
       - |
+        if [ -z "$$MQTT_PASSWORD" ]; then
+          echo "FATAL: chua dat SERVICE_PASSWORD_64_MQTT trong Coolify" >&2; exit 1
+        fi
         mosquitto_passwd -b -c /mosquitto/config/passwd dev "$$MQTT_PASSWORD"
         cat > /mosquitto/config/mosquitto.conf <<'CONF'
         listener 1883 0.0.0.0
@@ -195,6 +198,12 @@ services:
         log_type warning
         log_type notice
         CONF
+        # Entrypoint nay chay bang ROOT (bo qua docker-entrypoint.sh goc) nen
+        # phai TU chown giong image goc -> mosquitto (sau khi drop quyen) moi
+        # doc duoc passwd + ghi duoc persistence. Thieu buoc nay = loi
+        # "Unable to open pwfile".
+        chown -R mosquitto:mosquitto /mosquitto/config /mosquitto/data
+        chmod 0700 /mosquitto/config/passwd
         exec mosquitto -c /mosquitto/config/mosquitto.conf
     ports:
       # Host port 51883 (tranh dung prod); container 1883.
