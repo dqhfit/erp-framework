@@ -52,6 +52,23 @@ export class LeaseLostError extends Error {
  *  (giây-phút), nên 3 phút im lặng nghĩa là worker đã chết. */
 export const LEASE_STALE_MS = 3 * 60_000;
 
+/** Cap resume (bài học #14): bảng bắt đầu (running) quá ngần này lần mà VẪN
+ *  chưa import được dòng nào (rows_imported=0) → coi là bảng chết (khoá/không
+ *  đọc được/treo worker) → tự đánh skipped thay vì để boot auto-resume lặp lại
+ *  mãi và wedge cả job. Bảng ĐÃ tiến (rows>0) thì không bị cap — chỉ là lớn/
+ *  bị ngắt giữa chừng, vẫn resume từ checkpoint. */
+export const MAX_TABLE_ATTEMPTS = 5;
+
+/** Bảng hệ thống / phân quyền DQHF — NGOÀI SCOPE import dữ liệu nghiệp vụ:
+ *  framework có auth + RBAC riêng (users/companies/permissions). SYS_USER &
+ *  SYS_USER_RULE là bảng auth/session ghi liên tục (token/refreshtoken mỗi
+ *  request) → read bị khoá/treo worker. Menu (SYS_MENU*) đã import riêng qua
+ *  legacy_menu_map. Match theo tên trần (bỏ schema) prefix "sys_". */
+export function isDeniedSystemTable(tableName: string): boolean {
+  const bare = tableName.includes(".") ? (tableName.split(".").pop() ?? tableName) : tableName;
+  return bare.toLowerCase().startsWith("sys_");
+}
+
 /** Tìm id record đã có trong bảng thật theo giá trị PK nguồn (gom trùng khi
  *  re-run/sync). pkField map sang cột typed (storage.columns) hoặc ext jsonb. */
 export async function findExistingInTable(
@@ -313,6 +330,20 @@ export async function prepareFullJobTables(
   const client = await loadConn(companyId, connectionId);
   try {
     for (const it of items) {
+      // DENYLIST bảng hệ thống/phân quyền (SYS_*) — ngoài scope. Ghi thành
+      // 'skipped' (không silent-drop) để job hiện rõ đã loại có chủ đích, và
+      // không bao giờ kẹt worker trên bảng auth ghi liên tục như SYS_USER.
+      if (isDeniedSystemTable(it.tableName)) {
+        await db.insert(migrationFullJobTables).values({
+          jobId,
+          tableName: it.tableName,
+          entityName: it.entityName,
+          batchSize,
+          status: "skipped",
+          error: "Bang he thong/phan quyen (SYS_*) — ngoai scope import du lieu.",
+        });
+        continue;
+      }
       const [schema, name] = it.tableName.includes(".")
         ? it.tableName.split(".")
         : ["dbo", it.tableName];
@@ -549,9 +580,30 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         continue;
       }
 
+      // CAP RESUME (bài học #14): bảng đã thử bắt đầu >= MAX_TABLE_ATTEMPTS lần
+      // mà CHƯA import được dòng nào (rows_imported=0) → bảng chết (khoá/treo
+      // read/bị restart giữa chừng lặp lại). Đánh skipped để không wedge job mãi.
+      // Bảng đã tiến (rows>0) KHÔNG bị cap — chỉ lớn/ngắt giữa chừng, resume tiếp.
+      if (t.attempts >= MAX_TABLE_ATTEMPTS && t.rowsImported === 0) {
+        await db
+          .update(migrationFullJobTables)
+          .set({
+            status: "skipped",
+            error: `Bo qua sau ${t.attempts} lan thu khong import duoc dong nao (co the bang khoa/treo read).`,
+            updatedAt: new Date(),
+          })
+          .where(eq(migrationFullJobTables.id, t.id));
+        skippedTables++;
+        continue;
+      }
+
       await db
         .update(migrationFullJobTables)
-        .set({ status: "running", updatedAt: new Date() })
+        .set({
+          status: "running",
+          attempts: sql`${migrationFullJobTables.attempts} + 1`,
+          updatedAt: new Date(),
+        })
         .where(eq(migrationFullJobTables.id, t.id));
 
       const fieldsSet = new Set<string>();

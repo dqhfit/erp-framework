@@ -892,6 +892,9 @@ export const migrationFullJobTables = pgTable(
     batchSize: integer("batch_size").default(5000).notNull(),
     status: text("status").default("pending").notNull(),
     error: text("error"),
+    // So lan worker bat dau (running) bang nay. Cap resume: bang khong tien duoc
+    // (rows_imported=0) qua nguong MAX_TABLE_ATTEMPTS -> tu dong skipped (mig 0076).
+    attempts: integer("attempts").default(0).notNull(),
     // Reconciliation sau import: so COUNT nguon (MSSQL) vs dich (entity_records).
     // reconcile: null=chua check | 'ok'=khop | 'drift'=lech | 'skip'=khong check.
     srcCount: bigint("src_count", { mode: "number" }),

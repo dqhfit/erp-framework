@@ -533,6 +533,13 @@
       "when": 1783703200000,
       "tag": "0075_full_import_worker_lease",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1783703300000,
+      "tag": "0076_full_import_table_attempts",
+      "breakpoints": true
     }
   ]
 }
