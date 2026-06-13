@@ -1,0 +1,1286 @@
+{
+ "fixBroken": [],
+ "plumbing": [
+  {
+   "page": "dq_dinh_muc_dinh_muc_so_che",
+   "title": "Định mức sơ chế",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_danh_sach_nhap_go_van",
+   "title": "Phiếu nhập gỗ ván",
+   "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+   "dsName": "ds_phieunhap",
+   "dsId": "019eb959-3ffd-7ecb-bf78-9fee5de37347",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dinh_muc_ngu_kim_e69c33",
+   "title": "Định mức ngũ kim",
+   "entity": "db47ff7e-c756-47ac-b228-660acd71340d",
+   "dsName": "ds_dinhmuc_ngukim",
+   "dsId": "019eb959-1f23-77b4-810e-ac2b23f43453",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_yeu_cau_chat_luong_add",
+   "title": "Cập nhật yêu cầu chất lượng",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_phieu_bu_hang_add",
+   "title": "Phiếu bù hàng",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_dinh_muc_add_dinhmuc_vt_ver2",
+   "title": "Cập nhật định mức gỗ ván",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_danh_sach_xuat_go_van",
+   "title": "Danh sách phiếu xuất gỗ ván",
+   "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+   "dsName": "ds_phieuxuat",
+   "dsId": "019eb959-253f-756a-b361-7a3600aeadc1",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_phieunhapkho_add",
+   "title": "Phiếu nhập kho",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_list_bom_editor",
+   "title": "Danh sách sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_dinh_muc_dinh_muc_don_hang",
+   "title": "frmDinhMucDonHang",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_dinh_muc_dinh_muc_go_van_so_che",
+   "title": "frmDinhMucGoVanSoChe",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_warehouse_finish_good_input",
+   "title": "Nhập thành phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_warehouse_input_htr",
+   "title": "Nhập kho hàng trắng",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_dinh_muc_dinh_muc_chi_phi_san_pham",
+   "title": "Định mức chi phí sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_phieu_xuat_cont",
+   "title": "Phiếu xuất cont",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_create_material_request_gva_ver2",
+   "title": "Lệnh cấp phát gỗ ván",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_danh_muc_de_xuat2",
+   "title": "frmDanhMucDeXuat2",
+   "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+   "dsName": "ds_dexuat_bangmau",
+   "dsId": "019eb959-2e11-74e7-943a-c7ff8edd1095",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_nhom_may",
+   "title": "Nhóm máy",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_danh_muc_danh_muc_loi_add",
+   "title": "Cập nhật danh mục lỗi",
+   "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+   "dsName": "ds_baocao_hangloi",
+   "dsId": "019eb958-eb6e-7e39-8cd5-2248efdc813c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_chitiet",
+   "title": "Nhập số lượng",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_chuyen_kho",
+   "title": "Chuyển kho",
+   "entity": "e998bee3-c822-472a-8406-b80cafa37056",
+   "dsName": "ds_tonkho_vattu",
+   "dsId": "019eb947-da23-79c2-b8f7-dc2bf22dcfa2",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_tao_phieu_pallet",
+   "title": "frmTaoPhieuPallet",
+   "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+   "dsName": "ds_pallet",
+   "dsId": "019eb959-425a-7dbd-a85f-3d4ce87d27ff",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice_add_1",
+   "title": "Danhh sách sản phẩm",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_number_add",
+   "title": "Tạo đơn hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_warehouse_finish_good_output",
+   "title": "Xuất kho thành phẩm",
+   "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+   "dsName": "ds_phieuxuat",
+   "dsId": "019eb959-253f-756a-b361-7a3600aeadc1",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_hang_loi_add",
+   "title": "hàng lỗi - hàng đổi trả",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_theo_doi_nhap_xuat_chi_tiet",
+   "title": "Chi tiết nhập - xuất: ",
+   "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+   "dsName": "ds_phieuxuat",
+   "dsId": "019eb959-253f-756a-b361-7a3600aeadc1",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_kho_thanh_pham",
+   "title": "Nhập kho thành phẩm",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_theo_doi_nhap_xuat",
+   "title": "frmTheoDoiNhapXuat",
+   "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+   "dsName": "ds_phieunhap",
+   "dsId": "019eb959-3ffd-7ecb-bf78-9fee5de37347",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_phieu_giao_thanh_pham",
+   "title": "Phiếu giao thành phẩm",
+   "entity": "96af0364-19c6-460c-b5a0-f5840924d6ea",
+   "dsName": "ds_phieuxuat",
+   "dsId": "019eb959-253f-756a-b361-7a3600aeadc1",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_ton_kho_go_van_chon_quy_cach",
+   "title": "Chọn quy cách",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_hang_loi2",
+   "title": "Nhập chi tiết lỗi",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_phieu_de_nghi_thanh_toan",
+   "title": "Danh sách phiếu đề nghị thanh toán",
+   "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+   "dsName": "de_nghi_thanh_toan_joined_019eb9",
+   "dsId": "019eb959-3b47-7cf5-ba0d-1902815a5da0",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_hang_loi",
+   "title": "Hàng lỗi - hàng đổi trả",
+   "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+   "dsName": "ds_baocao_hangloi",
+   "dsId": "019eb958-eb6e-7e39-8cd5-2248efdc813c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_kho_vat_tu_nhap_hang_loi3",
+   "title": "Báo cáo hàng lỗi",
+   "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+   "dsName": "ds_baocao_hangloi",
+   "dsId": "019eb958-eb6e-7e39-8cd5-2248efdc813c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice",
+   "title": "Proforma Invoice",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_banhanggo_danh_sach_de_xuat_phoi",
+   "title": "Danh sách đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice_add_order_no",
+   "title": "Thêm từ đơn hàng khác",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_dao_dondathang",
+   "title": "Tạo đơn đặt hàng dao",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_tong_hop_don_hang",
+   "title": "Tổng hợp đơn hàng xuất khẩu",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_banhang_add",
+   "title": "Bán hàng",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice_add",
+   "title": "Thêm Proforma Invoice",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_list_purchase_order_list",
+   "title": "Danh sách đơn đặt hàng",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_banhanggo_phieudoihang_add",
+   "title": "Phiếu đổi hàng",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_tu_dong_tao_don_hang",
+   "title": "Tự động tạo đơn hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_tong_hop_chi_tiet_don_hang2",
+   "title": "Tổng hợp chi tiết theo đơn hàng",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_banhanggo_danh_sach_de_xuat_phoi3",
+   "title": "Danh sách đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_number_add3",
+   "title": "Tạo đơn hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_number_add2",
+   "title": "Tạo đơn hàng",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_do_don_hang",
+   "title": "Phát hành đơn hàng",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_example_add",
+   "title": "Thông tin đơn hàng mẫu",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_example",
+   "title": "frmOrderExample",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "ke_hoach_san_xuat_hang_trang_351731",
+   "title": "Kế hoạch sản xuất hàng trắng",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_danh_sach_don_hang_theo_ngay",
+   "title": "Thống kê đơn hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_tong_hop_don_hang_theo_nam",
+   "title": "Tổng hợp đơn hàng",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_muc_tieu_san_xuat_add",
+   "title": "Nhập mục tiêu sản xuất",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_san_xuat_po2",
+   "title": "Kế hoạch đơn hàng",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_sanpham",
+   "title": "Danh sách sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_ke_hoach_don_hang_mau",
+   "title": "Kế hoạch đơn hàng mẫu",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_ke_hoach_hang_trang_don_hang",
+   "title": "Kế hoạch đơn hàng trắng",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_ver2",
+   "title": "Quy trình sản xuất",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_san_xuat_po2_htr_add",
+   "title": "Thêm đơn hàng",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_copy",
+   "title": "Sao chép quy trình sản xuất",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_san_xuat_po",
+   "title": "Kế hoạch sản xuất",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_quy_trinh_san_xuat",
+   "title": "Quy trình sản xuất",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_import",
+   "title": "Nạp quy trình sản xuất",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_tien_do_chuyen_son_add",
+   "title": "Nhập tiến độ chuyền sơn",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_muc_tieu_san_xuat2",
+   "title": "Mục tiêu sản xuất",
+   "entity": "25b35065-00a9-4a26-b5c7-8198d209e9e7",
+   "dsName": "ds_muctieu_sanxuat2",
+   "dsId": "019eb959-4361-7249-b2d7-793bada25507",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_tiendo_sanxuat_hangtrang",
+   "title": "Tiến độ sản xuất",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_thong_tin_san_pham2_add",
+   "title": "Thêm thông tin sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_tiendo_sanxuat",
+   "title": "Tiến độ sản xuất",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_tien_do_hang_trang3",
+   "title": "Nhập tiến độ sản xuất",
+   "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+   "dsName": "ds_pallet",
+   "dsId": "019eb959-425a-7dbd-a85f-3d4ce87d27ff",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_hang_trang_sap_xep",
+   "title": "Sắp xếp đơn hàng",
+   "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+   "dsName": "ds_pallet",
+   "dsId": "019eb959-425a-7dbd-a85f-3d4ce87d27ff",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_reprint",
+   "title": "frm_quytrinh_sanxuat_reprint",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_quy_trinh_san_pham_copy",
+   "title": "Copy quy trình sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_san_pham_add3",
+   "title": "Cập nhật thông tin sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_quy_trinh_san_pham",
+   "title": "Quy trình sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_sanpham_multiselect",
+   "title": "Ẩn nhiều sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_san_pham_mau_nhap_xuat",
+   "title": "Nhập - Xuất hàng mẫu",
+   "entity": "970fe901-8c71-46eb-9efc-55ae6f0e8e99",
+   "dsName": "ds_phieubaogia",
+   "dsId": "019eb959-1e6e-7c6d-a6b5-b2f3757be6ef",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_thong_tin_nhan_vien_edit",
+   "title": "Cập nhật tổ, nhóm",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_tao_phieu_san_pham",
+   "title": "Tạo phiếu sản phẩm",
+   "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+   "dsName": "ds_pallet",
+   "dsId": "019eb959-425a-7dbd-a85f-3d4ce87d27ff",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_theo_doi_kiem_tra",
+   "title": "Theo dõi kiểm tra hàng lỗi",
+   "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+   "dsName": "ds_dexuat_bangmau",
+   "dsId": "019eb959-2e11-74e7-943a-c7ff8edd1095",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_quy_trinh_san_pham2",
+   "title": "Quy trình sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_san_pham_khoi_luong_san_pham",
+   "title": "Trọng lượng sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_final_add",
+   "title": "Nhập Báo cáo Kiểm tra",
+   "entity": "fc2c58f7-98bf-40f7-9af8-91b840e028b2",
+   "dsName": "ds_baocao_final_muckiemtra",
+   "dsId": "019eb959-2f16-7fcd-aea3-fd25949bae11",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_thong_bao",
+   "title": "Thông báo",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_sanpham_auto",
+   "title": "Báo giá tự động",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_sanpham_ver3",
+   "title": "Báo giá sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_sanpham_ver4",
+   "title": "Báo giá sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_theo_doi_dat_hang",
+   "title": "Theo dõi đơn đặt hàng",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_bao_gia_vat_tu_go_van",
+   "title": "Báo giá vật tư gỗ ván",
+   "entity": "e998bee3-c822-472a-8406-b80cafa37056",
+   "dsName": "ds_tonkho_vattu",
+   "dsId": "019eb947-da23-79c2-b8f7-dc2bf22dcfa2",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_danhsach",
+   "title": "Danh sách báo giá",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_nguyen_phu_lieu_add",
+   "title": "Nguyên phụ liệu",
+   "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+   "dsName": "ds_dondathang",
+   "dsId": "019eb958-e8ab-7389-9eb8-ff915b3a40fa",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_thong_ke_xuat_hang_thanh_pham",
+   "title": "Thống kê xuất hàng thành phẩm",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_thong_tin_nguoi_phu_trach_ky_thuat_add2",
+   "title": "Cập nhật thông tin người phụ trách",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_hoan_thien_add",
+   "title": "Báo cáo hàng ngày",
+   "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+   "dsName": "ds_baocao_hangloi",
+   "dsId": "019eb958-eb6e-7e39-8cd5-2248efdc813c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_hien_dien",
+   "title": "Báo cáo hiện diện",
+   "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+   "dsName": "ds_m_op",
+   "dsId": "019eb959-3584-76eb-862d-dc37829b9573",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_sanpham_info",
+   "title": "Thông tin chi tiết báo giá sản phẩm",
+   "entity": "fcec4582-08ef-4d1a-a08d-5a472017f36b",
+   "dsName": "ds_baogia_donggoi",
+   "dsId": "019eb959-317b-7d42-9833-719cc6bfcebb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_thong_ke_so_luong_add",
+   "title": "Thống kê số lượng",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_hang_loi",
+   "title": "Báo cáo sản phẩm không phù hợp",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_rot_chuyen_add",
+   "title": "Báo cáo rớt chuyền",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_kiem_tra_chat_luong",
+   "title": "Báo cáo kiểm tra chất lượng",
+   "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+   "dsName": "ds_thaydoi_kythuat",
+   "dsId": "019eb959-30cb-713f-a97f-539c77e99513",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_ke_toan_danh_sach_quy_trinh",
+   "title": "Danh sách quy trình đã phát hành",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_bao_gia_phoi",
+   "title": "Báo giá phôi",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bao_gia_baogia_sanpham_ver2",
+   "title": "Báo giá sản phẩm",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_ke_toan_denghi_thanhtoan_tonghop",
+   "title": "frm_denghi_thanhtoan_tonghop",
+   "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+   "dsName": "de_nghi_thanh_toan_joined_019eb9",
+   "dsId": "019eb959-3b47-7cf5-ba0d-1902815a5da0",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_ke_toan_danh_sach_quy_trinh2",
+   "title": "Quy trình sản phẩm (theo mã nhà máy)",
+   "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+   "dsName": "ds_sanpham",
+   "dsId": "019eb959-27ea-7c3b-8249-d9541b1f85f5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_ke_toan_denghi_thanhtoan_ncc_add",
+   "title": "Thông tin người cần thanh toán",
+   "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+   "dsName": "de_nghi_thanh_toan_joined_019eb9",
+   "dsId": "019eb959-3b47-7cf5-ba0d-1902815a5da0",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_upload_ban_ve2",
+   "title": "Tải bản vẽ",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_khach_hang_ncc_khach_hang_info",
+   "title": "Thông tin khách hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_de_xuat_de_xuat_phoi_add5",
+   "title": "Đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_de_xuat_chi_tiet_de_xuat_phoi",
+   "title": "Đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_de_xuat_de_xuat_phoi_add4",
+   "title": "Đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_danh_sach_ban_ve2",
+   "title": "Danh sách bản vẽ đã phát hành",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_de_xuat_chi_tiet_de_xuat_mua_hang",
+   "title": "Đề xuất mua hàng",
+   "entity": "08e3a29d-283a-4f2c-a1d9-ce7602eaaca9",
+   "dsName": "ds_phieuyeucau",
+   "dsId": "019eb959-3d03-7ca9-8873-c4f137b8077c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_banve",
+   "title": "Chi tiết bản vẽ",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_banve_view3",
+   "title": "frm_banve_view3",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_banve2",
+   "title": "Danh sách bản vẽ",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_pallet_danh_sach_pallet",
+   "title": "Danh sách phiếu pallet",
+   "entity": "c2c1fcee-6e82-4695-937c-d8e66fcd6dd0",
+   "dsName": "ds_pallet_card",
+   "dsId": "019eb959-23ee-73b2-87b9-fa97dfc6b302",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "frm_banve_test_5f0012",
+   "title": "frm_banve_test",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_bang_mau_banve_danh_sach_ban_ve",
+   "title": "Danh sách bản vẽ",
+   "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+   "dsName": "ds_banve",
+   "dsId": "019eb958-ec43-796e-8687-16d0d309b52e",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_pallet_in_pallet_2",
+   "title": "In Phiếu Pallet",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "in_phieu_pallet_5aee54",
+   "title": "In Phiếu Pallet",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "frm_kiemtra_dinhmuc_bbf4eb",
+   "title": "frm_kiemtra_dinhmuc",
+   "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+   "dsName": "ds_dinhmuc_govan",
+   "dsId": "019eb958-e4c3-75d5-865c-f187daff133b",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "kiem_tra_dinh_muc_theo_don_hang_d9e9ab",
+   "title": "Kiểm tra định mức theo đơn hàng",
+   "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+   "dsName": "ds_order",
+   "dsId": "019eb958-e69d-7dbe-8e92-bdfbd2f577a5",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "de_nghi_xuat_kho_166610",
+   "title": "Đề nghị xuất kho",
+   "entity": "08e3a29d-283a-4f2c-a1d9-ce7602eaaca9",
+   "dsName": "ds_phieuyeucau",
+   "dsId": "019eb959-3d03-7ca9-8873-c4f137b8077c",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_banhanggo_danh_sach_de_xuat_phoi2",
+   "title": "Danh sách đề xuất phôi",
+   "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+   "dsName": "ds_dexuat_phoi_chitiet",
+   "dsId": "019eb959-2d14-7411-90c9-bfe65997ddeb",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  },
+  {
+   "page": "dq_don_hang_order_number_infomation",
+   "title": "Thông tin đơn hàng",
+   "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+   "dsName": "ds_order_detail",
+   "dsId": "019eb959-28bb-7da4-9155-aad6da591617",
+   "brokenFields": [],
+   "value": "plumbing",
+   "alreadyWired": false
+  }
+ ],
+ "total": 128
+}
