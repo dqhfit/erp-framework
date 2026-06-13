@@ -14,7 +14,7 @@
    tại — chỉ lấy data mới (pk > lastPk).
    ========================================================== */
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   entities,
   entityRecords,
@@ -38,6 +38,20 @@ import { publish as publishWs } from "./ws-hub";
 /** Đối tượng chạy SQL thô — db hoặc transaction tx đều thoả (cùng .execute). */
 export type SqlExecutor = { execute: (query: SQL) => Promise<unknown> };
 
+/** Lease worker bị worker khác chiếm (rolling deploy: 2 container cùng chạy
+ *  1 job → insert trùng hàng loạt). Worker mất lease phải DỪNG NGAY và KHÔNG
+ *  đụng vào status job/table — worker đang giữ lease sở hữu chúng. */
+export class LeaseLostError extends Error {
+  constructor(jobId: string) {
+    super(`Mất lease full-import job ${jobId} — worker khác đã claim.`);
+    this.name = "LeaseLostError";
+  }
+}
+
+/** Heartbeat coi là STALE sau ngần này — worker sống heartbeat mỗi batch
+ *  (giây-phút), nên 3 phút im lặng nghĩa là worker đã chết. */
+export const LEASE_STALE_MS = 3 * 60_000;
+
 /** Tìm id record đã có trong bảng thật theo giá trị PK nguồn (gom trùng khi
  *  re-run/sync). pkField map sang cột typed (storage.columns) hoặc ext jsonb. */
 export async function findExistingInTable(
@@ -50,7 +64,14 @@ export async function findExistingInTable(
   if (pkValues.length === 0) return map;
   const tbl = sql.raw(`"${storage.tableName}"`);
   const colMap = storage.columns[pkField];
-  const pkExpr = colMap ? sql.raw(`"${colMap.col}"::text`) : sql`ext->>${pkField}`;
+  // COALESCE(...,'') BẮT BUỘC cho cột typed: coerceColumnValue đổi '' → NULL
+  // khi ghi, nên khoá nguồn '' (PK rỗng hợp lệ ở MSSQL) so IN ('') với cột
+  // NULL không bao giờ match → sync/import re-INSERT row đó MỖI chu kỳ
+  // (đã dính: tr_khachhang_giantiep nhân 158 bản, tr_sanpham/tr_dondathang
+  // +156 mỗi bảng).
+  const pkExpr = colMap
+    ? sql.raw(`COALESCE("${colMap.col}"::text, '')`)
+    : sql`COALESCE(ext->>${pkField}, '')`;
   const inList = sql.join(
     pkValues.map((v) => sql`${v}`),
     sql`, `,
@@ -440,17 +461,36 @@ export async function runFullImportJob(data: FullJobData): Promise<{
   const targetTier =
     (job.config as { targetTier?: string } | null)?.targetTier === "table" ? "table" : "eav";
 
-  // Đánh dấu running + startedAt nếu chưa có.
-  await db
+  // CLAIM LEASE + đánh dấu running. Điều kiện: chưa ai giữ token HOẶC
+  // heartbeat của worker giữ token đã stale (worker chết). Nếu worker khác
+  // còn sống đang chạy job này (rolling deploy: container cũ chưa bị giết) →
+  // claim trượt → thoát êm, KHÔNG chạy song song (gây insert trùng hàng loạt
+  // — đã dính +170k row ngày 11/06).
+  const workerToken = randomUUID();
+  const claimed = (await db
     .update(migrationFullJobs)
     .set({
       status: "running",
       startedAt: job.startedAt ?? new Date(),
       lastHeartbeat: new Date(),
+      workerToken,
       error: null,
       updatedAt: new Date(),
     })
-    .where(eq(migrationFullJobs.id, data.jobId));
+    .where(
+      and(
+        eq(migrationFullJobs.id, data.jobId),
+        sql`(${migrationFullJobs.workerToken} IS NULL
+             OR ${migrationFullJobs.lastHeartbeat} < now() - interval '3 minutes')`,
+      ),
+    )
+    .returning({ id: migrationFullJobs.id })) as Array<{ id: string }>;
+  if (claimed.length === 0) {
+    console.warn(
+      `[migration-full-import] Job ${data.jobId}: worker khác đang giữ lease (heartbeat tươi) — bỏ qua run này.`,
+    );
+    return { succeededTables: 0, failedTables: 0, skippedTables: 0, totalRows: 0 };
+  }
 
   const client = await loadConn(job.companyId, job.connectionId);
   let succeededTables = 0;
@@ -723,11 +763,21 @@ export async function runFullImportJob(data: FullJobData): Promise<{
                 .where(eq(migrationFullJobTables.id, t.id));
             });
 
-            // Heartbeat job (ngoài tx — chỉ là liveness, không cần atomic).
-            await db
+            // Heartbeat CÓ ĐIỀU KIỆN token (ngoài tx — liveness). 0 row =
+            // worker khác đã claim lease (mình bị coi là chết/treo) → DỪNG
+            // NGAY, không ghi gì thêm. Batch vừa ghi vẫn an toàn: checkpoint
+            // atomic + worker mới dedup theo PK sẽ update chứ không insert.
+            const hb = (await db
               .update(migrationFullJobs)
               .set({ lastHeartbeat: new Date(), updatedAt: new Date() })
-              .where(eq(migrationFullJobs.id, data.jobId));
+              .where(
+                and(
+                  eq(migrationFullJobs.id, data.jobId),
+                  eq(migrationFullJobs.workerToken, workerToken),
+                ),
+              )
+              .returning({ id: migrationFullJobs.id })) as Array<{ id: string }>;
+            if (hb.length === 0) throw new LeaseLostError(data.jobId);
 
             // Publish WS progress.
             publishWs(`migration:${data.userId}`, {
@@ -792,6 +842,9 @@ export async function runFullImportJob(data: FullJobData): Promise<{
           .where(eq(migrationFullJobTables.id, t.id));
         succeededTables++;
       } catch (e) {
+        // Mất lease → worker khác sở hữu job/table status — thoát ngay,
+        // KHÔNG mark failed (sẽ đè lên tiến độ của worker đang chạy).
+        if (e instanceof LeaseLostError) throw e;
         // Lỗi mạng / MSSQL — set table failed nhưng KHÔNG cancel job.
         // Boot resume sẽ pickup lại nếu user trigger resume.
         await db
@@ -885,6 +938,12 @@ export async function runFullImportJob(data: FullJobData): Promise<{
       totalRows: totalRowsAll,
     });
   } catch (e) {
+    // Mất lease: worker khác đang chạy job — thoát êm, TUYỆT ĐỐI không đổi
+    // status (đổi sang paused sẽ giết job của worker đang giữ lease).
+    if (e instanceof LeaseLostError) {
+      console.warn(`[migration-full-import] ${e.message}`);
+      return { succeededTables, failedTables, skippedTables, totalRows: totalRowsThisRun };
+    }
     // Job-level error (vd MSSQL connection failure).
     await db
       .update(migrationFullJobs)
@@ -912,15 +971,25 @@ export async function runFullImportJob(data: FullJobData): Promise<{
 export async function resumeStaleFullJobs(
   enqueue: (jobId: string, userId: string) => Promise<void>,
 ): Promise<{ count: number; jobIds: string[] }> {
+  // CHỈ resume khi heartbeat STALE — job 'running' với heartbeat tươi nghĩa
+  // là worker container CŨ còn sống đang chạy (rolling deploy); re-enqueue
+  // lúc đó = 2 worker song song cùng job → insert trùng hàng loạt. Job bị
+  // bỏ qua ở boot sẽ được sweeper định kỳ (sweepStaleFullJobs) vớt khi
+  // worker cũ chết hẳn.
   const stale = await db
     .select({ id: migrationFullJobs.id, createdBy: migrationFullJobs.createdBy })
     .from(migrationFullJobs)
-    .where(sql`${migrationFullJobs.status} IN ('running', 'queued')`);
+    .where(
+      sql`${migrationFullJobs.status} IN ('running', 'queued')
+          AND ${migrationFullJobs.lastHeartbeat} < now() - interval '3 minutes'`,
+    );
   for (const s of stale) {
     if (!s.createdBy) continue;
     await enqueue(s.id, s.createdBy);
   }
-  console.log(`[migration-full-import] Resume ${stale.length} stale job(s) khi boot.`);
+  if (stale.length > 0) {
+    console.log(`[migration-full-import] Resume ${stale.length} stale job(s).`);
+  }
   return { count: stale.length, jobIds: stale.map((s) => s.id) };
 }
 

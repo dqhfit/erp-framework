@@ -858,6 +858,12 @@ export const migrationFullJobs = pgTable(
     startedAt: timestamp("started_at"),
     completedAt: timestamp("completed_at"),
     lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
+    // Lease chống 2 worker chạy CÙNG job (rolling deploy: boot mới re-enqueue
+    // job 'running' khi worker container cũ còn sống → cả 2 stream song song
+    // từ lastPk RAM riêng → insert trùng hàng loạt). Worker claim bằng token
+    // mới; heartbeat per-batch có điều kiện worker_token=token — mất lease là
+    // dừng ngay.
+    workerToken: uuid("worker_token"),
     error: text("error"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),

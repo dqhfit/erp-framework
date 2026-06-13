@@ -172,7 +172,11 @@ async function softDeleteTableRow(
 ): Promise<boolean> {
   const tbl = sql.raw(`"${storage.tableName}"`);
   const colMap = storage.columns[pkField];
-  const pkExpr = colMap ? sql.raw(`"${colMap.col}"::text`) : sql`ext->>${pkField}`;
+  // COALESCE(...,'') đồng bộ với findExistingInTable: PK nguồn '' bị coerce
+  // thành NULL ở cột typed — so trực tiếp sẽ trượt row đó.
+  const pkExpr = colMap
+    ? sql.raw(`COALESCE("${colMap.col}"::text, '')`)
+    : sql`COALESCE(ext->>${pkField}, '')`;
   const res = await tx.execute(
     sql`UPDATE ${tbl} SET deleted_at = now(), updated_at = now()
         WHERE company_id = ${companyId}::uuid
@@ -619,7 +623,10 @@ async function syncTableRescan(
     const tbl = sql.raw(`"${storage.tableName}"`);
     const pkField = pkLower;
     const colMap = storage.columns[pkField];
-    const pkExpr = colMap ? sql.raw(`"${colMap.col}"::text`) : sql`ext->>${pkField}`;
+    // COALESCE đồng bộ với findExistingInTable/softDeleteTableRow ('' vs NULL).
+    const pkExpr = colMap
+      ? sql.raw(`COALESCE("${colMap.col}"::text, '')`)
+      : sql`COALESCE(ext->>${pkField}, '')`;
     // Đọc tất cả PK đang active ở PG.
     const pgPkRows = (await db.execute(
       sql`SELECT ${pkExpr} AS pk FROM ${tbl} WHERE company_id = ${t.companyId}::uuid AND deleted_at IS NULL`,

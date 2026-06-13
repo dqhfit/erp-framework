@@ -526,6 +526,13 @@
       "when": 1783703100000,
       "tag": "0074_migration_sync_created_by",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1783703200000,
+      "tag": "0075_full_import_worker_lease",
+      "breakpoints": true
     }
   ]
 }

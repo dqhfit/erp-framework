@@ -35,7 +35,14 @@ let rpcId = 0;
 async function invokePorted(
   name: string,
   args: Record<string, unknown>,
-): Promise<{ ok: boolean; result?: unknown; error?: string; durationMs?: number }> {
+): Promise<{
+  ok: boolean;
+  result?: unknown;
+  error?: string;
+  durationMs?: number;
+  rowCount?: number;
+  truncated?: boolean;
+}> {
   const res = await fetch(MCP_URL, {
     method: "POST",
     headers: { "X-API-Key": KEY, "Content-Type": "application/json" },
@@ -54,7 +61,13 @@ async function invokePorted(
   const text = j.result?.content?.[0]?.text ?? "";
   if (j.result?.isError) return { ok: false, error: text.slice(0, 300) };
   try {
-    return JSON.parse(text) as { ok: boolean; result?: unknown; error?: string };
+    return JSON.parse(text) as {
+      ok: boolean;
+      result?: unknown;
+      error?: string;
+      rowCount?: number;
+      truncated?: boolean;
+    };
   } catch {
     return { ok: false, error: `parse fail: ${text.slice(0, 200)}` };
   }
@@ -139,7 +152,28 @@ function compareDatasets(
     if (hit >= 0) used[hit] = true;
     else {
       unmatched++;
-      if (!firstMiss) firstMiss = JSON.stringify(gv.slice(0, 8));
+      if (!firstMiss) {
+        // Báo GIÁ TRỊ golden thiếu so với row PG GẦN nhất (khớp nhiều nhất)
+        // — lệch 1 giá trị khó thấy (khoảng trắng/NFC/format) lộ ngay.
+        let best: string[] = [];
+        let bestMiss = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < pgSets.length; i++) {
+          if (used[i]) continue;
+          const cnt = new Map<string, number>();
+          for (const v of pgSets[i] ?? []) cnt.set(v, (cnt.get(v) ?? 0) + 1);
+          const miss: string[] = [];
+          for (const v of gv) {
+            const c = cnt.get(v) ?? 0;
+            if (c <= 0) miss.push(v);
+            else cnt.set(v, c - 1);
+          }
+          if (miss.length < bestMiss) {
+            bestMiss = miss.length;
+            best = miss;
+          }
+        }
+        firstMiss = `thiếu ${JSON.stringify(best.slice(0, 5))} (golden: ${JSON.stringify(gv.slice(0, 8))})`;
+      }
     }
   }
   return unmatched === 0
@@ -191,6 +225,19 @@ async function main() {
       const pg = await invokePorted(portedName, portedArgs);
       if (!pg.ok) {
         results.push({ proc, caseName, status: "ERROR", detail: `PG: ${pg.error}` });
+        return;
+      }
+      // Kết quả >200KB bị server CẮT thành string "…(cắt)" — mất dataset
+      // nhưng rowCount của response vẫn đúng → fallback so rowCount.
+      if (pg.truncated && typeof pg.rowCount === "number") {
+        const goldenN = (golden as Array<Record<string, unknown>>).length;
+        const pass = goldenN === pg.rowCount;
+        results.push({
+          proc,
+          caseName,
+          status: pass ? "PASS" : "FAIL",
+          detail: `${pass ? "rowCount khớp" : "rowCount lệch"}: MSSQL=${goldenN} PG=${pg.rowCount} (kết quả lớn bị cắt — chỉ so rowCount)`,
+        });
         return;
       }
       const pgRows = Array.isArray(pg.result) ? (pg.result as Array<Record<string, unknown>>) : [];

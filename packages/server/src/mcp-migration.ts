@@ -420,6 +420,28 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "migration_dedup_rows",
+    description:
+      "Xoá row TRÙNG theo PK nguồn trong bảng thật của entity tier=table (hậu quả " +
+      "2 worker import song song khi rolling deploy, hoặc sync re-insert vì PK '' " +
+      "coerce thành NULL). Nhóm theo COALESCE(pk::text,''), GIỮ row mới nhất " +
+      "(updated_at DESC), HARD DELETE các bản sao + dọn record_locator. " +
+      "dryRun=true (mặc định) chỉ trả số liệu, không xoá.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entityName: { type: "string", description: "Tên entity" },
+        pkField: {
+          type: "string",
+          description: "Field PK nguồn để nhóm trùng (mặc định 'id')",
+        },
+        dryRun: { type: "boolean", description: "true (mặc định) = chỉ đếm, không xoá" },
+      },
+      required: ["entityName"],
+    },
+  },
+  {
     name: "migration_query_readonly",
     description:
       "Chạy 1 câu SELECT/WITH CHỈ-ĐỌC trên PG prod để debug data migrate (so giá trị " +
@@ -1485,6 +1507,93 @@ async function callMigrationTool(
         addedFields: added,
         columnsBefore: Object.keys(storage.columns ?? {}).length,
         columnsAfter: Object.keys(nextStorage.columns ?? {}).length,
+      };
+    }
+
+    /* ── migration_dedup_rows (apply) ───────────────────────── */
+    case "migration_dedup_rows": {
+      const entityName = String(args.entityName ?? "").trim();
+      if (!entityName) throw new McpError("entityName bắt buộc");
+      const pkField = String(args.pkField ?? "id")
+        .trim()
+        .toLowerCase();
+      if (!/^[a-z][a-z0-9_]*$/.test(pkField)) throw new McpError("pkField sai định dạng");
+      const dryRun = args.dryRun !== false; // mặc định AN TOÀN: chỉ đếm
+
+      const [row] = await db
+        .select()
+        .from(entities)
+        .where(
+          and(
+            eq(entities.companyId, companyId),
+            sql`lower(${entities.name}) = lower(${entityName})`,
+          ),
+        );
+      if (!row) throw new McpError(`Entity '${entityName}' không tồn tại`);
+      const meta = (row.meta ?? {}) as EntityMeta;
+      const storage = meta.storage as EntityStorage | undefined;
+      if (storage?.tier !== "table" || !storage.tableName) {
+        throw new McpError(`Entity '${entityName}' không phải tier=table`);
+      }
+      if (!/^[a-z][a-z0-9_]*$/.test(storage.tableName)) {
+        throw new McpError(`tableName '${storage.tableName}' sai định dạng`);
+      }
+      const colMap = (storage.columns ?? {})[pkField];
+      if (colMap && !/^[a-z][a-z0-9_]*$/.test(colMap.col)) {
+        throw new McpError(`Cột '${colMap.col}' sai định dạng`);
+      }
+      const tblE = sql.raw(`"${storage.tableName}"`);
+      // COALESCE(...,'') khớp hành vi lookup import/sync — bản sao do PK ''
+      // (coerce → NULL ở cột typed) gom chung 1 nhóm. PK nguồn unique nên 1
+      // nhóm = 1 row gốc + các bản sao; giữ bản MỚI NHẤT (re-import/sync vừa
+      // refresh), xoá HẲN phần còn lại + record_locator của chúng.
+      const pkE = colMap
+        ? sql.raw(`COALESCE("${colMap.col}"::text, '')`)
+        : sql`COALESCE(ext->>${pkField}, '')`;
+      const dupCte = sql`WITH dup AS (
+        SELECT id FROM (
+          SELECT id, row_number() OVER (
+            PARTITION BY ${pkE}
+            ORDER BY updated_at DESC, created_at DESC, id DESC
+          ) AS rn
+          FROM ${tblE}
+          WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL
+        ) s WHERE rn > 1
+      )`;
+      if (dryRun) {
+        const res = (await db.execute(
+          sql`${dupCte} SELECT count(*)::int AS n FROM dup`,
+        )) as unknown as Array<{ n: number }> | { rows?: Array<{ n: number }> };
+        const list = Array.isArray(res) ? res : (res.rows ?? []);
+        return {
+          entity: row.name,
+          table: storage.tableName,
+          pkField,
+          dryRun: true,
+          duplicates: Number(list[0]?.n ?? 0),
+        };
+      }
+      const res = (await db.execute(
+        sql`${dupCte},
+        del AS (
+          DELETE FROM ${tblE} WHERE id IN (SELECT id FROM dup) RETURNING id
+        ),
+        loc AS (
+          DELETE FROM record_locator WHERE id IN (SELECT id FROM del) RETURNING id
+        )
+        SELECT (SELECT count(*) FROM del)::int AS deleted,
+               (SELECT count(*) FROM loc)::int AS locators`,
+      )) as unknown as
+        | Array<{ deleted: number; locators: number }>
+        | { rows?: Array<{ deleted: number; locators: number }> };
+      const list = Array.isArray(res) ? res : (res.rows ?? []);
+      return {
+        entity: row.name,
+        table: storage.tableName,
+        pkField,
+        dryRun: false,
+        deleted: Number(list[0]?.deleted ?? 0),
+        locatorsRemoved: Number(list[0]?.locators ?? 0),
       };
     }
 

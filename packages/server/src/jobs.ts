@@ -188,24 +188,31 @@ export async function startJobs(): Promise<void> {
     },
   });
 
-  // Phase U: resume stale full-import jobs sau khi worker register xong.
-  // Nếu server crash giữa chừng → status='running'/'queued'/'paused' →
-  // re-enqueue để worker tự pickup từ lastPk hiện tại.
-  try {
-    await resumeStaleFullJobs(async (jobId, userId) => {
-      // Re-enqueue qua enqueueMigrationJob để hệ thống ws-state tracking đúng.
-      // dummy companyId — runFullImportJob đọc lại từ DB.
-      await enqueueMigrationJob({
-        action: "full-import",
-        module: jobId,
-        args: {},
-        userId,
-        companyId: "",
+  // Phase U: resume stale full-import jobs (heartbeat stale >3ph) — boot 1
+  // lần + sweeper mỗi 5 phút. Sweeper bắt ca rolling deploy: lúc boot worker
+  // container cũ còn sống (heartbeat tươi → bỏ qua), vài giây sau nó bị giết
+  // → job 'running' mồ côi → sweep kế tiếp vớt. Lease (worker_token) trong
+  // runFullImportJob đảm bảo enqueue thừa cũng không chạy song song.
+  const sweepFullJobs = async () => {
+    try {
+      await resumeStaleFullJobs(async (jobId, userId) => {
+        // Re-enqueue qua enqueueMigrationJob để hệ thống ws-state tracking đúng.
+        // dummy companyId — runFullImportJob đọc lại từ DB.
+        await enqueueMigrationJob({
+          action: "full-import",
+          module: jobId,
+          args: {},
+          userId,
+          companyId: "",
+        });
       });
-    });
-  } catch (e) {
-    console.warn("[jobs] Resume stale full jobs lỗi:", (e as Error).message);
-  }
+    } catch (e) {
+      console.warn("[jobs] Resume stale full jobs lỗi:", (e as Error).message);
+    }
+  };
+  await sweepFullJobs();
+  const fullJobSweeper = setInterval(sweepFullJobs, 5 * 60_000);
+  fullJobSweeper.unref(); // không giữ process sống chỉ vì sweeper
 
   // Worker: nạp một nguồn tri thức vào Knowledge Base.
   await boss.work<KbIngestJobData>(QUEUE_KB_INGEST, async (jobs) => {
