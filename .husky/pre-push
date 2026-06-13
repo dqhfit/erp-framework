@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-push: chan day code lam do CI (mirror .github/workflows/ci.yml — subset
+# nhanh). Bo qua khi that su can: git push --no-verify
+set -e
+
+echo "[pre-push] 1/3 check:journal (migration trung idx/when -> skip im lang)..."
+node tooling/check-journal.mjs
+
+echo "[pre-push] 2/3 lint (Biome, CI hard-fail 0 error)..."
+pnpm lint
+
+echo "[pre-push] 3/3 typecheck toan monorepo..."
+pnpm -r typecheck
+
+echo "[pre-push] OK — day len duoc. (CI van chay test + e2e tren push)"
