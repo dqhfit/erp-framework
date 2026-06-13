@@ -57,10 +57,13 @@ async function main() {
       // PK nguồn: field "id" nếu có cột, fallback bỏ qua (composite check riêng)
       const pkCol = cols.id?.col;
       if (!pkCol) continue;
+      // COALESCE(...,'') để khớp ngữ nghĩa dedup (PK NULL/'' là 1 nhóm
+      // riêng, KHÔNG phải trùng). count(DISTINCT col) trần bỏ qua NULL →
+      // 1 row NULL-id báo giả +1 (vd tr_nguyenlieu_gva có 1 row id NULL).
       const r = await mcp<{ rows: Array<{ tong: string; dist: string }> }>(
         "migration_query_readonly",
         {
-          sql: `SELECT count(*) AS tong, count(DISTINCT "${pkCol}") AS dist FROM "${tbl}" WHERE deleted_at IS NULL`,
+          sql: `SELECT count(*) AS tong, count(DISTINCT COALESCE("${pkCol}"::text, '')) AS dist FROM "${tbl}" WHERE deleted_at IS NULL`,
         },
       );
       const row = r.rows?.[0];
