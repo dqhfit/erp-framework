@@ -3,13 +3,16 @@
 # dev KHONG cai duoc Docker. Chi deploy ha tang (DB + sidecar);
 # server + app VAN chay tren may dev qua `pnpm dev`.
 #
-# MO HINH KET NOI: tat ca qua A-record subdomain -> IP server +
-# port rieng (Postgres KHONG di qua Traefik 443 duoc — xem CLAUDE.md
-# muc dev khong-Docker). Tao cac A-record tro ve IP server Coolify:
-#   db.dev.vfmgroup.vn      -> <IP>   (Postgres 5432, co TLS)
-#   tika.dev.vfmgroup.vn    -> <IP>   (Tika 9998)
-#   ollama.dev.vfmgroup.vn  -> <IP>   (Ollama 11434)
-#   mqtt.dev.vfmgroup.vn    -> <IP>   (MQTT 1883)
+# MO HINH KET NOI: tat ca qua subdomain (1 lop) -> IP server + port
+# rieng (Postgres KHONG di qua Traefik 443 duoc — xem CLAUDE.md muc dev
+# khong-Docker). Da co wildcard *.vfmgroup.vn -> Coolify nen cac ten
+# duoi TU DONG phan giai, KHONG can tao A-record:
+#   db.vfmgroup.vn      :5432   (Postgres, co TLS)
+#   tika.vfmgroup.vn    :9998   (Tika)
+#   ollama.vfmgroup.vn  :11434  (Ollama)
+#   mqtt.vfmgroup.vn    :1883   (MQTT)
+# Luu y: voi service TCP, host name chi de cho de doc/cert CN — moi ten
+# deu tro ve 1 IP, PORT moi la cai phan biet service.
 #
 # Coolify: + New Resource -> Service -> Docker Compose Empty ->
 #   Compose Path = docker/docker-compose.dev-infra.yaml
@@ -41,7 +44,7 @@ services:
     image: alpine:3.20
     restart: "no"
     environment:
-      DB_CN: db.dev.vfmgroup.vn
+      DB_CN: db.vfmgroup.vn
     entrypoint:
       - sh
       - -c
@@ -80,7 +83,7 @@ services:
     # sslmode=require (postgres-js) / no-verify (pg) — xem .env duoi.
     # LUU Y: self-signed + require/no-verify = MA HOA duong truyen nhung
     # KHONG chong MITM (khong verify cert). Muon chong MITM: dung CERT
-    # THAT cho db.dev.vfmgroup.vn (vd mount cert Let's Encrypt), roi ca 2
+    # THAT cho db.vfmgroup.vn (vd mount cert Let's Encrypt), roi ca 2
     # file .env dung ?sslmode=verify-full (system CA tin cert that).
     command:
       - postgres
@@ -91,7 +94,7 @@ services:
       - -c
       - ssl_key_file=/certs/server.key
     ports:
-      # Public TCP cho may dev (A-record db.dev.vfmgroup.vn -> IP).
+      # Public TCP cho may dev (A-record db.vfmgroup.vn -> IP).
       # Doi sang "55432:5432" neu muon ne scan port mac dinh.
       - "5432:5432"
     volumes:
@@ -113,7 +116,7 @@ services:
   # ── Apache Tika (TUY CHON — KB trich van ban tu file) ───────
   # Ban SLIM (khong -full) -> nhe + it CVE parser hon. Can OCR anh/PDF
   # scan thi doi sang apache/tika:3.2.1.0-full. KHONG co auth -> dua
-  # vao FIREWALL ALLOWLIST (xem header). Dev dat TIKA_URL=http://tika.dev.vfmgroup.vn:9998
+  # vao FIREWALL ALLOWLIST (xem header). Dev dat TIKA_URL=http://tika.vfmgroup.vn:9998
   tika:
     image: apache/tika:3.2.1.0
     restart: unless-stopped
@@ -132,7 +135,7 @@ services:
 
   # ── Ollama embedding (TUY CHON — KB vector search) ──────────
   # Bo neu dung embedding cloud (OpenAI). KHONG co auth -> dua vao
-  # FIREWALL ALLOWLIST. Dev dat OLLAMA_EMBED_URL=http://ollama.dev.vfmgroup.vn:11434
+  # FIREWALL ALLOWLIST. Dev dat OLLAMA_EMBED_URL=http://ollama.vfmgroup.vn:11434
   # Tag GHIM (tranh silent CVE rollback) — cap nhat ban moi da va CVE
   # (Probllama...) khi can, kiem tra tag tren hub.docker.com/r/ollama/ollama.
   # AN TOAN HON: nhu tika, doi "ports" -> expose: ["11434"] + SSH tunnel
@@ -167,7 +170,7 @@ services:
 
   # ── MQTT broker (TUY CHON — chi khi test IoT) — co mat khau ─
   # allow_anonymous=false + password_file sinh tu SERVICE_PASSWORD_64_MQTT.
-  # Dev noi: MQTT_URL=mqtt://dev:<SERVICE_PASSWORD_64_MQTT>@mqtt.dev.vfmgroup.vn:1883
+  # Dev noi: MQTT_URL=mqtt://dev:<SERVICE_PASSWORD_64_MQTT>@mqtt.vfmgroup.vn:1883
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
