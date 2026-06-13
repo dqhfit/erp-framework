@@ -367,6 +367,35 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "page_wire_datasource",
+    description:
+      "Gắn DataSource vào widget page DRAFT: với mỗi widget có config.entity = baseEntityId " +
+      "của DataSource, set config.dataSourceId (useWidgetData ưu tiên dataSourceId → render qua " +
+      "join server-side) + CHÈN các cột join chọn lọc (addFields) vào config.fields (dedup, giữ " +
+      "thứ tự). Chỉ đụng page draft (published=false) — page đã publish bỏ qua. addFields phải là " +
+      "key projection hợp lệ của DataSource. dryRun=true (mặc định) trả kế hoạch, không ghi. " +
+      "pageNames rỗng = mọi page khớp.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dataSourceName: { type: "string", description: "Tên DataSource (datasources.name)" },
+        addFields: {
+          type: "array",
+          items: { type: "string" },
+          description: "Cột join (key projection DS) chèn vào fields[] widget",
+        },
+        pageNames: {
+          type: "array",
+          items: { type: "string" },
+          description: "Giới hạn ở các page này (rỗng = mọi page khớp base entity)",
+        },
+        dryRun: { type: "boolean", description: "true (mặc định) = chỉ trả kế hoạch" },
+      },
+      required: ["dataSourceName"],
+    },
+  },
+  {
     name: "migration_normalize_field_case",
     description:
       "Chuẩn hoá tên field entity về LOWERCASE + sửa lệch case dữ liệu trên bảng thật. " +
@@ -1320,6 +1349,99 @@ async function callMigrationTool(
         })
         .returning({ id: pages.id });
       return { status: "created", pageId: row?.id, name: pageName };
+    }
+
+    /* ── page_wire_datasource (apply) ───────────────────────── */
+    case "page_wire_datasource": {
+      const dsName = String(args.dataSourceName ?? "").trim();
+      if (!dsName) throw new McpError("dataSourceName bắt buộc");
+      const addFields = (Array.isArray(args.addFields) ? args.addFields : []).map((s) => String(s));
+      const pageFilter = (Array.isArray(args.pageNames) ? args.pageNames : []).map((s) =>
+        String(s).toLowerCase(),
+      );
+      const dryRun = args.dryRun !== false; // mặc định AN TOÀN
+
+      const [ds] = await db
+        .select({ id: dataSources.id, config: dataSources.config })
+        .from(dataSources)
+        .where(
+          and(
+            eq(dataSources.companyId, companyId),
+            sql`lower(${dataSources.name}) = lower(${dsName})`,
+          ),
+        );
+      if (!ds) throw new McpError(`DataSource '${dsName}' không tồn tại`);
+      const dsCfg = (ds.config ?? {}) as {
+        baseEntityId?: string;
+        fields?: Array<{ key?: string }>;
+      };
+      const baseEntityId = dsCfg.baseEntityId;
+      if (!baseEntityId) throw new McpError(`DataSource '${dsName}' chưa có baseEntityId`);
+      const projKeys = new Set((dsCfg.fields ?? []).map((f) => String(f.key)));
+      const badFields = addFields.filter((f) => !projKeys.has(f));
+      if (badFields.length > 0) {
+        throw new McpError(
+          `addFields không có trong projection DataSource: ${badFields.join(", ")}`,
+        );
+      }
+
+      const pageRows = await db
+        .select({
+          id: pages.id,
+          name: pages.name,
+          content: pages.content,
+          published: pages.published,
+        })
+        .from(pages)
+        .where(eq(pages.companyId, companyId));
+
+      const changed: Array<{ page: string; widgets: number; addedFields: string[] }> = [];
+      const skippedPublished: string[] = [];
+
+      for (const p of pageRows) {
+        if (pageFilter.length > 0 && !pageFilter.includes(p.name.toLowerCase())) continue;
+        const content = Array.isArray(p.content)
+          ? (p.content as Array<Record<string, unknown>>)
+          : [];
+        let widgetsChanged = 0;
+        const addedSet = new Set<string>();
+        for (const comp of content) {
+          const cfg = comp.config as Record<string, unknown> | undefined;
+          if (!cfg || cfg.entity !== baseEntityId) continue;
+          // Đã wire DS khác → bỏ (không ghi đè binding sẵn có).
+          if (cfg.dataSourceId && cfg.dataSourceId !== ds.id) continue;
+          cfg.dataSourceId = ds.id;
+          if (addFields.length > 0) {
+            const cur = Array.isArray(cfg.fields) ? (cfg.fields as string[]).map(String) : [];
+            for (const f of addFields) {
+              if (!cur.includes(f)) {
+                cur.push(f);
+                addedSet.add(f);
+              }
+            }
+            cfg.fields = cur;
+          }
+          widgetsChanged++;
+        }
+        if (widgetsChanged === 0) continue;
+        if (p.published) {
+          skippedPublished.push(p.name);
+          continue; // KHÔNG đụng page đã publish
+        }
+        changed.push({ page: p.name, widgets: widgetsChanged, addedFields: [...addedSet] });
+        if (!dryRun) {
+          await db.update(pages).set({ content, updatedAt: new Date() }).where(eq(pages.id, p.id));
+        }
+      }
+
+      return {
+        dataSource: dsName,
+        dryRun,
+        pagesChanged: changed.length,
+        widgetsChanged: changed.reduce((s, c) => s + c.widgets, 0),
+        changed,
+        skippedPublished,
+      };
     }
 
     /* ── migration_normalize_field_case (apply) ─────────────── */
