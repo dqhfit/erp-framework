@@ -1,6 +1,8 @@
+import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { MenuTree, type NavNode } from "@/components/MenuTree";
 import { NavMenuSection } from "@/components/NavMenuSection";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
@@ -651,6 +653,137 @@ function FavoritesSection({
   );
 }
 
+/* ─── PagesTreeSection — điều hướng TRANG theo CÂY MENU DQHF ───────
+   Admin/editor: cây menu (legacy_menu_map.navTree) cho trang đã gắn +
+   nhóm "Chưa gắn menu" cho trang lẻ (vẫn quản lý/xóa được). Lá click →
+   mở /pages/<id>. Khi sidebar thu nhỏ thì ẩn (cây cần bề ngang). */
+function PagesTreeSection({
+  collapsed,
+  pathname,
+  open,
+  onToggle,
+  onAdd,
+  onAiAdd,
+  onNavigate,
+  navNodes,
+  orphanPages,
+  onOpen,
+  onDeletePage,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  open: boolean;
+  onToggle: () => void;
+  onAdd?: () => void;
+  onAiAdd?: () => void;
+  onNavigate?: () => void;
+  navNodes: NavNode[];
+  orphanPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
+  onOpen: (to: string) => void;
+  onDeletePage?: (id: string) => void;
+}) {
+  const t = useT();
+  // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
+  const matched = pathname.match(/^\/(?:pages|view)\/([^/]+)/);
+  const activePageId = matched?.[1] ?? null;
+  if (collapsed) return null;
+  const kind = t("sidebar.pages").toLowerCase();
+  return (
+    <div className="border-b border-border/40 pb-1">
+      <div className="group/sec flex items-center px-3 pt-2 pb-0.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex-1 flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted/60 hover:text-muted transition-colors"
+        >
+          <I.ChevronRight
+            size={9}
+            className={cn("transition-transform shrink-0", open && "rotate-90")}
+          />
+          <span>{t("sidebar.pages")}</span>
+        </button>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+          {onAiAdd && (
+            <button
+              type="button"
+              onClick={onAiAdd}
+              className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent"
+              title={t("sidebar.add_ai", { kind })}
+            >
+              <I.Sparkles size={11} />
+            </button>
+          )}
+          {onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+              title={t("sidebar.add_blank", { kind })}
+            >
+              <I.Plus size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+      {open && (
+        <>
+          <MenuTree
+            nodes={navNodes}
+            activePageId={activePageId}
+            onSelect={(id) => {
+              onOpen(`/pages/${id}`);
+              onNavigate?.();
+            }}
+          />
+          {orphanPages.length > 0 && (
+            <div className="mt-1 pt-1 border-t border-border/30">
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold">
+                Chưa gắn menu
+              </div>
+              <ul>
+                {orphanPages.map((p) => {
+                  const active = pathname === p.to || activePageId === p.id;
+                  const IconC = I[p.icon] ?? I.Layout;
+                  return (
+                    <li key={p.id} className="relative group/orphan">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpen(p.to);
+                          onNavigate?.();
+                        }}
+                        className={cn(
+                          "w-full text-left pl-4 pr-7 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                          active
+                            ? "bg-accent/10 text-accent font-medium"
+                            : "text-text hover:bg-hover/40",
+                        )}
+                      >
+                        <IconC size={13} className="shrink-0 text-muted" />
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                      {onDeletePage && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePage(p.id)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger opacity-0 group-hover/orphan:opacity-100 transition-opacity"
+                          title={t("common.delete")}
+                        >
+                          <I.Trash size={11} />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* Nhóm điều hướng GỌN LẠI — tiêu đề bấm để mở/đóng. Khi sidebar
    ở chế độ thu nhỏ (icon-only) thì bỏ tiêu đề, hiện thẳng item. */
 function NavGroup({
@@ -810,6 +943,22 @@ export function Sidebar() {
   // Đối tượng low-code — nguồn dữ liệu là backend (qua useUserObjects).
   const userEntities = useUserObjects((s) => s.entities);
   const userPages = useUserObjects((s) => s.pages);
+
+  // Cây điều hướng TRANG theo MENU DQHF (legacy_menu_map.navTree). Admin/editor
+  // thấy cả trang draft; rỗng (chưa link menu) → fallback danh sách phẳng.
+  const [navNodes, setNavNodes] = useState<NavNode[]>([]);
+  useEffect(() => {
+    let alive = true;
+    createLegacyMenuClient("")
+      .navTree()
+      .then((rows) => {
+        if (alive) setNavNodes(rows);
+      })
+      .catch(() => undefined); // fail-safe: thiếu menu → danh sách phẳng
+    return () => {
+      alive = false;
+    };
+  }, []);
   const userWorkflows = useUserObjects((s) => s.workflows);
   const userAgents = useUserObjects((s) => s.agents);
   const userDataSources = useUserObjects((s) => s.dataSources);
@@ -1138,6 +1287,42 @@ export function Sidebar() {
               })),
             ];
             if (search.trim() && pageItems.length === 0) return null;
+            // CÂY MENU DQHF: khi có node link trang + không thu nhỏ + không tìm
+            // kiếm → điều hướng theo cây (giống Portal). Trang chưa gắn menu →
+            // nhóm "Chưa gắn menu" cuối cây (vẫn xóa được). Ngược lại: danh
+            // sách phẳng (fallback chưa link menu, hoặc đang search/thu nhỏ).
+            const linkedPageIds = new Set(
+              navNodes.filter((n) => n.pageId).map((n) => n.pageId as string),
+            );
+            const useTree = navNodes.some((n) => n.pageId) && !collapsed && !search.trim();
+            if (useTree) {
+              const orphanPages = [
+                ...staticPages.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  icon: s.iconName,
+                  to: s.to,
+                })),
+                ...pagesBase
+                  .filter((p) => !linkedPageIds.has(p.id))
+                  .map((p) => ({ id: p.id, name: p.name, icon: p.icon, to: `/pages/${p.id}` })),
+              ];
+              return (
+                <PagesTreeSection
+                  collapsed={collapsed}
+                  pathname={pathname}
+                  open={effectiveSectionsOpen.pages}
+                  onToggle={toggle("pages")}
+                  onAdd={can("create", "page") ? handleAddPage : undefined}
+                  onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
+                  onNavigate={collapseOpsSettings}
+                  navNodes={navNodes}
+                  orphanPages={orphanPages}
+                  onOpen={(to) => navigate({ to })}
+                  onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
+                />
+              );
+            }
             return (
               <SidebarSection
                 title={t("sidebar.pages")}

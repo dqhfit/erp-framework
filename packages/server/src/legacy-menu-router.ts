@@ -22,10 +22,12 @@ import { enqueueMigrationJob } from "./migration-worker";
 import { approvedProcedure, rbacProcedure, router } from "./trpc";
 
 export const legacyMenuRouter = router({
-  /** Cây điều hướng cho END-USER (portal): node active + trang ĐÃ PUBLISH liên
-   *  kết (page_id). Khác listTree (admin cockpit): chỉ trả thông tin nav tối
-   *  thiểu + lọc node có nhánh dẫn tới trang published (ẩn nhánh rỗng). */
+  /** Cây điều hướng theo MENU DQHF — dùng chung Portal (viewer) + Sidebar
+   *  (admin). Trả thông tin nav tối thiểu + lọc node có nhánh dẫn tới trang
+   *  (ẩn nhánh rỗng). Phân quyền: admin/editor thấy cả trang DRAFT (chưa
+   *  publish) để vừa điều hướng vừa quản lý; viewer chỉ thấy trang ĐÃ PUBLISH. */
   navTree: approvedProcedure.query(async ({ ctx }) => {
+    const includeDrafts = ctx.user.role === "admin" || ctx.user.role === "editor";
     const rows = await ctx.db
       .select({
         sourceCode: legacyMenuMap.sourceCode,
@@ -40,11 +42,15 @@ export const legacyMenuRouter = router({
       .from(legacyMenuMap)
       .leftJoin(pages, eq(legacyMenuMap.pageId, pages.id))
       .where(and(eq(legacyMenuMap.companyId, ctx.user.companyId), eq(legacyMenuMap.active, true)));
-    // Chỉ giữ node có trang published HOẶC node nhóm có hậu duệ dẫn tới trang.
+    // Lá hợp lệ = node có trang tồn tại (pageName != null) + (đã publish HOẶC
+    // user là admin/editor được xem draft).
+    const isVisibleLeaf = (r: (typeof rows)[number]) =>
+      r.pageId != null && r.pageName != null && (r.published === true || includeDrafts);
+    // Chỉ giữ node lá hợp lệ HOẶC node nhóm có hậu duệ dẫn tới lá hợp lệ.
     const byCode = new Map(rows.map((r) => [r.sourceCode, r]));
     const hasLeaf = new Set<string>();
     for (const r of rows) {
-      if (r.pageId && r.published) {
+      if (isVisibleLeaf(r)) {
         let cur: string | null = r.sourceCode;
         while (cur && !hasLeaf.has(cur)) {
           hasLeaf.add(cur);
@@ -60,7 +66,7 @@ export const legacyMenuRouter = router({
         level: r.level,
         parentCode: r.parentCode,
         sort: r.sort,
-        pageId: r.pageId && r.published ? r.pageId : null,
+        pageId: isVisibleLeaf(r) ? r.pageId : null,
       }));
   }),
 
