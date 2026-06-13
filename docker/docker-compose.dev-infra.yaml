@@ -1,0 +1,177 @@
+# =============================================================
+# HA TANG DEV tren Coolify — cho may dev KHONG cai duoc Docker.
+#
+# Compose nay chi deploy PHAN HA TANG (DB + sidecar). Server + app
+# VAN chay tren may dev qua `pnpm dev` va ket noi RA remote nay.
+# (Khac docker-compose.coolify.yaml — file do deploy FULL app.)
+#
+# Coolify: + New Resource -> Service -> Docker Compose Empty ->
+#   tro repo nay, Compose Path = docker/docker-compose.dev-infra.yaml
+#
+# Sau khi deploy, tren MAY DEV (xem packages/server/.env.no-docker.example):
+#   DATABASE_URL=postgres://erp:<SERVICE_PASSWORD_64_DB>@<coolify-host>:5432/erp_framework
+#   # sidecar (neu bat): lay URL HTTPS tu Coolify (tab Environment / Domains)
+#   TIKA_URL=https://<fqdn-tika>
+#   OLLAMA_EMBED_URL=https://<fqdn-ollama>
+#   MQTT_URL=mqtt://<coolify-host>:1883
+# Roi: pnpm --filter @erp-framework/db migrate && \
+#      pnpm --filter @erp-framework/server seed && pnpm dev
+# (May dev TU chay migrate+seed — compose nay KHONG co server de chay ho.)
+#
+# ┌─ BAO MAT — DOC KY ─────────────────────────────────────────┐
+# │ Compose nay MO PORT POSTGRES RA INTERNET de may dev ket     │
+# │ noi. Bat buoc:                                              │
+# │  1. Mat khau DB manh — dung Coolify magic SERVICE_PASSWORD_  │
+# │     64_DB (tu sinh 64 ky tu). KHONG hardcode erp/erp.       │
+# │  2. FIREWALL ALLOWLIST tren server Coolify: chi cho IP      │
+# │     public cua may dev toi port 5432 (va 1883 neu bat).     │
+# │     Vd ufw: `ufw allow from <dev-ip> to any port 5432`.    │
+# │  3. tika/ollama KHONG co auth san — neu bat, them Traefik   │
+# │     basic-auth (xem label mau o duoi) hoac chi bat khi can. │
+# │  4. user `erp` la superuser cua DB do — dung cho dev OK,    │
+# │     dung tai su dung cho prod.                              │
+# └────────────────────────────────────────────────────────────┘
+# =============================================================
+
+services:
+  # ── Postgres 18 + pgvector (BAT BUOC) ───────────────────────
+  # Phu thuoc cung duy nhat. pgvector cai san (migration 0007
+  # `CREATE EXTENSION vector`). MO port ra de may dev ket noi.
+  db:
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp
+      # Coolify tu sinh mat khau 64 ky tu, on dinh qua moi redeploy.
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_DB}
+      POSTGRES_DB: erp_framework
+    ports:
+      # Public TCP cho may dev. Doi port o day neu muon (vd "55432:5432")
+      # de tranh bi scan port mac dinh. Nho mo firewall tuong ung.
+      - "5432:5432"
+    volumes:
+      # PG 18+ luu data o /var/lib/postgresql/<major>/data — mount PARENT
+      # /var/lib/postgresql, KHONG mount .../data nhu PG 16/17 (image se
+      # refuse boot). Ref: docker-library/postgres#1259
+      - erp-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp_framework"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      # PG 18 init lan dau (initdb + CREATE EXTENSION vector) cham — 90s grace.
+      start_period: 90s
+
+  # ── Apache Tika (TUY CHON — KB trich van ban tu file) ───────
+  # Bo neu khong dung Knowledge Base upload file. Coolify cap FQDN
+  # HTTPS qua bien SERVICE_FQDN_TIKA_9998 -> may dev dat TIKA_URL.
+  # ⚠ Tika KHONG co auth — them basic-auth (label mau) hoac bo.
+  tika:
+    image: apache/tika:3.2.1.0-full
+    restart: unless-stopped
+    environment:
+      - SERVICE_FQDN_TIKA_9998
+    networks:
+      - default
+      - coolify
+    expose:
+      - "9998"
+    labels:
+      - "traefik.docker.network=coolify"
+      # --- Basic-auth (khuyen nghi) — bo comment + dat user/pass ---
+      # Tao hash: `htpasswd -nbB devuser 'matkhau'` (escape $ thanh $$ trong compose)
+      # - "traefik.http.middlewares.tika-auth.basicauth.users=devuser:$$2y$$05$$..."
+      # - "traefik.http.routers.<router>.middlewares=tika-auth"
+      # Khi bat basic-auth, may dev dat: TIKA_URL=https://devuser:matkhau@<fqdn-tika>
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ── Ollama embedding (TUY CHON — KB vector search) ──────────
+  # Bo neu dung embedding cloud (OpenAI) thay vi local. Coolify cap
+  # FQDN qua SERVICE_FQDN_OLLAMA_11434 -> may dev dat OLLAMA_EMBED_URL.
+  # ⚠ Ollama KHONG co auth — them basic-auth tuong tu tika hoac bo.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      - SERVICE_FQDN_OLLAMA_11434
+    networks:
+      - default
+      - coolify
+    volumes:
+      - ollama-data:/root/.ollama
+    expose:
+      - "11434"
+    labels:
+      - "traefik.docker.network=coolify"
+    # Ollama image KHONG co curl/wget — `ollama list` goi API noi bo.
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Mot-lan: cho ollama san sang roi keo model nomic-embed-text (~275MB).
+  # Thoat 0 sau khi xong; redeploy chi kiem tra nhanh (model da trong volume).
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
+    restart: "no"
+
+  # ── MQTT broker (TUY CHON — chi khi test IoT) ───────────────
+  # Bo neu khong test IoT. Mo TCP 1883 cho thiet bi / may dev.
+  # allow_anonymous=true: CHI dung khi co firewall allowlist. Can
+  # public an toan -> cau hinh auth thay cho allow_anonymous.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /mosquitto/config/mosquitto.conf <<'CONF'
+        listener 1883 0.0.0.0
+        allow_anonymous true
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest stdout
+        log_type error
+        log_type warning
+        log_type notice
+        CONF
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1883"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  erp-pgdata:
+  ollama-data:
+  mosquitto-data:
+
+# `coolify` la network shared toan cluster (coolify-proxy/Traefik da join)
+# — can cho tika/ollama lay FQDN HTTPS. db/mosquitto khong can (dung TCP port).
+networks:
+  coolify:
+    external: true
+    name: coolify

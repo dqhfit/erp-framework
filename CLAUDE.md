@@ -37,8 +37,19 @@
   `packages/db/.env`** (drizzle migrate đọc file đó, KHÔNG đọc env của
   server) → `pnpm install` → `pnpm --filter @erp-framework/db migrate`
   → `pnpm --filter @erp-framework/server seed` → `pnpm dev`.
-- ⚠ **KHÔNG chạy `pnpm db:setup` / `pnpm dev:setup`** ở chế độ này —
-  cả hai check `docker --version` và `exit 1` (xem `tooling/dev-setup.mjs`).
+- **Tự dựng hạ tầng remote** (khi không có Neon/Supabase): deploy
+  `docker/docker-compose.dev-infra.yaml` lên Coolify (hoặc bất kỳ host
+  có Docker) — CHỈ hạ tầng (db pgvector + tika/ollama/mqtt tùy chọn),
+  KHÔNG có server/app (máy dev tự chạy + tự migrate/seed). Khác
+  `docker-compose.coolify.yaml` (deploy full app). ⚠ Mở Postgres ra
+  Internet → BẮT BUỘC firewall allowlist theo IP + mật khẩu mạnh
+  (Coolify `SERVICE_PASSWORD_64_DB`); tika/ollama không có auth sẵn.
+- ⚠ **KHÔNG chạy `pnpm db:setup` / `pnpm dev:setup`** ở chế độ này:
+  `dev:setup` check `docker --version` ngay đầu → in lỗi + `exit 1` SẠCH
+  (chưa ghi gì). Nhưng `db:setup` KHÔNG có guard đó — nó GHI ĐÈ
+  `packages/{db,server}/.env` (về `DATABASE_URL` docker) RỒI mới fail ở
+  bước `docker compose up` → xoá mất `.env` no-Docker bạn vừa cấu hình.
+  Xem `tooling/{dev-setup,setup-db}.mjs`.
 - **pgvector bắt buộc**: migration 0007 chạy `CREATE EXTENSION vector` —
   DB remote phải có sẵn, nếu không migrate đỏ. `UPLOAD_DIR` đặt thư mục
   cục bộ (vd `./.uploads`), KHÔNG để `/data/uploads` (path volume Docker).
