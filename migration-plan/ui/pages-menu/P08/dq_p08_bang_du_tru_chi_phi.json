@@ -1,0 +1,55 @@
+{
+ "name": "dq_p08_bang_du_tru_chi_phi",
+ "label": "Bảng dự trù chi phí đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+    "title": "Bảng dự trù chi phí đơn hàng",
+    "fields": [
+     "maddh",
+     "donhang",
+     "tenncc",
+     "masp",
+     "loaichiphi",
+     "thanhtien",
+     "chitiet",
+     "tenchitiet",
+     "soluong",
+     "dongia",
+     "ghichu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+        "title": "Thêm — Bảng dự trù chi phí đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1357"
+ ]
+}

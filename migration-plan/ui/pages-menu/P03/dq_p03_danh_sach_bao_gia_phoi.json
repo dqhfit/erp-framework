@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p03_danh_sach_bao_gia_phoi",
+ "label": "Danh sách báo giá phôi",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,18 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "05be6ee4-a686-4c88-9a13-55504f06c7bb",
+    "title": "Danh sách báo giá phôi",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "id",
+     "masp",
+     "tensp",
+     "hehang",
+     "tenloaisp",
+     "tygia_usd",
+     "sotien_baogia",
+     "sotien_baogia_usd",
+     "ngaytao"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,9 +37,24 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "05be6ee4-a686-4c88-9a13-55504f06c7bb",
+        "title": "Thêm — Danh sách báo giá phôi",
         "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa báo giá",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa báo giá",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -74,6 +91,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1303"
  ]
 }

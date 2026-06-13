@@ -1,0 +1,59 @@
+{
+ "name": "dq_p05_lenh_cap_phat_hang_trang",
+ "label": "Lệnh cấp phát hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Lệnh cấp phát hàng trắng",
+    "fields": [
+     "maddh",
+     "id",
+     "madonhang",
+     "masp",
+     "mact",
+     "tenct",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong_chitiet",
+     "soluong_yeucau",
+     "soluong_conlai",
+     "soluong_donhang",
+     "ghichu",
+     "mahtr"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo lệnh cấp phát",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Tạo lệnh cấp phát — Lệnh cấp phát hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1246"
+ ]
+}

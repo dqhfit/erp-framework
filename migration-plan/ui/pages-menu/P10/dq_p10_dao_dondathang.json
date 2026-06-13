@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_vat_tu_don_hang",
- "label": "Tổng hợp chi tiết theo đơn hàng",
+ "name": "dq_p10_dao_dondathang",
+ "label": "Tổng hợp số lượng UV",
  "content": [
   {
    "id": "w_list",
@@ -11,59 +11,32 @@
    "h": 10,
    "config": {
     "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Tổng hợp chi tiết theo đơn hàng",
+    "title": "Tổng hợp số lượng UV",
     "fields": [
-     "order_number",
-     "range",
-     "masp",
-     "tensp",
-     "donhang",
-     "mavt",
+     "mabophan",
+     "tenbophan",
+     "vendor_id",
+     "vendor_name",
+     "chitiet",
+     "masogiao",
      "mota",
-     "quycach",
-     "mausac",
+     "tenchitiet",
      "dvt",
-     "soluong_can",
-     "nhom",
-     "ghichu"
+     "quycach",
+     "soluong",
+     "dongia",
+     "thanhtien",
+     "ghichu",
+     "maddh",
+     "lan_sua"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Tổng hợp chi tiết theo đơn hàng",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Xuất Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -74,12 +47,45 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_add",
+      "label": "Tạo đơn đặt hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Tạo đơn đặt hàng — Tổng hợp số lượng UV",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In đơn hàng",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1318"
+  "I1136",
+  "I1135",
+  "I1283",
+  "I1352"
  ]
 }

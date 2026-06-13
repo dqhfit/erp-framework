@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p12_tong_hop_chi_tiet_hang_trang",
+ "label": "Tổng hợp chi tiết hàng trắng (Ngũ kim)",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Tổng hợp chi tiết hàng trắng (Ngũ kim)",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "soluong",
+     "dvt",
+     "madondathang",
+     "soluong_daphat",
+     "soluong_conlai",
+     "soluong_dm",
+     "mahtr",
+     "tensp",
+     "ghichu",
+     "capphat",
+     "order_number"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,29 +44,15 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Tổng hợp chi tiết hàng trắng (Ngũ kim)",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Xuất Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -74,6 +69,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1277"
  ]
 }

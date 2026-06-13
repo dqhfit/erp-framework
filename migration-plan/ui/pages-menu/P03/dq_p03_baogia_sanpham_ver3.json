@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p03_baogia_sanpham_ver3",
+ "label": "Báo giá hoàn thiện",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Báo giá hoàn thiện",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "code",
+     "name",
+     "dongia",
+     "masp",
+     "tensp",
+     "tenloaisp",
+     "hehang",
+     "customer_name",
+     "iscreatedcosting",
+     "createdcosting",
+     "id",
+     "bophan",
+     "chiphi",
+     "m3_tc",
+     "thanhtien",
+     "id_chiphi"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,15 +44,15 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Báo giá hoàn thiện",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
       "id": "act_edit",
-      "label": "Sửa",
+      "label": "Cập nhật khối lượng riêng của gỗ",
       "icon": "Pencil",
       "variant": "default",
       "steps": [
@@ -52,26 +60,12 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Cập nhật khối lượng riêng của gỗ — Báo giá hoàn thiện",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -94,6 +88,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I111"
  ]
 }

@@ -1,0 +1,59 @@
+{
+ "name": "dq_p05_do_don_hang",
+ "label": "Đổ đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Đổ đơn hàng",
+    "fields": [
+     "id",
+     "madonhang",
+     "masp",
+     "ngaysanxuat",
+     "soluong_sanxuat",
+     "isgovan",
+     "isngukim",
+     "isbaobi",
+     "isson",
+     "isveneer",
+     "isbvkt",
+     "isbvdg",
+     "isbvai",
+     "mahoso",
+     "mota"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Đổ đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1243"
+ ]
+}

@@ -1,0 +1,90 @@
+{
+ "name": "dq_p08_dinh_muc_cat_van",
+ "label": "Đơn đặt hàng ngoài B.O.M",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+    "title": "Đơn đặt hàng ngoài B.O.M",
+    "fields": [
+     "donhang",
+     "masp",
+     "mact",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "ghichu",
+     "soluong_tc",
+     "soluong_donhang",
+     "soluong_can",
+     "sokhoi",
+     "veneer_matchinh",
+     "loaihang",
+     "veneer_matphu"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo đơn hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "bbebb6f3-0208-4f10-af62-557491c42f49",
+        "title": "Tạo đơn hàng — Đơn đặt hàng ngoài B.O.M",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I92",
+  "I1359"
+ ]
+}

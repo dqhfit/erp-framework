@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_g1020_danh_sach_phieu_chi",
+ "label": "Danh sách phiếu chi",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,23 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+    "title": "Danh sách phiếu chi",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "paymentid",
+     "reftypename",
+     "paymentdate",
+     "paymentdescription",
+     "totalamount",
+     "ispaid",
+     "customername",
+     "warehousename",
+     "suppliername",
+     "objectname",
+     "trangthai",
+     "paymentdetailid",
+     "description",
+     "amount"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +42,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Thêm — Danh sách phiếu chi",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +58,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Sửa — Danh sách phiếu chi",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -76,16 +97,16 @@
       ]
      },
      {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
+      "id": "act_approve",
+      "label": "Xác nhận",
+      "icon": "Check",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "confirm",
+        "title": "Xác nhận",
+        "message": "Xác nhận?"
        }
       ]
      }
@@ -94,6 +115,7 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1285",
+  "I1286"
  ]
 }

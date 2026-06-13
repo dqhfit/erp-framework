@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p10_yeu_cau_xuat_vat_tu",
+ "label": "Phiếu yêu cầu xuất vật tư",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+    "title": "Phiếu yêu cầu xuất vật tư",
     "fields": [
-     "sophieu",
-     "mavt",
+     "mact",
      "mota",
      "quycach",
      "mausac",
-     "soluong",
      "dvt",
-     "ghichu"
+     "soluong",
+     "soluong_daphat",
+     "ghichu",
+     "id",
+     "makho",
+     "sophieu",
+     "bophan",
+     "sanxuat",
+     "trahang",
+     "suachua",
+     "mucdich"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+        "title": "Thêm — Phiếu yêu cầu xuất vật tư",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +60,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+        "title": "Sửa — Phiếu yêu cầu xuất vật tư",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -88,12 +111,26 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_approve",
+      "label": "Duyệt đề xuất",
+      "icon": "Check",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Duyệt đề xuất",
+        "message": "Duyệt đề xuất?"
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1039"
  ]
 }

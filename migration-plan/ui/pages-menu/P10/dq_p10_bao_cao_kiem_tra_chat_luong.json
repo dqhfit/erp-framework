@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_bao_cao_kiem_tra_chat_luong",
+ "label": "Báo cáo kiểm tra chất lượng",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+    "title": "Báo cáo kiểm tra chất lượng",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "ngay",
+     "dondathang",
+     "masp",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "tieuchi",
+     "tieuchuan",
+     "dungcu",
+     "soluongdat1",
+     "soluongloi1",
+     "soluongkiem",
+     "soluongdat"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,23 +44,9 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "6417f0c9-ad7a-4b1c-8618-1b18ee30ad54",
+        "title": "Thêm — Báo cáo kiểm tra chất lượng",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +69,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1280"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_tien_do_chuyen_son",
+ "label": "Tiến độ chuyền sơn",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "a6173ea1-6769-469f-b203-35984f0e0b34",
+    "title": "Tiến độ chuyền sơn",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "tenkhuvuc",
+     "donhang",
+     "masp",
+     "mact",
+     "tenct",
+     "soluong_donhang",
+     "buoc1",
+     "buoc2",
+     "buoc3",
+     "buoc4",
+     "buoc5",
+     "buoc6",
+     "buoc7",
+     "buoc8",
+     "buoc9",
+     "buoc10"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "a6173ea1-6769-469f-b203-35984f0e0b34",
+        "title": "Thêm — Tiến độ chuyền sơn",
         "saveOutputTo": "newRec"
        }
       ]
@@ -54,26 +63,12 @@
         "value": true
        }
       ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1362"
  ]
 }

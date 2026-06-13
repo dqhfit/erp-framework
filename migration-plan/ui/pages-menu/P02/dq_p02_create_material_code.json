@@ -1,0 +1,60 @@
+{
+ "name": "dq_p02_create_material_code",
+ "label": "Tạo mã chi tiết",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Tạo mã chi tiết",
+    "fields": [
+     "vendor_id",
+     "vendor_name",
+     "name",
+     "value",
+     "unit",
+     "id",
+     "iduom",
+     "code",
+     "levelclass",
+     "mact",
+     "stt",
+     "tengoi",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo chi tiết",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Tạo chi tiết — Tạo mã chi tiết",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I14"
+ ]
+}

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p02_quy_trinh_lan_uv",
+ "label": "Danh sách màu UV",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,20 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "03a7f9bb-313d-4bf4-bd7e-99ac569caadc",
+    "title": "Danh sách màu UV",
     "fields": [
-     "sophieu",
-     "mavt",
+     "ma",
+     "ten",
+     "ghichu",
+     "hehang",
+     "stt",
+     "mact",
      "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "quytrinh",
+     "dinhluong",
+     "dinhluong2",
+     "somat"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +39,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "03a7f9bb-313d-4bf4-bd7e-99ac569caadc",
+        "title": "Thêm — Danh sách màu UV",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +55,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "03a7f9bb-313d-4bf4-bd7e-99ac569caadc",
+        "title": "Sửa — Danh sách màu UV",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -94,6 +112,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1037"
  ]
 }

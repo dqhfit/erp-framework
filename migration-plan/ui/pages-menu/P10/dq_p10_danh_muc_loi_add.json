@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_danh_muc_loi_add",
+ "label": "Khai báo danh sách lỗi",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,14 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "title": "Khai báo danh sách lỗi",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "tinhtrang",
+     "nguyennhankhac",
+     "id",
+     "name",
+     "tacnhangayloi"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,23 +33,9 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Thêm — Khai báo danh sách lỗi",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +58,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1258"
  ]
 }

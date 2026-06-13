@@ -1,0 +1,79 @@
+{
+ "name": "dq_p10_tien_do_hang_trang4",
+ "label": "Thống kê sản lượng (Hàng trắng)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+    "title": "Thống kê sản lượng (Hàng trắng)",
+    "fields": [
+     "maddh",
+     "donhang",
+     "masp",
+     "tensp",
+     "mahtr",
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_can",
+     "soluong_hoanthanh",
+     "soluong_conlai",
+     "soluong_nhap",
+     "card_no"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Thêm — Thống kê sản lượng (Hàng trắng)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Pallet chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Thống kê sản lượng (Hàng trắng)",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1331"
+ ]
+}

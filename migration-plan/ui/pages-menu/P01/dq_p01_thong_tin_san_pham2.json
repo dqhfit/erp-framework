@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p01_thong_tin_san_pham2",
+ "label": "Thông tin sản phẩm",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,22 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+    "title": "Thông tin sản phẩm",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "id",
+     "bosanpham",
+     "khachhang",
+     "customer_id",
+     "customer_name",
+     "ngayphathanh",
+     "ngaytao",
+     "nguoitao",
+     "ngaysua",
+     "nguoisua",
+     "tieuchuan_govan",
+     "tieuchuan_veneer",
+     "tieuchuan_chung"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +41,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Thêm — Thông tin sản phẩm",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +57,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Sửa — Thông tin sản phẩm",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -94,6 +114,8 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1017",
+  "I1080",
+  "I1273"
  ]
 }

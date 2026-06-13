@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p01_banve",
+ "label": "Bản vẽ kỹ thuật",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,15 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+    "title": "Bản vẽ kỹ thuật",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "tenhh",
+     "hehang",
+     "masp",
+     "tensp",
+     "create_date",
+     "update_date"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +34,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thêm — Bản vẽ kỹ thuật",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,8 +50,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Sửa — Bản vẽ kỹ thuật",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
@@ -62,8 +60,23 @@
       ]
      },
      {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     },
+     {
       "id": "act_print",
-      "label": "In",
+      "label": "In bản vẽ",
       "icon": "Printer",
       "variant": "default",
       "steps": [
@@ -77,7 +90,7 @@
      },
      {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Xuất bản vẽ",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -88,12 +101,32 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem bằng trình duyệt",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Bản vẽ kỹ thuật",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1",
+  "I1033"
  ]
 }

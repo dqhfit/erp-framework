@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p01_tiendo_sanxuat",
+ "label": "Tiến độ sản xuất thành phẩm",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,24 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Tiến độ sản xuất thành phẩm",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "order_number",
+     "item_number",
+     "tensp",
+     "order_qty",
+     "order_m3tc",
+     "son01",
+     "son01_per",
+     "dg01",
+     "dg01_per",
+     "sct01",
+     "sct01_per",
+     "dg02",
+     "dg02_per",
+     "fullname",
+     "tenbophan"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,24 +43,24 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Tiến độ sản xuất thành phẩm",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
+      "id": "act_view",
+      "label": "Xem",
+      "icon": "Eye",
       "variant": "default",
       "steps": [
        {
         "id": "s",
         "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "popupMode": "detail",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Tiến độ sản xuất thành phẩm",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
@@ -62,22 +69,8 @@
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Tiến độ sản xuất",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -88,12 +81,26 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_print",
+      "label": "In lệnh sản xuất",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I103"
  ]
 }

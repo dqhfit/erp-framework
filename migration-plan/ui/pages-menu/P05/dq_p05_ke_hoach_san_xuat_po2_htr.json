@@ -1,0 +1,79 @@
+{
+ "name": "dq_p05_ke_hoach_san_xuat_po2_htr",
+ "label": "Kế hoạch sản xuất hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "dac39ba8-5ddd-4b0a-8c08-12fb65d8a780",
+    "title": "Kế hoạch sản xuất hàng trắng",
+    "fields": [
+     "fullname",
+     "sapxep",
+     "lansanxuat",
+     "dondathang",
+     "makhachhang",
+     "hehang",
+     "donhang",
+     "soluong_donhang",
+     "soluong",
+     "socont",
+     "sokhoi",
+     "trangthai",
+     "hoanthanh",
+     "madonhang",
+     "typeid",
+     "columnname"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm đơn hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "dac39ba8-5ddd-4b0a-8c08-12fb65d8a780",
+        "title": "Thêm đơn hàng — Kế hoạch sản xuất hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa số lượng",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "dac39ba8-5ddd-4b0a-8c08-12fb65d8a780",
+        "title": "Sửa số lượng — Kế hoạch sản xuất hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1084"
+ ]
+}

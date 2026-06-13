@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p08_so_sanh_gia_vat_tu",
+ "label": "So sánh giá nguyên vật liệu",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "So sánh giá nguyên vật liệu",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "mancc",
+     "tenncc",
+     "chitiet",
+     "mota",
+     "quycach",
+     "dvt",
+     "nhom",
+     "nam",
+     "t1",
+     "t2",
+     "t3",
+     "t4",
+     "t5",
+     "t6",
+     "t7",
+     "t8"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,23 +44,9 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — So sánh giá nguyên vật liệu",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +69,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1127"
  ]
 }

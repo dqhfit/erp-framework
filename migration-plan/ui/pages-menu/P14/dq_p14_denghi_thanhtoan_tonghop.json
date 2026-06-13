@@ -1,0 +1,50 @@
+{
+ "name": "dq_p14_denghi_thanhtoan_tonghop",
+ "label": "Tổng hợp đề nghị thanh toán",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+    "title": "Tổng hợp đề nghị thanh toán",
+    "fields": [
+     "tenncc",
+     "ngaycan_thanhtoan",
+     "loaithanhtoan",
+     "thanhtien",
+     "hinhthuc_thanhtoan",
+     "loaitien"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+        "title": "Thêm — Tổng hợp đề nghị thanh toán",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1257"
+ ]
+}

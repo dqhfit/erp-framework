@@ -1,0 +1,141 @@
+{
+ "name": "dq_p01_vattu",
+ "label": "Danh sách chi tiết",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Danh sách chi tiết",
+    "fields": [
+     "nhom",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "mancc",
+     "tenncc",
+     "ghichu",
+     "kho",
+     "seg8",
+     "soluong1kg",
+     "tenvt_en",
+     "hehang",
+     "bom",
+     "van_tieuchuan"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo tất cả",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Tạo tất cả — Danh sách chi tiết",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In thẻ kho",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "In chi tiết đã chọn",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Danh sách chi tiết",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Nguồn gốc, xuất xứ nguyên liệu",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Cập nhật hình ảnh",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Cập nhật hình ảnh — Danh sách chi tiết",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I16"
+ ]
+}

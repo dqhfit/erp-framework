@@ -1,0 +1,60 @@
+{
+ "name": "dq_p10_tien_do_hang_trang3",
+ "label": "Nhập tiến độ hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+    "title": "Nhập tiến độ hàng trắng",
+    "fields": [
+     "maddh",
+     "tenkhuvuc",
+     "n_location",
+     "location_type",
+     "mahtr",
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_can",
+     "soluong_hoanthanh",
+     "soluong_conlai",
+     "soluong_nhap",
+     "card_no"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Thêm — Nhập tiến độ hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1269"
+ ]
+}

@@ -1,0 +1,79 @@
+{
+ "name": "dq_p02_phat_hanh_dinh_muc2",
+ "label": "Phát hành định mức",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Phát hành định mức",
+    "fields": [
+     "hehang",
+     "masp_nhamay",
+     "tensp",
+     "id",
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "soluong",
+     "mausac",
+     "stt",
+     "buoc",
+     "m2",
+     "sl_m2",
+     "sl_sp",
+     "sontrongsanpham"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Phát hành định mức",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Cập nhật sản phẩm",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Cập nhật sản phẩm — Phát hành định mức",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1230"
+ ]
+}

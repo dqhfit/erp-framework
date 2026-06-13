@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_trang_thai_san_xuat_htr",
+ "label": "Trạng thái sản xuất hàng trắng",
  "content": [
   {
    "id": "w_list",
@@ -11,15 +11,21 @@
    "h": 10,
    "config": {
     "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "title": "Trạng thái sản xuất hàng trắng",
     "fields": [
-     "ngaythang",
      "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "masp1",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy",
+     "rong",
+     "dai",
+     "soluong",
+     "sokhoi",
+     "congdoan",
+     "n_location",
+     "ngaythang"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,22 +42,8 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "title": "Thêm — Trạng thái sản xuất hàng trắng",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +66,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1082"
  ]
 }

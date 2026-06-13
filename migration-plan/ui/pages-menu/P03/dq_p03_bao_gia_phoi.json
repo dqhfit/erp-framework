@@ -1,0 +1,109 @@
+{
+ "name": "dq_p03_bao_gia_phoi",
+ "label": "Báo giá phôi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Báo giá phôi",
+    "fields": [
+     "stt",
+     "chitiet",
+     "nguyenlieu",
+     "veneer_matchinh",
+     "id",
+     "loaihang",
+     "mancc",
+     "veneer_matphu",
+     "veneer_dan_canh",
+     "uv_matchinh1",
+     "uv_matphu1",
+     "uv_canhdai1",
+     "uv_canhngan1",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_edit",
+      "label": "Cập nhật đơn giá hiện tại",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Cập nhật đơn giá hiện tại — Báo giá phôi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_add",
+      "label": "Thêm hạng mục",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm hạng mục — Báo giá phôi",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1302",
+  "I1015",
+  "I1314"
+ ]
+}

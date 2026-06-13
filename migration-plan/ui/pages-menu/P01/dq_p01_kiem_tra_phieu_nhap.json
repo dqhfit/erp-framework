@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p01_kiem_tra_phieu_nhap",
+ "label": "Kiểm tra phiếu nhập",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,20 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+    "title": "Kiểm tra phiếu nhập",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "sopn",
+     "maddh",
+     "tenncc",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong",
+     "dongia",
+     "thanhtien"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,23 +39,9 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+        "title": "Thêm — Kiểm tra phiếu nhập",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +64,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1028"
  ]
 }

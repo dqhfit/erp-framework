@@ -1,0 +1,60 @@
+{
+ "name": "dq_p08_tao_yeu_cau_mua_hang",
+ "label": "Tạo y/c mua hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Tạo y/c mua hàng",
+    "fields": [
+     "tencty",
+     "nhacc",
+     "vendor_id",
+     "vendor_name",
+     "nhom",
+     "order_number",
+     "item_number",
+     "mavt",
+     "mota",
+     "dvt",
+     "quycach",
+     "order_qty",
+     "soluong",
+     "dongia",
+     "loaitien",
+     "thanhtien"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo đơn hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Tạo đơn hàng — Tạo y/c mua hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I18"
+ ]
+}

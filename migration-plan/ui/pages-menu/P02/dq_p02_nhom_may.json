@@ -1,0 +1,71 @@
+{
+ "name": "dq_p02_nhom_may",
+ "label": "Danh sách mã quy trình",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Danh sách mã quy trình",
+    "fields": [
+     "tenkhuvuc",
+     "p_op",
+     "c_op",
+     "n_op",
+     "id",
+     "id_maymoc",
+     "tenmay",
+     "tenbophan"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm công đoạn",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Thêm công đoạn — Danh sách mã quy trình",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Sửa — Danh sách mã quy trình",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1334"
+ ]
+}

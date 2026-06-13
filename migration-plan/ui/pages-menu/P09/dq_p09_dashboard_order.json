@@ -1,0 +1,50 @@
+{
+ "name": "dq_p09_dashboard_order",
+ "label": "Thống kê đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Thống kê đơn hàng",
+    "fields": [
+     "customer",
+     "order_number",
+     "item_number",
+     "tensp",
+     "order_qty",
+     "finished"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Thống kê đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1010"
+ ]
+}

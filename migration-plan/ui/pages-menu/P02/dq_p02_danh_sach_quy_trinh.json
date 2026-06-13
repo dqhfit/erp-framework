@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p02_danh_sach_quy_trinh",
+ "label": "Quy trình sản phẩm (đã phát hành)",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,20 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Quy trình sản phẩm (đã phát hành)",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "hehang",
+     "masp",
+     "tensp",
+     "customer",
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "mact"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +39,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Quy trình sản phẩm (đã phát hành)",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +78,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1312"
  ]
 }

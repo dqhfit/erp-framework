@@ -1,0 +1,60 @@
+{
+ "name": "dq_p10_theo_doi_don_hang_chi_tiet",
+ "label": "Theo dõi chi tiết đơn hàng (hàng trắng)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+    "title": "Theo dõi chi tiết đơn hàng (hàng trắng)",
+    "fields": [
+     "maddh",
+     "sophieu",
+     "donhang",
+     "ngaydexuat",
+     "nguyenlieu",
+     "nguongoc",
+     "dayy_yc",
+     "rong_yc",
+     "dai_yc",
+     "sothanh_yc",
+     "sokhoi_yc",
+     "ngaythang",
+     "madonhang",
+     "quycach",
+     "soluong",
+     "sokhoi"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Thêm — Theo dõi chi tiết đơn hàng (hàng trắng)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1343"
+ ]
+}

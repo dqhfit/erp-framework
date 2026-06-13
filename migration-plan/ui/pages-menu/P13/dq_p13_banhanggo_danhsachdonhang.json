@@ -1,0 +1,123 @@
+{
+ "name": "dq_p13_banhanggo_danhsachdonhang",
+ "label": "Danh sách khách hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+    "title": "Danh sách khách hàng",
+    "fields": [
+     "sophieu",
+     "makh",
+     "trangthai",
+     "nguoitao",
+     "ngaytao",
+     "ghichu",
+     "tigia",
+     "tongtienthanhtoan",
+     "tongtiendathanhtoan",
+     "loaithanhtoan",
+     "vat",
+     "giamgia",
+     "congnonb",
+     "sophieu_doitra",
+     "sophieu_bu",
+     "thanhtienvat"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Thêm — Danh sách khách hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Sửa — Danh sách khách hàng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xoá",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xoá",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất kho",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In đơn hàng",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1201",
+  "G1018"
+ ]
+}

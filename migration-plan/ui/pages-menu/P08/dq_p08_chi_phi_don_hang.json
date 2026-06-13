@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p08_chi_phi_don_hang",
+ "label": "Theo dõi đơn hàng phôi",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,24 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+    "title": "Theo dõi đơn hàng phôi",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "maddh",
+     "donhang",
+     "masp",
+     "tensp",
+     "soluong",
+     "dongia",
+     "thanhtien_hangtrang",
+     "tongtien_phoi",
+     "tongsokhoi_phoi",
+     "tongtien_ngukim",
+     "tongtien_donggoi",
+     "tongtien_son",
+     "tongchiphi",
+     "dongia_ban",
+     "thanhtien_giaban"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +43,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+        "title": "Thêm — Theo dõi đơn hàng phôi",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +82,7 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1348",
+  "I1364"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p01_bao_cao_final",
+ "label": "Báo cáo Final",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,19 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+    "title": "Báo cáo Final",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "report_id",
+     "khachhang",
+     "hehang",
+     "ngaykiemtra",
+     "madonhang",
+     "qc_khachhang",
+     "ketluan",
+     "dexuat",
+     "ngaytao",
+     "tennguoiduyet"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +38,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+        "title": "Thêm — Báo cáo Final",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +54,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "5e8b2310-c289-41d1-b14b-0bb2dbf32994",
+        "title": "Sửa — Báo cáo Final",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -88,12 +105,26 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_approve",
+      "label": "Duyệt phiếu",
+      "icon": "Check",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Duyệt phiếu",
+        "message": "Duyệt phiếu?"
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1347"
  ]
 }

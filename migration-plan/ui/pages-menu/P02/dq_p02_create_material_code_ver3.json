@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p02_create_material_code_ver3",
+ "label": "Tạo mã chi tiết",
  "content": [
   {
    "id": "w_list",
@@ -11,16 +11,24 @@
    "h": 10,
    "config": {
     "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "title": "Tạo mã chi tiết",
     "fields": [
-     "sophieu",
+     "id",
+     "name",
+     "levelclass",
+     "code",
+     "p_id",
+     "description",
+     "active",
+     "uom",
      "mavt",
+     "tenvt",
      "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "dayy",
+     "rong",
+     "dai",
+     "cao",
+     "quycach"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -28,7 +36,7 @@
     "embeddedActions": [
      {
       "id": "act_add",
-      "label": "Thêm",
+      "label": "Tạo mã chi tiết",
       "icon": "Plus",
       "variant": "primary",
       "steps": [
@@ -37,7 +45,7 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "title": "Tạo mã chi tiết — Tạo mã chi tiết",
         "saveOutputTo": "newRec"
        }
       ]
@@ -53,7 +61,7 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "title": "Sửa — Tạo mã chi tiết",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
@@ -62,30 +70,17 @@
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
+      "id": "act_delete",
+      "label": "Xoá",
+      "icon": "Trash2",
+      "variant": "danger",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "confirm",
+        "title": "Xoá",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      }
@@ -94,6 +89,7 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I108",
+  "I1151"
  ]
 }

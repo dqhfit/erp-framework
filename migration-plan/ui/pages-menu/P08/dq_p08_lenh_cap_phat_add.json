@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p08_lenh_cap_phat_add",
+ "label": "Lệnh cấp phát",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,21 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Lệnh cấp phát",
     "fields": [
-     "sophieu",
+     "order_number",
+     "range",
+     "masp",
      "mavt",
      "mota",
      "quycach",
      "mausac",
      "soluong",
      "dvt",
-     "ghichu"
+     "madondathang",
+     "soluong_daphat",
+     "soluong_conlai"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,24 +40,24 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Thêm — Lệnh cấp phát",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
+      "id": "act_view",
+      "label": "Xem trước",
+      "icon": "Eye",
       "variant": "default",
       "steps": [
        {
         "id": "s",
         "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Lệnh cấp phát",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
@@ -62,30 +66,21 @@
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
+      "id": "act_edit",
+      "label": "Cập nhật LCP",
+      "icon": "Pencil",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Cập nhật LCP — Lệnh cấp phát",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
        }
       ]
      }
@@ -94,6 +89,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1274"
  ]
 }

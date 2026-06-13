@@ -1,0 +1,116 @@
+{
+ "name": "dq_g1020_san_pham",
+ "label": "Thông tin sản phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Thông tin sản phẩm",
+    "fields": [
+     "productid",
+     "productcode",
+     "productname",
+     "uom",
+     "description",
+     "costprice",
+     "wholesaleprice",
+     "retailprice",
+     "hinhanh",
+     "hinhanh1"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_edit",
+      "label": "Sửa",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Sửa — Thông tin sản phẩm",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Thông tin sản phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1163"
+ ]
+}

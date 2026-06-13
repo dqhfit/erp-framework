@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_tao_phieu_san_pham",
+ "label": "Tạo barcode sản phẩm",
  "content": [
   {
    "id": "w_list",
@@ -10,15 +10,24 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+    "title": "Tạo barcode sản phẩm",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
+     "order_number",
+     "range",
+     "item_number",
+     "description",
+     "order_qty",
+     "stt",
+     "tenct",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "soluong_donhang",
+     "soluong_can",
+     "card_qty",
      "id"
     ],
     "selectionStateKey": "sel",
@@ -27,7 +36,7 @@
     "embeddedActions": [
      {
       "id": "act_add",
-      "label": "Thêm",
+      "label": "Tạo mã phiếu",
       "icon": "Plus",
       "variant": "primary",
       "steps": [
@@ -35,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "1c655280-3519-4fcf-b771-5e0c2a5a8d57",
+        "title": "Tạo mã phiếu — Tạo barcode sản phẩm",
         "saveOutputTo": "newRec"
        }
       ]
@@ -54,26 +63,13 @@
         "value": true
        }
       ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1045",
+  "I1046"
  ]
 }

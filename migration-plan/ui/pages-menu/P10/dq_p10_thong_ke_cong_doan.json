@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_thong_ke_cong_doan",
+ "label": "Theo dõi tiến độ hàng trắng",
  "content": [
   {
    "id": "w_list",
@@ -11,15 +11,24 @@
    "h": 10,
    "config": {
     "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "title": "Theo dõi tiến độ hàng trắng",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "tenkhuvuc",
+     "n_op",
+     "dondathang",
+     "masp",
+     "mahtr",
+     "stt",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "soluong_can",
+     "sokhoi_can",
+     "soluong_hoanthanh",
+     "sokhoi_hoanthanh",
+     "soluong_conlai",
+     "phantram",
+     "dayy_tc"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,7 +45,7 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "title": "Thêm — Theo dõi tiến độ hàng trắng",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +83,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1089"
  ]
 }

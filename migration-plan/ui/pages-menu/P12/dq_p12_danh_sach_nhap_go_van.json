@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p12_danh_sach_nhap_go_van",
+ "label": "Danh sách phiếu nhập gỗ",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,22 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+    "title": "Danh sách phiếu nhập gỗ",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "id",
+     "malo_nguyenlieu",
+     "tongsothanh",
+     "tongsokhoi",
+     "ngaynhap",
+     "tenct",
+     "dayy",
+     "rong",
+     "dai",
+     "sothanh",
+     "sokhoi",
+     "tinhtrang_nguyenlieu",
+     "tinhtrang_fsc"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +41,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "0fe6735a-c8f2-419c-8935-fdcb4cb027ba",
+        "title": "Thêm — Danh sách phiếu nhập gỗ",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +80,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1332"
  ]
 }

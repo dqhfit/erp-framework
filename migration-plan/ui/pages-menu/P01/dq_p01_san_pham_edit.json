@@ -1,0 +1,54 @@
+{
+ "name": "dq_p01_san_pham_edit",
+ "label": "Cập nhật sản phẩm (m2, m3)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Cập nhật sản phẩm (m2, m3)",
+    "fields": [
+     "masp_khachhang",
+     "masp",
+     "tensp",
+     "loaisp",
+     "maloaisp",
+     "tenloaisp",
+     "ketcau",
+     "m2",
+     "m3",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Cập nhật sản phẩm (m2, m3)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I105"
+ ]
+}

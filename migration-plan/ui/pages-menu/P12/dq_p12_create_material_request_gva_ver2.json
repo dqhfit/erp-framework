@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p12_create_material_request_gva_ver2",
+ "label": "Cấp phát gỗ ván",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+    "title": "Cấp phát gỗ ván",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "maddh",
+     "masp",
+     "tensp",
+     "mahtr",
+     "soluongdonhang",
+     "nguyenlieu",
+     "day_tc",
+     "m3_tc",
+     "dayphoi",
+     "col",
+     "mr",
+     "ind",
+     "tram",
+     "ab18",
+     "abc2",
+     "bc22"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,29 +44,34 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+        "title": "Thêm — Cấp phát gỗ ván",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
+      "id": "act_view",
+      "label": "Xem đơn hàng",
+      "icon": "Eye",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+        "title": "Cấp phát gỗ ván",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
        }
       ]
      },
      {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -74,6 +88,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1018"
  ]
 }

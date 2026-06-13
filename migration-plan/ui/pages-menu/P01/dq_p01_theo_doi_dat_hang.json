@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p01_theo_doi_dat_hang",
+ "label": "Theo dõi đơn đặt hàng",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,9 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
-    "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
-    ],
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "title": "Theo dõi đơn đặt hàng",
+    "fields": [],
     "selectionStateKey": "sel",
     "pageSize": 25,
     "editable": true,
@@ -35,8 +27,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+        "title": "Thêm — Theo dõi đơn đặt hàng",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +66,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1025"
  ]
 }

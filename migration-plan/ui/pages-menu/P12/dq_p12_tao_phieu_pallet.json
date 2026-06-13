@@ -1,0 +1,123 @@
+{
+ "name": "dq_p12_tao_phieu_pallet",
+ "label": "Tạo phiếu pallet",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Tạo phiếu pallet",
+    "fields": [
+     "maddh",
+     "chitiet",
+     "soluong",
+     "icreatedcard",
+     "iprintedcard",
+     "trangthai",
+     "masp",
+     "stt",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "id",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo mã phiếu",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Tạo mã phiếu — Tạo phiếu pallet",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_print",
+      "label": "Chọn những pallet chưa in",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất PDF",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "In không cần xem trước",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Tạo phiếu pallet",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1266",
+  "I1267"
+ ]
+}

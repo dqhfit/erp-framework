@@ -1,0 +1,58 @@
+{
+ "name": "dq_p01_dinh_muc_he_hang",
+ "label": "Kiểm tra định mức - bản vẽ - AI",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+    "title": "Kiểm tra định mức - bản vẽ - AI",
+    "fields": [
+     "hehang",
+     "tenhh",
+     "masp",
+     "tensp",
+     "isgovan",
+     "isngukim",
+     "isbaobi",
+     "isson",
+     "iskythuat",
+     "isdonggoive",
+     "isai",
+     "isveneer",
+     "ishangtrang",
+     "duongdan"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Thêm — Kiểm tra định mức - bản vẽ - AI",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1217"
+ ]
+}

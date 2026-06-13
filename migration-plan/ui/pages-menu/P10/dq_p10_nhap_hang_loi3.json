@@ -1,0 +1,141 @@
+{
+ "name": "dq_p10_nhap_hang_loi3",
+ "label": "Báo cáo hàng lỗi",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+    "title": "Báo cáo hàng lỗi",
+    "fields": [
+     "ngaythang",
+     "donhang",
+     "masp",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy",
+     "rong",
+     "dai",
+     "soluong",
+     "sokhoi",
+     "tinhtrang",
+     "loailoi",
+     "tacnhangayloi",
+     "nguyennhanloi",
+     "nguyennhankhac"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_approve",
+      "label": "Duyệt hàng lỗi",
+      "icon": "Check",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Duyệt hàng lỗi",
+        "message": "Duyệt hàng lỗi?"
+       }
+      ]
+     },
+     {
+      "id": "act_add",
+      "label": "Tạo và in phiếu",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Tạo và in phiếu — Báo cáo hàng lỗi",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Báo cáo chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Báo cáo hàng lỗi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Cập nhật công đoạn đã làm",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "767a5ae7-0274-43eb-987e-35bcfe9abb92",
+        "title": "Cập nhật công đoạn đã làm — Báo cáo hàng lỗi",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1087"
+ ]
+}

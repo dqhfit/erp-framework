@@ -1,0 +1,60 @@
+{
+ "name": "dq_g1020_hoa_don_ban_hang_add",
+ "label": "Hoá đơn bán hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+    "title": "Hoá đơn bán hàng",
+    "fields": [
+     "productid",
+     "productcode",
+     "productname",
+     "producttypename",
+     "quantity",
+     "warehousename",
+     "producttypeid",
+     "warehouseid",
+     "uom",
+     "pendingissuequantity",
+     "pendingreceiptquantity",
+     "warehousecode",
+     "location",
+     "unitprice",
+     "totalamount",
+     "invoicedetailid"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo phiếu bán hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2d18134c-29bd-4928-ac55-e7ce52227bd8",
+        "title": "Tạo phiếu bán hàng — Hoá đơn bán hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1178"
+ ]
+}

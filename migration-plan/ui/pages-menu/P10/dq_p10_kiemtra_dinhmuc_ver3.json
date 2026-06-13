@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_kiemtra_dinhmuc_ver3",
+ "label": "Kiểm tra định mức (theo đơn hàng)",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,20 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+    "title": "Kiểm tra định mức (theo đơn hàng)",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "masp",
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "nhom",
+     "hwforww",
+     "hwforpacking",
+     "hwforai",
+     "soluong"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,23 +39,9 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Thêm — Kiểm tra định mức (theo đơn hàng)",
         "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -74,6 +64,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1020"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_vat_tu_don_hang",
- "label": "Tổng hợp chi tiết theo đơn hàng",
+ "name": "dq_p02_vattu_xacnhan",
+ "label": "Xác nhận mã chi tiết sừ dụng",
  "content": [
   {
    "id": "w_list",
@@ -11,21 +11,24 @@
    "h": 10,
    "config": {
     "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Tổng hợp chi tiết theo đơn hàng",
+    "title": "Xác nhận mã chi tiết sừ dụng",
     "fields": [
-     "order_number",
-     "range",
-     "masp",
-     "tensp",
-     "donhang",
+     "nhom",
      "mavt",
      "mota",
      "quycach",
      "mausac",
      "dvt",
-     "soluong_can",
-     "nhom",
-     "ghichu"
+     "ghichu",
+     "kho",
+     "seg8",
+     "soluong1kg",
+     "van_tieuchuan",
+     "duongkinhtrong",
+     "duongkinhngoai",
+     "heren",
+     "xacnhan",
+     "create_date"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -42,36 +45,22 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Tổng hợp chi tiết theo đơn hàng",
+        "title": "Thêm — Xác nhận mã chi tiết sừ dụng",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
+      "id": "act_approve",
+      "label": "Xác nhận sử dụng",
+      "icon": "Check",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "confirm",
+        "title": "Xác nhận sử dụng",
+        "message": "Xác nhận sử dụng?"
        }
       ]
      }
@@ -80,6 +69,6 @@
   }
  ],
  "_menuCodes": [
-  "I1318"
+  "I1250"
  ]
 }

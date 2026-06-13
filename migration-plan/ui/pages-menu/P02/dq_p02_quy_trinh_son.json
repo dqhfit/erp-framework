@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_vat_tu_don_hang",
- "label": "Tổng hợp chi tiết theo đơn hàng",
+ "name": "dq_p02_quy_trinh_son",
+ "label": "Quy trình sơn",
  "content": [
   {
    "id": "w_list",
@@ -10,22 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Tổng hợp chi tiết theo đơn hàng",
+    "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+    "title": "Quy trình sơn",
     "fields": [
-     "order_number",
-     "range",
      "masp",
      "tensp",
-     "donhang",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "dvt",
-     "soluong_can",
-     "nhom",
-     "ghichu"
+     "tensp_vn",
+     "ma",
+     "code",
+     "name",
+     "stt",
+     "mact",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "m3_tc",
+     "buoc1"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -41,9 +44,24 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Tổng hợp chi tiết theo đơn hàng",
+        "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+        "title": "Thêm — Quy trình sơn",
         "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xoá",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xoá",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -60,26 +78,12 @@
         "value": true
        }
       ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1318"
+  "I1034"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p13_xuatnhapgo_lichsu",
+ "label": "Lịch sử nhập -  xuất",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+    "title": "Lịch sử nhập -  xuất",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "check",
+     "id",
+     "makienhang",
+     "loaigo",
+     "dayy",
+     "rong",
+     "dai",
+     "sothanh",
+     "m3",
+     "sanxuat",
+     "xuatban",
+     "makh",
+     "tenkh",
+     "ngayban",
+     "ngayxuatkho",
+     "giaban"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,29 +44,15 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+        "title": "Thêm — Lịch sử nhập -  xuất",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Báo cáo xuất - nhập",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -74,6 +69,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1252"
  ]
 }

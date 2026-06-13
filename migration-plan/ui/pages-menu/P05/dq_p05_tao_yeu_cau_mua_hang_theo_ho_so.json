@@ -1,0 +1,60 @@
+{
+ "name": "dq_p05_tao_yeu_cau_mua_hang_theo_ho_so",
+ "label": "Tạo yêu cầu mua hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+    "title": "Tạo yêu cầu mua hàng",
+    "fields": [
+     "mahoso",
+     "mota",
+     "donhang",
+     "ngayphathanh",
+     "id",
+     "madonhang",
+     "masp",
+     "mact",
+     "quycach",
+     "mausac",
+     "mancc",
+     "vendor_id",
+     "vendor_name",
+     "dvt",
+     "soluong_donhang",
+     "soluong_can"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Tạo đơn hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "Tạo đơn hàng — Tạo yêu cầu mua hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1244"
+ ]
+}

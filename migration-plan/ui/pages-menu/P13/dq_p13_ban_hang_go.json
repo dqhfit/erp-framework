@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p13_ban_hang_go",
+ "label": "Tồn kho hàng gỗ",
  "content": [
   {
    "id": "w_list",
@@ -11,73 +11,32 @@
    "h": 10,
    "config": {
     "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "title": "Tồn kho hàng gỗ",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "check",
+     "id",
+     "makienhang",
+     "loaigo",
+     "dayy",
+     "rong",
+     "dai",
+     "sothanh",
+     "m3",
+     "sanxuat",
+     "xuatban",
+     "makh",
+     "tenkh",
+     "ngayban",
+     "ngayxuatkho",
+     "giaban"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
-        }
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Import Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -88,12 +47,47 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_add",
+      "label": "Tạo đơn hàng",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Tạo đơn hàng — Tồn kho hàng gỗ",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa đơn hàng",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Sửa đơn hàng — Tồn kho hàng gỗ",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1140"
  ]
 }

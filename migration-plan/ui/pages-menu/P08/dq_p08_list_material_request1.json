@@ -1,0 +1,123 @@
+{
+ "name": "dq_p08_list_material_request1",
+ "label": "Lệnh cấp phát chi tiết hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+    "title": "Lệnh cấp phát chi tiết hàng trắng",
+    "fields": [
+     "loaidonhang",
+     "lenhcapphatid",
+     "loaicapphat",
+     "nguoitao",
+     "nguoiduyet",
+     "vuotdinhmuc",
+     "ngaytao",
+     "madondathang",
+     "check",
+     "nguoisua",
+     "ngaysua",
+     "madonhang",
+     "masp",
+     "mavt",
+     "mota",
+     "quycach"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_print",
+      "label": "In",
+      "icon": "Printer",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__print",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_add",
+      "label": "Tạo lệnh cấp phát",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Tạo lệnh cấp phát — Lệnh cấp phát chi tiết hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_approve",
+      "label": "Duyệt lệnh cấp phát",
+      "icon": "Check",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Duyệt lệnh cấp phát",
+        "message": "Duyệt lệnh cấp phát?"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Tổng theo chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
+        "title": "Lệnh cấp phát chi tiết hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I102",
+  "I89",
+  "I94"
+ ]
+}

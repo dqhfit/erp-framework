@@ -1,0 +1,86 @@
+{
+ "name": "dq_p01_ban_ve_dao",
+ "label": "Bản vẽ dao",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+    "title": "Bản vẽ dao",
+    "fields": [
+     "hehang",
+     "seq2",
+     "filepath",
+     "create_date",
+     "create_by",
+     "update_date",
+     "update_by",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thêm — Bản vẽ dao",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Sửa — Bản vẽ dao",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1141"
+ ]
+}

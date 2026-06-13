@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p05_lich_giao_hang_trang",
+ "label": "Kế hoạch giao hàng trắng",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,21 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+    "title": "Kế hoạch giao hàng trắng",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "tenncc",
+     "maddh",
+     "ngaygiaohang",
+     "donhang",
+     "hehang",
+     "khachhang",
+     "soluong_cont",
+     "ngaycanvan",
+     "batdau",
+     "ketthuc",
+     "trangthai",
+     "ngayhoanthanh"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +40,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Thêm — Kế hoạch giao hàng trắng",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +56,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+        "title": "Sửa — Kế hoạch giao hàng trắng",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -94,6 +113,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1083"
  ]
 }

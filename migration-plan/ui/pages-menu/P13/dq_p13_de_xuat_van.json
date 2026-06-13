@@ -1,0 +1,60 @@
+{
+ "name": "dq_p13_de_xuat_van",
+ "label": "Danh sách đề xuất ván",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Danh sách đề xuất ván",
+    "fields": [
+     "mabophan",
+     "tenbophan",
+     "sophieu",
+     "id",
+     "trangthai",
+     "bophan",
+     "ngaytao",
+     "ngayduyet",
+     "ngayduyet2",
+     "ngayky",
+     "mact",
+     "tenct",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Danh sách đề xuất ván",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1232"
+ ]
+}

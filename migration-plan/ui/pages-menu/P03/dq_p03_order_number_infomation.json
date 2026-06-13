@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p03_order_number_infomation",
+ "label": "Thông tin đơn hàng sản xuất",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Thông tin đơn hàng sản xuất",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "order_number",
+     "customer",
+     "order_date",
+     "ship_date",
+     "cont_date",
+     "order_qty",
+     "finished",
+     "cust_po_number",
+     "create_by",
+     "fullname",
+     "create_date",
+     "loaidonhang",
+     "id",
+     "amount",
+     "agent",
+     "range"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -28,7 +36,7 @@
     "embeddedActions": [
      {
       "id": "act_add",
-      "label": "Thêm",
+      "label": "Tạo đơn hàng",
       "icon": "Plus",
       "variant": "primary",
       "steps": [
@@ -36,15 +44,15 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Tạo đơn hàng — Thông tin đơn hàng sản xuất",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
       "id": "act_edit",
-      "label": "Sửa",
+      "label": "Sửa đơn hàng",
       "icon": "Pencil",
       "variant": "default",
       "steps": [
@@ -52,8 +60,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Sửa đơn hàng — Thông tin đơn hàng sản xuất",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
@@ -94,6 +102,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I10"
  ]
 }

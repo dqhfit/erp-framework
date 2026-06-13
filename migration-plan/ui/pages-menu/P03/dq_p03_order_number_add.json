@@ -1,0 +1,60 @@
+{
+ "name": "dq_p03_order_number_add",
+ "label": "Tạo đơn hàng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+    "title": "Tạo đơn hàng",
+    "fields": [
+     "destination_code",
+     "destination_name",
+     "shipping_code",
+     "shipping_name",
+     "customer_id",
+     "customer_name",
+     "agent",
+     "item_number",
+     "masp",
+     "tensp",
+     "mausac",
+     "nguyenlieu",
+     "description",
+     "color",
+     "material",
+     "order_qty"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "681acbb3-f1c9-49e8-9514-4bd11da1f448",
+        "title": "Thêm — Tạo đơn hàng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I12"
+ ]
+}

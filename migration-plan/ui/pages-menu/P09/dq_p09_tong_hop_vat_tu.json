@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p09_tong_hop_vat_tu",
+ "label": "Thống kê số lượng chi tiết",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,20 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+    "title": "Thống kê số lượng chi tiết",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "mavt",
+     "mota",
+     "quycach",
+     "mausac",
+     "dvt",
+     "soluong_dat",
+     "soluong_danhan",
+     "thanhtien",
+     "soluong_xuat",
+     "soluong_tonkho",
+     "idxuong"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +39,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
+        "title": "Thêm — Thống kê số lượng chi tiết",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +78,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1024"
  ]
 }

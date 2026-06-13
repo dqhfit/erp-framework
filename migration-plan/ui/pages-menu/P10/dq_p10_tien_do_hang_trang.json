@@ -1,0 +1,60 @@
+{
+ "name": "dq_p10_tien_do_hang_trang",
+ "label": "Bảng theo dõi hàng trắng",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+    "title": "Bảng theo dõi hàng trắng",
+    "fields": [
+     "maddh",
+     "masp",
+     "stt",
+     "mact",
+     "tenct",
+     "nguyenlieu",
+     "dayy",
+     "rong",
+     "dai",
+     "soluong_can",
+     "dp01-prod",
+     "dp02-in",
+     "dp02-prod",
+     "dp03-in",
+     "dp03-prod",
+     "dp04-prod"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
+        "title": "Thêm — Bảng theo dõi hàng trắng",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1270"
+ ]
+}

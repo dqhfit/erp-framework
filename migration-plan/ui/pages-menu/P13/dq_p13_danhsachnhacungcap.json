@@ -1,0 +1,86 @@
+{
+ "name": "dq_p13_danhsachnhacungcap",
+ "label": "Danh sách nhà cung cấp",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+    "title": "Danh sách nhà cung cấp",
+    "fields": [
+     "mancc",
+     "tenncc",
+     "diachi",
+     "area",
+     "dienthoai",
+     "email",
+     "website",
+     "id"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "Thêm — Danh sách nhà cung cấp",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Sửa",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+        "title": "Sửa — Danh sách nhà cung cấp",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xoá",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xoá",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1200"
+ ]
+}

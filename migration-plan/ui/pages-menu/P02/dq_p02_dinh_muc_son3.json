@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p02_dinh_muc_son3",
+ "label": "Định mức sơn",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "a9c68479-bfa6-4749-9ee6-e444dbf93cec",
+    "title": "Định mức sơn",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "hehang",
+     "masp",
+     "tensp",
+     "id",
+     "stt_buoc",
+     "buoc",
+     "ten",
+     "donhot",
+     "thoigiankho",
+     "cachthuchien",
+     "tonghonhop",
+     "stt",
+     "mact",
+     "mavt",
+     "mota",
+     "dvt"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "a9c68479-bfa6-4749-9ee6-e444dbf93cec",
+        "title": "Thêm — Định mức sơn",
         "saveOutputTo": "newRec"
        }
       ]
@@ -74,6 +83,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1281"
  ]
 }

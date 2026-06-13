@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p05_ke_hoach_hang_trang3",
+ "label": "Kế hoạch đơn hàng trắng",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,23 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Kế hoạch đơn hàng trắng",
     "fields": [
-     "ngaythang",
+     "tenkhuvuc",
+     "n_op",
+     "c_op",
+     "id_kehoach",
+     "congdoan",
      "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "masp",
+     "tensp",
+     "hehang",
+     "soluong_donhang",
+     "ngaythang",
+     "soluong_kehoach",
+     "xacnhan",
+     "id_chitiet"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -27,7 +34,7 @@
     "embeddedActions": [
      {
       "id": "act_add",
-      "label": "Thêm",
+      "label": "Thêm đơn hàng",
       "icon": "Plus",
       "variant": "primary",
       "steps": [
@@ -35,8 +42,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Thêm đơn hàng — Kế hoạch đơn hàng trắng",
         "saveOutputTo": "newRec"
        }
       ]
@@ -68,12 +75,32 @@
         "value": true
        }
       ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem theo thời gian",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Kế hoạch đơn hàng trắng",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I72",
+  "I1349"
  ]
 }

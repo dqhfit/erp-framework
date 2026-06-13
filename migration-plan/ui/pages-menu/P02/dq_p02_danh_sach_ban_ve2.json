@@ -1,0 +1,87 @@
+{
+ "name": "dq_p02_danh_sach_ban_ve2",
+ "label": "Danh sách bản vẽ (đã phát hành)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+    "title": "Danh sách bản vẽ (đã phát hành)",
+    "fields": [
+     "id",
+     "masp",
+     "tensp",
+     "khachhang",
+     "hehang",
+     "filepath",
+     "seq1",
+     "seq2",
+     "phanloai",
+     "create_by",
+     "create_date",
+     "update_by",
+     "update_date",
+     "active"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thêm — Danh sách bản vẽ (đã phát hành)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_export",
+      "label": "Xuất",
+      "icon": "Download",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "set-state",
+        "key": "__export",
+        "value": true
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1290"
+ ]
+}

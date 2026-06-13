@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p13_banhanggo_danh_sach_de_xuat_phoi",
+ "label": "Danh sách đề xuất phôi",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+    "title": "Danh sách đề xuất phôi",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "dayy",
+     "rong",
+     "dai",
+     "sothanh",
+     "sokhoi",
+     "ghichu",
+     "id_chitiet",
+     "makienhang",
+     "dexuat_id",
+     "id",
+     "id_dexuat",
+     "isfinish",
+     "ngaygiaophoi",
+     "nguongoc_giao",
+     "chatluong_giao",
+     "dayy_giao"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,15 +44,15 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "fa0d12ee-3dc3-4895-94da-ae7da0c41d95",
+        "title": "Thêm — Danh sách đề xuất phôi",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
       "id": "act_print",
-      "label": "In",
+      "label": "In theo phiếu đề xuất",
       "icon": "Printer",
       "variant": "default",
       "steps": [
@@ -54,26 +63,12 @@
         "value": true
        }
       ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
      }
     ]
    }
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I1216"
  ]
 }

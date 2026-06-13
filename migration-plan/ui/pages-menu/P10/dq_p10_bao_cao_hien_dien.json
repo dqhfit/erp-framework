@@ -1,0 +1,52 @@
+{
+ "name": "dq_p10_bao_cao_hien_dien",
+ "label": "Báo cáo hiện diện",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+    "title": "Báo cáo hiện diện",
+    "fields": [
+     "c_op",
+     "n_op",
+     "tenkhuvuc",
+     "ngaythang",
+     "songuoi_hanhchanh",
+     "songuoi_tangca",
+     "id",
+     "day_name"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "2182e7dc-babc-4ee7-82e6-726abfb47d98",
+        "title": "Thêm — Báo cáo hiện diện",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1279"
+ ]
+}

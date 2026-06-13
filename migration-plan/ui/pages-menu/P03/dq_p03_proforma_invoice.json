@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p03_proforma_invoice",
+ "label": "Proforma Invoice",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,17 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+    "title": "Proforma Invoice",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "id",
+     "donhang",
+     "cust_po_number",
+     "customer",
+     "tongsoluong",
+     "tongsokhoi",
+     "ngaygiao",
+     "donhang_dikem"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +36,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+        "title": "Thêm — Proforma Invoice",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +52,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "a36b0d53-ab3f-487f-9a9a-16bd83b87815",
+        "title": "Sửa — Proforma Invoice",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -94,6 +109,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1054"
  ]
 }

@@ -1,0 +1,54 @@
+{
+ "name": "dq_p01_thong_ke_xuat_hang_thanh_pham",
+ "label": "Thống kê xuất hàng thành phẩm",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+    "title": "Thống kê xuất hàng thành phẩm",
+    "fields": [
+     "cont_number",
+     "receiver",
+     "order_number",
+     "cust_po_number",
+     "item_number",
+     "description",
+     "qty",
+     "uom",
+     "out_date",
+     "range"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "8b327ef1-8289-49a9-96b3-8e52f22d0971",
+        "title": "Thêm — Thống kê xuất hàng thành phẩm",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1265"
+ ]
+}

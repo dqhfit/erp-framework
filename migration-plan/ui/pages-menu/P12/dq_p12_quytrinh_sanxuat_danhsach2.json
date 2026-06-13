@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_material_in_out",
- "label": "Thống kê nhập xuất",
+ "name": "dq_p12_quytrinh_sanxuat_danhsach2",
+ "label": "In quy trình, phiếu pallet",
  "content": [
   {
    "id": "w_list",
@@ -10,25 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
-    "title": "Thống kê nhập xuất",
+    "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+    "title": "In quy trình, phiếu pallet",
     "fields": [
-     "trangthai",
-     "bengiao",
-     "sophieu",
-     "mact",
+     "maddh",
+     "chitiet",
      "mota",
-     "quycach",
-     "mausac",
      "soluong",
-     "dvt",
-     "donhang",
-     "ngaythang",
-     "makho",
-     "ghichu",
-     "ghichu2",
-     "dongia",
-     "reftypename"
+     "masp",
+     "stt",
+     "mact",
+     "nguyenlieu",
+     "quytrinh",
+     "id",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "soluong_donhang",
+     "m3_tc"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -44,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
-        "title": "Thêm — Thống kê nhập xuất",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "Thêm — In quy trình, phiếu pallet",
         "saveOutputTo": "newRec"
        }
       ]
@@ -65,8 +65,27 @@
       ]
      },
      {
+      "id": "act_view",
+      "label": "In chi tiết đã chọn",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "a8fa0d51-9787-4e2c-8414-8cac9c2126af",
+        "title": "In quy trình, phiếu pallet",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     },
+     {
       "id": "act_export",
-      "label": "Báo cáo Xuất kho",
+      "label": "Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -83,6 +102,6 @@
   }
  ],
  "_menuCodes": [
-  "I95"
+  "I123"
  ]
 }

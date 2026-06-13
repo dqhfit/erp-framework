@@ -1,0 +1,79 @@
+{
+ "name": "dq_p10_thong_ke_so_luong_add2",
+ "label": "Thống kê sản lượng (Sơn, Đóng gói)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Thống kê sản lượng (Sơn, Đóng gói)",
+    "fields": [
+     "order_number",
+     "range",
+     "masp",
+     "tensp",
+     "soluong_donhang",
+     "soluong_nhap",
+     "soluong_hoanthanh",
+     "soluong_conlai",
+     "mact",
+     "stt",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_can"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Thống kê sản lượng (Sơn, Đóng gói)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Chi tiết",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thống kê sản lượng (Sơn, Đóng gói)",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1333"
+ ]
+}

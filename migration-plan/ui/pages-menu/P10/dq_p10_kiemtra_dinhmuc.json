@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_tong_hop_xuat_hop_chat_son",
- "label": "Tổng hợp xuất hỗn hợp sơn",
+ "name": "dq_p10_kiemtra_dinhmuc",
+ "label": "Kiểm tra định mức",
  "content": [
   {
    "id": "w_list",
@@ -10,16 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-    "title": "Tổng hợp xuất hỗn hợp sơn",
+    "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+    "title": "Kiểm tra định mức",
     "fields": [
-     "ngaythang",
-     "madonhang",
-     "buocson",
-     "tongsoluong",
-     "ngaytao",
-     "nguoitao",
-     "id"
+     "mact",
+     "stt",
+     "chitiet",
+     "nguyenlieu",
+     "dayy_tc",
+     "rong_tc",
+     "dai_tc",
+     "soluong_tc",
+     "m3_tc",
+     "dayy_sc",
+     "rong_sc",
+     "dai_sc",
+     "m3_sc",
+     "ghichu",
+     "madonggoi",
+     "quycach"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -35,9 +44,28 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "40c7f9cf-39b8-4aaa-9c58-c682e3d1808c",
-        "title": "Thêm — Tổng hợp xuất hỗn hợp sơn",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Thêm — Kiểm tra định mức",
         "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_view",
+      "label": "Xem",
+      "icon": "Eye",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "detail",
+        "entity": "56ef9b1a-75d2-408d-aa39-2a3b5f726f41",
+        "title": "Kiểm tra định mức",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
        }
       ]
      },
@@ -57,7 +85,7 @@
      },
      {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -74,6 +102,6 @@
   }
  ],
  "_menuCodes": [
-  "I1310"
+  "I66"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p03_commercial_invoice",
+ "label": "Commercial Invoice",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "5fc46c26-f7ef-4121-8be5-e7aaf9cabecd",
+    "title": "Commercial Invoice",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "itemnumber",
+     "custproductcode",
+     "description",
+     "quantity",
+     "meas",
+     "unit",
+     "price",
+     "amount",
+     "commercialinvoiceid",
+     "commercialinvoicecode",
+     "shipmentno",
+     "pono",
+     "containernumber",
+     "sealno",
+     "containersize",
+     "accountandrisk"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,8 +44,8 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "5fc46c26-f7ef-4121-8be5-e7aaf9cabecd",
+        "title": "Thêm — Commercial Invoice",
         "saveOutputTo": "newRec"
        }
       ]
@@ -52,12 +60,27 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "entity": "5fc46c26-f7ef-4121-8be5-e7aaf9cabecd",
+        "title": "Sửa — Commercial Invoice",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_delete",
+      "label": "Xóa",
+      "icon": "Trash2",
+      "variant": "danger",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "confirm",
+        "title": "Xóa",
+        "message": "Xác nhận xoá bản ghi đang chọn?",
+        "danger": true
        }
       ]
      },
@@ -94,6 +117,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1049"
  ]
 }

@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_list_whsin_out",
- "label": "Danh sách Nhập/Xuất",
+ "name": "dq_p08_don_hang_son",
+ "label": "Tổng hợp số lượng sơn",
  "content": [
   {
    "id": "w_list",
@@ -10,17 +10,25 @@
    "w": 12,
    "h": 10,
    "config": {
-    "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Danh sách Nhập/Xuất",
+    "entity": "a9c68479-bfa6-4749-9ee6-e444dbf93cec",
+    "title": "Tổng hợp số lượng sơn",
     "fields": [
-     "sophieu",
-     "mavt",
-     "mota",
-     "quycach",
-     "mausac",
-     "soluong",
-     "dvt",
-     "ghichu"
+     "hehang",
+     "masp",
+     "tensp",
+     "soluong_donhang",
+     "dt_mat_a",
+     "dt_mat_b",
+     "dt_mat_c",
+     "dt_mat_d",
+     "dt_mat_e",
+     "dt_mat_f",
+     "dt_mat_g",
+     "dt_mat_h",
+     "dt_matson",
+     "dtt_mat_a",
+     "dtt_mat_b",
+     "dtt_mat_c"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -36,42 +44,28 @@
         "id": "s",
         "kind": "open-popup",
         "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Danh sách Nhập/Xuất",
+        "entity": "a9c68479-bfa6-4749-9ee6-e444dbf93cec",
+        "title": "Thêm — Tổng hợp số lượng sơn",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
+      "id": "act_view",
+      "label": "Tổng theo chi tiết",
+      "icon": "Eye",
       "variant": "default",
       "steps": [
        {
         "id": "s",
         "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Sửa — Danh sách Nhập/Xuất",
+        "popupMode": "detail",
+        "entity": "a9c68479-bfa6-4749-9ee6-e444dbf93cec",
+        "title": "Tổng hợp số lượng sơn",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
        }
       ]
      },
@@ -94,6 +88,6 @@
   }
  ],
  "_menuCodes": [
-  "I62"
+  "I1282"
  ]
 }

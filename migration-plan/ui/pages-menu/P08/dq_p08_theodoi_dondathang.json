@@ -1,6 +1,6 @@
 {
- "name": "dq_p07_danh_sach_vat_tu_don_hang",
- "label": "Tổng hợp chi tiết theo đơn hàng",
+ "name": "dq_p08_theodoi_dondathang",
+ "label": "Đặt hàng phôi",
  "content": [
   {
    "id": "w_list",
@@ -11,21 +11,24 @@
    "h": 10,
    "config": {
     "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-    "title": "Tổng hợp chi tiết theo đơn hàng",
+    "title": "Đặt hàng phôi",
     "fields": [
-     "order_number",
-     "range",
-     "masp",
-     "tensp",
-     "donhang",
      "mavt",
      "mota",
      "quycach",
      "mausac",
-     "dvt",
-     "soluong_can",
-     "nhom",
-     "ghichu"
+     "maddh",
+     "ngaydat",
+     "ngaygiao",
+     "vendor_id",
+     "vendor_name",
+     "mancc",
+     "tenncc",
+     "loaiddh",
+     "masp",
+     "chitiet",
+     "tenchitiet",
+     "dvt"
     ],
     "selectionStateKey": "sel",
     "pageSize": 25,
@@ -33,7 +36,7 @@
     "embeddedActions": [
      {
       "id": "act_add",
-      "label": "Thêm",
+      "label": "Tạo đơn hàng",
       "icon": "Plus",
       "variant": "primary",
       "steps": [
@@ -42,28 +45,14 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Tổng hợp chi tiết theo đơn hàng",
+        "title": "Tạo đơn hàng — Đặt hàng phôi",
         "saveOutputTo": "newRec"
        }
       ]
      },
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
       "id": "act_export",
-      "label": "Xuất",
+      "label": "Xuất Excel",
       "icon": "Download",
       "variant": "default",
       "steps": [
@@ -80,6 +69,8 @@
   }
  ],
  "_menuCodes": [
-  "I1318"
+  "I1161",
+  "I1271",
+  "I88"
  ]
 }

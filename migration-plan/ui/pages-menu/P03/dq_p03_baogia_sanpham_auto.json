@@ -1,0 +1,80 @@
+{
+ "name": "dq_p03_baogia_sanpham_auto",
+ "label": "Báo giá hoàn thiện (Theo hệ hàng)",
+ "content": [
+  {
+   "id": "w_list",
+   "kind": "list",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 10,
+   "config": {
+    "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+    "title": "Báo giá hoàn thiện (Theo hệ hàng)",
+    "fields": [
+     "masp",
+     "tensp",
+     "selected",
+     "stt",
+     "chitiet",
+     "nguyenlieu",
+     "veneer_matchinh",
+     "loaihang",
+     "dongia1",
+     "dongia2",
+     "veneer_matphu",
+     "veneer_dan_canh",
+     "uv_matchinh1",
+     "loai_uv",
+     "heso",
+     "uv_matphu1"
+    ],
+    "selectionStateKey": "sel",
+    "pageSize": 25,
+    "editable": true,
+    "embeddedActions": [
+     {
+      "id": "act_add",
+      "label": "Thêm",
+      "icon": "Plus",
+      "variant": "primary",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Thêm — Báo giá hoàn thiện (Theo hệ hàng)",
+        "saveOutputTo": "newRec"
+       }
+      ]
+     },
+     {
+      "id": "act_edit",
+      "label": "Gửi yêu cầu cập nhật",
+      "icon": "Pencil",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "open-popup",
+        "popupMode": "form",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "title": "Gửi yêu cầu cập nhật — Báo giá hoàn thiện (Theo hệ hàng)",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "_menuCodes": [
+  "I1287",
+  "I1256"
+ ]
+}
