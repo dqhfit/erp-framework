@@ -383,7 +383,13 @@ const TOOLS: ToolDef[] = [
         addFields: {
           type: "array",
           items: { type: "string" },
-          description: "Cột join (key projection DS) chèn vào fields[] widget",
+          description: "Cột join (key projection DS) CHÈN THÊM vào cuối fields[] (giữ cột cũ)",
+        },
+        setFields: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "THAY TRỌN fields[] theo đúng thứ tự này (bám layout grid DQHF). Ưu tiên hơn addFields.",
         },
         pageNames: {
           type: "array",
@@ -1356,6 +1362,7 @@ async function callMigrationTool(
       const dsName = String(args.dataSourceName ?? "").trim();
       if (!dsName) throw new McpError("dataSourceName bắt buộc");
       const addFields = (Array.isArray(args.addFields) ? args.addFields : []).map((s) => String(s));
+      const setFields = (Array.isArray(args.setFields) ? args.setFields : []).map((s) => String(s));
       const pageFilter = (Array.isArray(args.pageNames) ? args.pageNames : []).map((s) =>
         String(s).toLowerCase(),
       );
@@ -1378,11 +1385,13 @@ async function callMigrationTool(
       const baseEntityId = dsCfg.baseEntityId;
       if (!baseEntityId) throw new McpError(`DataSource '${dsName}' chưa có baseEntityId`);
       const projKeys = new Set((dsCfg.fields ?? []).map((f) => String(f.key)));
-      const badFields = addFields.filter((f) => !projKeys.has(f));
-      if (badFields.length > 0) {
-        throw new McpError(
-          `addFields không có trong projection DataSource: ${badFields.join(", ")}`,
-        );
+      const badAdd = addFields.filter((f) => !projKeys.has(f));
+      if (badAdd.length > 0) {
+        throw new McpError(`addFields không có trong projection DataSource: ${badAdd.join(", ")}`);
+      }
+      const badSet = setFields.filter((f) => !projKeys.has(f));
+      if (badSet.length > 0) {
+        throw new McpError(`setFields không có trong projection DataSource: ${badSet.join(", ")}`);
       }
 
       const pageRows = await db
@@ -1411,7 +1420,11 @@ async function callMigrationTool(
           // Đã wire DS khác → bỏ (không ghi đè binding sẵn có).
           if (cfg.dataSourceId && cfg.dataSourceId !== ds.id) continue;
           cfg.dataSourceId = ds.id;
-          if (addFields.length > 0) {
+          if (setFields.length > 0) {
+            // Thay TRỌN theo thứ tự DQHF (ưu tiên hơn addFields).
+            cfg.fields = [...setFields];
+            for (const f of setFields) addedSet.add(f);
+          } else if (addFields.length > 0) {
             const cur = Array.isArray(cfg.fields) ? (cfg.fields as string[]).map(String) : [];
             for (const f of addFields) {
               if (!cur.includes(f)) {
