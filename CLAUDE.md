@@ -38,12 +38,20 @@
   server) → `pnpm install` → `pnpm --filter @erp-framework/db migrate`
   → `pnpm --filter @erp-framework/server seed` → `pnpm dev`.
 - **Tự dựng hạ tầng remote** (khi không có Neon/Supabase): deploy
-  `docker/docker-compose.dev-infra.yaml` lên Coolify (hoặc bất kỳ host
-  có Docker) — CHỈ hạ tầng (db pgvector + tika/ollama/mqtt tùy chọn),
+  `docker/docker-compose.dev-infra.yaml` lên Coolify (hoặc host có
+  Docker) — CHỈ hạ tầng (db pgvector + tika/ollama/mqtt tùy chọn),
   KHÔNG có server/app (máy dev tự chạy + tự migrate/seed). Khác
-  `docker-compose.coolify.yaml` (deploy full app). ⚠ Mở Postgres ra
-  Internet → BẮT BUỘC firewall allowlist theo IP + mật khẩu mạnh
-  (Coolify `SERVICE_PASSWORD_64_DB`); tika/ollama không có auth sẵn.
+  `docker-compose.coolify.yaml` (deploy full app). Link public **qua
+  A-record subdomain → IP + port riêng** (Postgres không đi qua Traefik
+  443 được — TCP, không SNI lúc bắt tay). db có TLS (cert tự ký) +
+  scram; mqtt có mật khẩu; tika/ollama KHÔNG auth → **BẮT BUỘC firewall
+  allowlist theo IP** + mật khẩu mạnh (`SERVICE_PASSWORD_64_*`).
+- ⚠ **Cert tự ký → `sslmode` KHÁC NHAU 2 file** (driver hiểu khác):
+  `packages/server/.env` (postgres-js) = `?sslmode=require`;
+  `packages/db/.env` (drizzle-kit/pg) = `?sslmode=no-verify`. Dùng
+  nhầm → "self-signed certificate" fail. Cert thật (verify-full) hoặc
+  no-TLS thì 2 file giống nhau. (pg-connection-string ≥2.13 coi
+  `require`=verify-full; postgres-js coi `require`=no-verify.)
 - ⚠ **KHÔNG chạy `pnpm db:setup` / `pnpm dev:setup`** ở chế độ này:
   `dev:setup` check `docker --version` ngay đầu → in lỗi + `exit 1` SẠCH
   (chưa ghi gì). Nhưng `db:setup` KHÔNG có guard đó — nó GHI ĐÈ
