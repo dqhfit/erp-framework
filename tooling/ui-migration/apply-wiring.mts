@@ -83,6 +83,7 @@ async function main() {
           ...(t.columnLabels && Object.keys(t.columnLabels).length
             ? { columnLabels: t.columnLabels }
             : {}),
+          includePublished: true,
           dryRun: !APPLY,
         },
       );

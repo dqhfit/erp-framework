@@ -432,6 +432,10 @@ const TOOLS: ToolDef[] = [
           items: { type: "string" },
           description: "Giới hạn ở các page này (rỗng = mọi page khớp base entity)",
         },
+        includePublished: {
+          type: "boolean",
+          description: "true = wire cả page đã publish (mặc định bỏ qua, bảo vệ live)",
+        },
         dryRun: { type: "boolean", description: "true (mặc định) = chỉ trả kế hoạch" },
       },
       required: ["dataSourceName"],
@@ -1480,6 +1484,10 @@ async function callMigrationTool(
       const pageFilter = (Array.isArray(args.pageNames) ? args.pageNames : []).map((s) =>
         String(s).toLowerCase(),
       );
+      // Mặc định KHÔNG đụng page published (bảo vệ live). includePublished=true
+      // cho phép wire cả page đã publish — dùng khi flow publish TRƯỚC wire
+      // (vd menu-driven: link+publish rồi mới wire bổ sung).
+      const includePublished = args.includePublished === true;
       const dryRun = args.dryRun !== false; // mặc định AN TOÀN
 
       const [ds] = await db
@@ -1555,9 +1563,9 @@ async function callMigrationTool(
           widgetsChanged++;
         }
         if (widgetsChanged === 0) continue;
-        if (p.published) {
+        if (p.published && !includePublished) {
           skippedPublished.push(p.name);
-          continue; // KHÔNG đụng page đã publish
+          continue; // KHÔNG đụng page đã publish (trừ khi includePublished)
         }
         changed.push({ page: p.name, widgets: widgetsChanged, addedFields: [...addedSet] });
         if (!dryRun) {

@@ -95,12 +95,12 @@ async function main() {
       dsByBase.set(d.base, { name: d.name, keys, baseName: d.baseName });
   }
 
-  // 3. Widget page draft bind base-entity (CẢ đã wire — để re-apply columnLabels
-  //     / setFields mới; tool page_wire_datasource idempotent).
+  // 3. Widget page bind base-entity (CẢ đã wire VÀ published — flow menu-driven
+  //     publish trước wire; tool page_wire_datasource idempotent + includePublished).
   const widgets = await query<{ page: string; title: string | null; entity: string }>(
     `SELECT p.name AS page, elem->'config'->>'title' AS title, elem->'config'->>'entity' AS entity
      FROM pages p, jsonb_array_elements(p.content) elem
-     WHERE elem->'config'->>'entity' IS NOT NULL AND p.published = false`,
+     WHERE elem->'config'->>'entity' IS NOT NULL`,
   );
 
   const proposal: Array<{
