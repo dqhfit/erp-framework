@@ -10,6 +10,7 @@ import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
 import { logActivity } from "./activity";
+import { splitUrlAuth } from "./url-auth";
 
 /** Số chiều vector cố định — xem plan KB. Ollama nomic-embed-text ra
    768 chiều gốc; OpenAI text-embedding-3-small nhận dimensions=768. */
@@ -70,13 +71,15 @@ async function embedOllama(p: EmbedProfile, texts: string[]): Promise<number[][]
   // profile.endpoint dùng chung cho mọi server, cho env OLLAMA_EMBED_URL ghi đè
   // theo từng deployment (compose set http://ollama:11434). Mặc định 127.0.0.1
   // thay vì localhost để né bug Node fetch resolve IPv6 ::1.
-  const base = (process.env.OLLAMA_EMBED_URL || p.endpoint || "http://127.0.0.1:11434").replace(
-    /\/$/,
-    "",
+  // Ollama có thể đứng sau reverse-proxy basic-auth (vd dev-infra Caddy) →
+  // endpoint dạng http://user:pass@host. fetch() không nhận credentials
+  // trong URL nên tách ra header Authorization.
+  const { url: base, headers: auth } = splitUrlAuth(
+    process.env.OLLAMA_EMBED_URL || p.endpoint || "http://127.0.0.1:11434",
   );
   const res = await fetch(base + "/api/embed", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...auth },
     body: JSON.stringify({ model: p.model, input: texts }),
   });
   if (!res.ok) {

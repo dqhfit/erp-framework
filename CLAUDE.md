@@ -43,9 +43,16 @@
   KHÔNG có server/app (máy dev tự chạy + tự migrate/seed). Khác
   `docker-compose.coolify.yaml` (deploy full app). Link public **qua
   A-record subdomain → IP + port riêng** (Postgres không đi qua Traefik
-  443 được — TCP, không SNI lúc bắt tay). db có TLS (cert tự ký) +
-  scram; mqtt có mật khẩu; tika/ollama KHÔNG auth → **BẮT BUỘC firewall
-  allowlist theo IP** + mật khẩu mạnh (`SERVICE_PASSWORD_64_*`).
+  443 được — TCP, không SNI lúc bắt tay). Allow-all IP, mỗi service có
+  auth: db = TLS (cert tự ký) + scram + mật khẩu; mqtt = mật khẩu;
+  tika/ollama KHÔNG auth native → đặt sau **reverse-proxy Caddy** (service
+  `proxy`) có basic-auth, tika/ollama chỉ expose nội bộ. `SERVICE_
+  PASSWORD_64_*` Coolify tự sinh.
+- ⚠ **fetch() NÉM lỗi nếu URL có `user:pass@`** (undici: "Request cannot
+  be constructed from a URL that includes credentials"). Endpoint có
+  basic-auth (TIKA_URL/OLLAMA_EMBED_URL qua Caddy) phải tách userinfo →
+  header Authorization bằng `splitUrlAuth()`
+  (`packages/server/src/url-auth.ts`); đã áp ở `extract.ts` + `embeddings.ts`.
 - ⚠ **Cert tự ký → `sslmode` KHÁC NHAU 2 file** (driver hiểu khác):
   `packages/server/.env` (postgres-js) = `?sslmode=require`;
   `packages/db/.env` (drizzle-kit/pg) = `?sslmode=no-verify`. Dùng

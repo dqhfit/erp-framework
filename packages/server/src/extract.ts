@@ -6,8 +6,14 @@
    Cấu hình endpoint qua biến môi trường TIKA_URL.
    ========================================================== */
 
-const TIKA_URL = (process.env.TIKA_URL || "http://localhost:9998")
-  .replace(/\/$/, "");
+import { splitUrlAuth } from "./url-auth";
+
+// Tika có thể đứng sau reverse-proxy basic-auth (vd dev-infra Caddy) →
+// TIKA_URL dạng http://user:pass@host. fetch() không nhận credentials
+// trong URL nên tách ra header Authorization.
+const { url: TIKA_URL, headers: TIKA_AUTH } = splitUrlAuth(
+  process.env.TIKA_URL || "http://localhost:9998",
+);
 
 /** Trích văn bản thuần từ nội dung file. `mime` (nếu biết) giúp Tika
    chọn parser; bỏ trống thì Tika tự dò theo nội dung. */
@@ -18,14 +24,15 @@ export async function extractText(buf: Buffer, mime?: string): Promise<string> {
       method: "PUT",
       headers: {
         accept: "text/plain",
+        ...TIKA_AUTH,
         ...(mime ? { "content-type": mime } : {}),
       },
       body: new Uint8Array(buf),
     });
   } catch (e) {
     throw new Error(
-      `Không kết nối được Apache Tika (${TIKA_URL}) — kiểm tra service `
-      + `"tika" đã chạy: ${(e as Error).message}`,
+      `Không kết nối được Apache Tika (${TIKA_URL}) — kiểm tra service ` +
+        `"tika" đã chạy: ${(e as Error).message}`,
     );
   }
   if (!res.ok) {
