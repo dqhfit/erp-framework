@@ -78,6 +78,10 @@ services:
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     # Bat TLS bang cert tu db-cert. Cert tu ky -> client connect bang
     # sslmode=require (postgres-js) / no-verify (pg) — xem .env duoi.
+    # LUU Y: self-signed + require/no-verify = MA HOA duong truyen nhung
+    # KHONG chong MITM (khong verify cert). Muon chong MITM: dung CERT
+    # THAT cho db.dev.vfmgroup.vn (vd mount cert Let's Encrypt), roi ca 2
+    # file .env dung ?sslmode=verify-full (system CA tin cert that).
     command:
       - postgres
       - -c
@@ -113,6 +117,10 @@ services:
   tika:
     image: apache/tika:3.2.1.0
     restart: unless-stopped
+    # Mac dinh: port public + FIREWALL ALLOWLIST (xem header).
+    # AN TOAN HON (khong mo gi ra Internet): doi "ports" -> expose: ["9998"]
+    # va may dev noi qua SSH tunnel:
+    #   ssh -L 9998:localhost:9998 user@<coolify-host>  ->  TIKA_URL=http://localhost:9998
     ports:
       - "9998:9998"
     healthcheck:
@@ -125,10 +133,12 @@ services:
   # ── Ollama embedding (TUY CHON — KB vector search) ──────────
   # Bo neu dung embedding cloud (OpenAI). KHONG co auth -> dua vao
   # FIREWALL ALLOWLIST. Dev dat OLLAMA_EMBED_URL=http://ollama.dev.vfmgroup.vn:11434
-  # ⚠ image :latest — NEN ghim tag cu the da va CVE (Probllama...) qua
-  #   moi redeploy; allowlist da han che ai goi duoc toi day.
+  # Tag GHIM (tranh silent CVE rollback) — cap nhat ban moi da va CVE
+  # (Probllama...) khi can, kiem tra tag tren hub.docker.com/r/ollama/ollama.
+  # AN TOAN HON: nhu tika, doi "ports" -> expose: ["11434"] + SSH tunnel
+  #   ssh -L 11434:localhost:11434 user@<coolify-host>  ->  OLLAMA_EMBED_URL=http://localhost:11434
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.4
     restart: unless-stopped
     ports:
       - "11434:11434"
@@ -143,7 +153,7 @@ services:
 
   # Mot-lan: cho ollama san sang roi keo model nomic-embed-text (~275MB).
   ollama-pull:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.4
     depends_on:
       ollama:
         condition: service_healthy
