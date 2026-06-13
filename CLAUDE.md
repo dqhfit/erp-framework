@@ -24,6 +24,27 @@
 | Test | Vitest 2 (unit), Playwright (e2e smoke + fullstack) |
 | Ops | Docker compose 8 services (db/tika/server/app/bridge/ollama/mosquitto), Node 22 |
 
+### Dev KHÔNG cài được Docker (máy yếu / OS không hỗ trợ)
+
+- **Chỉ Postgres 18 + pgvector là phụ thuộc cứng.** `pnpm dev` chạy
+  server + app (vite) ngay trên host; Docker chỉ để dựng DB + sidecar.
+  Tika/Ollama/MQTT/bridge/nginx đều **tùy chọn** — thiếu chỉ tắt tính
+  năng tương ứng (KB trích file / embedding local / IoT / claude-cli).
+- **Đường ít ma sát nhất**: trỏ `DATABASE_URL` sang Postgres remote có
+  sẵn pgvector (Neon/Supabase/server LAN). Template điền sẵn ở
+  `packages/server/.env.no-docker.example` (mọi sidecar mặc định tắt).
+  Setup: copy template → `.env`, **dán `DATABASE_URL` y hệt sang
+  `packages/db/.env`** (drizzle migrate đọc file đó, KHÔNG đọc env của
+  server) → `pnpm install` → `pnpm --filter @erp-framework/db migrate`
+  → `pnpm --filter @erp-framework/server seed` → `pnpm dev`.
+- ⚠ **KHÔNG chạy `pnpm db:setup` / `pnpm dev:setup`** ở chế độ này —
+  cả hai check `docker --version` và `exit 1` (xem `tooling/dev-setup.mjs`).
+- **pgvector bắt buộc**: migration 0007 chạy `CREATE EXTENSION vector` —
+  DB remote phải có sẵn, nếu không migrate đỏ. `UPLOAD_DIR` đặt thư mục
+  cục bộ (vd `./.uploads`), KHÔNG để `/data/uploads` (path volume Docker).
+- Nếu chỉ vướng license Docker Desktop → Podman / Rancher Desktop /
+  WSL2 Docker Engine chạy `docker/docker-compose.yml` y nguyên.
+
 ## 3. Convention bắt buộc
 
 ### Migration
