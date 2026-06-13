@@ -7,12 +7,13 @@
 # rieng (Postgres KHONG di qua Traefik 443 duoc — xem CLAUDE.md muc dev
 # khong-Docker). Da co wildcard *.vfmgroup.vn -> Coolify nen cac ten
 # duoi TU DONG phan giai, KHONG can tao A-record:
-#   db.vfmgroup.vn      :5432   (Postgres, co TLS)
-#   tika.vfmgroup.vn    :9998   (Tika)
-#   ollama.vfmgroup.vn  :11434  (Ollama)
-#   mqtt.vfmgroup.vn    :1883   (MQTT)
-# Luu y: voi service TCP, host name chi de cho de doc/cert CN — moi ten
-# deu tro ve 1 IP, PORT moi la cai phan biet service.
+#   db.vfmgroup.vn      :55432  (Postgres, co TLS)
+#   tika.vfmgroup.vn    :59998  (Tika)
+#   ollama.vfmgroup.vn  :51434  (Ollama)
+#   mqtt.vfmgroup.vn    :51883  (MQTT)
+# PORT HOST dung dai 5xxxx de KHONG dung prod/Coolify tren cung server
+# (container port van chuan: 5432/9998/11434/1883). Voi service TCP, host
+# name chi de cho de doc/cert CN — moi ten ve 1 IP, PORT phan biet service.
 #
 # Coolify: + New Resource -> Service -> Docker Compose Empty ->
 #   Compose Path = docker/docker-compose.dev-infra.yaml
@@ -94,9 +95,11 @@ services:
       - -c
       - ssl_key_file=/certs/server.key
     ports:
-      # Public TCP cho may dev (A-record db.vfmgroup.vn -> IP).
-      # Doi sang "55432:5432" neu muon ne scan port mac dinh.
-      - "5432:5432"
+      # Public TCP cho may dev. Host port 55432 (tranh dung prod/Coolify
+      # 5432 cung server + ne scan); container giu 5432.
+      # SSH tunnel (an toan hon): "127.0.0.1:55432:5432" roi
+      #   ssh -L 5432:localhost:55432 user@<coolify-host>
+      - "55432:5432"
     volumes:
       # PG 18+ luu data o /var/lib/postgresql/<major>/data — mount PARENT.
       - erp-pgdata:/var/lib/postgresql
@@ -116,16 +119,15 @@ services:
   # ── Apache Tika (TUY CHON — KB trich van ban tu file) ───────
   # Ban SLIM (khong -full) -> nhe + it CVE parser hon. Can OCR anh/PDF
   # scan thi doi sang apache/tika:3.2.1.0-full. KHONG co auth -> dua
-  # vao FIREWALL ALLOWLIST (xem header). Dev dat TIKA_URL=http://tika.vfmgroup.vn:9998
+  # vao FIREWALL ALLOWLIST (xem header). Dev dat TIKA_URL=http://tika.vfmgroup.vn:59998
   tika:
     image: apache/tika:3.2.1.0
     restart: unless-stopped
-    # Mac dinh: port public + FIREWALL ALLOWLIST (xem header).
-    # AN TOAN HON (khong mo gi ra Internet): doi "ports" -> expose: ["9998"]
-    # va may dev noi qua SSH tunnel:
-    #   ssh -L 9998:localhost:9998 user@<coolify-host>  ->  TIKA_URL=http://localhost:9998
+    # Host port 59998 (tranh dung prod tren cung server); container 9998.
+    # AN TOAN HON (SSH tunnel, khong mo ra Internet): "127.0.0.1:59998:9998"
+    #   ssh -L 9998:localhost:59998 user@<coolify-host> -> TIKA_URL=http://localhost:9998
     ports:
-      - "9998:9998"
+      - "59998:9998"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9998/tika"]
       interval: 30s
@@ -135,16 +137,17 @@ services:
 
   # ── Ollama embedding (TUY CHON — KB vector search) ──────────
   # Bo neu dung embedding cloud (OpenAI). KHONG co auth -> dua vao
-  # FIREWALL ALLOWLIST. Dev dat OLLAMA_EMBED_URL=http://ollama.vfmgroup.vn:11434
+  # FIREWALL ALLOWLIST. Dev dat OLLAMA_EMBED_URL=http://ollama.vfmgroup.vn:51434
   # Tag GHIM (tranh silent CVE rollback) — cap nhat ban moi da va CVE
   # (Probllama...) khi can, kiem tra tag tren hub.docker.com/r/ollama/ollama.
-  # AN TOAN HON: nhu tika, doi "ports" -> expose: ["11434"] + SSH tunnel
-  #   ssh -L 11434:localhost:11434 user@<coolify-host>  ->  OLLAMA_EMBED_URL=http://localhost:11434
+  # AN TOAN HON (SSH tunnel): "127.0.0.1:51434:11434"
+  #   ssh -L 11434:localhost:51434 user@<coolify-host> -> OLLAMA_EMBED_URL=http://localhost:11434
   ollama:
     image: ollama/ollama:0.5.4
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      # Host port 51434 (tranh dung prod); container 11434.
+      - "51434:11434"
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -170,7 +173,7 @@ services:
 
   # ── MQTT broker (TUY CHON — chi khi test IoT) — co mat khau ─
   # allow_anonymous=false + password_file sinh tu SERVICE_PASSWORD_64_MQTT.
-  # Dev noi: MQTT_URL=mqtt://dev:<SERVICE_PASSWORD_64_MQTT>@mqtt.vfmgroup.vn:1883
+  # Dev noi: MQTT_URL=mqtt://dev:<SERVICE_PASSWORD_64_MQTT>@mqtt.vfmgroup.vn:51883
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
@@ -194,7 +197,8 @@ services:
         CONF
         exec mosquitto -c /mosquitto/config/mosquitto.conf
     ports:
-      - "1883:1883"
+      # Host port 51883 (tranh dung prod); container 1883.
+      - "51883:1883"
     volumes:
       - mosquitto-data:/mosquitto/data
     healthcheck:
