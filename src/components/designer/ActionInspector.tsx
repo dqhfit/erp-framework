@@ -341,6 +341,7 @@ function StepRow({
 }) {
   const kindLabel: Record<ActionStep["kind"], string> = {
     procedure: "Gọi procedure",
+    "invoke-module-proc": "Gọi proc nghiệp vụ (Tier D)",
     confirm: "Hỏi xác nhận",
     "delete-record": "Xoá bản ghi",
     navigate: "Điều hướng",

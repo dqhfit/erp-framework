@@ -2,8 +2,9 @@
    procedures.ts — Client cho native procedure registry.
    Bọc procedures.* router (list/get/save/setEnabled/delete/invoke/test).
    ========================================================== */
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
 import type { AppRouter } from "@erp-framework/server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 export interface ProcedureSaveInput {
   name: string;
@@ -32,10 +33,12 @@ export interface ProcedureAiDraft {
 
 export function createProceduresClient(baseUrl: string) {
   const trpc = createTRPCClient<AppRouter>({
-    links: [httpBatchLink({
-      url: baseUrl.replace(/\/$/, "") + "/trpc",
-      fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
-    })],
+    links: [
+      httpBatchLink({
+        url: baseUrl.replace(/\/$/, "") + "/trpc",
+        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+      }),
+    ],
   });
   return {
     list: () => trpc.procedures.list.query(),
@@ -46,6 +49,12 @@ export function createProceduresClient(baseUrl: string) {
     delete: (id: string) => trpc.procedures.delete.mutate(id),
     invoke: (name: string, args?: Record<string, unknown>) =>
       trpc.procedures.invoke.mutate({ name, args }),
+    /** Gọi proc Tier D đã port (module-procs) — cho nút Duyệt/nghiệp vụ. */
+    invokeModule: (name: string, args?: Record<string, unknown>) =>
+      trpc.procedures.invokeModule.mutate({ name, args }) as Promise<{
+        output: unknown;
+        durationMs: number;
+      }>,
     test: (code: string, args?: Record<string, unknown>) =>
       trpc.procedures.test.mutate({ code, args }),
     /** AI sinh draft procedure từ mô tả tiếng Việt. */

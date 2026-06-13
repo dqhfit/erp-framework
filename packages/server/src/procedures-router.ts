@@ -15,6 +15,7 @@ import { z } from "zod";
 import { logActivity } from "./activity";
 import { callLlmJson } from "./llm-json";
 import { makeCallTool } from "./mcp-client";
+import { getModuleProcByName } from "./module-procs";
 import { makeInvokeProcedure } from "./procedure-runner";
 import { rbacProcedure, router } from "./trpc";
 
@@ -207,6 +208,42 @@ export const proceduresRouter = router({
           actorUserId: ctx.user.id,
         });
         return r;
+      } catch (e) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
+      }
+    }),
+
+  /** Gọi proc Tier D đã port (module-procs registry) tại RUNTIME — cho nút
+   *  trang (vd Duyệt → trDanhsachDexuatDuyetBgd). Khác `invoke` (Tier B
+   *  sandbox). Proc tự có guard mirror (proc-table assertWritable) + field
+   *  RBAC; gate run/procedure ở đây. */
+  invokeModule: rbacProcedure("run", "procedure")
+    .input(
+      z.object({
+        name: z.string().min(1),
+        args: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const entry = await getModuleProcByName(input.name);
+      if (!entry) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Proc Tier D '${input.name}' không có trong registry`,
+        });
+      }
+      const t0 = Date.now();
+      try {
+        const result = await entry.fn(ctx.db, ctx.user.companyId, input.args ?? {});
+        await logActivity(ctx.db, {
+          companyId: ctx.user.companyId,
+          kind: "run_procedure",
+          objectType: "procedure",
+          target: input.name,
+          detail: `Module proc ${entry.module}/${entry.name}`,
+          actorUserId: ctx.user.id,
+        }).catch(() => undefined);
+        return { output: result, durationMs: Date.now() - t0 };
       } catch (e) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (e as Error).message });
       }

@@ -97,6 +97,17 @@ export interface ActionStepProcedure {
   /** Sau khi gọi xong → invalidate query records của entity (id). */
   invalidateEntities?: string[];
 }
+/** Gọi proc Tier D đã port (module-procs) — nút nghiệp vụ DQHF (vd Duyệt →
+ *  trDanhsachDexuatDuyetBgd). args binding từ state/record. */
+export interface ActionStepInvokeModule {
+  id: string;
+  kind: "invoke-module-proc";
+  /** Tên export proc (vd trDanhsachDexuatDuyetBgd). */
+  procName: string;
+  args: Record<string, BindingValue>;
+  saveOutputTo?: string;
+  invalidateEntities?: string[];
+}
 /** Xoá bản ghi đang chọn (records.deleteRecord theo recordId). Thường ghép
  *  sau 1 step confirm. Nút "Xoá" của form DQHF map tới đây. */
 export interface ActionStepDeleteRecord {
@@ -166,6 +177,7 @@ export interface ActionStepOpenWizard {
 export type ActionStep =
   | ActionStepConfirm
   | ActionStepProcedure
+  | ActionStepInvokeModule
   | ActionStepDeleteRecord
   | ActionStepNavigate
   | ActionStepSetState

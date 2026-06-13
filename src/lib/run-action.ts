@@ -26,6 +26,8 @@ export interface ActionContext {
   /** Xoá 1 bản ghi theo recordId (records.deleteRecord). Optional — context
    *  không cung cấp thì step delete-record báo lỗi nhẹ. */
   deleteRecord?: (recordId: string) => Promise<void>;
+  /** Gọi proc Tier D đã port (module-procs) cho nút nghiệp vụ (Duyệt...). */
+  invokeModule?: (name: string, args: Record<string, unknown>) => Promise<{ output: unknown }>;
   dialog: {
     confirm: (message: string, opts?: { title?: string; danger?: boolean }) => Promise<boolean>;
   };
@@ -172,6 +174,26 @@ export async function runActionSteps(
         }
       } catch (e) {
         ctx.toast.error(`Lỗi xoá: ${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "invoke-module-proc") {
+      if (!ctx.invokeModule) {
+        ctx.toast.error("Gọi proc nghiệp vụ không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const args = resolveArgs(step.args, rs.get);
+      try {
+        const r = await ctx.invokeModule(step.procName, args);
+        procedureRuns++;
+        if (step.saveOutputTo) rs.set(step.saveOutputTo, r.output);
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        ctx.toast.error(`Lỗi ${step.procName}: ${e instanceof Error ? e.message : String(e)}`);
         throw e;
       }
       continue;

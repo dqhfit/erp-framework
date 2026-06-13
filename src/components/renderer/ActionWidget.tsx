@@ -97,6 +97,8 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
         pageState,
         procClient,
         deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
+        invokeModule: (name: string, args: Record<string, unknown>) =>
+          procClient.invokeModule(name, args),
         dialog: { confirm: dialog.confirm },
         toast: { success: toast.success, error: toast.error, info: toast.info },
         navigate: (href: string) => void navigate({ to: href }),
