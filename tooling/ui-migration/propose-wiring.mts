@@ -95,12 +95,12 @@ async function main() {
       dsByBase.set(d.base, { name: d.name, keys, baseName: d.baseName });
   }
 
-  // 3. Widget page chưa wire bind base-entity.
+  // 3. Widget page draft bind base-entity (CẢ đã wire — để re-apply columnLabels
+  //     / setFields mới; tool page_wire_datasource idempotent).
   const widgets = await query<{ page: string; title: string | null; entity: string }>(
     `SELECT p.name AS page, elem->'config'->>'title' AS title, elem->'config'->>'entity' AS entity
      FROM pages p, jsonb_array_elements(p.content) elem
-     WHERE elem->'config'->>'entity' IS NOT NULL AND p.published = false
-       AND elem->'config'->>'dataSourceId' IS NULL`,
+     WHERE elem->'config'->>'entity' IS NOT NULL AND p.published = false`,
   );
 
   const proposal: Array<{
@@ -110,6 +110,7 @@ async function main() {
     fromForm: string;
     matchType: "title" | "fallback";
     setFields: string[];
+    columnLabels: Record<string, string>;
   }> = [];
 
   for (const w of widgets) {
@@ -133,10 +134,14 @@ async function main() {
     if (!form) continue;
     const seen = new Set<string>();
     const setFields: string[] = [];
+    // Header DQHF per-cột (lọc tên auto-gen rác: gridColumn*, Column*, rỗng).
+    const columnLabels: Record<string, string> = {};
     for (const col of form.grid?.columns ?? []) {
       if (ds.keys.has(col.field) && !seen.has(col.field)) {
         seen.add(col.field);
         setFields.push(col.field);
+        const h = (col.header ?? "").trim();
+        if (h && !/^(grid)?column\d*$/i.test(h)) columnLabels[col.field] = h;
       }
     }
     if (setFields.length < 2) continue; // quá ít cột join → bỏ
@@ -147,6 +152,7 @@ async function main() {
       fromForm: form.form,
       matchType,
       setFields,
+      columnLabels,
     });
   }
 

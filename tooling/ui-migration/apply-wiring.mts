@@ -54,6 +54,7 @@ interface Prop {
   fromForm: string;
   matchType: "title" | "fallback";
   setFields: string[];
+  columnLabels?: Record<string, string>;
 }
 
 async function main() {
@@ -79,6 +80,9 @@ async function main() {
           dataSourceName: t.dataSource,
           pageNames: [t.page],
           setFields: t.setFields,
+          ...(t.columnLabels && Object.keys(t.columnLabels).length
+            ? { columnLabels: t.columnLabels }
+            : {}),
           dryRun: !APPLY,
         },
       );

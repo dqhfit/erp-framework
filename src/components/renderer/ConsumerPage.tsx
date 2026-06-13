@@ -578,6 +578,7 @@ function ListWidget({
   dataSourceId,
   stateKey,
   fields,
+  columnLabels,
   selectionStateKey,
   filterFromState,
   filters,
@@ -597,6 +598,10 @@ function ListWidget({
   entityId?: string;
   stateKey?: string;
   fields?: string[];
+  /** Override nhãn header theo cột (field name → header DQHF của form gốc).
+   *  Ưu tiên hơn label DataSource (global) — cho phép mỗi page hiện đúng
+   *  tiêu đề cột của form DQHF tương ứng. */
+  columnLabels?: Record<string, string>;
   /** Phase V: khi click row, set page-state[selectionStateKey] = row.id. */
   selectionStateKey?: string;
   /** Legacy single-equality filter. Khi state rỗng → hide all rows
@@ -653,10 +658,13 @@ function ListWidget({
   }
   const allFields = isDataSource ? dataFields : (ent?.fields ?? []);
 
-  // fields=[...] → dùng đúng list đó; không có config → lọc theo defaultVisible của field
+  // fields=[...] → dùng đúng list đó THEO THỨ TỰ fields (bám layout grid DQHF);
+  // không có config → lọc theo defaultVisible của field (giữ thứ tự nguồn).
   const visibleFields =
     fields && fields.length > 0
-      ? allFields.filter((f) => fields.includes(f.name))
+      ? (fields
+          .map((name) => allFields.find((f) => f.name === name))
+          .filter(Boolean) as typeof allFields)
       : allFields.filter((f) => f.defaultVisible !== false);
 
   // V2: filters (cây) ưu tiên — pass-through default khi state rỗng.
@@ -733,7 +741,8 @@ function ListWidget({
 
   const fieldColumns = visibleFields.map((f) => ({
     accessorKey: f.name,
-    header: f.label,
+    // Header DQHF per-page (columnLabels) ưu tiên hơn label DataSource global.
+    header: columnLabels?.[f.name] ?? f.label,
     // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
     meta: { techName: f.name },
     cell: (c: { getValue: () => unknown }) => applyFieldFormat(f, c.getValue()),
@@ -2164,6 +2173,7 @@ function RenderSubWidget({
         dataSourceId={cfg.dataSourceId as string | undefined}
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
+        columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
@@ -2526,6 +2536,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         dataSourceId={cfg.dataSourceId as string | undefined}
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
+        columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         filters={cfg.filters as FilterNode | null | undefined}

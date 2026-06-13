@@ -392,6 +392,11 @@ const TOOLS: ToolDef[] = [
           description:
             "THAY TRỌN fields[] theo đúng thứ tự này (bám layout grid DQHF). Ưu tiên hơn addFields.",
         },
+        columnLabels: {
+          type: "object",
+          description:
+            "Map field→header DQHF (đặt config.columnLabels — renderer override label DataSource global, hiện đúng tiêu đề cột form gốc).",
+        },
         pageNames: {
           type: "array",
           items: { type: "string" },
@@ -1386,6 +1391,10 @@ async function callMigrationTool(
       if (!dsName) throw new McpError("dataSourceName bắt buộc");
       const addFields = (Array.isArray(args.addFields) ? args.addFields : []).map((s) => String(s));
       const setFields = (Array.isArray(args.setFields) ? args.setFields : []).map((s) => String(s));
+      const columnLabels =
+        args.columnLabels && typeof args.columnLabels === "object"
+          ? (args.columnLabels as Record<string, string>)
+          : null;
       const pageFilter = (Array.isArray(args.pageNames) ? args.pageNames : []).map((s) =>
         String(s).toLowerCase(),
       );
@@ -1443,6 +1452,10 @@ async function callMigrationTool(
           // Đã wire DS khác → bỏ (không ghi đè binding sẵn có).
           if (cfg.dataSourceId && cfg.dataSourceId !== ds.id) continue;
           cfg.dataSourceId = ds.id;
+          // Header DQHF per-form: merge vào config.columnLabels (renderer ưu tiên).
+          if (columnLabels) {
+            cfg.columnLabels = { ...(cfg.columnLabels as object | undefined), ...columnLabels };
+          }
           if (setFields.length > 0) {
             // Thay TRỌN theo thứ tự DQHF (ưu tiên hơn addFields).
             cfg.fields = [...setFields];
