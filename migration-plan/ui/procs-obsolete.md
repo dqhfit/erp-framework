@@ -13,8 +13,11 @@ phải port 1:1.
 | TR_BAOCAO_ROTCHUYEN_GETBYIDBAOCAO | 2026-06-13 | Proc đọc CÒN ở MSSQL nhưng bảng nguồn `tr_baocao_rotchuyen` ĐÃ XOÁ (không rename). DataSource định làm cho proc này KHÔNG dựng được (mất base table). Bỏ khỏi danh sách DataSource. |
 | TR_BAOCAO_HIENDIEN4_UPDATE2 | 2026-06-13 | Proc CÒN ở MSSQL; UPDATE chính `tr_baocao_hiendien4` (ĐÃ XOÁ) + phụ `tr_muctieu_sanxuat2_chitiet` (còn). **So cột (dump-columns) loại trừ rename**: `ns_baocao_hiendien` là XPO/DevExpress (Oid/GCRecord/BoPhan/SiSo, khác module); `tr_baocao_chuyenson_hiendien` dùng `songuoi`/`hiendien` gộp, KHÔNG có `songuoi_hanhchanh`+`songuoi_tangca`/`ngaythang`/`RowVer` mà proc cần. → bảng `tr_baocao_hiendien4` (tách HC/TC + RowVer) xoá hẳn, không có bản thay. Dữ liệu hiện diện giờ chảy thẳng vào `tr_muctieu_sanxuat2_chitiet` (songuoi_hiendien_hc/tc) — nhập trực tiếp ở module mục tiêu sản xuất, không qua proc này. |
 
-## KHÔNG obsolete (còn tồn tại MSSQL — hoãn vì nặng/phụ thuộc, không bỏ)
+## KHÔNG obsolete (còn tồn tại MSSQL)
 
-- **TR_MUCTIEU_SANXUAT2_TINHTOAN** — còn ở MSSQL; cursor nặng tính mục tiêu
-  sản xuất theo công đoạn × ngày. Port Tier D khi tới nhóm tính toán nặng.
-- **TR_TINHGIA_BY_DDH2** — còn ở MSSQL; cần proc nhân sự (HR) chưa migrate.
+- **TR_MUCTIEU_SANXUAT2_TINHTOAN** — ✅ ĐÃ PORT 2026-06-13
+  (`module-ui_procs/tr_muctieu_sanxuat2_tinhtoan.ts`). Chuỗi ~20 UPDATE tuần
+  tự + cursor cộng dồn giờ chênh lệch → reimplementation JS (đọc-tính-ghi),
+  chạy được sau cutover (mirror-block như mọi proc ghi).
+- **TR_TINHGIA_BY_DDH2** — còn ở MSSQL; CHẶN: cần proc nhân sự (HR) chưa
+  migrate. Đây là proc deferred DUY NHẤT còn lại.
