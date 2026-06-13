@@ -1,0 +1,852 @@
+{
+ "plan": [
+  {
+   "page": "dq_kho_vat_tu_yeu_cau_chat_luong_add",
+   "dataSource": "ds_m_op",
+   "form": "frmYeuCauChatLuongAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenkhuvuc",
+    "tencongdoan",
+    "mucdo",
+    "macongdoan"
+   ]
+  },
+  {
+   "page": "dq_danh_muc_danh_sach_xuat_go_van",
+   "dataSource": "ds_phieuxuat",
+   "form": "frmDanhSachXuatGoVan",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "dayy",
+     "relId": "r_material",
+     "entity": "tr_material"
+    },
+    {
+     "field": "rong",
+     "relId": "r_material",
+     "entity": "tr_material"
+    },
+    {
+     "field": "dai",
+     "relId": "r_material",
+     "entity": "tr_material"
+    }
+   ],
+   "missingNoSource": [
+    "lenhsanxuat",
+    "tongsothanh",
+    "tongsokhoi",
+    "malo_nguyenlieu",
+    "tenct",
+    "sothanh",
+    "sokhoi",
+    "tinhtrang_nguyenlieu",
+    "tinhtrang_fsc",
+    "sophieu_dexuat",
+    "dexuat"
+   ]
+  },
+  {
+   "page": "dq_dinh_muc_dinh_muc_don_hang",
+   "dataSource": "ds_sanpham",
+   "form": "frmDinhMucDonHang",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "soluong"
+   ]
+  },
+  {
+   "page": "dq_danh_muc_create_material_request_gva_ver2",
+   "dataSource": "ds_dondathang",
+   "form": "frmCreateMaterialRequest_GVA_ver2",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "masp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "tensp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "nguyenlieu",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "m3_tc",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "mahtr",
+    "soluongdonhang",
+    "day_tc",
+    "dayphoi",
+    "col",
+    "mr",
+    "ind",
+    "tram",
+    "ab18",
+    "abc2",
+    "bc22",
+    "ab16",
+    "abc18",
+    "bc2",
+    "van",
+    "caosu",
+    "other",
+    "vansudung",
+    "sotamvan"
+   ]
+  },
+  {
+   "page": "dq_danh_muc_danh_muc_de_xuat2",
+   "dataSource": "ds_dexuat_bangmau",
+   "form": "frmDanhMucDeXuat2",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "nhom_dexuat",
+    "quytrinh",
+    "vitri_xetduyet",
+    "departmentcode",
+    "trangthai_dexuat2"
+   ]
+  },
+  {
+   "page": "dq_danh_muc_nhom_may",
+   "dataSource": "ds_m_op",
+   "form": "frmNhomMay",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenkhuvuc",
+    "tenmay",
+    "tenbophan"
+   ]
+  },
+  {
+   "page": "dq_danh_muc_danh_muc_loi_add",
+   "dataSource": "ds_baocao_hangloi",
+   "form": "frmDanhMucLoiAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "name"
+   ]
+  },
+  {
+   "page": "dq_kho_vat_tu_phieu_giao_thanh_pham",
+   "dataSource": "ds_phieuxuat",
+   "form": "frmPhieuGiaoThanhPham",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "soluong",
+     "relId": "r_ctphieuxuat",
+     "entity": "tr_ctphieuxuat"
+    }
+   ],
+   "missingNoSource": [
+    "phieugiao_id",
+    "sophieu",
+    "tenphieu",
+    "ngaygiao",
+    "reftype_id",
+    "trangthai",
+    "madonhang",
+    "masp",
+    "tensp",
+    "hehang",
+    "mathung"
+   ]
+  },
+  {
+   "page": "dq_kho_vat_tu_ton_kho_go_van_chon_quy_cach",
+   "dataSource": "ds_dexuat_phoi_chitiet",
+   "form": "frmTonKhoGoVan_ChonQuyCach",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "mact",
+    "tenct",
+    "tinhtrang_nguyenlieu",
+    "fsc_name",
+    "malo_nguyenlieu",
+    "dayy",
+    "rong",
+    "dai",
+    "sothanh",
+    "sokhoi",
+    "tieuchuan_phoi",
+    "quycach"
+   ]
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice",
+   "dataSource": "ds_order",
+   "form": "frmProformaInvoice",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "donhang",
+    "tongsoluong",
+    "tongsokhoi",
+    "ngaygiao",
+    "donhang_dikem"
+   ]
+  },
+  {
+   "page": "dq_don_hang_proforma_invoice_add_order_no",
+   "dataSource": "ds_order_detail",
+   "form": "frmProformaInvoiceAdd_OrderNo",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "masp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "masp_khachhang",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "tensp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "hehang",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_don_hang_list_purchase_order_list",
+   "dataSource": "ds_dondathang",
+   "form": "frmListPurchaseOrderList",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_don_hang_banhanggo_phieudoihang_add",
+   "dataSource": "ds_dexuat_phoi_chitiet",
+   "form": "frm_banhanggo_PhieudoihangAdd",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "sophieu",
+     "relId": "r_dexuat_phoi",
+     "entity": "tr_dexuat_phoi"
+    }
+   ],
+   "missingNoSource": [
+    "makh",
+    "tenkh",
+    "quycach",
+    "makienhang",
+    "dayy",
+    "rong",
+    "dai",
+    "sothanh",
+    "m3",
+    "khonhap",
+    "ghichú",
+    "gianhap",
+    "tokhai",
+    "socont",
+    "tenncc",
+    "tennguongoc",
+    "ngaynhap",
+    "tigia",
+    "thanhtien",
+    "ngayban",
+    "ngaybaogia",
+    "sokhoi",
+    "usd_m3",
+    "ghichu",
+    "id_chitiet"
+   ]
+  },
+  {
+   "page": "dq_don_hang_tu_dong_tao_don_hang",
+   "dataSource": "ds_order_detail",
+   "form": "frmTuDongTaoDonHang",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "bemat_sanpham",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "ketcau",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "lineno",
+    "productcode",
+    "custproductcode",
+    "productname",
+    "colorcode",
+    "colorname",
+    "quantity"
+   ]
+  },
+  {
+   "page": "dq_don_hang_order_number_add2",
+   "dataSource": "ds_sanpham",
+   "form": "frmOrderNumberAdd2",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "customer_id",
+     "relId": "r_khachhang",
+     "entity": "tr_khachhang"
+    },
+    {
+     "field": "customer_name",
+     "relId": "r_khachhang",
+     "entity": "tr_khachhang"
+    }
+   ],
+   "missingNoSource": [
+    "shipping_code",
+    "shipping_name",
+    "destination_code",
+    "destination_name",
+    "order_qty",
+    "price",
+    "currency",
+    "range",
+    "cust_item_number",
+    "color",
+    "material",
+    "total_cbm",
+    "test_run_qty"
+   ]
+  },
+  {
+   "page": "dq_don_hang_danh_sach_don_hang_theo_ngay",
+   "dataSource": "ds_order_detail",
+   "form": "frmDashboardOrder",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "tensp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_don_hang_ke_hoach_hang_trang_don_hang",
+   "dataSource": "ds_m_op",
+   "form": "frmKeHoachHangTrang_DonHang",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenkhuvuc",
+    "madonhang",
+    "hehang",
+    "ngaydat",
+    "ngaygiao",
+    "khoiluong",
+    "ngaybatdau",
+    "soluong_chuyen",
+    "isfinish",
+    "ngaykehoach_batdau",
+    "ngaykehoach_ketthuc"
+   ]
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_san_xuat_po2_htr_add",
+   "dataSource": "ds_dondathang",
+   "form": "frmKeHoachSanXuatPO2_HTR_Add",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "selection"
+   ]
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_copy",
+   "dataSource": "ds_dinhmuc_govan",
+   "form": "frm_quytrinh_sanxuat_copy",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "tensp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "tenquytrinh",
+    "tonhom",
+    "may",
+    "id_rout",
+    "thongtin",
+    "luuy",
+    "lanuv"
+   ]
+  },
+  {
+   "page": "dq_san_xuat_quy_trinh_san_xuat",
+   "dataSource": "ds_order_detail",
+   "form": "frm_QuyTrinh_SanXuat",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_import",
+   "dataSource": "ds_dinhmuc_govan",
+   "form": "frm_quytrinh_sanxuat_import",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "rong",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "dai",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "tenct",
+    "day",
+    "tenquytrinh",
+    "maquytrinh",
+    "maymoc",
+    "xuong",
+    "tonhom"
+   ]
+  },
+  {
+   "page": "dq_san_xuat_ke_hoach_hang_trang_sap_xep",
+   "dataSource": "ds_pallet",
+   "form": "frmKeHoachHangTrang_SapXep",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "madonhang"
+   ]
+  },
+  {
+   "page": "dq_san_xuat_quytrinh_sanxuat_reprint",
+   "dataSource": "ds_sanpham",
+   "form": "frm_quytrinh_sanxuat_reprint",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "maddh",
+    "chitiet",
+    "mota",
+    "soluong",
+    "stt",
+    "mact",
+    "tenct",
+    "dayy_tc",
+    "rong_tc",
+    "dai_tc",
+    "soluong_tc",
+    "soluong_donhang",
+    "dain"
+   ]
+  },
+  {
+   "page": "dq_san_pham_sanpham_multiselect",
+   "dataSource": "ds_sanpham",
+   "form": "frm_sanpham_multiselect",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_san_pham_khoi_luong_san_pham",
+   "dataSource": "ds_sanpham",
+   "form": "frmKhoiLuongSanPham",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenhh",
+    "stt",
+    "chitiet",
+    "dayy_tc",
+    "rong_tc",
+    "dai_tc",
+    "soluong_tc",
+    "trongluongrieng",
+    "khoiluong1",
+    "khoiluong2",
+    "id_nguyenlieu"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_thong_bao",
+   "dataSource": "ds_sanpham",
+   "form": "frmThongBao",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_bao_cao_theo_doi_dat_hang",
+   "dataSource": "ds_order",
+   "form": "frm_theodoi_dondathang",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "quycach",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "mausac",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "masp",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "dvt",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    },
+    {
+     "field": "dongia",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "mavt",
+    "mota",
+    "maddh",
+    "ngaydat",
+    "ngaygiao",
+    "vendor_name",
+    "mancc",
+    "tenncc",
+    "loaiddh",
+    "chitiet",
+    "tenchitiet",
+    "soluong",
+    "sl_danhan",
+    "sl_conlai",
+    "dongia_goc",
+    "dongia_chenhlech",
+    "donhang",
+    "lan_sua",
+    "nam",
+    "thang",
+    "thanhtien",
+    "nhom"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_nguyen_phu_lieu_add",
+   "dataSource": "ds_dondathang",
+   "form": "frmBaoCaoNguyenPhuLieuAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "ngukim",
+    "baobi",
+    "mutxop",
+    "pallet",
+    "nguyenlieu_khac"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_thong_tin_nguoi_phu_trach_ky_thuat_add2",
+   "dataSource": "ds_sanpham",
+   "form": "frm_ThongTinNguoiPhuTrach_KyThuat_Add2",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "khachhang",
+     "relId": "r_banve",
+     "entity": "tr_banve"
+    }
+   ],
+   "missingNoSource": [
+    "username",
+    "fullname"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_hien_dien",
+   "dataSource": "ds_m_op",
+   "form": "frmBaoCaoHienDien",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenkhuvuc",
+    "ngaythang",
+    "songuoi_hanhchanh",
+    "songuoi_tangca",
+    "day_name"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_thong_ke_so_luong_add",
+   "dataSource": "ds_sanpham",
+   "form": "frmThongKeSoLuong",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tencongdoan",
+    "order_number",
+    "soluong_donhang",
+    "soluong_hoanthanh",
+    "soluong_conlai",
+    "ngaythang",
+    "donhang_sanxuat",
+    "soluong_chitiet",
+    "metvuong",
+    "metkhoi"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_hang_loi",
+   "dataSource": "ds_dinhmuc_govan",
+   "form": "frmBaoCaoHangLoi",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "sophieu",
+    "ngayphieu",
+    "mabophan",
+    "tenbophan",
+    "name",
+    "fullname",
+    "maddh",
+    "tenchitiet"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_rot_chuyen_add",
+   "dataSource": "ds_sanpham",
+   "form": "frmBaoCaoRotChuyenAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "donhang",
+    "order_number",
+    "soluong_donhang",
+    "soluong_rot",
+    "tylerot",
+    "nguyennhan",
+    "giaiquyet",
+    "id_baocao"
+   ]
+  },
+  {
+   "page": "dq_bao_cao_bao_cao_kiem_tra_chat_luong",
+   "dataSource": "ds_thaydoi_kythuat",
+   "form": "frmBaoCaoKiemTraChatLuong2",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "nguyenlieu",
+     "relId": "r_sanpham",
+     "entity": "tr_sanpham"
+    }
+   ],
+   "missingNoSource": [
+    "maddh",
+    "dondathang",
+    "stt"
+   ]
+  },
+  {
+   "page": "dq_ke_toan_danh_sach_quy_trinh",
+   "dataSource": "ds_sanpham",
+   "form": "frmDanhSachQuyTrinh",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "stt",
+    "tenct",
+    "dayy_tc",
+    "rong_tc",
+    "dai_tc",
+    "mact"
+   ]
+  },
+  {
+   "page": "dq_ke_toan_denghi_thanhtoan_tonghop",
+   "dataSource": "de_nghi_thanh_toan_joined_019eb9",
+   "form": "frm_denghi_thanhtoan_tonghop",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "tenncc",
+     "relId": "r_dondathang",
+     "entity": "tr_dondathang"
+    }
+   ],
+   "missingNoSource": []
+  },
+  {
+   "page": "dq_ke_toan_danh_sach_quy_trinh2",
+   "dataSource": "ds_sanpham",
+   "form": "frmDanhSachQuyTrinh2",
+   "missingBase": [],
+   "missingJoined": [
+    {
+     "field": "nguoisua",
+     "relId": "r_loaisp",
+     "entity": "tr_loaisp"
+    },
+    {
+     "field": "ngaysua",
+     "relId": "r_loaisp",
+     "entity": "tr_loaisp"
+    }
+   ],
+   "missingNoSource": [
+    "mact",
+    "stt",
+    "tenct",
+    "dayy_tc",
+    "rong_tc",
+    "dai_tc",
+    "buoc",
+    "tenquytrinh",
+    "maymoc",
+    "yeucau_kythuat",
+    "yeucau_chatluong"
+   ]
+  },
+  {
+   "page": "dq_bang_mau_banve_upload_ban_ve2",
+   "dataSource": "ds_banve",
+   "form": "frmUploadBanVe2",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "path",
+    "filename",
+    "format",
+    "status"
+   ]
+  },
+  {
+   "page": "dq_de_xuat_de_xuat_phoi_add5",
+   "dataSource": "ds_dexuat_phoi_chitiet",
+   "form": "frmDeXuatPhoiAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tendexuat",
+    "tenbophan",
+    "fullname",
+    "dayy",
+    "rong",
+    "dai",
+    "soluong",
+    "m3"
+   ]
+  },
+  {
+   "page": "dq_de_xuat_chi_tiet_de_xuat_phoi",
+   "dataSource": "ds_dexuat_phoi_chitiet",
+   "form": "frmDeXuatPhoiAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tendexuat",
+    "tenbophan",
+    "fullname",
+    "dayy",
+    "rong",
+    "dai",
+    "soluong",
+    "m3"
+   ]
+  },
+  {
+   "page": "dq_de_xuat_de_xuat_phoi_add4",
+   "dataSource": "ds_dexuat_phoi_chitiet",
+   "form": "frmDeXuatPhoiAdd",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tendexuat",
+    "tenbophan",
+    "fullname",
+    "dayy",
+    "rong",
+    "dai",
+    "soluong",
+    "m3"
+   ]
+  },
+  {
+   "page": "dq_bang_mau_banve_banve",
+   "dataSource": "ds_banve",
+   "form": "frm_banve",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "tenhh"
+   ]
+  },
+  {
+   "page": "dq_bang_mau_banve_banve2",
+   "dataSource": "ds_banve",
+   "form": "frmDanhSachBanVe",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "duongdan",
+    "tenteptin",
+    "dinhdang",
+    "ngaytao",
+    "ngaysua",
+    "phathanh"
+   ]
+  },
+  {
+   "page": "dq_bang_mau_banve_danh_sach_ban_ve",
+   "dataSource": "ds_banve",
+   "form": "frmDanhSachBanVe",
+   "missingBase": [],
+   "missingJoined": [],
+   "missingNoSource": [
+    "duongdan",
+    "tenteptin",
+    "dinhdang",
+    "ngaytao",
+    "ngaysua",
+    "phathanh"
+   ]
+  }
+ ]
+}
