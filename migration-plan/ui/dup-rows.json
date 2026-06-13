@@ -1,47 +1,11 @@
 {
- "count": 7,
+ "count": 1,
  "dups": [
-  {
-   "entity": "tr_ctphieunhap",
-   "table": "tr_ctphieunhap",
-   "total": 223779,
-   "distinct": 123779
-  },
-  {
-   "entity": "tr_dinhmuc_son3",
-   "table": "tr_dinhmuc_son3",
-   "total": 23449,
-   "distinct": 18449
-  },
-  {
-   "entity": "tr_dondathang",
-   "table": "tr_dondathang",
-   "total": 14538,
-   "distinct": 14382
-  },
-  {
-   "entity": "tr_khachhang_giantiep",
-   "table": "tr_khachhang_giantiep",
-   "total": 181,
-   "distinct": 24
-  },
-  {
-   "entity": "tr_lenhcapphat",
-   "table": "tr_lenhcapphat",
-   "total": 493992,
-   "distinct": 423992
-  },
   {
    "entity": "tr_nguyenlieu_gva",
    "table": "tr_nguyenlieu_gva",
-   "total": 210,
+   "total": 55,
    "distinct": 54
-  },
-  {
-   "entity": "tr_sanpham",
-   "table": "tr_sanpham",
-   "total": 6916,
-   "distinct": 6758
   }
  ]
 }

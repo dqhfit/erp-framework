@@ -33,9 +33,9 @@ import type { DB } from "./db";
 import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-promote";
 import { assertIdent, type EntityStorage, syncEntityTableSchema } from "./entity-table-ddl";
 import { enableModuleSyncForCompany } from "./migration-delta-sync";
-import { getModuleProc, getModuleProcByName } from "./module-procs";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
 import { enqueueMigrationJob } from "./migration-worker";
+import { getModuleProc, getModuleProcByName } from "./module-procs";
 import { isHybridTablesEnabled } from "./record-store";
 
 /* ── Scope helper ───────────────────────────────────────────── */
