@@ -72,11 +72,22 @@
       "variant": "danger",
       "steps": [
        {
-        "id": "s",
+        "id": "s1",
         "kind": "confirm",
         "title": "Xoá",
         "message": "Xác nhận xoá bản ghi đang chọn?",
         "danger": true
+       },
+       {
+        "id": "s2",
+        "kind": "delete-record",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "invalidateEntities": [
+         "a8fa0d51-9787-4e2c-8414-8cac9c2126af"
+        ]
        }
       ]
      },
