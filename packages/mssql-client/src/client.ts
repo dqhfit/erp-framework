@@ -46,6 +46,13 @@ function escapeMssqlIdentifier(schemaTable: string): string {
   return parts.map((p) => `[${p.replace(/]/g, "]]")}]`).join(".");
 }
 
+/** Hint đọc bẩn cho SELECT mirror 1 chiều (import/sync/reconcile): KHÔNG lấy
+ *  shared lock + KHÔNG chờ exclusive lock của writer. Bảng "nóng" ghi liên tục
+ *  (vd tr_muctieu_sanxuat, SYS_USER) nếu đọc theo READ COMMITTED sẽ BLOCK vô hạn
+ *  → treo worker. Mirror là 1 chiều + rescan định kỳ tự hội tụ nên dirty read
+ *  chấp nhận được. Đặt SAU alias: `FROM t AS x WITH (NOLOCK)`. */
+const NOLOCK = "WITH (NOLOCK)";
+
 export class MssqlClient {
   private pool: ConnectionPool | null = null;
   private readonly opts: MssqlClientOptions;
@@ -163,7 +170,9 @@ export class MssqlClient {
     const where = options.where ? ` WHERE ${options.where}` : "";
     const safeName = escapeMssqlIdentifier(schemaTable);
     const pool = this.requirePool();
-    const r = await pool.request().query<T>(`SELECT TOP ${limit} * FROM ${safeName}${where}`);
+    const r = await pool
+      .request()
+      .query<T>(`SELECT TOP ${limit} * FROM ${safeName} ${NOLOCK}${where}`);
     return r.recordset as T[];
   }
 
@@ -174,7 +183,7 @@ export class MssqlClient {
     const pool = this.requirePool();
     const r = await pool
       .request()
-      .query<{ n: number }>(`SELECT COUNT_BIG(*) AS n FROM ${safeName}`);
+      .query<{ n: number }>(`SELECT COUNT_BIG(*) AS n FROM ${safeName} ${NOLOCK}`);
     return Number(r.recordset[0]?.n ?? 0);
   }
 
@@ -243,7 +252,7 @@ export class MssqlClient {
         where = ` WHERE ${branches.join(" OR ")}`;
       }
     }
-    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName}${where} ORDER BY ${orderBy}`;
+    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName} ${NOLOCK}${where} ORDER BY ${orderBy}`;
     const r = await req.query<T>(queryText);
     const rows = r.recordset as T[];
     let nextLastPk: string | null = null;
@@ -441,7 +450,7 @@ export class MssqlClient {
         ct.${safePk},
         t.*
       FROM CHANGETABLE(CHANGES ${safeName}, @lastVersion) AS ct
-      LEFT JOIN ${safeName} AS t ON ct.${safePk} = t.${safePk}
+      LEFT JOIN ${safeName} AS t ${NOLOCK} ON ct.${safePk} = t.${safePk}
       WHERE ${where}
       ORDER BY ct.SYS_CHANGE_VERSION ASC, ct.${safePk} ASC
     `;
@@ -482,7 +491,7 @@ export class MssqlClient {
       where = ` WHERE ${safePk} > @lastPk`;
     }
     const r = await req.query<Record<string, unknown>>(
-      `SELECT TOP ${batchSize} ${safePk} FROM ${safeName}${where} ORDER BY ${safePk} ASC`,
+      `SELECT TOP ${batchSize} ${safePk} FROM ${safeName} ${NOLOCK}${where} ORDER BY ${safePk} ASC`,
     );
     const rows = r.recordset;
     const pkKey = rows.length > 0 ? Object.keys(rows[0]!) : [];
