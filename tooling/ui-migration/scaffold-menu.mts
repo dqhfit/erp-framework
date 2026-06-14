@@ -202,7 +202,9 @@ async function main() {
     console.log(`${pageName} — "${title}" [${c.menuNodes.length} menu-node, entity ${primary}]`);
     console.log(`    nút: ${actions.map((a) => a.label).join(", ")}`);
     if (APPLY) {
-      const r = await mcp<{ status: string }>("page_create_draft", { name: page.name, label: page.label, content: page.content, overwrite: true, overwritePublished: true });
+      // overwrite=false: CHỈ tạo page MỚI cho form chưa port; page đã tồn tại
+      // (published/draft đã wire) bị bỏ qua — KHÔNG reset trang đã làm.
+      const r = await mcp<{ status: string }>("page_create_draft", { name: page.name, label: page.label, content: page.content, overwrite: false });
       console.log(`    → ${r.status}`);
     }
   }
