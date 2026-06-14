@@ -1,194 +1,365 @@
 /* ==========================================================
-   banve.tsx — Trang MOBILE xem bản vẽ cho sản xuất (xưởng).
-   Port từ BanVe.Blazor.Server (DQHF252). Công nhân: chọn loại bản vẽ →
-   nhập/quét mã sản phẩm → xem PDF. File do server tự serve qua
-   /banve/file?id= (mount BANVE_FILES_DIR); tra qua /banve/lookup.
-
-   Quét QR dùng BarcodeDetector API (Chrome Android) — thiếu thì ẩn nút,
-   nhập tay. Mã QR DQHF có 2 dạng: "MaDonHang:MaSanPham:MaChiTiet" (lấy
-   phần giữa làm masp) hoặc mã thẻ pallet (chưa resolve — follow-up).
+   banve.tsx — Trang MOBILE xem bản vẽ cho sản xuất (xưởng). Port màn XAF
+   SanPham_DetailView_XemBanVe (DQHF252). Master = sản phẩm (masp); chọn loại
+   bản vẽ + nhập/quét mã → xem 4 tab:
+     Bản vẽ | Bản vẽ dao | Định mức gỗ ván | Định mức ngũ kim.
+   Data qua /banve/product; PDF qua /banve/file; quét QR → /banve/resolve.
    ========================================================== */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, Select } from "@/components/ui";
 
-export const Route = createFileRoute("/banve")({
-  component: BanVePage,
-});
+export const Route = createFileRoute("/banve")({ component: BanVePage });
 
-/** Loại bản vẽ — khớp giá trị cột tr_banve.phanloai (tên tiếng Việt). */
+/** 6 loại bản vẽ (BanVeType). val = giá trị khớp tr_banve.phanloai (PPS strip
+ *  " (PPS)"). Tab "Bản vẽ" lọc theo val; tab "Bản vẽ dao" độc lập. */
 const BANVE_TYPES = [
-  "Bản vẽ kỹ thuật",
-  "Bản vẽ phát triển",
-  "Bản vẽ mẫu",
-  "Bản vẽ đóng gói",
-  "Bản vẽ AI",
-  "Bản vẽ dao",
+  { label: "Bản vẽ kỹ thuật", val: "Bản vẽ kỹ thuật" },
+  { label: "Bản vẽ phát triển", val: "Bản vẽ phát triển" },
+  { label: "Bản vẽ mẫu (PPS)", val: "Bản vẽ mẫu" },
+  { label: "Bản vẽ đóng gói", val: "Bản vẽ đóng gói" },
+  { label: "Bản vẽ AI", val: "Bản vẽ AI" },
 ] as const;
 
-interface BanVeRow {
+interface BanVeItem {
   id: string;
-  tensp: string | null;
-  hehang: string | null;
-  phanloai: string | null;
+  phanloai: string;
+}
+interface GoVanRow {
+  stt: unknown;
+  chitiet: unknown;
+  nguyenlieu: unknown;
+  dayy_tc: unknown;
+  rong_tc: unknown;
+  dai_tc: unknown;
+  soluong: unknown;
+}
+interface NguKimRow {
+  mavt: unknown;
+  chitiet: unknown;
+  quycach: unknown;
+  soluong: unknown;
+  dvt: unknown;
+  hwforai: unknown;
+  hwforww: unknown;
+  hwforpacking: unknown;
+}
+interface Product {
+  found: boolean;
+  masp?: string;
+  tensp?: string | null;
+  banve?: BanVeItem[];
+  govan?: GoVanRow[];
+  ngukim?: NguKimRow[];
 }
 
-/** Tách mã sản phẩm từ chuỗi quét. Dạng QR DQHF: "DonHang:MaSP:ChiTiet". */
-function maspFromCode(code: string): string {
-  const c = code.trim();
-  if (c.includes(":")) {
-    const parts = c.split(":");
-    return (parts[1] ?? "").replace(/\+/g, "_").trim();
-  }
-  return c; // mã thẻ pallet — chưa resolve, dùng tạm nguyên văn
-}
+const LS_MASP = "banve:lastmasp";
+type Tab = "banve" | "dao" | "govan" | "ngukim";
 
 function BanVePage() {
-  const [type, setType] = useState<string>(BANVE_TYPES[0]);
+  const [type, setType] = useState<string>(BANVE_TYPES[0].val);
   const [masp, setMasp] = useState("");
-  const [rows, setRows] = useState<BanVeRow[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [tab, setTab] = useState<Tab>("banve");
+  const [viewId, setViewId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [searched, setSearched] = useState(false);
-  const [viewId, setViewId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
-  const canScan = canScanBarcode();
-
-  const search = useCallback(async (m: string, t: string) => {
+  const load = useCallback(async (m: string) => {
     const q = m.trim();
     if (!q) return;
     setLoading(true);
     setErr("");
-    setSearched(true);
     try {
-      const res = await fetch(
-        `/banve/lookup?masp=${encodeURIComponent(q)}&type=${encodeURIComponent(t)}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/banve/product?masp=${encodeURIComponent(q)}`, {
+        credentials: "include",
+      });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `Lỗi ${res.status}`);
       }
-      const data = (await res.json()) as { rows: BanVeRow[] };
-      setRows(data.rows ?? []);
+      const p = (await res.json()) as Product;
+      setProduct(p);
+      if (p.found && typeof localStorage !== "undefined") localStorage.setItem(LS_MASP, q);
     } catch (e) {
       setErr((e as Error).message);
-      setRows([]);
+      setProduct(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const scanResult = useCallback(
+    async (code: string) => {
+      setScanning(false);
+      try {
+        const res = await fetch(`/banve/resolve?code=${encodeURIComponent(code)}`, {
+          credentials: "include",
+        });
+        const j = (await res.json()) as { masp?: string };
+        const m = (j.masp ?? "").trim() || code.trim();
+        setMasp(m);
+        await load(m);
+      } catch {
+        setMasp(code.trim());
+        await load(code.trim());
+      }
+    },
+    [load],
+  );
+
+  const banveList = (product?.banve ?? []).filter(
+    (b) => b.phanloai === type && !b.phanloai.startsWith("Bản vẽ dao"),
+  );
+  const daoList = (product?.banve ?? []).filter((b) => b.phanloai.startsWith("Bản vẽ dao"));
+  const govan = product?.govan ?? [];
+  const ngukim = product?.ngukim ?? [];
+
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
-      {/* Header */}
       <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2">
         <I.FileText size={18} className="text-accent shrink-0" />
-        <span className="font-semibold text-sm">Xem bản vẽ</span>
+        <span className="font-semibold text-sm flex-1">Xem bản vẽ</span>
+        {typeof localStorage !== "undefined" && localStorage.getItem(LS_MASP) && (
+          <button
+            type="button"
+            onClick={() => {
+              const last = localStorage.getItem(LS_MASP) ?? "";
+              setMasp(last);
+              void load(last);
+            }}
+            className="text-xs text-accent"
+          >
+            SP đã xem
+          </button>
+        )}
       </div>
 
-      {/* Bộ tra cứu */}
-      <div className="p-3 space-y-2.5 max-w-xl w-full mx-auto">
-        <label className="block">
-          <span className="text-xs text-muted">Loại bản vẽ</span>
-          <Select
-            value={type}
-            onChange={(e) => {
-              setType(e.target.value);
-              if (masp.trim()) void search(masp, e.target.value);
-            }}
-            className="mt-1 w-full"
-          >
-            <option value="">Tất cả loại</option>
+      <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
+        {/* Loại bản vẽ + quét */}
+        <div className="flex gap-2">
+          <Select value={type} onChange={(e) => setType(e.target.value)} className="flex-1">
             {BANVE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+              <option key={t.val} value={t.val}>
+                {t.label}
               </option>
             ))}
           </Select>
-        </label>
+          {canScanBarcode() && (
+            <Button onClick={() => setScanning(true)}>
+              <I.QrCode size={16} /> Quét phiếu
+            </Button>
+          )}
+        </div>
 
-        <label className="block">
-          <span className="text-xs text-muted">Mã sản phẩm</span>
-          <div className="mt-1 flex gap-2">
+        {/* Mã + tên sản phẩm */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="text-xs text-muted">Mã sản phẩm</span>
             <input
               value={masp}
               onChange={(e) => setMasp(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void search(masp, type);
+                if (e.key === "Enter") void load(masp);
               }}
-              placeholder="Nhập hoặc quét mã sản phẩm…"
-              className="input flex-1 h-10 text-sm"
+              placeholder="Nhập/quét mã…"
+              className="input mt-1 w-full h-10 text-sm"
               autoCapitalize="characters"
             />
-            <Button onClick={() => void search(masp, type)} disabled={loading || !masp.trim()}>
-              <I.Search size={16} />
-            </Button>
-            {canScan && (
-              <Button variant="ghost" onClick={() => setScanning(true)}>
-                <I.QrCode size={16} />
-              </Button>
-            )}
-          </div>
-        </label>
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted">Tên sản phẩm</span>
+            <div className="input mt-1 w-full h-10 flex items-center text-sm bg-bg-soft truncate">
+              {product?.tensp || "—"}
+            </div>
+          </label>
+        </div>
 
-        {/* Kết quả */}
         {err && (
           <div className="text-xs text-danger border border-danger/30 rounded p-2">{err}</div>
         )}
-        {loading && <div className="text-xs text-muted py-3 text-center">Đang tra…</div>}
-        {!loading && searched && rows.length === 0 && !err && (
-          <div className="text-xs text-muted py-6 text-center">
-            Không tìm thấy bản vẽ cho mã <b>{masp}</b>
-            {type ? (
-              <>
-                {" "}
-                loại <b>{type}</b>
-              </>
-            ) : null}
-            .
+        {loading && <div className="text-xs text-muted py-2 text-center">Đang tra…</div>}
+        {product && !product.found && !loading && (
+          <div className="text-xs text-muted py-4 text-center">
+            Không tìm thấy sản phẩm <b>{masp}</b>.
           </div>
         )}
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setViewId(r.id)}
-              className="w-full text-left card p-3 hover:border-accent/50 transition-colors flex items-center gap-3"
-            >
-              <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
-                <I.FileText size={18} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium truncate">{r.tensp || masp}</span>
-                <span className="block text-xs text-muted truncate">
-                  {[r.phanloai, r.hehang].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-              <I.ChevronRight size={16} className="text-muted shrink-0" />
-            </button>
-          ))}
-        </div>
+
+        {/* Tabs */}
+        {product?.found && (
+          <>
+            <div className="flex border-b border-border overflow-x-auto -mx-1 px-1">
+              <TabBtn active={tab === "banve"} onClick={() => setTab("banve")}>
+                Bản vẽ {banveList.length > 0 && `(${banveList.length})`}
+              </TabBtn>
+              <TabBtn active={tab === "dao"} onClick={() => setTab("dao")}>
+                Bản vẽ dao {daoList.length > 0 && `(${daoList.length})`}
+              </TabBtn>
+              <TabBtn active={tab === "govan"} onClick={() => setTab("govan")}>
+                Định mức gỗ ván {govan.length > 0 && `(${govan.length})`}
+              </TabBtn>
+              <TabBtn active={tab === "ngukim"} onClick={() => setTab("ngukim")}>
+                Định mức ngũ kim {ngukim.length > 0 && `(${ngukim.length})`}
+              </TabBtn>
+            </div>
+
+            <div className="pt-1">
+              {tab === "banve" && (
+                <BanVeList items={banveList} onView={setViewId} empty="loại này" />
+              )}
+              {tab === "dao" && <BanVeList items={daoList} onView={setViewId} empty="dao" />}
+              {tab === "govan" && <GoVanGrid rows={govan} />}
+              {tab === "ngukim" && <NguKimGrid rows={ngukim} />}
+            </div>
+          </>
+        )}
       </div>
 
       {viewId && <PdfViewer id={viewId} onClose={() => setViewId(null)} />}
       {scanning && (
-        <QrScanner
-          title="Quét mã sản phẩm"
-          onClose={() => setScanning(false)}
-          onResult={(code) => {
-            setScanning(false);
-            const m = maspFromCode(code);
-            setMasp(m);
-            void search(m, type);
-          }}
-        />
+        <QrScanner title="Quét phiếu" onClose={() => setScanning(false)} onResult={scanResult} />
       )}
+    </div>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+        active ? "border-accent text-accent font-semibold" : "border-transparent text-muted"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BanVeList({
+  items,
+  onView,
+  empty,
+}: {
+  items: BanVeItem[];
+  onView: (id: string) => void;
+  empty: string;
+}) {
+  if (items.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có bản vẽ {empty}.</div>;
+  return (
+    <div className="space-y-2">
+      {items.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          onClick={() => onView(b.id)}
+          className="w-full text-left card p-3 hover:border-accent/50 transition-colors flex items-center gap-3"
+        >
+          <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
+            <I.FileText size={18} />
+          </span>
+          <span className="flex-1 text-sm font-medium truncate">{b.phanloai || "Bản vẽ"}</span>
+          <I.ChevronRight size={16} className="text-muted shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const fmtNum = (v: unknown): string => {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[,\s]/g, ""));
+  return Number.isNaN(n)
+    ? String(v ?? "")
+    : n.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+};
+const quyCach = (r: GoVanRow): string => {
+  const d = Number(r.dayy_tc) || 0;
+  const w = Number(r.rong_tc) || 0;
+  const l = Number(r.dai_tc) || 0;
+  return d || w || l ? `${fmtNum(d)}×${fmtNum(w)}×${fmtNum(l)}` : "";
+};
+
+function GoVanGrid({ rows }: { rows: GoVanRow[] }) {
+  if (rows.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có định mức gỗ ván.</div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead className="text-muted">
+          <tr className="border-b border-border text-left">
+            <th className="py-1.5 pr-2">STT</th>
+            <th className="py-1.5 pr-2">Tên chi tiết</th>
+            <th className="py-1.5 pr-2">Nguyên liệu</th>
+            <th className="py-1.5 pr-2">Quy cách</th>
+            <th className="py-1.5 pr-2 text-right">SL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+            <tr key={i} className="border-b border-border/50">
+              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.stt ?? "")}</td>
+              <td className="py-1.5 pr-2">{String(r.chitiet ?? "")}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.nguyenlieu ?? "")}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap">{quyCach(r)}</td>
+              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{fmtNum(r.soluong)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
+  if (rows.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có định mức ngũ kim.</div>;
+  const flag = (v: unknown) => (v == null || ["0", "false"].includes(String(v)) ? "" : "✓");
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead className="text-muted">
+          <tr className="border-b border-border text-left">
+            <th className="py-1.5 pr-2">Mã VT</th>
+            <th className="py-1.5 pr-2">Tên vật tư</th>
+            <th className="py-1.5 pr-2">Quy cách</th>
+            <th className="py-1.5 pr-2 text-right">SL</th>
+            <th className="py-1.5 pr-2">ĐV</th>
+            <th className="py-1.5 pr-2 text-center">AI</th>
+            <th className="py-1.5 pr-2 text-center">WW</th>
+            <th className="py-1.5 pr-2 text-center">ĐG</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+            <tr key={i} className="border-b border-border/50">
+              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.mavt ?? "")}</td>
+              <td className="py-1.5 pr-2">{String(r.chitiet ?? "")}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.quycach ?? "")}</td>
+              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{fmtNum(r.soluong)}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.dvt ?? "")}</td>
+              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforai)}</td>
+              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforww)}</td>
+              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforpacking)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
