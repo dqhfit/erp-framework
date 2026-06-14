@@ -232,6 +232,58 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ mode: "detail", rows });
   });
 
+  // ── Báo cáo KẾT QUẢ KINH DOANH / P&L (port KetQuaKinhDoanhL). Nguồn
+  //    kt_ketqua_kinhdoanh (per tuần × bộ phận), kỳ lấy qua f_tuan →
+  //    kt_ketqua_kinhdoanh_tuan.f_nam (KHÔNG dùng f_ngay — rỗng ở row có số).
+  //    Thu/Chi/Lãi = f_tongthu/f_tongchi (cột typed). 3 mode: years | summary
+  //    theo bộ phận | detail tuần. (Lưu ý: chỉ năm đã chốt tổng mới có số.) ──
+  app.get("/banvesvc/kqkd", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = (req.query ?? {}) as { years?: string; nam?: string; bophan?: string };
+    const cid = auth.companyId;
+    if (q.years) {
+      const rows = (await db.execute(sql`
+        SELECT t.f_nam AS nam, count(*) AS n,
+               sum(k.f_tongthu) AS thu, sum(k.f_tongchi) AS chi
+        FROM kt_ketqua_kinhdoanh k
+        JOIN kt_ketqua_kinhdoanh_tuan t ON t.f_id = k.f_tuan
+        WHERE k.company_id = ${cid}::uuid AND k.deleted_at IS NULL
+        GROUP BY t.f_nam ORDER BY t.f_nam DESC`)) as unknown as Record<string, unknown>[];
+      return reply.send({ mode: "years", rows });
+    }
+    const nam = (q.nam ?? "").trim();
+    const bophan = (q.bophan ?? "").trim();
+    if (!bophan) {
+      const rows = (await db.execute(sql`
+        SELECT k.f_bophan AS bophan_id, max(b.f_name) AS bophan, count(*) AS sotuan,
+               sum(k.f_tongthu) AS thu, sum(k.f_tongchi) AS chi,
+               sum(k.f_tongthu - k.f_tongchi) AS lai
+        FROM kt_ketqua_kinhdoanh k
+        JOIN kt_ketqua_kinhdoanh_tuan t ON t.f_id = k.f_tuan
+        LEFT JOIN kt_chiphi_bophan b ON b.f_id = k.f_bophan
+        WHERE k.company_id = ${cid}::uuid AND k.deleted_at IS NULL AND t.f_nam::text = ${nam}
+        GROUP BY k.f_bophan ORDER BY sum(k.f_tongthu - k.f_tongchi) ASC NULLS LAST`)) as unknown as Record<
+        string,
+        unknown
+      >[];
+      return reply.send({ mode: "summary", rows });
+    }
+    const rows = (await db.execute(sql`
+      SELECT t.f_name AS tuan, left(t.f_denngay, 10) AS denngay,
+             k.f_tongthu AS thu, k.f_tongchi AS chi, (k.f_tongthu - k.f_tongchi) AS lai,
+             (coalesce(k.f_tienluonghc,0)+coalesce(k.f_tienluongtc,0)+coalesce(k.f_tiencomhc,0)
+              +coalesce(k.f_tiencomtc,0)+coalesce(k.f_tienphucap,0)) AS luong,
+             k.f_xuathang AS xuathang, k.f_khauhao AS khauhao, k.f_diennuoc AS diennuoc,
+             k.f_tongcodinh AS tongcodinh, k.f_chiphoi AS chiphoi, k.f_thuphoi AS thuphoi
+      FROM kt_ketqua_kinhdoanh k
+      JOIN kt_ketqua_kinhdoanh_tuan t ON t.f_id = k.f_tuan
+      WHERE k.company_id = ${cid}::uuid AND k.deleted_at IS NULL
+        AND t.f_nam::text = ${nam} AND k.f_bophan = ${bophan}
+      ORDER BY t.f_denngay`)) as unknown as Record<string, unknown>[];
+    return reply.send({ mode: "detail", rows });
+  });
+
   // ── Thông tin sản phẩm cho 4 tab ──
   app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);

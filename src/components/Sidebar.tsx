@@ -1656,6 +1656,24 @@ export function Sidebar() {
             )}
             {!isViewer && (
               <SidebarItem
+                to="/ketoan/ket-qua"
+                active={pathname === "/ketoan/ket-qua"}
+                icon={<I.BarChart size={14} />}
+                collapsed={collapsed}
+                label="Kết quả kinh doanh"
+                isFavorited={favs.isFav("/ketoan/ket-qua")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/ketoan/ket-qua",
+                    to: "/ketoan/ket-qua",
+                    label: "Kết quả kinh doanh",
+                    iconName: "BarChart",
+                  })
+                }
+              />
+            )}
+            {!isViewer && (
+              <SidebarItem
                 to="/iot"
                 active={pathname.startsWith("/iot")}
                 icon={<I.Server size={14} />}
