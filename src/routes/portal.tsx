@@ -68,6 +68,18 @@ function PortalRoute() {
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
 
+  // Tìm kiếm trang trong nav "Trang" — toggle icon → input inline.
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearch("");
+  };
+
   // Load preferences 1 lần khi component mount
   useEffect(() => {
     void loadPrefs();
@@ -107,6 +119,10 @@ function PortalRoute() {
 
   const activePage = publishedPages.find((p) => p.id === activeId);
 
+  // Có query → lọc danh sách trang theo tên (hiện phẳng thay cây menu).
+  const q = search.trim().toLowerCase();
+  const searchResults = q ? publishedPages.filter((p) => p.name.toLowerCase().includes(q)) : [];
+
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
       {/* Header */}
@@ -141,16 +157,82 @@ function PortalRoute() {
       <div className="flex-1 flex overflow-hidden">
         {/* Nav trái — danh sách trang đã xuất bản */}
         <nav className="w-52 shrink-0 border-r border-border bg-panel flex flex-col overflow-y-auto">
-          <div className="px-3 py-2.5 border-b border-border">
-            <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-              {t("portal.pages_heading")}
-            </div>
+          <div className="px-3 py-2.5 border-b border-border flex items-center gap-2">
+            {searchOpen ? (
+              <>
+                <I.Search size={13} className="shrink-0 text-muted" />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") closeSearch();
+                  }}
+                  placeholder={t("sidebar.search")}
+                  className="flex-1 bg-transparent outline-none text-xs text-text placeholder:text-muted/50 min-w-0"
+                />
+                <button
+                  type="button"
+                  onClick={closeSearch}
+                  title={t("common.close")}
+                  className="shrink-0 w-5 h-5 rounded-sm flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 transition-colors"
+                >
+                  <I.X size={12} />
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex-1 text-[10px] uppercase tracking-wider text-muted font-semibold">
+                  {t("portal.pages_heading")}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  title={t("sidebar.search")}
+                  className="shrink-0 w-5 h-5 rounded-sm flex items-center justify-center text-muted/60 hover:text-text hover:bg-hover/60 transition-colors"
+                >
+                  <I.Search size={13} />
+                </button>
+              </>
+            )}
           </div>
 
           {publishedPages.length === 0 ? (
             <div className="p-4 text-xs text-muted text-center leading-relaxed">
               {t("portal.no_pages")}
             </div>
+          ) : q ? (
+            // Kết quả tìm kiếm — danh sách phẳng đã lọc theo tên.
+            searchResults.length === 0 ? (
+              <div className="p-4 text-xs text-muted text-center">Không tìm thấy trang</div>
+            ) : (
+              <ul className="py-1">
+                {searchResults.map((p) => {
+                  const active = p.id === activeId;
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveId(p.id)}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
+                          active
+                            ? "bg-accent/10 text-accent font-medium"
+                            : "text-text hover:bg-hover/40",
+                        )}
+                      >
+                        <I.Layout size={13} className="shrink-0 text-muted" />
+                        <span className="truncate">{p.name}</span>
+                        {p.publishMode === "public" && (
+                          <I.Globe size={10} className="ml-auto shrink-0 text-muted" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           ) : navNodes.some((n) => n.pageId) ? (
             // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
             <MenuTree nodes={navNodes} activePageId={activeId} onSelect={setActiveId} />
