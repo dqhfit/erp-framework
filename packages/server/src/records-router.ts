@@ -812,6 +812,50 @@ export const recordsRouter = router({
       return { updated, errors };
     }),
 
+  /* Dry-run kiểm tra batch update TRƯỚC khi ghi — KHÔNG ghi gì (.query). Mỗi
+     item: tồn tại + chưa xoá + field-level RBAC write + validate + unique. Trả
+     [{id, ok, error?}] để UI báo dòng nào sẽ lỗi trước khi commit bulk. */
+  bulkValidate: rbacProcedure("edit", "entity")
+    .input(
+      z.object({
+        entityId: z.string().uuid(),
+        items: z
+          .array(z.object({ id: z.string().uuid(), changes: z.record(z.string(), z.unknown()) }))
+          .min(1)
+          .max(1000),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const store = getRecordStore(ctx.db);
+      const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      const gIds = await loadUserGroupIds(ctx.db, ctx.user.id);
+      let mirrorErr: string | null = null;
+      try {
+        await assertEntityNotMirror(ctx.user.companyId, input.entityId);
+      } catch (e) {
+        mirrorErr = (e as Error).message;
+      }
+      const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+      for (const it of input.items) {
+        if (mirrorErr) {
+          results.push({ id: it.id, ok: false, error: mirrorErr });
+          continue;
+        }
+        try {
+          const cur = await store.loadState(ctx.user.companyId, it.id, input.entityId);
+          if (!cur || cur.deletedAt) throw new Error("Không tồn tại hoặc đã xoá");
+          const writable = stripUnwritableFields(fields, it.changes, ctx.user.role, gIds);
+          const data = assertValid(fields, writable, true);
+          for (const f of fields) if (f.type === "sequence") delete data[f.name];
+          await assertUnique(store, ctx.user.companyId, input.entityId, fields, data, it.id);
+          results.push({ id: it.id, ok: true });
+        } catch (e) {
+          results.push({ id: it.id, ok: false, error: (e as Error).message });
+        }
+      }
+      return { results };
+    }),
+
   bulkDelete: rbacProcedure("delete", "entity")
     .input(
       z.object({

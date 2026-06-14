@@ -585,6 +585,100 @@ function EditableCell({
   );
 }
 
+// ─── Batch-save dùng chung (client + server-paged) ───────────────────────────
+type RowErr = { id: string; label: string; msg: string };
+/** Khả năng bulk + dry-run validate — CHỈ entity-backed (datasource không có).
+ *  Có thì "Lưu tất cả" đi đường: validate → confirm kèm kết quả → gom dòng cùng
+ *  changeset → bulkUpdate/nhóm. */
+interface BatchOps {
+  validate: (
+    items: Array<{ id: string; changes: Record<string, unknown> }>,
+  ) => Promise<Array<{ id: string; ok: boolean; error?: string }>>;
+  bulkUpdate: (
+    ids: string[],
+    patch: Record<string, unknown>,
+  ) => Promise<{ updated: number; errors: Array<{ id: string; message: string }> }>;
+}
+/** Lưu hàng loạt pending. batchOps (entity): dry-run validate → confirm kèm kết
+ *  quả → gom dòng cùng changeset y hệt → 1 bulkUpdate/nhóm. Else (datasource):
+ *  confirm phạm vi → lưu tuần tự. Luôn GIỮ dòng lỗi để thử lại. */
+async function runBatchSave(
+  pending: Map<string, Record<string, string>>,
+  rowLabel: (id: string) => string,
+  ops: {
+    batchOps?: BatchOps;
+    onSaveRow: (id: unknown, changes: Record<string, unknown>) => Promise<void>;
+  },
+  t: (k: string, p?: Record<string, string | number>) => string,
+): Promise<{ failed: Map<string, Record<string, string>>; errs: RowErr[]; cancelled: boolean }> {
+  const entries = [...pending];
+  const failed = new Map<string, Record<string, string>>();
+  const errs: RowErr[] = [];
+  if (ops.batchOps) {
+    let results: Array<{ id: string; ok: boolean; error?: string }>;
+    try {
+      results = await ops.batchOps.validate(entries.map(([id, changes]) => ({ id, changes })));
+    } catch (e) {
+      return {
+        failed: pending,
+        errs: [{ id: "_", label: "", msg: (e as Error).message }],
+        cancelled: false,
+      };
+    }
+    const okIds = new Set(results.filter((r) => r.ok).map((r) => r.id));
+    const invalid = results.filter((r) => !r.ok);
+    const proceed = await dialog.confirm(
+      invalid.length
+        ? t("widget.bulk_confirm_bad", { ok: okIds.size, bad: invalid.length })
+        : t("widget.bulk_confirm_ok", { ok: okIds.size }),
+      { title: t("widget.bulk_title"), danger: invalid.length > 0 },
+    );
+    if (!proceed) return { failed: pending, errs: [], cancelled: true };
+    for (const v of invalid) {
+      failed.set(v.id, pending.get(v.id) ?? {});
+      errs.push({ id: v.id, label: rowLabel(v.id), msg: v.error ?? t("widget.invalid") });
+    }
+    // Gom dòng hợp lệ theo changeset y hệt → 1 bulk/nhóm (lợi khi mass-set cùng giá trị).
+    const groups = new Map<string, { patch: Record<string, string>; ids: string[] }>();
+    for (const [id, changes] of entries) {
+      if (!okIds.has(id)) continue;
+      const sig = JSON.stringify(changes);
+      const g = groups.get(sig) ?? { patch: changes, ids: [] };
+      g.ids.push(id);
+      groups.set(sig, g);
+    }
+    for (const g of groups.values()) {
+      try {
+        const r = await ops.batchOps.bulkUpdate(g.ids, g.patch);
+        for (const e of r.errors ?? []) {
+          failed.set(e.id, pending.get(e.id) ?? {});
+          errs.push({ id: e.id, label: rowLabel(e.id), msg: e.message });
+        }
+      } catch (e) {
+        for (const id of g.ids) {
+          failed.set(id, pending.get(id) ?? {});
+          errs.push({ id, label: rowLabel(id), msg: (e as Error).message });
+        }
+      }
+    }
+    return { failed, errs, cancelled: false };
+  }
+  // Datasource: confirm phạm vi → lưu tuần tự.
+  const proceed = await dialog.confirm(t("widget.bulk_confirm_seq", { n: entries.length }), {
+    title: t("widget.bulk_title"),
+  });
+  if (!proceed) return { failed: pending, errs: [], cancelled: true };
+  for (const [id, changes] of entries) {
+    try {
+      await ops.onSaveRow(id, changes);
+    } catch (e) {
+      failed.set(id, changes);
+      errs.push({ id, label: rowLabel(id), msg: (e as Error).message });
+    }
+  }
+  return { failed, errs, cancelled: false };
+}
+
 // ─── EditableListWidget — bảng chỉnh sửa inline (qua DataGrid xịn) ────────────
 
 interface EditableListWidgetProps {
@@ -596,6 +690,9 @@ interface EditableListWidgetProps {
   visibleFields: EntityField[];
   batchEdit: boolean;
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
+  /** Bulk + dry-run validate (entity-backed) — ListWidget truyền khi không phải
+   *  datasource. Có thì "Lưu tất cả" dùng validate→confirm→bulk thay tuần tự. */
+  batchOps?: BatchOps;
   /** Chọn dòng (selectionStateKey) — click row set page-state, nút header
    *  (Xem chi tiết...) đọc theo. Double-click cell vẫn là sửa inline. */
   onRowClick?: (row: Record<string, unknown>) => void;
@@ -611,6 +708,7 @@ function EditableListWidget({
   visibleFields,
   batchEdit,
   onSave,
+  batchOps,
   onRowClick,
   isRowSelected,
 }: EditableListWidgetProps) {
@@ -700,19 +798,16 @@ function EditableListWidget({
     setSaving(true);
     setSaveErr("");
     setRowErrs([]);
-    // Lưu tuần tự; GIỮ dòng lỗi lại trong pending để thử lại, gỡ dòng đã lưu.
-    const failed = new Map<string, Record<string, string>>();
-    const errs: Array<{ id: string; label: string; msg: string }> = [];
-    for (const [rowId, changes] of pending) {
-      try {
-        await onSave(rowId, changes);
-      } catch (e) {
-        failed.set(rowId, changes);
-        errs.push({ id: rowId, label: rowLabel(rowId), msg: (e as Error).message });
-      }
+    const { failed, errs, cancelled } = await runBatchSave(
+      pending,
+      rowLabel,
+      { batchOps, onSaveRow: onSave },
+      t,
+    );
+    if (!cancelled) {
+      setPending(failed);
+      setRowErrs(errs);
     }
-    setPending(failed);
-    setRowErrs(errs);
     setSaving(false);
   };
 
@@ -927,6 +1022,14 @@ function ServerPagedListWidget({
     dataSourceId
       ? api.updateDataSourceRecord(dataSourceId, String(rowId), changes).then(() => undefined)
       : api.updateRecord(String(rowId), changes).then(() => undefined);
+  // Bulk + dry-run validate — chỉ entity-backed (datasource ghi từng dòng).
+  const batchOps: BatchOps | undefined =
+    !dataSourceId && entityId
+      ? {
+          validate: (items) => api.bulkValidateRecords(entityId, items).then((r) => r.results),
+          bulkUpdate: (ids, patch) => api.bulkUpdateRecords(entityId, ids, patch),
+        }
+      : undefined;
   // Nhãn dòng để báo lỗi — lấy giá trị field hiển thị đầu tiên (nếu dòng đang
   // ở trang hiện tại), else id rút gọn (dòng đã sửa ở trang khác).
   const rowLabel = (rowId: string): string => {
@@ -956,23 +1059,18 @@ function ServerPagedListWidget({
     setSaving(true);
     setSaveErr("");
     setRowErrs([]);
-    // Lưu tuần tự từng dòng; GIỮ dòng lỗi lại trong pending để thử lại, gỡ dòng
-    // đã lưu. Báo lỗi theo từng dòng (nhãn + thông điệp).
-    const failed = new Map<string, Record<string, string>>();
-    const errs: Array<{ id: string; label: string; msg: string }> = [];
-    for (const [rowId, changes] of pending) {
-      try {
-        await writeRecord(rowId, changes);
-      } catch (e) {
-        failed.set(rowId, changes);
-        errs.push({ id: rowId, label: rowLabel(rowId), msg: (e as Error).message });
-      }
+    const { failed, errs, cancelled } = await runBatchSave(
+      pending,
+      rowLabel,
+      { batchOps, onSaveRow: writeRecord },
+      t,
+    );
+    if (!cancelled) {
+      setPending(failed);
+      setRowErrs(errs);
     }
-    setPending(failed);
-    setRowErrs(errs);
-    if (errs.length === 0) setSaveErr("");
     setSaving(false);
-    refresh();
+    if (!cancelled) refresh();
   };
 
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
@@ -1345,6 +1443,14 @@ function ListWidget({
     if (isDataSource) await dataUpdate(String(rowId), changes);
     else await api.updateRecord(String(rowId), changes);
   };
+  // Bulk + dry-run validate cho batch edit — chỉ entity-backed.
+  const editBatchOps: BatchOps | undefined =
+    !isDataSource && entityId
+      ? {
+          validate: (items) => api.bulkValidateRecords(entityId, items).then((r) => r.results),
+          bulkUpdate: (ids, patch) => api.bulkUpdateRecords(entityId, ids, patch),
+        }
+      : undefined;
 
   // ── Chế độ bảng tính Excel ──────────────────────────────────────────
   if (excelMode) {
@@ -1386,6 +1492,7 @@ function ListWidget({
         visibleFields={visibleFields}
         batchEdit={!!batchEdit}
         onSave={saveRecord}
+        batchOps={editBatchOps}
         onRowClick={onRowClick}
         isRowSelected={isRowSelected}
       />

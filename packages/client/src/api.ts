@@ -171,6 +171,14 @@ export class ApiDataSource implements DataSource {
   ): Promise<{ updated: number; errors: Array<{ id: string; message: string }> }> {
     return this.trpc.records.bulkUpdate.mutate({ entityId, ids, patch });
   }
+  /** Dry-run kiểm tra batch update TRƯỚC khi ghi (KHÔNG ghi) — trả [{id,ok,error}]
+   *  để báo dòng nào sẽ lỗi trước khi commit. */
+  async bulkValidateRecords(
+    entityId: string,
+    items: Array<{ id: string; changes: Record<string, unknown> }>,
+  ): Promise<{ results: Array<{ id: string; ok: boolean; error?: string }> }> {
+    return this.trpc.records.bulkValidate.query({ entityId, items });
+  }
   /** Export records as CSV/JSON. */
   async exportRecords(
     entityId: string,
