@@ -7,10 +7,10 @@
      - Định mức ngũ kim: grid tr_dinhmuc_ngukim theo masp
 
    Endpoint (auth session cookie → company → view:entity):
-     GET /banve/product?masp=  → JSON {tensp, banve[], govan[], ngukim[]}
-     GET /banve/resolve?code=  → JSON {masp}  (QR thẻ pallet / "Đơn:SP:CT" +
+     GET /banvesvc/product?masp=  → JSON {tensp, banve[], govan[], ngukim[]}
+     GET /banvesvc/resolve?code=  → JSON {masp}  (QR thẻ pallet / "Đơn:SP:CT" +
                                   fallback masp_thaythe)
-     GET /banve/file?id=       → stream PDF (local) hoặc 302 viewer PDF.js.
+     GET /banvesvc/file?id=       → stream PDF (local) hoặc 302 viewer PDF.js.
 
    Đọc data qua getRecordStore (HYBRID tier-safe: typed col f_ / ext jsonb).
    ========================================================== */
@@ -92,7 +92,7 @@ const isActive = (v: unknown) => v == null || !["0", "false"].includes(String(v)
 
 export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   // ── Thông tin sản phẩm cho 4 tab ──
-  app.get("/banve/product", async (req, reply) => {
+  app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
     const masp = ((req.query ?? {}) as { masp?: string }).masp?.trim() ?? "";
@@ -153,7 +153,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   });
 
   // ── Resolve mã quét → masp ──
-  app.get("/banve/resolve", async (req, reply) => {
+  app.get("/banvesvc/resolve", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
     const code = ((req.query ?? {}) as { code?: string }).code?.trim() ?? "";
@@ -204,7 +204,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   });
 
   // ── Mở file PDF của 1 bản vẽ (serve tại chỗ hoặc 302 viewer PDF.js) ──
-  app.get("/banve/file", async (req, reply) => {
+  app.get("/banvesvc/file", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
 

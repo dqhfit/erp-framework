@@ -1482,6 +1482,41 @@ export function Sidebar() {
                 })
               }
             />
+            {/* MES / Sản xuất — port DQHF */}
+            <SidebarItem
+              to="/banve"
+              active={pathname === "/banve"}
+              icon={<I.FileText size={14} />}
+              collapsed={collapsed}
+              label="Xem bản vẽ"
+              isFavorited={favs.isFav("/banve")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/banve",
+                  to: "/banve",
+                  label: "Xem bản vẽ",
+                  iconName: "FileText",
+                })
+              }
+            />
+            {!isViewer && (
+              <SidebarItem
+                to="/sanluong"
+                active={pathname === "/sanluong"}
+                icon={<I.Box size={14} />}
+                collapsed={collapsed}
+                label="Nhập sản lượng"
+                isFavorited={favs.isFav("/sanluong")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/sanluong",
+                    to: "/sanluong",
+                    label: "Nhập sản lượng",
+                    iconName: "Box",
+                  })
+                }
+              />
+            )}
             {!isViewer && (
               <SidebarItem
                 to="/iot"

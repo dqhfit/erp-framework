@@ -3,7 +3,7 @@
    SanPham_DetailView_XemBanVe (DQHF252). Master = sản phẩm (masp); chọn loại
    bản vẽ + nhập/quét mã → xem 4 tab:
      Bản vẽ | Bản vẽ dao | Định mức gỗ ván | Định mức ngũ kim.
-   Data qua /banve/product; PDF qua /banve/file; quét QR → /banve/resolve.
+   Data qua /banvesvc/product; PDF qua /banvesvc/file; quét QR → /banvesvc/resolve.
    ========================================================== */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -75,7 +75,7 @@ function BanVePage() {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch(`/banve/product?masp=${encodeURIComponent(q)}`, {
+      const res = await fetch(`/banvesvc/product?masp=${encodeURIComponent(q)}`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -97,7 +97,7 @@ function BanVePage() {
     async (code: string) => {
       setScanning(false);
       try {
-        const res = await fetch(`/banve/resolve?code=${encodeURIComponent(code)}`, {
+        const res = await fetch(`/banvesvc/resolve?code=${encodeURIComponent(code)}`, {
           credentials: "include",
         });
         const j = (await res.json()) as { masp?: string };
@@ -366,7 +366,7 @@ function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
 
 /* ── PDF viewer toàn màn hình (iframe; nút mở tab mới cho iOS Safari) ── */
 function PdfViewer({ id, onClose }: { id: string; onClose: () => void }) {
-  const src = `/banve/file?id=${encodeURIComponent(id)}`;
+  const src = `/banvesvc/file?id=${encodeURIComponent(id)}`;
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2 bg-panel border-b border-border">

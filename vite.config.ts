@@ -72,8 +72,9 @@ export default defineConfig({
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },
-      // Tra + stream file bản vẽ — GET /banve/lookup, /banve/file.
-      "/banve": {
+      // Tra + stream file bản vẽ — GET /banvesvc/product, /resolve, /file.
+      // Prefix RIÊNG (không "/banve") để KHÔNG đụng route trang SPA /banve.
+      "/banvesvc": {
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },
