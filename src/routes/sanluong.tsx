@@ -444,13 +444,15 @@ function TimThePallet({
     setCards([]);
     if (!v) return;
     setBusy(true);
-    jget(`/banvesvc/sl-pallet-chitiet?dondathang=${encodeURIComponent(v)}`)
+    jget(
+      `/banvesvc/sl-pallet-chitiet?dondathang=${encodeURIComponent(v)}&congDoan=${encodeURIComponent(congDoan)}&diqua=${diqua}`,
+    )
       .then((d) =>
         setChitiet(
           ((d.rows as Array<{ mact?: string; tenct?: string; socard?: number }>) ?? []).map(
             (r) => ({
               value: String(r.mact ?? ""),
-              label: `${r.tenct ?? r.mact} — ${r.mact} (${r.socard ?? 0} thẻ)`,
+              label: `${r.tenct ?? r.mact} — ${r.mact} (còn ${r.socard ?? 0} thẻ)`,
             }),
           ),
         ),

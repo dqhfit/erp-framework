@@ -213,17 +213,34 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   app.get("/banvesvc/sl-pallet-chitiet", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
-    const dondathang = ((req.query ?? {}) as { dondathang?: string }).dondathang?.trim() ?? "";
+    const q = (req.query ?? {}) as { dondathang?: string; congDoan?: string; diqua?: string };
+    const dondathang = (q.dondathang ?? "").trim();
+    const congDoan = (q.congDoan ?? "").trim();
+    const diqua = Number(q.diqua) > 0 ? Math.trunc(Number(q.diqua)) : 1;
     if (!dondathang) return reply.send({ rows: [] });
+    const cid = auth.companyId;
+    // socard = số thẻ CÒN CẦN (còn cần > 0) tại công đoạn hiện tại; chỉ giữ chi
+    // tiết còn thẻ chưa làm xong (HAVING) — khớp với việc ẩn thẻ còn cần = 0.
+    const dalamJoin = congDoan
+      ? sql`LEFT JOIN (
+          SELECT f_pcard, sum(f_soluong) AS dalam FROM tr_trangthai_sanxuat
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+            AND f_congdoan = ${congDoan} AND f_diqua = ${diqua}
+          GROUP BY f_pcard) d ON d.f_pcard = c.f_card_no`
+      : sql``;
+    const remain = congDoan
+      ? sql`(coalesce(c.f_soluong, 0) - coalesce(d.dalam, 0))`
+      : sql`coalesce(c.f_soluong, 0)`;
     const rows = (await db.execute(sql`
-      SELECT c.f_mact_snap AS mact, max(c.f_tenct_snap) AS tenct, count(*) AS socard
+      SELECT c.f_mact_snap AS mact, max(c.f_tenct_snap) AS tenct,
+             count(*) FILTER (WHERE ${remain} > 0) AS socard
       FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
-      WHERE p.company_id = ${auth.companyId}::uuid AND p.deleted_at IS NULL
+      ${dalamJoin}
+      WHERE p.company_id = ${cid}::uuid AND p.deleted_at IS NULL
         AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang}
-      GROUP BY c.f_mact_snap ORDER BY max(c.f_tenct_snap) LIMIT 2000`)) as unknown as Record<
-      string,
-      unknown
-    >[];
+      GROUP BY c.f_mact_snap
+      HAVING count(*) FILTER (WHERE ${remain} > 0) > 0
+      ORDER BY max(c.f_tenct_snap) LIMIT 2000`)) as unknown as Record<string, unknown>[];
     return reply.send({ rows });
   });
   app.get("/banvesvc/sl-pallet-cards", async (req, reply) => {
@@ -253,12 +270,17 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const dalamCol = congDoan
       ? sql`coalesce(d.dalam, 0) AS dalam, (coalesce(c.f_soluong, 0) - coalesce(d.dalam, 0)) AS concan`
       : sql`0 AS dalam, c.f_soluong AS concan`;
+    // Ẩn thẻ đã làm xong tại công đoạn này (còn cần = 0).
+    const concanCond = congDoan
+      ? sql`AND (coalesce(c.f_soluong, 0) - coalesce(d.dalam, 0)) > 0`
+      : sql`AND coalesce(c.f_soluong, 0) > 0`;
     const rows = (await db.execute(sql`
       SELECT c.f_card_no AS card_no, c.f_soluong AS soluong, c.f_tenct_snap AS tenct, ${dalamCol}
       FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
       ${dalamJoin}
       WHERE p.company_id = ${cid}::uuid AND p.deleted_at IS NULL
         AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang} AND c.f_mact_snap = ${mact}
+        ${concanCond}
       ORDER BY c.f_card_no LIMIT 500`)) as unknown as Record<string, unknown>[];
     return reply.send({ rows });
   });
