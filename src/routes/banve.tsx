@@ -6,11 +6,12 @@
    Data qua /banvesvc/product; PDF qua /banvesvc/file; quét QR → /banvesvc/resolve.
    ========================================================== */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, SearchableSelect, Select } from "@/components/ui";
+import { useAuth } from "@/stores/auth";
 
 export const Route = createFileRoute("/banve")({ component: BanVePage });
 
@@ -60,6 +61,9 @@ const LS_MASP = "banve:lastmasp";
 type Tab = "banve" | "dao" | "govan" | "ngukim";
 
 function BanVePage() {
+  const navigate = useNavigate();
+  const role = useAuth((s) => s.user?.role);
+  const goBack = () => void navigate({ to: role === "viewer" ? "/portal" : "/" });
   const [type, setType] = useState<string>(BANVE_TYPES[0].val);
   const [masp, setMasp] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
@@ -123,6 +127,14 @@ function BanVePage() {
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
       <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={goBack}
+          className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
+          aria-label="Quay lại"
+        >
+          <I.ChevronLeft size={20} />
+        </button>
         <I.FileText size={18} className="text-accent shrink-0" />
         <span className="font-semibold text-sm flex-1">Xem bản vẽ</span>
         {typeof localStorage !== "undefined" && localStorage.getItem(LS_MASP) && (

@@ -9,12 +9,13 @@
    proc Tier D insert 2 record GIAO/NHẬN + mark hoàn thành (phase 2a).
    ========================================================== */
 import { createProceduresClient } from "@erp-framework/client";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, Input } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { useAuth } from "@/stores/auth";
 
 const procs = createProceduresClient("");
 
@@ -46,6 +47,9 @@ const todayIso = () => {
 };
 
 function SanLuongPage() {
+  const navigate = useNavigate();
+  const user = useAuth((s) => s.user);
+  const goBack = () => void navigate({ to: user?.role === "viewer" ? "/portal" : "/" });
   const [congDoan, setCongDoan] = useState(
     () => (typeof localStorage !== "undefined" && localStorage.getItem(LS_CONGDOAN)) || "",
   );
@@ -121,6 +125,8 @@ function SanLuongPage() {
         odai: Number(odai),
         diqua,
         ngay,
+        // Người nhập = user viewer đang đăng nhập (truy vết sản lượng/thưởng).
+        nguoitao: user?.name || user?.email || undefined,
       });
       const r = output as { soDaLam: number; hoanThanhPhieu: boolean };
       const daLam = r.soDaLam + Number(soLuong);
@@ -145,6 +151,14 @@ function SanLuongPage() {
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
       <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={goBack}
+          className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
+          aria-label="Quay lại"
+        >
+          <I.ChevronLeft size={20} />
+        </button>
         <I.Box size={18} className="text-accent shrink-0" />
         <span className="font-semibold text-sm">Nhập sản lượng</span>
       </div>

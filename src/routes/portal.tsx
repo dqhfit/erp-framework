@@ -11,7 +11,7 @@
    ========================================================== */
 
 import { createLegacyMenuClient } from "@erp-framework/client";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { MenuTree, type NavNode } from "@/components/MenuTree";
@@ -27,6 +27,7 @@ import { useUserObjects } from "@/stores/userObjects";
 
 function PortalRoute() {
   const t = useT();
+  const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const pages = useUserObjects((s) => s.pages);
@@ -164,7 +165,26 @@ function PortalRoute() {
         </span>
         <span className="font-semibold text-sm truncate">{t("portal.title")}</span>
         <div className="flex-1" />
-        <span className="text-sm text-muted truncate hidden sm:block">
+        {/* Trang xưởng — lối vào cho công nhân (viewer) xem bản vẽ + nhập sản lượng. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<I.FileText size={13} />}
+          onClick={() => void navigate({ to: "/banve" })}
+          title="Xem bản vẽ"
+        >
+          <span className="hidden sm:inline">Bản vẽ</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<I.Box size={13} />}
+          onClick={() => void navigate({ to: "/sanluong" })}
+          title="Nhập sản lượng"
+        >
+          <span className="hidden sm:inline">Sản lượng</span>
+        </Button>
+        <span className="text-sm text-muted truncate hidden md:block">
           {user?.name ?? user?.email}
         </span>
         <Button

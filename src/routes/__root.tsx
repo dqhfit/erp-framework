@@ -32,6 +32,11 @@ function embedToken(): string | null {
   return new URLSearchParams(window.location.search).get("token");
 }
 
+/** Trang xưởng tự dựng layout full-screen (mobile) — bỏ AppShell chrome
+ *  (Topbar/Sidebar). Cũng là trang role VIEWER được phép vào (ngoài
+ *  /portal + /view) để công nhân xem bản vẽ + nhập sản lượng. */
+const STANDALONE_PREFIXES = ["/banve", "/sanluong"];
+
 const embedClient = createEmbedClient("");
 
 /** Cổng nhúng — yêu cầu token nhúng hợp lệ trước khi hiển thị giao
@@ -100,15 +105,24 @@ function AppShell() {
     };
   }, []);
 
-  // Viewer chỉ được vào /portal và /view — các route khác redirect sang portal
+  // Viewer được vào /portal, /view + trang xưởng standalone (bản vẽ, sản
+  // lượng) — route khác redirect sang portal.
   useEffect(() => {
-    if (role === "viewer" && !pathname.startsWith("/portal") && !pathname.startsWith("/view")) {
-      void navigate({ to: "/portal" });
-    }
+    const allowed =
+      pathname.startsWith("/portal") ||
+      pathname.startsWith("/view") ||
+      STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
+    if (role === "viewer" && !allowed) void navigate({ to: "/portal" });
   }, [role, pathname, navigate]);
 
-  // /view/* và /portal tự render full-screen layout — bỏ qua AppShell chrome
-  if (pathname.startsWith("/view/") || pathname.startsWith("/portal")) return <Outlet />;
+  // /view/*, /portal + trang xưởng standalone tự render full-screen layout —
+  // bỏ qua AppShell chrome (Topbar/Sidebar) cho gọn trên mobile.
+  if (
+    pathname.startsWith("/view/") ||
+    pathname.startsWith("/portal") ||
+    STANDALONE_PREFIXES.some((p) => pathname.startsWith(p))
+  )
+    return <Outlet />;
 
   if (isEmbedMode()) {
     return (
