@@ -6,7 +6,7 @@
    - workflows.*  : trigger workflow             (RBAC)
    ========================================================== */
 import { z } from "zod";
-import { and, eq, desc, isNull } from "drizzle-orm";
+import { and, eq, desc, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   users,
@@ -71,6 +71,7 @@ import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
 import { encryptSecret } from "./crypto";
 
+import { legacyEmail, tryLegacyMd5Login } from "./legacy-login";
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
 import {
@@ -154,14 +155,90 @@ export const appRouter = router({
 
     login: publicProcedure
       .use(rateLimit("auth.login", 8, 15 * 60 * 1000))
-      .input(z.object({ email: z.string().email(), password: z.string() }))
+      // identifier: email HOẶC username (user DQHF cũ đa số không có email).
+      // Giữ tên field "email" để tương thích client; relax .email() → string.
+      .input(z.object({ email: z.string().min(1), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const [u] = await ctx.db.select().from(users).where(eq(users.email, input.email));
+        const idf = input.email.trim();
+        // Email ứng viên: nhập thẳng + (nếu là username) email tổng hợp
+        // username@dqhf.local của user cũ đã lazy-onboard lần trước.
+        const candidates = idf.includes("@")
+          ? [idf.toLowerCase()]
+          : [idf.toLowerCase(), legacyEmail(idf)];
+        let [u] = await ctx.db
+          .select()
+          .from(users)
+          .where(sql`lower(${users.email}) = ANY(${candidates})`)
+          .limit(1);
+        let ok = !!u && (await verifyPassword(input.password, u.passwordHash));
+        // Công ty xác định bởi legacy onboard (nếu có), else tra membership sau.
+        let legacyCompanyId: string | null = null;
+
+        // BRIDGE DQHF: scrypt fail → thử khớp MD5 ở sys_user theo username.
+        // Khớp → lazy tạo/nâng-cấp user framework (rehash scrypt) + membership
+        // viewer/approved. Mật khẩu cũ tự nâng lên scrypt mạnh ngay lần đầu.
+        if (!ok) {
+          const legacy = await tryLegacyMd5Login(ctx.db, idf, input.password);
+          if (legacy) {
+            const newHash = await hashPassword(input.password);
+            const [fu] = await ctx.db
+              .select()
+              .from(users)
+              .where(sql`lower(${users.email}) = ${legacy.email.toLowerCase()}`)
+              .limit(1);
+            if (fu) {
+              await ctx.db.update(users).set({ passwordHash: newHash }).where(eq(users.id, fu.id));
+              u = fu;
+            } else {
+              const [created] = await ctx.db
+                .insert(users)
+                .values({
+                  email: legacy.email,
+                  name: legacy.name,
+                  passwordHash: newHash,
+                  role: "viewer",
+                })
+                .returning();
+              u = created;
+            }
+            if (u) {
+              const [mem] = await ctx.db
+                .select({ id: companyMembers.id })
+                .from(companyMembers)
+                .where(
+                  and(
+                    eq(companyMembers.userId, u.id),
+                    eq(companyMembers.companyId, legacy.companyId),
+                  ),
+                )
+                .limit(1);
+              if (!mem) {
+                await ctx.db.insert(companyMembers).values({
+                  companyId: legacy.companyId,
+                  userId: u.id,
+                  role: "viewer",
+                  approved: true,
+                });
+              }
+              legacyCompanyId = legacy.companyId;
+              ok = true;
+              await logActivity(ctx.db, {
+                companyId: legacy.companyId,
+                kind: "auth.legacy_login",
+                objectType: "user",
+                target: u.id,
+                detail: `Đăng nhập DQHF cũ (username ${legacy.username}, IP ${ctx.ip}) — đã nâng mật khẩu sang scrypt`,
+                actorUserId: u.id,
+              }).catch(() => undefined);
+            }
+          }
+        }
+
         // Tài khoản pending-invite (passwordHash rỗng) verifyPassword luôn
         // trả false → rơi vào nhánh dưới. KHÔNG tách thông báo theo trạng
         // thái tài khoản (chống dò email/enumeration): mọi thất bại trả CÙNG
         // một message — đã kèm gợi ý link mời để vẫn hướng dẫn user pending.
-        if (!u || !(await verifyPassword(input.password, u.passwordHash))) {
+        if (!ok || !u) {
           // Log thất bại nếu user tồn tại (có company để gắn). Email lạ →
           // skip (không spam log với email tuỳ ý nhập sai).
           if (u) {
@@ -176,7 +253,7 @@ export const appRouter = router({
                 kind: "auth.login_failed",
                 objectType: "user",
                 target: u.id,
-                detail: `Sai mật khẩu (email ${input.email}, IP ${ctx.ip})`,
+                detail: `Sai mật khẩu (định danh ${idf}, IP ${ctx.ip})`,
                 actorUserId: u.id,
               });
             }
@@ -184,15 +261,18 @@ export const appRouter = router({
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message:
-              "Email hoặc mật khẩu không đúng. Nếu bạn vừa được mời, hãy mở link mời trong email để đặt mật khẩu trước khi đăng nhập.",
+              "Tài khoản/email hoặc mật khẩu không đúng. Nếu bạn vừa được mời, hãy mở link mời trong email để đặt mật khẩu trước khi đăng nhập.",
           });
         }
-        // Công ty mặc định của phiên = công ty đầu tiên user là thành viên.
-        const [m] = await ctx.db
-          .select({ companyId: companyMembers.companyId })
-          .from(companyMembers)
-          .where(eq(companyMembers.userId, u.id))
-          .limit(1);
+        // Công ty mặc định của phiên: legacy onboard set sẵn, else công ty
+        // đầu tiên user là thành viên.
+        const [m] = legacyCompanyId
+          ? [{ companyId: legacyCompanyId }]
+          : await ctx.db
+              .select({ companyId: companyMembers.companyId })
+              .from(companyMembers)
+              .where(eq(companyMembers.userId, u.id))
+              .limit(1);
         // Chặn đăng nhập nếu tài khoản đã bị gỡ khỏi MỌI công ty — nếu không
         // user "đã xoá" vẫn tạo được phiên mới và vào hệ thống.
         if (!m) {

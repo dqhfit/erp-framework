@@ -83,11 +83,13 @@ function LoginScreen() {
           </div>
         )}
 
-        <FormField label={t("auth.email")}>
+        {/* Login: nhận email HOẶC tài khoản (user DQHF cũ đa số không có
+            email). Register: vẫn là email (type=email validate). */}
+        <FormField label={mode === "login" ? t("auth.email_or_username") : t("auth.email")}>
           <Input
-            type="email"
+            type={mode === "login" ? "text" : "email"}
             value={email}
-            placeholder={t("auth.email_ph")}
+            placeholder={mode === "login" ? t("auth.email_or_username_ph") : t("auth.email_ph")}
             onChange={(e) => setEmail(e.target.value)}
           />
         </FormField>
