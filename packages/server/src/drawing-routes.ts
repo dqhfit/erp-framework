@@ -194,6 +194,54 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ rows });
   });
 
+  // ── Cascade tìm thẻ pallet cho Nhập sản lượng: đơn hàng → chi tiết → thẻ.
+  //    (tr_pallet.f_dondathang, tr_pallet_card.f_mact_snap/f_card_no đều typed). ──
+  app.get("/banvesvc/sl-orders", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const rows = (await db.execute(sql`
+      SELECT f_dondathang AS dondathang
+      FROM tr_pallet
+      WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+        AND f_dondathang IS NOT NULL AND f_dondathang <> ''
+      GROUP BY f_dondathang ORDER BY max(f_ngaytao) DESC NULLS LAST LIMIT 1000`)) as unknown as Record<
+      string,
+      unknown
+    >[];
+    return reply.send({ rows });
+  });
+  app.get("/banvesvc/sl-pallet-chitiet", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const dondathang = ((req.query ?? {}) as { dondathang?: string }).dondathang?.trim() ?? "";
+    if (!dondathang) return reply.send({ rows: [] });
+    const rows = (await db.execute(sql`
+      SELECT c.f_mact_snap AS mact, max(c.f_tenct_snap) AS tenct, count(*) AS socard
+      FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
+      WHERE p.company_id = ${auth.companyId}::uuid AND p.deleted_at IS NULL
+        AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang}
+      GROUP BY c.f_mact_snap ORDER BY max(c.f_tenct_snap) LIMIT 2000`)) as unknown as Record<
+      string,
+      unknown
+    >[];
+    return reply.send({ rows });
+  });
+  app.get("/banvesvc/sl-pallet-cards", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = (req.query ?? {}) as { dondathang?: string; mact?: string };
+    const dondathang = (q.dondathang ?? "").trim();
+    const mact = (q.mact ?? "").trim();
+    if (!dondathang || !mact) return reply.send({ rows: [] });
+    const rows = (await db.execute(sql`
+      SELECT c.f_card_no AS card_no, c.f_soluong AS soluong, c.f_tenct_snap AS tenct
+      FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
+      WHERE p.company_id = ${auth.companyId}::uuid AND p.deleted_at IS NULL
+        AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang} AND c.f_mact_snap = ${mact}
+      ORDER BY c.f_card_no LIMIT 500`)) as unknown as Record<string, unknown>[];
+    return reply.send({ rows });
+  });
+
   // ── Báo cáo CHI PHÍ KINH DOANH theo nhóm (port ChiPhiKinhDoanhL). 70k dòng →
   //    group-by SERVER (cột f_ typed: id_nhomchiphi/ngaygiaodich/sotien/tygia).
   //    Tên nhóm = kt_nhom_chiphi.f_nhomchiphi; loại = KHOANCHI (chi)|KHOANTHU (thu);

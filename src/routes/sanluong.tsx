@@ -13,7 +13,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { useAuth } from "@/stores/auth";
 
@@ -71,6 +71,7 @@ function SanLuongPage() {
   const [ngay, setNgay] = useState(todayIso);
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [findCard, setFindCard] = useState(false); // popup tìm thẻ theo đơn hàng
   // stages = công đoạn user được xếp. null = chưa tải.
   const [stages, setStages] = useState<Stage[] | null>(null);
   // bump để các tab dưới reload sau khi hoàn thành 1 phiếu.
@@ -249,6 +250,15 @@ function SanLuongPage() {
 
             {congDoanChosen && (
               <>
+                {/* Tìm thẻ pallet theo đơn hàng (không cần quét) */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setFindCard(true)}
+                  className="w-full justify-start"
+                >
+                  <I.Search size={15} /> Tìm thẻ pallet (đơn hàng → chi tiết → thẻ)
+                </Button>
+
                 {/* Thẻ pallet + quét */}
                 <label className="block">
                   <span className="text-xs text-muted">Thẻ pallet</span>
@@ -370,6 +380,160 @@ function SanLuongPage() {
           }}
         />
       )}
+      {findCard && (
+        <TimThePallet
+          onClose={() => setFindCard(false)}
+          onPick={(card) => {
+            setFindCard(false);
+            setCardNo(card);
+            void traThe(card);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── "Tìm thẻ pallet" — COMBOBOX xâu chuỗi: Đơn hàng → Chi tiết → Thẻ pallet.
+   Port NhapSoLuongSanLuongAction (lọc PalletCard theo đơn hàng). Chọn không gõ
+   tay; mỗi combobox có ô lọc sẵn. ── */
+type Opt = { value: string; label: string };
+async function jget(url: string): Promise<{ rows?: unknown[] }> {
+  const res = await fetch(url, { credentials: "include" });
+  return (await res.json().catch(() => ({}))) as { rows?: unknown[] };
+}
+function TimThePallet({
+  onClose,
+  onPick,
+}: {
+  onClose: () => void;
+  onPick: (cardNo: string) => void;
+}) {
+  const [orders, setOrders] = useState<Opt[]>([]);
+  const [order, setOrder] = useState("");
+  const [chitiet, setChitiet] = useState<Opt[]>([]);
+  const [mact, setMact] = useState("");
+  const [cards, setCards] = useState<Opt[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  // Nạp danh sách đơn hàng 1 lần khi mở popup.
+  useEffect(() => {
+    setBusy(true);
+    jget("/banvesvc/sl-orders")
+      .then((d) =>
+        setOrders(
+          ((d.rows as Array<{ dondathang?: string }>) ?? []).map((r) => ({
+            value: String(r.dondathang ?? ""),
+            label: String(r.dondathang ?? ""),
+          })),
+        ),
+      )
+      .finally(() => setBusy(false));
+  }, []);
+
+  const pickOrder = (v: string) => {
+    setOrder(v);
+    setMact("");
+    setChitiet([]);
+    setCards([]);
+    if (!v) return;
+    setBusy(true);
+    jget(`/banvesvc/sl-pallet-chitiet?dondathang=${encodeURIComponent(v)}`)
+      .then((d) =>
+        setChitiet(
+          ((d.rows as Array<{ mact?: string; tenct?: string; socard?: number }>) ?? []).map(
+            (r) => ({
+              value: String(r.mact ?? ""),
+              label: `${r.tenct ?? r.mact} — ${r.mact} (${r.socard ?? 0} thẻ)`,
+            }),
+          ),
+        ),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  const pickChitiet = (v: string) => {
+    setMact(v);
+    setCards([]);
+    if (!v) return;
+    setBusy(true);
+    jget(
+      `/banvesvc/sl-pallet-cards?dondathang=${encodeURIComponent(order)}&mact=${encodeURIComponent(v)}`,
+    )
+      .then((d) =>
+        setCards(
+          ((d.rows as Array<{ card_no?: string; soluong?: number; tenct?: string }>) ?? []).map(
+            (r) => ({
+              value: String(r.card_no ?? ""),
+              label: `${r.card_no} — SL ${r.soluong ?? 0}`,
+            }),
+          ),
+        ),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-panel w-full max-w-md rounded-lg flex flex-col max-h-[85vh] overflow-visible">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <span className="text-sm font-medium flex-1">Tìm thẻ pallet</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded hover:bg-hover text-muted"
+            aria-label="Đóng"
+          >
+            <I.X size={18} />
+          </button>
+        </div>
+        <div className="p-3 space-y-3">
+          <label className="block">
+            <span className="text-xs text-muted">Đơn hàng</span>
+            <div className="mt-1">
+              <SearchableSelect
+                className="w-full"
+                value={order}
+                onChange={pickOrder}
+                options={orders}
+                placeholder={busy && orders.length === 0 ? "Đang tải…" : "Chọn đơn hàng…"}
+              />
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted">Chi tiết</span>
+            <div className="mt-1">
+              <SearchableSelect
+                className="w-full"
+                value={mact}
+                onChange={pickChitiet}
+                options={chitiet}
+                placeholder={!order ? "Chọn đơn hàng trước" : busy ? "Đang tải…" : "Chọn chi tiết…"}
+              />
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted">Thẻ pallet</span>
+            <div className="mt-1">
+              <SearchableSelect
+                className="w-full"
+                value=""
+                onChange={(v) => v && onPick(v)}
+                options={cards}
+                placeholder={
+                  !mact
+                    ? "Chọn chi tiết trước"
+                    : busy
+                      ? "Đang tải…"
+                      : cards.length === 0
+                        ? "Không có thẻ"
+                        : "Chọn thẻ pallet…"
+                }
+              />
+            </div>
+          </label>
+        </div>
+      </div>
     </div>
   );
 }
