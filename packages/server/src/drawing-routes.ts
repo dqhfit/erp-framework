@@ -91,6 +91,38 @@ async function listByMasp(
 const isActive = (v: unknown) => v == null || !["0", "false"].includes(String(v));
 
 export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
+  // ── Công đoạn (c_location *-PROD) mà user đang đăng nhập được xếp ──
+  //    Map: users.legacy_username = trtb_scan_op.f_user_id (username DQHF) →
+  //    f_scan_location; join trtb_m_location lấy tên hiển thị (f_n_location).
+  //    Port DoiCongDoanAction_CustomizePopupWindowParams (CongDoanDController,
+  //    DQHF252): lọc location theo scan_op của user + kết thúc "-PROD".
+  app.get("/banvesvc/my-stages", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const urows = (await db.execute(
+      sql`SELECT legacy_username FROM users WHERE id = ${auth.userId}::uuid LIMIT 1`,
+    )) as unknown as Array<{ legacy_username: string | null }>;
+    const uname = (urows[0]?.legacy_username ?? "").trim();
+    if (!uname) return reply.send({ username: null, stages: [] });
+    const rows = (await db.execute(sql`
+      SELECT DISTINCT s.f_scan_location AS cloc, l.f_n_location AS name, l.f_c_op AS op
+      FROM trtb_scan_op s
+      JOIN trtb_m_location l
+        ON l.company_id = s.company_id
+       AND l.f_c_location = s.f_scan_location
+       AND l.deleted_at IS NULL
+      WHERE s.company_id = ${auth.companyId}::uuid
+        AND s.deleted_at IS NULL
+        AND lower(s.f_user_id) = lower(${uname})
+        AND s.f_scan_location LIKE '%-PROD'
+      ORDER BY l.f_n_location
+    `)) as unknown as Array<{ cloc: string; name: string | null; op: string | null }>;
+    return reply.send({
+      username: uname,
+      stages: rows.map((r) => ({ cLocation: r.cloc, name: r.name ?? r.cloc, op: r.op ?? "" })),
+    });
+  });
+
   // ── Thông tin sản phẩm cho 4 tab ──
   app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);

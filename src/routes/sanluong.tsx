@@ -10,7 +10,7 @@
    ========================================================== */
 import { createProceduresClient } from "@erp-framework/client";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, Input } from "@/components/ui";
@@ -39,6 +39,13 @@ interface CardInfo {
   congDoanSau?: string;
 }
 
+/** Công đoạn user được xếp (trtb_scan_op → trtb_m_location *-PROD). */
+interface Stage {
+  cLocation: string;
+  name: string;
+  op: string;
+}
+
 const LS_CONGDOAN = "sanluong:congdoan";
 const todayIso = () => {
   const d = new Date();
@@ -64,11 +71,41 @@ function SanLuongPage() {
   const [ngay, setNgay] = useState(todayIso);
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
+  // stages = công đoạn user được xếp. null = chưa tải.
+  const [stages, setStages] = useState<Stage[] | null>(null);
 
   const setCongDoanPersist = (v: string) => {
     setCongDoan(v);
     if (typeof localStorage !== "undefined") localStorage.setItem(LS_CONGDOAN, v);
   };
+
+  // Khi mở: tra công đoạn user được xếp. 1 công đoạn → tự chọn; >1 → buộc
+  // chọn từ danh sách (xóa lựa chọn cũ); 0 → fallback nhập tay (admin/editor
+  // hoặc user chưa được xếp scan_op).
+  useEffect(() => {
+    let alive = true;
+    fetch("/banvesvc/my-stages", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { stages: [] }))
+      .then((d: { stages?: Stage[] }) => {
+        if (!alive) return;
+        const st = d.stages ?? [];
+        setStages(st);
+        const only = st.length === 1 ? st[0] : undefined;
+        if (only) {
+          setCongDoan(only.cLocation);
+          if (typeof localStorage !== "undefined")
+            localStorage.setItem(LS_CONGDOAN, only.cLocation);
+        } else if (st.length > 1) {
+          setCongDoan(""); // buộc chọn công đoạn mỗi lần mở
+        }
+      })
+      .catch(() => {
+        if (alive) setStages([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const traThe = async (card: string) => {
     const c = card.trim();
@@ -148,6 +185,11 @@ function SanLuongPage() {
     }
   };
 
+  const congDoanChosen = congDoan.trim() !== "";
+  const selectedStage = (stages ?? []).find((s) => s.cLocation === congDoan);
+  const stageName = selectedStage?.name ?? congDoan;
+  const showPicker = stages !== null && stages.length > 1 && !congDoanChosen;
+
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
       <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2">
@@ -164,113 +206,147 @@ function SanLuongPage() {
       </div>
 
       <div className="p-3 space-y-3 max-w-xl w-full mx-auto">
-        {/* Công đoạn hiện tại (ghi nhớ) */}
-        <label className="block">
-          <span className="text-xs text-muted">Công đoạn hiện tại (c_location)</span>
-          <Input
-            value={congDoan}
-            onChange={(e) => setCongDoanPersist(e.target.value)}
-            placeholder="vd: DP09-PROD"
-            className="mt-1 w-full h-10"
-            autoCapitalize="characters"
-          />
-        </label>
-
-        {/* Thẻ pallet + quét */}
-        <label className="block">
-          <span className="text-xs text-muted">Thẻ pallet</span>
-          <div className="mt-1 flex gap-2">
-            <Input
-              value={cardNo}
-              onChange={(e) => setCardNo(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void traThe(cardNo);
-              }}
-              placeholder="Nhập/quét mã thẻ pallet…"
-              className="flex-1 h-10"
-              autoCapitalize="characters"
-            />
-            <Button onClick={() => void traThe(cardNo)} disabled={busy || !cardNo.trim()}>
-              Tra
-            </Button>
-            {canScanBarcode() && (
-              <Button variant="ghost" onClick={() => setScanning(true)}>
-                <I.QrCode size={16} />
-              </Button>
-            )}
-          </div>
-        </label>
-
-        {/* Thông tin thẻ */}
-        {info?.found && (
-          <div className="card p-3 space-y-1 text-sm">
-            <Row label="Đơn hàng" value={info.dondathang} />
-            <Row label="Bản vẽ (mã SP)" value={info.masp} />
-            <Row label="Chi tiết" value={[info.mact, info.tenct].filter(Boolean).join(" — ")} />
-            <Row label="Nguyên liệu" value={info.nguyenlieu} />
-            <Row
-              label="Định mức (D×R×Dài)"
-              value={`${info.dayy_tc ?? "?"} × ${info.rong_tc ?? "?"} × ${info.dai_tc ?? "?"}`}
-            />
-            <div className="flex items-center gap-2 pt-1">
-              <span className="text-xs text-muted flex-1">Số lượng phiếu</span>
-              <Chip>{info.soluong ?? 0}</Chip>
-              <span className="text-xs text-muted">đã làm</span>
-              <Chip tone="warning">{info.soDaLam ?? 0}</Chip>
-              <span className="text-xs text-muted">còn cần</span>
-              <Chip tone="success">{info.soCanLam ?? 0}</Chip>
-            </div>
-          </div>
-        )}
-
-        {/* Nhập sản lượng */}
-        {info?.found && (
-          <div className="space-y-2.5">
-            <label className="block">
-              <span className="text-xs text-muted">Công đoạn kế tiếp (c_location)</span>
-              <Input
-                value={congDoanSau}
-                onChange={(e) => setCongDoanSau(e.target.value)}
-                placeholder="vd: DH06-PROD"
-                className="mt-1 w-full h-10"
-                autoCapitalize="characters"
-              />
-            </label>
-            <div>
-              <span className="text-xs text-muted">Quy cách thực tế (mm)</span>
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                <NumInput value={oday} onChange={setOday} placeholder="Dầy" />
-                <NumInput value={orong} onChange={setOrong} placeholder="Rộng" />
-                <NumInput value={odai} onChange={setOdai} placeholder="Dài" />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
+        {stages === null ? (
+          <div className="text-xs text-muted py-8 text-center">Đang tải công đoạn…</div>
+        ) : showPicker ? (
+          <StagePicker stages={stages} onPick={(s) => setCongDoanPersist(s.cLocation)} />
+        ) : (
+          <>
+            {/* Công đoạn: đã xếp → thanh + Đổi; chưa xếp (0) → nhập tay (fallback) */}
+            {stages.length === 0 ? (
               <label className="block">
-                <span className="text-xs text-muted">Số lượng HT</span>
-                <NumInput value={soLuong} onChange={setSoLuong} placeholder="0" />
-              </label>
-              <label className="block">
-                <span className="text-xs text-muted">Lần làm</span>
-                <NumInput value={String(diqua)} onChange={(v) => setDiqua(Number(v) || 1)} />
-              </label>
-              <label className="block">
-                <span className="text-xs text-muted">Ngày</span>
+                <span className="text-xs text-muted">Công đoạn hiện tại (c_location)</span>
                 <Input
-                  type="date"
-                  value={ngay}
-                  onChange={(e) => setNgay(e.target.value)}
+                  value={congDoan}
+                  onChange={(e) => setCongDoanPersist(e.target.value)}
+                  placeholder="vd: DP09-PROD"
                   className="mt-1 w-full h-10"
+                  autoCapitalize="characters"
                 />
               </label>
-            </div>
-            <Button
-              onClick={() => void hoanThanh()}
-              disabled={busy || !soLuong || Number(soLuong) <= 0}
-              className="w-full h-11 text-base"
-            >
-              <I.Check size={18} /> Hoàn thành
-            </Button>
-          </div>
+            ) : (
+              <div className="flex items-center gap-2 card px-3 py-2">
+                <I.Box size={15} className="text-accent shrink-0" />
+                <span className="flex-1 text-sm font-medium truncate">{stageName}</span>
+                {stages.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCongDoanPersist("")}
+                    className="text-xs text-accent shrink-0"
+                  >
+                    Đổi công đoạn
+                  </button>
+                )}
+              </div>
+            )}
+
+            {congDoanChosen && (
+              <>
+                {/* Thẻ pallet + quét */}
+                <label className="block">
+                  <span className="text-xs text-muted">Thẻ pallet</span>
+                  <div className="mt-1 flex gap-2">
+                    <Input
+                      value={cardNo}
+                      onChange={(e) => setCardNo(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void traThe(cardNo);
+                      }}
+                      placeholder="Nhập/quét mã thẻ pallet…"
+                      className="flex-1 h-10"
+                      autoCapitalize="characters"
+                    />
+                    <Button onClick={() => void traThe(cardNo)} disabled={busy || !cardNo.trim()}>
+                      Tra
+                    </Button>
+                    {canScanBarcode() && (
+                      <Button variant="ghost" onClick={() => setScanning(true)}>
+                        <I.QrCode size={16} />
+                      </Button>
+                    )}
+                  </div>
+                </label>
+
+                {/* Thông tin thẻ */}
+                {info?.found && (
+                  <div className="card p-3 space-y-1 text-sm">
+                    <Row label="Đơn hàng" value={info.dondathang} />
+                    <Row label="Bản vẽ (mã SP)" value={info.masp} />
+                    <Row
+                      label="Chi tiết"
+                      value={[info.mact, info.tenct].filter(Boolean).join(" — ")}
+                    />
+                    <Row label="Nguyên liệu" value={info.nguyenlieu} />
+                    <Row
+                      label="Định mức (D×R×Dài)"
+                      value={`${info.dayy_tc ?? "?"} × ${info.rong_tc ?? "?"} × ${info.dai_tc ?? "?"}`}
+                    />
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs text-muted flex-1">Số lượng phiếu</span>
+                      <Chip>{info.soluong ?? 0}</Chip>
+                      <span className="text-xs text-muted">đã làm</span>
+                      <Chip tone="warning">{info.soDaLam ?? 0}</Chip>
+                      <span className="text-xs text-muted">còn cần</span>
+                      <Chip tone="success">{info.soCanLam ?? 0}</Chip>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nhập sản lượng */}
+                {info?.found && (
+                  <div className="space-y-2.5">
+                    <label className="block">
+                      <span className="text-xs text-muted">Công đoạn kế tiếp (c_location)</span>
+                      <Input
+                        value={congDoanSau}
+                        onChange={(e) => setCongDoanSau(e.target.value)}
+                        placeholder="vd: DH06-PROD"
+                        className="mt-1 w-full h-10"
+                        autoCapitalize="characters"
+                      />
+                    </label>
+                    <div>
+                      <span className="text-xs text-muted">Quy cách thực tế (mm)</span>
+                      <div className="mt-1 grid grid-cols-3 gap-2">
+                        <NumInput value={oday} onChange={setOday} placeholder="Dầy" />
+                        <NumInput value={orong} onChange={setOrong} placeholder="Rộng" />
+                        <NumInput value={odai} onChange={setOdai} placeholder="Dài" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <label className="block">
+                        <span className="text-xs text-muted">Số lượng HT</span>
+                        <NumInput value={soLuong} onChange={setSoLuong} placeholder="0" />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs text-muted">Lần làm</span>
+                        <NumInput
+                          value={String(diqua)}
+                          onChange={(v) => setDiqua(Number(v) || 1)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs text-muted">Ngày</span>
+                        <Input
+                          type="date"
+                          value={ngay}
+                          onChange={(e) => setNgay(e.target.value)}
+                          className="mt-1 w-full h-10"
+                        />
+                      </label>
+                    </div>
+                    <Button
+                      onClick={() => void hoanThanh()}
+                      disabled={busy || !soLuong || Number(soLuong) <= 0}
+                      className="w-full h-11 text-base"
+                    >
+                      <I.Check size={18} /> Hoàn thành
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
 
@@ -285,6 +361,32 @@ function SanLuongPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Danh sách card công đoạn user được xếp — chọn 1 để bắt đầu nhập. */
+function StagePicker({ stages, onPick }: { stages: Stage[]; onPick: (s: Stage) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm text-muted">Chọn công đoạn của bạn</div>
+      {stages.map((s) => (
+        <button
+          key={s.cLocation}
+          type="button"
+          onClick={() => onPick(s)}
+          className="w-full text-left card p-3 hover:border-accent/50 transition-colors flex items-center gap-3"
+        >
+          <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
+            <I.Box size={18} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-medium truncate">{s.name}</span>
+            <span className="block text-xs text-muted">{s.cLocation}</span>
+          </span>
+          <I.ChevronRight size={16} className="text-muted shrink-0" />
+        </button>
+      ))}
     </div>
   );
 }
