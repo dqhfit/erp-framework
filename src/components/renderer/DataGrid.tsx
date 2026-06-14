@@ -268,6 +268,9 @@ export interface ServerPagingController {
   loading?: boolean;
   /** Grid gọi khi state phân trang/sắp/lọc đổi (đã debounce). */
   onQueryChange: (q: ServerGridQuery) => void;
+  /** Tổng hợp cột (server-side, toàn bảng) cho footer — colId → {type,value}.
+   *  Khi có → footer summary hiện ở server mode (thay vì tắt). */
+  summary?: Record<string, { type: SummaryType; value: number }>;
 }
 
 export function DataGrid<T>({
@@ -521,15 +524,27 @@ export function DataGrid<T>({
   }));
   // Summary footer (DevExpress-style): cột set meta.summary → kiểu đó; cột số
   // không set → auto "sum". Có ≥1 cột summary mới hiện footer.
-  const summaryByCol = new Map<string, { type: SummaryType; value: number }>();
-  for (const col of leafCols) {
-    const metaSummary = (col.columnDef.meta as GridColMeta | undefined)?.summary;
-    const type: SummaryType | null =
-      metaSummary ?? (isNumericColumn(filteredRows, col.id) ? "sum" : null);
-    if (type) summaryByCol.set(col.id, { type, value: computeSummary(filteredRows, col.id, type) });
+  // Server mode: tính client trên 1 trang là SAI → dùng server.summary (toàn
+  // bảng) nếu caller cấp; không có → tắt footer.
+  const clientSummaryByCol = new Map<string, { type: SummaryType; value: number }>();
+  if (!serverMode) {
+    for (const col of leafCols) {
+      const metaSummary = (col.columnDef.meta as GridColMeta | undefined)?.summary;
+      const type: SummaryType | null =
+        metaSummary ?? (isNumericColumn(filteredRows, col.id) ? "sum" : null);
+      if (type)
+        clientSummaryByCol.set(col.id, {
+          type,
+          value: computeSummary(filteredRows, col.id, type),
+        });
+    }
   }
-  // Summary/footer cần TOÀN BỘ dòng → tắt ở server mode (data chỉ là 1 trang).
-  const showSummary = !serverMode && filteredCount > 0 && summaryByCol.size > 0;
+  const summaryByCol = serverMode
+    ? new Map<string, { type: SummaryType; value: number }>(Object.entries(server?.summary ?? {}))
+    : clientSummaryByCol;
+  const showSummary = serverMode
+    ? summaryByCol.size > 0
+    : filteredCount > 0 && summaryByCol.size > 0;
 
   // Phân trang. Server mode: total + range tính theo server.total (data = 1 trang).
   const totalCount = serverMode && server ? server.total : filteredCount;
@@ -1046,7 +1061,7 @@ export function DataGrid<T>({
                             {SUMMARY_LABEL[s.type]} {fmtNum(s.value)}
                           </span>
                         ) : idx === 0 ? (
-                          <span className="block text-left text-muted">{filteredCount} dòng</span>
+                          <span className="block text-left text-muted">{totalCount} dòng</span>
                         ) : null}
                       </td>
                     );

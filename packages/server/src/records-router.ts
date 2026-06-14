@@ -10,7 +10,7 @@
    - export (CSV)
    ========================================================== */
 
-import { pluginRegistry, validateRecord } from "@erp-framework/core";
+import { fieldCan, pluginRegistry, validateRecord } from "@erp-framework/core";
 import {
   approvalRequests,
   entities,
@@ -103,6 +103,47 @@ export const recordsRouter = router({
           ),
         })),
       };
+    }),
+
+  /* Tổng hợp cột (footer summary lưới server-paged) — tính SERVER-SIDE trên
+     TẬP đã lọc (toàn bảng). Field-level RBAC: bỏ qua cột user không có quyền
+     đọc. Procedure-binding entity (list=proc) → bỏ qua (không có store thật). */
+  aggregate: rbacProcedure("view", "entity")
+    .input(
+      z.object({
+        entityId: z.string().uuid(),
+        query: queryParams,
+        includeDeleted: z.boolean().optional(),
+        aggregates: z
+          .array(
+            z.object({
+              field: z.string().min(1),
+              fn: z.enum(["sum", "avg", "count", "min", "max"]),
+            }),
+          )
+          .max(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const proc = await resolveProcBinding(ctx.db, ctx.user.companyId, input.entityId, "list");
+      if (proc) return {} as Record<string, number>;
+      // Lọc aggregate về cột user có quyền đọc (field-level RBAC).
+      const aggFields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      const gIds = await loadUserGroupIds(ctx.db, ctx.user.id);
+      const byName = new Map(aggFields.map((f) => [f.name, f]));
+      const allowed = input.aggregates.filter((a) => {
+        const f = byName.get(a.field);
+        // count không lộ giá trị field; field lạ → bỏ. Field có → cần quyền đọc.
+        if (a.fn === "count") return true;
+        return f ? fieldCan(ctx.user.role, "read", f, gIds) : false;
+      });
+      if (allowed.length === 0) return {} as Record<string, number>;
+      return getRecordStore(ctx.db).aggregate(ctx.user.companyId, input.entityId, {
+        filters: input.query?.filters,
+        q: input.query?.q,
+        includeDeleted: input.includeDeleted ?? false,
+        aggregates: allowed,
+      });
     }),
 
   get: rbacProcedure("view", "entity")

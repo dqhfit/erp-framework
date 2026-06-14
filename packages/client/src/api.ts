@@ -3,7 +3,7 @@
    AppRouter của @erp-framework/server. Đây là logic MẠNG nên
    nằm ở @erp-framework/client, KHÔNG ở core (core giữ thuần).
    ========================================================== */
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
 import type {
   DataSource,
   DataSourceMeta,
@@ -12,9 +12,10 @@ import type {
   EntityFieldDef,
   EntityRecord,
   FilterOp,
-  QueryParams,
   Paginated,
+  QueryParams,
 } from "@erp-framework/core/datasource";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 
 /** Tham số truy vấn nguồn dữ liệu (filter/sort theo key field phẳng). */
 export interface DataSourceQueryParams {
@@ -24,6 +25,7 @@ export interface DataSourceQueryParams {
   sort?: { key: string; dir: "asc" | "desc" };
   q?: string;
 }
+
 import type { AppRouter } from "@erp-framework/server";
 
 /* tRPC client — kiểu suy ra từ factory để khỏi phụ thuộc tên type nội bộ. */
@@ -133,6 +135,23 @@ export class ApiDataSource implements DataSource {
       rows: (res.rows as RawRecord[]).map(toRecord),
       total: res.total,
     };
+  }
+  /** Tổng hợp cột (sum/avg/count/min/max) SERVER-SIDE trên tập đã lọc (toàn
+   *  bảng) — cho footer summary lưới server-paged. Trả map field→giá trị. */
+  async aggregateRecords(
+    entityId: string,
+    opts: {
+      query?: QueryParams;
+      aggregates: Array<{ field: string; fn: "sum" | "avg" | "count" | "min" | "max" }>;
+    },
+  ): Promise<Record<string, number>> {
+    const { includeDeleted, ...serverQuery } = opts.query ?? {};
+    return this.trpc.records.aggregate.query({
+      entityId,
+      query: Object.keys(serverQuery).length ? serverQuery : undefined,
+      includeDeleted,
+      aggregates: opts.aggregates,
+    }) as Promise<Record<string, number>>;
   }
   /** Bulk delete - cap 1000 ids. Trả {deleted, errors[]}. */
   async bulkDeleteRecords(

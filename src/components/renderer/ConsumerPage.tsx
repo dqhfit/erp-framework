@@ -279,15 +279,21 @@ interface ServerPagedResult {
   /** Nạp lại trang hiện tại (sau khi ghi 1 ô — phản ánh giá trị đã lưu /
    *  field server-side suy ra). */
   refresh: () => void;
+  /** Tổng hợp cột (server-side, toàn bảng) — field→giá trị. Rỗng nếu không yêu
+   *  cầu aggregates hoặc bind datasource (chưa hỗ trợ). */
+  summary: Record<string, number>;
 }
+type AggSpec = { field: string; fn: "sum" | "avg" | "count" | "min" | "max" };
 function useServerPagedRecords(opts: {
   entityId?: string;
   dataSourceId?: string;
   baseFilters?: LoadFilters;
   pageSize: number;
   enabled?: boolean;
+  /** Cột cần tổng hợp (footer summary). Chỉ áp cho entity-backed. */
+  aggregates?: AggSpec[];
 }): ServerPagedResult {
-  const { entityId, dataSourceId, baseFilters, pageSize, enabled = true } = opts;
+  const { entityId, dataSourceId, baseFilters, pageSize, enabled = true, aggregates } = opts;
   const ent = useEntity(entityId);
   const [query, setQuery] = useState<ServerGridQuery>({ pageIndex: 0, pageSize });
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -296,6 +302,7 @@ function useServerPagedRecords(opts: {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [refreshTag, setRefreshTag] = useState(0);
+  const [summary, setSummary] = useState<Record<string, number>>({});
 
   // Field meta của DataSource (1 lần) — entity lấy thẳng từ useEntity.
   useEffect(() => {
@@ -382,6 +389,43 @@ function useServerPagedRecords(opts: {
     };
   }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey, refreshTag]);
 
+  // Aggregates (footer summary toàn bảng) — CHỈ entity-backed. Bám lọc/q (KHÔNG
+  // theo trang/sort) để khỏi refetch mỗi lần lật trang.
+  const aggKey = aggregates ? JSON.stringify(aggregates) : "";
+  const aggFilterSig = JSON.stringify({
+    cf: query.columnFilters ?? [],
+    g: query.globalFilter ?? "",
+  });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bám aggKey/aggFilterSig/baseFiltersKey (chuỗi ổn định) thay object
+  useEffect(() => {
+    if (!entityId || dataSourceId || !enabled || !aggregates || aggregates.length === 0) {
+      setSummary({});
+      return;
+    }
+    let alive = true;
+    const filters: LoadFilters = {};
+    if (baseFilters) for (const [k, v] of Object.entries(baseFilters)) filters[k] = v;
+    for (const cf of query.columnFilters ?? [])
+      filters[cf.id] = { op: "contains", value: cf.value };
+    api
+      .aggregateRecords(entityId, {
+        query: {
+          filters: Object.keys(filters).length ? filters : undefined,
+          q: query.globalFilter,
+        },
+        aggregates,
+      })
+      .then((r) => {
+        if (alive) setSummary(r);
+      })
+      .catch(() => {
+        if (alive) setSummary({});
+      });
+    return () => {
+      alive = false;
+    };
+  }, [entityId, dataSourceId, enabled, aggKey, aggFilterSig, baseFiltersKey, refreshTag]);
+
   return {
     rows,
     fields: dataSourceId ? dsFields : (ent?.fields ?? []),
@@ -390,6 +434,7 @@ function useServerPagedRecords(opts: {
     err,
     onQueryChange: setQuery,
     refresh: () => setRefreshTag((x) => x + 1),
+    summary,
   };
 }
 
@@ -751,6 +796,23 @@ function ServerPagedListWidget({
     );
   const ps = pageSize && pageSize > 0 ? pageSize : 50;
 
+  // Cột số hiển thị → aggregates (footer summary toàn bảng). CHỈ entity-backed
+  // (datasource chưa hỗ trợ aggregate server-side). Tính từ ent.fields (có sẵn
+  // trước hook) để truyền vào hook.
+  const fieldsKey = fields ? fields.join(",") : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bám fieldsKey thay mảng fields
+  const aggregates = useMemo<AggSpec[]>(() => {
+    if (dataSourceId || !ent) return [];
+    const all = ent.fields ?? [];
+    const vis =
+      fields && fields.length > 0
+        ? (fields.map((n) => all.find((f) => f.name === n)).filter(Boolean) as EntityField[])
+        : all.filter((f) => f.defaultVisible !== false);
+    return vis
+      .filter((f) => f.type === "number" || f.type === "integer")
+      .map((f) => ({ field: f.name, fn: "sum" }));
+  }, [ent, dataSourceId, fieldsKey]);
+
   const {
     rows,
     fields: dataFields,
@@ -759,12 +821,14 @@ function ServerPagedListWidget({
     err,
     onQueryChange,
     refresh,
+    summary,
   } = useServerPagedRecords({
     entityId,
     dataSourceId,
     baseFilters: loadFilters,
     pageSize: ps,
     enabled,
+    aggregates,
   });
 
   const allFields = dataSourceId ? dataFields : (ent?.fields ?? []);
@@ -772,6 +836,16 @@ function ServerPagedListWidget({
     fields && fields.length > 0
       ? (fields.map((n) => allFields.find((f) => f.name === n)).filter(Boolean) as EntityField[])
       : allFields.filter((f) => f.defaultVisible !== false);
+
+  // Map summary (field→số) → controller.summary (colId→{type,value}) cho footer.
+  const serverSummary = useMemo(() => {
+    const out: Record<string, { type: "sum"; value: number }> = {};
+    for (const a of aggregates) {
+      const v = summary[a.field];
+      if (v !== undefined) out[a.field] = { type: "sum", value: v };
+    }
+    return out;
+  }, [aggregates, summary]);
 
   // ── Inline-edit (chỉ khi editable): pending overlay + ghi về server. ──
   const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
@@ -859,8 +933,13 @@ function ServerPagedListWidget({
   }, [rows, pending, editable]);
 
   const server = useMemo<ServerPagingController>(
-    () => ({ total, loading, onQueryChange: (q) => onQueryChange(q) }),
-    [total, loading, onQueryChange],
+    () => ({
+      total,
+      loading,
+      onQueryChange: (q) => onQueryChange(q),
+      summary: Object.keys(serverSummary).length ? serverSummary : undefined,
+    }),
+    [total, loading, onQueryChange, serverSummary],
   );
 
   // Chọn dòng (lưu id vào pageState) — hoạt động xuyên trang vì lưu theo id.

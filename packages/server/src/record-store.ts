@@ -50,6 +50,20 @@ export interface RecordListParams {
   withTotal?: boolean;
 }
 
+/** Hàm tổng hợp 1 cột (footer kiểu DevExpress) — tính SERVER-SIDE trên TẬP đã
+ *  lọc (toàn bảng, không chỉ trang). count = count(*); còn lại bỏ qua giá trị
+ *  không-số (regex guard) để khỏi lỗi cast. */
+export interface AggregateSpec {
+  field: string;
+  fn: "sum" | "avg" | "count" | "min" | "max";
+}
+export interface AggregateParams {
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+  q?: string;
+  includeDeleted?: boolean;
+  aggregates: AggregateSpec[];
+}
+
 /**
  * Hợp đồng truy cập vật lý record của một entity. Mọi method nhận id
  * tường minh (companyId/entityId/recordId) → một instance phục vụ mọi
@@ -62,6 +76,14 @@ export interface RecordStore {
     entityId: string,
     params?: RecordListParams,
   ): Promise<{ rows: StoredRecord[]; total: number }>;
+
+  /** Tổng hợp các cột (sum/avg/count/min/max) trên TẬP đã lọc (toàn bảng).
+   *  Trả map field→giá trị (null→0). Cho footer summary của lưới server-paged. */
+  aggregate(
+    companyId: string,
+    entityId: string,
+    params: AggregateParams,
+  ): Promise<Record<string, number>>;
 
   /** 1 record theo id (company-scoped) — GỒM cả soft-deleted (cho trang chi tiết). */
   getById(companyId: string, recordId: string): Promise<StoredRecord | null>;
@@ -126,6 +148,33 @@ export interface RecordStore {
   ): Promise<boolean>;
 }
 
+/** Biểu thức SQL tổng hợp 1 cột từ expr-text của field (typed col hoặc jsonb).
+ *  Bỏ qua giá trị không-số (regex guard) để khỏi lỗi cast; count = count(*). */
+function aggExpr(fn: AggregateSpec["fn"], textExpr: SQL): SQL<number | null> {
+  if (fn === "count") return sql<number>`count(*)::float8`;
+  const num = sql`CASE WHEN btrim(${textExpr}) ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN btrim(${textExpr})::numeric ELSE NULL END`;
+  const agg =
+    fn === "sum"
+      ? sql`sum(${num})`
+      : fn === "avg"
+        ? sql`avg(${num})`
+        : fn === "min"
+          ? sql`min(${num})`
+          : sql`max(${num})`;
+  return sql<number | null>`(${agg})::float8`;
+}
+/** Map kết quả 1 row (a0,a1,…) về field→giá trị số (null→0). */
+function mapAggOut(
+  specs: AggregateSpec[],
+  row: Record<string, unknown> | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  specs.forEach((a, i) => {
+    out[a.field] = Number(row?.[`a${i}`] ?? 0) || 0;
+  });
+  return out;
+}
+
 /* ─── EAV impl — bọc câu Drizzle hiện hành trên entity_records ─── */
 
 class EavRecordStore implements RecordStore {
@@ -154,6 +203,26 @@ class EavRecordStore implements RecordStore {
       .from(entityRecords)
       .where(where);
     return { rows, total: c?.count ?? 0 };
+  }
+
+  async aggregate(
+    companyId: string,
+    entityId: string,
+    params: AggregateParams,
+  ): Promise<Record<string, number>> {
+    const where = buildRecordWhere(
+      companyId,
+      entityId,
+      { filters: params.filters, q: params.q },
+      params.includeDeleted ?? false,
+    );
+    const sel: Record<string, SQL<number | null>> = {};
+    params.aggregates.forEach((a, i) => {
+      sel[`a${i}`] = aggExpr(a.fn, sql`(${entityRecords.data}->>${a.field})`);
+    });
+    if (Object.keys(sel).length === 0) return {};
+    const [row] = await this.db.select(sel).from(entityRecords).where(where);
+    return mapAggOut(params.aggregates, row as Record<string, unknown> | undefined);
   }
 
   async getById(companyId: string, recordId: string): Promise<StoredRecord | null> {
@@ -394,11 +463,12 @@ class TableRecordStore implements RecordStore {
     return (await this.db.execute(query)) as unknown as Record<string, unknown>[];
   }
 
-  async list(
+  /** Dựng các điều kiện WHERE (company + soft-delete + filters + q). Dùng CHUNG
+   *  cho list + aggregate để tập lọc khớp nhau. */
+  private whereConds(
     companyId: string,
-    _entityId: string,
-    params: RecordListParams = {},
-  ): Promise<{ rows: StoredRecord[]; total: number }> {
+    params: { filters?: RecordListParams["filters"]; q?: string; includeDeleted?: boolean },
+  ): SQL[] {
     const conds: SQL[] = [sql`company_id = ${companyId}::uuid`];
     if (!(params.includeDeleted ?? false)) conds.push(sql`deleted_at IS NULL`);
     for (const [field, cond] of Object.entries(params.filters ?? {})) {
@@ -436,7 +506,15 @@ class TableRecordStore implements RecordStore {
     if (params.q?.trim()) {
       conds.push(sql`search_tsv @@ websearch_to_tsquery('simple', ${params.q.trim()})`);
     }
-    const whereSql = sql.join(conds, sql` AND `);
+    return conds;
+  }
+
+  async list(
+    companyId: string,
+    _entityId: string,
+    params: RecordListParams = {},
+  ): Promise<{ rows: StoredRecord[]; total: number }> {
+    const whereSql = sql.join(this.whereConds(companyId, params), sql` AND `);
     let orderSql = sql``;
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql.raw("DESC") : sql.raw("ASC");
@@ -454,6 +532,22 @@ class TableRecordStore implements RecordStore {
       sql`SELECT count(*)::int AS count FROM ${this.tbl} WHERE ${whereSql}`,
     );
     return { rows, total: Number(c?.count ?? 0) };
+  }
+
+  async aggregate(
+    companyId: string,
+    _entityId: string,
+    params: AggregateParams,
+  ): Promise<Record<string, number>> {
+    if (params.aggregates.length === 0) return {};
+    const whereSql = sql.join(this.whereConds(companyId, params), sql` AND `);
+    const parts = params.aggregates.map(
+      (a, i) => sql`${aggExpr(a.fn, this.textExpr(a.field))} AS ${sql.raw(`a${i}`)}`,
+    );
+    const [row] = await this.rows(
+      sql`SELECT ${sql.join(parts, sql`, `)} FROM ${this.tbl} WHERE ${whereSql}`,
+    );
+    return mapAggOut(params.aggregates, row);
   }
 
   async getById(companyId: string, recordId: string): Promise<StoredRecord | null> {
@@ -640,6 +734,9 @@ class DispatchRecordStore implements RecordStore {
 
   async list(companyId: string, entityId: string, params?: RecordListParams) {
     return (await this.storeForEntity(companyId, entityId)).list(companyId, entityId, params);
+  }
+  async aggregate(companyId: string, entityId: string, params: AggregateParams) {
+    return (await this.storeForEntity(companyId, entityId)).aggregate(companyId, entityId, params);
   }
   async getActiveById(companyId: string, entityId: string, recordId: string) {
     return (await this.storeForEntity(companyId, entityId)).getActiveById(
