@@ -1674,6 +1674,24 @@ export function Sidebar() {
             )}
             {!isViewer && (
               <SidebarItem
+                to="/ketoan/de-nghi-thanh-toan"
+                active={pathname === "/ketoan/de-nghi-thanh-toan"}
+                icon={<I.FileCheck size={14} />}
+                collapsed={collapsed}
+                label="Đề nghị thanh toán"
+                isFavorited={favs.isFav("/ketoan/de-nghi-thanh-toan")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/ketoan/de-nghi-thanh-toan",
+                    to: "/ketoan/de-nghi-thanh-toan",
+                    label: "Đề nghị thanh toán",
+                    iconName: "FileCheck",
+                  })
+                }
+              />
+            )}
+            {!isViewer && (
+              <SidebarItem
                 to="/iot"
                 active={pathname.startsWith("/iot")}
                 icon={<I.Server size={14} />}
