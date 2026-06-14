@@ -169,18 +169,33 @@ function exportRowsCsv<T>(
   URL.revokeObjectURL(url);
 }
 
+/** Ngưỡng cardinality để dựng datalist gợi ý. Cột có > ngưỡng giá trị phân
+ *  biệt (mã/tên...) thì datalist vô dụng + sort mỗi render rất tốn → bỏ qua,
+ *  chỉ giữ ô lọc contains. */
+const FACET_MAX_DISTINCT = 200;
+
 /** Ô lọc 1 cột (filter row) — input contains + datalist gợi ý giá trị phân
- *  biệt (faceted) như dropdown lọc của DevExpress. Cap 100 giá trị đầu. */
-function FacetFilterInput<T>({ column, placeholder }: { column: Column<T>; placeholder: string }) {
+ *  biệt (faceted) như dropdown lọc của DevExpress. Chỉ gợi ý khi cardinality
+ *  thấp (≤ FACET_MAX_DISTINCT) để khỏi sort hàng nghìn chuỗi mỗi render. */
+function FacetFilterInput<T>({
+  column,
+  placeholder,
+  faceted,
+}: {
+  column: Column<T>;
+  placeholder: string;
+  /** Gợi ý datalist từ giá trị phân biệt. Tắt ở server mode (facet chỉ phủ
+   *  1 trang → gợi ý sai lệch). */
+  faceted: boolean;
+}) {
   const listId = `facet-${column.id}`;
-  const facets = column.getFacetedUniqueValues();
+  const facets = faceted ? column.getFacetedUniqueValues() : undefined;
   const options =
-    facets && facets.size > 0
+    facets && facets.size > 0 && facets.size <= FACET_MAX_DISTINCT
       ? Array.from(facets.keys())
           .filter((v) => v != null && String(v).trim() !== "")
           .map((v) => String(v))
           .sort((a, b) => a.localeCompare(b))
-          .slice(0, 100)
       : [];
   return (
     <>
@@ -226,6 +241,33 @@ export interface DataGridProps<T> {
   /** Master-detail: nếu set, mỗi dòng có nút ▸ mở panel chi tiết bên dưới
    *  (vd lưới con / record liên quan). Trả node render trong hàng chi tiết. */
   renderDetail?: (row: T) => ReactNode;
+  /** Chế độ phân trang/sắp/lọc SERVER-SIDE (cho bảng lớn). Khi set: grid không
+   *  tự sort/filter/paginate trên client mà phát `onQueryChange` để caller fetch
+   *  đúng trang từ server. `data` lúc này CHỈ là 1 trang. Group/summary/faceted
+   *  bị tắt (cần toàn bộ dòng). Sort 1 cột (server chỉ nhận 1 sort). */
+  server?: ServerPagingController;
+}
+
+/** Query grid phát ra cho caller khi ở chế độ server-side. */
+export interface ServerGridQuery {
+  pageIndex: number;
+  pageSize: number;
+  /** 1 cột sort (server-side chỉ hỗ trợ 1). */
+  sort?: { field: string; dir: "asc" | "desc" };
+  /** Ô search toàn cục → full-text `q` server-side. */
+  globalFilter?: string;
+  /** Lọc từng cột → server filters {op:"contains"}. */
+  columnFilters?: { id: string; value: string }[];
+}
+
+/** Bộ điều khiển server-side do caller (hook fetch) cấp cho DataGrid. */
+export interface ServerPagingController {
+  /** Tổng số dòng toàn bảng (để dựng pageCount + đếm). */
+  total: number;
+  /** Đang fetch trang — hiện indicator. */
+  loading?: boolean;
+  /** Grid gọi khi state phân trang/sắp/lọc đổi (đã debounce). */
+  onQueryChange: (q: ServerGridQuery) => void;
 }
 
 export function DataGrid<T>({
@@ -242,9 +284,15 @@ export function DataGrid<T>({
   onGlobalFilterChange,
   pageSize,
   renderDetail,
+  server,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
+  const serverMode = !!server;
+  // Ref giữ controller mới nhất — tránh để identity object của caller lọt vào
+  // deps effect (sẽ fire mỗi render → fetch loop).
+  const serverRef = useRef(server);
+  serverRef.current = server;
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -388,14 +436,46 @@ export function DataGrid<T>({
     getExpandedRowModel: getExpandedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: "includesString",
-    enableMultiSort: true,
+    // Server mode: 1 cột sort (server chỉ nhận 1); client mode: ctrl+click đa cột.
+    enableMultiSort: !serverMode,
     isMultiSortEvent: (e) => (e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey,
     groupedColumnMode: false,
     // ListWidget tạo mảng `data` mới mỗi render khi filter/search client-side →
     // auto-reset theo identity sẽ nhảy trang liên tục. Tự reset theo NỘI DUNG
     // (filter/độ dài/grouping) ở effect bên dưới thay vì theo tham chiếu mảng.
     autoResetPageIndex: false,
+    // Server-side: grid KHÔNG tự sort/filter/paginate — caller fetch đúng trang.
+    ...(server
+      ? {
+          manualPagination: true,
+          manualSorting: true,
+          manualFiltering: true,
+          rowCount: server.total,
+          pageCount: Math.max(1, Math.ceil(server.total / Math.max(1, pagination.pageSize))),
+        }
+      : {}),
   });
+
+  // Server mode: phát query ra caller khi phân trang/sắp/lọc đổi (debounce 250ms
+  // để gõ search/lọc không bắn mỗi ký tự). Dùng serverMode (boolean ổn định) +
+  // serverRef thay vì `server` object để khỏi loop theo identity.
+  useEffect(() => {
+    if (!serverMode) return;
+    const id = setTimeout(() => {
+      serverRef.current?.onQueryChange({
+        pageIndex: pagination.pageIndex,
+        pageSize: pagination.pageSize,
+        sort: sorting[0]
+          ? { field: sorting[0].id, dir: sorting[0].desc ? "desc" : "asc" }
+          : undefined,
+        globalFilter: globalFilter.trim() || undefined,
+        columnFilters: columnFilters
+          .map((f) => ({ id: f.id, value: String(f.value ?? "") }))
+          .filter((f) => f.value !== ""),
+      });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [serverMode, pagination.pageIndex, pagination.pageSize, sorting, globalFilter, columnFilters]);
 
   // Đồng bộ khi widget đổi cấu hình số dòng/trang.
   useEffect(() => {
@@ -408,10 +488,20 @@ export function DataGrid<T>({
   // identity mảng) để tránh reset mỗi render khi ListWidget lọc client-side.
   const colFiltersKey = JSON.stringify(columnFilters);
   const groupingKey = grouping.join(",");
+  const sortKey = JSON.stringify(sorting);
+  // Client mode: reset trang khi tập dữ liệu/lọc đổi (bám NỘI DUNG, kể cả
+  // data.length). Server mode: KHÔNG bám data.length (= page size, đổi mỗi trang
+  // → loop) — chỉ reset khi lọc/sắp đổi.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chủ đích bám khoá nội dung, không bám object filter.
   useEffect(() => {
+    if (serverMode) return;
     setPagination((p) => (p.pageIndex === 0 ? p : { ...p, pageIndex: 0 }));
-  }, [globalFilter, colFiltersKey, groupingKey, data.length]);
+  }, [serverMode, globalFilter, colFiltersKey, groupingKey, data.length]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: server mode reset theo lọc/sắp (không theo trang/độ dài data)
+  useEffect(() => {
+    if (!serverMode) return;
+    setPagination((p) => (p.pageIndex === 0 ? p : { ...p, pageIndex: 0 }));
+  }, [serverMode, globalFilter, colFiltersKey, sortKey]);
 
   const sortableColumns = table
     .getAllColumns()
@@ -438,12 +528,14 @@ export function DataGrid<T>({
       metaSummary ?? (isNumericColumn(filteredRows, col.id) ? "sum" : null);
     if (type) summaryByCol.set(col.id, { type, value: computeSummary(filteredRows, col.id, type) });
   }
-  const showSummary = filteredCount > 0 && summaryByCol.size > 0;
+  // Summary/footer cần TOÀN BỘ dòng → tắt ở server mode (data chỉ là 1 trang).
+  const showSummary = !serverMode && filteredCount > 0 && summaryByCol.size > 0;
 
-  // Phân trang (client-side) — chỉ render 1 trang DOM mỗi lần.
+  // Phân trang. Server mode: total + range tính theo server.total (data = 1 trang).
+  const totalCount = serverMode && server ? server.total : filteredCount;
   const pageCount = table.getPageCount();
-  const rangeFrom = filteredCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
-  const rangeTo = Math.min(filteredCount, (pagination.pageIndex + 1) * pagination.pageSize);
+  const rangeFrom = totalCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
+  const rangeTo = Math.min(totalCount, (pagination.pageIndex + 1) * pagination.pageSize);
   const pageBtn =
     "p-1 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
 
@@ -510,7 +602,8 @@ export function DataGrid<T>({
             </div>
           )}
 
-          <div className="relative" ref={groupPickerRef}>
+          {/* Group-by cần toàn bộ dòng (client-side) → ẩn ở server mode. */}
+          <div className={cn("relative", serverMode && "hidden")} ref={groupPickerRef}>
             <button
               type="button"
               onClick={() => setGroupPickerOpen((v) => !v)}
@@ -630,8 +723,13 @@ export function DataGrid<T>({
             <I.Download size={11} />
           </button>
 
+          {serverMode && server?.loading && (
+            <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
+          )}
           <Chip className="shrink-0 text-xs">
-            {t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
+            {serverMode
+              ? t("datagrid.row_count_server", { total: totalCount })
+              : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
           </Chip>
         </div>
       )}
@@ -818,6 +916,7 @@ export function DataGrid<T>({
                         <FacetFilterInput
                           column={header.column}
                           placeholder={t("datagrid.col_filter_placeholder")}
+                          faceted={!serverMode}
                         />
                       ) : null}
                     </th>
@@ -962,7 +1061,7 @@ export function DataGrid<T>({
       {pageCount > 1 && (
         <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-panel-2/40 shrink-0 text-xs text-muted">
           <span>
-            {t("datagrid.page_range", { from: rangeFrom, to: rangeTo, total: filteredCount })}
+            {t("datagrid.page_range", { from: rangeFrom, to: rangeTo, total: totalCount })}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             <select

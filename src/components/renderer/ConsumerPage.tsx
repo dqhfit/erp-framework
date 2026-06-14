@@ -22,7 +22,11 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Chart } from "@/components/renderer/Chart";
-import { DataGrid } from "@/components/renderer/DataGrid";
+import {
+  DataGrid,
+  type ServerGridQuery,
+  type ServerPagingController,
+} from "@/components/renderer/DataGrid";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
@@ -258,6 +262,125 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     };
   }, [dataSourceId, refreshTag, limit, enabled, filtersKey]);
   return { rows, fields, loading, err };
+}
+
+/* ── Server-side paging hook (cho bảng LỚN) — grid phát query (trang/sắp/lọc),
+   hook fetch đúng 1 trang từ server (records.list / dataSources.listRecords đều
+   nhận sort+offset, trả {rows,total}). Khác useRecords: KHÔNG kéo cả cửa sổ về
+   client; mỗi thao tác = 1 round-trip. baseFilters (loadFilters) áp server-side
+   luôn, gộp với lọc-cột (op contains). ── */
+interface ServerPagedResult {
+  rows: Record<string, unknown>[];
+  fields: EntityField[];
+  total: number;
+  loading: boolean;
+  err: string;
+  onQueryChange: (q: ServerGridQuery) => void;
+}
+function useServerPagedRecords(opts: {
+  entityId?: string;
+  dataSourceId?: string;
+  baseFilters?: LoadFilters;
+  pageSize: number;
+  enabled?: boolean;
+}): ServerPagedResult {
+  const { entityId, dataSourceId, baseFilters, pageSize, enabled = true } = opts;
+  const ent = useEntity(entityId);
+  const [query, setQuery] = useState<ServerGridQuery>({ pageIndex: 0, pageSize });
+  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [dsFields, setDsFields] = useState<EntityField[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  // Field meta của DataSource (1 lần) — entity lấy thẳng từ useEntity.
+  useEffect(() => {
+    if (!dataSourceId) {
+      setDsFields([]);
+      return;
+    }
+    let alive = true;
+    api
+      .getDataSourceMeta(dataSourceId)
+      .then((m) => {
+        if (alive)
+          setDsFields(
+            m.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [dataSourceId]);
+
+  const baseFiltersKey = baseFilters ? JSON.stringify(baseFilters) : "";
+  const querySig = JSON.stringify(query);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dùng querySig/baseFiltersKey (chuỗi ổn định) thay object để deps không đổi mỗi render
+  useEffect(() => {
+    if (!enabled || (!entityId && !dataSourceId)) {
+      setRows([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    setErr("");
+    // filters server-side = baseFilters (loadFilters) + lọc-cột (contains).
+    const filters: LoadFilters = {};
+    if (baseFilters) for (const [k, v] of Object.entries(baseFilters)) filters[k] = v;
+    for (const cf of query.columnFilters ?? [])
+      filters[cf.id] = { op: "contains", value: cf.value };
+    const fOpt = Object.keys(filters).length ? filters : undefined;
+    const limit = query.pageSize;
+    const offset = query.pageIndex * query.pageSize;
+    const q = query.globalFilter;
+    const run = dataSourceId
+      ? api
+          .getDataSourceRecords(dataSourceId, {
+            limit,
+            offset,
+            filters: fOpt,
+            sort: query.sort ? { key: query.sort.field, dir: query.sort.dir } : undefined,
+            q,
+          })
+          .then((res) => ({ rows: res.rows as Record<string, unknown>[], total: res.total }))
+      : api
+          .getRecords(entityId as string, {
+            limit,
+            offset,
+            filters: fOpt,
+            sort: query.sort ? { field: query.sort.field, dir: query.sort.dir } : undefined,
+            q,
+          })
+          .then((res) => ({ rows: res.rows.map((r) => r.data), total: res.total }));
+    run
+      .then((out) => {
+        if (!alive) return;
+        setRows(out.rows);
+        setTotal(out.total ?? out.rows.length);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (alive) {
+          setErr((e as Error).message);
+          setLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey]);
+
+  return {
+    rows,
+    fields: dataSourceId ? dsFields : (ent?.fields ?? []),
+    total,
+    loading,
+    err,
+    onQueryChange: setQuery,
+  };
 }
 
 export interface WidgetData {
@@ -560,6 +683,165 @@ function EditableListWidget({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── ServerPagedListWidget — danh sách bảng LỚN, phân trang/sắp/lọc SERVER-SIDE.
+   Read-only (chưa hỗ trợ inline-edit kèm paging). KHÔNG kéo cả cửa sổ về client:
+   mỗi trang là 1 round-trip → sort/lọc/đếm phản ánh TOÀN BẢNG (không chỉ window).
+   Không có filter-tree/master-detail client (cần toàn bộ dòng) — dùng loadFilters
+   (server-side) + lọc-cột contains thay thế. ── */
+function ServerPagedListWidget({
+  entityId,
+  dataSourceId,
+  stateKey,
+  fields,
+  columnLabels,
+  title,
+  pageSize,
+  loadFilters,
+  loadGate,
+  selectionStateKey,
+  multiSelect,
+}: {
+  entityId?: string;
+  dataSourceId?: string;
+  stateKey?: string;
+  fields?: string[];
+  columnLabels?: Record<string, string>;
+  title?: string;
+  pageSize?: number;
+  loadFilters?: LoadFilters;
+  loadGate?: string;
+  selectionStateKey?: string;
+  multiSelect?: boolean;
+}) {
+  const t = useT();
+  const ent = useEntity(entityId);
+  const pageState = usePageState();
+
+  // Cổng tải (loadGate): chỉ fetch khi state có giá trị.
+  const gateKey = loadGate?.trim();
+  const gateVal = gateKey ? pageState.get(gateKey) : undefined;
+  const enabled =
+    !gateKey ||
+    !(
+      gateVal === undefined ||
+      gateVal === null ||
+      gateVal === "" ||
+      (Array.isArray(gateVal) && gateVal.length === 0)
+    );
+  const ps = pageSize && pageSize > 0 ? pageSize : 50;
+
+  const {
+    rows,
+    fields: dataFields,
+    total,
+    loading,
+    err,
+    onQueryChange,
+  } = useServerPagedRecords({
+    entityId,
+    dataSourceId,
+    baseFilters: loadFilters,
+    pageSize: ps,
+    enabled,
+  });
+
+  const allFields = dataSourceId ? dataFields : (ent?.fields ?? []);
+  const visibleFields =
+    fields && fields.length > 0
+      ? (fields.map((n) => allFields.find((f) => f.name === n)).filter(Boolean) as EntityField[])
+      : allFields.filter((f) => f.defaultVisible !== false);
+
+  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
+    () =>
+      visibleFields.map((f) => ({
+        id: f.name,
+        accessorKey: f.name,
+        header: columnLabels?.[f.name] ?? f.label,
+        enableGrouping: false,
+        meta: { techName: f.name },
+        cell: (ctx) => {
+          const v = ctx.getValue();
+          const s = v == null ? "" : String(v);
+          if (f.type === "image" && s.startsWith("data:image/"))
+            return (
+              <img
+                src={s}
+                alt=""
+                className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
+                loading="lazy"
+              />
+            );
+          return <span className="block truncate">{s}</span>;
+        },
+      })),
+    [visibleFields, columnLabels],
+  );
+
+  const server = useMemo<ServerPagingController>(
+    () => ({ total, loading, onQueryChange: (q) => onQueryChange(q) }),
+    [total, loading, onQueryChange],
+  );
+
+  // Chọn dòng (lưu id vào pageState) — hoạt động xuyên trang vì lưu theo id.
+  const selectedRaw = selectionStateKey ? pageState.get(selectionStateKey) : undefined;
+  const onRowClick = selectionStateKey
+    ? (row: Record<string, unknown>) => {
+        const id = row.id ?? row.ID ?? row._id;
+        if (id == null) return;
+        if (multiSelect) {
+          const strId = String(id);
+          const cur = Array.isArray(selectedRaw) ? (selectedRaw as unknown[]) : [];
+          const already = cur.some((x) => String(x) === strId);
+          pageState.set(
+            selectionStateKey,
+            already ? cur.filter((x) => String(x) !== strId) : [...cur, id],
+          );
+        } else {
+          pageState.set(selectionStateKey, id);
+        }
+      }
+    : undefined;
+  const isRowSelected = selectionStateKey
+    ? (row: Record<string, unknown>) => {
+        const id = row.id ?? row.ID ?? row._id;
+        if (id == null) return false;
+        if (multiSelect)
+          return (
+            Array.isArray(selectedRaw) &&
+            (selectedRaw as unknown[]).some((x) => String(x) === String(id))
+          );
+        return selectedRaw != null && String(selectedRaw) === String(id);
+      }
+    : undefined;
+
+  if (!entityId && !dataSourceId) {
+    return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      {err && (
+        <div className="px-3 py-1 text-xs text-danger border-b border-danger/30 shrink-0">
+          {t("widget.error_load", { err })}
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        <DataGrid
+          columns={columns}
+          data={rows}
+          stateKey={stateKey}
+          emptyText={t("widget.empty_records")}
+          label={title}
+          onRowClick={onRowClick}
+          isRowSelected={isRowSelected}
+          pageSize={ps}
+          server={server}
+        />
+      </div>
     </div>
   );
 }
@@ -2158,7 +2440,24 @@ function RenderSubWidget({
   cfg: Record<string, unknown>;
   stateKey: string;
 }) {
-  if (kind === "list")
+  if (kind === "list") {
+    // Bảng lớn: serverPaging (read-only) → phân trang/sắp/lọc server-side.
+    if (cfg.serverPaging === true && cfg.editable !== true)
+      return (
+        <ServerPagedListWidget
+          entityId={cfg.entity as string | undefined}
+          dataSourceId={cfg.dataSourceId as string | undefined}
+          stateKey={stateKey}
+          fields={cfg.fields as string[] | undefined}
+          columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+          selectionStateKey={cfg.selectionStateKey as string | undefined}
+          title={cfg.title as string | undefined}
+          multiSelect={cfg.multiSelect === true}
+          pageSize={cfg.pageSize as number | undefined}
+          loadFilters={cfg.loadFilters as LoadFilters | undefined}
+          loadGate={cfg.loadGate as string | undefined}
+        />
+      );
     return (
       <ListWidget
         entityId={cfg.entity as string | undefined}
@@ -2180,6 +2479,7 @@ function RenderSubWidget({
         loadGate={cfg.loadGate as string | undefined}
       />
     );
+  }
   if (kind === "detail") return <DetailWidget cfg={cfg} />;
   if (kind === "form") return <FormWidget cfg={cfg} />;
   if (kind === "chart") return <ChartWidget cfg={cfg} />;
@@ -2522,6 +2822,25 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "chart") return <ChartWidget cfg={cfg} />;
   if (comp.kind === "list") {
     const embActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
+    // Bảng lớn: serverPaging (read-only) → phân trang/sắp/lọc server-side.
+    if (cfg.serverPaging === true && cfg.editable !== true)
+      return withEmbeddedActions(
+        <ServerPagedListWidget
+          entityId={cfg.entity as string | undefined}
+          dataSourceId={cfg.dataSourceId as string | undefined}
+          stateKey={stateKey}
+          fields={cfg.fields as string[] | undefined}
+          columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+          selectionStateKey={cfg.selectionStateKey as string | undefined}
+          title={cfg.title as string | undefined}
+          multiSelect={cfg.multiSelect === true}
+          pageSize={cfg.pageSize as number | undefined}
+          loadFilters={cfg.loadFilters as LoadFilters | undefined}
+          loadGate={cfg.loadGate as string | undefined}
+        />,
+        embActs,
+        pageState,
+      );
     return withEmbeddedActions(
       <ListWidget
         entityId={cfg.entity as string | undefined}
