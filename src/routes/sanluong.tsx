@@ -73,6 +73,8 @@ function SanLuongPage() {
   const [scanning, setScanning] = useState(false);
   // stages = công đoạn user được xếp. null = chưa tải.
   const [stages, setStages] = useState<Stage[] | null>(null);
+  // bump để các tab dưới reload sau khi hoàn thành 1 phiếu.
+  const [slRefresh, setSlRefresh] = useState(0);
 
   const setCongDoanPersist = (v: string) => {
     setCongDoan(v);
@@ -182,6 +184,7 @@ function SanLuongPage() {
       setOrong("");
       setOdai("");
       setCongDoanSau("");
+      setSlRefresh((n) => n + 1); // reload tab Hoàn thành
     } catch (e) {
       await dialog.alert(`Lỗi: ${(e as Error).message}`);
     } finally {
@@ -348,6 +351,8 @@ function SanLuongPage() {
                     </Button>
                   </div>
                 )}
+
+                <SlTabs congDoan={congDoan} refresh={slRefresh} />
               </>
             )}
           </>
@@ -364,6 +369,171 @@ function SanLuongPage() {
             void traThe(code);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/* ── Các tab danh sách dưới màn (port TbMLocation_DetailView tabs, DQHF252):
+   Hoàn thành | Nhận hàng | Hàng lỗi | Ra/Vào cổng. Lazy load theo công đoạn. ── */
+type SlTab = "hoanthanh" | "nhanhang" | "hangloi" | "ravao";
+const SL_TABS: [SlTab, string][] = [
+  ["hoanthanh", "Hoàn thành"],
+  ["nhanhang", "Nhận hàng"],
+  ["hangloi", "Hàng lỗi"],
+  ["ravao", "Ra/Vào cổng"],
+];
+
+interface SlCol {
+  key: string;
+  label: string;
+  num?: boolean;
+  date?: boolean;
+  qc?: boolean;
+}
+const SL_COLS: Record<Exclude<SlTab, "ravao">, SlCol[]> = {
+  hoanthanh: [
+    { key: "madonhang", label: "Đơn hàng" },
+    { key: "tenct", label: "Chi tiết" },
+    { key: "__qc", label: "Quy cách", qc: true },
+    { key: "soluong", label: "SL", num: true },
+    { key: "ngaythang", label: "Ngày", date: true },
+    { key: "nguoitao", label: "Người làm" },
+  ],
+  nhanhang: [
+    { key: "madonhang", label: "Đơn hàng" },
+    { key: "tenct", label: "Chi tiết" },
+    { key: "__qc", label: "Quy cách", qc: true },
+    { key: "soluong", label: "SL", num: true },
+    { key: "ngaythang", label: "Ngày", date: true },
+  ],
+  hangloi: [
+    { key: "ngaythang", label: "Ngày", date: true },
+    { key: "donhang", label: "Đơn hàng" },
+    { key: "tenct", label: "Chi tiết" },
+    { key: "soluong", label: "SL", num: true },
+    { key: "loailoi", label: "Loại lỗi" },
+    { key: "nguyennhan", label: "Nguyên nhân" },
+  ],
+};
+
+const slFmtN = (v: unknown): string => {
+  const n = Number(v);
+  return v == null || v === "" || Number.isNaN(n) ? String(v ?? "") : n.toLocaleString("vi-VN");
+};
+const slFmtD = (v: unknown): string => (v ? String(v).slice(0, 10) : "");
+const slQc = (r: Record<string, unknown>): string => {
+  const d = Number(r.oday ?? r.dayy) || 0;
+  const w = Number(r.orong ?? r.rong) || 0;
+  const l = Number(r.odai ?? r.dai) || 0;
+  return d || w || l ? `${slFmtN(d)}×${slFmtN(w)}×${slFmtN(l)}` : "";
+};
+const slCell = (r: Record<string, unknown>, c: SlCol): string => {
+  if (c.qc) return slQc(r);
+  const v = r[c.key];
+  if (c.date) return slFmtD(v);
+  if (c.num) return slFmtN(v);
+  return v == null ? "" : String(v);
+};
+
+function SlTabs({ congDoan, refresh }: { congDoan: string; refresh: number }) {
+  const [tab, setTab] = useState<SlTab>("hoanthanh");
+  const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh là trigger reload có chủ ý (không đọc trong body)
+  useEffect(() => {
+    if (tab === "ravao") {
+      setRows([]);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    setRows(null);
+    fetch(`/banvesvc/sl-records?type=${tab}&congDoan=${encodeURIComponent(congDoan)}`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : { rows: [] }))
+      .then((d: { rows?: Record<string, unknown>[] }) => {
+        if (alive) setRows(d.rows ?? []);
+      })
+      .catch(() => {
+        if (alive) setRows([]);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [tab, congDoan, refresh]);
+
+  const cols = tab === "ravao" ? [] : SL_COLS[tab];
+
+  return (
+    <div className="pt-3 mt-1 border-t border-border">
+      <div className="flex border-b border-border overflow-x-auto -mx-1 px-1">
+        {SL_TABS.map(([t, label]) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+              tab === t
+                ? "border-accent text-accent font-semibold"
+                : "border-transparent text-muted"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "ravao" ? (
+        <div className="text-xs text-muted py-6 text-center">
+          Ra/Vào cổng — bảng <code>ns_ravaocong</code> chưa được migrate.
+        </div>
+      ) : loading || rows === null ? (
+        <div className="text-xs text-muted py-6 text-center">Đang tải…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-xs text-muted py-6 text-center">Không có dữ liệu.</div>
+      ) : (
+        <div className="overflow-x-auto pt-1">
+          <table className="w-full text-xs border-collapse">
+            <thead className="text-muted">
+              <tr className="border-b border-border text-left">
+                {cols.map((c) => (
+                  <th
+                    key={c.key}
+                    className={`py-1.5 pr-2 whitespace-nowrap ${c.num ? "text-right" : ""}`}
+                  >
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+                <tr key={i} className="border-b border-border/50">
+                  {cols.map((c) => (
+                    <td
+                      key={c.key}
+                      className={`py-1.5 pr-2 ${c.num ? "text-right whitespace-nowrap" : ""}`}
+                    >
+                      {slCell(r, c)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length >= 200 && (
+            <div className="text-[10px] text-muted py-1 text-center">
+              Hiển thị 200 dòng gần nhất.
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

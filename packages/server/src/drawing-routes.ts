@@ -123,6 +123,64 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     });
   });
 
+  // ── Danh sách record cho các tab dưới màn Nhập sản lượng (theo công đoạn) ──
+  //    type=hoanthanh (GIAO ở công đoạn này, tuần này) | nhanhang (record ở
+  //    công đoạn *-IN tương ứng, chưa hoàn thành, 90 ngày) | hangloi
+  //    (tr_baocao_hangloi ở công đoạn này, 90 ngày). Ra/Vào cổng: bảng
+  //    ns_ravaocong CHƯA migrate → frontend hiện placeholder.
+  app.get("/banvesvc/sl-records", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = (req.query ?? {}) as { type?: string; congDoan?: string };
+    const congDoan = (q.congDoan ?? "").trim();
+    const type = (q.type ?? "").trim();
+    if (!congDoan) return reply.send({ rows: [] });
+    const cid = auth.companyId;
+    // Ngày VN (UTC+7): thứ 2 đầu tuần + 90 ngày trước.
+    const vn = new Date(Date.now() + 7 * 3600 * 1000);
+    const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const dow = (vn.getUTCDay() + 6) % 7; // 0 = thứ 2
+    const monday = isoDay(vn.getTime() - dow * 86400000);
+    const ago90 = isoDay(vn.getTime() - 90 * 86400000);
+
+    let rows: Record<string, unknown>[] = [];
+    if (type === "hoanthanh") {
+      rows = (await db.execute(sql`
+        SELECT f_madonhang AS madonhang, f_tenct AS tenct, f_oday AS oday, f_orong AS orong,
+               f_odai AS odai, f_soluong AS soluong, f_sokhoi AS sokhoi,
+               f_ngaythang AS ngaythang, f_nguoitao AS nguoitao
+        FROM tr_trangthai_sanxuat
+        WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+          AND f_congdoan = ${congDoan} AND f_ngaythang >= ${monday}
+        ORDER BY f_ngaythang DESC, f_ngaytao DESC LIMIT 200`)) as unknown as Record<
+        string,
+        unknown
+      >[];
+    } else if (type === "nhanhang") {
+      const inLoc = congDoan.replace(/-PROD$/, "-IN");
+      rows = (await db.execute(sql`
+        SELECT f_madonhang AS madonhang, f_tenct AS tenct, f_oday AS oday, f_orong AS orong,
+               f_odai AS odai, f_soluong AS soluong, f_ngaythang AS ngaythang,
+               f_congdoantieptheo AS congdoantieptheo
+        FROM tr_trangthai_sanxuat
+        WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+          AND f_congdoan = ${inLoc} AND f_ishoanthanh IS NOT TRUE
+          AND f_ngaythang >= ${ago90}
+        ORDER BY f_ngaythang DESC LIMIT 200`)) as unknown as Record<string, unknown>[];
+    } else if (type === "hangloi") {
+      rows = (await db.execute(sql`
+        SELECT f_ngaythang AS ngaythang, f_donhang AS donhang, f_tenct AS tenct,
+               f_dayy AS dayy, f_rong AS rong, f_dai AS dai, f_soluong AS soluong,
+               f_loailoi AS loailoi, f_nguyennhan AS nguyennhan,
+               f_huongxuly AS huongxuly, f_nguoiphutrach AS nguoiphutrach
+        FROM tr_baocao_hangloi
+        WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+          AND f_congdoan = ${congDoan} AND f_ngaythang >= ${ago90}
+        ORDER BY f_ngaythang DESC LIMIT 200`)) as unknown as Record<string, unknown>[];
+    }
+    return reply.send({ rows });
+  });
+
   // ── Thông tin sản phẩm cho 4 tab ──
   app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);
