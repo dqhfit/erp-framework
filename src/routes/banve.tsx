@@ -368,6 +368,7 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
             <span className="text-xs text-muted">{l1Label}</span>
             <div className="mt-1">
               <SearchableSelect
+                className="w-full"
                 value={l1v}
                 onChange={(v) => {
                   setL1v(v);
@@ -384,6 +385,7 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
             <span className="text-xs text-muted">Sản phẩm</span>
             <div className="mt-1">
               <SearchableSelect
+                className="w-full"
                 value=""
                 onChange={(v) => v && onPick(v)}
                 options={products}
