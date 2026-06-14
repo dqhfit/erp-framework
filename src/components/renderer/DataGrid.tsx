@@ -11,8 +11,10 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   type PaginationState,
+  type Row,
   type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
@@ -27,12 +29,74 @@ interface SavedGridState {
   globalFilter: string;
   grouping: GroupingState;
   columnFilters: ColumnFiltersState;
+  columnVisibility?: VisibilityState;
 }
 
 /** Số dòng/trang mặc định + tuỳ chọn — phân trang client-side để chỉ render
  *  một trang DOM mỗi lần (hiệu năng), không cắt dữ liệu đã tải. */
 const DEFAULT_PAGE_SIZE = 50;
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+
+/* ── Summary (footer tổng hợp kiểu DevExpress) ─────────────────── */
+export type SummaryType = "sum" | "avg" | "count" | "min" | "max";
+/** Meta cột — kèm techName (tên kỹ thuật) + summary (kiểu tổng hợp footer). */
+interface GridColMeta {
+  techName?: string;
+  summary?: SummaryType;
+}
+
+const toNum = (v: unknown): number => {
+  if (v == null || v === "") return Number.NaN;
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[,\s]/g, ""));
+  return n;
+};
+/** Cột số: lấy mẫu ≤30 giá trị non-null, tất cả là số → numeric (auto-sum). */
+function isNumericColumn<T>(rows: Row<T>[], colId: string): boolean {
+  let seen = 0;
+  for (const r of rows) {
+    const v = r.getValue(colId);
+    if (v == null || v === "") continue;
+    if (Number.isNaN(toNum(v))) return false;
+    if (++seen >= 30) break;
+  }
+  return seen > 0;
+}
+function computeSummary<T>(rows: Row<T>[], colId: string, type: SummaryType): number {
+  if (type === "count") return rows.length;
+  const nums = rows.map((r) => toNum(r.getValue(colId))).filter((n) => !Number.isNaN(n));
+  if (nums.length === 0) return 0;
+  if (type === "sum") return nums.reduce((a, b) => a + b, 0);
+  if (type === "avg") return nums.reduce((a, b) => a + b, 0) / nums.length;
+  if (type === "min") return Math.min(...nums);
+  return Math.max(...nums);
+}
+const SUMMARY_LABEL: Record<SummaryType, string> = {
+  sum: "Σ",
+  avg: "TB",
+  count: "SL",
+  min: "Min",
+  max: "Max",
+};
+const fmtNum = (n: number) => n.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+
+/** Xuất CSV (Excel mở được — có BOM UTF-8) các cột đang hiện + rows đã lọc/sắp. */
+function exportRowsCsv<T>(
+  cols: Array<{ id: string; header: string }>,
+  rows: Row<T>[],
+  filename: string,
+) {
+  const esc = (s: string) => (/[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const head = cols.map((c) => esc(c.header)).join(",");
+  const body = rows.map((r) => cols.map((c) => esc(String(r.getValue(c.id) ?? ""))).join(","));
+  const csv = `﻿${[head, ...body].join("\r\n")}`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename || "export"}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -95,6 +159,9 @@ export function DataGrid<T>({
   const [filterRowOpen, setFilterRowOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const groupPickerRef = useRef<HTMLDivElement>(null);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [colChooserOpen, setColChooserOpen] = useState(false);
+  const colChooserRef = useRef<HTMLDivElement>(null);
 
   // Restore state from IDB once on mount
   const restoredRef = useRef(false);
@@ -108,6 +175,7 @@ export function DataGrid<T>({
       if (saved.globalFilter) setGlobalFilter(saved.globalFilter);
       if (saved.grouping?.length) setGrouping(saved.grouping);
       if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
+      if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
     });
   }, [stateKey]);
 
@@ -117,12 +185,12 @@ export function DataGrid<T>({
     if (!stateKey) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void idbSet(stateKey, { sorting, globalFilter, grouping, columnFilters });
+      void idbSet(stateKey, { sorting, globalFilter, grouping, columnFilters, columnVisibility });
     }, 400);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [stateKey, sorting, globalFilter, grouping, columnFilters]);
+  }, [stateKey, sorting, globalFilter, grouping, columnFilters, columnVisibility]);
 
   // Close group picker on outside click
   useEffect(() => {
@@ -136,16 +204,37 @@ export function DataGrid<T>({
     return () => document.removeEventListener("mousedown", handler);
   }, [groupPickerOpen]);
 
+  // Close column chooser on outside click
+  useEffect(() => {
+    if (!colChooserOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (colChooserRef.current && !colChooserRef.current.contains(e.target as Node)) {
+        setColChooserOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [colChooserOpen]);
+
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter, columnFilters, grouping, expanded, pagination },
+    state: {
+      sorting,
+      globalFilter,
+      columnFilters,
+      grouping,
+      expanded,
+      pagination,
+      columnVisibility,
+    },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onGroupingChange: setGrouping,
     onExpandedChange: setExpanded,
     onPaginationChange: setPagination,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -183,7 +272,27 @@ export function DataGrid<T>({
     .filter((c) => c.getCanGroup() && c.id !== "__expand__");
   const availableGroupCols = sortableColumns.filter((c) => !grouping.includes(c.id));
   const activeFilterCount = columnFilters.length;
-  const filteredCount = table.getFilteredRowModel().rows.length;
+  const filteredRows = table.getFilteredRowModel().rows;
+  const filteredCount = filteredRows.length;
+
+  // Cột lá đang hiện (bỏ cột điều khiển) — cho export + column chooser.
+  const leafCols = table
+    .getVisibleLeafColumns()
+    .filter((c) => c.id !== "__expand__" && c.id !== "__select__");
+  const exportCols = leafCols.map((c) => ({
+    id: c.id,
+    header: c.columnDef.header?.toString() ?? c.id,
+  }));
+  // Summary footer (DevExpress-style): cột set meta.summary → kiểu đó; cột số
+  // không set → auto "sum". Có ≥1 cột summary mới hiện footer.
+  const summaryByCol = new Map<string, { type: SummaryType; value: number }>();
+  for (const col of leafCols) {
+    const metaSummary = (col.columnDef.meta as GridColMeta | undefined)?.summary;
+    const type: SummaryType | null =
+      metaSummary ?? (isNumericColumn(filteredRows, col.id) ? "sum" : null);
+    if (type) summaryByCol.set(col.id, { type, value: computeSummary(filteredRows, col.id, type) });
+  }
+  const showSummary = filteredCount > 0 && summaryByCol.size > 0;
 
   // Phân trang (client-side) — chỉ render 1 trang DOM mỗi lần.
   const pageCount = table.getPageCount();
@@ -306,7 +415,57 @@ export function DataGrid<T>({
             )}
           </div>
 
-          <Chip className="ml-auto shrink-0 text-xs">
+          {/* Column chooser (ẩn/hiện cột) */}
+          <div className="relative ml-auto" ref={colChooserRef}>
+            <button
+              type="button"
+              onClick={() => setColChooserOpen((v) => !v)}
+              title={t("datagrid.columns")}
+              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+            >
+              <I.Table size={11} />
+              <I.ChevronDown size={10} />
+            </button>
+            {colChooserOpen && (
+              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-h-[320px] overflow-auto py-1">
+                {table
+                  .getAllLeafColumns()
+                  .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
+                  .map((col) => (
+                    <label
+                      key={col.id}
+                      className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={col.getIsVisible()}
+                        onChange={col.getToggleVisibilityHandler()}
+                        disabled={!col.getCanHide()}
+                      />
+                      <span className="truncate">{col.columnDef.header?.toString() ?? col.id}</span>
+                    </label>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Export CSV (Excel) — cột đang hiện + dòng đã lọc/sắp */}
+          <button
+            type="button"
+            onClick={() =>
+              exportRowsCsv(
+                exportCols,
+                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
+                label || "export",
+              )
+            }
+            title={t("datagrid.export")}
+            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+          >
+            <I.Download size={11} />
+          </button>
+
+          <Chip className="shrink-0 text-xs">
             {t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
           </Chip>
         </div>
@@ -512,6 +671,26 @@ export function DataGrid<T>({
                 })
               )}
             </tbody>
+            {showSummary && (
+              <tfoot className="sticky bottom-0 z-10 bg-panel-2 border-t-2 border-border">
+                <tr>
+                  {table.getVisibleLeafColumns().map((col, idx) => {
+                    const s = summaryByCol.get(col.id);
+                    return (
+                      <td key={col.id} className="px-3 py-1.5 text-xs whitespace-nowrap text-right">
+                        {s ? (
+                          <span className="font-semibold text-accent">
+                            {SUMMARY_LABEL[s.type]} {fmtNum(s.value)}
+                          </span>
+                        ) : idx === 0 ? (
+                          <span className="block text-left text-muted">{filteredCount} dòng</span>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}
