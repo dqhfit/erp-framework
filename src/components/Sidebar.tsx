@@ -1638,6 +1638,24 @@ export function Sidebar() {
             )}
             {!isViewer && (
               <SidebarItem
+                to="/ketoan/chi-phi"
+                active={pathname === "/ketoan/chi-phi"}
+                icon={<I.DollarSign size={14} />}
+                collapsed={collapsed}
+                label="Chi phí kinh doanh"
+                isFavorited={favs.isFav("/ketoan/chi-phi")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/ketoan/chi-phi",
+                    to: "/ketoan/chi-phi",
+                    label: "Chi phí kinh doanh",
+                    iconName: "DollarSign",
+                  })
+                }
+              />
+            )}
+            {!isViewer && (
+              <SidebarItem
                 to="/iot"
                 active={pathname.startsWith("/iot")}
                 icon={<I.Server size={14} />}

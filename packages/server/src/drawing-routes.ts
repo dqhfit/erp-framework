@@ -194,6 +194,44 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ rows });
   });
 
+  // ── Báo cáo CHI PHÍ KINH DOANH theo nhóm (port ChiPhiKinhDoanhL). 70k dòng →
+  //    group-by SERVER (cột f_ typed: id_nhomchiphi/ngaygiaodich/sotien/tygia).
+  //    Tên nhóm = kt_nhom_chiphi.f_nhomchiphi; loại = KHOANCHI (chi)|KHOANTHU (thu);
+  //    amount = sotien * (tygia=0?1:tygia). nhom rỗng=summary, có nhom=chi tiết. ──
+  app.get("/banvesvc/chiphi", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = (req.query ?? {}) as { nam?: string; loai?: string; nhom?: string };
+    const nam = (q.nam ?? "").trim();
+    const loai = (q.loai ?? "").trim(); // KHOANCHI | KHOANTHU | ""
+    const nhom = (q.nhom ?? "").trim();
+    const cid = auth.companyId;
+    const amount = sql`c.f_sotien * coalesce(nullif(c.f_tygia, 0), 1)`;
+    const yearCond = nam ? sql`AND left(c.f_ngaygiaodich, 4) = ${nam}` : sql``;
+    const loaiCond =
+      loai === "KHOANCHI" || loai === "KHOANTHU" ? sql`AND c.f_loaichiphi = ${loai}` : sql``;
+    if (!nhom) {
+      const rows = (await db.execute(sql`
+        SELECT c.f_id_nhomchiphi AS nhom_id, max(g.f_nhomchiphi) AS nhom,
+               max(g.f_loaichiphi) AS loai, count(*) AS sl, sum(${amount}) AS tong
+        FROM kt_chiphi_kinhdoanh c
+        LEFT JOIN kt_nhom_chiphi g ON g.f_id = c.f_id_nhomchiphi
+        WHERE c.company_id = ${cid}::uuid AND c.deleted_at IS NULL ${yearCond} ${loaiCond}
+        GROUP BY c.f_id_nhomchiphi
+        ORDER BY sum(${amount}) DESC NULLS LAST`)) as unknown as Record<string, unknown>[];
+      return reply.send({ mode: "summary", rows });
+    }
+    const rows = (await db.execute(sql`
+      SELECT left(c.f_ngaygiaodich, 10) AS ngay, c.f_tenchiphi AS tenchiphi,
+             c.f_sotien AS sotien, c.f_tygia AS tygia, ${amount} AS amount,
+             c.f_loaichiphi AS loai, c.f_nhacungcap AS nhacungcap, c.f_ghichu AS ghichu
+      FROM kt_chiphi_kinhdoanh c
+      WHERE c.company_id = ${cid}::uuid AND c.deleted_at IS NULL ${yearCond} ${loaiCond}
+        AND c.f_id_nhomchiphi::text = ${nhom}
+      ORDER BY c.f_ngaygiaodich DESC LIMIT 500`)) as unknown as Record<string, unknown>[];
+    return reply.send({ mode: "detail", rows });
+  });
+
   // ── Thông tin sản phẩm cho 4 tab ──
   app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);
