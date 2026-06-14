@@ -667,6 +667,7 @@ function PagesTreeSection({
   onNavigate,
   navNodes,
   orphanPages,
+  allPages,
   onOpen,
   onDeletePage,
 }: {
@@ -679,6 +680,8 @@ function PagesTreeSection({
   onNavigate?: () => void;
   navNodes: NavNode[];
   orphanPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
+  /** Toàn bộ trang (gắn + chưa gắn menu) để lọc khi tìm kiếm. */
+  allPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
   onOpen: (to: string) => void;
   onDeletePage?: (id: string) => void;
 }) {
@@ -686,99 +689,181 @@ function PagesTreeSection({
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
   const matched = pathname.match(/^\/(?:pages|view)\/([^/]+)/);
   const activePageId = matched?.[1] ?? null;
+  // Tìm kiếm trang trong menu — toggle icon → input inline (giống ô tìm
+  // kiếm ở "Trang chủ"). Có query → hiện danh sách phẳng đã lọc thay cây.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setQ("");
+  };
   if (collapsed) return null;
   const kind = t("sidebar.pages").toLowerCase();
+  const ql = q.trim().toLowerCase();
+  const results = ql ? allPages.filter((p) => p.name.toLowerCase().includes(ql)) : [];
   return (
     <div className="border-b border-border/40 pb-1">
       <div className="group/sec flex items-center px-3 pt-2 pb-0.5">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex-1 flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted/60 hover:text-muted transition-colors"
-        >
-          <I.ChevronRight
-            size={9}
-            className={cn("transition-transform shrink-0", open && "rotate-90")}
-          />
-          <span>{t("sidebar.pages")}</span>
-        </button>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-          {onAiAdd && (
+        {searchOpen ? (
+          <>
+            <I.Search size={11} className="shrink-0 text-muted" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") closeSearch();
+              }}
+              placeholder={t("sidebar.search")}
+              className="flex-1 bg-transparent outline-none text-[12px] text-text placeholder:text-muted/50 min-w-0 ml-1.5"
+            />
             <button
               type="button"
-              onClick={onAiAdd}
-              className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent"
-              title={t("sidebar.add_ai", { kind })}
+              onClick={closeSearch}
+              className="w-5 h-5 rounded-sm flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 transition-colors shrink-0"
+              title={t("common.close")}
             >
-              <I.Sparkles size={11} />
+              <I.X size={11} />
             </button>
-          )}
-          {onAdd && (
+          </>
+        ) : (
+          <>
             <button
               type="button"
-              onClick={onAdd}
-              className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
-              title={t("sidebar.add_blank", { kind })}
+              onClick={onToggle}
+              className="flex-1 flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted/60 hover:text-muted transition-colors"
             >
-              <I.Plus size={12} />
+              <I.ChevronRight
+                size={9}
+                className={cn("transition-transform shrink-0", open && "rotate-90")}
+              />
+              <span>{t("sidebar.pages")}</span>
             </button>
-          )}
-        </div>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                title={t("sidebar.search")}
+              >
+                <I.Search size={11} />
+              </button>
+              {onAiAdd && (
+                <button
+                  type="button"
+                  onClick={onAiAdd}
+                  className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent"
+                  title={t("sidebar.add_ai", { kind })}
+                >
+                  <I.Sparkles size={11} />
+                </button>
+              )}
+              {onAdd && (
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                  title={t("sidebar.add_blank", { kind })}
+                >
+                  <I.Plus size={12} />
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
-      {open && (
-        <>
-          <MenuTree
-            nodes={navNodes}
-            activePageId={activePageId}
-            onSelect={(id) => {
-              onOpen(`/pages/${id}`);
-              onNavigate?.();
-            }}
-          />
-          {orphanPages.length > 0 && (
-            <div className="mt-1 pt-1 border-t border-border/30">
-              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold">
-                Chưa gắn menu
-              </div>
-              <ul>
-                {orphanPages.map((p) => {
-                  const active = pathname === p.to || activePageId === p.id;
-                  const IconC = I[p.icon] ?? I.Layout;
-                  return (
-                    <li key={p.id} className="relative group/orphan">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onOpen(p.to);
-                          onNavigate?.();
-                        }}
-                        className={cn(
-                          "w-full text-left pl-4 pr-7 py-1.5 text-sm flex items-center gap-2 transition-colors",
-                          active
-                            ? "bg-accent/10 text-accent font-medium"
-                            : "text-text hover:bg-hover/40",
-                        )}
-                      >
-                        <IconC size={13} className="shrink-0 text-muted" />
-                        <span className="truncate">{p.name}</span>
-                      </button>
-                      {onDeletePage && (
+      {ql ? (
+        <ul className="py-1">
+          {results.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-muted">Không tìm thấy trang</li>
+          ) : (
+            results.map((p) => {
+              const active = pathname === p.to || activePageId === p.id;
+              const IconC = I[p.icon] ?? I.Layout;
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpen(p.to);
+                      onNavigate?.();
+                    }}
+                    className={cn(
+                      "w-full text-left pl-4 pr-3 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                      active
+                        ? "bg-accent/10 text-accent font-medium"
+                        : "text-text hover:bg-hover/40",
+                    )}
+                  >
+                    <IconC size={13} className="shrink-0 text-muted" />
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      ) : (
+        open && (
+          <>
+            <MenuTree
+              nodes={navNodes}
+              activePageId={activePageId}
+              onSelect={(id) => {
+                onOpen(`/pages/${id}`);
+                onNavigate?.();
+              }}
+            />
+            {orphanPages.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-border/30">
+                <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold">
+                  Chưa gắn menu
+                </div>
+                <ul>
+                  {orphanPages.map((p) => {
+                    const active = pathname === p.to || activePageId === p.id;
+                    const IconC = I[p.icon] ?? I.Layout;
+                    return (
+                      <li key={p.id} className="relative group/orphan">
                         <button
                           type="button"
-                          onClick={() => onDeletePage(p.id)}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger opacity-0 group-hover/orphan:opacity-100 transition-opacity"
-                          title={t("common.delete")}
+                          onClick={() => {
+                            onOpen(p.to);
+                            onNavigate?.();
+                          }}
+                          className={cn(
+                            "w-full text-left pl-4 pr-7 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                            active
+                              ? "bg-accent/10 text-accent font-medium"
+                              : "text-text hover:bg-hover/40",
+                          )}
                         >
-                          <I.Trash size={11} />
+                          <IconC size={13} className="shrink-0 text-muted" />
+                          <span className="truncate">{p.name}</span>
                         </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </>
+                        {onDeletePage && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePage(p.id)}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger opacity-0 group-hover/orphan:opacity-100 transition-opacity"
+                            title={t("common.delete")}
+                          >
+                            <I.Trash size={11} />
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </>
+        )
       )}
     </div>
   );
@@ -1307,6 +1392,21 @@ export function Sidebar() {
                   .filter((p) => !linkedPageIds.has(p.id))
                   .map((p) => ({ id: p.id, name: p.name, icon: p.icon, to: `/pages/${p.id}` })),
               ];
+              // Toàn bộ trang (gắn + chưa gắn) để ô tìm kiếm lọc.
+              const allPages = [
+                ...staticPages.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  icon: s.iconName,
+                  to: s.to,
+                })),
+                ...pagesBase.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  icon: p.icon,
+                  to: `/pages/${p.id}`,
+                })),
+              ];
               return (
                 <PagesTreeSection
                   collapsed={collapsed}
@@ -1318,6 +1418,7 @@ export function Sidebar() {
                   onNavigate={collapseOpsSettings}
                   navNodes={navNodes}
                   orphanPages={orphanPages}
+                  allPages={allPages}
                   onOpen={(to) => navigate({ to })}
                   onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
                 />
