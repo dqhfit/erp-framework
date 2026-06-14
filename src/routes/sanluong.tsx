@@ -382,6 +382,8 @@ function SanLuongPage() {
       )}
       {findCard && (
         <TimThePallet
+          congDoan={congDoan.trim()}
+          diqua={diqua}
           onClose={() => setFindCard(false)}
           onPick={(card) => {
             setFindCard(false);
@@ -403,9 +405,13 @@ async function jget(url: string): Promise<{ rows?: unknown[] }> {
   return (await res.json().catch(() => ({}))) as { rows?: unknown[] };
 }
 function TimThePallet({
+  congDoan,
+  diqua,
   onClose,
   onPick,
 }: {
+  congDoan: string;
+  diqua: number;
   onClose: () => void;
   onPick: (cardNo: string) => void;
 }) {
@@ -458,14 +464,14 @@ function TimThePallet({
     if (!v) return;
     setBusy(true);
     jget(
-      `/banvesvc/sl-pallet-cards?dondathang=${encodeURIComponent(order)}&mact=${encodeURIComponent(v)}`,
+      `/banvesvc/sl-pallet-cards?dondathang=${encodeURIComponent(order)}&mact=${encodeURIComponent(v)}&congDoan=${encodeURIComponent(congDoan)}&diqua=${diqua}`,
     )
       .then((d) =>
         setCards(
-          ((d.rows as Array<{ card_no?: string; soluong?: number; tenct?: string }>) ?? []).map(
+          ((d.rows as Array<{ card_no?: string; soluong?: number; concan?: number }>) ?? []).map(
             (r) => ({
               value: String(r.card_no ?? ""),
-              label: `${r.card_no} — SL ${r.soluong ?? 0}`,
+              label: `${r.card_no} — SL ${r.soluong ?? 0} · còn cần ${r.concan ?? 0}`,
             }),
           ),
         ),

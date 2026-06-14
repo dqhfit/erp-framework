@@ -229,14 +229,35 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   app.get("/banvesvc/sl-pallet-cards", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
-    const q = (req.query ?? {}) as { dondathang?: string; mact?: string };
+    const q = (req.query ?? {}) as {
+      dondathang?: string;
+      mact?: string;
+      congDoan?: string;
+      diqua?: string;
+    };
     const dondathang = (q.dondathang ?? "").trim();
     const mact = (q.mact ?? "").trim();
+    const congDoan = (q.congDoan ?? "").trim();
+    const diqua = Number(q.diqua) > 0 ? Math.trunc(Number(q.diqua)) : 1;
     if (!dondathang || !mact) return reply.send({ rows: [] });
+    const cid = auth.companyId;
+    // "Còn cần" = soluong − số đã làm tại công đoạn hiện tại (cùng diqua) —
+    // khớp logic cardinfo. Bỏ qua nếu không biết công đoạn.
+    const dalamJoin = congDoan
+      ? sql`LEFT JOIN (
+          SELECT f_pcard, sum(f_soluong) AS dalam FROM tr_trangthai_sanxuat
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+            AND f_congdoan = ${congDoan} AND f_diqua = ${diqua}
+          GROUP BY f_pcard) d ON d.f_pcard = c.f_card_no`
+      : sql``;
+    const dalamCol = congDoan
+      ? sql`coalesce(d.dalam, 0) AS dalam, (coalesce(c.f_soluong, 0) - coalesce(d.dalam, 0)) AS concan`
+      : sql`0 AS dalam, c.f_soluong AS concan`;
     const rows = (await db.execute(sql`
-      SELECT c.f_card_no AS card_no, c.f_soluong AS soluong, c.f_tenct_snap AS tenct
+      SELECT c.f_card_no AS card_no, c.f_soluong AS soluong, c.f_tenct_snap AS tenct, ${dalamCol}
       FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
-      WHERE p.company_id = ${auth.companyId}::uuid AND p.deleted_at IS NULL
+      ${dalamJoin}
+      WHERE p.company_id = ${cid}::uuid AND p.deleted_at IS NULL
         AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang} AND c.f_mact_snap = ${mact}
       ORDER BY c.f_card_no LIMIT 500`)) as unknown as Record<string, unknown>[];
     return reply.send({ rows });
