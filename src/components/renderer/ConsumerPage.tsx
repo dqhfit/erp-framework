@@ -18,6 +18,7 @@ import {
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
+import { useBlocker } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
@@ -34,6 +35,7 @@ import { Chip, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
+import { dialog } from "@/lib/dialog";
 import { applyFieldFormat } from "@/lib/format";
 import type { EntityField, MockEntity } from "@/lib/object-types";
 import { applyFilters } from "@/lib/page-filters";
@@ -851,10 +853,38 @@ function ServerPagedListWidget({
   const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+  // Lỗi theo TỪNG dòng sau "Lưu tất cả" — [{ id, label, msg }].
+  const [rowErrs, setRowErrs] = useState<Array<{ id: string; label: string; msg: string }>>([]);
+
+  // Guard "pending chưa lưu": batchEdit còn ô sửa chưa lưu → chặn điều hướng
+  // TRONG app (confirm dialog) + reload/đóng tab (native prompt). Chống mất edit
+  // dồn qua nhiều trang server. (Lật trang server KHÔNG mất — pending sống xuyên
+  // trang vì component không unmount.)
+  const hasUnsaved = !!batchEdit && pending.size > 0;
+  useBlocker({
+    shouldBlockFn: async () => {
+      if (!hasUnsaved) return false;
+      const leave = await dialog.confirm(t("widget.unsaved_leave", { count: pending.size }), {
+        title: t("widget.unsaved_title"),
+        danger: true,
+      });
+      return !leave; // chặn nếu user chọn ở lại
+    },
+    enableBeforeUnload: () => hasUnsaved,
+  });
+
   const writeRecord = (rowId: unknown, changes: Record<string, unknown>) =>
     dataSourceId
       ? api.updateDataSourceRecord(dataSourceId, String(rowId), changes).then(() => undefined)
       : api.updateRecord(String(rowId), changes).then(() => undefined);
+  // Nhãn dòng để báo lỗi — lấy giá trị field hiển thị đầu tiên (nếu dòng đang
+  // ở trang hiện tại), else id rút gọn (dòng đã sửa ở trang khác).
+  const rowLabel = (rowId: string): string => {
+    const r = rows.find((x) => String(x.id) === rowId);
+    const first = visibleFields[0]?.name;
+    const v = r && first ? r[first] : undefined;
+    return v != null && String(v).trim() ? String(v) : `#${rowId.slice(0, 8)}`;
+  };
   // saveRef: cell renderer (trong columns memo) luôn gọi bản mới nhất mà không
   // rebuild cột mỗi lần pending đổi.
   const saveRef = useRef<(rowId: unknown, field: string, value: string) => void>(() => {});
@@ -875,15 +905,24 @@ function ServerPagedListWidget({
   const saveAll = async () => {
     setSaving(true);
     setSaveErr("");
-    try {
-      for (const [rowId, changes] of pending) await writeRecord(rowId, changes);
-      setPending(new Map());
-      refresh();
-    } catch (e) {
-      setSaveErr((e as Error).message);
-    } finally {
-      setSaving(false);
+    setRowErrs([]);
+    // Lưu tuần tự từng dòng; GIỮ dòng lỗi lại trong pending để thử lại, gỡ dòng
+    // đã lưu. Báo lỗi theo từng dòng (nhãn + thông điệp).
+    const failed = new Map<string, Record<string, string>>();
+    const errs: Array<{ id: string; label: string; msg: string }> = [];
+    for (const [rowId, changes] of pending) {
+      try {
+        await writeRecord(rowId, changes);
+      } catch (e) {
+        failed.set(rowId, changes);
+        errs.push({ id: rowId, label: rowLabel(rowId), msg: (e as Error).message });
+      }
     }
+    setPending(failed);
+    setRowErrs(errs);
+    if (errs.length === 0) setSaveErr("");
+    setSaving(false);
+    refresh();
   };
 
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
@@ -988,10 +1027,25 @@ function ServerPagedListWidget({
       {editable && batchEdit && pending.size > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border-b border-warning/30 shrink-0">
           <I.AlertCircle size={12} className="text-warning shrink-0" />
-          <span className="text-xs text-warning flex-1">
+          <span className="text-xs text-warning shrink-0">
             {t("widget.pending_records", { count: pending.size })}
           </span>
-          {saveErr && <span className="text-xs text-danger">{saveErr}</span>}
+          {/* Lỗi theo từng dòng — nhãn + tooltip thông điệp đầy đủ. Dòng lỗi vẫn
+              nằm trong pending (count trên) để thử lại. */}
+          {rowErrs.length > 0 && (
+            <span
+              className="text-xs text-danger flex-1 truncate"
+              title={rowErrs.map((r) => `${r.label}: ${r.msg}`).join("\n")}
+            >
+              ⚠ {rowErrs.length} dòng lỗi:{" "}
+              {rowErrs
+                .slice(0, 3)
+                .map((r) => r.label)
+                .join(", ")}
+              {rowErrs.length > 3 ? "…" : ""}
+            </span>
+          )}
+          {rowErrs.length === 0 && <span className="flex-1" />}
           <button
             type="button"
             disabled={saving}
@@ -1003,7 +1057,10 @@ function ServerPagedListWidget({
           <button
             type="button"
             disabled={saving}
-            onClick={() => setPending(new Map())}
+            onClick={() => {
+              setPending(new Map());
+              setRowErrs([]);
+            }}
             className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
           >
             {t("common.cancel")}
