@@ -41,6 +41,12 @@ export const users = pgTable("users", {
   // role: vai trò mặc định khi tạo công ty mới — vai trò HIỆU LỰC theo
   // từng công ty nằm ở company_members.role.
   role: userRole("role").notNull().default("viewer"),
+  // Định danh LEGACY DQHF (bridge login MD5): chỉ set cho user được lazy-tạo
+  // từ sys_user. Bridge khớp/ghi-đè CHỈ user có cùng (legacy_company_id,
+  // legacy_username) — KHÔNG bao giờ đụng user framework thường (chống account
+  // takeover qua va chạm email tổng hợp). Unique partial index ở migration 0077.
+  legacyUsername: text("legacy_username"),
+  legacyCompanyId: uuid("legacy_company_id"),
   // primaryAgentId: "agent chính" của user — Topbar/AgentPanel ưu tiên bind
   // vào agent này khi không có route /agents/$id. Optional; null = chưa chọn,
   // fallback xuống CEO mặc định của công ty (xem AgentPanel).

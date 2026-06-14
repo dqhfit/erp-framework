@@ -19,6 +19,7 @@ import {
 } from "@erp-framework/db";
 import { router, protectedProcedure, rbacProcedure } from "./trpc";
 import { hashPassword, newSessionToken } from "./auth";
+import { LEGACY_EMAIL_DOMAIN } from "./legacy-login";
 import { logActivity } from "./activity";
 import type { DB } from "./db";
 
@@ -185,7 +186,15 @@ export const companiesRouter = router({
   addMember: rbacProcedure("edit", "company")
     .input(
       z.object({
-        email: z.string().email(),
+        email: z
+          .string()
+          .email()
+          // Namespace @dqhf.local dành riêng cho user lazy-tạo từ bridge legacy
+          // — chặn tạo tay để không pre-claim định danh legacy của user khác.
+          .refine(
+            (e) => !e.toLowerCase().endsWith(`@${LEGACY_EMAIL_DOMAIN}`),
+            "Email không hợp lệ.",
+          ),
         name: z.string().min(1).optional(),
         password: z.string().min(8).optional(),
         role: roleEnum.optional(),

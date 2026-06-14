@@ -71,7 +71,12 @@ import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
 import { encryptSecret } from "./crypto";
 
-import { legacyEmail, tryLegacyMd5Login } from "./legacy-login";
+import { LEGACY_EMAIL_DOMAIN, tryLegacyMd5Login } from "./legacy-login";
+
+/** Email người dùng nhập (register/invite) KHÔNG được thuộc namespace tổng hợp
+ *  @dqhf.local — namespace này dành riêng cho user lazy-tạo từ bridge legacy.
+ *  Chặn để không ai pre-claim định danh legacy của user khác. */
+const notLegacyDomain = (email: string) => !email.toLowerCase().endsWith(`@${LEGACY_EMAIL_DOMAIN}`);
 import { getBudget, setBudget, monthUsageUsd } from "./budget";
 import { exportBundle, importBundle } from "./transfer";
 import {
@@ -104,7 +109,7 @@ export const appRouter = router({
       .use(rateLimit("auth.register", 5, 15 * 60 * 1000))
       .input(
         z.object({
-          email: z.string().email(),
+          email: z.string().email().refine(notLegacyDomain, "Email này không được phép."),
           name: z.string().min(1),
           password: z.string().min(8),
         }),
@@ -160,23 +165,29 @@ export const appRouter = router({
       .input(z.object({ email: z.string().min(1), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const idf = input.email.trim();
-        // Email ứng viên: nhập thẳng + (nếu là username) email tổng hợp
-        // username@dqhf.local của user cũ đã lazy-onboard lần trước.
-        const candidates = idf.includes("@")
-          ? [idf.toLowerCase()]
-          : [idf.toLowerCase(), legacyEmail(idf)];
+        const isEmail = idf.includes("@");
+        // Tìm user framework đã có: theo EMAIL (login email) HOẶC theo ĐỊNH DANH
+        // LEGACY (user DQHF cũ đã onboard lần trước → login bằng username). KHÔNG
+        // khớp qua email tổng hợp username@dqhf.local (chống account takeover do
+        // va chạm email — chỉ định danh legacy mới hợp lệ).
         let [u] = await ctx.db
           .select()
           .from(users)
-          .where(sql`lower(${users.email}) = ANY(${candidates})`)
+          .where(
+            isEmail
+              ? sql`lower(${users.email}) = ${idf.toLowerCase()}`
+              : sql`lower(${users.legacyUsername}) = ${idf.toLowerCase()}`,
+          )
           .limit(1);
         let ok = !!u && (await verifyPassword(input.password, u.passwordHash));
         // Công ty xác định bởi legacy onboard (nếu có), else tra membership sau.
         let legacyCompanyId: string | null = null;
 
-        // BRIDGE DQHF: scrypt fail → thử khớp MD5 ở sys_user theo username.
-        // Khớp → lazy tạo/nâng-cấp user framework (rehash scrypt) + membership
-        // viewer/approved. Mật khẩu cũ tự nâng lên scrypt mạnh ngay lần đầu.
+        // BRIDGE DQHF: scrypt fail → thử khớp MD5 ở sys_user theo username/email.
+        // Khớp → tìm user framework theo ĐỊNH DANH LEGACY (legacy_username +
+        // legacy_company_id), KHÔNG theo email → KHÔNG bao giờ đụng/ghi-đè user
+        // framework thường (chống pre-registration takeover). Chưa có → lazy
+        // tạo (viewer/approved + gắn định danh legacy). Mật khẩu cũ nâng scrypt.
         if (!ok) {
           const legacy = await tryLegacyMd5Login(ctx.db, idf, input.password);
           if (legacy) {
@@ -184,19 +195,36 @@ export const appRouter = router({
             const [fu] = await ctx.db
               .select()
               .from(users)
-              .where(sql`lower(${users.email}) = ${legacy.email.toLowerCase()}`)
+              .where(
+                and(
+                  sql`lower(${users.legacyUsername}) = ${legacy.username.toLowerCase()}`,
+                  eq(users.legacyCompanyId, legacy.companyId),
+                ),
+              )
               .limit(1);
             if (fu) {
+              // Đúng định danh legacy (user tự sở hữu) → nâng scrypt an toàn.
               await ctx.db.update(users).set({ passwordHash: newHash }).where(eq(users.id, fu.id));
               u = fu;
             } else {
+              // Tạo user framework mới gắn định danh legacy. Email tổng hợp;
+              // thêm hậu tố công ty nếu trùng (cross-company cùng username).
+              let email = legacy.email;
+              const [clash] = await ctx.db
+                .select({ id: users.id })
+                .from(users)
+                .where(sql`lower(${users.email}) = ${email.toLowerCase()}`)
+                .limit(1);
+              if (clash) email = legacy.email.replace("@", `.${legacy.companyId.slice(0, 8)}@`);
               const [created] = await ctx.db
                 .insert(users)
                 .values({
-                  email: legacy.email,
+                  email,
                   name: legacy.name,
                   passwordHash: newHash,
                   role: "viewer",
+                  legacyUsername: legacy.username,
+                  legacyCompanyId: legacy.companyId,
                 })
                 .returning();
               u = created;
@@ -408,7 +436,10 @@ export const appRouter = router({
         z.object({
           token: z.string().min(1),
           name: z.string().min(1, "Vui lòng nhập họ tên"),
-          email: z.string().email("Email không hợp lệ"),
+          email: z
+            .string()
+            .email("Email không hợp lệ")
+            .refine(notLegacyDomain, "Email này không được phép."),
           password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
         }),
       )

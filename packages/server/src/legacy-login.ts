@@ -22,6 +22,10 @@ function md5VariantsUpper(pw: string): string[] {
   ].map((h) => h.toUpperCase());
 }
 
+/** Domain RIÊNG cho email tổng hợp của user legacy — register/invite phải
+ *  chặn domain này (không ai pre-claim định danh legacy của user khác). */
+export const LEGACY_EMAIL_DOMAIN = "dqhf.local";
+
 /** Email tổng hợp định danh theo username (user cũ thường không có email).
  *  Local-part chỉ giữ ký tự hợp lệ; ổn định theo username để login lặp lại. */
 export function legacyEmail(username: string): string {
@@ -30,7 +34,7 @@ export function legacyEmail(username: string): string {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9._-]/g, "_") || "user";
-  return `${local}@dqhf.local`;
+  return `${local}@${LEGACY_EMAIL_DOMAIN}`;
 }
 
 export interface LegacyMatch {
