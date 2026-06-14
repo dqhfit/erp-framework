@@ -203,6 +203,71 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ masp });
   });
 
+  // ── "Tìm sản phẩm" — tra theo Tên/Mã + Hệ hàng (port mode 1+text).
+  //    masp/tensp/hehang là cột text typed → SQL trực tiếp an toàn (bind param). ──
+  app.get("/banvesvc/search", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = ((req.query ?? {}) as { q?: string }).q?.trim() ?? "";
+    const hehang = ((req.query ?? {}) as { hehang?: string }).hehang?.trim() ?? "";
+    if (!q && !hehang) return reply.send({ rows: [] });
+    const like = `%${q}%`;
+    const rows = (await db.execute(
+      sql`SELECT f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang
+          FROM tr_sanpham
+          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+            AND (${q} = '' OR f_masp ILIKE ${like} OR f_tensp ILIKE ${like})
+            AND (${hehang} = '' OR f_hehang = ${hehang})
+          ORDER BY f_masp LIMIT 50`,
+    )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
+  // ── Danh sách Hệ hàng (cho dropdown "Theo hệ hàng") ──
+  app.get("/banvesvc/hehang", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = ((req.query ?? {}) as { q?: string }).q?.trim() ?? "";
+    const rows = (await db.execute(
+      sql`SELECT DISTINCT f_hehang AS hehang FROM tr_sanpham
+          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+            AND f_hehang IS NOT NULL AND f_hehang <> ''
+            AND (${q} = '' OR f_hehang ILIKE ${`%${q}%`})
+          ORDER BY f_hehang LIMIT 50`,
+    )) as unknown as Array<{ hehang: string }>;
+    return reply.send({ rows: rows.map((r) => r.hehang) });
+  });
+
+  // ── Danh sách Đơn đặt hàng (maddh DQH-DQHF%/DQH-VFM%) cho "Theo đơn đặt hàng" ──
+  app.get("/banvesvc/donhang", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = ((req.query ?? {}) as { q?: string }).q?.trim() ?? "";
+    const rows = (await db.execute(
+      sql`SELECT f_maddh AS maddh, f_tenddh AS tenddh FROM tr_dondathang
+          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+            AND (f_maddh ILIKE 'DQH-DQHF%' OR f_maddh ILIKE 'DQH-VFM%')
+            AND (${q} = '' OR f_maddh ILIKE ${`%${q}%`})
+          ORDER BY f_maddh DESC LIMIT 50`,
+    )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
+  // ── Sản phẩm trong 1 đơn đặt hàng (tr_dondathang_chitiet) ──
+  app.get("/banvesvc/donhang-items", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const maddh = ((req.query ?? {}) as { maddh?: string }).maddh?.trim() ?? "";
+    if (!maddh) return reply.send({ rows: [] });
+    const rows = (await db.execute(
+      sql`SELECT DISTINCT f_masp AS masp, f_tenchitiet AS tenchitiet FROM tr_dondathang_chitiet
+          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+            AND f_maddh = ${maddh} AND f_masp IS NOT NULL AND f_masp <> ''
+          ORDER BY f_masp LIMIT 200`,
+    )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
   // ── Mở file PDF của 1 bản vẽ (serve tại chỗ hoặc 302 viewer PDF.js) ──
   app.get("/banvesvc/file", async (req, reply) => {
     const auth = await authView(db, req, reply);

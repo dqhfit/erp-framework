@@ -68,6 +68,7 @@ function BanVePage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   const load = useCallback(async (m: string) => {
     const q = m.trim();
@@ -140,6 +141,11 @@ function BanVePage() {
       </div>
 
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
+        {/* Tìm sản phẩm */}
+        <Button variant="ghost" onClick={() => setSearching(true)} className="w-full justify-start">
+          <I.Search size={15} /> Tìm sản phẩm (theo tên/mã, hệ hàng, đơn đặt hàng)
+        </Button>
+
         {/* Loại bản vẽ + quét */}
         <div className="flex gap-2">
           <Select value={type} onChange={(e) => setType(e.target.value)} className="flex-1">
@@ -223,6 +229,186 @@ function BanVePage() {
       {scanning && (
         <QrScanner title="Quét phiếu" onClose={() => setScanning(false)} onResult={scanResult} />
       )}
+      {searching && (
+        <TimSanPham
+          onClose={() => setSearching(false)}
+          onPick={(m) => {
+            setSearching(false);
+            setMasp(m);
+            void load(m);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── "Tìm sản phẩm" — 3 chế độ: Tên/Mã · Hệ hàng · Đơn đặt hàng ── */
+type SearchMode = "text" | "hehang" | "donhang";
+function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: string) => void }) {
+  const [mode, setMode] = useState<SearchMode>("text");
+  const [q, setQ] = useState("");
+  const [parent, setParent] = useState<{ key: string; label: string } | null>(null);
+  const [list, setList] = useState<Array<{ value: string; label: string; sub?: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const run = useCallback(
+    async (m: SearchMode, query: string, par: { key: string; label: string } | null) => {
+      setLoading(true);
+      try {
+        let url = "";
+        if (m === "text") url = `/banvesvc/search?q=${encodeURIComponent(query)}`;
+        else if (m === "hehang")
+          url = par
+            ? `/banvesvc/search?hehang=${encodeURIComponent(par.key)}`
+            : `/banvesvc/hehang?q=${encodeURIComponent(query)}`;
+        else
+          url = par
+            ? `/banvesvc/donhang-items?maddh=${encodeURIComponent(par.key)}`
+            : `/banvesvc/donhang?q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, { credentials: "include" });
+        const data = (await res.json()) as { rows: unknown[] };
+        const rows = data.rows ?? [];
+        // Cấp 1 chọn parent (hệ hàng / đơn) — string[] hoặc {maddh,tenddh}.
+        if ((m === "hehang" || m === "donhang") && !par) {
+          setList(
+            (rows as Array<string | { maddh?: string; tenddh?: string }>).map((r) =>
+              typeof r === "string"
+                ? { value: r, label: r }
+                : {
+                    value: String(r.maddh ?? ""),
+                    label: String(r.maddh ?? ""),
+                    sub: r.tenddh ? String(r.tenddh) : undefined,
+                  },
+            ),
+          );
+        } else {
+          // Sản phẩm: {masp, tensp, hehang} hoặc {masp, tenchitiet}.
+          setList(
+            (rows as Array<Record<string, unknown>>).map((r) => ({
+              value: String(r.masp ?? ""),
+              label: String(r.masp ?? ""),
+              sub: String(r.tensp ?? r.tenchitiet ?? r.hehang ?? "") || undefined,
+            })),
+          );
+        }
+      } catch {
+        setList([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const switchMode = (m: SearchMode) => {
+    setMode(m);
+    setParent(null);
+    setQ("");
+    setList([]);
+    if (m === "hehang" || m === "donhang") void run(m, "", null);
+  };
+
+  const pickItem = (it: { value: string; label: string }) => {
+    if ((mode === "hehang" || mode === "donhang") && !parent) {
+      const par = { key: it.value, label: it.label };
+      setParent(par);
+      void run(mode, "", par);
+    } else {
+      onPick(it.value);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center">
+      <div className="bg-panel w-full sm:max-w-md sm:rounded-lg rounded-t-lg max-h-[85vh] flex flex-col">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <span className="text-sm font-medium flex-1">Tìm sản phẩm</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded hover:bg-hover text-muted"
+            aria-label="Đóng"
+          >
+            <I.X size={18} />
+          </button>
+        </div>
+        {/* Mode tabs */}
+        <div className="flex border-b border-border">
+          {(
+            [
+              ["text", "Tên/Mã"],
+              ["hehang", "Hệ hàng"],
+              ["donhang", "Đơn đặt hàng"],
+            ] as [SearchMode, string][]
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => switchMode(m)}
+              className={`flex-1 px-2 py-2 text-xs border-b-2 -mb-px ${
+                mode === m
+                  ? "border-accent text-accent font-semibold"
+                  : "border-transparent text-muted"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* Search input (cấp 1) hoặc breadcrumb parent */}
+        <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+          {parent ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setParent(null);
+                  void run(mode, q, null);
+                }}
+                className="text-xs text-accent inline-flex items-center gap-1"
+              >
+                <I.ChevronRight size={12} className="rotate-180" /> {parent.label}
+              </button>
+            </>
+          ) : (
+            <input
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                void run(mode, e.target.value, null);
+              }}
+              placeholder={
+                mode === "hehang"
+                  ? "Lọc hệ hàng…"
+                  : mode === "donhang"
+                    ? "Lọc mã đơn…"
+                    : "Nhập tên/mã sản phẩm…"
+              }
+              className="input flex-1 h-9 text-sm"
+              autoCapitalize="characters"
+            />
+          )}
+        </div>
+        {/* Kết quả */}
+        <div className="overflow-y-auto flex-1 min-h-0">
+          {loading && <div className="text-xs text-muted py-4 text-center">Đang tra…</div>}
+          {!loading && list.length === 0 && (
+            <div className="text-xs text-muted py-6 text-center">Không có kết quả.</div>
+          )}
+          {list.map((it) => (
+            <button
+              key={`${it.value}-${it.label}`}
+              type="button"
+              onClick={() => pickItem(it)}
+              className="w-full text-left px-3 py-2 border-b border-border/50 hover:bg-hover/40"
+            >
+              <span className="block text-sm font-medium truncate">{it.label}</span>
+              {it.sub && <span className="block text-xs text-muted truncate">{it.sub}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
