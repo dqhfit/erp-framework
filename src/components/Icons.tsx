@@ -357,6 +357,15 @@ export const I = {
       <path d="M14 14h3v3M21 14v7h-7M17 21h.01M21 17h.01" />
     </Icon>
   ),
+  SwitchCamera: (p: IP) => (
+    <Icon {...p}>
+      <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+      <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="m18 22-3-3 3-3" />
+      <path d="m6 2 3 3-3 3" />
+    </Icon>
+  ),
   Box: (p: IP) => (
     <Icon {...p}>
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
