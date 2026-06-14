@@ -79,9 +79,9 @@ function SanLuongPage() {
     if (typeof localStorage !== "undefined") localStorage.setItem(LS_CONGDOAN, v);
   };
 
-  // Khi mở: tra công đoạn user được xếp. 1 công đoạn → tự chọn; >1 → buộc
-  // chọn từ danh sách (xóa lựa chọn cũ); 0 → fallback nhập tay (admin/editor
-  // hoặc user chưa được xếp scan_op).
+  // Khi mở: tra công đoạn user được xếp. 1 công đoạn → tự chọn; >1 → nhớ
+  // công đoạn đã chọn lần trước (nếu còn được xếp) → vào thẳng, không thì hiện
+  // danh sách; 0 → fallback nhập tay (admin/editor hoặc user chưa xếp scan_op).
   useEffect(() => {
     let alive = true;
     fetch("/banvesvc/my-stages", { credentials: "include" })
@@ -96,7 +96,11 @@ function SanLuongPage() {
           if (typeof localStorage !== "undefined")
             localStorage.setItem(LS_CONGDOAN, only.cLocation);
         } else if (st.length > 1) {
-          setCongDoan(""); // buộc chọn công đoạn mỗi lần mở
+          // Giữ lựa chọn lần trước (congDoan đã = localStorage) nếu vẫn được
+          // xếp; không hợp lệ (lần đầu / đổi phân công) → để trống → picker.
+          const remembered =
+            (typeof localStorage !== "undefined" && localStorage.getItem(LS_CONGDOAN)) || "";
+          if (!st.some((s) => s.cLocation === remembered)) setCongDoan("");
         }
       })
       .catch(() => {
