@@ -762,6 +762,12 @@ const TOOLS: ToolDef[] = [
         },
         targetTier: { type: "string", enum: ["eav", "table"] },
         batchSize: { type: "number", minimum: 100, maximum: 50000 },
+        allowSystemTables: {
+          type: "boolean",
+          description:
+            "true = bỏ qua denylist SYS_* (import bảng hệ thống có chủ đích, đã duyệt). " +
+            "Chỉ import cột khai trong fields — bỏ cột nhạy cảm bằng cách không liệt kê chúng.",
+        },
       },
       required: ["connectionId", "items"],
     },
@@ -2328,6 +2334,7 @@ async function callMigrationTool(
         items,
         batchSize,
         targetTier,
+        allowSystemTables: args.allowSystemTables === true,
       });
       await enqueueMigrationJob({
         action: "full-import",

@@ -263,6 +263,9 @@ export interface StartFullImportInput {
   batchSize?: number;
   writeManifest?: boolean;
   targetTier?: "eav" | "table";
+  /** true = bỏ qua denylist SYS_* cho job này (import bảng hệ thống có chủ đích,
+   *  đã được người dùng duyệt — vd SYS_USER chỉ lấy cột danh bạ, bỏ credential). */
+  allowSystemTables?: boolean;
 }
 
 /** Tạo job full-import: insert migration_full_jobs + prepare per-table
@@ -305,6 +308,7 @@ export async function createFullImportJob(
       input.items,
       batchSize,
       targetTier,
+      input.allowSystemTables ?? false,
     );
   } catch (e) {
     await db
@@ -326,6 +330,7 @@ export async function prepareFullJobTables(
   items: FullJobItem[],
   batchSize: number,
   targetTier: "eav" | "table" = "eav",
+  allowSystemTables = false,
 ): Promise<void> {
   const client = await loadConn(companyId, connectionId);
   try {
@@ -333,7 +338,8 @@ export async function prepareFullJobTables(
       // DENYLIST bảng hệ thống/phân quyền (SYS_*) — ngoài scope. Ghi thành
       // 'skipped' (không silent-drop) để job hiện rõ đã loại có chủ đích, và
       // không bao giờ kẹt worker trên bảng auth ghi liên tục như SYS_USER.
-      if (isDeniedSystemTable(it.tableName)) {
+      // allowSystemTables=true: bỏ guard (import có chủ đích, user đã duyệt).
+      if (!allowSystemTables && isDeniedSystemTable(it.tableName)) {
         await db.insert(migrationFullJobTables).values({
           jobId,
           tableName: it.tableName,
