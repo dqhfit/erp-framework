@@ -357,6 +357,13 @@ export const I = {
       <path d="M14 14h3v3M21 14v7h-7M17 21h.01M21 17h.01" />
     </Icon>
   ),
+  Box: (p: IP) => (
+    <Icon {...p}>
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </Icon>
+  ),
   Image: (p: IP) => (
     <Icon {...p}>
       <rect x="3" y="3" width="18" height="18" rx="2" />
