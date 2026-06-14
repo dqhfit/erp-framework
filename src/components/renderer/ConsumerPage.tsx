@@ -621,6 +621,30 @@ function EditableListWidget({
   const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+  // Lỗi theo TỪNG dòng sau "Lưu tất cả" — [{ id, label, msg }].
+  const [rowErrs, setRowErrs] = useState<Array<{ id: string; label: string; msg: string }>>([]);
+
+  // Guard "pending chưa lưu": batchEdit còn ô sửa chưa lưu → chặn điều hướng
+  // trong app (confirm) + reload/đóng tab (native prompt).
+  const hasUnsaved = !!batchEdit && pending.size > 0;
+  useBlocker({
+    shouldBlockFn: async () => {
+      if (!hasUnsaved) return false;
+      const leave = await dialog.confirm(t("widget.unsaved_leave", { count: pending.size }), {
+        title: t("widget.unsaved_title"),
+        danger: true,
+      });
+      return !leave;
+    },
+    enableBeforeUnload: () => hasUnsaved,
+  });
+  // Nhãn dòng để báo lỗi — giá trị field hiển thị đầu, else id rút gọn.
+  const rowLabel = (rowId: string): string => {
+    const r = filteredRows.find((x) => String(x.id) === rowId);
+    const first = visibleFields[0]?.name;
+    const v = r && first ? r[first] : undefined;
+    return v != null && String(v).trim() ? String(v) : `#${rowId.slice(0, 8)}`;
+  };
 
   // Lưu 1 ô: batch → gom pending; ngược lại lưu ngay. Pending cũng là overlay
   // hiển thị (ô vừa sửa thấy giá trị mới ngay, không chờ refetch). Ref để cell
@@ -675,14 +699,21 @@ function EditableListWidget({
   const saveAll = async () => {
     setSaving(true);
     setSaveErr("");
-    try {
-      for (const [rowId, changes] of pending) await onSave(rowId, changes);
-      setPending(new Map());
-    } catch (e) {
-      setSaveErr((e as Error).message);
-    } finally {
-      setSaving(false);
+    setRowErrs([]);
+    // Lưu tuần tự; GIỮ dòng lỗi lại trong pending để thử lại, gỡ dòng đã lưu.
+    const failed = new Map<string, Record<string, string>>();
+    const errs: Array<{ id: string; label: string; msg: string }> = [];
+    for (const [rowId, changes] of pending) {
+      try {
+        await onSave(rowId, changes);
+      } catch (e) {
+        failed.set(rowId, changes);
+        errs.push({ id: rowId, label: rowLabel(rowId), msg: (e as Error).message });
+      }
     }
+    setPending(failed);
+    setRowErrs(errs);
+    setSaving(false);
   };
 
   return (
@@ -697,10 +728,26 @@ function EditableListWidget({
       {batchEdit && pending.size > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border-b border-warning/30 shrink-0">
           <I.AlertCircle size={12} className="text-warning shrink-0" />
-          <span className="text-xs text-warning flex-1">
+          <span className="text-xs text-warning shrink-0">
             {t("widget.pending_records", { count: pending.size })}
           </span>
-          {saveErr && <span className="text-xs text-danger">{saveErr}</span>}
+          {/* Lỗi theo từng dòng — nhãn + tooltip thông điệp đầy đủ; dòng lỗi giữ
+              lại trong pending (count trên) để thử lại. */}
+          {rowErrs.length > 0 ? (
+            <span
+              className="text-xs text-danger flex-1 truncate"
+              title={rowErrs.map((r) => `${r.label}: ${r.msg}`).join("\n")}
+            >
+              ⚠ {rowErrs.length} dòng lỗi:{" "}
+              {rowErrs
+                .slice(0, 3)
+                .map((r) => r.label)
+                .join(", ")}
+              {rowErrs.length > 3 ? "…" : ""}
+            </span>
+          ) : (
+            <span className="flex-1" />
+          )}
           <button
             type="button"
             disabled={saving}
@@ -712,7 +759,10 @@ function EditableListWidget({
           <button
             type="button"
             disabled={saving}
-            onClick={() => setPending(new Map())}
+            onClick={() => {
+              setPending(new Map());
+              setRowErrs([]);
+            }}
             className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
           >
             {t("common.cancel")}
