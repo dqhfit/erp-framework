@@ -1,14 +1,19 @@
 /* ==========================================================
-   QrScanner — overlay quét QR/barcode bằng camera (BarcodeDetector API,
-   Chrome Android). Dùng cho trang bản vẽ + nhập sản lượng mobile.
-   Thiếu API thì caller tự ẩn nút mở scanner (canScanBarcode()).
+   QrScanner — overlay quét QR/barcode bằng camera. Hai đường giải mã:
+   - BarcodeDetector API (Chrome Android, vài WebView): nhanh, đa định dạng
+     (qr_code, code_128, code_39, ean_13).
+   - Fallback jsQR (mọi trình duyệt có camera, kể cả iOS Safari): CHỈ QR.
+   Nhờ fallback nên nút quét luôn hiện khi máy có camera (canScanBarcode()).
+   Dùng cho trang bản vẽ + nhập sản lượng mobile.
    ========================================================== */
+import jsQR from "jsqr";
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 
-/** BarcodeDetector có sẵn trên trình duyệt? (Chrome Android, một số WebView). */
+/** Quét được không? Có camera (getUserMedia) là đủ — không cần BarcodeDetector
+ *  (trình duyệt thiếu API sẽ rơi về jsQR). */
 export function canScanBarcode(): boolean {
-  return typeof window !== "undefined" && "BarcodeDetector" in window;
+  return typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 }
 
 export function QrScanner({
@@ -21,23 +26,62 @@ export function QrScanner({
   onClose: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Giữ onResult ổn định để camera không khởi động lại mỗi lần parent re-render.
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
   const [err, setErr] = useState("");
 
+  // Chỉ khởi tạo camera 1 lần (onResult đọc qua ref) — deps rỗng có chủ đích.
   useEffect(() => {
     let stream: MediaStream | null = null;
     let raf = 0;
     let stopped = false;
+    // BarcodeDetector native nếu có; nếu không → jsQR trên khung hình canvas.
     // biome-ignore lint/suspicious/noExplicitAny: BarcodeDetector chưa có trong lib DOM mặc định
     const Detector = (window as any).BarcodeDetector;
-    const detector = new Detector({ formats: ["qr_code", "code_128", "code_39", "ean_13"] });
+    const detector = Detector
+      ? new Detector({ formats: ["qr_code", "code_128", "code_39", "ean_13"] })
+      : null;
+
+    const done = (code: string) => {
+      if (stopped) return;
+      stopped = true;
+      onResultRef.current(code);
+    };
+
+    const decodeJsQr = (video: HTMLVideoElement): string | null => {
+      if (video.readyState < 2 || !video.videoWidth) return null;
+      const canvas = canvasRef.current ?? document.createElement("canvas");
+      canvasRef.current = canvas;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(video, 0, 0, w, h);
+      const img = ctx.getImageData(0, 0, w, h);
+      const r = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
+      return r?.data ?? null;
+    };
 
     const tick = async () => {
       if (stopped || !videoRef.current) return;
+      const video = videoRef.current;
       try {
-        const codes = await detector.detect(videoRef.current);
-        if (codes?.[0]?.rawValue) {
-          onResult(String(codes[0].rawValue));
-          return;
+        if (detector) {
+          const codes = await detector.detect(video);
+          if (codes?.[0]?.rawValue) {
+            done(String(codes[0].rawValue));
+            return;
+          }
+        } else {
+          const code = decodeJsQr(video);
+          if (code) {
+            done(code);
+            return;
+          }
         }
       } catch {
         /* khung lỗi — bỏ qua, thử khung sau */
@@ -62,7 +106,7 @@ export function QrScanner({
       cancelAnimationFrame(raf);
       for (const tr of stream?.getTracks() ?? []) tr.stop();
     };
-  }, [onResult]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">

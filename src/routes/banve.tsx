@@ -232,6 +232,10 @@ function BanVePage() {
       {searching && (
         <TimSanPham
           onClose={() => setSearching(false)}
+          onScan={() => {
+            setSearching(false);
+            setScanning(true);
+          }}
           onPick={(m) => {
             setSearching(false);
             setMasp(m);
@@ -259,7 +263,15 @@ async function jget(url: string): Promise<{ rows?: unknown[] }> {
   return (await res.json().catch(() => ({}))) as { rows?: unknown[] };
 }
 
-function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: string) => void }) {
+function TimSanPham({
+  onClose,
+  onPick,
+  onScan,
+}: {
+  onClose: () => void;
+  onPick: (masp: string) => void;
+  onScan: () => void;
+}) {
   const [mode, setMode] = useState<FindMode>("hehang");
   const [l1, setL1] = useState<Opt[]>([]);
   const [l1v, setL1v] = useState("");
@@ -402,6 +414,14 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
             </div>
           </label>
         </div>
+        {/* Quét mã QR thẻ pallet → sản phẩm (cách thứ 4) */}
+        {canScanBarcode() && (
+          <div className="px-3 pb-3 pt-1 border-t border-border">
+            <Button variant="ghost" onClick={onScan} className="w-full justify-center">
+              <I.QrCode size={16} /> Quét mã QR thẻ pallet
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
