@@ -1620,6 +1620,24 @@ export function Sidebar() {
             )}
             {!isViewer && (
               <SidebarItem
+                to="/ketoan/cong-no"
+                active={pathname === "/ketoan/cong-no"}
+                icon={<I.Receipt size={14} />}
+                collapsed={collapsed}
+                label="Công nợ NCC"
+                isFavorited={favs.isFav("/ketoan/cong-no")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/ketoan/cong-no",
+                    to: "/ketoan/cong-no",
+                    label: "Công nợ NCC",
+                    iconName: "Receipt",
+                  })
+                }
+              />
+            )}
+            {!isViewer && (
+              <SidebarItem
                 to="/iot"
                 active={pathname.startsWith("/iot")}
                 icon={<I.Server size={14} />}
