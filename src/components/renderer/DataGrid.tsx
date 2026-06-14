@@ -1,13 +1,17 @@
 import {
+  type Column,
   type ColumnDef,
   type ColumnFiltersState,
   type ColumnOrderState,
+  type ColumnPinningState,
   type ColumnSizingState,
   type ExpandedState,
   flexRender,
   type GroupingState,
   getCoreRowModel,
   getExpandedRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getGroupedRowModel,
   getPaginationRowModel,
@@ -18,7 +22,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Chip, Input } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -34,6 +38,7 @@ interface SavedGridState {
   columnVisibility?: VisibilityState;
   columnSizing?: ColumnSizingState;
   columnOrder?: ColumnOrderState;
+  columnPinning?: ColumnPinningState;
 }
 
 /** Số dòng/trang mặc định + tuỳ chọn — phân trang client-side để chỉ render
@@ -43,21 +48,72 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 /* ── Summary (footer tổng hợp kiểu DevExpress) ─────────────────── */
 export type SummaryType = "sum" | "avg" | "count" | "min" | "max";
-/** Meta cột — techName (tên kỹ thuật) + summary (footer) + cellClass
- *  (conditional formatting: trả className theo giá trị ô, vd âm→đỏ). */
+/** Rule conditional-format khai báo (cấu hình được, serialize JSON): khi giá
+ *  trị ô thoả `op value` → áp `className`. */
+export interface FormatRule {
+  op: "lt" | "lte" | "gt" | "gte" | "eq" | "neq" | "contains";
+  value: number | string;
+  className: string;
+}
+/** Meta cột — techName + summary (footer) + cellClass (hook lập trình) +
+ *  formatRules (khai báo, cho UI cấu hình conditional formatting sau). */
 interface GridColMeta {
   techName?: string;
   summary?: SummaryType;
   cellClass?: (value: unknown) => string | undefined;
+  formatRules?: FormatRule[];
 }
 
-/** Conditional format mặc định (DevExpress hay có): số ÂM → chữ đỏ. Cột set
- *  meta.cellClass riêng thì ưu tiên cái đó. */
-function defaultCellClass(value: unknown): string | undefined {
+function evalFormatRules(value: unknown, rules: FormatRule[]): string | undefined {
+  const sv = value == null ? "" : String(value);
+  const nv = Number(sv.replace(/[,\s]/g, ""));
+  for (const r of rules) {
+    const rn = typeof r.value === "number" ? r.value : Number(r.value);
+    let hit = false;
+    if (r.op === "contains") hit = sv.toLowerCase().includes(String(r.value).toLowerCase());
+    else if (!Number.isNaN(nv) && !Number.isNaN(rn)) {
+      hit =
+        r.op === "lt"
+          ? nv < rn
+          : r.op === "lte"
+            ? nv <= rn
+            : r.op === "gt"
+              ? nv > rn
+              : r.op === "gte"
+                ? nv >= rn
+                : r.op === "eq"
+                  ? nv === rn
+                  : nv !== rn;
+    } else {
+      hit =
+        r.op === "eq" ? sv === String(r.value) : r.op === "neq" ? sv !== String(r.value) : false;
+    }
+    if (hit) return r.className;
+  }
+  return undefined;
+}
+
+/** Class conditional-format của 1 ô: meta.cellClass (hook) → formatRules
+ *  (khai báo) → mặc định (số ÂM → đỏ). */
+function cellFormatClass(value: unknown, meta: GridColMeta | undefined): string | undefined {
+  if (meta?.cellClass) return meta.cellClass(value);
+  if (meta?.formatRules?.length) {
+    const c = evalFormatRules(value, meta.formatRules);
+    if (c) return c;
+  }
   if (value == null || value === "") return undefined;
   const n = typeof value === "number" ? value : Number(String(value).replace(/[,\s]/g, ""));
   if (!Number.isNaN(n) && n < 0) return "text-danger";
   return undefined;
+}
+
+/** Style sticky cho cột đã ghim (frozen) — trái: left offset; phải: right. */
+function pinnedStyle<T>(column: Column<T>): CSSProperties | undefined {
+  const pin = column.getIsPinned();
+  if (!pin) return undefined;
+  return pin === "left"
+    ? { position: "sticky", left: column.getStart("left"), zIndex: 11 }
+    : { position: "sticky", right: column.getAfter("right"), zIndex: 11 };
 }
 
 const toNum = (v: unknown): number => {
@@ -113,6 +169,39 @@ function exportRowsCsv<T>(
   URL.revokeObjectURL(url);
 }
 
+/** Ô lọc 1 cột (filter row) — input contains + datalist gợi ý giá trị phân
+ *  biệt (faceted) như dropdown lọc của DevExpress. Cap 100 giá trị đầu. */
+function FacetFilterInput<T>({ column, placeholder }: { column: Column<T>; placeholder: string }) {
+  const listId = `facet-${column.id}`;
+  const facets = column.getFacetedUniqueValues();
+  const options =
+    facets && facets.size > 0
+      ? Array.from(facets.keys())
+          .filter((v) => v != null && String(v).trim() !== "")
+          .map((v) => String(v))
+          .sort((a, b) => a.localeCompare(b))
+          .slice(0, 100)
+      : [];
+  return (
+    <>
+      <input
+        list={options.length ? listId : undefined}
+        placeholder={placeholder}
+        value={(column.getFilterValue() as string) ?? ""}
+        onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+        className="input h-6 text-xs px-2 font-normal w-full"
+      />
+      {options.length > 0 && (
+        <datalist id={listId}>
+          {options.map((o) => (
+            <option key={o} value={o} />
+          ))}
+        </datalist>
+      )}
+    </>
+  );
+}
+
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];
   data: T[];
@@ -134,6 +223,9 @@ export interface DataGridProps<T> {
   onGlobalFilterChange?: (value: string) => void;
   /** Số dòng/trang. Mặc định 50. Controls chỉ hiện khi có >1 trang. */
   pageSize?: number;
+  /** Master-detail: nếu set, mỗi dòng có nút ▸ mở panel chi tiết bên dưới
+   *  (vd lưới con / record liên quan). Trả node render trong hàng chi tiết. */
+  renderDetail?: (row: T) => ReactNode;
 }
 
 export function DataGrid<T>({
@@ -149,6 +241,7 @@ export function DataGrid<T>({
   globalFilter: gfControlled,
   onGlobalFilterChange,
   pageSize,
+  renderDetail,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -180,6 +273,9 @@ export function DataGrid<T>({
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   const [dragColId, setDragColId] = useState<string | null>(null);
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ left: [], right: [] });
+  // Master-detail: id dòng đang mở panel chi tiết.
+  const [openDetail, setOpenDetail] = useState<Set<string>>(new Set());
 
   // Restore state from IDB once on mount
   const restoredRef = useRef(false);
@@ -196,6 +292,7 @@ export function DataGrid<T>({
       if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
       if (saved.columnSizing) setColumnSizing(saved.columnSizing);
       if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
+      if (saved.columnPinning) setColumnPinning(saved.columnPinning);
     });
   }, [stateKey]);
 
@@ -213,6 +310,7 @@ export function DataGrid<T>({
         columnVisibility,
         columnSizing,
         columnOrder,
+        columnPinning,
       });
     }, 400);
     return () => {
@@ -227,6 +325,7 @@ export function DataGrid<T>({
     columnVisibility,
     columnSizing,
     columnOrder,
+    columnPinning,
   ]);
 
   // Close group picker on outside click
@@ -266,6 +365,7 @@ export function DataGrid<T>({
       columnVisibility,
       columnSizing,
       columnOrder,
+      columnPinning,
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -276,11 +376,14 @@ export function DataGrid<T>({
     onColumnVisibilityChange: setColumnVisibility,
     onColumnSizingChange: setColumnSizing,
     onColumnOrderChange: setColumnOrder,
+    onColumnPinningChange: setColumnPinning,
     enableColumnResizing: true,
     columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -474,20 +577,39 @@ export function DataGrid<T>({
                 {table
                   .getAllLeafColumns()
                   .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
-                  .map((col) => (
-                    <label
-                      key={col.id}
-                      className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={col.getIsVisible()}
-                        onChange={col.getToggleVisibilityHandler()}
-                        disabled={!col.getCanHide()}
-                      />
-                      <span className="truncate">{col.columnDef.header?.toString() ?? col.id}</span>
-                    </label>
-                  ))}
+                  .map((col) => {
+                    const pin = col.getIsPinned();
+                    return (
+                      <div
+                        key={col.id}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40"
+                      >
+                        <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={col.getIsVisible()}
+                            onChange={col.getToggleVisibilityHandler()}
+                            disabled={!col.getCanHide()}
+                          />
+                          <span className="truncate">
+                            {col.columnDef.header?.toString() ?? col.id}
+                          </span>
+                        </label>
+                        {/* Ghim cột (frozen) — trái / bỏ ghim */}
+                        <button
+                          type="button"
+                          title={t("datagrid.pin_left")}
+                          onClick={() => col.pin(pin === "left" ? false : "left")}
+                          className={cn(
+                            "shrink-0 p-0.5 rounded hover:bg-hover/60",
+                            pin === "left" ? "text-accent" : "text-muted/60",
+                          )}
+                        >
+                          <I.Pin size={11} />
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -592,6 +714,7 @@ export function DataGrid<T>({
             <thead className="sticky top-0 bg-panel-2 z-10">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="border-b border-border">
+                  {renderDetail && <th className="w-7 px-1" aria-hidden />}
                   {hg.headers.map((header) => {
                     const sorted = header.column.getIsSorted();
                     const sortIndex = header.column.getSortIndex();
@@ -624,10 +747,11 @@ export function DataGrid<T>({
                           }
                           setDragColId(null);
                         }}
-                        style={{ width: header.getSize() }}
+                        style={{ ...pinnedStyle(header.column), width: header.getSize() }}
                         className={cn(
                           "relative text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
                           dragColId === header.column.id && "opacity-40",
+                          header.column.getIsPinned() && "bg-panel-2 z-20",
                         )}
                       >
                         <span
@@ -680,16 +804,20 @@ export function DataGrid<T>({
               {/* Column filter row */}
               {filterRowOpen && (
                 <tr className="border-b border-border bg-panel-2/60">
+                  {renderDetail && <th className="w-7 px-1" aria-hidden />}
                   {table.getHeaderGroups()[0]?.headers.map((header) => (
-                    <th key={header.id} className="px-1.5 py-1">
+                    <th
+                      key={header.id}
+                      style={pinnedStyle(header.column)}
+                      className={cn(
+                        "px-1.5 py-1",
+                        header.column.getIsPinned() && "bg-panel-2 z-20",
+                      )}
+                    >
                       {header.column.getCanFilter() ? (
-                        <Input
+                        <FacetFilterInput
+                          column={header.column}
                           placeholder={t("datagrid.col_filter_placeholder")}
-                          value={(header.column.getFilterValue() as string) ?? ""}
-                          onChange={(e) =>
-                            header.column.setFilterValue(e.target.value || undefined)
-                          }
-                          className="h-6 text-xs px-2 font-normal"
                         />
                       ) : null}
                     </th>
@@ -700,7 +828,10 @@ export function DataGrid<T>({
             <tbody>
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="text-center py-8 text-muted text-sm">
+                  <td
+                    colSpan={columns.length + (renderDetail ? 1 : 0)}
+                    className="text-center py-8 text-muted text-sm"
+                  >
                     {emptyText ?? t("datagrid.empty")}
                   </td>
                 </tr>
@@ -715,7 +846,10 @@ export function DataGrid<T>({
                         className="border-b border-border bg-panel-2/50 cursor-pointer hover:bg-hover/20"
                         onClick={row.getToggleExpandedHandler()}
                       >
-                        <td colSpan={columns.length} className="px-3 py-1.5">
+                        <td
+                          colSpan={columns.length + (renderDetail ? 1 : 0)}
+                          className="px-3 py-1.5"
+                        >
                           <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
                             {row.getIsExpanded() ? (
                               <I.ChevronDown size={12} />
@@ -732,35 +866,70 @@ export function DataGrid<T>({
                   }
                   const selected = isRowSelected?.(row.original) ?? false;
                   const clickable = !!onRowClick;
+                  const detailOpen = renderDetail ? openDetail.has(row.id) : false;
                   return (
-                    <tr
-                      key={row.id}
-                      className={[
-                        "border-b border-border transition-colors",
-                        clickable ? "cursor-pointer" : "",
-                        selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
-                      ].join(" ")}
-                      onClick={clickable ? () => onRowClick(row.original) : undefined}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        if (cell.getIsPlaceholder()) return <td key={cell.id} />;
-                        // Conditional formatting: meta.cellClass riêng, else mặc
-                        // định (số âm → đỏ).
-                        const cm = cell.column.columnDef.meta as GridColMeta | undefined;
-                        const ccls = cm?.cellClass
-                          ? cm.cellClass(cell.getValue())
-                          : defaultCellClass(cell.getValue());
-                        return (
-                          <td
-                            key={cell.id}
-                            style={{ width: cell.column.getSize() }}
-                            className={cn("px-3 py-2 whitespace-nowrap", ccls)}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <Fragment key={row.id}>
+                      <tr
+                        className={[
+                          "border-b border-border transition-colors",
+                          clickable ? "cursor-pointer" : "",
+                          selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
+                        ].join(" ")}
+                        onClick={clickable ? () => onRowClick(row.original) : undefined}
+                      >
+                        {renderDetail && (
+                          <td className="w-7 px-1 align-middle">
+                            <button
+                              type="button"
+                              aria-label={detailOpen ? "Thu gọn" : "Mở chi tiết"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDetail((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(row.id)) next.delete(row.id);
+                                  else next.add(row.id);
+                                  return next;
+                                });
+                              }}
+                              className="p-0.5 rounded text-muted hover:text-text hover:bg-hover/60"
+                            >
+                              {detailOpen ? (
+                                <I.ChevronDown size={13} />
+                              ) : (
+                                <I.ChevronRight size={13} />
+                              )}
+                            </button>
                           </td>
-                        );
-                      })}
-                    </tr>
+                        )}
+                        {row.getVisibleCells().map((cell) => {
+                          if (cell.getIsPlaceholder()) return <td key={cell.id} />;
+                          // Conditional formatting: meta.cellClass / formatRules,
+                          // else mặc định (số âm → đỏ).
+                          const cm = cell.column.columnDef.meta as GridColMeta | undefined;
+                          const ccls = cellFormatClass(cell.getValue(), cm);
+                          const pinned = cell.column.getIsPinned();
+                          return (
+                            <td
+                              key={cell.id}
+                              style={{
+                                ...pinnedStyle(cell.column),
+                                width: cell.column.getSize(),
+                              }}
+                              className={cn("px-3 py-2 whitespace-nowrap", pinned && "bg-bg", ccls)}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                      {detailOpen && renderDetail && (
+                        <tr className="border-b border-border bg-panel-2/30">
+                          <td colSpan={columns.length + 1} className="px-4 py-3 align-top">
+                            {renderDetail(row.original)}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })
               )}
@@ -768,6 +937,7 @@ export function DataGrid<T>({
             {showSummary && (
               <tfoot className="sticky bottom-0 z-10 bg-panel-2 border-t-2 border-border">
                 <tr>
+                  {renderDetail && <td className="w-7 px-1" aria-hidden />}
                   {table.getVisibleLeafColumns().map((col, idx) => {
                     const s = summaryByCol.get(col.id);
                     return (
