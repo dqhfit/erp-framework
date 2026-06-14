@@ -202,6 +202,10 @@ export class MssqlClient {
      *  method này trả ở nextLastPk — caller chỉ cần truyền lại nguyên văn). */
     lastPk?: string | number | null;
     batchSize?: number;
+    /** CHỈ đọc các cột này (+ luôn kèm cột PK để keyset). Bỏ -> `SELECT *`.
+     *  Dùng để KHÔNG kéo cột nặng/không cần (vd ảnh chữ ký image, credential)
+     *  qua đường truyền — `SELECT *` 1 ảnh lớn × batch sẽ treo/OOM worker. */
+    columns?: string[];
   }): Promise<{ rows: T[]; nextLastPk: string | null; isEnd: boolean }> {
     const batchSize = Math.min(Math.max(opts.batchSize ?? 5_000, 1), 50_000);
     const safeName = escapeMssqlIdentifier(opts.schemaTable);
@@ -218,6 +222,25 @@ export class MssqlClient {
     }
     const safeCols = pkCols.map((c) => `[${c.replace(/]/g, "]]")}]`);
     const orderBy = safeCols.map((c) => `${c} ASC`).join(", ");
+
+    // Projection: chỉ đọc cột cần (luôn kèm PK cho ORDER BY/keyset). Dedup
+    // case-insensitive (SQL Server không phân biệt hoa-thường tên cột — chọn
+    // trùng case khác nhau = lỗi cột trùng). Bỏ columns -> SELECT *.
+    let selectList = "*";
+    if (opts.columns && opts.columns.length > 0) {
+      const seen = new Set<string>();
+      const picked: string[] = [];
+      for (const c of [...pkCols, ...opts.columns]) {
+        const cc = c.trim();
+        if (!cc) continue;
+        if (!/^[\w\s]+$/.test(cc)) throw new Error(`Invalid column: "${cc}"`);
+        const lc = cc.toLowerCase();
+        if (seen.has(lc)) continue;
+        seen.add(lc);
+        picked.push(`[${cc.replace(/]/g, "]]")}]`);
+      }
+      if (picked.length > 0) selectList = picked.join(", ");
+    }
 
     const pool = this.requirePool();
     const req = pool.request();
@@ -252,7 +275,7 @@ export class MssqlClient {
         where = ` WHERE ${branches.join(" OR ")}`;
       }
     }
-    const queryText = `SELECT TOP ${batchSize} * FROM ${safeName} ${NOLOCK}${where} ORDER BY ${orderBy}`;
+    const queryText = `SELECT TOP ${batchSize} ${selectList} FROM ${safeName} ${NOLOCK}${where} ORDER BY ${orderBy}`;
     const r = await req.query<T>(queryText);
     const rows = r.recordset as T[];
     let nextLastPk: string | null = null;

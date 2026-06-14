@@ -621,6 +621,11 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         .limit(1);
       const entFields = (ent?.fields as Array<{ name: string }>) ?? [];
       for (const f of entFields) fieldsSet.add(f.name.toLowerCase());
+      // Projection: chỉ đọc cột entity có khai (streamReadByPk tự kèm cột PK).
+      // KHÔNG kéo cột nguồn không map (vd ảnh chữ ký `chuky` image, credential)
+      // qua đường truyền — SELECT * 1 ảnh lớn × batch sẽ treo/OOM worker.
+      // entFields rỗng (import mọi cột) → undefined -> giữ SELECT *.
+      const projectCols = entFields.length > 0 ? entFields.map((f) => f.name) : undefined;
       // Ghi vào BẢNG THẬT khi targetTier='table'. SELF-HEAL khi chạy lại: nếu
       // entity chưa promote (vd lần đầu prepare lúc HYBRID còn tắt) → promote
       // NGAY tại đây (idempotent: đã table thì no-op) rồi đọc lại storage. Nhờ
@@ -659,6 +664,7 @@ export async function runFullImportJob(data: FullJobData): Promise<{
             pkColumn: t.pkColumn,
             lastPk,
             batchSize: t.batchSize,
+            columns: projectCols,
           });
           if (batch.rows.length > 0) {
             // Map row → entity_records.data filter theo fields.
