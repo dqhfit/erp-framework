@@ -391,7 +391,7 @@ interface SlCol {
   date?: boolean;
   qc?: boolean;
 }
-const SL_COLS: Record<Exclude<SlTab, "ravao">, SlCol[]> = {
+const SL_COLS: Record<SlTab, SlCol[]> = {
   hoanthanh: [
     { key: "madonhang", label: "Đơn hàng" },
     { key: "tenct", label: "Chi tiết" },
@@ -414,6 +414,14 @@ const SL_COLS: Record<Exclude<SlTab, "ravao">, SlCol[]> = {
     { key: "soluong", label: "SL", num: true },
     { key: "loailoi", label: "Loại lỗi" },
     { key: "nguyennhan", label: "Nguyên nhân" },
+  ],
+  ravao: [
+    { key: "ngay", label: "Ngày", date: true },
+    { key: "mathe", label: "Mã số" },
+    { key: "hoten", label: "Họ tên" },
+    { key: "giovao", label: "Giờ vào" },
+    { key: "giora", label: "Giờ ra" },
+    { key: "lydo", label: "Lý do" },
   ],
 };
 
@@ -439,23 +447,23 @@ const slCell = (r: Record<string, unknown>, c: SlCol): string => {
 function SlTabs({ congDoan, refresh }: { congDoan: string; refresh: number }) {
   const [tab, setTab] = useState<SlTab>("hoanthanh");
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
+  const [pending, setPending] = useState(false); // bảng nguồn chưa migrate
   const [loading, setLoading] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh là trigger reload có chủ ý (không đọc trong body)
   useEffect(() => {
-    if (tab === "ravao") {
-      setRows([]);
-      return;
-    }
     let alive = true;
     setLoading(true);
     setRows(null);
+    setPending(false);
     fetch(`/banvesvc/sl-records?type=${tab}&congDoan=${encodeURIComponent(congDoan)}`, {
       credentials: "include",
     })
       .then((r) => (r.ok ? r.json() : { rows: [] }))
-      .then((d: { rows?: Record<string, unknown>[] }) => {
-        if (alive) setRows(d.rows ?? []);
+      .then((d: { rows?: Record<string, unknown>[]; pending?: boolean }) => {
+        if (!alive) return;
+        setRows(d.rows ?? []);
+        setPending(!!d.pending);
       })
       .catch(() => {
         if (alive) setRows([]);
@@ -468,7 +476,7 @@ function SlTabs({ congDoan, refresh }: { congDoan: string; refresh: number }) {
     };
   }, [tab, congDoan, refresh]);
 
-  const cols = tab === "ravao" ? [] : SL_COLS[tab];
+  const cols = SL_COLS[tab];
 
   return (
     <div className="pt-3 mt-1 border-t border-border">
@@ -489,7 +497,7 @@ function SlTabs({ congDoan, refresh }: { congDoan: string; refresh: number }) {
         ))}
       </div>
 
-      {tab === "ravao" ? (
+      {pending ? (
         <div className="text-xs text-muted py-6 text-center">
           Ra/Vào cổng — bảng <code>ns_ravaocong</code> chưa được migrate.
         </div>

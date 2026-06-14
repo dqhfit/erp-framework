@@ -177,6 +177,19 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
           AND f_congdoan = ${congDoan} AND f_ngaythang >= ${ago90}
         ORDER BY f_ngaythang DESC LIMIT 200`)) as unknown as Record<string, unknown>[];
+    } else if (type === "ravao") {
+      // ns_ravaocong có thể CHƯA migrate → entityIdByName null → pending (FE
+      // hiện thông báo, không lỗi). getRecordStore tier-safe theo cột runtime.
+      const rvId = await entityIdByName(db, cid, "ns_ravaocong");
+      if (!rvId) return reply.send({ rows: [], pending: true });
+      const out = await getRecordStore(db).list(cid, rvId, {
+        filters: { congdoan: { op: "=", value: congDoan } },
+        limit: 200,
+        withTotal: false,
+      });
+      rows = out.rows
+        .map((r) => (r.data ?? {}) as Record<string, unknown>)
+        .sort((a, b) => String(b.ngay ?? "").localeCompare(String(a.ngay ?? "")));
     }
     return reply.send({ rows });
   });
