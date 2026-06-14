@@ -1629,7 +1629,13 @@ export function PageDesigner({ pageId }: Props) {
                               <Switch
                                 checked={sel.config.excelMode === true}
                                 onChange={(v) =>
-                                  update(sel.id, { config: { ...sel.config, excelMode: v } })
+                                  update(sel.id, {
+                                    config: {
+                                      ...sel.config,
+                                      excelMode: v,
+                                      ...(v ? { serverPaging: false } : {}),
+                                    },
+                                  })
                                 }
                               />
                             </div>
@@ -1647,6 +1653,32 @@ export function PageDesigner({ pageId }: Props) {
                                 checked={sel.config.batchEdit === true}
                                 onChange={(v) =>
                                   update(sel.id, { config: { ...sel.config, batchEdit: v } })
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {sel.kind === "list" && (
+                            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm">Phân trang server (bảng lớn)</span>
+                                <span className="text-[11px] text-muted">
+                                  Sắp/lọc/phân trang trên server — duyệt được TOÀN bảng (&gt;10k
+                                  dòng), sửa ô inline vẫn dùng được. Dùng "Tải dữ liệu → điều kiện"
+                                  cho lọc cố định.
+                                </span>
+                              </div>
+                              <Switch
+                                checked={sel.config.serverPaging === true}
+                                onChange={(v) =>
+                                  update(sel.id, {
+                                    config: {
+                                      ...sel.config,
+                                      serverPaging: v,
+                                      // XOR với chế độ Excel (dùng grid riêng).
+                                      ...(v ? { excelMode: false } : {}),
+                                    },
+                                  })
                                 }
                               />
                             </div>

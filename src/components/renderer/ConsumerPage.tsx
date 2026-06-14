@@ -276,6 +276,9 @@ interface ServerPagedResult {
   loading: boolean;
   err: string;
   onQueryChange: (q: ServerGridQuery) => void;
+  /** Nạp lại trang hiện tại (sau khi ghi 1 ô — phản ánh giá trị đã lưu /
+   *  field server-side suy ra). */
+  refresh: () => void;
 }
 function useServerPagedRecords(opts: {
   entityId?: string;
@@ -292,6 +295,7 @@ function useServerPagedRecords(opts: {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [refreshTag, setRefreshTag] = useState(0);
 
   // Field meta của DataSource (1 lần) — entity lấy thẳng từ useEntity.
   useEffect(() => {
@@ -354,7 +358,12 @@ function useServerPagedRecords(opts: {
             sort: query.sort ? { field: query.sort.field, dir: query.sort.dir } : undefined,
             q,
           })
-          .then((res) => ({ rows: res.rows.map((r) => r.data), total: res.total }));
+          // Gộp id canonical (r.id) vào row phẳng — sửa ô (updateRecord) + chọn
+          // dòng cần id thật, KHÔNG dựa vào data.id (EAV thuần có thể thiếu).
+          .then((res) => ({
+            rows: res.rows.map((r) => ({ ...r.data, id: r.id })),
+            total: res.total,
+          }));
     run
       .then((out) => {
         if (!alive) return;
@@ -371,7 +380,7 @@ function useServerPagedRecords(opts: {
     return () => {
       alive = false;
     };
-  }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey]);
+  }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey, refreshTag]);
 
   return {
     rows,
@@ -380,6 +389,7 @@ function useServerPagedRecords(opts: {
     loading,
     err,
     onQueryChange: setQuery,
+    refresh: () => setRefreshTag((x) => x + 1),
   };
 }
 
@@ -688,10 +698,11 @@ function EditableListWidget({
 }
 
 /* ─── ServerPagedListWidget — danh sách bảng LỚN, phân trang/sắp/lọc SERVER-SIDE.
-   Read-only (chưa hỗ trợ inline-edit kèm paging). KHÔNG kéo cả cửa sổ về client:
-   mỗi trang là 1 round-trip → sort/lọc/đếm phản ánh TOÀN BẢNG (không chỉ window).
-   Không có filter-tree/master-detail client (cần toàn bộ dòng) — dùng loadFilters
-   (server-side) + lọc-cột contains thay thế. ── */
+   KHÔNG kéo cả cửa sổ về client: mỗi trang là 1 round-trip → sort/lọc/đếm phản
+   ánh TOÀN BẢNG (không chỉ window). Hỗ trợ sửa ô inline (ghi về entity/
+   datasource, overlay pending xuyên trang theo id). Không có filter-tree/
+   master-detail client (cần toàn bộ dòng) — dùng loadFilters (server-side) +
+   lọc-cột contains thay thế. ── */
 function ServerPagedListWidget({
   entityId,
   dataSourceId,
@@ -704,6 +715,8 @@ function ServerPagedListWidget({
   loadGate,
   selectionStateKey,
   multiSelect,
+  editable,
+  batchEdit,
 }: {
   entityId?: string;
   dataSourceId?: string;
@@ -716,10 +729,14 @@ function ServerPagedListWidget({
   loadGate?: string;
   selectionStateKey?: string;
   multiSelect?: boolean;
+  editable?: boolean;
+  batchEdit?: boolean;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
   const pageState = usePageState();
+  const rbacRole = useRbac((s) => s.role);
+  const myGroupIds = useUserObjects((s) => s.myGroupIds);
 
   // Cổng tải (loadGate): chỉ fetch khi state có giá trị.
   const gateKey = loadGate?.trim();
@@ -741,6 +758,7 @@ function ServerPagedListWidget({
     loading,
     err,
     onQueryChange,
+    refresh,
   } = useServerPagedRecords({
     entityId,
     dataSourceId,
@@ -755,6 +773,45 @@ function ServerPagedListWidget({
       ? (fields.map((n) => allFields.find((f) => f.name === n)).filter(Boolean) as EntityField[])
       : allFields.filter((f) => f.defaultVisible !== false);
 
+  // ── Inline-edit (chỉ khi editable): pending overlay + ghi về server. ──
+  const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
+  const writeRecord = (rowId: unknown, changes: Record<string, unknown>) =>
+    dataSourceId
+      ? api.updateDataSourceRecord(dataSourceId, String(rowId), changes).then(() => undefined)
+      : api.updateRecord(String(rowId), changes).then(() => undefined);
+  // saveRef: cell renderer (trong columns memo) luôn gọi bản mới nhất mà không
+  // rebuild cột mỗi lần pending đổi.
+  const saveRef = useRef<(rowId: unknown, field: string, value: string) => void>(() => {});
+  saveRef.current = (rowId, field, value) => {
+    if (rowId == null) return;
+    const rowIdStr = String(rowId);
+    setPending((prev) => {
+      const next = new Map(prev);
+      next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), [field]: value });
+      return next;
+    });
+    if (!batchEdit) {
+      void writeRecord(rowId, { [field]: value })
+        .then(() => refresh())
+        .catch((e) => setSaveErr((e as Error).message));
+    }
+  };
+  const saveAll = async () => {
+    setSaving(true);
+    setSaveErr("");
+    try {
+      for (const [rowId, changes] of pending) await writeRecord(rowId, changes);
+      setPending(new Map());
+      refresh();
+    } catch (e) {
+      setSaveErr((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
       visibleFields.map((f) => ({
@@ -763,23 +820,43 @@ function ServerPagedListWidget({
         header: columnLabels?.[f.name] ?? f.label,
         enableGrouping: false,
         meta: { techName: f.name },
-        cell: (ctx) => {
-          const v = ctx.getValue();
-          const s = v == null ? "" : String(v);
-          if (f.type === "image" && s.startsWith("data:image/"))
-            return (
-              <img
-                src={s}
-                alt=""
-                className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
-                loading="lazy"
+        cell: editable
+          ? (ctx) => (
+              <EditableCell
+                value={ctx.getValue()}
+                isImage={f.type === "image"}
+                canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+                onCommit={(v) =>
+                  saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)
+                }
               />
-            );
-          return <span className="block truncate">{s}</span>;
-        },
+            )
+          : (ctx) => {
+              const v = ctx.getValue();
+              const s = v == null ? "" : String(v);
+              if (f.type === "image" && s.startsWith("data:image/"))
+                return (
+                  <img
+                    src={s}
+                    alt=""
+                    className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
+                    loading="lazy"
+                  />
+                );
+              return <span className="block truncate">{s}</span>;
+            },
       })),
-    [visibleFields, columnLabels],
+    [visibleFields, columnLabels, editable, rbacRole, myGroupIds],
   );
+
+  // Data hiển thị = rows trang hiện tại + overlay pending (ô đã sửa, theo id).
+  const displayData = useMemo(() => {
+    if (!editable || pending.size === 0) return rows;
+    return rows.map((row) => {
+      const p = pending.get(String(row.id));
+      return p ? { ...row, ...p } : row;
+    });
+  }, [rows, pending, editable]);
 
   const server = useMemo<ServerPagingController>(
     () => ({ total, loading, onQueryChange: (q) => onQueryChange(q) }),
@@ -829,10 +906,40 @@ function ServerPagedListWidget({
           {t("widget.error_load", { err })}
         </div>
       )}
+      {editable && batchEdit && pending.size > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border-b border-warning/30 shrink-0">
+          <I.AlertCircle size={12} className="text-warning shrink-0" />
+          <span className="text-xs text-warning flex-1">
+            {t("widget.pending_records", { count: pending.size })}
+          </span>
+          {saveErr && <span className="text-xs text-danger">{saveErr}</span>}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={saveAll}
+            className="px-2.5 py-0.5 rounded text-xs bg-warning text-white hover:bg-warning/90 disabled:opacity-50"
+          >
+            {saving ? t("common.saving") : t("common.save_all")}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setPending(new Map())}
+            className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
+          >
+            {t("common.cancel")}
+          </button>
+        </div>
+      )}
+      {editable && !batchEdit && saveErr && (
+        <div className="px-3 py-1 text-xs text-danger border-b border-danger/30 shrink-0">
+          {saveErr}
+        </div>
+      )}
       <div className="flex-1 min-h-0">
         <DataGrid
           columns={columns}
-          data={rows}
+          data={displayData}
           stateKey={stateKey}
           emptyText={t("widget.empty_records")}
           label={title}
@@ -2441,8 +2548,8 @@ function RenderSubWidget({
   stateKey: string;
 }) {
   if (kind === "list") {
-    // Bảng lớn: serverPaging (read-only) → phân trang/sắp/lọc server-side.
-    if (cfg.serverPaging === true && cfg.editable !== true)
+    // Bảng lớn: serverPaging → phân trang/sắp/lọc server-side (hỗ trợ cả sửa ô).
+    if (cfg.serverPaging === true && cfg.excelMode !== true)
       return (
         <ServerPagedListWidget
           entityId={cfg.entity as string | undefined}
@@ -2453,6 +2560,8 @@ function RenderSubWidget({
           selectionStateKey={cfg.selectionStateKey as string | undefined}
           title={cfg.title as string | undefined}
           multiSelect={cfg.multiSelect === true}
+          editable={cfg.editable === true}
+          batchEdit={cfg.batchEdit === true}
           pageSize={cfg.pageSize as number | undefined}
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
@@ -2822,8 +2931,8 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "chart") return <ChartWidget cfg={cfg} />;
   if (comp.kind === "list") {
     const embActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
-    // Bảng lớn: serverPaging (read-only) → phân trang/sắp/lọc server-side.
-    if (cfg.serverPaging === true && cfg.editable !== true)
+    // Bảng lớn: serverPaging → phân trang/sắp/lọc server-side (hỗ trợ cả sửa ô).
+    if (cfg.serverPaging === true && cfg.excelMode !== true)
       return withEmbeddedActions(
         <ServerPagedListWidget
           entityId={cfg.entity as string | undefined}
@@ -2834,6 +2943,8 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
           selectionStateKey={cfg.selectionStateKey as string | undefined}
           title={cfg.title as string | undefined}
           multiSelect={cfg.multiSelect === true}
+          editable={cfg.editable === true}
+          batchEdit={cfg.batchEdit === true}
           pageSize={cfg.pageSize as number | undefined}
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
