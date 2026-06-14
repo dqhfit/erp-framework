@@ -390,6 +390,7 @@ interface SlCol {
   num?: boolean;
   date?: boolean;
   qc?: boolean;
+  time?: boolean;
 }
 const SL_COLS: Record<SlTab, SlCol[]> = {
   hoanthanh: [
@@ -419,8 +420,8 @@ const SL_COLS: Record<SlTab, SlCol[]> = {
     { key: "ngay", label: "Ngày", date: true },
     { key: "mathe", label: "Mã số" },
     { key: "hoten", label: "Họ tên" },
-    { key: "giovao", label: "Giờ vào" },
-    { key: "giora", label: "Giờ ra" },
+    { key: "giovao", label: "Giờ vào", time: true },
+    { key: "giora", label: "Giờ ra", time: true },
     { key: "lydo", label: "Lý do" },
   ],
 };
@@ -430,6 +431,17 @@ const slFmtN = (v: unknown): string => {
   return v == null || v === "" || Number.isNaN(n) ? String(v ?? "") : n.toLocaleString("vi-VN");
 };
 const slFmtD = (v: unknown): string => (v ? String(v).slice(0, 10) : "");
+// Giờ vào/ra lưu dạng giây-từ-nửa-đêm (TimeSpan) — đổi sang HH:MM. Nếu đã là
+// chuỗi giờ ("15:28:00") thì giữ HH:MM.
+const slFmtT = (v: unknown): string => {
+  if (v == null || v === "") return "";
+  const s = String(v);
+  if (s.includes(":")) return s.slice(0, 5);
+  const n = Number(s);
+  if (Number.isNaN(n)) return s;
+  if (n === 0) return "—";
+  return `${String(Math.floor(n / 3600)).padStart(2, "0")}:${String(Math.floor((n % 3600) / 60)).padStart(2, "0")}`;
+};
 const slQc = (r: Record<string, unknown>): string => {
   const d = Number(r.oday ?? r.dayy) || 0;
   const w = Number(r.orong ?? r.rong) || 0;
@@ -440,6 +452,7 @@ const slCell = (r: Record<string, unknown>, c: SlCol): string => {
   if (c.qc) return slQc(r);
   const v = r[c.key];
   if (c.date) return slFmtD(v);
+  if (c.time) return slFmtT(v);
   if (c.num) return slFmtN(v);
   return v == null ? "" : String(v);
 };
