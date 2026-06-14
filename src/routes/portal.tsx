@@ -17,6 +17,7 @@ import { I } from "@/components/Icons";
 import { MenuTree, type NavNode } from "@/components/MenuTree";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { idbDeletePrefix } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,18 @@ function PortalRoute() {
     setSearch("");
   };
 
+  // Mobile: nav trái thành drawer off-canvas (mở bằng nút ☰ ở header).
+  const isMobile = useIsMobile();
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!isMobile || !navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMobile, navOpen]);
+
   // Load preferences 1 lần khi component mount
   useEffect(() => {
     void loadPrefs();
@@ -108,6 +121,15 @@ function PortalRoute() {
     [savePrefs, prefs],
   );
 
+  // Chọn trang: đổi tab + đóng drawer trên mobile.
+  const onSelectPage = useCallback(
+    (id: string) => {
+      setActiveId(id);
+      if (isMobile) setNavOpen(false);
+    },
+    [setActiveId, isMobile],
+  );
+
   const handleRefresh = useCallback(async () => {
     if (!activeId) return;
     setRefreshing(true);
@@ -126,8 +148,18 @@ function PortalRoute() {
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
       {/* Header */}
-      <header className="h-11 shrink-0 flex items-center px-4 gap-3 border-b border-border bg-panel">
-        <span className="w-6 h-6 rounded bg-accent/20 text-accent flex items-center justify-center">
+      <header className="h-11 shrink-0 flex items-center px-3 sm:px-4 gap-2 sm:gap-3 border-b border-border bg-panel">
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label={t("portal.pages_heading")}
+            className="-ml-1 w-8 h-8 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 shrink-0"
+          >
+            <I.Menu size={18} />
+          </button>
+        )}
+        <span className="w-6 h-6 rounded bg-accent/20 text-accent flex items-center justify-center shrink-0">
           <I.Layout size={13} />
         </span>
         <span className="font-semibold text-sm truncate">{t("portal.title")}</span>
@@ -142,7 +174,7 @@ function PortalRoute() {
           disabled={refreshing}
           onClick={() => void handleRefresh()}
         >
-          {t("portal.refresh")}
+          <span className="hidden sm:inline">{t("portal.refresh")}</span>
         </Button>
         <Button
           variant="ghost"
@@ -150,13 +182,32 @@ function PortalRoute() {
           icon={<I.LogOut size={13} />}
           onClick={() => void logout()}
         >
-          {t("portal.logout")}
+          <span className="hidden sm:inline">{t("portal.logout")}</span>
         </Button>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Nav trái — danh sách trang đã xuất bản */}
-        <nav className="w-52 shrink-0 border-r border-border bg-panel flex flex-col overflow-y-auto">
+        {/* Backdrop drawer trên mobile — chạm ngoài để đóng */}
+        {isMobile && navOpen && (
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            className="fixed inset-0 z-[690] bg-black/40"
+            onClick={() => setNavOpen(false)}
+          />
+        )}
+        {/* Nav trái — danh sách trang (mobile: drawer off-canvas) */}
+        <nav
+          className={cn(
+            "border-r border-border bg-panel flex flex-col overflow-y-auto",
+            isMobile
+              ? cn(
+                  "fixed inset-y-0 left-0 z-[695] w-[260px] max-w-[85vw] shadow-2xl transition-transform duration-200",
+                  navOpen ? "translate-x-0" : "-translate-x-full",
+                )
+              : "w-52 shrink-0",
+          )}
+        >
           <div className="px-3 py-2.5 border-b border-border flex items-center gap-2">
             {searchOpen ? (
               <>
@@ -214,7 +265,7 @@ function PortalRoute() {
                     <li key={p.id}>
                       <button
                         type="button"
-                        onClick={() => setActiveId(p.id)}
+                        onClick={() => onSelectPage(p.id)}
                         className={cn(
                           "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
                           active
@@ -235,7 +286,7 @@ function PortalRoute() {
             )
           ) : navNodes.some((n) => n.pageId) ? (
             // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
-            <MenuTree nodes={navNodes} activePageId={activeId} onSelect={setActiveId} />
+            <MenuTree nodes={navNodes} activePageId={activeId} onSelect={onSelectPage} />
           ) : (
             // Fallback: danh sách phẳng (chưa link menu / chưa publish).
             <ul className="py-1">
@@ -245,7 +296,7 @@ function PortalRoute() {
                   <li key={p.id}>
                     <button
                       type="button"
-                      onClick={() => setActiveId(p.id)}
+                      onClick={() => onSelectPage(p.id)}
                       className={cn(
                         "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
                         active
