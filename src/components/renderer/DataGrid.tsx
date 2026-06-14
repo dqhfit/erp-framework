@@ -1,6 +1,8 @@
 import {
   type ColumnDef,
   type ColumnFiltersState,
+  type ColumnOrderState,
+  type ColumnSizingState,
   type ExpandedState,
   flexRender,
   type GroupingState,
@@ -30,6 +32,8 @@ interface SavedGridState {
   grouping: GroupingState;
   columnFilters: ColumnFiltersState;
   columnVisibility?: VisibilityState;
+  columnSizing?: ColumnSizingState;
+  columnOrder?: ColumnOrderState;
 }
 
 /** Số dòng/trang mặc định + tuỳ chọn — phân trang client-side để chỉ render
@@ -39,10 +43,21 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 /* ── Summary (footer tổng hợp kiểu DevExpress) ─────────────────── */
 export type SummaryType = "sum" | "avg" | "count" | "min" | "max";
-/** Meta cột — kèm techName (tên kỹ thuật) + summary (kiểu tổng hợp footer). */
+/** Meta cột — techName (tên kỹ thuật) + summary (footer) + cellClass
+ *  (conditional formatting: trả className theo giá trị ô, vd âm→đỏ). */
 interface GridColMeta {
   techName?: string;
   summary?: SummaryType;
+  cellClass?: (value: unknown) => string | undefined;
+}
+
+/** Conditional format mặc định (DevExpress hay có): số ÂM → chữ đỏ. Cột set
+ *  meta.cellClass riêng thì ưu tiên cái đó. */
+function defaultCellClass(value: unknown): string | undefined {
+  if (value == null || value === "") return undefined;
+  const n = typeof value === "number" ? value : Number(String(value).replace(/[,\s]/g, ""));
+  if (!Number.isNaN(n) && n < 0) return "text-danger";
+  return undefined;
 }
 
 const toNum = (v: unknown): number => {
@@ -162,6 +177,9 @@ export function DataGrid<T>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [colChooserOpen, setColChooserOpen] = useState(false);
   const colChooserRef = useRef<HTMLDivElement>(null);
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
+  const [dragColId, setDragColId] = useState<string | null>(null);
 
   // Restore state from IDB once on mount
   const restoredRef = useRef(false);
@@ -176,6 +194,8 @@ export function DataGrid<T>({
       if (saved.grouping?.length) setGrouping(saved.grouping);
       if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
       if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
+      if (saved.columnSizing) setColumnSizing(saved.columnSizing);
+      if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
     });
   }, [stateKey]);
 
@@ -185,12 +205,29 @@ export function DataGrid<T>({
     if (!stateKey) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void idbSet(stateKey, { sorting, globalFilter, grouping, columnFilters, columnVisibility });
+      void idbSet(stateKey, {
+        sorting,
+        globalFilter,
+        grouping,
+        columnFilters,
+        columnVisibility,
+        columnSizing,
+        columnOrder,
+      });
     }, 400);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [stateKey, sorting, globalFilter, grouping, columnFilters, columnVisibility]);
+  }, [
+    stateKey,
+    sorting,
+    globalFilter,
+    grouping,
+    columnFilters,
+    columnVisibility,
+    columnSizing,
+    columnOrder,
+  ]);
 
   // Close group picker on outside click
   useEffect(() => {
@@ -227,6 +264,8 @@ export function DataGrid<T>({
       expanded,
       pagination,
       columnVisibility,
+      columnSizing,
+      columnOrder,
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -235,6 +274,10 @@ export function DataGrid<T>({
     onExpandedChange: setExpanded,
     onPaginationChange: setPagination,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
+    onColumnOrderChange: setColumnOrder,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -560,18 +603,45 @@ export function DataGrid<T>({
                     return (
                       <th
                         key={header.id}
-                        onClick={
-                          header.column.getCanSort()
-                            ? header.column.getToggleSortingHandler()
-                            : undefined
-                        }
+                        draggable={!header.column.getIsGrouped()}
+                        onDragStart={() => setDragColId(header.column.id)}
+                        onDragOver={(e) => {
+                          if (dragColId && dragColId !== header.column.id) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragColId && dragColId !== header.column.id) {
+                            const cur = table.getState().columnOrder;
+                            const order = cur.length
+                              ? [...cur]
+                              : table.getAllLeafColumns().map((c) => c.id);
+                            const from = order.indexOf(dragColId);
+                            const to = order.indexOf(header.column.id);
+                            if (from !== -1 && to !== -1) {
+                              order.splice(to, 0, ...order.splice(from, 1));
+                              setColumnOrder(order);
+                            }
+                          }
+                          setDragColId(null);
+                        }}
+                        style={{ width: header.getSize() }}
                         className={cn(
-                          "text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
-                          header.column.getCanSort() &&
-                            "cursor-pointer hover:text-text select-none",
+                          "relative text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
+                          dragColId === header.column.id && "opacity-40",
                         )}
                       >
-                        <span className="inline-flex flex-col leading-tight">
+                        <span
+                          onClick={
+                            header.column.getCanSort()
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
+                          className={cn(
+                            "inline-flex flex-col leading-tight",
+                            header.column.getCanSort() &&
+                              "cursor-pointer hover:text-text select-none",
+                          )}
+                        >
                           <span className="inline-flex items-center gap-1">
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             {sorted === "asc" && <I.ChevronUp size={11} />}
@@ -588,6 +658,20 @@ export function DataGrid<T>({
                             </span>
                           )}
                         </span>
+                        {/* Resize handle (kéo viền phải đổi rộng cột) */}
+                        {header.column.getCanResize() && (
+                          <button
+                            type="button"
+                            aria-label="Kéo đổi rộng cột"
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn(
+                              "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none hover:bg-accent/50",
+                              header.column.getIsResizing() && "bg-accent",
+                            )}
+                          />
+                        )}
                       </th>
                     );
                   })}
@@ -660,8 +744,18 @@ export function DataGrid<T>({
                     >
                       {row.getVisibleCells().map((cell) => {
                         if (cell.getIsPlaceholder()) return <td key={cell.id} />;
+                        // Conditional formatting: meta.cellClass riêng, else mặc
+                        // định (số âm → đỏ).
+                        const cm = cell.column.columnDef.meta as GridColMeta | undefined;
+                        const ccls = cm?.cellClass
+                          ? cm.cellClass(cell.getValue())
+                          : defaultCellClass(cell.getValue());
                         return (
-                          <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
+                          <td
+                            key={cell.id}
+                            style={{ width: cell.column.getSize() }}
+                            className={cn("px-3 py-2 whitespace-nowrap", ccls)}
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         );
