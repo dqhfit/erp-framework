@@ -26,6 +26,7 @@ import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
 import { createContext, resolveActiveCompany } from "./context";
 import { db } from "./db";
+import { registerDrawingRoutes } from "./drawing-routes";
 import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
@@ -271,6 +272,9 @@ async function main(): Promise<void> {
 
   // Engine in PDF — GET /print/:id?format=html|pdf — render template + data.
   registerPrintRoutes(app, db);
+
+  // Stream file PDF bản vẽ — GET /banve/file?id=<uuid> (file mount BANVE_FILES_DIR).
+  registerDrawingRoutes(app, db);
 
   // GraphQL endpoint song song REST — /graphql với schema tự sinh từ
   // entity meta. Auth X-API-Key. v1 minimal: entity/records query +

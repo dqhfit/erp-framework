@@ -340,6 +340,23 @@ export const I = {
       <path d="M14 2v6h6" />
     </Icon>
   ),
+  FileText: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="M16 13H8" />
+      <path d="M16 17H8" />
+      <path d="M10 9H8" />
+    </Icon>
+  ),
+  QrCode: (p: IP) => (
+    <Icon {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3M21 14v7h-7M17 21h.01M21 17h.01" />
+    </Icon>
+  ),
   Image: (p: IP) => (
     <Icon {...p}>
       <rect x="3" y="3" width="18" height="18" rx="2" />

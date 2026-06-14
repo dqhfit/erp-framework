@@ -1,8 +1,8 @@
-import { defineConfig, configDefaults } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
-import path from "node:path";
+import react from "@vitejs/plugin-react-swc";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [TanStackRouterVite(), react(), tailwindcss()],
@@ -69,6 +69,11 @@ export default defineConfig({
       },
       // MCP server cho Phản hồi — POST /mcp (JSON-RPC, X-API-Key).
       "/mcp": {
+        target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
+        changeOrigin: true,
+      },
+      // Tra + stream file bản vẽ — GET /banve/lookup, /banve/file.
+      "/banve": {
         target: process.env.API_TARGET ?? "http://127.0.0.1:8910",
         changeOrigin: true,
       },
