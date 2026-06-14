@@ -535,7 +535,18 @@ function EditableListWidget({
                           title={canWrite ? undefined : "Không có quyền sửa cột này"}
                           onDoubleClick={canWrite ? () => setEditingCell(k) : undefined}
                         >
-                          {isEditing ? (
+                          {f.type === "image" &&
+                          typeof val === "string" &&
+                          val.startsWith("data:image/") ? (
+                            // Ô ảnh (vd avatar/chữ ký): render <img> thumbnail thay
+                            // vì chuỗi data URL khổng lồ. Không vào edit-mode text.
+                            <img
+                              src={val}
+                              alt={f.label ?? f.name}
+                              className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
+                              loading="lazy"
+                            />
+                          ) : isEditing ? (
                             <input
                               type="text"
                               defaultValue={val}
