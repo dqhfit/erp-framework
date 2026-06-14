@@ -332,8 +332,8 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
     mode === "hehang" ? "Hệ hàng" : mode === "donhang" ? "Mã đơn đặt hàng" : "Đơn hàng PO#";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center">
-      <div className="bg-panel w-full sm:max-w-md sm:rounded-lg rounded-t-lg flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-panel w-full max-w-md rounded-lg flex flex-col max-h-[85vh] overflow-visible">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
           <span className="text-sm font-medium flex-1">Tìm sản phẩm</span>
           <button
