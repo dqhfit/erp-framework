@@ -69,6 +69,18 @@ export function isDeniedSystemTable(tableName: string): boolean {
   return bare.toLowerCase().startsWith("sys_");
 }
 
+/** Buffer ảnh (cột image/varbinary MSSQL) → data URL base64 để lưu vào field
+ *  kiểu image (cột text). Nhận diện định dạng qua magic bytes, mặc định png.
+ *  Ảnh chữ ký DQHF (SYS_USER.chuky) round-trip qua đây để render <img src>. */
+export function bufferToImageDataUrl(buf: Buffer): string {
+  let mime = "image/png";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) mime = "image/jpeg";
+  else if (buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)
+    mime = "image/gif";
+  else if (buf.length >= 2 && buf[0] === 0x42 && buf[1] === 0x4d) mime = "image/bmp";
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+
 /** Tìm id record đã có trong bảng thật theo giá trị PK nguồn (gom trùng khi
  *  re-run/sync). pkField map sang cột typed (storage.columns) hoặc ext jsonb. */
 export async function findExistingInTable(
@@ -619,8 +631,15 @@ export async function runFullImportJob(data: FullJobData): Promise<{
         .from(entities)
         .where(eq(entities.id, t.entityId))
         .limit(1);
-      const entFields = (ent?.fields as Array<{ name: string }>) ?? [];
+      const entFields = (ent?.fields as Array<{ name: string; type?: string }>) ?? [];
       for (const f of entFields) fieldsSet.add(f.name.toLowerCase());
+      // Field kiểu image/file: giá trị nguồn là Buffer (varbinary/image) → đổi
+      // sang data URL base64 khi map (lưu cột text, render <img src>).
+      const imageFields = new Set(
+        entFields
+          .filter((f) => f.type === "image" || f.type === "file")
+          .map((f) => f.name.toLowerCase()),
+      );
       // Projection: chỉ đọc cột entity có khai (streamReadByPk tự kèm cột PK).
       // KHÔNG kéo cột nguồn không map (vd ảnh chữ ký `chuky` image, credential)
       // qua đường truyền — SELECT * 1 ảnh lớn × batch sẽ treo/OOM worker.
@@ -674,7 +693,13 @@ export async function runFullImportJob(data: FullJobData): Promise<{
                 for (const [k, v] of Object.entries(r)) {
                   const key = k.toLowerCase();
                   if (fieldsSet.size === 0 || fieldsSet.has(key)) {
-                    dataObj[key] = v;
+                    // Buffer (cột binary): field image/file → data URL; còn lại
+                    // (vd rowversion) → base64 thường để khỏi vỡ JSON/hash.
+                    dataObj[key] = Buffer.isBuffer(v)
+                      ? imageFields.has(key)
+                        ? bufferToImageDataUrl(v)
+                        : v.toString("base64")
+                      : v;
                   }
                 }
                 return dataObj;
