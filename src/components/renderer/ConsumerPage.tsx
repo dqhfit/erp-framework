@@ -3546,7 +3546,8 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
   return (
     <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto h-full">
-        <div className="max-w-[1180px] mx-auto p-3 sm:p-6">
+        {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%). */}
+        <div className="p-3 sm:p-6">
           {/* Header */}
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
