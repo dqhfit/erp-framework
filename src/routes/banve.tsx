@@ -7,10 +7,10 @@
    ========================================================== */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
-import { Button, Select } from "@/components/ui";
+import { Button, SearchableSelect, Select } from "@/components/ui";
 
 export const Route = createFileRoute("/banve")({ component: BanVePage });
 
@@ -143,7 +143,7 @@ function BanVePage() {
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
         {/* Tìm sản phẩm */}
         <Button variant="ghost" onClick={() => setSearching(true)} className="w-full justify-start">
-          <I.Search size={15} /> Tìm sản phẩm (theo tên/mã, hệ hàng, đơn đặt hàng)
+          <I.Search size={15} /> Tìm sản phẩm (hệ hàng / đơn đặt hàng / PO#)
         </Button>
 
         {/* Loại bản vẽ + quét */}
@@ -243,85 +243,97 @@ function BanVePage() {
   );
 }
 
-/* ── "Tìm sản phẩm" — 3 chế độ: Tên/Mã · Hệ hàng · Đơn đặt hàng ── */
-type SearchMode = "text" | "hehang" | "donhang";
+/* ── "Tìm sản phẩm" — COMBOBOX chọn (không gõ tay): 3 chế độ Hệ hàng / Đơn đặt
+   hàng / Đơn hàng PO#. Mỗi chế độ 2 combobox xâu chuỗi: chọn cấp 1 → load sản
+   phẩm → chọn sản phẩm → xong. Combobox có ô lọc sẵn (gõ để thu hẹp). ── */
+type FindMode = "hehang" | "donhang" | "order";
+const FIND_MODES: [FindMode, string][] = [
+  ["hehang", "Hệ hàng"],
+  ["donhang", "Đơn đặt hàng"],
+  ["order", "Đơn hàng PO#"],
+];
+type Opt = { value: string; label: string };
+
+async function jget(url: string): Promise<{ rows?: unknown[] }> {
+  const res = await fetch(url, { credentials: "include" });
+  return (await res.json().catch(() => ({}))) as { rows?: unknown[] };
+}
+
 function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: string) => void }) {
-  const [mode, setMode] = useState<SearchMode>("text");
-  const [q, setQ] = useState("");
-  const [parent, setParent] = useState<{ key: string; label: string } | null>(null);
-  const [list, setList] = useState<Array<{ value: string; label: string; sub?: string }>>([]);
-  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<FindMode>("hehang");
+  const [l1, setL1] = useState<Opt[]>([]);
+  const [l1v, setL1v] = useState("");
+  const [products, setProducts] = useState<Opt[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  const run = useCallback(
-    async (m: SearchMode, query: string, par: { key: string; label: string } | null) => {
-      setLoading(true);
-      try {
-        let url = "";
-        if (m === "text") url = `/banvesvc/search?q=${encodeURIComponent(query)}`;
-        else if (m === "hehang")
-          url = par
-            ? `/banvesvc/search?hehang=${encodeURIComponent(par.key)}`
-            : `/banvesvc/hehang?q=${encodeURIComponent(query)}`;
-        else
-          url = par
-            ? `/banvesvc/donhang-items?maddh=${encodeURIComponent(par.key)}`
-            : `/banvesvc/donhang?q=${encodeURIComponent(query)}`;
-        const res = await fetch(url, { credentials: "include" });
-        const data = (await res.json()) as { rows: unknown[] };
-        const rows = data.rows ?? [];
-        // Cấp 1 chọn parent (hệ hàng / đơn) — string[] hoặc {maddh,tenddh}.
-        if ((m === "hehang" || m === "donhang") && !par) {
-          setList(
-            (rows as Array<string | { maddh?: string; tenddh?: string }>).map((r) =>
-              typeof r === "string"
-                ? { value: r, label: r }
-                : {
-                    value: String(r.maddh ?? ""),
-                    label: String(r.maddh ?? ""),
-                    sub: r.tenddh ? String(r.tenddh) : undefined,
-                  },
-            ),
-          );
-        } else {
-          // Sản phẩm: {masp, tensp, hehang} hoặc {masp, tenchitiet}.
-          setList(
-            (rows as Array<Record<string, unknown>>).map((r) => ({
-              value: String(r.masp ?? ""),
-              label: String(r.masp ?? ""),
-              sub: String(r.tensp ?? r.tenchitiet ?? r.hehang ?? "") || undefined,
-            })),
-          );
-        }
-      } catch {
-        setList([]);
-      } finally {
-        setLoading(false);
+  const loadL1 = useCallback(async (m: FindMode) => {
+    setBusy(true);
+    setL1([]);
+    setL1v("");
+    setProducts([]);
+    try {
+      if (m === "hehang") {
+        const d = await jget("/banvesvc/hehang");
+        setL1(((d.rows as string[]) ?? []).map((h) => ({ value: h, label: h })));
+      } else if (m === "donhang") {
+        const d = await jget("/banvesvc/donhang");
+        setL1(
+          ((d.rows as Array<{ maddh?: string; tenddh?: string }>) ?? []).map((r) => ({
+            value: String(r.maddh ?? ""),
+            label: r.tenddh ? `${r.maddh} — ${r.tenddh}` : String(r.maddh ?? ""),
+          })),
+        );
+      } else {
+        const d = await jget("/banvesvc/order");
+        setL1(
+          ((d.rows as Array<{ order_number?: string; customer?: string }>) ?? []).map((r) => ({
+            value: String(r.order_number ?? ""),
+            label: r.customer ? `${r.order_number} — ${r.customer}` : String(r.order_number ?? ""),
+          })),
+        );
       }
-    },
-    [],
-  );
-
-  const switchMode = (m: SearchMode) => {
-    setMode(m);
-    setParent(null);
-    setQ("");
-    setList([]);
-    if (m === "hehang" || m === "donhang") void run(m, "", null);
-  };
-
-  const pickItem = (it: { value: string; label: string }) => {
-    if ((mode === "hehang" || mode === "donhang") && !parent) {
-      const par = { key: it.value, label: it.label };
-      setParent(par);
-      void run(mode, "", par);
-    } else {
-      onPick(it.value);
+    } finally {
+      setBusy(false);
     }
-  };
+  }, []);
+
+  const loadProducts = useCallback(async (m: FindMode, key: string) => {
+    if (!key) {
+      setProducts([]);
+      return;
+    }
+    setBusy(true);
+    try {
+      const url =
+        m === "hehang"
+          ? `/banvesvc/search?hehang=${encodeURIComponent(key)}`
+          : m === "donhang"
+            ? `/banvesvc/donhang-items?maddh=${encodeURIComponent(key)}`
+            : `/banvesvc/order-items?order=${encodeURIComponent(key)}`;
+      const d = await jget(url);
+      setProducts(
+        ((d.rows as Array<Record<string, unknown>>) ?? []).map((r) => {
+          const masp = String(r.masp ?? "");
+          const name = String(r.tensp ?? r.tenchitiet ?? r.description ?? r.hehang ?? "");
+          return { value: masp, label: name ? `${masp} — ${name}` : masp };
+        }),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadL1 ổn định (useCallback []); chạy lại khi đổi chế độ
+  useEffect(() => {
+    void loadL1(mode);
+  }, [mode]);
+
+  const l1Label =
+    mode === "hehang" ? "Hệ hàng" : mode === "donhang" ? "Mã đơn đặt hàng" : "Đơn hàng PO#";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center">
-      <div className="bg-panel w-full sm:max-w-md sm:rounded-lg rounded-t-lg max-h-[85vh] flex flex-col">
+      <div className="bg-panel w-full sm:max-w-md sm:rounded-lg rounded-t-lg flex flex-col">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
           <span className="text-sm font-medium flex-1">Tìm sản phẩm</span>
           <button
@@ -333,19 +345,13 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
             <I.X size={18} />
           </button>
         </div>
-        {/* Mode tabs */}
+        {/* Chế độ */}
         <div className="flex border-b border-border">
-          {(
-            [
-              ["text", "Tên/Mã"],
-              ["hehang", "Hệ hàng"],
-              ["donhang", "Đơn đặt hàng"],
-            ] as [SearchMode, string][]
-          ).map(([m, label]) => (
+          {FIND_MODES.map(([m, label]) => (
             <button
               key={m}
               type="button"
-              onClick={() => switchMode(m)}
+              onClick={() => setMode(m)}
               className={`flex-1 px-2 py-2 text-xs border-b-2 -mb-px ${
                 mode === m
                   ? "border-accent text-accent font-semibold"
@@ -356,57 +362,43 @@ function TimSanPham({ onClose, onPick }: { onClose: () => void; onPick: (masp: s
             </button>
           ))}
         </div>
-        {/* Search input (cấp 1) hoặc breadcrumb parent */}
-        <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-          {parent ? (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setParent(null);
-                  void run(mode, q, null);
+        {/* 2 combobox xâu chuỗi */}
+        <div className="p-3 space-y-3">
+          <label className="block">
+            <span className="text-xs text-muted">{l1Label}</span>
+            <div className="mt-1">
+              <SearchableSelect
+                value={l1v}
+                onChange={(v) => {
+                  setL1v(v);
+                  void loadProducts(mode, v);
                 }}
-                className="text-xs text-accent inline-flex items-center gap-1"
-              >
-                <I.ChevronRight size={12} className="rotate-180" /> {parent.label}
-              </button>
-            </>
-          ) : (
-            <input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                void run(mode, e.target.value, null);
-              }}
-              placeholder={
-                mode === "hehang"
-                  ? "Lọc hệ hàng…"
-                  : mode === "donhang"
-                    ? "Lọc mã đơn…"
-                    : "Nhập tên/mã sản phẩm…"
-              }
-              className="input flex-1 h-9 text-sm"
-              autoCapitalize="characters"
-            />
-          )}
-        </div>
-        {/* Kết quả */}
-        <div className="overflow-y-auto flex-1 min-h-0">
-          {loading && <div className="text-xs text-muted py-4 text-center">Đang tra…</div>}
-          {!loading && list.length === 0 && (
-            <div className="text-xs text-muted py-6 text-center">Không có kết quả.</div>
-          )}
-          {list.map((it) => (
-            <button
-              key={`${it.value}-${it.label}`}
-              type="button"
-              onClick={() => pickItem(it)}
-              className="w-full text-left px-3 py-2 border-b border-border/50 hover:bg-hover/40"
-            >
-              <span className="block text-sm font-medium truncate">{it.label}</span>
-              {it.sub && <span className="block text-xs text-muted truncate">{it.sub}</span>}
-            </button>
-          ))}
+                options={l1}
+                placeholder={
+                  busy && l1.length === 0 ? "Đang tải…" : `Chọn ${l1Label.toLowerCase()}…`
+                }
+              />
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted">Sản phẩm</span>
+            <div className="mt-1">
+              <SearchableSelect
+                value=""
+                onChange={(v) => v && onPick(v)}
+                options={products}
+                placeholder={
+                  !l1v
+                    ? "Chọn ở trên trước"
+                    : busy
+                      ? "Đang tải…"
+                      : products.length === 0
+                        ? "Không có sản phẩm"
+                        : "Chọn sản phẩm…"
+                }
+              />
+            </div>
+          </label>
         </div>
       </div>
     </div>

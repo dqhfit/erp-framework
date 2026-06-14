@@ -233,7 +233,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
             AND f_hehang IS NOT NULL AND f_hehang <> ''
             AND (${q} = '' OR f_hehang ILIKE ${`%${q}%`})
-          ORDER BY f_hehang LIMIT 50`,
+          ORDER BY f_hehang LIMIT 1000`,
     )) as unknown as Array<{ hehang: string }>;
     return reply.send({ rows: rows.map((r) => r.hehang) });
   });
@@ -248,8 +248,56 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
             AND (f_maddh ILIKE 'DQH-DQHF%' OR f_maddh ILIKE 'DQH-VFM%')
             AND (${q} = '' OR f_maddh ILIKE ${`%${q}%`})
-          ORDER BY f_maddh DESC LIMIT 50`,
+          ORDER BY f_maddh DESC LIMIT 800`,
     )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
+  // ── Đơn hàng PO# (tr_order chưa hoàn thành) — finished là ext → getRecordStore. ──
+  app.get("/banvesvc/order", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const oid = await entityIdByName(db, auth.companyId, "tr_order");
+    if (!oid) return reply.send({ rows: [] });
+    const out = await getRecordStore(db).list(auth.companyId, oid, {
+      limit: 2000,
+      withTotal: false,
+    });
+    const rows = out.rows
+      .map((r) => r.data as Record<string, unknown>)
+      .filter((d) => {
+        const f = d.finished;
+        return f == null || ["0", "false", "False"].includes(String(f));
+      })
+      .map((d) => ({ order_number: String(d.order_number ?? ""), customer: d.customer ?? null }))
+      .filter((d) => d.order_number)
+      .slice(0, 800);
+    return reply.send({ rows });
+  });
+
+  // ── Sản phẩm trong 1 đơn hàng PO# (tr_order_detail.item_number = masp) ──
+  app.get("/banvesvc/order-items", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const order = ((req.query ?? {}) as { order?: string }).order?.trim() ?? "";
+    if (!order) return reply.send({ rows: [] });
+    const odId = await entityIdByName(db, auth.companyId, "tr_order_detail");
+    if (!odId) return reply.send({ rows: [] });
+    const out = await getRecordStore(db).list(auth.companyId, odId, {
+      filters: { order_number: { op: "=", value: order } },
+      limit: 500,
+      withTotal: false,
+    });
+    const seen = new Set<string>();
+    const rows: Array<{ masp: string; description: unknown }> = [];
+    for (const r of out.rows) {
+      const d = r.data as Record<string, unknown>;
+      const masp = String(d.item_number ?? "");
+      if (masp && !seen.has(masp)) {
+        seen.add(masp);
+        rows.push({ masp, description: d.description ?? null });
+      }
+    }
     return reply.send({ rows });
   });
 
