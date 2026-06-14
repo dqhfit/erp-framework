@@ -52,6 +52,19 @@ async function authView(
   return { companyId: active.companyId, userId: s.userId };
 }
 
+/** URL viewer PDF.js — port y hệt FnSanPham.GetLinkViewPDFFile (DQHF252):
+ *  `\`→`/` + Uri.EscapeDataString (encode cả `/`) + prefix `/f/`. `/f/` là gốc
+ *  static chứa cả FileBanVe/ lẫn wwwroot/Ban_Ve/. Base đổi được qua env. */
+function pdfViewerUrl(filepath: string): string {
+  const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
+  // encodeURIComponent + bù các ký tự Uri.EscapeDataString encode (!*'()).
+  const value = encodeURIComponent(filepath.replace(/\\/g, "/")).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=/f/${value}`;
+}
+
 export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   // ── Tra bản vẽ theo mã sản phẩm (+ loại) ──
   app.get("/banve/lookup", async (req, reply) => {
@@ -75,7 +88,10 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ rows });
   });
 
-  // ── Stream file PDF của 1 bản vẽ ──
+  // ── Mở file PDF của 1 bản vẽ ──
+  // Ưu tiên SERVE TẠI CHỖ nếu đã mount BANVE_FILES_DIR; nếu chưa mount / không
+  // thấy file → REDIRECT sang viewer PDF.js (FnSanPham.GetLinkViewPDFFile) —
+  // server :4432 đã serve sẵn mọi filepath đúng (gốc /f/ = FileBanVe + wwwroot).
   app.get("/banve/file", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
@@ -84,15 +100,6 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
       return reply.code(400).send({ error: "Thiếu hoặc sai id bản vẽ" });
     }
-
-    const base = process.env.BANVE_FILES_DIR;
-    if (!base) {
-      return reply
-        .code(503)
-        .send({ error: "Server chưa cấu hình BANVE_FILES_DIR (mount file bản vẽ)" });
-    }
-    const baseReal = await realpath(base).catch(() => null);
-    if (!baseReal) return reply.code(503).send({ error: "BANVE_FILES_DIR không truy cập được" });
 
     // Lấy filepath TỪ record tr_banve (whitelist + company-scoped).
     const rows = (await db.execute(
@@ -103,26 +110,31 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const rel = rows[0]?.filepath;
     if (!rel) return reply.code(404).send({ error: "Bản vẽ không tồn tại hoặc không có file" });
 
-    // Normalize `\`→`/`, bỏ '/' đầu; chống traversal + symlink escape.
-    const cleaned = rel.replace(/\\/g, "/").replace(/^\/+/, "");
-    const target = resolvePath(baseReal, cleaned);
-    let real: string;
-    try {
-      real = await realpath(target);
-    } catch {
-      return reply.code(404).send({ error: "File bản vẽ không tìm thấy trên server" });
+    // (1) Serve tại chỗ nếu mount BANVE_FILES_DIR + file tồn tại.
+    const base = process.env.BANVE_FILES_DIR;
+    const baseReal = base ? await realpath(base).catch(() => null) : null;
+    if (baseReal) {
+      const cleaned = rel.replace(/\\/g, "/").replace(/^\/+/, "");
+      const target = resolvePath(baseReal, cleaned);
+      const real = await realpath(target).catch(() => null);
+      // Chống traversal + symlink escape: realpath phải nằm dưới base.
+      if (real && (real === baseReal || real.startsWith(baseReal + sep))) {
+        const st = await stat(real).catch(() => null);
+        if (st?.isFile()) {
+          const fileName = cleaned.split("/").pop() || "banve.pdf";
+          reply
+            .type("application/pdf")
+            .header(
+              "content-disposition",
+              `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+            )
+            .header("cache-control", "private, max-age=300");
+          return reply.send(createReadStream(real));
+        }
+      }
     }
-    if (real !== baseReal && !real.startsWith(baseReal + sep)) {
-      return reply.code(403).send({ error: "Đường dẫn không hợp lệ" });
-    }
-    const st = await stat(real).catch(() => null);
-    if (!st?.isFile()) return reply.code(404).send({ error: "File không tồn tại" });
 
-    const fileName = cleaned.split("/").pop() || "banve.pdf";
-    reply
-      .type("application/pdf")
-      .header("content-disposition", `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`)
-      .header("cache-control", "private, max-age=300");
-    return reply.send(createReadStream(real));
+    // (2) Fallback: viewer PDF.js ngoài (đường dẫn đúng theo hàm nguồn).
+    return reply.redirect(pdfViewerUrl(rel));
   });
 }
