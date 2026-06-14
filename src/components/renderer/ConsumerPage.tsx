@@ -18,6 +18,7 @@ import {
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
+import type { ColumnDef } from "@tanstack/react-table";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Chart } from "@/components/renderer/Chart";
@@ -349,7 +350,62 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
   };
 }
 
-// ─── EditableListWidget — bảng chỉnh sửa inline (không có công thức) ──────────
+/** Ô sửa inline trong DataGrid: ảnh → <img>; double-click ô có quyền ghi để
+ *  sửa (Enter/blur lưu, Esc huỷ). Tự quản trạng thái edit cục bộ. */
+function EditableCell({
+  value,
+  isImage,
+  canWrite,
+  onCommit,
+}: {
+  value: unknown;
+  isImage: boolean;
+  canWrite: boolean;
+  onCommit: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const str = value == null ? "" : String(value);
+  if (isImage && str.startsWith("data:image/")) {
+    return (
+      <img
+        src={str}
+        alt=""
+        className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
+        loading="lazy"
+      />
+    );
+  }
+  if (editing && canWrite) {
+    return (
+      <input
+        type="text"
+        defaultValue={str}
+        className="w-full px-1.5 py-0.5 outline outline-1 outline-accent text-xs bg-white dark:bg-bg"
+        // biome-ignore lint/a11y/noAutofocus: con trỏ vào ô vừa double-click sửa
+        autoFocus
+        onBlur={(e) => {
+          onCommit(e.target.value);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      onDoubleClick={canWrite ? () => setEditing(true) : undefined}
+      title={canWrite ? "Nhấn đúp để sửa" : "Không có quyền sửa cột này"}
+      className={cn("block truncate", canWrite ? "cursor-text" : "opacity-70")}
+    >
+      {str}
+    </span>
+  );
+}
+
+// ─── EditableListWidget — bảng chỉnh sửa inline (qua DataGrid xịn) ────────────
 
 interface EditableListWidgetProps {
   ent: ReturnType<typeof useEntity>;
@@ -382,37 +438,59 @@ function EditableListWidget({
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
-  type CellKey = `${number}:${string}`;
-  const [editingCell, setEditingCell] = useState<CellKey | null>(null);
-  const [cellVals, setCellVals] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
-  const getVal = (r: number, field: string): string => {
-    const k: CellKey = `${r}:${field}`;
-    if (cellVals[k] !== undefined) return cellVals[k];
-    const v = filteredRows[r]?.[field];
-    return v == null ? "" : String(v);
-  };
-
-  const commitCell = async (r: number, field: string, val: string) => {
-    const k: CellKey = `${r}:${field}`;
-    setCellVals((prev) => ({ ...prev, [k]: val }));
-    const rowId = filteredRows[r]?.id;
+  // Lưu 1 ô: batch → gom pending; ngược lại lưu ngay. Pending cũng là overlay
+  // hiển thị (ô vừa sửa thấy giá trị mới ngay, không chờ refetch). Ref để cell
+  // renderer (trong columns memo) luôn gọi bản mới nhất mà không rebuild cột.
+  const saveRef = useRef<(rowId: unknown, field: string, value: string) => void>(() => {});
+  saveRef.current = (rowId, field, value) => {
     if (rowId == null) return;
     const rowIdStr = String(rowId);
-    if (batchEdit) {
-      setPending((prev) => {
-        const next = new Map(prev);
-        next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), [field]: val });
-        return next;
-      });
-    } else {
-      await onSave(rowId, { [field]: val });
+    setPending((prev) => {
+      const next = new Map(prev);
+      next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), [field]: value });
+      return next;
+    });
+    if (!batchEdit) {
+      void onSave(rowId, { [field]: value }).catch((e) => setSaveErr((e as Error).message));
     }
-    setEditingCell(null);
   };
+
+  // Data hiển thị = filteredRows + overlay pending (ô đã sửa).
+  const displayData = useMemo(() => {
+    if (pending.size === 0) return filteredRows;
+    return filteredRows.map((row) => {
+      const p = pending.get(String(row.id));
+      return p ? { ...row, ...p } : row;
+    });
+  }, [filteredRows, pending]);
+
+  // Cột TanStack: cell = ô sửa inline. Cột số → summary=sum (footer tổng hợp).
+  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
+    () =>
+      visibleFields.map((f) => ({
+        id: f.name,
+        accessorKey: f.name,
+        header: f.label,
+        enableGrouping: true,
+        meta: {
+          techName: f.name,
+          summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
+        },
+        cell: (ctx) => (
+          <EditableCell
+            value={ctx.getValue()}
+            isImage={f.type === "image"}
+            canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+            onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
+          />
+        ),
+      })),
+    [visibleFields, rbacRole, myGroupIds],
+  );
 
   const saveAll = async () => {
     setSaving(true);
@@ -454,129 +532,32 @@ function EditableListWidget({
           <button
             type="button"
             disabled={saving}
-            onClick={() => {
-              setPending(new Map());
-              setCellVals({});
-            }}
+            onClick={() => setPending(new Map())}
             className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
           >
             {t("common.cancel")}
           </button>
         </div>
       )}
+      {!batchEdit && saveErr && (
+        <div className="px-3 py-1 text-xs text-danger border-b border-danger/30 shrink-0">
+          {saveErr}
+        </div>
+      )}
       {err ? (
         <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 z-10">
-              <tr>
-                {visibleFields.map((f) => (
-                  <th
-                    key={f.name}
-                    className="border border-border bg-panel-2 px-2 py-1 text-left font-semibold text-[10px] whitespace-nowrap"
-                  >
-                    <span className="flex flex-col leading-tight">
-                      <span>{f.label}</span>
-                      <span className="font-mono text-[9px] font-normal text-muted/60">
-                        {f.name}
-                      </span>
-                    </span>
-                  </th>
-                ))}
-                <th className="border border-border bg-panel-2 w-8" />
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 && (
-                <tr>
-                  <td colSpan={visibleFields.length + 1} className="p-4 text-center text-muted">
-                    {t("widget.empty_records")}
-                  </td>
-                </tr>
-              )}
-              {filteredRows.map((row, r) => {
-                const rowId = row.id;
-                const rowIdStr = rowId != null ? String(rowId) : "";
-                const isDirty = pending.has(rowIdStr);
-                const isSel = isRowSelected?.(row) === true;
-                return (
-                  <tr
-                    key={rowIdStr || r}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={cn(
-                      onRowClick && "cursor-pointer",
-                      isSel
-                        ? "bg-accent/10 outline outline-1 -outline-offset-1 outline-accent/40"
-                        : isDirty
-                          ? "bg-warning/5"
-                          : r % 2 === 0
-                            ? ""
-                            : "bg-bg-soft/40",
-                    )}
-                  >
-                    {visibleFields.map((f) => {
-                      const k: CellKey = `${r}:${f.name}`;
-                      // Field-level RBAC: role + nhóm không có quyền ghi → ô
-                      // read-only (server vẫn strip — đây là tầng UX báo sớm).
-                      const canWrite = fieldCan(rbacRole, "write", f, myGroupIds);
-                      const isEditing = canWrite && editingCell === k;
-                      const val = getVal(r, f.name);
-                      const changed =
-                        cellVals[k] !== undefined && cellVals[k] !== String(row[f.name] ?? "");
-                      return (
-                        <td
-                          key={f.name}
-                          className={cn(
-                            "border border-border/60 px-0 h-7",
-                            canWrite ? "cursor-text" : "cursor-not-allowed opacity-60",
-                            changed && "bg-warning/10",
-                          )}
-                          title={canWrite ? undefined : "Không có quyền sửa cột này"}
-                          onDoubleClick={canWrite ? () => setEditingCell(k) : undefined}
-                        >
-                          {f.type === "image" &&
-                          typeof val === "string" &&
-                          val.startsWith("data:image/") ? (
-                            // Ô ảnh (vd avatar/chữ ký): render <img> thumbnail thay
-                            // vì chuỗi data URL khổng lồ. Không vào edit-mode text.
-                            <img
-                              src={val}
-                              alt={f.label ?? f.name}
-                              className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
-                              loading="lazy"
-                            />
-                          ) : isEditing ? (
-                            <input
-                              type="text"
-                              defaultValue={val}
-                              className="w-full h-full px-1.5 bg-white dark:bg-bg outline outline-1 outline-accent text-xs"
-                              // biome-ignore lint/a11y/noAutofocus: autofocus chủ ý để con trỏ vào ô vừa double-click chỉnh sửa
-                              autoFocus
-                              onBlur={(e) => commitCell(r, f.name, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                                if (e.key === "Escape") setEditingCell(null);
-                              }}
-                            />
-                          ) : (
-                            <span className="block px-1.5 truncate leading-7">{val}</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="border border-border/40 text-center w-8">
-                      {isDirty && !batchEdit && (
-                        <span title={t("widget.saved_title")} className="text-success text-[10px]">
-                          <I.Check size={10} />
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex-1 min-h-0">
+          {/* Lưới đầy đủ chức năng (sort/filter/group/summary/export/resize/
+              reorder/chooser) — ô sửa inline qua EditableCell trong column.cell. */}
+          <DataGrid
+            columns={columns}
+            data={displayData}
+            emptyText={t("widget.empty_records")}
+            label={title}
+            onRowClick={onRowClick}
+            isRowSelected={isRowSelected}
+          />
         </div>
       )}
     </div>
