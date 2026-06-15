@@ -90,8 +90,8 @@ import {
 /* ─── AppRouter ──────────────────────────────────────────── */
 export const appRouter = router({
   /* ── Xác thực ──
-     Rate-limit: 5 lần / 15 phút / IP cho cả register và login (chống
-     brute-force + spam first-admin slot khi DB reset). Vượt giới hạn →
+     Rate-limit / 15 phút / IP (chống brute-force + spam first-admin
+     slot khi DB reset): register = 5 lần, login = 10 lần. Vượt giới hạn →
      TRPCError code "TOO_MANY_REQUESTS". Lưu state in-memory (xem trpc.ts).
      Activity log: gọi logActivity cho register/login_success/login_failed/
      logout. login_failed có thể không có companyId nếu email lạ — fallback
@@ -159,7 +159,7 @@ export const appRouter = router({
       }),
 
     login: publicProcedure
-      .use(rateLimit("auth.login", 8, 15 * 60 * 1000))
+      .use(rateLimit("auth.login", 10, 15 * 60 * 1000))
       // identifier: email HOẶC username (user DQHF cũ đa số không có email).
       // Giữ tên field "email" để tương thích client; relax .email() → string.
       .input(z.object({ email: z.string().min(1), password: z.string() }))
