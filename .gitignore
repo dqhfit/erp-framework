@@ -57,3 +57,7 @@ migration-plan/ai-log/
 # AI-generated artifacts (kept in repo by default; uncomment to gitignore)
 # migration-plan/samples/
 # migration-plan/audit/
+
+# Dump du lieu (prod sample) — KHONG commit (chua data + users)
+*.sql.gz
+erp-sample.sql*
