@@ -58,6 +58,7 @@
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.0",
     "tailwind-merge": "^2.5.0",
+    "three": "^0.184.0",
     "zod": "^4.0.0",
     "zustand": "^5.0.2"
   },
@@ -70,6 +71,7 @@
     "@types/leaflet": "^1.9.12",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.184.1",
     "@vitejs/plugin-react-swc": "^3.7.0",
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "^10.4.0",

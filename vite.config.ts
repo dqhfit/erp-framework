@@ -102,6 +102,8 @@ export default defineConfig({
           query: ["@tanstack/react-query", "@tanstack/react-table"],
           designer: ["@xyflow/react", "@dnd-kit/core", "@dnd-kit/sortable"],
           viz: ["recharts", "leaflet", "react-leaflet"],
+          // three (viewer 3D bản vẽ AI) — chỉ lazy load ở /banve, tách riêng.
+          three: ["three"],
           icons: ["lucide-react"],
         },
       },

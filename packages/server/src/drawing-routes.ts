@@ -54,6 +54,22 @@ async function authView(
   return { companyId: active.companyId, userId: s.userId };
 }
 
+/** MIME theo đuôi file — bản vẽ AI có thể là svg/html, không chỉ pdf. */
+function mimeByExt(name: string): string {
+  const ext = name.toLowerCase().split(".").pop() ?? "";
+  switch (ext) {
+    case "svg":
+      return "image/svg+xml";
+    case "html":
+    case "htm":
+      return "text/html; charset=utf-8";
+    case "png":
+      return "image/png";
+    default:
+      return "application/pdf";
+  }
+}
+
 /** URL viewer PDF.js — port y hệt FnSanPham.GetLinkViewPDFFile. */
 function pdfViewerUrl(filepath: string): string {
   const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
@@ -659,17 +675,82 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         const st = await stat(real).catch(() => null);
         if (st?.isFile()) {
           const fileName = cleaned.split("/").pop() || "banve.pdf";
+          const mime = mimeByExt(fileName);
           reply
-            .type("application/pdf")
+            .type(mime)
             .header(
               "content-disposition",
               `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
             )
-            .header("cache-control", "private, max-age=300");
+            .header("cache-control", "private, max-age=300")
+            .header("x-content-type-options", "nosniff");
+          // SVG/HTML (vd bản vẽ AI) có thể nhúng script → chặn thực thi khi
+          // xem trong iframe (defense-in-depth, song song iframe sandbox FE).
+          if (mime.startsWith("image/svg") || mime.startsWith("text/html")) {
+            reply.header(
+              "content-security-policy",
+              "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'none'",
+            );
+          }
           return reply.send(createReadStream(real));
         }
       }
     }
     return reply.redirect(pdfViewerUrl(rel));
+  });
+
+  // ── Mô hình 3D / artifact phụ của 1 bản vẽ AI (STL/STEP/PNG) ──
+  //    Bản vẽ AI lưu file 2D vào tr_banve.filepath = "<dir>/cad-<stamp>.svg";
+  //    artifact phụ cùng thư mục: cad-<stamp>-model.stl / -model.step /
+  //    -preview.png (xem cad-persist.ts). Dẫn xuất sibling từ filepath rồi
+  //    serve (chống path-traversal y như /file). Không có → 404.
+  app.get("/banvesvc/model", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const { id, kind } = (req.query ?? {}) as { id?: string; kind?: string };
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+      return reply.code(400).send({ error: "Thiếu hoặc sai id bản vẽ" });
+    }
+    const k = kind === "step" ? "step" : kind === "png" ? "png" : "stl";
+
+    const rows = (await db.execute(
+      sql`SELECT f_filepath AS filepath FROM tr_banve
+          WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
+          LIMIT 1`,
+    )) as unknown as Array<{ filepath: string | null }>;
+    const rel = rows[0]?.filepath;
+    if (!rel) return reply.code(404).send({ error: "Bản vẽ không tồn tại" });
+
+    const base = process.env.BANVE_FILES_DIR;
+    const baseReal = base ? await realpath(base).catch(() => null) : null;
+    if (!baseReal) return reply.code(404).send({ error: "Chưa cấu hình kho file bản vẽ" });
+
+    const suffix = k === "step" ? "-model.step" : k === "png" ? "-preview.png" : "-model.stl";
+    // Bỏ đuôi file 2D rồi nối suffix artifact.
+    const cleaned =
+      rel
+        .replace(/\\/g, "/")
+        .replace(/^\/+/, "")
+        .replace(/\.[^./]+$/, "") + suffix;
+    const target = resolvePath(baseReal, cleaned);
+    const real = await realpath(target).catch(() => null);
+    if (!real || !(real === baseReal || real.startsWith(baseReal + sep))) {
+      return reply.code(404).send({ error: "Không tìm thấy mô hình" });
+    }
+    const st = await stat(real).catch(() => null);
+    if (!st?.isFile()) {
+      return reply.code(404).send({ error: "Bản vẽ này chưa có mô hình 3D" });
+    }
+    const fileName = cleaned.split("/").pop() || `model.${k}`;
+    const ct = k === "png" ? "image/png" : k === "step" ? "application/step" : "model/stl";
+    reply
+      .type(ct)
+      .header(
+        "content-disposition",
+        `${k === "step" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      )
+      .header("cache-control", "private, max-age=300")
+      .header("x-content-type-options", "nosniff");
+    return reply.send(createReadStream(real));
   });
 }

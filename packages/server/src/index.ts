@@ -24,6 +24,7 @@ import {
 } from "./agent-memory";
 import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
+import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
 import { createContext, resolveActiveCompany } from "./context";
 import { db } from "./db";
 import { registerDrawingRoutes } from "./drawing-routes";
@@ -33,6 +34,7 @@ import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
 import { agenticRetrieve } from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
+import { registerCadMcp } from "./mcp-cad";
 import { makeCallTool } from "./mcp-client";
 import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
@@ -266,6 +268,12 @@ async function main(): Promise<void> {
   // schema (storage tier, field mapping) để phân tích và gợi ý tối ưu.
   registerMigrationMcp(app, db);
 
+  // MCP server cho bản vẽ CAD — POST /mcp/cad (JSON-RPC), auth X-API-Key
+  // scope cad:read|write. Provider 3: máy trạm external (Claude Code +
+  // FreeCAD MCP local) đọc sản phẩm/định mức + ghi bản vẽ "Bản vẽ AI"
+  // ngược về (xem mcp-cad.ts). Mọi kết nối outbound từ máy trạm.
+  registerCadMcp(app, db);
+
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.
   registerWebhookRoutes(app, db);
@@ -389,6 +397,10 @@ async function main(): Promise<void> {
       const mcpCallTool = makeCallTool(db, active.companyId);
       const canAddKb = roleCan(active.role, "create", "knowledge");
       const canViewRecords = roleCan(active.role, "view", "entity");
+      // cad_generate: cần quyền tạo record (bản vẽ) + engine CAD đã cấu hình
+      // (FREECAD_MCP_URL). Vắng 1 trong 2 → tool không xuất hiện (fail-closed).
+      const canGenerateCad =
+        roleCan(active.role, "create", "entity") && !!process.env.FREECAD_MCP_URL;
 
       // Nếu request gắn với một agent cụ thể (cùng công ty): nạp 7 file
       // memory thành preamble + cấp tool memory_remember + dùng model
@@ -502,6 +514,7 @@ async function main(): Promise<void> {
         KB_SEARCH_TOOL,
         ...(canViewRecords ? [RECORDS_SEARCH_TOOL] : []),
         ...(canAddKb ? [KB_ADD_TOOL] : []),
+        ...(canGenerateCad ? [CAD_GENERATE_TOOL] : []),
         ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
       ];
       const callTool = async (name: string, args: Record<string, unknown>) => {
@@ -610,6 +623,36 @@ async function main(): Promise<void> {
               active.role,
             ),
           }));
+        }
+        if (name === "cad_generate") {
+          // RBAC kiểm lại tại runtime (fail-closed).
+          if (!canGenerateCad) {
+            throw new Error(
+              'Không thể sinh bản vẽ CAD: cần quyền "create:entity" và FREECAD_MCP_URL đã cấu hình.',
+            );
+          }
+          // Tool GHI dữ liệu — tôn trọng allowlist của agent (nếu đã cấu hình):
+          // agent chỉ gọi được khi "cad_generate" nằm trong agents.config.tools.
+          if (agentToolAllow && !agentToolAllow.includes("cad_generate")) {
+            throw new Error('Agent không được phép gọi công cụ "cad_generate".');
+          }
+          const a = args as {
+            masp?: unknown;
+            params?: unknown;
+            family?: unknown;
+            format?: unknown;
+          };
+          return runCadGenerate(db, active.companyId, {
+            masp: String(a.masp ?? ""),
+            params:
+              a.params && typeof a.params === "object" ? (a.params as Record<string, unknown>) : {},
+            family: typeof a.family === "string" ? a.family : undefined,
+            format:
+              a.format === "html" || a.format === "pdf" || a.format === "svg"
+                ? a.format
+                : undefined,
+            createdBy: s.userId,
+          });
         }
         // #3b: fail-closed enforce allowlist công cụ của agent (chỉ khi đã
         // cấu hình — agentToolAllow != null). Tool built-in (memory/knowledge/

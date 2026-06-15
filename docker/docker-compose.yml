@@ -77,6 +77,12 @@ services:
       # vd OLLAMA_EMBED_URL=http://192.168.1.50:11434 (máy đó cần
       # OLLAMA_HOST=0.0.0.0 + đã pull nomic-embed-text).
       OLLAMA_EMBED_URL: ${OLLAMA_EMBED_URL:-http://ollama:11434}
+      # FreeCAD MCP sidecar — sinh bản vẽ CAD (provider 1). Server gọi bằng
+      # tên service; secret ký request (header X-FreeCAD-Secret).
+      FREECAD_MCP_URL: http://freecad:8920
+      FREECAD_MCP_SECRET: ${FREECAD_MCP_SECRET:-please-change-this-freecad-secret}
+      # Thư mục lưu bản vẽ (gồm "Bản vẽ AI" sinh ra) — GET /banvesvc/file đọc.
+      BANVE_FILES_DIR: /data/banve
     depends_on:
       db:
         condition: service_healthy
@@ -84,8 +90,11 @@ services:
         condition: service_started
       mosquitto:
         condition: service_started
+      freecad:
+        condition: service_started
     volumes:
       - erp-uploads:/data/uploads
+      - erp-banve:/data/banve
       # Persist KẾT QUẢ MIGRATE qua mọi lần redeploy (cwd server = packages/server).
       # Nếu không, redeploy MẤT toàn bộ manifest discover/enrich + decisions + audit.
       # Docker tự copy file baked-in (vd sales.yaml) vào volume lần đầu.
@@ -182,10 +191,28 @@ services:
     expose:
       - "1883"
 
+  # FreeCAD MCP sidecar — sinh bản vẽ CAD (3D STEP + bản vẽ 2D SVG) cho
+  # in-app Agent (provider 1). HTTP JSON-RPC headless; server gọi nội bộ
+  # http://freecad:8920. Build nặng (~1.5GB freecad) → khởi động chậm.
+  freecad:
+    build:
+      context: ..
+      dockerfile: docker/freecad/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "8920"
+      FREECAD_MCP_SECRET: ${FREECAD_MCP_SECRET:-please-change-this-freecad-secret}
+    # Không mở ra host (chỉ server nội bộ gọi). Mở dòng dưới để debug bằng curl.
+    # ports:
+    #   - "${ERP_FREECAD_PORT:-8920}:8920"
+    expose:
+      - "8920"
+
 volumes:
   erp-pgdata:
   bridge-data:
   erp-uploads:
+  erp-banve: # bản vẽ (gồm "Bản vẽ AI" sinh ra) — BANVE_FILES_DIR
   ollama-data:
   mosquitto-data:
   erp-migration: # manifest migrate + decisions + ai-log + audit (persist qua redeploy)

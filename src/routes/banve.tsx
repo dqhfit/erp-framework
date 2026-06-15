@@ -7,13 +7,16 @@
    ========================================================== */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, SearchableSelect, Select } from "@/components/ui";
 import { useAuth } from "@/stores/auth";
 
 export const Route = createFileRoute("/banve")({ component: BanVePage });
+
+// Viewer 3D tách chunk riêng (three.js) — chỉ tải khi mở mô hình 3D.
+const Model3dViewer = lazy(() => import("@/components/Model3dViewer"));
 
 /** 6 loại bản vẽ (BanVeType). val = giá trị khớp tr_banve.phanloai (PPS strip
  *  " (PPS)"). Tab "Bản vẽ" lọc theo val; tab "Bản vẽ dao" độc lập. */
@@ -69,6 +72,7 @@ function BanVePage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [tab, setTab] = useState<Tab>("banve");
   const [viewId, setViewId] = useState<string | null>(null);
+  const [view3dId, setView3dId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -227,7 +231,12 @@ function BanVePage() {
 
             <div className="pt-1">
               {tab === "banve" && (
-                <BanVeList items={banveList} onView={setViewId} empty="loại này" />
+                <BanVeList
+                  items={banveList}
+                  onView={setViewId}
+                  onView3d={setView3dId}
+                  empty="loại này"
+                />
               )}
               {tab === "dao" && <BanVeList items={daoList} onView={setViewId} empty="dao" />}
               {tab === "govan" && <GoVanGrid rows={govan} />}
@@ -238,6 +247,17 @@ function BanVePage() {
       </div>
 
       {viewId && <PdfViewer id={viewId} onClose={() => setViewId(null)} />}
+      {view3dId && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center text-muted text-sm gap-2">
+              <I.Loader size={16} className="animate-spin" /> Đang mở trình xem 3D…
+            </div>
+          }
+        >
+          <Model3dViewer id={view3dId} onClose={() => setView3dId(null)} />
+        </Suspense>
+      )}
       {scanning && (
         <QrScanner title="Quét phiếu" onClose={() => setScanning(false)} onResult={scanResult} />
       )}
@@ -464,10 +484,12 @@ function TabBtn({
 function BanVeList({
   items,
   onView,
+  onView3d,
   empty,
 }: {
   items: BanVeItem[];
   onView: (id: string) => void;
+  onView3d?: (id: string) => void;
   empty: string;
 }) {
   if (items.length === 0)
@@ -475,18 +497,31 @@ function BanVeList({
   return (
     <div className="space-y-2">
       {items.map((b) => (
-        <button
+        <div
           key={b.id}
-          type="button"
-          onClick={() => onView(b.id)}
-          className="w-full text-left card p-3 hover:border-accent/50 transition-colors flex items-center gap-3"
+          className="card p-3 hover:border-accent/50 transition-colors flex items-center gap-3"
         >
-          <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
-            <I.FileText size={18} />
-          </span>
-          <span className="flex-1 text-sm font-medium truncate">{b.phanloai || "Bản vẽ"}</span>
+          <button
+            type="button"
+            onClick={() => onView(b.id)}
+            className="flex items-center gap-3 flex-1 min-w-0 text-left"
+          >
+            <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
+              <I.FileText size={18} />
+            </span>
+            <span className="flex-1 text-sm font-medium truncate">{b.phanloai || "Bản vẽ"}</span>
+          </button>
+          {onView3d && b.phanloai === "Bản vẽ AI" && (
+            <button
+              type="button"
+              onClick={() => onView3d(b.id)}
+              className="shrink-0 inline-flex items-center gap-1 text-xs text-accent border border-accent/40 rounded px-2 py-1 hover:bg-accent/10"
+            >
+              <I.Box size={14} /> 3D
+            </button>
+          )}
           <I.ChevronRight size={16} className="text-muted shrink-0" />
-        </button>
+        </div>
       ))}
     </div>
   );
