@@ -190,7 +190,10 @@ interface JsonRpcReq {
 }
 
 export function registerCadMcp(app: FastifyInstance, db: DB): void {
-  app.post("/mcp/cad", async (req, reply) => {
+  // bodyLimit cao: cad_save_drawing gửi artifact base64 (svg/step/stl/png)
+  // có thể vài MB — mặc định Fastify 1MB sẽ 413. (nginx cũng cần
+  // client_max_body_size tương ứng cho /mcp/cad.)
+  app.post("/mcp/cad", { bodyLimit: 32 * 1024 * 1024 }, async (req, reply) => {
     const auth = await authApiKey(db, req);
     if (!auth) return reply.code(401).send({ error: "Invalid API key" });
     if (!hasCadScope(auth.scopes, "read")) {

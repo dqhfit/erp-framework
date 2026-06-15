@@ -18,9 +18,10 @@ import { rbacProcedure, router } from "./trpc";
  *  - "entity:*:read" | "entity:*:write" (mọi entity, 1 action)
  *  - "feedback:read" | "feedback:propose" | "feedback:apply" | "feedback:*" (MCP /mcp)
  *  - "errors:read" | "errors:write" | "errors:*" (MCP /mcp/errors)
- *  - "migration:read" | "migration:apply" | "migration:*" (MCP /mcp/migration) */
+ *  - "migration:read" | "migration:apply" | "migration:*" (MCP /mcp/migration)
+ *  - "cad:read" | "cad:write" | "cad:*" (MCP /mcp/cad — máy trạm FreeCAD) */
 const SCOPE_RE =
-  /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write)|feedback:(read|propose|apply|\*)|errors:(read|write|\*)|migration:(read|apply|\*))$/;
+  /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write)|feedback:(read|propose|apply|\*)|errors:(read|write|\*)|migration:(read|apply|\*)|cad:(read|write|\*))$/;
 function validateScopes(scopes: string[]): void {
   if (scopes.length === 0) {
     throw new TRPCError({
