@@ -232,7 +232,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       ? sql`(coalesce(c.f_soluong, 0) - coalesce(d.dalam, 0))`
       : sql`coalesce(c.f_soluong, 0)`;
     const rows = (await db.execute(sql`
-      SELECT c.f_mact_snap AS mact, max(c.f_tenct_snap) AS tenct,
+      SELECT c.f_mact_snap AS mact, max(c.f_tenct_snap) AS tenct, max(c.f_stt_snap) AS stt,
              count(*) FILTER (WHERE ${remain} > 0) AS socard
       FROM tr_pallet_card c JOIN tr_pallet p ON p.f_id = c.f_pallet_id
       ${dalamJoin}
@@ -240,7 +240,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         AND c.deleted_at IS NULL AND p.f_dondathang = ${dondathang}
       GROUP BY c.f_mact_snap
       HAVING count(*) FILTER (WHERE ${remain} > 0) > 0
-      ORDER BY max(c.f_tenct_snap) LIMIT 2000`)) as unknown as Record<string, unknown>[];
+      ORDER BY max(c.f_stt_snap) LIMIT 2000`)) as unknown as Record<string, unknown>[];
     return reply.send({ rows });
   });
   app.get("/banvesvc/sl-pallet-cards", async (req, reply) => {

@@ -478,12 +478,13 @@ function TimThePallet({
     )
       .then((d) =>
         setChitiet(
-          ((d.rows as Array<{ mact?: string; tenct?: string; socard?: number }>) ?? []).map(
-            (r) => ({
-              value: String(r.mact ?? ""),
-              label: `${r.tenct ?? r.mact} — ${r.mact} (còn ${r.socard ?? 0} thẻ)`,
-            }),
-          ),
+          (
+            (d.rows as Array<{ mact?: string; tenct?: string; stt?: string; socard?: number }>) ??
+            []
+          ).map((r) => ({
+            value: String(r.mact ?? ""),
+            label: `${r.tenct ?? r.mact} — ${r.stt ?? r.mact} (còn ${r.socard ?? 0} thẻ)`,
+          })),
         ),
       )
       .finally(() => setBusy(false));
