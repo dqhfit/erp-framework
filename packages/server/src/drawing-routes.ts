@@ -285,6 +285,37 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ rows });
   });
 
+  // ── Công đoạn tiếp theo (combobox) cho 1 công đoạn. Bảng cấu hình nguồn
+  //    CongDoanTiepTheo (trtb_m_location_next) lưu FK theo OID TbMLocation —
+  //    KHÔNG map sang bảng thật PG được. Dùng ROUTING THỰC TẾ: các *-IN đã từng
+  //    nhận hàng từ công đoạn này (tr_trangthai_sanxuat), xếp theo tần suất —
+  //    đúng tinh thần danh sách công đoạn kế tiếp. Không có congDoan → mọi -IN. ──
+  app.get("/banvesvc/sl-next-stages", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const congDoan = ((req.query ?? {}) as { congDoan?: string }).congDoan?.trim() ?? "";
+    const cid = auth.companyId;
+    if (congDoan) {
+      const rows = (await db.execute(sql`
+        SELECT t.f_congdoantieptheo AS cloc, max(l.f_n_location) AS name, count(*) AS n
+        FROM tr_trangthai_sanxuat t
+        LEFT JOIN trtb_m_location l ON l.f_c_location = t.f_congdoantieptheo
+        WHERE t.company_id = ${cid}::uuid AND t.deleted_at IS NULL
+          AND t.f_congdoan = ${congDoan} AND t.f_congdoantieptheo LIKE '%-IN'
+        GROUP BY t.f_congdoantieptheo ORDER BY count(*) DESC LIMIT 50`)) as unknown as Record<
+        string,
+        unknown
+      >[];
+      return reply.send({ rows });
+    }
+    const rows = (await db.execute(sql`
+      SELECT f_c_location AS cloc, f_n_location AS name
+      FROM trtb_m_location
+      WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_c_location LIKE '%-IN'
+      ORDER BY f_n_location`)) as unknown as Record<string, unknown>[];
+    return reply.send({ rows });
+  });
+
   // ── Báo cáo CHI PHÍ KINH DOANH theo nhóm (port ChiPhiKinhDoanhL). 70k dòng →
   //    group-by SERVER (cột f_ typed: id_nhomchiphi/ngaygiaodich/sotien/tygia).
   //    Tên nhóm = kt_nhom_chiphi.f_nhomchiphi; loại = KHOANCHI (chi)|KHOANTHU (thu);

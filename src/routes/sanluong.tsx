@@ -72,6 +72,8 @@ function SanLuongPage() {
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [findCard, setFindCard] = useState(false); // popup tìm thẻ theo đơn hàng
+  // Công đoạn kế tiếp (combobox) — routing thực tế từ công đoạn hiện tại.
+  const [nextStages, setNextStages] = useState<{ value: string; label: string }[]>([]);
   // stages = công đoạn user được xếp. null = chưa tải.
   const [stages, setStages] = useState<Stage[] | null>(null);
   // bump để các tab dưới reload sau khi hoàn thành 1 phiếu.
@@ -113,6 +115,31 @@ function SanLuongPage() {
       alive = false;
     };
   }, []);
+
+  // Gợi ý công đoạn kế tiếp theo công đoạn hiện tại (routing thực tế).
+  useEffect(() => {
+    const cd = congDoan.trim();
+    if (!cd) {
+      setNextStages([]);
+      return;
+    }
+    let alive = true;
+    fetch(`/banvesvc/sl-next-stages?congDoan=${encodeURIComponent(cd)}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { rows: [] }))
+      .then((d: { rows?: Array<{ cloc?: string; name?: string }> }) => {
+        if (alive)
+          setNextStages(
+            (d.rows ?? []).map((r) => ({
+              value: String(r.cloc ?? ""),
+              label: r.name ? `${r.name} (${r.cloc})` : String(r.cloc ?? ""),
+            })),
+          );
+      })
+      .catch(() => alive && setNextStages([]));
+    return () => {
+      alive = false;
+    };
+  }, [congDoan]);
 
   const traThe = async (card: string) => {
     const c = card.trim();
@@ -313,14 +340,16 @@ function SanLuongPage() {
                 {info?.found && (
                   <div className="space-y-2.5">
                     <label className="block">
-                      <span className="text-xs text-muted">Công đoạn kế tiếp (c_location)</span>
-                      <Input
-                        value={congDoanSau}
-                        onChange={(e) => setCongDoanSau(e.target.value)}
-                        placeholder="vd: DH06-PROD"
-                        className="mt-1 w-full h-10"
-                        autoCapitalize="characters"
-                      />
+                      <span className="text-xs text-muted">Công đoạn kế tiếp</span>
+                      <div className="mt-1">
+                        <SearchableSelect
+                          className="w-full"
+                          value={congDoanSau}
+                          onChange={setCongDoanSau}
+                          options={nextStages}
+                          placeholder="Chọn công đoạn nhận…"
+                        />
+                      </div>
                     </label>
                     <div>
                       <span className="text-xs text-muted">Quy cách thực tế (mm)</span>
