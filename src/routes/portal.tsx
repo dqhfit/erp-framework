@@ -306,7 +306,15 @@ function PortalRoute() {
             )
           ) : navNodes.some((n) => n.pageId) ? (
             // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
-            <MenuTree nodes={navNodes} activePageId={activeId} onSelect={onSelectPage} />
+            // Portal: mở hết cây lần đầu + NHỚ trạng thái mở/thu gọn qua reload.
+            <MenuTree
+              nodes={navNodes}
+              activePageId={activeId}
+              onSelect={onSelectPage}
+              expandAll
+              storageKey="portal"
+              cleanLabels
+            />
           ) : (
             // Fallback: danh sách phẳng (chưa link menu / chưa publish).
             <ul className="py-1">

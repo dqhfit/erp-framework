@@ -132,25 +132,43 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
     typeof rawLimit === "number" && rawLimit > 0
       ? Math.min(Math.floor(rawLimit), MAX_ROW_LIMIT)
       : DEFAULT_ROW_LIMIT;
-  const lf = cfg.loadFilters as LoadFilters | undefined;
+  const lf = cfg.loadFilters as
+    | Record<string, { op: LoadFilterOp; value?: unknown; fromState?: string }>
+    | undefined;
   let filters: LoadFilters | undefined;
   if (lf && Object.keys(lf).length > 0) {
     // Chuẩn hóa: op "in" cần value là MẢNG (server dùng = ANY(arr)); designer
     // lưu chuỗi "a,b,c" → tách thành mảng. Op khác giữ nguyên.
     filters = {};
     for (const [field, cond] of Object.entries(lf)) {
-      if (cond.op === "in" && typeof cond.value === "string") {
+      // Giá trị ĐỘNG: cond.fromState → đọc từ pageState (vd filter theo SP đã
+      // chọn ở bộ lọc header). Rỗng → BỎ điều kiện này (kết hợp loadGate để
+      // không tải gì cho tới khi chọn). Server-side filter → chỉ tải đúng tập.
+      let value = cond.value;
+      if (cond.fromState) {
+        value = pageState.get(cond.fromState);
+        if (
+          value === undefined ||
+          value === null ||
+          value === "" ||
+          (Array.isArray(value) && value.length === 0)
+        ) {
+          continue;
+        }
+      }
+      if (cond.op === "in" && typeof value === "string") {
         filters[field] = {
           op: "in",
-          value: cond.value
+          value: value
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean),
         };
       } else {
-        filters[field] = cond;
+        filters[field] = { op: cond.op, value };
       }
     }
+    if (Object.keys(filters).length === 0) filters = undefined;
   }
   const gateKey = (cfg.loadGate as string | undefined)?.trim();
   let enabled = true;
@@ -3027,6 +3045,101 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
+/** Widget "filter" — bộ lọc header: Hệ hàng → Sản phẩm (cascade) + "Nạp lại".
+ *  Chọn sản phẩm → set pageState[emitStateKey] = mã SP → list (loadGate +
+ *  loadFilters fromState) MỚI tải định mức của SP đó (server-side, đúng tập).
+ *  Dữ liệu SP lấy từ datasource gọn (cfg.dataSourceId = ds_sanpham_filter). */
+function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  const pageState = usePageState();
+  const { rows, loading } = useWidgetData(cfg);
+  const familyField = (cfg.familyField as string) || "hehang";
+  const valueField = (cfg.valueField as string) || "masp";
+  const labelField = (cfg.labelField as string) || "tensp";
+  const emitStateKey = (cfg.emitStateKey as string) || "selMasp";
+  const refreshDsId = cfg.refreshDataSourceId as string | undefined;
+  const [hehang, setHehang] = useState("");
+  const masp = (pageState.get(emitStateKey) as string) ?? "";
+  const isMobile = useIsMobile();
+
+  const families = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) {
+      const v = r[familyField];
+      if (v != null && v !== "") s.add(String(v));
+    }
+    return [...s].sort((a, b) => a.localeCompare(b)).map((v) => ({ value: v, label: v }));
+  }, [rows, familyField]);
+
+  const productOptions = useMemo(() => {
+    const list = hehang ? rows.filter((r) => String(r[familyField] ?? "") === hehang) : rows;
+    return list.map((r) => {
+      const code = String(r[valueField] ?? "");
+      const name = String(r[labelField] ?? "");
+      return { value: code, label: name ? `${name} — ${code}` : code };
+    });
+  }, [rows, hehang, familyField, valueField, labelField]);
+
+  const reloadBtn = (
+    <button
+      type="button"
+      onClick={() => {
+        if (refreshDsId) pageState.set(`__refresh:ds:${refreshDsId}`, Date.now());
+      }}
+      className="btn btn-sm btn-default shrink-0"
+      title="Tải lại định mức của sản phẩm đang chọn"
+    >
+      <I.RefreshCw size={13} /> Nạp lại
+    </button>
+  );
+
+  return (
+    // Mobile: label TRÊN combobox (xếp dọc) + nút Nạp lại cùng dòng combobox Hệ
+    // hàng. ≥md: 1 hàng ngang, label inline. Select thu nhỏ 28px/12px.
+    <div className="px-2 py-1.5 h-full flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-x-3 text-xs">
+      {/* Hệ hàng */}
+      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-1.5">
+        <span className="text-muted shrink-0">Hệ hàng</span>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 md:flex-none md:w-40">
+            <SearchableSelect
+              className="w-full"
+              triggerClassName="h-7! text-xs!"
+              value={hehang}
+              onChange={(v) => {
+                setHehang(v);
+                // Đổi hệ hàng → reset sản phẩm → list ẩn (chờ chọn lại SP).
+                pageState.set(emitStateKey, "");
+              }}
+              options={families}
+              emptyOption="— Tất cả —"
+            />
+          </div>
+          {/* Mobile: Nạp lại cùng dòng combobox Hệ hàng */}
+          {isMobile && reloadBtn}
+        </div>
+      </div>
+      {/* Sản phẩm */}
+      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-1.5 md:flex-1 md:min-w-[200px]">
+        <span className="text-muted shrink-0">
+          Sản phẩm{loading ? " (đang tải…)" : ` (${productOptions.length})`}
+        </span>
+        <div className="md:flex-1 md:min-w-0">
+          <SearchableSelect
+            className="w-full"
+            triggerClassName="h-7! text-xs!"
+            value={masp}
+            onChange={(v) => pageState.set(emitStateKey, v)}
+            options={productOptions}
+            emptyOption="— Chọn sản phẩm —"
+          />
+        </div>
+      </div>
+      {/* ≥md: Nạp lại ở cuối hàng */}
+      {!isMobile && reloadBtn}
+    </div>
+  );
+}
+
 function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const t = useT();
   const pageState = usePageState();
@@ -3288,6 +3401,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "step") return <StepWidget cfg={cfg} />;
   if (comp.kind === "split") return <SplitWidget comp={comp} />;
   if (comp.kind === "search") return <SearchWidget cfg={cfg} />;
+  if (comp.kind === "filter") return <FilterWidget cfg={cfg} />;
   if (comp.kind === "combobox") return <ComboboxWidget cfg={cfg} />;
   if (comp.kind === "listbox") return <ListboxWidget cfg={cfg} />;
   if (comp.kind === "tagbox") return <TagboxWidget cfg={cfg} />;
@@ -3545,7 +3659,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
 
   return (
     <PageStateProvider>
-      <div ref={canvasRef} className="overflow-y-auto h-full">
+      <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%). */}
         <div className="p-2 sm:p-3">
           {/* Header */}
@@ -3558,11 +3672,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                 </div>
               ) : hasPersonal ? (
                 <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
-              ) : (
-                <div className="text-sm text-muted mt-0.5">
-                  Chế độ người dùng — dữ liệu thật từ backend
-                </div>
-              )}
+              ) : null}
             </div>
 
             <div className="shrink-0 mt-1 flex items-center gap-2">

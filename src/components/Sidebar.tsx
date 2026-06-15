@@ -818,6 +818,7 @@ function PagesTreeSection({
                 onOpen(`/pages/${id}`);
                 onNavigate?.();
               }}
+              storageKey="sidebar"
             />
             {orphanPages.length > 0 && (
               <div className="mt-1 pt-1 border-t border-border/30">
@@ -2050,7 +2051,24 @@ export function Sidebar() {
         </div>
 
         {/* === User info + Đăng xuất === */}
-        <div className="shrink-0 border-t border-border px-2 py-2">
+        <div className="shrink-0 border-t border-border px-2 py-2 space-y-1.5">
+          {/* Xem Portal (admin) — mở giao diện người dùng cuối ở TAB MỚI.
+             Dùng <a target="_blank"> để mở cửa sổ/tab mới, không rời SPA hiện tại. */}
+          {role === "admin" && (
+            <a
+              href="/portal"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Xem Portal (mở tab mới)"
+              className={cn(
+                "flex items-center rounded-md text-muted hover:bg-hover/60 hover:text-text transition-colors",
+                collapsed ? "w-full h-9 justify-center" : "gap-2 px-2 py-1.5 text-[13px]",
+              )}
+            >
+              <I.ExternalLink size={collapsed ? 15 : 14} className="shrink-0" />
+              {!collapsed && <span className="truncate flex-1">Xem Portal</span>}
+            </a>
+          )}
           {collapsed ? (
             <button
               type="button"

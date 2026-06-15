@@ -3,8 +3,12 @@
    Dùng chung Portal (viewer) + Sidebar (admin). Node nhóm collapsible →
    mục (trang). Lá có pageId → onSelect(pageId). Nhánh không dẫn tới trang
    đã lọc ở server (navTree).
+
+   Trạng thái mở/thu gọn TỪNG nhánh được NHỚ (localStorage theo node.code)
+   → khôi phục y nguyên khi reload. `expandAll` chỉ là mặc định lần đầu
+   (khi node CHƯA có trạng thái lưu); `storageKey` tách biệt portal/sidebar.
    ========================================================== */
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { cn } from "@/lib/utils";
 
@@ -17,15 +21,66 @@ export interface NavNode {
   pageId: string | null;
 }
 
+/** Nhãn hiển thị: bỏ đuôi " - <source_code>" (vd "ĐỊNH MỨC NGŨ KIM - bbiDinhMucNKI")
+ *  khi clean=true (portal/end-user). Admin giữ nguyên để đối chiếu code gốc. */
+function displayLabel(node: NavNode, clean?: boolean): string {
+  const n = node.name ?? "";
+  if (clean && node.code) {
+    const suffix = ` - ${node.code}`;
+    if (n.endsWith(suffix)) return n.slice(0, -suffix.length);
+  }
+  return n;
+}
+
+/** Map code→open, persist localStorage. Trả về trạng thái đã lưu + toggle.
+ *  Node CHƯA có trong map dùng `fallback` (expandAll / depth0 / có-trang-active). */
+function useTreeExpand(storageKey?: string) {
+  const lsKey = storageKey ? `menu-exp-${storageKey}` : null;
+  const [map, setMap] = useState<Record<string, boolean>>(() => {
+    if (!lsKey) return {};
+    try {
+      const r = localStorage.getItem(lsKey);
+      return r ? (JSON.parse(r) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+  const toggle = useCallback(
+    (code: string, currentlyOpen: boolean) => {
+      setMap((prev) => {
+        const next = { ...prev, [code]: !currentlyOpen };
+        if (lsKey) {
+          try {
+            localStorage.setItem(lsKey, JSON.stringify(next));
+          } catch {}
+        }
+        return next;
+      });
+    },
+    [lsKey],
+  );
+  return { map, toggle };
+}
+
 export function MenuTree({
   nodes,
   activePageId,
   onSelect,
+  expandAll = false,
+  storageKey,
+  cleanLabels = false,
 }: {
   nodes: NavNode[];
   activePageId: string | null;
   onSelect: (pageId: string) => void;
+  /** Mở sẵn MỌI nhánh lần đầu (portal: end-user thấy hết, khỏi bấm từng cấp). */
+  expandAll?: boolean;
+  /** Khóa lưu trạng thái mở/thu gọn (vd "portal" | "sidebar"). Bỏ trống = không nhớ. */
+  storageKey?: string;
+  /** Bỏ đuôi " - <source_code>" trong nhãn (portal). Admin để false giữ code. */
+  cleanLabels?: boolean;
 }) {
+  const { map, toggle } = useTreeExpand(storageKey);
   const childrenOf = useMemo(() => {
     const m = new Map<string, NavNode[]>();
     for (const n of nodes) {
@@ -44,18 +99,27 @@ export function MenuTree({
       .sort((a, b) => a.sort - b.sort);
   }, [nodes]);
   return (
-    <ul className="py-1">
-      {roots.map((r) => (
-        <MenuBranch
-          key={r.code}
-          node={r}
-          childrenOf={childrenOf}
-          activePageId={activePageId}
-          onSelect={onSelect}
-          depth={0}
-        />
-      ))}
-    </ul>
+    // Cuộn ngang: nội dung w-max (theo nhãn dài nhất + thụt cấp) nên nhãn
+    // KHÔNG bị cắt — kéo ngang để xem hết. min-w-full để vẫn lấp đầy bề
+    // ngang sidebar khi nội dung ngắn.
+    <div className="overflow-x-auto">
+      <ul className="py-1 w-max min-w-full">
+        {roots.map((r) => (
+          <MenuBranch
+            key={r.code}
+            node={r}
+            childrenOf={childrenOf}
+            activePageId={activePageId}
+            onSelect={onSelect}
+            depth={0}
+            expandAll={expandAll}
+            expandState={map}
+            onToggle={toggle}
+            cleanLabels={cleanLabels}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -65,12 +129,20 @@ function MenuBranch({
   activePageId,
   onSelect,
   depth,
+  expandAll,
+  expandState,
+  onToggle,
+  cleanLabels,
 }: {
   node: NavNode;
   childrenOf: Map<string, NavNode[]>;
   activePageId: string | null;
   onSelect: (pageId: string) => void;
   depth: number;
+  expandAll?: boolean;
+  expandState: Record<string, boolean>;
+  onToggle: (code: string, currentlyOpen: boolean) => void;
+  cleanLabels?: boolean;
 }) {
   const kids = childrenOf.get(node.code) ?? [];
   const hasActiveDesc = useMemo(() => {
@@ -83,9 +155,11 @@ function MenuBranch({
     }
     return false;
   }, [kids, childrenOf, activePageId]);
-  const [open, setOpen] = useState(depth === 0 || hasActiveDesc);
   const isLeaf = kids.length === 0 && node.pageId;
   const active = node.pageId != null && node.pageId === activePageId;
+  // Trạng thái đã lưu thắng (kể cả false = user chủ động thu gọn); chưa lưu
+  // (undefined) → mặc định: expandAll / gốc / nhánh chứa trang đang xem.
+  const open = expandState[node.code] ?? (expandAll || depth === 0 || hasActiveDesc);
   if (isLeaf) {
     return (
       <li>
@@ -99,7 +173,9 @@ function MenuBranch({
           )}
         >
           <I.Layout size={13} className="shrink-0 text-muted" />
-          <span className="truncate">{node.name}</span>
+          <span className="whitespace-nowrap lowercase first-letter:uppercase">
+            {displayLabel(node, cleanLabels)}
+          </span>
         </button>
       </li>
     );
@@ -109,7 +185,7 @@ function MenuBranch({
     <li>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => onToggle(node.code, open)}
         style={{ paddingLeft: 12 + depth * 12 }}
         className="w-full text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted flex items-center gap-1.5 hover:bg-hover/40"
       >
@@ -117,7 +193,9 @@ function MenuBranch({
           size={12}
           className={cn("shrink-0 transition-transform", open && "rotate-90")}
         />
-        <span className="truncate">{node.name}</span>
+        <span className="whitespace-nowrap lowercase first-letter:uppercase">
+          {displayLabel(node, cleanLabels)}
+        </span>
       </button>
       {open && (
         <ul>
@@ -129,6 +207,10 @@ function MenuBranch({
               activePageId={activePageId}
               onSelect={onSelect}
               depth={depth + 1}
+              expandAll={expandAll}
+              expandState={expandState}
+              onToggle={onToggle}
+              cleanLabels={cleanLabels}
             />
           ))}
         </ul>

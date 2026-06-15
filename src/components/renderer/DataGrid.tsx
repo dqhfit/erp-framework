@@ -291,6 +291,8 @@ export function DataGrid<T>({
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
+  // Chế độ xem: lưới (bảng) ↔ card. Mặc định desktop = lưới, mobile = card.
+  const [viewMode, setViewMode] = useState<"grid" | "card">(isMobile ? "card" : "grid");
   const serverMode = !!server;
   // Ref giữ controller mới nhất — tránh để identity object của caller lọt vào
   // deps effect (sẽ fire mỗi render → fetch loop).
@@ -567,7 +569,7 @@ export function DataGrid<T>({
               placeholder={t("datagrid.search_placeholder")}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-6 pr-6 h-7 text-xs"
+              className="pl-7! pr-6! h-7 text-xs"
             />
             {globalFilter && (
               <button
@@ -669,8 +671,38 @@ export function DataGrid<T>({
             )}
           </div>
 
+          {/* Chuyển đổi xem: lưới (bảng) ↔ card */}
+          <div className="ml-auto inline-flex items-center rounded border border-border overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Xem dạng lưới (bảng)"
+              className={cn(
+                "inline-flex items-center justify-center px-2 h-7 transition-colors",
+                viewMode === "grid"
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted hover:text-text hover:bg-hover/40",
+              )}
+            >
+              <I.Table size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("card")}
+              title="Xem dạng card"
+              className={cn(
+                "inline-flex items-center justify-center px-2 h-7 border-l border-border transition-colors",
+                viewMode === "card"
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted hover:text-text hover:bg-hover/40",
+              )}
+            >
+              <I.Layout size={12} />
+            </button>
+          </div>
+
           {/* Column chooser (ẩn/hiện cột) */}
-          <div className="relative ml-auto" ref={colChooserRef}>
+          <div className="relative" ref={colChooserRef}>
             <button
               type="button"
               onClick={() => setColChooserOpen((v) => !v)}
@@ -749,7 +781,7 @@ export function DataGrid<T>({
         </div>
       )}
 
-      {isMobile ? (
+      {viewMode === "card" ? (
         <div className="flex-1 overflow-auto p-2 space-y-2">
           {table.getRowModel().rows.length === 0 ? (
             <div className="text-center py-8 text-muted text-sm">

@@ -87,7 +87,9 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
       )
     : rows;
 
-  const modalWidth = step.popupMode === "list" ? 760 : 520;
+  // Form rộng hơn để chứa 2 cột trên màn lớn; list 760; detail 520.
+  // Modal cap theo viewport (w-full + maxWidth) nên màn nhỏ tự co lại.
+  const modalWidth = step.popupMode === "list" ? 760 : step.popupMode === "form" ? 720 : 520;
 
   return (
     <Modal
@@ -222,62 +224,65 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
 
       {/* ── FORM ─────────────────────────────────────────────── */}
       {step.popupMode === "form" && (
-        <div className="space-y-3">
+        <div>
           {visibleFields.length === 0 ? (
             <div className="text-center py-8 text-muted text-sm">Entity chưa có field nào</div>
           ) : (
-            visibleFields.map((f) => (
-              <div key={f.id} className="space-y-1">
-                <label className="text-xs font-medium">
-                  {f.label}
-                  {f.required && <span className="text-danger ml-0.5">*</span>}
-                </label>
-                {f.type === "boolean" ? (
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={formValues[f.name] === "true"}
-                      onChange={(e) =>
-                        setFormValues((v) => ({
-                          ...v,
-                          [f.name]: e.target.checked ? "true" : "false",
-                        }))
-                      }
-                    />
+            // Màn lớn (≥lg) LUÔN 2 cột; màn nhỏ tự về 1 cột.
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
+              {visibleFields.map((f) => (
+                <div key={f.id} className="space-y-1">
+                  <label className="text-xs font-medium">
                     {f.label}
+                    {f.required && <span className="text-danger ml-0.5">*</span>}
                   </label>
-                ) : f.options && f.options.length > 0 ? (
-                  <SearchableSelect
-                    className="w-full"
-                    value={formValues[f.name] ?? ""}
-                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
-                    options={f.options.map((opt) => ({ value: opt, label: opt }))}
-                    emptyOption="— chọn —"
-                  />
-                ) : f.type === "text" || f.type === "longtext" ? (
-                  <textarea
-                    className="input w-full resize-none"
-                    rows={f.type === "longtext" ? 3 : 1}
-                    value={formValues[f.name] ?? ""}
-                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                    placeholder={f.label}
-                  />
-                ) : (
-                  <Input
-                    type={
-                      f.type === "number" || f.type === "integer"
-                        ? "number"
-                        : f.type === "date"
-                          ? "date"
-                          : "text"
-                    }
-                    value={formValues[f.name] ?? ""}
-                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                    placeholder={f.label}
-                  />
-                )}
-              </div>
-            ))
+                  {f.type === "boolean" ? (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={formValues[f.name] === "true"}
+                        onChange={(e) =>
+                          setFormValues((v) => ({
+                            ...v,
+                            [f.name]: e.target.checked ? "true" : "false",
+                          }))
+                        }
+                      />
+                      {f.label}
+                    </label>
+                  ) : f.options && f.options.length > 0 ? (
+                    <SearchableSelect
+                      className="w-full"
+                      value={formValues[f.name] ?? ""}
+                      onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                      options={f.options.map((opt) => ({ value: opt, label: opt }))}
+                      emptyOption="— chọn —"
+                    />
+                  ) : f.type === "text" || f.type === "longtext" ? (
+                    <textarea
+                      className="input w-full resize-none"
+                      rows={f.type === "longtext" ? 3 : 1}
+                      value={formValues[f.name] ?? ""}
+                      onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                      placeholder={f.label}
+                    />
+                  ) : (
+                    <Input
+                      type={
+                        f.type === "number" || f.type === "integer"
+                          ? "number"
+                          : f.type === "date"
+                            ? "date"
+                            : "text"
+                      }
+                      value={formValues[f.name] ?? ""}
+                      onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                      placeholder={f.label}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

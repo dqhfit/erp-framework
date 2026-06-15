@@ -30,6 +30,8 @@ interface SearchableSelectProps {
   emptyOption?: string;
   disabled?: boolean;
   className?: string;
+  /** Class thêm cho nút trigger — vd thu nhỏ: "h-7! text-xs!". */
+  triggerClassName?: string;
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -47,6 +49,7 @@ export function SearchableSelect({
   emptyOption,
   disabled,
   className,
+  triggerClassName,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -149,7 +152,10 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="input flex w-full items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          "input flex w-full items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50",
+          triggerClassName,
+        )}
       >
         <span className={cn("truncate", !selected && "text-muted")}>
           {selected ? selected.label : placeholder}
