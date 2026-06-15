@@ -7,7 +7,7 @@
    ========================================================== */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, SearchableSelect, Select } from "@/components/ui";
@@ -304,16 +304,37 @@ function TimSanPham({
   onPick: (masp: string) => void;
   onScan: () => void;
 }) {
-  const [mode, setMode] = useState<FindMode>("hehang");
+  const initMode = (): FindMode => {
+    if (typeof localStorage === "undefined") return "hehang";
+    const m = localStorage.getItem("banve:find:mode");
+    return m === "donhang" || m === "order" ? m : "hehang";
+  };
+  const [mode, setModeRaw] = useState<FindMode>(initMode);
   const [l1, setL1] = useState<Opt[]>([]);
-  const [l1v, setL1v] = useState("");
+  const [l1v, setL1vRaw] = useState("");
   const [products, setProducts] = useState<Opt[]>([]);
   const [busy, setBusy] = useState(false);
+  // Nhớ chế độ + giá trị cấp 1 đã chọn → khôi phục khi mở lại popup.
+  const savedL1v = useRef(
+    typeof localStorage !== "undefined" ? localStorage.getItem("banve:find:l1v") || "" : "",
+  );
+  const restored = useRef(false);
+
+  const setMode = (m: FindMode) => {
+    setModeRaw(m);
+    restored.current = true; // user đổi chế độ → không khôi phục l1v cũ
+    savedL1v.current = "";
+    if (typeof localStorage !== "undefined") localStorage.setItem("banve:find:mode", m);
+  };
+  const setL1v = (v: string) => {
+    setL1vRaw(v);
+    if (typeof localStorage !== "undefined" && v) localStorage.setItem("banve:find:l1v", v);
+  };
 
   const loadL1 = useCallback(async (m: FindMode) => {
     setBusy(true);
     setL1([]);
-    setL1v("");
+    setL1vRaw("");
     setProducts([]);
     try {
       if (m === "hehang") {
@@ -371,6 +392,17 @@ function TimSanPham({
   useEffect(() => {
     void loadL1(mode);
   }, [mode]);
+
+  // Khôi phục giá trị cấp 1 đã lưu sau khi danh sách cấp 1 tải xong (1 lần).
+  useEffect(() => {
+    if (restored.current || l1.length === 0) return;
+    restored.current = true;
+    const v = savedL1v.current;
+    if (v && l1.some((o) => o.value === v)) {
+      setL1vRaw(v);
+      void loadProducts(mode, v);
+    }
+  }, [l1, mode, loadProducts]);
 
   const l1Label =
     mode === "hehang" ? "Hệ hàng" : mode === "donhang" ? "Mã đơn đặt hàng" : "Đơn hàng PO#";
