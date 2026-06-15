@@ -21,6 +21,14 @@
 # - Load dung session_replication_role=replica -> bo qua FK khi sample
 #   thieu cha-con. pgboss bi loai (server tu tao lai).
 # - Gom ca drizzle.__drizzle_migrations de local biet migration da apply.
+# - GIOI HAN: COPY text-format hiem khi loi "extra data after last
+#   expected column" o vai bang (vd co tsvector/vector hoac text co ky tu
+#   dac biet). Bang do se rong sau khi nap. Fix gon bang custom-format:
+#     ssh <server> "docker exec <prod-pg> sh -c 'PGPASSWORD=\$POSTGRES_PASSWORD \
+#       pg_dump -Fc --data-only --no-owner -t public.<BANG> -h 127.0.0.1 \
+#       -U \$POSTGRES_USER \$POSTGRES_DB'" | docker exec -i -e PGPASSWORD=erp \
+#       <local-pg> pg_restore --data-only --disable-triggers --no-owner \
+#       -h 127.0.0.1 -U erp -d <local-db>
 # =============================================================
 set -euo pipefail
 
