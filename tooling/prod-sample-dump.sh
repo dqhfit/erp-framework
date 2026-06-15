@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================
-# prod-sample-dump.sh — Trich SAMPLE tu PG prod (schema-only + N% dong
-# moi nhat moi bang) -> /tmp/erp-sample.sql.gz de tai ve local test.
+# prod-sample-dump.sh — Trich SAMPLE tu PG prod (schema-only + bang NHO
+# dump HET, bang LON lay N%) -> /tmp/erp-sample.sql.gz de tai ve test.
 #
 # CHAY BEN TRONG container Postgres prod (Coolify). Tren server:
 #   C=$(docker ps --filter ancestor=pgvector/pgvector:pg18 --format '{{.Names}}' | head -1)
 #   docker cp tooling/prod-sample-dump.sh "$C":/tmp/
-#   docker exec -e SAMPLE_PCT=10 "$C" bash /tmp/prod-sample-dump.sh   # 10% moi bang
+#   docker exec "$C" bash /tmp/prod-sample-dump.sh   # mac dinh: <=50k full, >50k 10%
 #   docker cp "$C":/tmp/erp-sample.sql.gz ./erp-sample.sql.gz
-# (SAMPLE_PCT=% (mac dinh 10); SAMPLE_MIN=san toi thieu (1000);
-#  SAMPLE_N=so dong co dinh (de ep thay vi %).)
+# (SAMPLE_FULL_MAX=nguong "nho" (mac dinh 50000); SAMPLE_PCT=% cho bang
+#  lon (10); SAMPLE_N=so dong co dinh moi bang (ep thay vi nguong/%).)
 #
 # Ghi chu:
 # - "latest" lay theo ctid DESC (xap xi dong chen sau cung) vi cac bang
 #   khong co cot thoi gian chung.
-# - n moi bang = max(SAMPLE_MIN, ceil(reltuples*PCT/100)) -> bang nho/
-#   config lay HET (nho san MIN), bang lon lay PCT%.
+# - n moi bang: reltuples <= FULL_MAX -> HET; lon hon -> ceil(reltuples
+#   *PCT/100). => bang nho/config DAY DU, bang lon lay PCT%.
 # - Bang cau hinh (entities/pages/legacy_menu_map/users/viewer_groups...)
 #   thuong < N nen duoc copy DAY DU -> /portal render dung.
 # - Load dung session_replication_role=replica -> bo qua FK khi sample
@@ -32,10 +32,10 @@
 # =============================================================
 set -euo pipefail
 
-# Mac dinh: PCT% dong MOI NHAT moi bang, san toi thieu MIN (bang nho/
-# config -> lay HET nho san MIN). Dat SAMPLE_N de ep so dong co dinh.
+# Mac dinh: bang NHO (<= FULL_MAX dong) dump HET; bang LON (> FULL_MAX)
+# lay PCT% dong MOI NHAT. Dat SAMPLE_N de ep so dong co dinh moi bang.
 PCT="${SAMPLE_PCT:-10}"
-MIN="${SAMPLE_MIN:-1000}"
+FULL_MAX="${SAMPLE_FULL_MAX:-50000}"
 FIXED="${SAMPLE_N:-}"
 export PGUSER="${POSTGRES_USER:-erp}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-}"
@@ -46,7 +46,7 @@ OUT=/tmp/erp-sample.sql
 echo "== 1/2 schema-only (tru pgboss) =="
 pg_dump --schema-only -N pgboss --no-owner --no-privileges -f "$OUT"
 
-DESC_LABEL=$([ -n "$FIXED" ] && echo "co dinh $FIXED dong" || echo "${PCT}% (san $MIN)")
+DESC_LABEL=$([ -n "$FIXED" ] && echo "co dinh $FIXED dong" || echo "bang <=$FULL_MAX: FULL; lon hon: ${PCT}%")
 echo "== 2/2 data: latest $DESC_LABEL moi bang (public + drizzle) =="
 {
   echo ""
@@ -62,10 +62,10 @@ psql -Atq -c "SELECT schemaname||'.'||tablename FROM pg_tables WHERE schemaname 
   if [ -n "$FIXED" ]; then
     n="$FIXED"
   else
-    # Uoc luong so dong tu pg_class.reltuples (tuc thoi, KHONG scan) ->
-    # n = max(MIN, ceil(reltuples*PCT/100)). Bang nho -> MIN (lay het).
-    n=$(psql -Atq -c "SELECT GREATEST($MIN, ceil(GREATEST(c.reltuples,0)*$PCT/100.0)::bigint) FROM pg_class c JOIN pg_namespace nsp ON nsp.oid=c.relnamespace WHERE nsp.nspname='$schema' AND c.relname='$tbl'")
-    [ -z "$n" ] && n="$MIN"
+    # reltuples (uoc luong, KHONG scan): <= FULL_MAX -> lay HET (LIMIT
+    # 2e9); lon hon -> ceil(reltuples*PCT/100).
+    n=$(psql -Atq -c "SELECT CASE WHEN GREATEST(c.reltuples,0) <= $FULL_MAX THEN 2000000000 ELSE ceil(c.reltuples*$PCT/100.0)::bigint END FROM pg_class c JOIN pg_namespace nsp ON nsp.oid=c.relnamespace WHERE nsp.nspname='$schema' AND c.relname='$tbl'")
+    [ -z "$n" ] && n=2000000000
   fi
   echo "COPY \"$schema\".\"$tbl\" FROM stdin;" >> "$OUT"
   psql -q -c "\copy (SELECT * FROM \"$schema\".\"$tbl\" ORDER BY ctid DESC LIMIT $n) TO STDOUT" >> "$OUT"
