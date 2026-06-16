@@ -1093,13 +1093,18 @@ function EditableListWidget({
         summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
       },
       cell: (ctx) => {
-        const row = ctx.row.original as { id?: unknown; masp?: unknown; mact?: unknown };
+        const row = ctx.row.original as Record<string, unknown> & { id?: unknown };
         // Cột "Bản vẽ (trang PDF)": thumbnail + nút gán trang thay ô sửa thường.
         if (f.type === "drawing_page") {
           return (
             <DrawingPageCell
               masp={String(row.masp ?? "")}
-              mact={String(row.mact ?? "")}
+              detail={{
+                mact: String(row.mact ?? ""),
+                chitiet: String(row.chitiet ?? ""),
+                // Kích thước tinh chế (dày × rộng × dài) để nhận diện trang.
+                dims: [row.dayy_tc, row.rong_tc, row.dai_tc].map((v) => v as string | number),
+              }}
               page={String(ctx.getValue() ?? "")}
               canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
               onCommit={(v) => saveRef.current(row.id, f.name, v)}

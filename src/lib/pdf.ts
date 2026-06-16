@@ -60,15 +60,3 @@ export async function renderPageToDataUrl(
   await page.render({ canvasContext: ctx, viewport }).promise;
   return canvas.toDataURL("image/png");
 }
-
-/** Trang đầu tiên (1-based) có chứa `code` (vd mã chi tiết). null nếu không thấy. */
-export function findPageByCode(pageTexts: string[], code: string): number | null {
-  const c = String(code ?? "")
-    .trim()
-    .toLowerCase();
-  if (!c) return null;
-  for (let i = 0; i < pageTexts.length; i++) {
-    if ((pageTexts[i] ?? "").toLowerCase().includes(c)) return i + 1;
-  }
-  return null;
-}
