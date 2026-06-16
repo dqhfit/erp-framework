@@ -346,6 +346,7 @@ function StepRow({
     "delete-record": "Xoá bản ghi",
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
+    refresh: "Nạp lại lưới",
     "open-popup": "Mở popup",
     "open-wizard": "Mở wizard",
   };

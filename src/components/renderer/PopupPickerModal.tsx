@@ -11,6 +11,7 @@ import { createApiDataSource } from "@erp-framework/client";
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
+import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionStepOpenPopup } from "@/types/page";
 
@@ -27,47 +28,104 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   const entities = useUserObjects((s) => s.entities);
   const entity = entities.find((e) => e.id === step.entity);
 
-  const visibleFields = (entity?.fields ?? [])
-    .filter((f) => f.type !== "formula" && f.type !== "collection")
-    .slice(0, 7);
+  const selectableFields = (entity?.fields ?? []).filter(
+    (f) => f.type !== "formula" && f.type !== "collection",
+  );
+  // step.fields (nếu có) → đúng tập + thứ tự đó (ẩn field tự sinh như id);
+  // không có → mặc định 7 field đầu (hành vi cũ).
+  const visibleFields =
+    step.fields && step.fields.length > 0
+      ? (step.fields
+          .map((n) => selectableFields.find((f) => f.name === n))
+          .filter(Boolean) as typeof selectableFields)
+      : selectableFields.slice(0, 7);
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
 
-  /* Fetch records (list) hoặc record đơn (detail) */
+  /* Fetch records: list (chọn) hoặc record đơn (detail + form-sửa theo recordId). */
   useEffect(() => {
     if (!step.entity) return;
-    if (step.popupMode === "form") return;
 
-    setLoading(true);
     if (step.popupMode === "list") {
+      setLoading(true);
       api
         .getRecords(step.entity, { limit: 300 })
         .then((res) => setRows(res.rows.map((r) => r.data)))
         .catch(() => setRows([]))
         .finally(() => setLoading(false));
-    } else if (step.popupMode === "detail" && recordId != null) {
+      return;
+    }
+    // detail HOẶC form-sửa (có recordId) → tải record để xem/điền sẵn.
+    if ((step.popupMode === "detail" || step.popupMode === "form") && recordId != null) {
+      setLoading(true);
       api
         .getRecord(String(recordId))
         .then((rec) => setDetailRow(rec ? (rec.data as Record<string, unknown>) : null))
         .catch(() => setDetailRow(null))
         .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
     }
   }, [step.entity, step.popupMode, recordId]);
 
-  /* Khởi tạo form trống */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chu y chi reset form khi doi popupMode/entity, khong reset khi visibleFields thay doi de tranh xoa input dang nhap
+  /* Khởi tạo form: rỗng (tạo mới) hoặc điền sẵn từ detailRow (sửa). */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bám detailRow để điền sẵn khi sửa; KHÔNG bám visibleFields để khỏi xoá input đang nhập
   useEffect(() => {
     if (step.popupMode !== "form") return;
     const init: Record<string, string> = {};
-    for (const f of visibleFields) init[f.name] = "";
+    for (const f of visibleFields) {
+      const v = detailRow ? detailRow[f.name] : undefined;
+      if (v == null) {
+        init[f.name] = "";
+      } else if (f.type === "boolean" || f.type === "bool") {
+        init[f.name] = v === true || v === "true" ? "true" : "false";
+      } else {
+        init[f.name] = String(v);
+      }
+    }
     setFormValues(init);
-  }, [step.entity, step.popupMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step.entity, step.popupMode, detailRow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Gom giá trị form → payload (boolean về bool). */
+  const buildPayload = (): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const f of visibleFields) {
+      const v = formValues[f.name];
+      if (v === undefined) continue;
+      if (f.type === "boolean" || f.type === "bool") {
+        out[f.name] = v === "true";
+      } else {
+        out[f.name] = v;
+      }
+    }
+    return out;
+  };
+
+  /* Xác nhận form: persist=true → tạo/sửa thật; ngược lại trả giá trị về state. */
+  const onConfirmForm = async () => {
+    if (saving) return;
+    const payload = buildPayload();
+    if (!step.persist) {
+      onSelect(payload);
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved =
+        recordId != null
+          ? await api.updateRecord(String(recordId), payload)
+          : await api.createRecord(step.entity, payload);
+      toast.success(recordId != null ? "Đã cập nhật" : "Đã thêm mới");
+      onSelect((saved.data as Record<string, unknown>) ?? payload);
+    } catch (e) {
+      toast.error((e as Error).message || "Lỗi lưu dữ liệu");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const defaultTitle =
     step.popupMode === "list"
@@ -100,16 +158,11 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
       footer={
         step.popupMode === "form" ? (
           <>
-            <Button variant="ghost" onClick={onCancel}>
+            <Button variant="ghost" onClick={onCancel} disabled={saving}>
               Huỷ
             </Button>
-            <Button
-              variant="primary"
-              onClick={() =>
-                onSelect(Object.fromEntries(Object.entries(formValues).map(([k, v]) => [k, v])))
-              }
-            >
-              Xác nhận
+            <Button variant="primary" onClick={onConfirmForm} disabled={saving || loading}>
+              {saving ? "Đang lưu..." : step.persist ? "Lưu" : "Xác nhận"}
             </Button>
           </>
         ) : step.popupMode === "detail" ? (
@@ -225,7 +278,12 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
       {/* ── FORM ─────────────────────────────────────────────── */}
       {step.popupMode === "form" && (
         <div>
-          {visibleFields.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted text-sm gap-2">
+              <I.Loader size={16} className="animate-spin" />
+              Đang tải...
+            </div>
+          ) : visibleFields.length === 0 ? (
             <div className="text-center py-8 text-muted text-sm">Entity chưa có field nào</div>
           ) : (
             // Màn lớn (≥lg) LUÔN 2 cột; màn nhỏ tự về 1 cột.
@@ -236,7 +294,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                     {f.label}
                     {f.required && <span className="text-danger ml-0.5">*</span>}
                   </label>
-                  {f.type === "boolean" ? (
+                  {f.type === "boolean" || f.type === "bool" ? (
                     <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"

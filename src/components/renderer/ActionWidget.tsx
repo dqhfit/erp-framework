@@ -36,6 +36,7 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
   const [popupRecordId, setPopupRecordId] = useState<unknown>(undefined);
   const popupResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
   const [wizardStep, setWizardStep] = useState<ActionStepOpenWizard | null>(null);
+  const [wizardRecordId, setWizardRecordId] = useState<unknown>(undefined);
   const wizardResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
 
   const hasProcedureStep = useMemo(
@@ -66,7 +67,12 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
   }, []);
 
   const openWizard = useCallback(
-    (step: ActionStepOpenWizard): Promise<Record<string, unknown> | null> => {
+    (
+      step: ActionStepOpenWizard,
+      getter: (key: string) => unknown,
+    ): Promise<Record<string, unknown> | null> => {
+      const rid = step.recordIdBinding ? resolveBinding(step.recordIdBinding, getter) : undefined;
+      setWizardRecordId(rid);
       setWizardStep(step);
       return new Promise((resolve) => {
         wizardResolveRef.current = resolve;
@@ -103,7 +109,8 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
         toast: { success: toast.success, error: toast.error, info: toast.info },
         navigate: (href: string) => void navigate({ to: href }),
         openPopup,
-        openWizard: (s: ActionStepOpenWizard) => openWizard(s),
+        openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
+          openWizard(s, getter),
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
       if (res.completed && res.procedureRuns > 0) {
@@ -120,7 +127,10 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
   const IconComp = config.icon ? I[config.icon] : null;
   const icon = busy ? <I.Loader size={13} /> : IconComp ? <IconComp size={13} /> : null;
 
-  const title = !canRun ? "Bạn không có quyền chạy procedure" : config.hint || undefined;
+  // iconOnly: ẩn label nhưng giữ làm tooltip + aria-label (a11y).
+  const title = !canRun
+    ? "Bạn không có quyền chạy procedure"
+    : config.hint || (config.iconOnly ? config.label : undefined);
 
   const btn = (
     <Button
@@ -129,9 +139,10 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
       disabled={busy || !canRun}
       icon={icon}
       title={title}
+      aria-label={config.iconOnly ? config.label : undefined}
       className={inline ? undefined : "w-full"}
     >
-      {config.label || "Action"}
+      {config.iconOnly ? null : config.label || "Action"}
     </Button>
   );
 
@@ -153,6 +164,7 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
       {wizardStep && (
         <WizardModal
           step={wizardStep}
+          recordId={wizardRecordId}
           pageState={pageState}
           onDone={(value) => closeWizard(value)}
           onCancel={() => closeWizard(null)}
