@@ -66,7 +66,7 @@ import type { SidebarFavItem } from "@/stores/preferences";
 
 type FavItem = SidebarFavItem;
 
-function useFavs() {
+export function useFavs() {
   const prefs = usePreferences((s) => s.prefs);
   const savePrefs = usePreferences((s) => s.save);
   const loaded = usePreferences((s) => s.loaded);

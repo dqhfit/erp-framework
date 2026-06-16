@@ -93,9 +93,21 @@ export const MenuTree = forwardRef<
     storageKey?: string;
     /** Bỏ đuôi " - <source_code>" trong nhãn (portal). Admin để false giữ code. */
     cleanLabels?: boolean;
+    /** Yêu thích: kiểm tra pageId đã yêu thích chưa + toggle (bật thì hiện sao). */
+    isFav?: (pageId: string) => boolean;
+    onToggleFav?: (node: NavNode) => void;
   }
 >(function MenuTree(
-  { nodes, activePageId, onSelect, expandAll = false, storageKey, cleanLabels = false },
+  {
+    nodes,
+    activePageId,
+    onSelect,
+    expandAll = false,
+    storageKey,
+    cleanLabels = false,
+    isFav,
+    onToggleFav,
+  },
   ref,
 ) {
   const { map, toggle, setAll } = useTreeExpand(storageKey);
@@ -143,10 +155,13 @@ export const MenuTree = forwardRef<
             activePageId={activePageId}
             onSelect={onSelect}
             depth={0}
+            parentPath={[]}
             expandAll={expandAll}
             expandState={map}
             onToggle={toggle}
             cleanLabels={cleanLabels}
+            isFav={isFav}
+            onToggleFav={onToggleFav}
           />
         ))}
       </ul>
@@ -160,22 +175,30 @@ function MenuBranch({
   activePageId,
   onSelect,
   depth,
+  parentPath,
   expandAll,
   expandState,
   onToggle,
   cleanLabels,
+  isFav,
+  onToggleFav,
 }: {
   node: NavNode;
   childrenOf: Map<string, NavNode[]>;
   activePageId: string | null;
   onSelect: (pageId: string) => void;
   depth: number;
+  /** Nhãn các cấp cha (để dựng tooltip "đường dẫn" của lá). */
+  parentPath: string[];
   expandAll?: boolean;
   expandState: Record<string, boolean>;
   onToggle: (code: string, currentlyOpen: boolean) => void;
   cleanLabels?: boolean;
+  isFav?: (pageId: string) => boolean;
+  onToggleFav?: (node: NavNode) => void;
 }) {
   const kids = childrenOf.get(node.code) ?? [];
+  const myLabel = displayLabel(node, cleanLabels);
   const hasActiveDesc = useMemo(() => {
     const stack = [...kids];
     while (stack.length) {
@@ -192,22 +215,42 @@ function MenuBranch({
   // (undefined) → mặc định: expandAll / gốc / nhánh chứa trang đang xem.
   const open = expandState[node.code] ?? (expandAll || depth === 0 || hasActiveDesc);
   if (isLeaf) {
+    // Tooltip = "đường dẫn" của mục: chuỗi nhãn từ gốc tới mục này.
+    const tooltip = [...parentPath, myLabel].join(" › ");
+    const favored = !!(node.pageId && isFav?.(node.pageId));
     return (
-      <li>
+      <li className="group/leaf relative">
         <button
           type="button"
+          title={tooltip}
           onClick={() => node.pageId && onSelect(node.pageId)}
           style={{ paddingLeft: 12 + depth * 12 }}
           className={cn(
             "w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 transition-colors",
+            onToggleFav && "pr-8",
             active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
           )}
         >
           <I.Layout size={13} className="shrink-0 text-muted" />
-          <span className="whitespace-nowrap lowercase first-letter:uppercase">
-            {displayLabel(node, cleanLabels)}
-          </span>
+          <span className="whitespace-nowrap lowercase first-letter:uppercase">{myLabel}</span>
         </button>
+        {/* Sao yêu thích — hiện khi hover (hoặc luôn hiện nếu đã thích). */}
+        {onToggleFav && node.pageId && (
+          <button
+            type="button"
+            title={favored ? "Bỏ yêu thích" : "Yêu thích"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFav(node);
+            }}
+            className={cn(
+              "absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center hover:bg-hover/60 transition-opacity",
+              favored ? "opacity-100" : "opacity-0 group-hover/leaf:opacity-100",
+            )}
+          >
+            <I.Star size={12} className={favored ? "text-warning" : "text-muted"} />
+          </button>
+        )}
       </li>
     );
   }
@@ -238,10 +281,13 @@ function MenuBranch({
               activePageId={activePageId}
               onSelect={onSelect}
               depth={depth + 1}
+              parentPath={[...parentPath, myLabel]}
               expandAll={expandAll}
               expandState={expandState}
               onToggle={onToggle}
               cleanLabels={cleanLabels}
+              isFav={isFav}
+              onToggleFav={onToggleFav}
             />
           ))}
         </ul>

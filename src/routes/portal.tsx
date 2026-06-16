@@ -20,6 +20,7 @@ import { LanguagePicker } from "@/components/LanguagePicker";
 import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
+import { useFavs } from "@/components/Sidebar";
 import { Button } from "@/components/ui";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -44,6 +45,8 @@ function PortalRoute() {
   const pages = useUserObjects((s) => s.pages);
   const hydrate = useUserObjects((s) => s.hydrate);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
+  // Yêu thích (dùng chung sidebar, sync localStorage + server qua preferences).
+  const favs = useFavs();
 
   const publishedPages = useMemo(
     () =>
@@ -326,6 +329,53 @@ function PortalRoute() {
             )}
           </div>
 
+          {/* Yêu thích — trang đã đánh dấu sao (chỉ trang published, ẩn khi tìm kiếm). */}
+          {!q &&
+            (() => {
+              const favPages = favs.favs.filter((f) => publishedPages.some((p) => p.id === f.id));
+              if (favPages.length === 0) return null;
+              return (
+                <div className="border-b border-border">
+                  <div className="px-3 pt-2 pb-0.5 text-[10px] uppercase tracking-wider text-muted/60 font-semibold flex items-center gap-1">
+                    <I.Star size={10} className="text-warning" /> Yêu thích
+                  </div>
+                  <ul className="pb-1">
+                    {favPages.map((f) => {
+                      const active = f.id === activeId;
+                      return (
+                        <li key={f.id} className="group/fav relative">
+                          <button
+                            type="button"
+                            onClick={() => onSelectPage(f.id)}
+                            className={cn(
+                              "w-full text-left pl-3 pr-8 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                              active
+                                ? "bg-accent/10 text-accent font-medium"
+                                : "text-text hover:bg-hover/40",
+                            )}
+                          >
+                            <I.Star size={12} className="shrink-0 text-warning" />
+                            <span className="truncate">{f.label}</span>
+                          </button>
+                          <button
+                            type="button"
+                            title="Bỏ yêu thích"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              favs.remove(f.id);
+                            }}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-muted opacity-0 group-hover/fav:opacity-100 hover:bg-hover/60"
+                          >
+                            <I.X size={11} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })()}
+
           {publishedPages.length === 0 ? (
             <div className="p-4 text-xs text-muted text-center leading-relaxed">
               {t("portal.no_pages")}
@@ -372,6 +422,16 @@ function PortalRoute() {
               expandAll
               storageKey="portal"
               cleanLabels
+              isFav={(id) => favs.isFav(id)}
+              onToggleFav={(node) => {
+                if (!node.pageId) return;
+                favs.toggle({
+                  id: node.pageId,
+                  to: `/pages/${node.pageId}`,
+                  label: publishedPages.find((p) => p.id === node.pageId)?.name ?? node.name ?? "",
+                  iconName: "Layout",
+                });
+              }}
             />
           ) : (
             // Fallback: danh sách phẳng (chưa link menu / chưa publish).
