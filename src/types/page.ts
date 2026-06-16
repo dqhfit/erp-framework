@@ -132,6 +132,14 @@ export interface ActionStepSetState {
   value: BindingValue;
 }
 
+/** Nạp lại dữ liệu lưới: đặt cờ __refresh cho từng entity → list refetch. */
+export interface ActionStepRefresh {
+  id: string;
+  kind: "refresh";
+  /** Danh sách entityId cần nạp lại. */
+  entities: string[];
+}
+
 export interface ActionStepOpenPopup {
   id: string;
   kind: "open-popup";
@@ -143,8 +151,44 @@ export interface ActionStepOpenPopup {
   title?: string;
   /** Binding cho ID record — chỉ dùng với popupMode="detail" */
   recordIdBinding?: BindingValue;
+  /** Tập con field hiển thị (theo thứ tự). undefined = mặc định 7 field đầu.
+   *  Dùng để ẩn field tự sinh (vd id auto-increment) khỏi form nhập. */
+  fields?: string[];
+  /** form mode: true → LƯU thật vào DB (recordId có → updateRecord, không →
+   *  createRecord) thay vì chỉ trả giá trị về state. */
+  persist?: boolean;
+  /** Sau khi lưu thành công → đặt cờ __refresh cho các entity này (list reload). */
+  invalidateEntities?: string[];
   /** Key page state để lưu kết quả (object đã chọn / nhập) */
   saveOutputTo: string;
+}
+
+/** Liên kết 1 field tới entity nguồn (picker) — lưu giá trị valueField. */
+export interface WizardLookupRef {
+  entity: string;
+  valueField: string;
+  labelFields?: string[];
+  /** Tự điền field khác từ record nguồn khi chọn: { fieldĐích: fieldNguồn }.
+   *  Vd makhachhang lookup tr_khachhang → { tenkhachhang: "customer_name" }. */
+  autofill?: Record<string, string>;
+}
+
+/** Cấu hình bước nhập LƯỚI chi tiết (master-detail) trong wizard 1-entity. */
+export interface WizardStepDetail {
+  /** Entity con (vd order_detail). */
+  entity: string;
+  /** Field trên dòng con để gán khoá cha (vd order_number). */
+  linkField: string;
+  /** Field trên bản ghi chính cung cấp giá trị khoá (vd order_number). */
+  parentKeyField: string;
+  /** Tập con field hiển thị trong lưới. */
+  fields?: string[];
+  /** Map fieldName → picker entity (vd item_number → sản phẩm). */
+  fieldLookups?: Record<string, WizardLookupRef>;
+  /** Field tự tính = tích các field nguồn (vd amount = order_qty × price). */
+  computed?: Record<string, string[]>;
+  /** Field hiển thị TỔNG ở footer lưới. */
+  footerSums?: string[];
 }
 
 /** Một bước trong wizard — có thể tạo bản ghi entity hoặc chỉ hiển thị form. */
@@ -156,10 +200,17 @@ export interface WizardStepDef {
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
   fields?: string[];
+  /** (1-entity) Map fieldName → picker entity: field hiện COMBOBOX chọn record
+   *  từ entity nguồn (lưu valueField). Vd makhachhang → tr_khachhang. */
+  fieldLookups?: Record<string, WizardLookupRef>;
   /** Sau khi tạo xong, lưu ID bản ghi vào page state key này. */
   saveOutputTo?: string;
   /** Nút hành động tuỳ chỉnh hiển thị trong bước này. */
   actions?: Array<{ id: string } & ActionConfig>;
+  /** Bước nhập LƯỚI chi tiết: nhiều dòng entity con, mỗi dòng tự gán linkField
+   *  = giá trị parentKeyField của bản ghi chính. Có → render bảng nhập thay vì
+   *  form field (chỉ dùng ở wizard 1-entity). */
+  detail?: WizardStepDetail;
 }
 
 export interface ActionStepOpenWizard {
@@ -172,6 +223,20 @@ export interface ActionStepOpenWizard {
   steps: WizardStepDef[];
   /** Lưu dữ liệu tổng hợp từ tất cả bước vào page state key này. */
   saveOutputTo?: string;
+  /** Chế độ 1-ENTITY: mọi bước thao tác CÙNG entity này (gom field theo bước
+   *  → form cập nhật nhiều trang). Có → wizard tạo/sửa MỘT bản ghi (create cuối
+   *  nếu không có recordId, update nếu có). Không có → giữ hành vi đa-entity:
+   *  mỗi bước tự tạo bản ghi theo step.entity. */
+  entity?: string;
+  /** (1-entity) Binding ID bản ghi để SỬA. Rỗng/undefined → tạo mới. */
+  recordIdBinding?: BindingValue;
+  /** Sau khi lưu xong → đặt cờ __refresh cho các entity này (list reload). */
+  invalidateEntities?: string[];
+  /** Chế độ XEM (chỉ đọc): nạp dữ liệu như sửa nhưng khoá mọi input, KHÔNG lưu. */
+  readOnly?: boolean;
+  /** (1-entity, TẠO MỚI) Giá trị mặc định điền sẵn cho form (fieldName → giá trị
+   *  dạng chuỗi; boolean dùng "true"/"false"). Chỉ áp khi tạo mới (không có recordId). */
+  defaults?: Record<string, string>;
 }
 
 export type ActionStep =
@@ -181,6 +246,7 @@ export type ActionStep =
   | ActionStepDeleteRecord
   | ActionStepNavigate
   | ActionStepSetState
+  | ActionStepRefresh
   | ActionStepOpenPopup
   | ActionStepOpenWizard;
 
@@ -191,6 +257,9 @@ export interface ActionConfig {
   icon?: IconName;
   variant?: ActionVariant;
   steps: ActionStep[];
+  /** Chỉ hiện icon (ẩn label) — dùng cho nút row-action gọn. Label vẫn
+   *  làm tooltip + aria-label cho a11y. */
+  iconOnly?: boolean;
   /** Tooltip / hint hiển thị khi hover button. */
   hint?: string;
   /** Hỏi xác nhận trước khi chạy chuỗi step. */

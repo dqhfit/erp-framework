@@ -31,8 +31,13 @@ import {
 } from "@/components/renderer/DataGrid";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
+import {
+  type CreateFormCfg,
+  MasterDetailCreateModal,
+} from "@/components/renderer/MasterDetailCreateModal";
+import { MasterDetailEditModal } from "@/components/renderer/MasterDetailEditModal";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
-import { Chip, SearchableSelect } from "@/components/ui";
+import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
@@ -211,7 +216,10 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
       .getRecords(entityId, { limit, filters })
       .then((res) => {
         if (alive) {
-          setRows(res.rows.map((r) => r.data));
+          // Gộp id canonical (r.id) vào row phẳng — row-action (Sửa/Xóa) +
+          // chọn dòng cần id thật để bind recordId; data EAV/HYBRID có thể
+          // KHÔNG chứa id (xem nhánh datasource cũng làm tương tự).
+          setRows(res.rows.map((r) => ({ ...r.data, id: r.id })));
           setLoading(false);
         }
       })
@@ -869,6 +877,8 @@ interface EditableListWidgetProps {
   err: string;
   filteredRows: Record<string, unknown>[];
   visibleFields: EntityField[];
+  /** Override nhãn header theo cột (field name → nhãn). Ưu tiên hơn label entity. */
+  columnLabels?: Record<string, string>;
   batchEdit: boolean;
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
   /** Bulk + dry-run validate (entity-backed) — ListWidget truyền khi không phải
@@ -893,6 +903,7 @@ function EditableListWidget({
   err,
   filteredRows,
   visibleFields,
+  columnLabels,
   batchEdit,
   onSave,
   batchOps,
@@ -980,7 +991,7 @@ function EditableListWidget({
       visibleFields.map((f) => ({
         id: f.name,
         accessorKey: f.name,
-        header: f.label,
+        header: columnLabels?.[f.name] ?? f.label,
         enableGrouping: true,
         meta: {
           techName: f.name,
@@ -1004,7 +1015,7 @@ function EditableListWidget({
           />
         ),
       })),
-    [visibleFields, rbacRole, myGroupIds],
+    [visibleFields, columnLabels, rbacRole, myGroupIds],
   );
 
   const saveAll = async () => {
@@ -1471,6 +1482,35 @@ function ServerPagedListWidget({
   );
 }
 
+/** Cấu hình cột "Hành động" (Xem/Sửa) mở dialog record con master-detail. */
+type RowDetailCfg = {
+  /** entityId của bảng con (vd tr_order_detail). */
+  entity: string;
+  /** Field trên dòng cha lấy giá trị khoá (vd order_number). */
+  parentField: string;
+  /** Field trên bảng con để lọc theo khoá cha (vd order_number). */
+  childField: string;
+  /** Tiêu đề dialog. */
+  title?: string;
+  /** Cột con hiển thị (mặc định: theo entity con). */
+  fields?: string[];
+  /** Override nhãn cột con. */
+  columnLabels?: Record<string, string>;
+};
+
+/** Gắn id của dòng vào action per-row: mọi step có recordIdBinding
+ *  (open-popup/delete-record) → trỏ tới rowId của đúng dòng được bấm. */
+function bindRowIdToAction(action: ActionConfig, rowId: unknown): ActionConfig {
+  return {
+    ...action,
+    steps: action.steps.map((s) =>
+      s.kind === "open-popup" || s.kind === "delete-record" || s.kind === "open-wizard"
+        ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
+        : s,
+    ),
+  };
+}
+
 /** Widget "list" — bảng record thật, cột suy từ field của entity. */
 function ListWidget({
   entityId,
@@ -1494,6 +1534,11 @@ function ListWidget({
   loadGate,
   emptyStateShowsAll,
   columnGroups,
+  rowDetail,
+  createForm,
+  editForm,
+  rowActions,
+  embeddedActions,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -1542,9 +1587,26 @@ function ListWidget({
    *  bị lái bởi combobox/listbox lọc (mục "tất cả"). Mặc định false để giữ
    *  hành vi master-detail. */
   emptyStateShowsAll?: boolean;
+  /** Cột "Hành động" theo dòng — nút Xem/Sửa mở dialog danh sách record con
+   *  (master-detail). Lọc child theo childField = giá trị parentField của dòng. */
+  rowDetail?: RowDetailCfg;
+  /** Nút "Thêm mới" mở dialog 2 tab tạo record cha + nhiều dòng con. */
+  createForm?: CreateFormCfg;
+  /** Nút "Sửa" theo dòng mở dialog 2 tab sửa record cha + dòng con (master-detail). */
+  editForm?: CreateFormCfg;
+  /** Nút hành động theo dòng (vd Sửa/Xóa) — id dòng tự bind vào step. */
+  rowActions?: ActionConfig[];
+  /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
+   *  (thay vì strip riêng phía trên) — chỉ truyền khi list có createForm. */
+  embeddedActions?: ActionBarItem[];
 }) {
   const t = useT();
   const ent = useEntity(entityId);
+  const [editModal, setEditModal] = useState<{ id: string; readOnly: boolean } | null>(null);
+  const [detailModal, setDetailModal] = useState<{ value: unknown; editable: boolean } | null>(
+    null,
+  );
+  const [createOpen, setCreateOpen] = useState(false);
   const {
     rows,
     loading,
@@ -1698,7 +1760,118 @@ function ListWidget({
         ]
       : [];
 
-  const columns = [...checkboxCol, ...fieldColumns];
+  // Cột "Hành động" theo dòng: nút Xem (read-only) + Sửa (editable) → mở dialog
+  // record con lọc theo parentField. stopPropagation để không kích hoạt row-click.
+  const actionCol = rowDetail
+    ? [
+        {
+          id: "__rowactions__",
+          header: () => "Hành động",
+          size: 96,
+          enableSorting: false,
+          cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+            const pv = row.original[rowDetail.parentField];
+            const rid = row.original.id ?? row.original.ID ?? row.original._id;
+            return (
+              <div className="flex items-center gap-1 justify-center">
+                {/* editForm có cấu hình → Xem mở dialog master+detail read-only;
+                    không thì giữ hành vi cũ (xem danh sách dòng con). */}
+                <button
+                  type="button"
+                  title="Xem chi tiết"
+                  className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: true });
+                    else setDetailModal({ value: pv, editable: false });
+                  }}
+                >
+                  <I.Eye size={14} />
+                </button>
+                {/* editForm có cấu hình → nút Sửa mở dialog master+detail mới;
+                    không thì giữ hành vi cũ (sửa inline dòng con). */}
+                <button
+                  type="button"
+                  title={editForm ? "Sửa đơn hàng" : "Sửa chi tiết"}
+                  className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: false });
+                    else setDetailModal({ value: pv, editable: true });
+                  }}
+                >
+                  <I.Edit size={14} />
+                </button>
+              </div>
+            );
+          },
+        },
+      ]
+    : [];
+
+  // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
+  // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
+  const rowActionCol =
+    rowActions && rowActions.length > 0
+      ? [
+          {
+            id: "__rowacts__",
+            header: () => "Hành động",
+            size: 30 + rowActions.length * 70,
+            enableSorting: false,
+            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+              const rid = row.original.id ?? row.original.ID ?? row.original._id;
+              return (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {rowActions.map((a) => (
+                    <ActionWidget
+                      key={a.label}
+                      config={bindRowIdToAction(a, rid)}
+                      pageState={pageState}
+                      inline
+                    />
+                  ))}
+                </div>
+              );
+            },
+          },
+        ]
+      : [];
+
+  // Cột nút "Sửa đơn" độc lập — CHỈ khi có editForm mà KHÔNG có rowDetail
+  // (có rowDetail thì nút Sửa trong cột Hành động đã mở dialog edit này).
+  const editFormCol =
+    editForm && entityId && !rowDetail
+      ? [
+          {
+            id: "__editform__",
+            header: () => "Sửa",
+            size: 56,
+            enableSorting: false,
+            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+              const rid = row.original.id ?? row.original.ID ?? row.original._id;
+              if (rid == null) return null;
+              return (
+                <div
+                  className="flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    title="Sửa đơn hàng"
+                    className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
+                    onClick={() => setEditModal({ id: String(rid), readOnly: false })}
+                  >
+                    <I.Edit size={14} />
+                  </button>
+                </div>
+              );
+            },
+          },
+        ]
+      : [];
+
+  const columns = [...editFormCol, ...rowActionCol, ...actionCol, ...checkboxCol, ...fieldColumns];
 
   // Hàm lưu 1 record (dùng cho editable và excelMode). Datasource → ghi qua
   // resolver (base field về record gốc), entity → records.update trực tiếp.
@@ -1753,6 +1926,7 @@ function ListWidget({
         err={err}
         filteredRows={filteredRows}
         visibleFields={visibleFields}
+        columnLabels={columnLabels}
         batchEdit={!!batchEdit}
         onSave={saveRecord}
         batchOps={editBatchOps}
@@ -1768,6 +1942,22 @@ function ListWidget({
   // ── Chế độ mặc định (read-only) ─────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
+      {(createForm || (embeddedActions && embeddedActions.length > 0)) && (
+        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
+          {createForm && (
+            <Button
+              variant="primary"
+              icon={<I.Plus size={13} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {createForm.title ?? "Thêm mới đơn hàng"}
+            </Button>
+          )}
+          {embeddedActions?.map((item) => (
+            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          ))}
+        </div>
+      )}
       {loading && (
         <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
           <I.Table size={11} />
@@ -1799,6 +1989,57 @@ function ListWidget({
           />
         )}
       </div>
+      {rowDetail && detailModal && (
+        <Modal
+          open
+          onClose={() => setDetailModal(null)}
+          title={`${rowDetail.title ?? "Chi tiết"}${
+            detailModal.value != null ? ` — ${String(detailModal.value)}` : ""
+          }${detailModal.editable ? " (Sửa)" : ""}`}
+          width={960}
+          footer={
+            <Button variant="ghost" onClick={() => setDetailModal(null)}>
+              Đóng
+            </Button>
+          }
+        >
+          <div className="h-[460px]">
+            <ListWidget
+              entityId={rowDetail.entity}
+              fields={rowDetail.fields}
+              columnLabels={rowDetail.columnLabels}
+              loadFilters={{ [rowDetail.childField]: { op: "=", value: detailModal.value } }}
+              editable={detailModal.editable}
+              rowLimit={1000}
+              pageSize={50}
+            />
+          </div>
+        </Modal>
+      )}
+      {createForm && createOpen && (
+        <MasterDetailCreateModal
+          config={createForm}
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            const stamp = Date.now();
+            pageState.set(`__refresh:${createForm.master.entity}`, stamp);
+            pageState.set(`__refresh:${createForm.detail.entity}`, stamp);
+          }}
+        />
+      )}
+      {editForm && editModal && (
+        <MasterDetailEditModal
+          config={editForm}
+          recordId={editModal.id}
+          readOnly={editModal.readOnly}
+          onClose={() => setEditModal(null)}
+          onSaved={() => {
+            const stamp = Date.now();
+            pageState.set(`__refresh:${editForm.master.entity}`, stamp);
+            pageState.set(`__refresh:${editForm.detail.entity}`, stamp);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -3148,6 +3389,10 @@ function RenderSubWidget({
         pageSize={cfg.pageSize as number | undefined}
         loadFilters={cfg.loadFilters as LoadFilters | undefined}
         loadGate={cfg.loadGate as string | undefined}
+        rowDetail={cfg.rowDetail as RowDetailCfg | undefined}
+        createForm={cfg.createForm as CreateFormCfg | undefined}
+        editForm={cfg.editForm as CreateFormCfg | undefined}
+        rowActions={cfg.rowActions as ActionConfig[] | undefined}
       />
     );
   }
@@ -3666,8 +3911,15 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
           // Explicit false = master-detail (ẩn khi chưa chọn).
           cfg.emptyStateShowsAll !== false && !!cfg.filterFromState
         }
+        rowDetail={cfg.rowDetail as RowDetailCfg | undefined}
+        createForm={cfg.createForm as CreateFormCfg | undefined}
+        editForm={cfg.editForm as CreateFormCfg | undefined}
+        rowActions={cfg.rowActions as ActionConfig[] | undefined}
+        // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
+        // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
+        embeddedActions={cfg.createForm ? embActs : undefined}
       />,
-      embActs,
+      cfg.createForm ? [] : embActs,
       pageState,
     );
   }

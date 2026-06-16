@@ -125,6 +125,12 @@ export async function runActionSteps(
       rs.set(step.key, value);
       continue;
     }
+    if (step.kind === "refresh") {
+      // Đặt timestamp MỚI mỗi lần → __refresh đổi giá trị → list refetch.
+      const stamp = Date.now();
+      for (const eid of step.entities) rs.set(`__refresh:${eid}`, stamp);
+      continue;
+    }
     if (step.kind === "navigate") {
       const href = interpolate(step.href, rs.get);
       if (!href) continue;
@@ -143,6 +149,11 @@ export async function runActionSteps(
       const result = await ctx.openPopup(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      // Popup persist (tạo/sửa) xong → nạp lại list các entity liên quan.
+      if (step.invalidateEntities?.length) {
+        const stamp = Date.now();
+        for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+      }
       continue;
     }
     if (step.kind === "open-wizard") {
@@ -153,6 +164,11 @@ export async function runActionSteps(
       const result = await ctx.openWizard(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      // Wizard lưu (tạo/sửa) xong → nạp lại list các entity liên quan.
+      if (step.invalidateEntities?.length) {
+        const stamp = Date.now();
+        for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+      }
       continue;
     }
     if (step.kind === "delete-record") {
