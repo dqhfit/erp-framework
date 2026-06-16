@@ -1601,6 +1601,25 @@ export function PageDesigner({ pageId }: Props) {
                             </div>
                           )}
 
+                          {sel.kind === "list" && (
+                            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm">Cột hành động (Xem/Sửa/Xoá)</span>
+                                <span className="text-[11px] text-muted">
+                                  Thêm cột nút Xem · Sửa · Xoá cho từng dòng (mặc định ẩn)
+                                </span>
+                              </div>
+                              <Switch
+                                checked={sel.config.rowActionsBuiltin === true}
+                                onChange={(v) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, rowActionsBuiltin: v },
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+
                           {sel.kind === "list" && sel.config.editable === true && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft ml-3">
                               <div className="flex flex-col leading-tight">

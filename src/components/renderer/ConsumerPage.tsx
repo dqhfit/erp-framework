@@ -905,6 +905,8 @@ interface EditableListWidgetProps {
   createDefaults?: Record<string, string>;
   /** Khoá lưu trạng thái (IndexedDB) — dùng làm key nháp pending khi batchEdit. */
   stateKey?: string;
+  /** Cột hành động theo dòng (Xem/Sửa/Xoá…) — render ActionWidget cho từng dòng. */
+  rowActions?: ActionConfig[];
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -969,8 +971,10 @@ function EditableListWidget({
   onBulkCreate,
   createDefaults,
   stateKey,
+  rowActions,
 }: EditableListWidgetProps) {
   const t = useT();
+  const pageState = usePageState();
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
@@ -1158,8 +1162,36 @@ function EditableListWidget({
         },
       });
     }
+    // Cột "Hành động" (Xem/Sửa/Xoá) — render ActionWidget cho từng dòng đã lưu
+    // (dòng MỚI chưa có id → bỏ qua). Đặt đầu lưới.
+    if (rowActions && rowActions.length > 0) {
+      cols.unshift({
+        id: "__rowacts__",
+        header: () => "Hành động",
+        enableGrouping: false,
+        enableSorting: false,
+        size: rowActions.every((a) => a.iconOnly) ? 120 : 200,
+        cell: (ctx) => {
+          const row = ctx.row.original as { id?: unknown; __isNew?: boolean };
+          if (row.__isNew) return null;
+          return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: chặn click nổi lên chọn dòng
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {rowActions.map((a) => (
+                <ActionWidget
+                  key={a.label}
+                  config={bindRowIdToAction(a, row.id)}
+                  pageState={pageState}
+                  inline
+                />
+              ))}
+            </div>
+          );
+        },
+      });
+    }
     return cols;
-  }, [visibleFields, columnLabels, rbacRole, myGroupIds, newRows.length]);
+  }, [visibleFields, columnLabels, rbacRole, myGroupIds, newRows.length, rowActions, pageState]);
 
   const saveAll = async () => {
     setSaving(true);
@@ -1723,6 +1755,7 @@ function ListWidget({
   createForm,
   editForm,
   rowActions,
+  rowActionsBuiltin,
   embeddedActions,
   embeddedFilters,
 }: {
@@ -1782,6 +1815,8 @@ function ListWidget({
   editForm?: CreateFormCfg;
   /** Nút hành động theo dòng (vd Sửa/Xóa) — id dòng tự bind vào step. */
   rowActions?: ActionConfig[];
+  /** Cột hành động dựng sẵn (Xem/Sửa/Xoá) — bật trong cài đặt list (mặc định ẩn). */
+  rowActionsBuiltin?: boolean;
   /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
    *  (thay vì strip riêng phía trên) — chỉ truyền khi list có createForm. */
   embeddedActions?: ActionBarItem[];
@@ -1817,6 +1852,70 @@ function ListWidget({
   // Override lạc quan cho checkbox boolean: tick → đổi tức thì + lưu nền, KHÔNG
   // refetch (refetch sẽ đổi thứ tự dòng → "nhảy"). Key = "<rowId>:<field>".
   const [boolOverrides, setBoolOverrides] = useState<Record<string, boolean>>({});
+
+  // Cột hành động dựng sẵn (Xem/Sửa/Xoá) — gộp với rowActions cấu hình. Dùng
+  // ActionWidget: Xem/Sửa mở popup detail/form của entity cho ĐÚNG dòng; Xoá =
+  // confirm → delete-record (recordIdBinding gắn id dòng qua bindRowIdToAction).
+  const effectiveRowActions = useMemo<ActionConfig[]>(() => {
+    const base = rowActions ?? [];
+    if (!rowActionsBuiltin || !entityId) return base;
+    const builtin = [
+      {
+        id: "__ra_view",
+        label: "Xem",
+        icon: "Eye",
+        iconOnly: true,
+        variant: "default",
+        steps: [
+          {
+            id: "v",
+            kind: "open-popup",
+            title: "Xem chi tiết",
+            entity: entityId,
+            fields,
+            popupMode: "detail",
+            saveOutputTo: "_viewed",
+          },
+        ],
+      },
+      {
+        id: "__ra_edit",
+        label: "Sửa",
+        icon: "Edit",
+        iconOnly: true,
+        variant: "default",
+        steps: [
+          {
+            id: "e",
+            kind: "open-popup",
+            title: "Sửa",
+            entity: entityId,
+            fields,
+            popupMode: "form",
+            saveOutputTo: "_edited",
+          },
+        ],
+      },
+      {
+        id: "__ra_del",
+        label: "Xoá",
+        icon: "Trash",
+        iconOnly: true,
+        variant: "danger",
+        steps: [
+          {
+            id: "c",
+            kind: "confirm",
+            title: "Xác nhận xoá",
+            danger: true,
+            message: "Xoá dòng này?",
+          },
+          { id: "d", kind: "delete-record", invalidateEntities: [entityId] },
+        ],
+      },
+    ] as unknown as ActionConfig[];
+    return [...base, ...builtin];
+  }, [rowActions, rowActionsBuiltin, entityId, fields]);
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
   // "=" (resolve fromState qua pageState) — vd masp = sản phẩm đang chọn ở bộ
@@ -2058,20 +2157,20 @@ function ListWidget({
   // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
   // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
   const rowActionCol =
-    rowActions && rowActions.length > 0
+    effectiveRowActions.length > 0
       ? [
           {
             id: "__rowacts__",
             header: () => "Hành động",
             // Độ rộng CHUẨN cố định cho cột Hành động — GIỐNG NHAU ở mọi bảng
             // (không phụ thuộc số nút). Icon-only: 132px; có nhãn: 220px.
-            size: rowActions.every((a) => a.iconOnly) ? 132 : 220,
+            size: effectiveRowActions.every((a) => a.iconOnly) ? 132 : 220,
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
               return (
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {rowActions.map((a) => (
+                  {effectiveRowActions.map((a) => (
                     <ActionWidget
                       key={a.label}
                       config={bindRowIdToAction(a, rid)}
@@ -2184,6 +2283,7 @@ function ListWidget({
         onBulkCreate={bulkCreate}
         createDefaults={createDefaults}
         stateKey={stateKey}
+        rowActions={effectiveRowActions}
       />
     );
   }
@@ -3664,6 +3764,7 @@ function RenderSubWidget({
         createForm={cfg.createForm as CreateFormCfg | undefined}
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
+        rowActionsBuiltin={cfg.rowActionsBuiltin === true}
       />
     );
   }
@@ -4217,6 +4318,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         createForm={cfg.createForm as CreateFormCfg | undefined}
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
+        rowActionsBuiltin={cfg.rowActionsBuiltin === true}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
