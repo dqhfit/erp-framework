@@ -46,6 +46,7 @@ import { applyFieldFormat } from "@/lib/format";
 import type { EntityField, MockEntity } from "@/lib/object-types";
 import { applyFilters } from "@/lib/page-filters";
 import { applyInsertAndResolve } from "@/lib/page-layout";
+import { idbGet, idbSet } from "@/lib/page-state-idb";
 import { fieldCan } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
@@ -901,6 +902,39 @@ interface EditableListWidgetProps {
   onBulkCreate?: (records: Array<Record<string, string>>) => Promise<void>;
   /** Field cố định cho dòng tạo mới (vd masp = sản phẩm đang lọc). */
   createDefaults?: Record<string, string>;
+  /** Khoá lưu trạng thái (IndexedDB) — dùng làm key nháp pending khi batchEdit. */
+  stateKey?: string;
+}
+
+/** Overlay sửa-ô `pending`, ở chế độ batchEdit TỰ LƯU NHÁP vào IndexedDB sau mỗi
+ *  lần đổi → reload không mất trạng thái đang chỉnh sửa; bấm "Lưu tất cả" mới ghi
+ *  DB (và xoá nháp). enabled=false (tự-lưu-ngay) → KHÔNG persist (ô ghi thẳng DB). */
+function usePersistedPending(draftKey: string | undefined, enabled: boolean) {
+  const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
+  const restored = useRef(false);
+  // Nạp nháp MỘT lần khi mount — chỉ bật cờ persist SAU khi idbGet xong để
+  // hiệu ứng ghi không đè nháp cũ bằng Map rỗng ban đầu.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nạp 1 lần theo draftKey/enabled
+  useEffect(() => {
+    if (!enabled || !draftKey) {
+      restored.current = true;
+      return;
+    }
+    let alive = true;
+    idbGet<Array<[string, Record<string, string>]>>(draftKey).then((saved) => {
+      if (alive && Array.isArray(saved) && saved.length > 0) setPending(new Map(saved));
+      restored.current = true;
+    });
+    return () => {
+      alive = false;
+    };
+  }, [draftKey, enabled]);
+  // Ghi nháp mỗi khi pending đổi (sau khi đã nạp + đang bật batchEdit).
+  useEffect(() => {
+    if (!enabled || !draftKey || !restored.current) return;
+    void idbSet(draftKey, [...pending]);
+  }, [pending, draftKey, enabled]);
+  return [pending, setPending] as const;
 }
 
 function EditableListWidget({
@@ -919,12 +953,16 @@ function EditableListWidget({
   columnGroups,
   onBulkCreate,
   createDefaults,
+  stateKey,
 }: EditableListWidgetProps) {
   const t = useT();
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
-  const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
+  const [pending, setPending] = usePersistedPending(
+    stateKey ? `${stateKey}:editdraft` : undefined,
+    !!batchEdit,
+  );
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   // Lỗi theo TỪNG dòng sau "Lưu tất cả" — [{ id, label, msg }].
@@ -1234,7 +1272,10 @@ function ServerPagedListWidget({
   }, [aggregates, summary]);
 
   // ── Inline-edit (chỉ khi editable): pending overlay + ghi về server. ──
-  const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
+  const [pending, setPending] = usePersistedPending(
+    stateKey ? `${stateKey}:editdraft` : undefined,
+    !!batchEdit,
+  );
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   // Lỗi theo TỪNG dòng sau "Lưu tất cả" — [{ id, label, msg }].
@@ -1944,6 +1985,7 @@ function ListWidget({
         columnGroups={columnGroups}
         onBulkCreate={bulkCreate}
         createDefaults={createDefaults}
+        stateKey={stateKey}
       />
     );
   }
@@ -4242,10 +4284,11 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
   return (
     <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
-        {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%). */}
-        <div className="p-2 sm:p-3">
+        {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
+            px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
+        <div className="py-2 sm:py-3 px-px">
           {/* Header */}
-          <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
             <div>
               <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
               {layoutEditing ? (
