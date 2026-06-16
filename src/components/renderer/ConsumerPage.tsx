@@ -29,6 +29,7 @@ import {
   type ServerGridQuery,
   type ServerPagingController,
 } from "@/components/renderer/DataGrid";
+import { DrawingPageCell } from "@/components/renderer/DrawingPageCell";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import {
@@ -1091,24 +1092,39 @@ function EditableListWidget({
         techName: f.name,
         summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
       },
-      cell: (ctx) => (
-        <EditableCell
-          value={ctx.getValue()}
-          isImage={f.type === "image"}
-          canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
-          onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
-          fieldType={f.type}
-          refEntityId={(f as { ref?: string }).ref}
-          refValueField={(f as { refValueField?: string }).refValueField}
-          getLookupOptions={() =>
-            Array.from(ctx.column.getFacetedUniqueValues().keys())
-              .filter((v) => v != null && String(v).trim() !== "")
-              .map((v) => String(v))
-              .sort((a, b) => a.localeCompare(b))
-              .slice(0, 500)
-          }
-        />
-      ),
+      cell: (ctx) => {
+        const row = ctx.row.original as { id?: unknown; masp?: unknown; mact?: unknown };
+        // Cột "Bản vẽ (trang PDF)": thumbnail + nút gán trang thay ô sửa thường.
+        if (f.type === "drawing_page") {
+          return (
+            <DrawingPageCell
+              masp={String(row.masp ?? "")}
+              mact={String(row.mact ?? "")}
+              page={String(ctx.getValue() ?? "")}
+              canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+              onCommit={(v) => saveRef.current(row.id, f.name, v)}
+            />
+          );
+        }
+        return (
+          <EditableCell
+            value={ctx.getValue()}
+            isImage={f.type === "image"}
+            canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+            onCommit={(v) => saveRef.current(row.id, f.name, v)}
+            fieldType={f.type}
+            refEntityId={(f as { ref?: string }).ref}
+            refValueField={(f as { refValueField?: string }).refValueField}
+            getLookupOptions={() =>
+              Array.from(ctx.column.getFacetedUniqueValues().keys())
+                .filter((v) => v != null && String(v).trim() !== "")
+                .map((v) => String(v))
+                .sort((a, b) => a.localeCompare(b))
+                .slice(0, 500)
+            }
+          />
+        );
+      },
     }));
     // Cột đầu ✕ để bỏ dòng MỚI nháp (chỉ hiện khi đang có dòng mới chưa lưu).
     if (newRows.length > 0) {

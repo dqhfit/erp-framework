@@ -104,6 +104,8 @@ export default defineConfig({
           viz: ["recharts", "leaflet", "react-leaflet"],
           // three (viewer 3D bản vẽ AI) — chỉ lazy load ở /banve, tách riêng.
           three: ["three"],
+          // pdfjs (gán trang bản vẽ + thumbnail) — import động, chunk lazy riêng.
+          pdf: ["pdfjs-dist"],
           icons: ["lucide-react"],
         },
       },
