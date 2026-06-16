@@ -18,6 +18,7 @@
 import { createReadStream } from "node:fs";
 import { realpath, stat } from "node:fs/promises";
 import { resolve as resolvePath, sep } from "node:path";
+import { Readable } from "node:stream";
 import { type Role, roleCan } from "@erp-framework/core";
 import { sessions } from "@erp-framework/db";
 import { eq, sql } from "drizzle-orm";
@@ -78,6 +79,19 @@ function pdfViewerUrl(filepath: string): string {
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
   return `${base.replace(/\/+$/, "")}/web/viewer.html?file=/f/${value}`;
+}
+
+/** URL file PDF THÔ trên file-server (endpoint /f/ mà viewer nạp qua `file=`).
+    Dùng để server PROXY bytes về cho pdfjs phía client (client không gọi chéo
+    origin file-server + endpoint /banvesvc cần cookie auth của ta). Cùng cách
+    encode path như pdfViewerUrl. */
+function pdfRawUrl(filepath: string): string {
+  const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
+  const value = encodeURIComponent(filepath.replace(/\\/g, "/")).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${base.replace(/\/+$/, "")}/f/${value}`;
 }
 
 /** entityId theo tên (company-scoped). null nếu không có. */
@@ -652,7 +666,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const auth = await authView(db, req, reply);
     if (!auth) return;
 
-    const { id } = (req.query ?? {}) as { id?: string };
+    const { id, raw } = (req.query ?? {}) as { id?: string; raw?: string };
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
       return reply.code(400).send({ error: "Thiếu hoặc sai id bản vẽ" });
     }
@@ -696,6 +710,37 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         }
       }
     }
+
+    // Không có file cục bộ (vd prod chưa mount BANVE_FILES_DIR). raw=1 (pdfjs
+    // phía client CẦN bytes PDF thô) → server PROXY bytes từ file-server ngoài,
+    // KHÔNG 302 sang viewer HTML (pdfjs theo redirect sẽ nhận HTML viewer, không
+    // phải PDF → "Chưa có bản vẽ"). Mặc định (iframe trình xem mobile) GIỮ
+    // NGUYÊN redirect viewer PDF.js để không đổi UX màn xem.
+    if (String(raw ?? "") === "1") {
+      const fileName = rel.replace(/\\/g, "/").split("/").pop() || "banve.pdf";
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25_000);
+      try {
+        const upstream = await fetch(pdfRawUrl(rel), { signal: ctrl.signal, redirect: "follow" });
+        if (!upstream.ok || !upstream.body) {
+          return reply.code(502).send({ error: `File-server trả ${upstream.status}` });
+        }
+        const mime = mimeByExt(fileName);
+        reply
+          .type(mime)
+          .header("content-disposition", `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`)
+          .header("cache-control", "private, max-age=300")
+          .header("x-content-type-options", "nosniff");
+        return reply.send(
+          Readable.fromWeb(upstream.body as unknown as Parameters<typeof Readable.fromWeb>[0]),
+        );
+      } catch {
+        return reply.code(502).send({ error: "Không tải được file bản vẽ từ file-server" });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     return reply.redirect(pdfViewerUrl(rel));
   });
 

@@ -33,7 +33,9 @@ function resolveProductPdfUrl(masp: string): Promise<string | null> {
         if (!res.ok) return null;
         const data = (await res.json()) as { banve?: Array<{ id: string; phanloai?: string }> };
         const bv = (data.banve ?? []).find((b) => /kỹ thuật/i.test(b.phanloai ?? ""));
-        return bv ? `/banvesvc/file?id=${encodeURIComponent(bv.id)}` : null;
+        // raw=1: server proxy bytes PDF thô (pdfjs không đọc được viewer HTML khi
+        // prod chưa mount BANVE_FILES_DIR → /banvesvc/file 302 sang viewer).
+        return bv ? `/banvesvc/file?id=${encodeURIComponent(bv.id)}&raw=1` : null;
       } catch {
         return null;
       }
