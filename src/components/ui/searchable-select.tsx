@@ -34,6 +34,11 @@ interface SearchableSelectProps {
   triggerClassName?: string;
   /** Hiện ĐỦ nội dung option (xuống dòng thay vì cắt) + dropdown rộng hơn. */
   wrapOptions?: boolean;
+  /** Mở dropdown ngay khi render (vd sửa ô lưới: nhấn đúp → mở chọn luôn). */
+  autoOpen?: boolean;
+  /** Gọi khi dropdown ĐÓNG (chọn xong / click ngoài / Esc) — cho ô lưới thoát
+   *  chế độ sửa khi không chọn gì. */
+  onClose?: () => void;
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -53,10 +58,18 @@ export function SearchableSelect({
   className,
   triggerClassName,
   wrapOptions,
+  autoOpen,
+  onClose,
 }: SearchableSelectProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!autoOpen);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
+  // Báo caller khi dropdown đóng (true→false) — ô lưới thoát chế độ sửa.
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    if (prevOpen.current && !open) onClose?.();
+    prevOpen.current = open;
+  }, [open, onClose]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);

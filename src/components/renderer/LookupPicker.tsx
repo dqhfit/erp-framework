@@ -20,9 +20,21 @@ interface Props {
   onChange: (v: string) => void;
   multi?: boolean;
   className?: string;
+  /** Mở dropdown ngay (sửa ô lưới). */
+  autoOpen?: boolean;
+  /** Gọi khi dropdown đóng (thoát chế độ sửa ô lưới). */
+  onClose?: () => void;
 }
 
-export function LookupPicker({ refEntityId, value, onChange, multi = false, className }: Props) {
+export function LookupPicker({
+  refEntityId,
+  value,
+  onChange,
+  multi = false,
+  className,
+  autoOpen,
+  onClose,
+}: Props) {
   const entities = useUserObjects((s) => s.entities);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +156,8 @@ export function LookupPicker({ refEntityId, value, onChange, multi = false, clas
       emptyOption={`— chọn ${refEnt?.name ?? "bản ghi"} —`}
       searchPlaceholder={`Tìm ${refEnt?.name ?? "bản ghi"}…`}
       wrapOptions
+      autoOpen={autoOpen}
+      onClose={onClose}
     />
   );
 }

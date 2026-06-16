@@ -326,6 +326,10 @@ export interface DataGridProps<T> {
   onPasteApply?: (
     updates: Array<{ rowId: string; changes: Record<string, string> }>,
   ) => void | Promise<void>;
+  /** Cùng nút "Dán dữ liệu": tạo dòng MỚI từ dữ liệu dán (chế độ thêm/upsert). */
+  onPasteCreate?: (records: Array<Record<string, string>>) => void | Promise<void>;
+  /** Field cố định gắn vào mọi dòng tạo mới (vd masp = sản phẩm đang lọc). */
+  pasteCreateDefaults?: Record<string, string>;
 }
 
 /** Query grid phát ra cho caller khi ở chế độ server-side. */
@@ -370,6 +374,8 @@ export function DataGrid<T>({
   renderDetail,
   server,
   onPasteApply,
+  onPasteCreate,
+  pasteCreateDefaults,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -1092,8 +1098,17 @@ export function DataGrid<T>({
                           <th
                             key={header.id}
                             colSpan={header.colSpan}
+                            // Kéo DẢI NHÓM thả vào lưới -> ẩn HẾT cột lá trong nhóm
+                            // (tbody onDrop phân giải getLeafColumns). Trước đây band
+                            // không draggable nên dragColId không set -> không ẩn được.
+                            draggable
+                            onDragStart={() => setDragColId(header.column.id)}
+                            onDragEnd={() => setDragColId(null)}
                             style={{ position: "sticky", top, zIndex: 12 }}
-                            className="text-center px-3 py-1.5 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-x border-border/60 dark:border-border"
+                            className={cn(
+                              "text-center px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-x border-border/60 dark:border-border",
+                              dragColId === header.column.id && "opacity-40",
+                            )}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                           </th>
@@ -1142,7 +1157,7 @@ export function DataGrid<T>({
                             width: header.getSize(),
                           }}
                           className={cn(
-                            "relative text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
+                            "relative text-left px-2 py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
                             dragColId === header.column.id && "opacity-40",
                           )}
                         >
@@ -1225,7 +1240,16 @@ export function DataGrid<T>({
               onDrop={(e) => {
                 e.preventDefault();
                 if (dragColId) {
-                  setColumnVisibility((v) => ({ ...v, [dragColId]: false }));
+                  // Banded header: kéo DẢI NHÓM (id "__grp__") -> phải ẩn TẤT CẢ
+                  // cột lá của nhóm (columnVisibility chỉ tác động lá). Cột lá ->
+                  // getLeafColumns trả về chính nó.
+                  const dragged = table.getColumn(dragColId);
+                  const leafIds = dragged ? dragged.getLeafColumns().map((c) => c.id) : [dragColId];
+                  setColumnVisibility((v) => {
+                    const next = { ...v };
+                    for (const id of leafIds) next[id] = false;
+                    return next;
+                  });
                   setDragColId(null);
                 }
               }}
@@ -1371,7 +1395,7 @@ export function DataGrid<T>({
       )}
 
       {pageCount > 1 && (
-        <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-panel-2/40 shrink-0 text-xs text-muted">
+        <div className="flex items-center gap-1.5 px-2 py-0.5 border-t border-border bg-panel-2/40 shrink-0 text-[11px] text-muted">
           <span>
             {t("datagrid.page_range", { from: rangeFrom, to: rangeTo, total: totalCount })}
           </span>
@@ -1380,7 +1404,7 @@ export function DataGrid<T>({
               value={pagination.pageSize}
               onChange={(e) => setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })}
               title={t("datagrid.per_page")}
-              className="h-7 rounded border border-border bg-panel px-1.5 text-xs"
+              className="h-6 rounded border border-border bg-panel px-1.5 text-[11px]"
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -1442,6 +1466,8 @@ export function DataGrid<T>({
           }))}
           rows={data as unknown as Record<string, unknown>[]}
           onApply={onPasteApply}
+          onCreate={onPasteCreate}
+          createDefaults={pasteCreateDefaults}
         />
       )}
     </div>

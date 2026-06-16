@@ -44,6 +44,8 @@ export interface EntityField {
   required?: boolean;
   options?: string[];
   ref?: string;
+  /** Ghi được không — DataSource: false cho cột JOIN/computed (read-only). */
+  writable?: boolean;
   /** Cho field type "formula" */
   formula?: string;
   /** Cho field type "enum" / "multi-enum" — id của enum object (xem /enums). */

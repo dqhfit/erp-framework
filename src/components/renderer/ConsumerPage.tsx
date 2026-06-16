@@ -274,6 +274,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
             label: f.label,
             type: f.type,
             ref: f.ref,
+            writable: f.sourceRelationId === "base" && f.writable !== false,
           })),
         );
         setLoading(false);
@@ -349,6 +350,7 @@ function useServerPagedRecords(opts: {
               label: f.label,
               type: f.type,
               ref: f.ref,
+              writable: f.sourceRelationId === "base" && f.writable !== false,
             })),
           );
       })
@@ -562,6 +564,7 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
               label: f.label,
               type: f.type,
               ref: f.ref,
+              writable: f.sourceRelationId === "base" && f.writable !== false,
             })),
           );
       })
@@ -639,9 +642,11 @@ function EditableCell({
 }) {
   const [editing, setEditing] = useState(false);
   const str = value == null ? "" : String(value);
-  const isLookup = fieldType === "lookup" || fieldType === "multi-lookup";
   const isDate = fieldType === "date" || fieldType === "datetime";
   const withTime = fieldType === "datetime";
+  const isBoolean = fieldType === "boolean" || fieldType === "bool";
+  const isNumber = fieldType === "number" || fieldType === "integer";
+  const isLookup = fieldType === "lookup" || fieldType === "multi-lookup";
   if (isImage && str.startsWith("data:image/")) {
     return (
       <img
@@ -652,41 +657,24 @@ function EditableCell({
       />
     );
   }
+  // Bool: checkbox bấm thẳng (không cần double-click). stopPropagation để khỏi
+  // chọn dòng. Chỉ ghi khi có quyền.
+  if (isBoolean) {
+    const checked = value === true || str === "true" || str === "1";
+    return (
+      <span className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={!canWrite}
+          onChange={(e) => onCommit(e.target.checked ? "true" : "false")}
+          aria-label="Bật/tắt"
+          className="accent-accent w-3.5 h-3.5 cursor-pointer disabled:cursor-default disabled:opacity-60"
+        />
+      </span>
+    );
+  }
   if (editing && canWrite) {
-    // Field "ref" (lookup): có entity đích → chọn bản ghi entity đó; không có
-    // ref → chọn trong các giá trị đang có của cột (lookup theo trường dữ liệu).
-    if (isLookup && refEntityId) {
-      return (
-        <LookupPicker
-          refEntityId={refEntityId}
-          value={str}
-          multi={fieldType === "multi-lookup"}
-          className="w-full"
-          onChange={(v) => {
-            onCommit(v);
-            setEditing(false);
-          }}
-        />
-      );
-    }
-    if (isLookup && getLookupOptions) {
-      const raw = getLookupOptions();
-      const opts = str && !raw.includes(str) ? [str, ...raw] : raw;
-      return (
-        <SearchableSelect
-          value={str}
-          onChange={(v) => {
-            onCommit(v);
-            setEditing(false);
-          }}
-          options={opts.map((o) => ({ value: o, label: o }))}
-          emptyOption="—"
-          triggerClassName="h-6! text-xs! px-1.5! py-0!"
-          searchPlaceholder="Tìm giá trị…"
-          wrapOptions
-        />
-      );
-    }
     if (isDate) {
       return (
         <input
@@ -706,9 +694,45 @@ function EditableCell({
         />
       );
     }
+    // Cột ref (nguyên liệu/veneer/UV/FSC…): mở thẳng ô chọn lookup. Có entity
+    // đích → LookupPicker; không có (lookup "theo trường") → SearchableSelect
+    // từ giá trị faceted của cột. autoOpen = nhấp đúp mở luôn; onClose = thoát.
+    if (isLookup && refEntityId) {
+      return (
+        <LookupPicker
+          refEntityId={refEntityId}
+          value={str}
+          multi={fieldType === "multi-lookup"}
+          className="w-full"
+          autoOpen
+          onClose={() => setEditing(false)}
+          onChange={(v) => {
+            onCommit(v);
+            setEditing(false);
+          }}
+        />
+      );
+    }
+    if (isLookup && getLookupOptions) {
+      return (
+        <SearchableSelect
+          className="w-full"
+          value={str}
+          options={getLookupOptions().map((o) => ({ value: o, label: o }))}
+          emptyOption="— chọn —"
+          autoOpen
+          onClose={() => setEditing(false)}
+          onChange={(v) => {
+            onCommit(v);
+            setEditing(false);
+          }}
+        />
+      );
+    }
     return (
       <input
-        type="text"
+        type={isNumber ? "number" : "text"}
+        inputMode={isNumber ? "decimal" : undefined}
         defaultValue={str}
         className="w-full px-1.5 py-0.5 outline outline-1 outline-accent text-xs bg-white dark:bg-bg"
         // biome-ignore lint/a11y/noAutofocus: con trỏ vào ô vừa double-click sửa
@@ -728,7 +752,14 @@ function EditableCell({
     <span
       onDoubleClick={canWrite ? () => setEditing(true) : undefined}
       title={canWrite ? "Nhấn đúp để sửa" : "Không có quyền sửa cột này"}
-      className={cn("block truncate", canWrite ? "cursor-text" : "opacity-70")}
+      className={cn(
+        // min-h: ô RỖNG vẫn phải có vùng cao để nhấp đúp. Span "block" rỗng cao
+        // 0 → nhấp đúp trúng padding <td> (không có onDoubleClick) chứ không trúng
+        // span → tưởng "không sửa được". Cho min-h = 1 dòng để luôn bấm trúng.
+        "block truncate min-h-[1.25rem]",
+        isNumber && "text-right tabular-nums",
+        canWrite ? "cursor-text" : "opacity-70",
+      )}
     >
       {isDate ? fmtDateCell(str, withTime) : str}
     </span>
@@ -849,6 +880,10 @@ interface EditableListWidgetProps {
   isRowSelected?: (row: Record<string, unknown>) => boolean;
   /** Nhóm tiêu đề cột (banded header nhiều cấp). */
   columnGroups?: ColumnGroupNode[];
+  /** Tạo dòng mới hàng loạt (dán). Có → bật chế độ thêm mới ở PasteGridModal. */
+  onBulkCreate?: (records: Array<Record<string, string>>) => Promise<void>;
+  /** Field cố định cho dòng tạo mới (vd masp = sản phẩm đang lọc). */
+  createDefaults?: Record<string, string>;
 }
 
 function EditableListWidget({
@@ -864,6 +899,8 @@ function EditableListWidget({
   onRowClick,
   isRowSelected,
   columnGroups,
+  onBulkCreate,
+  createDefaults,
 }: EditableListWidgetProps) {
   const t = useT();
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
@@ -1060,6 +1097,8 @@ function EditableListWidget({
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
             onPasteApply={applyPaste}
+            onPasteCreate={onBulkCreate}
+            pasteCreateDefaults={createDefaults}
           />
         </div>
       )}
@@ -1513,8 +1552,34 @@ function ListWidget({
     fields: dataFields,
     isDataSource,
     update: dataUpdate,
+    create: dataCreate,
   } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
+
+  // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
+  // "=" (resolve fromState qua pageState) — vd masp = sản phẩm đang chọn ở bộ
+  // lọc header. Tính inline mỗi render để bám selMasp hiện tại (re-render khi
+  // đổi SP). Không memo vì pageState identity ổn định → memo sẽ ôm giá trị cũ.
+  const createDefaults: Record<string, string> = {};
+  {
+    const lf = loadFilters as
+      | Record<string, { op?: string; value?: unknown; fromState?: string }>
+      | undefined;
+    for (const [field, cond] of Object.entries(lf ?? {})) {
+      if (cond.op !== "=") continue;
+      const v = cond.fromState ? pageState.get(cond.fromState) : cond.value;
+      if (v != null && v !== "") createDefaults[field] = String(v);
+    }
+  }
+  // Dán THÊM MỚI: tạo từng record rồi refetch để hiện dòng mới (datasource
+  // re-resolve join). Lỗi 1 record ném ra → PasteGridModal hiện lỗi.
+  const bulkCreate = async (records: Array<Record<string, string>>) => {
+    for (const r of records) await dataCreate(r);
+    if (dataSourceId) {
+      const key = `__refresh:ds:${dataSourceId}`;
+      pageState.set(key, ((pageState.get(key) as number | undefined) ?? 0) + 1);
+    }
+  };
 
   if (!entityId && !dataSourceId) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
@@ -1694,6 +1759,8 @@ function ListWidget({
         onRowClick={onRowClick}
         isRowSelected={isRowSelected}
         columnGroups={columnGroups}
+        onBulkCreate={bulkCreate}
+        createDefaults={createDefaults}
       />
     );
   }
@@ -3910,9 +3977,9 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%). */}
         <div className="p-2 sm:p-3">
           {/* Header */}
-          <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold">{page?.name ?? "Trang"}</h1>
+              <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
               {layoutEditing ? (
                 <div className="text-sm text-accent font-medium mt-0.5">
                   Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
@@ -3922,13 +3989,13 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
               ) : null}
             </div>
 
-            <div className="shrink-0 mt-1 flex items-center gap-2">
+            <div className="shrink-0 flex items-center gap-2">
               {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
               {hasPersonal && !layoutEditing && !isMobile && (
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
                   title="Xoá bố cục cá nhân, trở về bố cục mặc định của trang"
                 >
                   <I.Undo size={13} />
@@ -3941,7 +4008,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                 <button
                   type="button"
                   onClick={exitEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
                 >
                   <I.Check size={13} />
                   Xong
@@ -3950,7 +4017,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                 <button
                   type="button"
                   onClick={enterEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-hover text-muted"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-hover text-muted"
                 >
                   <I.Grip size={13} />
                   Sắp xếp
