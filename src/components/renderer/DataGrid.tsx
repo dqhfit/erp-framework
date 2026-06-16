@@ -330,6 +330,12 @@ export interface DataGridProps<T> {
   onPasteCreate?: (records: Array<Record<string, string>>) => void | Promise<void>;
   /** Field cố định gắn vào mọi dòng tạo mới (vd masp = sản phẩm đang lọc). */
   pasteCreateDefaults?: Record<string, string>;
+  /** Khi set: hiện nút "＋ Thêm dòng" (lên đầu / xuống cuối) ở toolbar → caller
+   *  chèn 1 dòng nháp editable vào lưới. Chỉ lưới sửa-được + chế độ gom (batch). */
+  onAddRow?: (pos: "top" | "bottom") => void;
+  /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
+   *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
+  pageJump?: { token: number; to: "first" | "last" };
 }
 
 /** Query grid phát ra cho caller khi ở chế độ server-side. */
@@ -376,6 +382,8 @@ export function DataGrid<T>({
   onPasteApply,
   onPasteCreate,
   pasteCreateDefaults,
+  onAddRow,
+  pageJump,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -645,6 +653,16 @@ export function DataGrid<T>({
     setPagination((p) => (p.pageIndex === 0 ? p : { ...p, pageIndex: 0 }));
   }, [serverMode, globalFilter, colFiltersKey, sortKey]);
 
+  // Thêm dòng mới (top/bottom) → lật tới trang chứa dòng đó. ĐẶT SAU effect reset
+  // theo data.length ở trên (thêm dòng làm length đổi → reset về trang 0); effect
+  // này khai báo sau nên chạy SAU → thắng, đưa về đúng trang đầu/cuối. token đổi
+  // mỗi lần thêm; getPageCount() đã phản ánh số trang mới.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phản ứng theo token
+  useEffect(() => {
+    if (!pageJump) return;
+    table.setPageIndex(pageJump.to === "first" ? 0 : Math.max(0, table.getPageCount() - 1));
+  }, [pageJump?.token]);
+
   const sortableColumns = table
     .getAllColumns()
     .filter((c) => c.getCanGroup() && c.id !== "__expand__");
@@ -855,6 +873,30 @@ export function DataGrid<T>({
             >
               <I.ClipboardList size={12} />
             </button>
+          )}
+
+          {/* Thêm dòng nháp vào lưới — lên ĐẦU (＋↑) hoặc xuống CUỐI (＋↓) */}
+          {onAddRow && (
+            <div className="inline-flex shrink-0 overflow-hidden rounded border border-border">
+              <button
+                type="button"
+                onClick={() => onAddRow("top")}
+                title="Thêm dòng mới lên ĐẦU lưới"
+                className="inline-flex items-center gap-0.5 px-1.5 h-7 text-xs text-muted hover:bg-hover hover:text-text"
+              >
+                <I.Plus size={11} />
+                <I.ChevronUp size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onAddRow("bottom")}
+                title="Thêm dòng mới xuống CUỐI lưới"
+                className="inline-flex items-center gap-0.5 px-1.5 h-7 text-xs text-muted hover:bg-hover hover:text-text border-l border-border"
+              >
+                <I.Plus size={11} />
+                <I.ChevronDown size={11} />
+              </button>
+            </div>
           )}
 
           {/* Phóng to / thu nhỏ lưới toàn màn hình */}
@@ -1299,13 +1341,19 @@ export function DataGrid<T>({
                   const selected = isRowSelected?.(row.original) ?? false;
                   const clickable = !!onRowClick;
                   const detailOpen = renderDetail ? openDetail.has(row.id) : false;
+                  const isNew = (row.original as { __isNew?: boolean }).__isNew === true;
                   return (
                     <Fragment key={row.id}>
                       <tr
                         className={[
                           "border-b border-border transition-colors",
                           clickable ? "cursor-pointer" : "",
-                          selected ? "bg-accent/10 ring-1 ring-accent" : "hover:bg-hover/30",
+                          // Dòng nháp mới (chưa lưu) — tô nền xanh nhạt phân biệt.
+                          isNew
+                            ? "bg-success/5 hover:bg-success/10"
+                            : selected
+                              ? "bg-accent/10 ring-1 ring-accent"
+                              : "hover:bg-hover/30",
                         ].join(" ")}
                         onClick={clickable ? () => onRowClick(row.original) : undefined}
                       >

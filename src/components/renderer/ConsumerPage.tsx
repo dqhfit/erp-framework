@@ -906,35 +906,49 @@ interface EditableListWidgetProps {
   stateKey?: string;
 }
 
-/** Overlay sửa-ô `pending`, ở chế độ batchEdit TỰ LƯU NHÁP vào IndexedDB sau mỗi
- *  lần đổi → reload không mất trạng thái đang chỉnh sửa; bấm "Lưu tất cả" mới ghi
- *  DB (và xoá nháp). enabled=false (tự-lưu-ngay) → KHÔNG persist (ô ghi thẳng DB). */
-function usePersistedPending(draftKey: string | undefined, enabled: boolean) {
+/** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
+ *  Giá trị ô của dòng mới nằm trong `pending` theo id tạm này. */
+type NewRowDraft = { id: string; pos: "top" | "bottom" };
+
+/** Overlay sửa-ô `pending` + dòng MỚI nháp `newRows`. Ở chế độ batchEdit TỰ LƯU
+ *  NHÁP vào IndexedDB sau mỗi đổi → reload không mất trạng thái đang sửa/thêm;
+ *  "Lưu tất cả" mới ghi DB (+ tạo dòng mới) rồi xoá nháp. enabled=false
+ *  (tự-lưu-ngay) → KHÔNG persist. */
+function usePersistedDraft(draftKey: string | undefined, enabled: boolean) {
   const [pending, setPending] = useState<Map<string, Record<string, string>>>(new Map());
+  const [newRows, setNewRows] = useState<NewRowDraft[]>([]);
   const restored = useRef(false);
   // Nạp nháp MỘT lần khi mount — chỉ bật cờ persist SAU khi idbGet xong để
-  // hiệu ứng ghi không đè nháp cũ bằng Map rỗng ban đầu.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: nạp 1 lần theo draftKey/enabled
+  // hiệu ứng ghi không đè nháp cũ bằng giá trị rỗng ban đầu.
   useEffect(() => {
     if (!enabled || !draftKey) {
       restored.current = true;
       return;
     }
     let alive = true;
-    idbGet<Array<[string, Record<string, string>]>>(draftKey).then((saved) => {
-      if (alive && Array.isArray(saved) && saved.length > 0) setPending(new Map(saved));
+    type Saved =
+      | Array<[string, Record<string, string>]>
+      | { pending?: Array<[string, Record<string, string>]>; newRows?: NewRowDraft[] };
+    idbGet<Saved>(draftKey).then((saved) => {
+      if (alive && saved) {
+        // Tương thích cả format cũ (mảng entries) lẫn mới ({pending,newRows}).
+        const p = Array.isArray(saved) ? saved : saved.pending;
+        if (Array.isArray(p) && p.length > 0) setPending(new Map(p));
+        const nr = Array.isArray(saved) ? null : saved.newRows;
+        if (Array.isArray(nr) && nr.length > 0) setNewRows(nr);
+      }
       restored.current = true;
     });
     return () => {
       alive = false;
     };
   }, [draftKey, enabled]);
-  // Ghi nháp mỗi khi pending đổi (sau khi đã nạp + đang bật batchEdit).
+  // Ghi nháp mỗi khi pending/newRows đổi (sau khi đã nạp + đang bật batchEdit).
   useEffect(() => {
     if (!enabled || !draftKey || !restored.current) return;
-    void idbSet(draftKey, [...pending]);
-  }, [pending, draftKey, enabled]);
-  return [pending, setPending] as const;
+    void idbSet(draftKey, { pending: [...pending], newRows });
+  }, [pending, newRows, draftKey, enabled]);
+  return { pending, setPending, newRows, setNewRows };
 }
 
 function EditableListWidget({
@@ -959,7 +973,7 @@ function EditableListWidget({
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
-  const [pending, setPending] = usePersistedPending(
+  const { pending, setPending, newRows, setNewRows } = usePersistedDraft(
     stateKey ? `${stateKey}:editdraft` : undefined,
     !!batchEdit,
   );
@@ -970,7 +984,7 @@ function EditableListWidget({
 
   // Guard "pending chưa lưu": batchEdit còn ô sửa chưa lưu → chặn điều hướng
   // trong app (confirm) + reload/đóng tab (native prompt).
-  const hasUnsaved = !!batchEdit && pending.size > 0;
+  const hasUnsaved = !!batchEdit && (pending.size > 0 || newRows.length > 0);
   useBlocker({
     shouldBlockFn: async () => {
       if (!hasUnsaved) return false;
@@ -1007,14 +1021,50 @@ function EditableListWidget({
     }
   };
 
-  // Data hiển thị = filteredRows + overlay pending (ô đã sửa).
-  const displayData = useMemo(() => {
-    if (pending.size === 0) return filteredRows;
-    return filteredRows.map((row) => {
-      const p = pending.get(String(row.id));
-      return p ? { ...row, ...p } : row;
+  // ── Thêm dòng MỚI (nháp) vào lưới — lên đầu / xuống cuối. Giá trị ô của dòng
+  //    mới gom chung `pending` theo id tạm (`__new_*`); "Lưu tất cả" mới tạo
+  //    record. id tạm = thời điểm + seq → không trùng UUID dòng thật. ──────────
+  const newRowSeq = useRef(0);
+  // Sau khi thêm dòng → báo DataGrid lật tới trang đầu/cuối để THẤY dòng mới
+  // (tránh dòng mới nằm trang khác do phân trang).
+  const [pageJump, setPageJump] = useState<{ token: number; to: "first" | "last" }>();
+  const addRow = (pos: "top" | "bottom") => {
+    const seq = newRowSeq.current++;
+    setNewRows((prev) => [...prev, { id: `__new_${Date.now()}_${seq}`, pos }]);
+    setPageJump({ token: seq, to: pos === "top" ? "first" : "last" });
+  };
+  const removeRowRef = useRef<(id: string) => void>(() => {});
+  removeRowRef.current = (id) => {
+    setNewRows((prev) => prev.filter((r) => r.id !== id));
+    setPending((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
     });
-  }, [filteredRows, pending]);
+  };
+
+  // Data hiển thị = dòng mới nháp (đầu) + filteredRows + overlay pending + dòng
+  // mới nháp (cuối). Dòng mới đánh dấu __isNew để DataGrid tô nền + cho phép xoá.
+  const displayData = useMemo(() => {
+    const base =
+      pending.size === 0
+        ? filteredRows
+        : filteredRows.map((row) => {
+            const p = pending.get(String(row.id));
+            return p ? { ...row, ...p } : row;
+          });
+    if (newRows.length === 0) return base;
+    const synth = (r: NewRowDraft) => ({
+      ...createDefaults,
+      ...(pending.get(r.id) ?? {}),
+      id: r.id,
+      __isNew: true,
+    });
+    const top = newRows.filter((r) => r.pos === "top").map(synth);
+    const bottom = newRows.filter((r) => r.pos === "bottom").map(synth);
+    return [...top, ...base, ...bottom];
+  }, [filteredRows, pending, newRows, createDefaults]);
 
   // Dán dữ liệu (PasteGridModal) → cập nhật nhiều dòng: overlay pending (hiện
   // ngay) + lưu từng dòng (gom field). Lỗi 1 dòng không chặn dòng khác.
@@ -1031,45 +1081,99 @@ function EditableListWidget({
   };
 
   // Cột TanStack: cell = ô sửa inline. Cột số → summary=sum (footer tổng hợp).
-  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
-    () =>
-      visibleFields.map((f) => ({
-        id: f.name,
-        accessorKey: f.name,
-        header: columnLabels?.[f.name] ?? f.label,
-        enableGrouping: true,
-        meta: {
-          techName: f.name,
-          summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
+  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
+    const cols: ColumnDef<Record<string, unknown>>[] = visibleFields.map((f) => ({
+      id: f.name,
+      accessorKey: f.name,
+      header: columnLabels?.[f.name] ?? f.label,
+      enableGrouping: true,
+      meta: {
+        techName: f.name,
+        summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
+      },
+      cell: (ctx) => (
+        <EditableCell
+          value={ctx.getValue()}
+          isImage={f.type === "image"}
+          canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+          onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
+          fieldType={f.type}
+          refEntityId={(f as { ref?: string }).ref}
+          refValueField={(f as { refValueField?: string }).refValueField}
+          getLookupOptions={() =>
+            Array.from(ctx.column.getFacetedUniqueValues().keys())
+              .filter((v) => v != null && String(v).trim() !== "")
+              .map((v) => String(v))
+              .sort((a, b) => a.localeCompare(b))
+              .slice(0, 500)
+          }
+        />
+      ),
+    }));
+    // Cột đầu ✕ để bỏ dòng MỚI nháp (chỉ hiện khi đang có dòng mới chưa lưu).
+    if (newRows.length > 0) {
+      cols.unshift({
+        id: "__rmnew",
+        header: "",
+        enableGrouping: false,
+        enableSorting: false,
+        size: 32,
+        cell: (ctx) => {
+          const row = ctx.row.original as { id?: unknown; __isNew?: boolean };
+          if (!row.__isNew) return null;
+          return (
+            <button
+              type="button"
+              title="Bỏ dòng mới này"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeRowRef.current(String(row.id));
+              }}
+              className="flex items-center justify-center w-5 h-5 rounded text-danger hover:bg-danger/10"
+            >
+              <I.X size={12} />
+            </button>
+          );
         },
-        cell: (ctx) => (
-          <EditableCell
-            value={ctx.getValue()}
-            isImage={f.type === "image"}
-            canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
-            onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
-            fieldType={f.type}
-            refEntityId={(f as { ref?: string }).ref}
-            refValueField={(f as { refValueField?: string }).refValueField}
-            getLookupOptions={() =>
-              Array.from(ctx.column.getFacetedUniqueValues().keys())
-                .filter((v) => v != null && String(v).trim() !== "")
-                .map((v) => String(v))
-                .sort((a, b) => a.localeCompare(b))
-                .slice(0, 500)
-            }
-          />
-        ),
-      })),
-    [visibleFields, columnLabels, rbacRole, myGroupIds],
-  );
+      });
+    }
+    return cols;
+  }, [visibleFields, columnLabels, rbacRole, myGroupIds, newRows.length]);
 
   const saveAll = async () => {
     setSaving(true);
     setSaveErr("");
     setRowErrs([]);
+    // Tách: dòng MỚI (tạo qua onBulkCreate) vs ô sửa dòng cũ (update batch).
+    const newIds = new Set(newRows.map((r) => r.id));
+    const updates = new Map([...pending].filter(([id]) => !newIds.has(id)));
+    const creates = newRows
+      .map((r) => ({ ...createDefaults, ...(pending.get(r.id) ?? {}) }))
+      .filter((rec) => Object.keys(rec).length > 0);
+    if (creates.length > 0) {
+      if (!onBulkCreate) {
+        setSaveErr("Lưới này chưa hỗ trợ tạo dòng mới.");
+        setSaving(false);
+        return;
+      }
+      try {
+        await onBulkCreate(creates);
+      } catch (e) {
+        // Tạo lỗi → GIỮ nháp dòng mới để user sửa lại, không mất.
+        setSaveErr((e as Error).message);
+        setSaving(false);
+        return;
+      }
+      // Tạo xong → bỏ nháp dòng mới + pending của chúng.
+      setNewRows([]);
+      setPending((prev) => {
+        const next = new Map(prev);
+        for (const id of newIds) next.delete(id);
+        return next;
+      });
+    }
     const { failed, errs, cancelled } = await runBatchSave(
-      pending,
+      updates,
       rowLabel,
       { batchOps, onSaveRow: onSave },
       t,
@@ -1090,50 +1194,58 @@ function EditableListWidget({
           <span className="ml-auto">{t("widget.loading")}</span>
         </div>
       )}
-      {batchEdit && pending.size > 0 && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border-b border-warning/30 shrink-0">
-          <I.AlertCircle size={12} className="text-warning shrink-0" />
-          <span className="text-xs text-warning shrink-0">
-            {t("widget.pending_records", { count: pending.size })}
-          </span>
-          {/* Lỗi theo từng dòng — nhãn + tooltip thông điệp đầy đủ; dòng lỗi giữ
-              lại trong pending (count trên) để thử lại. */}
-          {rowErrs.length > 0 ? (
-            <span
-              className="text-xs text-danger flex-1 truncate"
-              title={rowErrs.map((r) => `${r.label}: ${r.msg}`).join("\n")}
-            >
-              ⚠ {rowErrs.length} dòng lỗi:{" "}
-              {rowErrs
-                .slice(0, 3)
-                .map((r) => r.label)
-                .join(", ")}
-              {rowErrs.length > 3 ? "…" : ""}
-            </span>
-          ) : (
-            <span className="flex-1" />
-          )}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={saveAll}
-            className="px-2.5 py-0.5 rounded text-xs bg-warning text-white hover:bg-warning/90 disabled:opacity-50"
-          >
-            {saving ? t("common.saving") : t("common.save_all")}
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              setPending(new Map());
-              setRowErrs([]);
-            }}
-            className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
-          >
-            {t("common.cancel")}
-          </button>
-        </div>
-      )}
+      {batchEdit &&
+        (pending.size > 0 || newRows.length > 0) &&
+        (() => {
+          // Đếm tách: dòng MỚI (nháp) vs dòng cũ có ô sửa (pending không tính dòng mới).
+          const newIdSet = new Set(newRows.map((r) => r.id));
+          const editCount = [...pending.keys()].filter((id) => !newIdSet.has(id)).length;
+          const parts: string[] = [];
+          if (newRows.length > 0) parts.push(`${newRows.length} dòng mới`);
+          if (editCount > 0) parts.push(`${editCount} dòng sửa`);
+          return (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border-b border-warning/30 shrink-0">
+              <I.AlertCircle size={12} className="text-warning shrink-0" />
+              <span className="text-xs text-warning shrink-0">{parts.join(" · ")} chưa lưu</span>
+              {/* Lỗi theo từng dòng — nhãn + tooltip; dòng lỗi giữ lại để thử lại. */}
+              {rowErrs.length > 0 ? (
+                <span
+                  className="text-xs text-danger flex-1 truncate"
+                  title={rowErrs.map((r) => `${r.label}: ${r.msg}`).join("\n")}
+                >
+                  ⚠ {rowErrs.length} dòng lỗi:{" "}
+                  {rowErrs
+                    .slice(0, 3)
+                    .map((r) => r.label)
+                    .join(", ")}
+                  {rowErrs.length > 3 ? "…" : ""}
+                </span>
+              ) : (
+                <span className="flex-1" />
+              )}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={saveAll}
+                className="px-2.5 py-0.5 rounded text-xs bg-warning text-white hover:bg-warning/90 disabled:opacity-50"
+              >
+                {saving ? t("common.saving") : t("common.save_all")}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setPending(new Map());
+                  setNewRows([]);
+                  setRowErrs([]);
+                }}
+                className="px-2.5 py-0.5 rounded text-xs border border-border hover:bg-hover"
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          );
+        })()}
       {!batchEdit && saveErr && (
         <div className="px-3 py-1 text-xs text-danger border-b border-danger/30 shrink-0">
           {saveErr}
@@ -1156,6 +1268,8 @@ function EditableListWidget({
             onPasteApply={applyPaste}
             onPasteCreate={onBulkCreate}
             pasteCreateDefaults={createDefaults}
+            onAddRow={batchEdit && onBulkCreate ? addRow : undefined}
+            pageJump={pageJump}
           />
         </div>
       )}
@@ -1272,7 +1386,7 @@ function ServerPagedListWidget({
   }, [aggregates, summary]);
 
   // ── Inline-edit (chỉ khi editable): pending overlay + ghi về server. ──
-  const [pending, setPending] = usePersistedPending(
+  const { pending, setPending } = usePersistedDraft(
     stateKey ? `${stateKey}:editdraft` : undefined,
     !!batchEdit,
   );
