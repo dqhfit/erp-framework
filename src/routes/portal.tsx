@@ -17,7 +17,7 @@ import { AgentPanel } from "@/components/AgentPanel";
 import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { MenuTree, type NavNode } from "@/components/MenuTree";
+import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button } from "@/components/ui";
@@ -85,6 +85,8 @@ function PortalRoute() {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  // Ref điều khiển mở rộng / thu gọn TẤT CẢ nhánh cây menu (portal).
+  const menuTreeRef = useRef<MenuTreeHandle>(null);
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
@@ -156,6 +158,8 @@ function PortalRoute() {
   // Có query → lọc danh sách trang theo tên (hiện phẳng thay cây menu).
   const q = search.trim().toLowerCase();
   const searchResults = q ? publishedPages.filter((p) => p.name.toLowerCase().includes(q)) : [];
+  // Đang hiển thị cây menu (không tìm kiếm + có node link trang) → hiện nút mở/thu gọn tất cả.
+  const treeMode = !q && navNodes.some((n) => n.pageId);
 
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
@@ -292,6 +296,26 @@ function PortalRoute() {
                 <div className="flex-1 text-[10px] uppercase tracking-wider text-muted font-semibold">
                   {t("portal.pages_heading")}
                 </div>
+                {treeMode && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => menuTreeRef.current?.expandAll()}
+                      title="Mở rộng tất cả"
+                      className="shrink-0 w-5 h-5 rounded-sm flex items-center justify-center text-muted/60 hover:text-text hover:bg-hover/60 transition-colors"
+                    >
+                      <I.ChevronDown size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => menuTreeRef.current?.collapseAll()}
+                      title="Thu gọn tất cả"
+                      className="shrink-0 w-5 h-5 rounded-sm flex items-center justify-center text-muted/60 hover:text-text hover:bg-hover/60 transition-colors"
+                    >
+                      <I.ChevronUp size={13} />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => setSearchOpen(true)}
@@ -343,6 +367,7 @@ function PortalRoute() {
             // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
             // Portal: mở hết cây lần đầu + NHỚ trạng thái mở/thu gọn qua reload.
             <MenuTree
+              ref={menuTreeRef}
               nodes={navNodes}
               activePageId={activeId}
               onSelect={onSelectPage}

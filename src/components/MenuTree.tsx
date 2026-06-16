@@ -8,7 +8,7 @@
    → khôi phục y nguyên khi reload. `expandAll` chỉ là mặc định lần đầu
    (khi node CHƯA có trạng thái lưu); `storageKey` tách biệt portal/sidebar.
    ========================================================== */
-import { useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { cn } from "@/lib/utils";
 
@@ -59,28 +59,46 @@ function useTreeExpand(storageKey?: string) {
     },
     [lsKey],
   );
-  return { map, toggle };
+  // Đặt MỌI node (codes) cùng mở/thu gọn — dùng cho "mở rộng/thu gọn tất cả".
+  const setAll = useCallback(
+    (open: boolean, codes: string[]) => {
+      const next: Record<string, boolean> = {};
+      for (const c of codes) next[c] = open;
+      if (lsKey) {
+        try {
+          localStorage.setItem(lsKey, JSON.stringify(next));
+        } catch {}
+      }
+      setMap(next);
+    },
+    [lsKey],
+  );
+  return { map, toggle, setAll };
 }
 
-export function MenuTree({
-  nodes,
-  activePageId,
-  onSelect,
-  expandAll = false,
-  storageKey,
-  cleanLabels = false,
-}: {
-  nodes: NavNode[];
-  activePageId: string | null;
-  onSelect: (pageId: string) => void;
-  /** Mở sẵn MỌI nhánh lần đầu (portal: end-user thấy hết, khỏi bấm từng cấp). */
-  expandAll?: boolean;
-  /** Khóa lưu trạng thái mở/thu gọn (vd "portal" | "sidebar"). Bỏ trống = không nhớ. */
-  storageKey?: string;
-  /** Bỏ đuôi " - <source_code>" trong nhãn (portal). Admin để false giữ code. */
-  cleanLabels?: boolean;
-}) {
-  const { map, toggle } = useTreeExpand(storageKey);
+export interface MenuTreeHandle {
+  expandAll: () => void;
+  collapseAll: () => void;
+}
+
+export const MenuTree = forwardRef<
+  MenuTreeHandle,
+  {
+    nodes: NavNode[];
+    activePageId: string | null;
+    onSelect: (pageId: string) => void;
+    /** Mở sẵn MỌI nhánh lần đầu (portal: end-user thấy hết, khỏi bấm từng cấp). */
+    expandAll?: boolean;
+    /** Khóa lưu trạng thái mở/thu gọn (vd "portal" | "sidebar"). Bỏ trống = không nhớ. */
+    storageKey?: string;
+    /** Bỏ đuôi " - <source_code>" trong nhãn (portal). Admin để false giữ code. */
+    cleanLabels?: boolean;
+  }
+>(function MenuTree(
+  { nodes, activePageId, onSelect, expandAll = false, storageKey, cleanLabels = false },
+  ref,
+) {
+  const { map, toggle, setAll } = useTreeExpand(storageKey);
   const childrenOf = useMemo(() => {
     const m = new Map<string, NavNode[]>();
     for (const n of nodes) {
@@ -98,6 +116,19 @@ export function MenuTree({
       .filter((n) => !n.parentCode || !codes.has(n.parentCode))
       .sort((a, b) => a.sort - b.sort);
   }, [nodes]);
+  // Code của node CÓ con (nhóm) — tập node có thể mở/thu gọn.
+  const groupCodes = useMemo(
+    () => nodes.filter((n) => (childrenOf.get(n.code)?.length ?? 0) > 0).map((n) => n.code),
+    [nodes, childrenOf],
+  );
+  useImperativeHandle(
+    ref,
+    () => ({
+      expandAll: () => setAll(true, groupCodes),
+      collapseAll: () => setAll(false, groupCodes),
+    }),
+    [setAll, groupCodes],
+  );
   return (
     // Cuộn ngang: nội dung w-max (theo nhãn dài nhất + thụt cấp) nên nhãn
     // KHÔNG bị cắt — kéo ngang để xem hết. min-w-full để vẫn lấp đầy bề
@@ -121,7 +152,7 @@ export function MenuTree({
       </ul>
     </div>
   );
-}
+});
 
 function MenuBranch({
   node,
