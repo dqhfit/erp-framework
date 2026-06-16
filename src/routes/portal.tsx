@@ -203,8 +203,25 @@ function PortalRoute() {
         <span className="w-6 h-6 rounded bg-accent/20 text-accent flex items-center justify-center shrink-0">
           <I.Layout size={13} />
         </span>
-        <span className="font-semibold text-sm truncate">{t("portal.title")}</span>
-        <div className="flex-1" />
+        {/* Breadcrumb — đường dẫn trang đang xem (fallback: tên portal khi chưa chọn). */}
+        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto whitespace-nowrap text-sm">
+          {(() => {
+            const path = activeId
+              ? (pagePathMap.get(activeId) ?? publishedPages.find((p) => p.id === activeId)?.name)
+              : undefined;
+            if (!path) return <span className="font-semibold truncate">{t("portal.title")}</span>;
+            const parts = path.split(" › ");
+            return parts.map((part, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: breadcrumb tĩnh, không reorder
+              <span key={i} className="flex items-center gap-1 shrink-0">
+                {i > 0 && <I.ChevronRight size={11} className="shrink-0 text-muted/40" />}
+                <span className={i === parts.length - 1 ? "font-semibold text-text" : "text-muted"}>
+                  {part}
+                </span>
+              </span>
+            ));
+          })()}
+        </div>
         {/* Trang xưởng — lối vào cho công nhân (viewer) xem bản vẽ + nhập sản lượng. */}
         <Button
           variant="ghost"
