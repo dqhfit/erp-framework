@@ -37,6 +37,7 @@ import {
   MasterDetailCreateModal,
 } from "@/components/renderer/MasterDetailCreateModal";
 import { MasterDetailEditModal } from "@/components/renderer/MasterDetailEditModal";
+import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
@@ -1173,28 +1174,36 @@ function EditableListWidget({
         header: () => "Hành động",
         enableGrouping: false,
         enableSorting: false,
-        size: rowActions.every((a) => a.iconOnly) ? 120 : 200,
+        size: 64,
         cell: (ctx) => {
-          const row = ctx.row.original as { id?: unknown; __isNew?: boolean };
+          const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
           if (row.__isNew) return null;
           return (
-            // biome-ignore lint/a11y/noStaticElementInteractions: chặn click nổi lên chọn dòng
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              {rowActions.map((a) => (
-                <ActionWidget
-                  key={a.label}
-                  config={bindRowIdToAction(a, row.id)}
-                  pageState={pageState}
-                  inline
-                />
-              ))}
-            </div>
+            <RowActionsCell
+              actions={rowActions.map((a) => bindRowIdToAction(a, row.id))}
+              pageState={pageState}
+              row={row}
+              cols={visibleFields.map((f) => ({
+                key: f.name,
+                label: columnLabels?.[f.name] ?? f.label ?? f.name,
+              }))}
+              title={title}
+            />
           );
         },
       });
     }
     return cols;
-  }, [visibleFields, columnLabels, rbacRole, myGroupIds, newRows.length, rowActions, pageState]);
+  }, [
+    visibleFields,
+    columnLabels,
+    rbacRole,
+    myGroupIds,
+    newRows.length,
+    rowActions,
+    pageState,
+    title,
+  ]);
 
   const saveAll = async () => {
     setSaving(true);
@@ -2173,25 +2182,23 @@ function ListWidget({
           {
             id: "__rowacts__",
             header: () => "Hành động",
-            // Độ rộng CHUẨN cố định cho cột Hành động — GIỐNG NHAU ở mọi bảng
-            // (không phụ thuộc số nút). Icon-only: 132px; có nhãn: 220px.
-            size: effectiveRowActions.every((a) => a.iconOnly) ? 132 : 220,
+            // Cột gọn: 1 nút ⋯ → popover hành động (hover). Rộng cố định nhỏ.
+            size: 64,
             enableSorting: false,
-            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-              const rid = row.original.id ?? row.original.ID ?? row.original._id;
-              return (
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {effectiveRowActions.map((a) => (
-                    <ActionWidget
-                      key={a.label}
-                      config={bindRowIdToAction(a, rid)}
-                      pageState={pageState}
-                      inline
-                    />
-                  ))}
-                </div>
-              );
-            },
+            cell: ({ row }: { row: { original: Record<string, unknown> } }) => (
+              <RowActionsCell
+                actions={effectiveRowActions.map((a) =>
+                  bindRowIdToAction(a, row.original.id ?? row.original.ID ?? row.original._id),
+                )}
+                pageState={pageState}
+                row={row.original}
+                cols={visibleFields.map((f) => ({
+                  key: f.name,
+                  label: columnLabels?.[f.name] ?? f.label ?? f.name,
+                }))}
+                title={title}
+              />
+            ),
           },
         ]
       : [];

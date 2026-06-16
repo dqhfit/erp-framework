@@ -1604,9 +1604,10 @@ export function PageDesigner({ pageId }: Props) {
                           {sel.kind === "list" && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
                               <div className="flex flex-col leading-tight">
-                                <span className="text-sm">Cột hành động (Xem/Sửa/Xoá)</span>
+                                <span className="text-sm">Cột hành động (popover)</span>
                                 <span className="text-[11px] text-muted">
-                                  Thêm cột nút Xem · Sửa · Xoá cho từng dòng (mặc định ẩn)
+                                  Nút ⋯ mỗi dòng → rê chuột hiện popover 11 hành động: Xem · Sửa ·
+                                  Xoá + sao chép / xuất CSV / in / xem JSON… (mặc định ẩn)
                                 </span>
                               </div>
                               <Switch
