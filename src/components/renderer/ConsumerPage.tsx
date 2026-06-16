@@ -4478,7 +4478,14 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                   ...(!isMobile && fillId && availH > 0 && fillRowStart > 0
                     ? {
                         height: availH,
-                        gridTemplateRows: `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`,
+                        // fillRowStart===1 (widget fill ở ngay đầu, vd trang 1 lưới)
+                        // → repeat(0,…) là CSS KHÔNG hợp lệ → browser bỏ CẢ
+                        // gridTemplateRows → ô fill (1/-1) co về 1 hàng ROW_H (lưới
+                        // mất chiều cao). Chỉ phát repeat khi thật sự có hàng trên.
+                        gridTemplateRows:
+                          fillRowStart > 1
+                            ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
+                            : "minmax(0, 1fr)",
                       }
                     : {}),
                 }}
