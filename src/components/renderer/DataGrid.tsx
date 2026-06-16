@@ -1154,7 +1154,11 @@ export function DataGrid<T>({
                           }}
                           style={{
                             ...headerStickyStyle(header.column, top),
-                            width: header.getSize(),
+                            // Chỉ cột có size tường minh (cột điều khiển: hành động/checkbox)
+                            // mới khoá width; cột dữ liệu để auto → tự chia phần còn lại,
+                            // tránh cột hành động bị giãn khi bảng ít cột.
+                            width:
+                              header.column.columnDef.size != null ? header.getSize() : undefined,
                           }}
                           className={cn(
                             "relative text-left px-2 py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
@@ -1341,7 +1345,10 @@ export function DataGrid<T>({
                               key={cell.id}
                               style={{
                                 ...pinnedStyle(cell.column),
-                                width: cell.column.getSize(),
+                                width:
+                                  cell.column.columnDef.size != null
+                                    ? cell.column.getSize()
+                                    : undefined,
                               }}
                               className={cn(
                                 "px-3 py-2 whitespace-nowrap border-r border-border/40 dark:border-border",

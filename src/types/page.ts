@@ -200,6 +200,9 @@ export interface WizardStepDef {
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
   fields?: string[];
+  /** Số cột bố trí field trong form (1 mặc định; 2 = 2 cột như form DQHF).
+   *  Field longtext luôn span hết hàng. */
+  cols?: number;
   /** (1-entity) Map fieldName → picker entity: field hiện COMBOBOX chọn record
    *  từ entity nguồn (lưu valueField). Vd makhachhang → tr_khachhang. */
   fieldLookups?: Record<string, WizardLookupRef>;

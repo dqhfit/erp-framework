@@ -262,14 +262,38 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
             <div className="text-center py-12 text-muted text-sm">Không tìm thấy bản ghi</div>
           ) : (
             <div className="divide-y divide-border">
-              {visibleFields.map((f) => (
-                <div key={f.id} className="grid grid-cols-[160px_1fr] gap-3 py-2.5 text-sm">
-                  <span className="text-muted text-xs pt-0.5">{f.label}</span>
-                  <span className="font-medium break-words">
-                    {String(detailRow[f.name] ?? "—")}
-                  </span>
-                </div>
-              ))}
+              {visibleFields.map((f) => {
+                const v = detailRow[f.name];
+                const s = v == null ? "" : String(v);
+                const isImg =
+                  f.type === "image" && (s.startsWith("data:image/") || /^https?:\/\//.test(s));
+                const isBool = f.type === "boolean" || f.type === "bool";
+                const boolChecked = v === true || v === "true" || v === 1 || v === "1";
+                return (
+                  <div key={f.id} className="grid grid-cols-[160px_1fr] gap-3 py-2.5 text-sm">
+                    <span className="text-muted text-xs pt-0.5">{f.label}</span>
+                    <span className="font-medium break-words">
+                      {isBool ? (
+                        <input
+                          type="checkbox"
+                          checked={boolChecked}
+                          readOnly
+                          disabled
+                          className="accent-accent"
+                        />
+                      ) : isImg ? (
+                        <img
+                          src={s}
+                          alt=""
+                          className="max-h-40 max-w-full object-contain rounded border border-border"
+                        />
+                      ) : (
+                        s
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

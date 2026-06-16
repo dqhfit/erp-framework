@@ -1589,6 +1589,7 @@ function ListWidget({
   editForm,
   rowActions,
   embeddedActions,
+  embeddedFilters,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -1649,6 +1650,14 @@ function ListWidget({
   /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
    *  (thay vì strip riêng phía trên) — chỉ truyền khi list có createForm. */
   embeddedActions?: ActionBarItem[];
+  /** Dropdown lọc ngay trong toolbar (cạnh nút Thêm) — set pageState[stateKey];
+   *  list lọc qua cfg.filters tham chiếu stateKey đó. */
+  embeddedFilters?: Array<{
+    label?: string;
+    stateKey: string;
+    options?: string;
+    optionLabels?: Record<string, string>;
+  }>;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -1667,6 +1676,12 @@ function ListWidget({
     create: dataCreate,
   } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
+  // RBAC để cho phép tick checkbox boolean ngay ở lưới (chỉ khi có quyền ghi field).
+  const listRbacRole = useRbac((s) => s.role);
+  const listMyGroups = useUserObjects((s) => s.myGroupIds);
+  // Override lạc quan cho checkbox boolean: tick → đổi tức thì + lưu nền, KHÔNG
+  // refetch (refetch sẽ đổi thứ tự dòng → "nhảy"). Key = "<rowId>:<field>".
+  const [boolOverrides, setBoolOverrides] = useState<Record<string, boolean>>({});
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
   // "=" (resolve fromState qua pageState) — vd masp = sản phẩm đang chọn ở bộ
@@ -1785,7 +1800,53 @@ function ListWidget({
     header: columnLabels?.[f.name] ?? f.label,
     // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
     meta: { techName: f.name },
-    cell: (c: { getValue: () => unknown }) => applyFieldFormat(f, c.getValue()),
+    cell: (c: { getValue: () => unknown; row: { original: Record<string, unknown> } }) => {
+      const raw = c.getValue();
+      // Field ảnh: render thumbnail (base64/URL) thay vì hiện chuỗi base64 thô.
+      if (f.type === "image") {
+        const s = raw == null ? "" : String(raw);
+        if (s.startsWith("data:image/") || /^https?:\/\//.test(s))
+          return (
+            <img
+              src={s}
+              alt=""
+              className="h-7 max-w-[90px] object-contain mx-auto"
+              loading="lazy"
+            />
+          );
+        return "";
+      }
+      // Field boolean: checkbox tick ngay ở lưới → lưu (nếu có quyền ghi field).
+      if (f.type === "boolean" || f.type === "bool") {
+        const canWrite = fieldCan(listRbacRole, "write", f, listMyGroups);
+        const rid = c.row.original.id ?? c.row.original.ID ?? c.row.original._id;
+        const okey = `${rid}:${f.name}`;
+        const checked =
+          okey in boolOverrides
+            ? boolOverrides[okey]
+            : raw === true || raw === "true" || raw === 1 || raw === "1";
+        return (
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={!canWrite || rid == null}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              if (rid == null) return;
+              const next = e.target.checked;
+              // Cập nhật lạc quan tại chỗ (không refetch → không nhảy thứ tự).
+              setBoolOverrides((prev) => ({ ...prev, [okey]: next }));
+              void dataUpdate(String(rid), { [f.name]: next }).catch(() => {
+                // Lưu lỗi → revert override.
+                setBoolOverrides((prev) => ({ ...prev, [okey]: !next }));
+              });
+            }}
+            className="accent-accent mx-auto block cursor-pointer disabled:cursor-default"
+          />
+        );
+      }
+      return applyFieldFormat(f, raw);
+    },
   }));
 
   const checkboxCol =
@@ -1867,7 +1928,9 @@ function ListWidget({
           {
             id: "__rowacts__",
             header: () => "Hành động",
-            size: 30 + rowActions.length * 70,
+            // Độ rộng CHUẨN cố định cho cột Hành động — GIỐNG NHAU ở mọi bảng
+            // (không phụ thuộc số nút). Icon-only: 132px; có nhãn: 220px.
+            size: rowActions.every((a) => a.iconOnly) ? 132 : 220,
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
@@ -1993,7 +2056,9 @@ function ListWidget({
   // ── Chế độ mặc định (read-only) ─────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
-      {(createForm || (embeddedActions && embeddedActions.length > 0)) && (
+      {(createForm ||
+        (embeddedActions && embeddedActions.length > 0) ||
+        (embeddedFilters && embeddedFilters.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
           {createForm && (
             <Button
@@ -2007,6 +2072,26 @@ function ListWidget({
           {embeddedActions?.map((item) => (
             <ActionWidget key={item.id} config={item} pageState={pageState} inline />
           ))}
+          {/* Dropdown lọc cạnh nút Thêm */}
+          {embeddedFilters?.map((flt) => {
+            const opts = (flt.options ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            return (
+              <div key={flt.stateKey} className="flex items-center gap-1 ml-1">
+                {flt.label && <span className="text-xs text-muted shrink-0">{flt.label}:</span>}
+                <SearchableSelect
+                  className="min-w-[150px]"
+                  value={(pageState.get(flt.stateKey) as string) ?? ""}
+                  onChange={(v) => pageState.set(flt.stateKey, v)}
+                  options={opts.map((o) => ({ value: o, label: flt.optionLabels?.[o] ?? o }))}
+                  emptyOption="Tất cả"
+                  noSearch
+                />
+              </div>
+            );
+          })}
         </div>
       )}
       {loading && (
@@ -3562,6 +3647,8 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
+  // Map value→nhãn hiển thị (vd TRONG→"Màu trong") — combobox lưu value, hiện nhãn.
+  const optionLabels = (cfg.optionLabels as Record<string, string> | undefined) ?? {};
   const val = (pageState.get(stateKey) as string) ?? "";
 
   const dynamicOpts = useMemo(() => {
@@ -3585,8 +3672,8 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         className="w-full"
         value={val}
         onChange={(v) => pageState.set(stateKey, v)}
-        options={options.map((o) => ({ value: o, label: o }))}
-        emptyOption="— tất cả —"
+        options={options.map((o) => ({ value: o, label: optionLabels[o] ?? o }))}
+        emptyOption="Tất cả"
       />
     </div>
   );
@@ -3840,12 +3927,21 @@ function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
 type ActionBarItem = ActionConfig & { id: string };
 
+type EmbeddedFilter = {
+  label?: string;
+  stateKey: string;
+  options?: string;
+  optionLabels?: Record<string, string>;
+};
+
 /** Strip hành động nhúng bên trong widget (list/form/detail). */
 function EmbeddedActionStrip({
   items,
+  filters,
   pageState,
 }: {
   items: ActionBarItem[];
+  filters?: EmbeddedFilter[];
   pageState: ReturnType<typeof usePageState>;
 }) {
   return (
@@ -3853,20 +3949,40 @@ function EmbeddedActionStrip({
       {items.map((item) => (
         <ActionWidget key={item.id} config={item} pageState={pageState} inline />
       ))}
+      {filters?.map((flt) => {
+        const opts = (flt.options ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return (
+          <div key={flt.stateKey} className="flex items-center gap-1 ml-1">
+            {flt.label && <span className="text-xs text-muted shrink-0">{flt.label}:</span>}
+            <SearchableSelect
+              className="min-w-[150px]"
+              value={(pageState.get(flt.stateKey) as string) ?? ""}
+              onChange={(v) => pageState.set(flt.stateKey, v)}
+              options={opts.map((o) => ({ value: o, label: flt.optionLabels?.[o] ?? o }))}
+              emptyOption="Tất cả"
+              noSearch
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-/** Bọc widget có embeddedActions trong flex-col với strip hành động ở trên. */
+/** Bọc widget có embeddedActions/filters trong flex-col với strip ở trên. */
 function withEmbeddedActions(
   content: ReactElement,
   items: ActionBarItem[],
   pageState: ReturnType<typeof usePageState>,
+  filters?: EmbeddedFilter[],
 ): ReactElement {
-  if (items.length === 0) return content;
+  if (items.length === 0 && (!filters || filters.length === 0)) return content;
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <EmbeddedActionStrip items={items} pageState={pageState} />
+      <EmbeddedActionStrip items={items} filters={filters} pageState={pageState} />
       <div className="flex-1 min-h-0 overflow-hidden">{content}</div>
     </div>
   );
@@ -3969,9 +4085,13 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
+        embeddedFilters={
+          cfg.createForm ? (cfg.embeddedFilters as EmbeddedFilter[] | undefined) : undefined
+        }
       />,
       cfg.createForm ? [] : embActs,
       pageState,
+      cfg.createForm ? undefined : (cfg.embeddedFilters as EmbeddedFilter[] | undefined),
     );
   }
   if (comp.kind === "form") {
