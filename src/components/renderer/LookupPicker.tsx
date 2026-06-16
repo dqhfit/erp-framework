@@ -1,18 +1,24 @@
 /* ==========================================================
    LookupPicker — Dropdown chọn bản ghi từ entity khác.
    Dùng cho field type "lookup" (single) và "multi-lookup"
-   trong WizardModal, StepWidget, FormWidget.
+   trong WizardModal, StepWidget, FormWidget, ô lưới ConsumerPage.
 
-   Tải records của refEntityId (giới hạn 300), hiển thị field
-   text đầu tiên làm label. Multi=true → <select multiple>,
-   value là mảng ID dạng JSON string.
+   - Tải sẵn batch đầu (PRELOAD) + tổng số. Entity NHỎ (≤ PRELOAD) →
+     lọc client như cũ (zero regression).
+   - Entity LỚN (vd tr_material 36k) → TÌM SERVER-SIDE: gõ để ILIKE
+     trên field hiển thị + field mã (valueField), debounce. Nhãn ghép
+     "mã — tên" cho dễ nhận. Giá trị đang chọn được nạp riêng để hiện nhãn.
+   - Hiển thị field text đầu tiên (không phải lookup/id) làm tên.
+   - Multi=true → checkbox list, value là mảng JSON string.
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SearchableSelect } from "@/components/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
 const api = createApiDataSource("");
+/** Tải sẵn tối đa; total lớn hơn → bật tìm server-side. */
+const PRELOAD = 300;
 
 interface Props {
   refEntityId: string;
@@ -24,7 +30,7 @@ interface Props {
   autoOpen?: boolean;
   /** Gọi khi dropdown đóng (thoát chế độ sửa ô lưới). */
   onClose?: () => void;
-  /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu") thay vì record.id —
+  /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu"/"mavt") thay vì record.id —
    *  value lưu/khớp theo field đó (giữ tương thích data lưu tên/mã). */
   valueField?: string;
 }
@@ -42,13 +48,23 @@ export function LookupPicker({
   const entities = useUserObjects((s) => s.entities);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [serverMode, setServerMode] = useState(false);
   const [err, setErr] = useState("");
 
   const refEnt = entities.find((e) => e.id === refEntityId);
   const displayField = refEnt?.fields.find(
     (f) => !["lookup", "multi-lookup", "formula", "collection"].includes(f.type) && f.name !== "id",
   );
+  const dispName = displayField?.name;
+  // Field mã (giá trị lưu) khác field hiển thị → nhãn ghép "mã — tên".
+  const codeField = valueField && valueField !== dispName ? valueField : undefined;
+  const seq = useRef(0);
+  const debRef = useRef<number | null>(null);
 
+  // Tải sẵn batch đầu + tổng. total > đã tải (single) → bật tìm server-side;
+  // value hiện tại chưa nằm trong batch → nạp riêng record để hiện nhãn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nạp lại theo refEntityId/multi; value resolve 1 lần lúc mở
   useEffect(() => {
     if (!refEntityId) {
       setLoading(false);
@@ -57,13 +73,33 @@ export function LookupPicker({
     let alive = true;
     setLoading(true);
     setErr("");
+    setServerMode(false);
     api
-      .getRecords(refEntityId, { limit: 300 })
-      .then((res) => {
-        if (alive) {
-          setRows(res.rows.map((r) => r.data));
-          setLoading(false);
+      .getRecords(refEntityId, { limit: PRELOAD })
+      .then(async (res) => {
+        if (!alive) return;
+        let loaded = res.rows.map((r) => r.data);
+        const big = !multi && res.total > loaded.length;
+        if (
+          big &&
+          value &&
+          valueField &&
+          !loaded.some((d) => String(d[valueField] ?? "") === value)
+        ) {
+          try {
+            const cur = await api.getRecords(refEntityId, {
+              filters: { [valueField]: { op: "=", value } },
+              limit: 1,
+            });
+            if (cur.rows[0]) loaded = [cur.rows[0].data, ...loaded];
+          } catch {
+            /* không nạp được nhãn value → fallback hiện mã thô */
+          }
         }
+        if (!alive) return;
+        setRows(loaded);
+        setServerMode(big);
+        setLoading(false);
       })
       .catch((e) => {
         if (alive) {
@@ -74,7 +110,46 @@ export function LookupPicker({
     return () => {
       alive = false;
     };
-  }, [refEntityId]);
+  }, [refEntityId, multi]);
+
+  // Tìm server-side (entity lớn): ILIKE trên field hiển thị + field mã, gộp.
+  const doSearch = (raw: string) => {
+    seq.current += 1;
+    const my = seq.current;
+    const term = raw.trim();
+    setSearching(true);
+    const queries = term
+      ? [
+          dispName
+            ? api.getRecords(refEntityId, {
+                filters: { [dispName]: { op: "contains", value: term } },
+                limit: 40,
+              })
+            : null,
+          codeField
+            ? api.getRecords(refEntityId, {
+                filters: { [codeField]: { op: "contains", value: term } },
+                limit: 40,
+              })
+            : null,
+        ]
+      : [api.getRecords(refEntityId, { limit: PRELOAD }), null];
+    Promise.all(queries.map((p) => p ?? Promise.resolve({ rows: [], total: 0 })))
+      .then((reslist) => {
+        if (my !== seq.current) return;
+        const map = new Map<string, Record<string, unknown>>();
+        for (const res of reslist) for (const r of res.rows) map.set(r.id, r.data);
+        setRows([...map.values()]);
+        setSearching(false);
+      })
+      .catch(() => {
+        if (my === seq.current) setSearching(false);
+      });
+  };
+  const onSearch = (q: string) => {
+    if (debRef.current) window.clearTimeout(debRef.current);
+    debRef.current = window.setTimeout(() => doSearch(q), 250);
+  };
 
   const cls = className ?? "input w-full";
 
@@ -96,11 +171,17 @@ export function LookupPicker({
     );
   }
 
+  // Nhãn 1 dòng: ghép "mã — tên" nếu có field mã, ngược lại chỉ tên.
   const rowLabel = (row: Record<string, unknown>) => {
-    const id = String(row.id ?? "");
-    return displayField ? String(row[displayField.name] ?? id) : id;
+    const name = dispName ? String(row[dispName] ?? "") : "";
+    const base = name || String(row.id ?? "");
+    if (codeField) {
+      const code = String(row[codeField] ?? "");
+      if (code) return name ? `${code} — ${name}` : code;
+    }
+    return base;
   };
-  // Giá trị lưu xuống: theo field chỉ định (lookup-theo-tên) hoặc record.id.
+  // Giá trị lưu xuống: theo field chỉ định (lookup-theo-tên/mã) hoặc record.id.
   const optValue = (row: Record<string, unknown>) =>
     valueField ? String(row[valueField] ?? "") : String(row.id ?? "");
 
@@ -149,10 +230,11 @@ export function LookupPicker({
 
   // Single lookup
   const options = rows.map((row) => ({ value: optValue(row), label: rowLabel(row) }));
-  // Giá trị hiện tại trỏ tới record KHÔNG còn tồn tại → giữ lại làm option (đánh
-  // dấu) thay vì mất giá trị cũ; user vẫn chọn lại được từ danh sách đầy đủ.
+  // Giá trị hiện tại không có trong danh sách hiện → giữ lại làm option để không
+  // mất giá trị cũ. Entity lớn (đang tìm) chỉ hiện mã (có thể chưa nạp); entity
+  // nhỏ đã nạp đủ mà vẫn thiếu → đánh dấu "(không tồn tại)".
   if (value && !options.some((o) => o.value === value)) {
-    options.unshift({ value, label: `${value} (không tồn tại)` });
+    options.unshift({ value, label: serverMode ? String(value) : `${value} (không tồn tại)` });
   }
   return (
     <SearchableSelect
@@ -161,10 +243,14 @@ export function LookupPicker({
       onChange={onChange}
       options={options}
       emptyOption={`— chọn ${refEnt?.name ?? "bản ghi"} —`}
-      searchPlaceholder={`Tìm ${refEnt?.name ?? "bản ghi"}…`}
+      searchPlaceholder={
+        serverMode ? `Gõ tìm ${refEnt?.name ?? "bản ghi"}…` : `Tìm ${refEnt?.name ?? "bản ghi"}…`
+      }
       wrapOptions
       autoOpen={autoOpen}
       onClose={onClose}
+      onSearch={serverMode ? onSearch : undefined}
+      loading={searching}
     />
   );
 }

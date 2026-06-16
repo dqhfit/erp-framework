@@ -41,6 +41,11 @@ interface SearchableSelectProps {
   /** Gọi khi dropdown ĐÓNG (chọn xong / click ngoài / Esc) — cho ô lưới thoát
    *  chế độ sửa khi không chọn gì. */
   onClose?: () => void;
+  /** Có → TÌM SERVER-SIDE: gọi mỗi khi gõ (caller tự debounce + nạp lại
+   *  `options`). Khi set, BỎ lọc client (options chính là kết quả server). */
+  onSearch?: (q: string) => void;
+  /** Đang tải kết quả tìm (hiện dòng "Đang tìm…"). Dùng với onSearch. */
+  loading?: boolean;
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -63,6 +68,8 @@ export function SearchableSelect({
   noSearch,
   autoOpen,
   onClose,
+  onSearch,
+  loading,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(!!autoOpen);
   const [query, setQuery] = useState("");
@@ -91,10 +98,12 @@ export function SearchableSelect({
   const selected = allOptions.find((o) => o.value === value);
 
   const filtered = useMemo(() => {
+    // Tìm server-side → options đã là kết quả server, không lọc client nữa.
+    if (onSearch) return allOptions;
     const q = normalize(query.trim());
     if (!q) return allOptions;
     return allOptions.filter((o) => normalize(o.label).includes(q));
-  }, [allOptions, query]);
+  }, [allOptions, query, onSearch]);
 
   // Đóng khi click ra ngoài.
   useEffect(() => {
@@ -202,6 +211,7 @@ export function SearchableSelect({
                   onChange={(e) => {
                     setQuery(e.target.value);
                     setActiveIdx(0);
+                    onSearch?.(e.target.value);
                   }}
                   onKeyDown={onKeyDown}
                   placeholder={searchPlaceholder}
@@ -210,7 +220,8 @@ export function SearchableSelect({
               </div>
             )}
             <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
-              {filtered.length === 0 ? (
+              {loading && <li className="px-3 py-1.5 text-xs text-muted italic">Đang tìm…</li>}
+              {!loading && filtered.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted italic">{emptyText}</li>
               ) : (
                 filtered.map((o, i) => {
