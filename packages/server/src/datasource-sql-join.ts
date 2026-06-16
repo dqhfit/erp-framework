@@ -252,6 +252,11 @@ export function projectJoinRow(
     const r = evaluate(c.expr, row as Record<string, unknown>);
     row[c.key] = r.ok ? (r.value ?? null) : null;
   }
+  // Id HỆ THỐNG (UUID PK = b.id) PHẢI thắng: nếu datasource chiếu 1 field key
+  // "id" (vd cột nguồn tên 'id' → f_id numeric) thì vòng lặp trên đã ghi đè
+  // row.id bằng giá trị numeric → write-back gửi recordId sai (server validate
+  // UUID fail). Khôi phục lại id hệ thống ở cuối.
+  row.id = flat.__id as string;
   return row;
 }
 

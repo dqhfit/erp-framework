@@ -24,6 +24,7 @@ import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Chart } from "@/components/renderer/Chart";
 import {
+  type ColumnGroupNode,
   DataGrid,
   type ServerGridQuery,
   type ServerPagingController,
@@ -267,7 +268,13 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
         if (!alive) return;
         setRows(res.rows as Record<string, unknown>[]);
         setFields(
-          meta.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+          meta.fields.map((f) => ({
+            id: f.key,
+            name: f.key,
+            label: f.label,
+            type: f.type,
+            ref: f.ref,
+          })),
         );
         setLoading(false);
       })
@@ -336,7 +343,13 @@ function useServerPagedRecords(opts: {
       .then((m) => {
         if (alive)
           setDsFields(
-            m.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+            m.fields.map((f) => ({
+              id: f.key,
+              name: f.key,
+              label: f.label,
+              type: f.type,
+              ref: f.ref,
+            })),
           );
       })
       .catch(() => undefined);
@@ -481,6 +494,7 @@ function useWidgetData(cfg: Record<string, unknown>): WidgetData {
   const ent = useEntity(entityId);
   const entRecs = useRecords(entityId, opts);
   const ds = useDataSourceRecords(dataSourceId, opts);
+  const pageState = usePageState();
 
   if (dataSourceId) {
     return {
@@ -491,7 +505,19 @@ function useWidgetData(cfg: Record<string, unknown>): WidgetData {
       isDataSource: true,
       create: (data) => api.createDataSourceRecord(dataSourceId, data).then(() => undefined),
       update: (id, data) =>
-        api.updateDataSourceRecord(dataSourceId, id, data).then(() => undefined),
+        api.updateDataSourceRecord(dataSourceId, id, data).then(() => {
+          // Sửa field KHÓA THAM CHIẾU (ref) → các cột JOIN phụ thuộc (vd thông
+          // tin vật tư looked-up theo veneer_matchinh) đổi theo → refetch để
+          // server RE-RESOLVE join. Field thường không đụng join → khỏi refetch.
+          const touchedRef = Object.keys(data).some(
+            (k) => ds.fields.find((f) => f.name === k)?.ref,
+          );
+          if (touchedRef) {
+            const key = `__refresh:ds:${dataSourceId}`;
+            const tag = (pageState.get(key) as number | undefined) ?? 0;
+            pageState.set(key, tag + 1);
+          }
+        }),
       remove: (id) => api.deleteDataSourceRecord(dataSourceId, id),
     };
   }
@@ -530,7 +556,13 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
       .then((m) => {
         if (alive)
           setDsFields(
-            m.fields.map((f) => ({ id: f.key, name: f.key, label: f.label, type: f.type })),
+            m.fields.map((f) => ({
+              id: f.key,
+              name: f.key,
+              label: f.label,
+              type: f.type,
+              ref: f.ref,
+            })),
           );
       })
       .catch(() => undefined);
@@ -555,14 +587,25 @@ function EditableCell({
   isImage,
   canWrite,
   onCommit,
+  fieldType,
+  refEntityId,
+  getLookupOptions,
 }: {
   value: unknown;
   isImage: boolean;
   canWrite: boolean;
   onCommit: (v: string) => void;
+  /** Loại field — "lookup"/"multi-lookup" thì ô sửa là dropdown chọn (ref). */
+  fieldType?: string;
+  /** Entity đích của lookup (field.ref): có → chọn bản ghi entity đó. */
+  refEntityId?: string;
+  /** Lookup KHÔNG có entity đích → trả danh sách giá trị đang có của cột
+   *  (faceted) để chọn "theo trường dữ liệu". Gọi lazy lúc vào sửa. */
+  getLookupOptions?: () => string[];
 }) {
   const [editing, setEditing] = useState(false);
   const str = value == null ? "" : String(value);
+  const isLookup = fieldType === "lookup" || fieldType === "multi-lookup";
   if (isImage && str.startsWith("data:image/")) {
     return (
       <img
@@ -574,6 +617,40 @@ function EditableCell({
     );
   }
   if (editing && canWrite) {
+    // Field "ref" (lookup): có entity đích → chọn bản ghi entity đó; không có
+    // ref → chọn trong các giá trị đang có của cột (lookup theo trường dữ liệu).
+    if (isLookup && refEntityId) {
+      return (
+        <LookupPicker
+          refEntityId={refEntityId}
+          value={str}
+          multi={fieldType === "multi-lookup"}
+          className="w-full"
+          onChange={(v) => {
+            onCommit(v);
+            setEditing(false);
+          }}
+        />
+      );
+    }
+    if (isLookup && getLookupOptions) {
+      const raw = getLookupOptions();
+      const opts = str && !raw.includes(str) ? [str, ...raw] : raw;
+      return (
+        <SearchableSelect
+          value={str}
+          onChange={(v) => {
+            onCommit(v);
+            setEditing(false);
+          }}
+          options={opts.map((o) => ({ value: o, label: o }))}
+          emptyOption="—"
+          triggerClassName="h-6! text-xs! px-1.5! py-0!"
+          searchPlaceholder="Tìm giá trị…"
+          wrapOptions
+        />
+      );
+    }
     return (
       <input
         type="text"
@@ -715,6 +792,8 @@ interface EditableListWidgetProps {
    *  (Xem chi tiết...) đọc theo. Double-click cell vẫn là sửa inline. */
   onRowClick?: (row: Record<string, unknown>) => void;
   isRowSelected?: (row: Record<string, unknown>) => boolean;
+  /** Nhóm tiêu đề cột (banded header nhiều cấp). */
+  columnGroups?: ColumnGroupNode[];
 }
 
 function EditableListWidget({
@@ -729,6 +808,7 @@ function EditableListWidget({
   batchOps,
   onRowClick,
   isRowSelected,
+  columnGroups,
 }: EditableListWidgetProps) {
   const t = useT();
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
@@ -806,6 +886,15 @@ function EditableListWidget({
             isImage={f.type === "image"}
             canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
             onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
+            fieldType={f.type}
+            refEntityId={(f as { ref?: string }).ref}
+            getLookupOptions={() =>
+              Array.from(ctx.column.getFacetedUniqueValues().keys())
+                .filter((v) => v != null && String(v).trim() !== "")
+                .map((v) => String(v))
+                .sort((a, b) => a.localeCompare(b))
+                .slice(0, 500)
+            }
           />
         ),
       })),
@@ -895,6 +984,7 @@ function EditableListWidget({
               reorder/chooser) — ô sửa inline qua EditableCell trong column.cell. */}
           <DataGrid
             columns={columns}
+            columnGroups={columnGroups}
             data={displayData}
             emptyText={t("widget.empty_records")}
             label={title}
@@ -927,6 +1017,7 @@ function ServerPagedListWidget({
   multiSelect,
   editable,
   batchEdit,
+  columnGroups,
 }: {
   entityId?: string;
   dataSourceId?: string;
@@ -941,6 +1032,8 @@ function ServerPagedListWidget({
   multiSelect?: boolean;
   editable?: boolean;
   batchEdit?: boolean;
+  /** Nhóm tiêu đề cột (banded header nhiều cấp). */
+  columnGroups?: ColumnGroupNode[];
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -1108,6 +1201,15 @@ function ServerPagedListWidget({
                 onCommit={(v) =>
                   saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)
                 }
+                fieldType={f.type}
+                refEntityId={(f as { ref?: string }).ref}
+                getLookupOptions={() =>
+                  Array.from(ctx.column.getFacetedUniqueValues().keys())
+                    .filter((v) => v != null && String(v).trim() !== "")
+                    .map((v) => String(v))
+                    .sort((a, b) => a.localeCompare(b))
+                    .slice(0, 500)
+                }
               />
             )
           : (ctx) => {
@@ -1241,6 +1343,7 @@ function ServerPagedListWidget({
       <div className="flex-1 min-h-0">
         <DataGrid
           columns={columns}
+          columnGroups={columnGroups}
           data={displayData}
           stateKey={stateKey}
           emptyText={t("widget.empty_records")}
@@ -1277,10 +1380,13 @@ function ListWidget({
   loadFilters,
   loadGate,
   emptyStateShowsAll,
+  columnGroups,
 }: {
   entityId?: string;
   stateKey?: string;
   fields?: string[];
+  /** Nhóm tiêu đề cột (banded header nhiều cấp). */
+  columnGroups?: ColumnGroupNode[];
   /** Override nhãn header theo cột (field name → header DQHF của form gốc).
    *  Ưu tiên hơn label DataSource (global) — cho phép mỗi page hiện đúng
    *  tiêu đề cột của form DQHF tương ứng. */
@@ -1513,6 +1619,7 @@ function ListWidget({
         batchOps={editBatchOps}
         onRowClick={onRowClick}
         isRowSelected={isRowSelected}
+        columnGroups={columnGroups}
       />
     );
   }
@@ -1536,6 +1643,7 @@ function ListWidget({
             label={title ?? ent?.name ?? "List"}
             data={filteredRows}
             columns={columns}
+            columnGroups={columnGroups}
             emptyText={filterFromState ? t("widget.select_master") : t("widget.empty_records")}
             stateKey={stateKey}
             onRowClick={onRowClick}
@@ -2868,6 +2976,7 @@ function RenderSubWidget({
           stateKey={stateKey}
           fields={cfg.fields as string[] | undefined}
           columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+          columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
           selectionStateKey={cfg.selectionStateKey as string | undefined}
           title={cfg.title as string | undefined}
           multiSelect={cfg.multiSelect === true}
@@ -2885,6 +2994,7 @@ function RenderSubWidget({
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+        columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
@@ -3075,9 +3185,37 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
     return list.map((r) => {
       const code = String(r[valueField] ?? "");
       const name = String(r[labelField] ?? "");
-      return { value: code, label: name ? `${name} — ${code}` : code };
+      return { value: code, label: name ? `${code} — ${name}` : code };
     });
   }, [rows, hehang, familyField, valueField, labelField]);
+
+  // NHỚ lựa chọn (hệ hàng + sản phẩm) qua điều hướng: lưu localStorage theo
+  // emitStateKey (chung cho các trang cùng bộ lọc). Mở lại / qua trang khác →
+  // khôi phục cả 2 → list tự tải định mức của SP đã chọn.
+  const persistKey = `filter-sel:${emitStateKey}`;
+  const skipSaveRef = useRef(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ khôi phục 1 lần khi mount (persistKey ổn định)
+  useEffect(() => {
+    try {
+      const r = localStorage.getItem(persistKey);
+      if (r) {
+        const saved = JSON.parse(r) as { hehang?: string; masp?: string };
+        if (saved.hehang) setHehang(saved.hehang);
+        if (saved.masp) pageState.set(emitStateKey, saved.masp);
+      }
+    } catch {}
+  }, [persistKey]);
+  useEffect(() => {
+    // Bỏ lần lưu đầu (mount) để không ghi đè giá trị đã lưu bằng giá trị rỗng
+    // trước khi effect khôi phục chạy.
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(persistKey, JSON.stringify({ hehang, masp }));
+    } catch {}
+  }, [hehang, masp, persistKey]);
 
   const reloadBtn = (
     <button
@@ -3095,11 +3233,11 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
   return (
     // Mobile: label TRÊN combobox (xếp dọc) + nút Nạp lại cùng dòng combobox Hệ
     // hàng. ≥md: 1 hàng ngang, label inline. Select thu nhỏ 28px/12px.
-    <div className="px-2 py-1.5 h-full flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-x-3 text-xs">
+    <div className="px-2 py-0.5 h-full flex flex-col md:flex-row md:flex-wrap md:items-center gap-1 text-xs">
       {/* Hệ hàng */}
-      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-1.5">
+      <div className="flex flex-col md:flex-row md:items-center gap-1">
         <span className="text-muted shrink-0">Hệ hàng</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <div className="flex-1 md:flex-none md:w-40">
             <SearchableSelect
               className="w-full"
@@ -3119,7 +3257,7 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
         </div>
       </div>
       {/* Sản phẩm */}
-      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-1.5 md:flex-1 md:min-w-[200px]">
+      <div className="flex flex-col md:flex-row md:items-center gap-1 md:flex-1 md:min-w-[200px]">
         <span className="text-muted shrink-0">
           Sản phẩm{loading ? " (đang tải…)" : ` (${productOptions.length})`}
         </span>
@@ -3127,6 +3265,7 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
           <SearchableSelect
             className="w-full"
             triggerClassName="h-7! text-xs!"
+            wrapOptions
             value={masp}
             onChange={(v) => pageState.set(emitStateKey, v)}
             options={productOptions}
@@ -3346,6 +3485,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
           stateKey={stateKey}
           fields={cfg.fields as string[] | undefined}
           columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+          columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
           selectionStateKey={cfg.selectionStateKey as string | undefined}
           title={cfg.title as string | undefined}
           multiSelect={cfg.multiSelect === true}
@@ -3365,6 +3505,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         stateKey={stateKey}
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
+        columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         filters={cfg.filters as FilterNode | null | undefined}
@@ -3514,6 +3655,38 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
+
+  // Tự KHÍT viewport: widget cuộn được (list/chart/…) ở ĐÁY trang được giãn
+  // số hàng (span) để lấp hết chiều cao còn lại của khung main → trang KHÔNG
+  // cuộn ngoài, chỉ cuộn trong widget đó. Chỉ desktop + không sửa layout.
+  const fillId = useMemo(() => {
+    if (isMobile || layoutEditing) return null;
+    const FILL = new Set(["list", "chart", "kanban", "pivot", "table"]);
+    let bottom: PageComponent | null = null;
+    let bottomEnd = -1;
+    for (const c of renderComps) {
+      const end = (c.y ?? 0) + (c.h ?? 0);
+      if (end > bottomEnd) {
+        bottomEnd = end;
+        bottom = c;
+      }
+    }
+    return bottom && FILL.has(bottom.kind) ? bottom.id : null;
+  }, [renderComps, isMobile, layoutEditing]);
+  const [availH, setAvailH] = useState(0);
+  useEffect(() => {
+    if (!fillId) {
+      setAvailH(0);
+      return;
+    }
+    const measure = () => {
+      const top = gridRef.current?.getBoundingClientRect().top ?? 0;
+      setAvailH(Math.max(0, window.innerHeight - top - 8));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [fillId]);
   const resizeRef = useRef<{
     compId: string;
     dir: "e" | "s" | "se";
@@ -3722,7 +3895,7 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
             >
               <div
                 ref={gridRef}
-                className="grid gap-3"
+                className="grid gap-1"
                 style={{
                   gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)",
                   gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
@@ -3752,7 +3925,13 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                   const colStart = (c.x ?? 0) + 1;
                   const rowStart = (c.y ?? 0) + 1;
                   const w = Math.min(c.w || 3, 12);
-                  const h = c.h || 2;
+                  // Widget fill (đáy, cuộn được): giãn span để lấp hết viewport.
+                  let h = c.h || 2;
+                  if (c.id === fillId && availH > 0) {
+                    const GAP = 4; // gap-1 giữa các hàng
+                    const availForFill = availH - (rowStart - 1) * (ROW_H + GAP);
+                    h = Math.max(2, Math.floor((availForFill + GAP) / (ROW_H + GAP)));
+                  }
                   const isBeingDragged = dragCompId === c.id;
                   const isBeingResized = resizingId === c.id;
                   return (

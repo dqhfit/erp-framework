@@ -22,7 +22,16 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { type CSSProperties, Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { I } from "@/components/Icons";
 import { Chip, Input } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -114,6 +123,68 @@ function pinnedStyle<T>(column: Column<T>): CSSProperties | undefined {
   return pin === "left"
     ? { position: "sticky", left: column.getStart("left"), zIndex: 11 }
     : { position: "sticky", right: column.getAfter("right"), zIndex: 11 };
+}
+
+/** Style cho ô <th> tiêu đề: LUÔN sticky top (dính trên cùng khi cuộn dọc),
+ *  kèm left/right nếu cột đã ghim. Đặt THẲNG trên <th> vì border-collapse
+ *  khiến sticky đặt trên <thead> không ăn ở nhiều trình duyệt. `topOffset` >0
+ *  cho tiêu đề lồng nhiều cấp (mỗi hàng dính ở độ cao tích luỹ riêng). */
+function headerStickyStyle<T>(column: Column<T>, topOffset = 0): CSSProperties {
+  const pin = column.getIsPinned();
+  const s: CSSProperties = { position: "sticky", top: topOffset, zIndex: pin ? 22 : 12 };
+  if (pin === "left") s.left = column.getStart("left");
+  else if (pin === "right") s.right = column.getAfter("right");
+  return s;
+}
+
+/** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
+ *  tiêu đề bao trên. Con là tên field (lá) hoặc nhóm con (lồng nhiều cấp).
+ *  Khai báo ở `cfg.columnGroups` của widget list/grid. */
+export interface ColumnGroupNode {
+  /** Nhãn dải tiêu đề (vd "Dán veneer"). */
+  header: string;
+  /** Con: tên field (id cột lá) hoặc nhóm con (lồng). */
+  children: Array<string | ColumnGroupNode>;
+}
+
+/** id cột (accessorKey hoặc id) — để map field name → ColumnDef. */
+function colDefId<T>(c: ColumnDef<T, unknown>): string {
+  const cc = c as { id?: string; accessorKey?: string };
+  return cc.id ?? cc.accessorKey ?? "";
+}
+
+/** Biến mảng cột PHẲNG → cột LỒNG theo `groups`. Cột không thuộc nhóm nào
+ *  (vd checkbox chọn dòng, field ngoài cấu hình) giữ ở cấp gốc, đứng TRƯỚC các
+ *  dải nhóm — theo thứ tự gốc. Field lạ trong cấu hình (không khớp cột) bỏ qua;
+ *  nhóm rỗng (mọi con đều lạ) cũng bỏ. */
+function groupColumns<T>(
+  flat: ColumnDef<T, unknown>[],
+  groups: ColumnGroupNode[],
+): ColumnDef<T, unknown>[] {
+  const byId = new Map<string, ColumnDef<T, unknown>>();
+  for (const c of flat) {
+    const id = colDefId(c);
+    if (id) byId.set(id, c);
+  }
+  const used = new Set<string>();
+  let gi = 0;
+  const build = (node: string | ColumnGroupNode): ColumnDef<T, unknown> | null => {
+    if (typeof node === "string") {
+      const c = byId.get(node);
+      if (!c) return null;
+      used.add(node);
+      return c;
+    }
+    const kids = node.children.map(build).filter((c): c is ColumnDef<T, unknown> => c != null);
+    if (!kids.length) return null;
+    return { id: `__grp${gi++}__`, header: node.header, columns: kids };
+  };
+  const grouped = groups.map(build).filter((c): c is ColumnDef<T, unknown> => c != null);
+  const ungrouped = flat.filter((c) => {
+    const id = colDefId(c);
+    return !id || !used.has(id);
+  });
+  return [...ungrouped, ...grouped];
 }
 
 const toNum = (v: unknown): number => {
@@ -219,6 +290,9 @@ function FacetFilterInput<T>({
 
 export interface DataGridProps<T> {
   columns: ColumnDef<T, unknown>[];
+  /** Nhóm tiêu đề cột (banded header nhiều cấp). Khi set, `columns` phẳng được
+   *  gói lại thành cây cột con theo cấu hình; cột ngoài nhóm giữ nguyên. */
+  columnGroups?: ColumnGroupNode[];
   data: T[];
   emptyText?: string;
   className?: string;
@@ -275,6 +349,7 @@ export interface ServerPagingController {
 
 export function DataGrid<T>({
   columns,
+  columnGroups,
   data,
   emptyText,
   className,
@@ -293,6 +368,16 @@ export function DataGrid<T>({
   const isMobile = useIsMobile();
   // Chế độ xem: lưới (bảng) ↔ card. Mặc định desktop = lưới, mobile = card.
   const [viewMode, setViewMode] = useState<"grid" | "card">(isMobile ? "card" : "grid");
+  // Phóng to DataGrid phủ toàn màn hình (toolbar + header cố định, chỉ dòng cuộn).
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (!maximized) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMaximized(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maximized]);
   const serverMode = !!server;
   // Ref giữ controller mới nhất — tránh để identity object của caller lọt vào
   // deps effect (sẽ fire mỗi render → fetch loop).
@@ -329,6 +414,43 @@ export function DataGrid<T>({
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ left: [], right: [] });
   // Master-detail: id dòng đang mở panel chi tiết.
   const [openDetail, setOpenDetail] = useState<Set<string>>(new Set());
+
+  // Tiêu đề lồng nhiều cấp: gói cột phẳng thành cây nhóm khi có cấu hình.
+  const tableColumns = useMemo(
+    () => (columnGroups?.length ? groupColumns(columns, columnGroups) : columns),
+    [columns, columnGroups],
+  );
+  // Header lồng → đo độ cao tích luỹ từng hàng tiêu đề để mỗi hàng dính (sticky)
+  // đúng vị trí xếp chồng khi cuộn dọc (không đè lên nhau). filterTop = tổng
+  // cao các hàng header (cho hàng ô lọc dính ngay dưới).
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const [hdrTops, setHdrTops] = useState<number[]>([]);
+  const [filterTop, setFilterTop] = useState(0);
+  // Không deps: đo lại sau mỗi render (cột/độ cao có thể đổi) — đã chặn set dư
+  // bằng so sánh giá trị nên không vòng lặp; ResizeObserver bắt thay đổi kích thước.
+  useLayoutEffect(() => {
+    const thead = theadRef.current;
+    if (!thead) return;
+    const measure = () => {
+      const rows = Array.from(
+        thead.querySelectorAll<HTMLTableRowElement>(":scope > tr.dg-hdr-row"),
+      );
+      const tops: number[] = [];
+      let acc = 0;
+      for (const r of rows) {
+        tops.push(acc);
+        acc += r.offsetHeight;
+      }
+      setHdrTops((prev) =>
+        prev.length === tops.length && prev.every((v, i) => v === tops[i]) ? prev : tops,
+      );
+      setFilterTop((prev) => (prev === acc ? prev : acc));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(thead);
+    return () => ro.disconnect();
+  });
 
   // Restore state from IDB once on mount
   const restoredRef = useRef(false);
@@ -407,7 +529,7 @@ export function DataGrid<T>({
 
   const table = useReactTable({
     data,
-    columns,
+    columns: tableColumns,
     state: {
       sorting,
       globalFilter,
@@ -557,7 +679,14 @@ export function DataGrid<T>({
     "p-1 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div
+      className={cn(
+        "flex flex-col",
+        // Phóng to: phủ toàn màn hình, nền đặc, chỉ vùng dòng cuộn bên trong.
+        maximized ? "fixed inset-0 z-[800] bg-bg p-2" : "h-full",
+        className,
+      )}
+    >
       {toolbar && (
         <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-panel-2/40 shrink-0 flex-wrap">
           {label && <span className="text-xs font-semibold text-muted mr-1 shrink-0">{label}</span>}
@@ -701,6 +830,16 @@ export function DataGrid<T>({
             </button>
           </div>
 
+          {/* Phóng to / thu nhỏ lưới toàn màn hình */}
+          <button
+            type="button"
+            onClick={() => setMaximized((m) => !m)}
+            title={maximized ? "Thu nhỏ (Esc)" : "Phóng to toàn màn hình"}
+            className="inline-flex items-center justify-center px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+          >
+            {maximized ? <I.X size={13} /> : <I.Maximize size={12} />}
+          </button>
+
           {/* Column chooser (ẩn/hiện cột) */}
           <div className="relative" ref={colChooserRef}>
             <button
@@ -722,8 +861,34 @@ export function DataGrid<T>({
                     return (
                       <div
                         key={col.id}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40"
+                        draggable
+                        onDragStart={() => setDragColId(col.id)}
+                        onDragOver={(e) => {
+                          if (dragColId && dragColId !== col.id) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragColId && dragColId !== col.id) {
+                            const cur = table.getState().columnOrder;
+                            const order = cur.length
+                              ? [...cur]
+                              : table.getAllLeafColumns().map((c) => c.id);
+                            const from = order.indexOf(dragColId);
+                            const to = order.indexOf(col.id);
+                            if (from !== -1 && to !== -1) {
+                              order.splice(to, 0, ...order.splice(from, 1));
+                              setColumnOrder(order);
+                            }
+                          }
+                          setDragColId(null);
+                        }}
+                        onDragEnd={() => setDragColId(null)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40",
+                          dragColId === col.id && "opacity-40",
+                        )}
                       >
+                        <I.Grip size={11} className="shrink-0 cursor-grab text-muted/40" />
                         <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
                           <input
                             type="checkbox"
@@ -735,18 +900,31 @@ export function DataGrid<T>({
                             {col.columnDef.header?.toString() ?? col.id}
                           </span>
                         </label>
-                        {/* Ghim cột (frozen) — trái / bỏ ghim */}
-                        <button
-                          type="button"
-                          title={t("datagrid.pin_left")}
-                          onClick={() => col.pin(pin === "left" ? false : "left")}
-                          className={cn(
-                            "shrink-0 p-0.5 rounded hover:bg-hover/60",
-                            pin === "left" ? "text-accent" : "text-muted/60",
-                          )}
-                        >
-                          <I.Pin size={11} />
-                        </button>
+                        {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            title={t("datagrid.pin_left")}
+                            onClick={() => col.pin(pin === "left" ? false : "left")}
+                            className={cn(
+                              "p-0.5 rounded hover:bg-hover/60",
+                              pin === "left" ? "text-accent" : "text-muted/50",
+                            )}
+                          >
+                            <I.PanelLeft size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            title={t("datagrid.pin_right")}
+                            onClick={() => col.pin(pin === "right" ? false : "right")}
+                            className={cn(
+                              "p-0.5 rounded hover:bg-hover/60",
+                              pin === "right" ? "text-accent" : "text-muted/50",
+                            )}
+                          >
+                            <I.PanelRight size={12} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -854,114 +1032,160 @@ export function DataGrid<T>({
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto relative">
+          {/* Gợi ý khi đang kéo tiêu đề cột: thả vào lưới để ẩn. pointer-events-none
+              để không chặn drop trên tbody lẫn reorder trên header. */}
+          {dragColId && (
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-danger text-white text-xs font-medium shadow-lg flex items-center gap-1.5">
+              <I.EyeOff size={13} /> Thả vào lưới để ẩn cột
+            </div>
+          )}
           <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-panel-2 z-10">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-border">
-                  {renderDetail && <th className="w-7 px-1" aria-hidden />}
-                  {hg.headers.map((header) => {
-                    const sorted = header.column.getIsSorted();
-                    const sortIndex = header.column.getSortIndex();
-                    // Tên cột kỹ thuật (tuỳ chọn) — cột nào set meta.techName thì
-                    // hiện thêm dòng mono dưới nhãn (vd lưới dữ liệu entity).
-                    const techName = (
-                      header.column.columnDef.meta as { techName?: string } | undefined
-                    )?.techName;
-                    return (
+            <thead ref={theadRef} className="bg-panel-2 z-10">
+              {(() => {
+                // Header lồng nhiều cấp: TanStack đặt LÁ THẬT ở hàng DƯỚI CÙNG,
+                // các hàng trên là PLACEHOLDER của lá (lá nông xuyên qua). Vẽ mỗi
+                // lá ĐÚNG 1 LẦN ở hàng TRÊN CÙNG nó xuất hiện (placeholder đầu) +
+                // rowSpan phủ xuống đáy → lá nông thành ô cao, cột thẳng hàng. Ô
+                // NHÓM = header có cột con thật (không phải placeholder).
+                const headerRows = table.getHeaderGroups();
+                const totalRows = headerRows.length;
+                const renderedLeaves = new Set<string>();
+                return headerRows.map((hg, rowIndex) => (
+                  <tr key={hg.id} className="dg-hdr-row border-b border-border">
+                    {renderDetail && rowIndex === 0 && (
                       <th
-                        key={header.id}
-                        draggable={!header.column.getIsGrouped()}
-                        onDragStart={() => setDragColId(header.column.id)}
-                        onDragOver={(e) => {
-                          if (dragColId && dragColId !== header.column.id) e.preventDefault();
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (dragColId && dragColId !== header.column.id) {
-                            const cur = table.getState().columnOrder;
-                            const order = cur.length
-                              ? [...cur]
-                              : table.getAllLeafColumns().map((c) => c.id);
-                            const from = order.indexOf(dragColId);
-                            const to = order.indexOf(header.column.id);
-                            if (from !== -1 && to !== -1) {
-                              order.splice(to, 0, ...order.splice(from, 1));
-                              setColumnOrder(order);
+                        className="w-7 px-1 bg-panel-2"
+                        style={{ position: "sticky", top: 0, zIndex: 12 }}
+                        rowSpan={totalRows}
+                        aria-hidden
+                      />
+                    )}
+                    {hg.headers.map((header) => {
+                      const top = hdrTops[rowIndex] ?? 0;
+                      // Ô NHÓM (dải bao trên): căn giữa, span nhiều cột, KHÔNG
+                      // sort/kéo/đổi rộng — chỉ là nhãn nhóm.
+                      const isGroup = !header.isPlaceholder && header.subHeaders.length > 0;
+                      if (isGroup) {
+                        return (
+                          <th
+                            key={header.id}
+                            colSpan={header.colSpan}
+                            style={{ position: "sticky", top, zIndex: 12 }}
+                            className="text-center px-3 py-1.5 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-x border-border/60 dark:border-border"
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </th>
+                        );
+                      }
+                      // Ô LÁ (placeholder xuyên hàng HOẶC lá đáy) — vẽ 1 lần ở vị
+                      // trí trên cùng, bỏ các lần xuất hiện dưới (đã phủ rowSpan).
+                      if (renderedLeaves.has(header.column.id)) return null;
+                      renderedLeaves.add(header.column.id);
+                      const rowSpan = totalRows - rowIndex;
+                      const sorted = header.column.getIsSorted();
+                      const sortIndex = header.column.getSortIndex();
+                      // Tên cột kỹ thuật (tuỳ chọn) — cột nào set meta.techName thì
+                      // hiện thêm dòng mono dưới nhãn (vd lưới dữ liệu entity).
+                      const techName = (
+                        header.column.columnDef.meta as { techName?: string } | undefined
+                      )?.techName;
+                      return (
+                        <th
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          rowSpan={rowSpan}
+                          draggable={!header.column.getIsGrouped()}
+                          onDragStart={() => setDragColId(header.column.id)}
+                          onDragOver={(e) => {
+                            if (dragColId && dragColId !== header.column.id) e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragColId && dragColId !== header.column.id) {
+                              const cur = table.getState().columnOrder;
+                              const order = cur.length
+                                ? [...cur]
+                                : table.getAllLeafColumns().map((c) => c.id);
+                              const from = order.indexOf(dragColId);
+                              const to = order.indexOf(header.column.id);
+                              if (from !== -1 && to !== -1) {
+                                order.splice(to, 0, ...order.splice(from, 1));
+                                setColumnOrder(order);
+                              }
                             }
-                          }
-                          setDragColId(null);
-                        }}
-                        style={{ ...pinnedStyle(header.column), width: header.getSize() }}
-                        className={cn(
-                          "relative text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap",
-                          dragColId === header.column.id && "opacity-40",
-                          header.column.getIsPinned() && "bg-panel-2 z-20",
-                        )}
-                      >
-                        <span
-                          onClick={
-                            header.column.getCanSort()
-                              ? header.column.getToggleSortingHandler()
-                              : undefined
-                          }
+                            setDragColId(null);
+                          }}
+                          style={{
+                            ...headerStickyStyle(header.column, top),
+                            width: header.getSize(),
+                          }}
                           className={cn(
-                            "inline-flex flex-col leading-tight",
-                            header.column.getCanSort() &&
-                              "cursor-pointer hover:text-text select-none",
+                            "relative text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
+                            dragColId === header.column.id && "opacity-40",
                           )}
                         >
-                          <span className="inline-flex items-center gap-1">
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {sorted === "asc" && <I.ChevronUp size={11} />}
-                            {sorted === "desc" && <I.ChevronDown size={11} />}
-                            {sorted && sorting.length > 1 && (
-                              <span className="text-[9px] text-muted/70 font-normal">
-                                {sortIndex + 1}
+                          <span
+                            onClick={
+                              header.column.getCanSort()
+                                ? header.column.getToggleSortingHandler()
+                                : undefined
+                            }
+                            className={cn(
+                              "inline-flex flex-col leading-tight",
+                              header.column.getCanSort() &&
+                                "cursor-pointer hover:text-text select-none",
+                            )}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {sorted === "asc" && <I.ChevronUp size={11} />}
+                              {sorted === "desc" && <I.ChevronDown size={11} />}
+                              {sorted && sorting.length > 1 && (
+                                <span className="text-[9px] text-muted/70 font-normal">
+                                  {sortIndex + 1}
+                                </span>
+                              )}
+                            </span>
+                            {techName && (
+                              <span className="font-mono text-[9px] normal-case tracking-normal font-normal text-muted/60">
+                                {techName}
                               </span>
                             )}
                           </span>
-                          {techName && (
-                            <span className="font-mono text-[9px] normal-case tracking-normal font-normal text-muted/60">
-                              {techName}
-                            </span>
+                          {/* Resize handle (kéo viền phải đổi rộng cột) */}
+                          {header.column.getCanResize() && (
+                            <button
+                              type="button"
+                              aria-label="Kéo đổi rộng cột"
+                              onMouseDown={header.getResizeHandler()}
+                              onTouchStart={header.getResizeHandler()}
+                              onClick={(e) => e.stopPropagation()}
+                              className={cn(
+                                "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none hover:bg-accent/50",
+                                header.column.getIsResizing() && "bg-accent",
+                              )}
+                            />
                           )}
-                        </span>
-                        {/* Resize handle (kéo viền phải đổi rộng cột) */}
-                        {header.column.getCanResize() && (
-                          <button
-                            type="button"
-                            aria-label="Kéo đổi rộng cột"
-                            onMouseDown={header.getResizeHandler()}
-                            onTouchStart={header.getResizeHandler()}
-                            onClick={(e) => e.stopPropagation()}
-                            className={cn(
-                              "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none hover:bg-accent/50",
-                              header.column.getIsResizing() && "bg-accent",
-                            )}
-                          />
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-              {/* Column filter row */}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                ));
+              })()}
+              {/* Hàng ô lọc từng cột — theo cột LÁ (banded header: nhóm không lọc). */}
               {filterRowOpen && (
                 <tr className="border-b border-border bg-panel-2/60">
                   {renderDetail && <th className="w-7 px-1" aria-hidden />}
-                  {table.getHeaderGroups()[0]?.headers.map((header) => (
+                  {table.getVisibleLeafColumns().map((column) => (
                     <th
-                      key={header.id}
-                      style={pinnedStyle(header.column)}
-                      className={cn(
-                        "px-1.5 py-1",
-                        header.column.getIsPinned() && "bg-panel-2 z-20",
-                      )}
+                      key={column.id}
+                      style={{ ...pinnedStyle(column), position: "sticky", top: filterTop }}
+                      className={cn("px-1.5 py-1 bg-panel-2/95", column.getIsPinned() && "z-20")}
                     >
-                      {header.column.getCanFilter() ? (
+                      {column.getCanFilter() ? (
                         <FacetFilterInput
-                          column={header.column}
+                          column={column}
                           placeholder={t("datagrid.col_filter_placeholder")}
                           faceted={!serverMode}
                         />
@@ -971,7 +1195,20 @@ export function DataGrid<T>({
                 </tr>
               )}
             </thead>
-            <tbody>
+            <tbody
+              // Kéo tiêu đề cột thả vào vùng dữ liệu (tbody) -> ẩn cột đó.
+              // thead/tbody là anh em nên drop reorder trên header không lọt xuống đây.
+              onDragOver={(e) => {
+                if (dragColId) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragColId) {
+                  setColumnVisibility((v) => ({ ...v, [dragColId]: false }));
+                  setDragColId(null);
+                }
+              }}
+            >
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
@@ -1061,7 +1298,11 @@ export function DataGrid<T>({
                                 ...pinnedStyle(cell.column),
                                 width: cell.column.getSize(),
                               }}
-                              className={cn("px-3 py-2 whitespace-nowrap", pinned && "bg-bg", ccls)}
+                              className={cn(
+                                "px-3 py-2 whitespace-nowrap border-r border-border/40 dark:border-border",
+                                pinned && "bg-bg",
+                                ccls,
+                              )}
                             >
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
@@ -1087,7 +1328,10 @@ export function DataGrid<T>({
                   {table.getVisibleLeafColumns().map((col, idx) => {
                     const s = summaryByCol.get(col.id);
                     return (
-                      <td key={col.id} className="px-3 py-1.5 text-xs whitespace-nowrap text-right">
+                      <td
+                        key={col.id}
+                        className="px-3 py-1.5 text-xs whitespace-nowrap text-right border-r border-border/40 dark:border-border"
+                      >
                         {s ? (
                           <span className="font-semibold text-accent">
                             {SUMMARY_LABEL[s.type]} {fmtNum(s.value)}

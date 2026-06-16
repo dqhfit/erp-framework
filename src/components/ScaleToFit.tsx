@@ -24,6 +24,7 @@ const NON_SCALABLE_KINDS = new Set([
   "kanban",
   "split",
   "search",
+  "filter",
   "combobox",
   "listbox",
   "tagbox",

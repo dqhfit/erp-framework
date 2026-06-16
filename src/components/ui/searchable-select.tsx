@@ -32,6 +32,8 @@ interface SearchableSelectProps {
   className?: string;
   /** Class thêm cho nút trigger — vd thu nhỏ: "h-7! text-xs!". */
   triggerClassName?: string;
+  /** Hiện ĐỦ nội dung option (xuống dòng thay vì cắt) + dropdown rộng hơn. */
+  wrapOptions?: boolean;
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -50,6 +52,7 @@ export function SearchableSelect({
   disabled,
   className,
   triggerClassName,
+  wrapOptions,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -169,7 +172,10 @@ export function SearchableSelect({
           <div
             ref={panelRef}
             style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
-            className="z-[1000] w-max max-w-[280px] rounded-md border border-border bg-panel shadow-lg"
+            className={cn(
+              "z-[1000] w-max rounded-md border border-border bg-panel shadow-lg",
+              wrapOptions ? "max-w-[min(460px,92vw)]" : "max-w-[280px]",
+            )}
           >
             <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
               <I.Search size={13} className="shrink-0 text-muted" />
@@ -203,7 +209,11 @@ export function SearchableSelect({
                           isActive ? "bg-accent/10 text-text" : "text-text/90 hover:bg-hover/40",
                         )}
                       >
-                        <span className="truncate">{o.label}</span>
+                        <span
+                          className={wrapOptions ? "whitespace-normal break-words" : "truncate"}
+                        >
+                          {o.label}
+                        </span>
                         {isSel && <I.Check size={13} className="shrink-0 text-accent" />}
                       </button>
                     </li>

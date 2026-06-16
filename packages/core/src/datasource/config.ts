@@ -53,6 +53,9 @@ export interface DataSourceField {
   type: string;
   /** Cho ghi ngược. Mặc định: field base = true, field join = false. */
   writable?: boolean;
+  /** Entity đích nếu field này là khóa tham chiếu (lookup): suy từ relation có
+   *  fromField === sourceField → cho UI dựng lookup chọn bản ghi entity đó. */
+  ref?: string;
 }
 
 /** Hàm gom cho aggregate quan hệ 1-N / N-N. */

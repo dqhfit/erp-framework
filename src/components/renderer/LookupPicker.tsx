@@ -129,14 +129,21 @@ export function LookupPicker({ refEntityId, value, onChange, multi = false, clas
   }
 
   // Single lookup
+  const options = rows.map((row) => ({ value: String(row.id ?? ""), label: rowLabel(row) }));
+  // Giá trị hiện tại trỏ tới record KHÔNG còn tồn tại → giữ lại làm option (đánh
+  // dấu) thay vì mất giá trị cũ; user vẫn chọn lại được từ danh sách đầy đủ.
+  if (value && !options.some((o) => o.value === value)) {
+    options.unshift({ value, label: `${value} (không tồn tại)` });
+  }
   return (
     <SearchableSelect
       className={className ? className : "w-full"}
       value={value}
       onChange={onChange}
-      options={rows.map((row) => ({ value: String(row.id ?? ""), label: rowLabel(row) }))}
+      options={options}
       emptyOption={`— chọn ${refEnt?.name ?? "bản ghi"} —`}
       searchPlaceholder={`Tìm ${refEnt?.name ?? "bản ghi"}…`}
+      wrapOptions
     />
   );
 }

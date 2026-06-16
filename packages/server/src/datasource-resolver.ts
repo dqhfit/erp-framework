@@ -344,6 +344,9 @@ async function stitchAndProject(
       const r = evaluate(c.expr, row as Record<string, unknown>);
       row[c.key] = r.ok ? (r.value ?? null) : null;
     }
+    // Id hệ thống PHẢI thắng — field chiếu trùng key "id" (cột nguồn tên 'id')
+    // không được ghi đè record id (write-back cần đúng id để validate UUID).
+    row.id = baseRows[i]!.id;
     return row;
   });
 }
@@ -384,6 +387,18 @@ async function tryJoinResolveList(
   const ebr = entityByRidOf(cfg);
   const flat = (await db.execute(built.rowsSql)) as unknown as Record<string, unknown>[];
   const out = flat.map((fr) => projectJoinRow(cfg, fr, role, ebr, fieldsByEntity));
+  // Cột tính toán (formula): nhánh JOIN SQL cũng phải eval như batch-stitch —
+  // nếu không, cột computed RỖNG khi base+relation đều tier='table'. Eval sau
+  // khi project (ref được cột phẳng đã chiếu), theo thứ tự, fail-safe null.
+  if (cfg.computed?.length) {
+    for (const row of out) {
+      const r = row as Record<string, unknown>;
+      for (const c of cfg.computed) {
+        const ev = evaluate(c.expr, r);
+        r[c.key] = ev.ok ? (ev.value ?? null) : null;
+      }
+    }
+  }
   const counted = (await db.execute(built.countSql)) as unknown as Array<{ count: number }>;
   return { rows: out, total: Number(counted[0]?.count ?? 0) };
 }
@@ -462,12 +477,26 @@ export async function resolveFields(
   companyId: string,
   cfg: DataSourceConfig,
 ): Promise<DataSourceField[]> {
-  const base =
+  const baseRaw =
     cfg.fields.length > 0
       ? cfg.fields
       : cfg.baseEntityId
         ? autoBaseFields(await loadEntityFields(db, companyId, cfg.baseEntityId))
         : [];
+  // Suy ref cho field khóa-tham-chiếu: relation có fromRelationId=null (gốc base)
+  // + fromField === field.sourceField → field đó trỏ tới relation.targetEntityId.
+  // Cho UI dựng lookup chọn bản ghi entity đích (đầy đủ) thay vì gõ id thô.
+  const refByLocalField = new Map<string, string>();
+  for (const rel of cfg.relations ?? []) {
+    if (rel.fromRelationId == null && rel.fromField) {
+      refByLocalField.set(rel.fromField, rel.targetEntityId);
+    }
+  }
+  const base = baseRaw.map((f) =>
+    f.sourceRelationId === "base" && !f.ref && refByLocalField.has(f.sourceField)
+      ? { ...f, ref: refByLocalField.get(f.sourceField) }
+      : f,
+  );
   const aggFields: DataSourceField[] = (cfg.aggregates ?? []).map((a) => ({
     key: a.key,
     sourceRelationId: "base",
