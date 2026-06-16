@@ -18,6 +18,7 @@ import {
   getSortedRowModel,
   type PaginationState,
   type Row,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
   type VisibilityState,
@@ -336,6 +337,19 @@ export interface DataGridProps<T> {
   /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
    *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
   pageJump?: { token: number; to: "first" | "last" };
+  /** Bật CHỌN DÒNG (checkbox). Khi true: toolbar có nút bật/tắt cột tích; tích
+   *  tiêu đề = chọn/bỏ MỌI dòng đã lọc; server mode thêm "Chọn tất cả N dòng". */
+  enableSelection?: boolean;
+  /** Báo caller khi tập chọn đổi. allMatching=true (server mode) = đã chọn TẤT
+   *  CẢ dòng khớp filter (vượt trang đang tải) — caller xử lý theo query. */
+  onSelectionChange?: (info: { rows: T[]; allMatching: boolean; count: number }) => void;
+  /** Hành động hàng loạt hiện ở thanh chọn (ngoài "Xuất CSV đã chọn" có sẵn). */
+  bulkActions?: Array<{
+    label: string;
+    icon?: ReactNode;
+    danger?: boolean;
+    onClick: (rows: T[], allMatching: boolean) => void;
+  }>;
 }
 
 /** Query grid phát ra cho caller khi ở chế độ server-side. */
@@ -384,6 +398,9 @@ export function DataGrid<T>({
   pasteCreateDefaults,
   onAddRow,
   pageJump,
+  enableSelection,
+  onSelectionChange,
+  bulkActions,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -437,6 +454,11 @@ export function DataGrid<T>({
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ left: [], right: [] });
   // Master-detail: id dòng đang mở panel chi tiết.
   const [openDetail, setOpenDetail] = useState<Set<string>>(new Set());
+  // Chọn dòng: state TanStack + cờ hiện cột tích + cờ "đã chọn tất cả dòng khớp"
+  // (server mode — vượt trang đang tải, biểu diễn bằng cờ thay vì từng id).
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [showSelectCol, setShowSelectCol] = useState(false);
+  const [allMatching, setAllMatching] = useState(false);
 
   // Tiêu đề lồng nhiều cấp: gói cột phẳng thành cây nhóm khi có cấu hình.
   const tableColumns = useMemo(
@@ -564,7 +586,20 @@ export function DataGrid<T>({
       columnSizing,
       columnOrder,
       columnPinning,
+      rowSelection,
     },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: !!enableSelection,
+    // Chọn dòng bám theo id dữ liệu (ổn định qua lọc/sắp/trang). Chỉ bật khi
+    // có selection để KHÔNG đổi hành vi (row.id = index) của lưới khác.
+    ...(enableSelection
+      ? {
+          getRowId: (row: T, index: number) => {
+            const r = row as { id?: unknown };
+            return r.id != null ? String(r.id) : `__row${index}`;
+          },
+        }
+      : {}),
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
@@ -679,6 +714,32 @@ export function DataGrid<T>({
     id: c.id,
     header: c.columnDef.header?.toString() ?? c.id,
   }));
+
+  // ── Chọn dòng ──────────────────────────────────────────────────
+  const selecting = !!enableSelection && showSelectCol;
+  // Số ô dẫn đầu (trước cột dữ liệu): tích chọn + nút mở chi tiết.
+  const leadCols = (selecting ? 1 : 0) + (renderDetail ? 1 : 0);
+  const selectedRows = table.getSelectedRowModel().rows;
+  const selectedOriginals = selectedRows.map((r) => r.original);
+  // "Tất cả khớp": server mode = server.total; client mode = số dòng đã lọc.
+  const matchTotal = serverMode && server ? server.total : filteredCount;
+  const selectedCount = allMatching ? matchTotal : selectedRows.length;
+  const someSelected = selectedRows.length > 0 || allMatching;
+  const headerChecked = allMatching || table.getIsAllRowsSelected();
+  const headerIndeterminate = !headerChecked && table.getIsSomeRowsSelected();
+  const clearSelection = () => {
+    table.resetRowSelection();
+    setAllMatching(false);
+  };
+  // Server mode còn dòng chưa tải (đã chọn hết trang mà total > đang tải) → mời
+  // "chọn tất cả N dòng khớp".
+  const canSelectAllMatching =
+    serverMode && !allMatching && table.getIsAllRowsSelected() && matchTotal > selectedRows.length;
+  // Báo caller mỗi khi tập chọn đổi.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: phát theo rowSelection + allMatching, dữ liệu đọc tại thời điểm chạy
+  useEffect(() => {
+    onSelectionChange?.({ rows: selectedOriginals, allMatching, count: selectedCount });
+  }, [rowSelection, allMatching]);
   // Summary footer (DevExpress-style): cột set meta.summary → kiểu đó; cột số
   // không set → auto "sum". Có ≥1 cột summary mới hiện footer.
   // Server mode: tính client trên 1 trang là SAI → dùng server.summary (toàn
@@ -758,6 +819,29 @@ export function DataGrid<T>({
             <I.Filter size={11} />
             {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
           </button>
+
+          {/* Bật/tắt cột tích chọn dòng */}
+          {enableSelection && (
+            <button
+              type="button"
+              onClick={() =>
+                setShowSelectCol((v) => {
+                  if (v) clearSelection();
+                  return !v;
+                })
+              }
+              title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
+              className={cn(
+                "inline-flex items-center gap-1 px-2 h-7 rounded text-xs border transition-colors",
+                selecting
+                  ? "border-accent/60 text-accent bg-accent/10"
+                  : "border-border text-muted hover:text-text hover:border-border",
+              )}
+            >
+              <I.Check size={12} />
+              {someSelected && <span>{selectedCount}</span>}
+            </button>
+          )}
 
           {/* Grouping chips + picker */}
           {grouping.length > 0 && (
@@ -1028,6 +1112,59 @@ export function DataGrid<T>({
         </div>
       )}
 
+      {selecting && someSelected && (
+        <div className="flex items-center gap-2 px-2 py-1 border-b border-border bg-accent/5 text-xs shrink-0 flex-wrap">
+          <span className="font-medium text-accent">Đã chọn {selectedCount} dòng</span>
+          {canSelectAllMatching && (
+            <button
+              type="button"
+              onClick={() => {
+                table.toggleAllRowsSelected(true);
+                setAllMatching(true);
+              }}
+              className="underline text-accent hover:text-accent-2"
+            >
+              Chọn tất cả {matchTotal} dòng khớp
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+            {bulkActions?.map((a) => (
+              <button
+                key={a.label}
+                type="button"
+                onClick={() => a.onClick(selectedOriginals, allMatching)}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-6 rounded border text-xs transition-colors",
+                  a.danger
+                    ? "border-danger/50 text-danger hover:bg-danger/10"
+                    : "border-border text-muted hover:text-text hover:border-border",
+                )}
+              >
+                {a.icon}
+                {a.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                exportRowsCsv(exportCols, selectedRows, `${label || "export"}-da-chon`)
+              }
+              title="Xuất CSV các dòng đã chọn (đã tải)"
+              className="inline-flex items-center gap-1 px-2 h-6 rounded border border-border text-muted hover:text-text hover:border-border text-xs"
+            >
+              <I.Download size={11} /> Xuất đã chọn
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="inline-flex items-center gap-1 px-2 h-6 rounded border border-border text-muted hover:text-text hover:border-border text-xs"
+            >
+              <I.X size={11} /> Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === "card" ? (
         <div className="flex-1 overflow-auto p-2 space-y-2">
           {table.getRowModel().rows.length === 0 ? (
@@ -1073,13 +1210,24 @@ export function DataGrid<T>({
                   role={clickable ? "button" : undefined}
                   tabIndex={clickable ? 0 : undefined}
                   className={cn(
-                    "rounded-md border p-2.5 space-y-1 transition-colors",
+                    "relative rounded-md border p-2.5 space-y-1 transition-colors",
                     clickable && "cursor-pointer",
                     selected
                       ? "bg-accent/10 border-accent ring-1 ring-accent"
                       : "border-border bg-panel hover:bg-hover/20",
                   )}
                 >
+                  {selecting && (
+                    <span className="absolute right-2 top-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label="Chọn dòng"
+                        checked={row.getIsSelected()}
+                        onChange={row.getToggleSelectedHandler()}
+                        className="accent-accent cursor-pointer"
+                      />
+                    </span>
+                  )}
                   {row.getVisibleCells().map((cell) => {
                     if (cell.getIsPlaceholder()) return null;
                     const hdr = cell.column.columnDef.header;
@@ -1122,6 +1270,27 @@ export function DataGrid<T>({
                 const renderedLeaves = new Set<string>();
                 return headerRows.map((hg, rowIndex) => (
                   <tr key={hg.id} className="dg-hdr-row border-b border-border">
+                    {selecting && rowIndex === 0 && (
+                      <th
+                        className="w-9 px-1 bg-panel-2 text-center"
+                        style={{ position: "sticky", top: 0, zIndex: 12 }}
+                        rowSpan={totalRows}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label="Chọn tất cả dòng đã lọc"
+                          checked={headerChecked}
+                          ref={(el) => {
+                            if (el) el.indeterminate = headerIndeterminate;
+                          }}
+                          onChange={() => {
+                            if (headerChecked) clearSelection();
+                            else table.toggleAllRowsSelected(true);
+                          }}
+                          className="accent-accent cursor-pointer align-middle"
+                        />
+                      </th>
+                    )}
                     {renderDetail && rowIndex === 0 && (
                       <th
                         className="w-7 px-1 bg-panel-2"
@@ -1258,6 +1427,7 @@ export function DataGrid<T>({
               {/* Hàng ô lọc từng cột — theo cột LÁ (banded header: nhóm không lọc). */}
               {filterRowOpen && (
                 <tr className="border-b border-border bg-panel-2/60">
+                  {selecting && <th className="w-9 px-1" aria-hidden />}
                   {renderDetail && <th className="w-7 px-1" aria-hidden />}
                   {table.getVisibleLeafColumns().map((column) => (
                     <th
@@ -1303,7 +1473,7 @@ export function DataGrid<T>({
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={columns.length + (renderDetail ? 1 : 0)}
+                    colSpan={columns.length + leadCols}
                     className="text-center py-8 text-muted text-sm"
                   >
                     {emptyText ?? t("datagrid.empty")}
@@ -1320,10 +1490,7 @@ export function DataGrid<T>({
                         className="border-b border-border bg-panel-2/50 cursor-pointer hover:bg-hover/20"
                         onClick={row.getToggleExpandedHandler()}
                       >
-                        <td
-                          colSpan={columns.length + (renderDetail ? 1 : 0)}
-                          className="px-3 py-1.5"
-                        >
+                        <td colSpan={columns.length + leadCols} className="px-3 py-1.5">
                           <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
                             {row.getIsExpanded() ? (
                               <I.ChevronDown size={12} />
@@ -1357,6 +1524,20 @@ export function DataGrid<T>({
                         ].join(" ")}
                         onClick={clickable ? () => onRowClick(row.original) : undefined}
                       >
+                        {selecting && (
+                          <td className="w-9 px-1 text-center align-middle">
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label="Chọn dòng"
+                                checked={row.getIsSelected()}
+                                disabled={!row.getCanSelect()}
+                                onChange={row.getToggleSelectedHandler()}
+                                className="accent-accent cursor-pointer align-middle"
+                              />
+                            </span>
+                          </td>
+                        )}
                         {renderDetail && (
                           <td className="w-7 px-1 align-middle">
                             <button
@@ -1411,7 +1592,7 @@ export function DataGrid<T>({
                       </tr>
                       {detailOpen && renderDetail && (
                         <tr className="border-b border-border bg-panel-2/30">
-                          <td colSpan={columns.length + 1} className="px-4 py-3 align-top">
+                          <td colSpan={columns.length + leadCols} className="px-4 py-3 align-top">
                             {renderDetail(row.original)}
                           </td>
                         </tr>
@@ -1424,6 +1605,7 @@ export function DataGrid<T>({
             {showSummary && (
               <tfoot className="sticky bottom-0 z-10 bg-panel-2 border-t-2 border-border">
                 <tr>
+                  {selecting && <td className="w-9 px-1" aria-hidden />}
                   {renderDetail && <td className="w-7 px-1" aria-hidden />}
                   {table.getVisibleLeafColumns().map((col, idx) => {
                     const s = summaryByCol.get(col.id);

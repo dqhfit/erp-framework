@@ -1620,6 +1620,26 @@ export function PageDesigner({ pageId }: Props) {
                             </div>
                           )}
 
+                          {sel.kind === "list" && (
+                            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm">Chọn dòng (checkbox)</span>
+                                <span className="text-[11px] text-muted">
+                                  Cho phép tích chọn dòng · chọn tất cả đã lọc / mọi trang (mặc định
+                                  ẩn)
+                                </span>
+                              </div>
+                              <Switch
+                                checked={sel.config.selectable === true}
+                                onChange={(v) =>
+                                  update(sel.id, {
+                                    config: { ...sel.config, selectable: v },
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+
                           {sel.kind === "list" && sel.config.editable === true && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft ml-3">
                               <div className="flex flex-col leading-tight">

@@ -907,6 +907,8 @@ interface EditableListWidgetProps {
   stateKey?: string;
   /** Cột hành động theo dòng (Xem/Sửa/Xoá…) — render ActionWidget cho từng dòng. */
   rowActions?: ActionConfig[];
+  /** Bật chọn dòng (checkbox) — bật trong cài đặt list (mặc định ẩn). */
+  selectable?: boolean;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -972,6 +974,7 @@ function EditableListWidget({
   createDefaults,
   stateKey,
   rowActions,
+  selectable,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1323,6 +1326,7 @@ function EditableListWidget({
             pasteCreateDefaults={createDefaults}
             onAddRow={batchEdit && onBulkCreate ? addRow : undefined}
             pageJump={pageJump}
+            enableSelection={selectable}
           />
         </div>
       )}
@@ -1351,6 +1355,7 @@ function ServerPagedListWidget({
   editable,
   batchEdit,
   columnGroups,
+  selectable,
 }: {
   entityId?: string;
   dataSourceId?: string;
@@ -1367,6 +1372,8 @@ function ServerPagedListWidget({
   batchEdit?: boolean;
   /** Nhóm tiêu đề cột (banded header nhiều cấp). */
   columnGroups?: ColumnGroupNode[];
+  /** Bật chọn dòng (checkbox). */
+  selectable?: boolean;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -1693,6 +1700,7 @@ function ServerPagedListWidget({
           isRowSelected={isRowSelected}
           pageSize={ps}
           server={server}
+          enableSelection={selectable}
         />
       </div>
     </div>
@@ -1756,6 +1764,7 @@ function ListWidget({
   editForm,
   rowActions,
   rowActionsBuiltin,
+  selectable,
   embeddedActions,
   embeddedFilters,
 }: {
@@ -1817,6 +1826,8 @@ function ListWidget({
   rowActions?: ActionConfig[];
   /** Cột hành động dựng sẵn (Xem/Sửa/Xoá) — bật trong cài đặt list (mặc định ẩn). */
   rowActionsBuiltin?: boolean;
+  /** Bật chọn dòng (checkbox) — bật trong cài đặt list (mặc định ẩn). */
+  selectable?: boolean;
   /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
    *  (thay vì strip riêng phía trên) — chỉ truyền khi list có createForm. */
   embeddedActions?: ActionBarItem[];
@@ -2284,6 +2295,7 @@ function ListWidget({
         createDefaults={createDefaults}
         stateKey={stateKey}
         rowActions={effectiveRowActions}
+        selectable={selectable}
       />
     );
   }
@@ -2357,6 +2369,7 @@ function ListWidget({
               searchStateKey ? (v: string) => pageState.set(searchStateKey, v) : undefined
             }
             pageSize={pageSize}
+            enableSelection={selectable}
           />
         )}
       </div>
@@ -3738,6 +3751,7 @@ function RenderSubWidget({
           pageSize={cfg.pageSize as number | undefined}
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
+          selectable={cfg.selectable === true}
         />
       );
     return (
@@ -3765,6 +3779,7 @@ function RenderSubWidget({
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        selectable={cfg.selectable === true}
       />
     );
   }
@@ -4283,6 +4298,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
           pageSize={cfg.pageSize as number | undefined}
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
+          selectable={cfg.selectable === true}
         />,
         embActs,
         pageState,
@@ -4319,6 +4335,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        selectable={cfg.selectable === true}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
