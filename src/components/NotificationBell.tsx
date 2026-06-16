@@ -29,14 +29,13 @@ function timeAgo(iso: string): string {
   return `${Math.floor(s / 86400)} ngày trước`;
 }
 
-/** Chỉ cho điều hướng tới đường dẫn nội bộ (bắt đầu "/") hoặc http(s) tường minh.
- *  Chặn javascript:/data:/vbscript:… (XSS / open-redirect) — targetUrl có thể
- *  bắt nguồn từ nội dung người dùng (vd @mention). KHÔNG nhận "//host" (đường
- *  dẫn protocol-relative → ngoài miền). */
+/** CHỈ điều hướng tới đường dẫn NỘI BỘ same-origin (bắt đầu "/" nhưng không
+ *  "//"). Notification targetUrl trong hệ thống luôn là link nội bộ → chặn MỌI
+ *  URL tuyệt đối: diệt open-redirect (http(s) ngoài miền, "//host" protocol-
+ *  relative) lẫn XSS (javascript:/data:/vbscript:). targetUrl có thể bắt nguồn
+ *  từ nội dung người dùng (vd @mention) nên không tin tuyệt đối. */
 function safeNavigate(url: string): void {
-  const isInternal = url.startsWith("/") && !url.startsWith("//");
-  const isHttp = /^https?:\/\//i.test(url);
-  if (isInternal || isHttp) window.location.assign(url);
+  if (url.startsWith("/") && !url.startsWith("//")) window.location.assign(url);
 }
 
 export function NotificationBell() {
