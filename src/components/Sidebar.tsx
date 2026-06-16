@@ -2,7 +2,7 @@ import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
-import { MenuTree, type NavNode } from "@/components/MenuTree";
+import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NavMenuSection } from "@/components/NavMenuSection";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
@@ -694,6 +694,8 @@ function PagesTreeSection({
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  // Ref điều khiển mở rộng / thu gọn tất cả nhánh cây menu trang (admin/editor).
+  const menuTreeRef = useRef<MenuTreeHandle>(null);
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
@@ -745,6 +747,26 @@ function PagesTreeSection({
               <span>{t("sidebar.pages")}</span>
             </button>
             <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+              {open && navNodes.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => menuTreeRef.current?.expandAll()}
+                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                    title="Mở rộng tất cả"
+                  >
+                    <I.ChevronDown size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => menuTreeRef.current?.collapseAll()}
+                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                    title="Thu gọn tất cả"
+                  >
+                    <I.ChevronUp size={11} />
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
@@ -812,6 +834,7 @@ function PagesTreeSection({
         open && (
           <>
             <MenuTree
+              ref={menuTreeRef}
               nodes={navNodes}
               activePageId={activePageId}
               onSelect={(id) => {
@@ -931,14 +954,24 @@ export function Sidebar() {
   const navigate = useNavigate();
   const favs = useFavs();
 
-  const [sectionsOpen, setSectionsOpen] = useState({
-    entities: true,
-    pages: true,
-    workflows: true,
-    agents: true,
-    datasources: true,
-    ops: true,
-    settings: false,
+  // Trạng thái mở/đóng các section — NHỚ qua reload (localStorage). Merge với
+  // defaults để key mới (thêm section sau này) vẫn có giá trị mặc định.
+  const [sectionsOpen, setSectionsOpen] = useState(() => {
+    const defaults = {
+      entities: true,
+      pages: true,
+      workflows: true,
+      agents: true,
+      datasources: true,
+      ops: true,
+      settings: false,
+    };
+    try {
+      const r = localStorage.getItem("sidebar-sections-open");
+      return r ? { ...defaults, ...(JSON.parse(r) as Partial<typeof defaults>) } : defaults;
+    } catch {
+      return defaults;
+    }
   });
   const allOpen = Object.values(sectionsOpen).some(Boolean);
   const toggleAll = () => {
@@ -962,6 +995,13 @@ export function Sidebar() {
       const opening = !s[key];
       return { ...s, ops: opening && key === "ops", settings: opening && key === "settings" };
     });
+
+  // Lưu trạng thái mở/đóng section mỗi khi đổi → reload khôi phục đúng như trước.
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebar-sections-open", JSON.stringify(sectionsOpen));
+    } catch {}
+  }, [sectionsOpen]);
 
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
