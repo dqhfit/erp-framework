@@ -4430,10 +4430,12 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                   gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
                   // Có widget fill ở đáy: ghim chiều cao grid = availH + hàng cuối
                   // = 1fr → widget fill lấp khít chiều cao còn lại, không chừa dư.
+                  // Hàng TRÊN (filter/toolbar mỏng) = auto → vừa khít nội dung,
+                  // không bị dư padding theo ROW_H 76px.
                   ...(!isMobile && fillId && availH > 0 && fillRowStart > 0
                     ? {
                         height: availH,
-                        gridTemplateRows: `repeat(${fillRowStart - 1}, ${ROW_H}px) minmax(0, 1fr)`,
+                        gridTemplateRows: `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`,
                       }
                     : {}),
                 }}
