@@ -162,6 +162,30 @@ function PortalRoute() {
   // Đang hiển thị cây menu (không tìm kiếm + có node link trang) → hiện nút mở/thu gọn tất cả.
   const treeMode = !q && navNodes.some((n) => n.pageId);
 
+  // Map pageId → "đường dẫn" menu (nhãn các cấp cha › lá) — tooltip cho kết quả
+  // tìm kiếm + danh sách phẳng (giống tooltip trong cây menu).
+  const pagePathMap = useMemo(() => {
+    const byCode = new Map(navNodes.map((n) => [n.code, n]));
+    const labelOf = (n: NavNode) => {
+      const nm = n.name ?? "";
+      const suffix = ` - ${n.code}`;
+      return nm.endsWith(suffix) ? nm.slice(0, -suffix.length) : nm;
+    };
+    const m = new Map<string, string>();
+    for (const n of navNodes) {
+      if (!n.pageId) continue;
+      const parts: string[] = [];
+      let cur: NavNode | undefined = n;
+      let guard = 0;
+      while (cur && guard++ < 20) {
+        parts.unshift(labelOf(cur));
+        cur = cur.parentCode ? byCode.get(cur.parentCode) : undefined;
+      }
+      m.set(n.pageId, parts.join(" › "));
+    }
+    return m;
+  }, [navNodes]);
+
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
       {/* Header */}
@@ -392,6 +416,7 @@ function PortalRoute() {
                     <li key={p.id}>
                       <button
                         type="button"
+                        title={pagePathMap.get(p.id) ?? p.name}
                         onClick={() => onSelectPage(p.id)}
                         className={cn(
                           "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
@@ -442,6 +467,7 @@ function PortalRoute() {
                   <li key={p.id}>
                     <button
                       type="button"
+                      title={pagePathMap.get(p.id) ?? p.name}
                       onClick={() => onSelectPage(p.id)}
                       className={cn(
                         "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",

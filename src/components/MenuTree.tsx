@@ -219,22 +219,24 @@ function MenuBranch({
     const tooltip = [...parentPath, myLabel].join(" › ");
     const favored = !!(node.pageId && isFav?.(node.pageId));
     return (
-      <li className="group/leaf relative">
+      <li
+        className={cn(
+          "group/leaf flex items-center transition-colors",
+          active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
+        )}
+      >
         <button
           type="button"
           title={tooltip}
           onClick={() => node.pageId && onSelect(node.pageId)}
           style={{ paddingLeft: 12 + depth * 12 }}
-          className={cn(
-            "w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 transition-colors",
-            onToggleFav && "pr-8",
-            active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
-          )}
+          className="flex-1 min-w-0 text-left px-3 py-1.5 text-sm flex items-center gap-2"
         >
           <I.Layout size={13} className="shrink-0 text-muted" />
           <span className="whitespace-nowrap lowercase first-letter:uppercase">{myLabel}</span>
         </button>
-        {/* Sao yêu thích — hiện khi hover (hoặc luôn hiện nếu đã thích). */}
+        {/* Sao yêu thích — sticky GHIM mép phải vùng nhìn (cây cuộn ngang w-max
+            nên absolute-right bị ra ngoài). Hiện khi hover, luôn hiện nếu đã thích. */}
         {onToggleFav && node.pageId && (
           <button
             type="button"
@@ -244,7 +246,7 @@ function MenuBranch({
               onToggleFav(node);
             }}
             className={cn(
-              "absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center hover:bg-hover/60 transition-opacity",
+              "sticky right-1 shrink-0 w-5 h-5 mr-1 rounded flex items-center justify-center bg-panel hover:bg-hover/60 transition-opacity",
               favored ? "opacity-100" : "opacity-0 group-hover/leaf:opacity-100",
             )}
           >
