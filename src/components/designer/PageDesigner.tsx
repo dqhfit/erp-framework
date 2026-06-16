@@ -7,6 +7,7 @@ import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice
 import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
+import { ROW_ACTION_OPTIONS } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import {
   Button,
@@ -1618,6 +1619,46 @@ export function PageDesigner({ pageId }: Props) {
                                   })
                                 }
                               />
+                            </div>
+                          )}
+
+                          {/* Bật/tắt từng nút trên popover hành động (chỉ khi cột hành động bật). */}
+                          {sel.kind === "list" && sel.config.rowActionsBuiltin === true && (
+                            <div className="p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="text-sm mb-0.5">Nút hiện trên popover hành động</div>
+                              <div className="text-[11px] text-muted mb-2">
+                                Bỏ tích để ẩn nút khỏi popover ⋯ của từng dòng
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                {ROW_ACTION_OPTIONS.map((opt) => {
+                                  const hidden =
+                                    (sel.config.rowActionsHidden as string[] | undefined) ?? [];
+                                  return (
+                                    <label
+                                      key={opt.key}
+                                      className="flex items-center gap-1.5 text-[12px] cursor-pointer"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="accent-accent shrink-0"
+                                        checked={!hidden.includes(opt.key)}
+                                        onChange={(e) => {
+                                          const h =
+                                            (sel.config.rowActionsHidden as string[] | undefined) ??
+                                            [];
+                                          const next = e.target.checked
+                                            ? h.filter((k) => k !== opt.key)
+                                            : [...h, opt.key];
+                                          update(sel.id, {
+                                            config: { ...sel.config, rowActionsHidden: next },
+                                          });
+                                        }}
+                                      />
+                                      <span className="truncate">{opt.label}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
 

@@ -910,6 +910,8 @@ interface EditableListWidgetProps {
   rowActions?: ActionConfig[];
   /** Bật chọn dòng (checkbox) — bật trong cài đặt list (mặc định ẩn). */
   selectable?: boolean;
+  /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
+  rowActionsHidden?: string[];
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -976,6 +978,7 @@ function EditableListWidget({
   stateKey,
   rowActions,
   selectable,
+  rowActionsHidden,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1188,6 +1191,7 @@ function EditableListWidget({
                 label: columnLabels?.[f.name] ?? f.label ?? f.name,
               }))}
               title={title}
+              hidden={rowActionsHidden}
             />
           );
         },
@@ -1203,6 +1207,7 @@ function EditableListWidget({
     rowActions,
     pageState,
     title,
+    rowActionsHidden,
   ]);
 
   const saveAll = async () => {
@@ -1773,6 +1778,7 @@ function ListWidget({
   editForm,
   rowActions,
   rowActionsBuiltin,
+  rowActionsHidden,
   selectable,
   embeddedActions,
   embeddedFilters,
@@ -1835,6 +1841,8 @@ function ListWidget({
   rowActions?: ActionConfig[];
   /** Cột hành động dựng sẵn (Xem/Sửa/Xoá) — bật trong cài đặt list (mặc định ẩn). */
   rowActionsBuiltin?: boolean;
+  /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
+  rowActionsHidden?: string[];
   /** Bật chọn dòng (checkbox) — bật trong cài đặt list (mặc định ẩn). */
   selectable?: boolean;
   /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
@@ -2197,6 +2205,7 @@ function ListWidget({
                   label: columnLabels?.[f.name] ?? f.label ?? f.name,
                 }))}
                 title={title}
+                hidden={rowActionsHidden}
               />
             ),
           },
@@ -2303,6 +2312,7 @@ function ListWidget({
         stateKey={stateKey}
         rowActions={effectiveRowActions}
         selectable={selectable}
+        rowActionsHidden={rowActionsHidden}
       />
     );
   }
@@ -3786,6 +3796,7 @@ function RenderSubWidget({
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         selectable={cfg.selectable === true}
       />
     );
@@ -4342,6 +4353,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         selectable={cfg.selectable === true}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
