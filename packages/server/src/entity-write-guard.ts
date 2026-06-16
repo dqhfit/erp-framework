@@ -6,6 +6,10 @@
    meta.sync.state = 'live' (hoặc không có) → cho phép ghi bình thường.
 
    Delta-sync worker ghi SQL trực tiếp → không qua guard (đúng ý).
+
+   DEV: env ERP_ALLOW_MIRROR_WRITE=1 → BỎ guard (cho ghi cả entity mirror).
+   Dùng cho local/dump tĩnh KHÔNG có sync chạy thật, để test sửa dữ liệu.
+   ĐỪNG bật ở prod — prod giữ guard tới khi cutover (sync sẽ đè edit của user).
    ========================================================== */
 
 import { entities } from "@erp-framework/db";
@@ -16,6 +20,8 @@ import { db } from "./db";
 /** Throw PRECONDITION_FAILED nếu entity đang ở mirror state.
  *  Dùng trong records-router.ts mutations để chặn ghi user. */
 export async function assertEntityNotMirror(companyId: string, entityId: string): Promise<void> {
+  // Dev/local: cho ghi vào entity mirror qua cờ env (mặc định prod KHÔNG có cờ).
+  if (process.env.ERP_ALLOW_MIRROR_WRITE === "1") return;
   const [row] = await db
     .select({ meta: entities.meta })
     .from(entities)

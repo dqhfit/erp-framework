@@ -33,6 +33,7 @@ import {
   useState,
 } from "react";
 import { I } from "@/components/Icons";
+import { PasteGridModal } from "@/components/renderer/PasteGridModal";
 import { Chip, Input } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
@@ -320,6 +321,11 @@ export interface DataGridProps<T> {
    *  đúng trang từ server. `data` lúc này CHỈ là 1 trang. Group/summary/faceted
    *  bị tắt (cần toàn bộ dòng). Sort 1 cột (server chỉ nhận 1 sort). */
   server?: ServerPagingController;
+  /** Khi set: hiện nút "Dán dữ liệu" ở toolbar → mở PasteGridModal map cột +
+   *  nhận TSV dán vào → caller cập nhật theo {rowId, changes}. Chỉ lưới sửa-được. */
+  onPasteApply?: (
+    updates: Array<{ rowId: string; changes: Record<string, string> }>,
+  ) => void | Promise<void>;
 }
 
 /** Query grid phát ra cho caller khi ở chế độ server-side. */
@@ -363,6 +369,7 @@ export function DataGrid<T>({
   pageSize,
   renderDetail,
   server,
+  onPasteApply,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -370,6 +377,8 @@ export function DataGrid<T>({
   const [viewMode, setViewMode] = useState<"grid" | "card">(isMobile ? "card" : "grid");
   // Phóng to DataGrid phủ toàn màn hình (toolbar + header cố định, chỉ dòng cuộn).
   const [maximized, setMaximized] = useState(false);
+  // Modal dán dữ liệu (paste TSV → cập nhật theo cột khóa).
+  const [pasteOpen, setPasteOpen] = useState(false);
   useEffect(() => {
     if (!maximized) return;
     const onKey = (e: KeyboardEvent) => {
@@ -829,6 +838,18 @@ export function DataGrid<T>({
               <I.Layout size={12} />
             </button>
           </div>
+
+          {/* Dán dữ liệu (paste TSV cập nhật theo cột khóa) */}
+          {onPasteApply && (
+            <button
+              type="button"
+              onClick={() => setPasteOpen(true)}
+              title="Dán dữ liệu cập nhật (từ Excel)"
+              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+            >
+              <I.ClipboardList size={12} />
+            </button>
+          )}
 
           {/* Phóng to / thu nhỏ lưới toàn màn hình */}
           <button
@@ -1410,6 +1431,18 @@ export function DataGrid<T>({
             </div>
           </div>
         </div>
+      )}
+      {onPasteApply && (
+        <PasteGridModal
+          open={pasteOpen}
+          onClose={() => setPasteOpen(false)}
+          columns={table.getAllLeafColumns().map((c) => ({
+            name: c.id,
+            label: typeof c.columnDef.header === "string" ? c.columnDef.header : c.id,
+          }))}
+          rows={data as unknown as Record<string, unknown>[]}
+          onApply={onPasteApply}
+        />
       )}
     </div>
   );

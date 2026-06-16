@@ -580,8 +580,42 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
   };
 }
 
-/** Ô sửa inline trong DataGrid: ảnh → <img>; double-click ô có quyền ghi để
- *  sửa (Enter/blur lưu, Esc huỷ). Tự quản trạng thái edit cục bộ. */
+/* ── Date/DateTime trong ô grid ──────────────────────────────────────────
+   Giá trị lưu = chuỗi ISO (datetime, vd "2020-03-10T12:41:21Z") hoặc YYYY-MM-DD
+   (date). Hiển thị gọn dd/MM/yyyy [HH:mm] theo giờ địa phương; sửa bằng input
+   date / datetime-local; lưu lại ISO (datetime) / YYYY-MM-DD (date) để
+   validate-on-write chuẩn hoá. Chuỗi KHÔNG parse được → giữ nguyên (không vỡ). */
+const pad2 = (n: number) => String(n).padStart(2, "0");
+/** Parse an toàn: chuỗi date-only "YYYY-MM-DD" dựng LOCAL (new Date(str) parse
+ *  UTC → lệch ±1 ngày ở tz≠0 — bài học #9). Có giờ → parse bình thường. */
+function parseDateSafe(v: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(v);
+}
+function fmtDateCell(v: string, withTime: boolean): string {
+  if (!v) return "";
+  const d = parseDateSafe(v);
+  if (Number.isNaN(d.getTime())) return v;
+  const s = `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return withTime ? `${s} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` : s;
+}
+function toDateInput(v: string, withTime: boolean): string {
+  if (!v) return "";
+  const d = parseDateSafe(v);
+  if (Number.isNaN(d.getTime())) return "";
+  const ymd = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return withTime ? `${ymd}T${pad2(d.getHours())}:${pad2(d.getMinutes())}` : ymd;
+}
+function fromDateInput(v: string, withTime: boolean): string {
+  if (!v) return "";
+  if (!withTime) return v; // date: input đã là YYYY-MM-DD (validate slice 0..10)
+  const d = new Date(v); // datetime-local (giờ địa phương) → ISO UTC
+  return Number.isNaN(d.getTime()) ? v : d.toISOString();
+}
+
+/** Ô sửa inline trong DataGrid: ảnh → <img>; date/datetime → format + picker;
+ *  ref → lookup; còn lại text. Double-click ô có quyền ghi để sửa (Enter/blur
+ *  lưu, Esc huỷ). Tự quản trạng thái edit cục bộ. */
 function EditableCell({
   value,
   isImage,
@@ -606,6 +640,8 @@ function EditableCell({
   const [editing, setEditing] = useState(false);
   const str = value == null ? "" : String(value);
   const isLookup = fieldType === "lookup" || fieldType === "multi-lookup";
+  const isDate = fieldType === "date" || fieldType === "datetime";
+  const withTime = fieldType === "datetime";
   if (isImage && str.startsWith("data:image/")) {
     return (
       <img
@@ -651,6 +687,25 @@ function EditableCell({
         />
       );
     }
+    if (isDate) {
+      return (
+        <input
+          type={withTime ? "datetime-local" : "date"}
+          defaultValue={toDateInput(str, withTime)}
+          className="w-full px-1.5 py-0.5 outline outline-1 outline-accent text-xs bg-white dark:bg-bg"
+          // biome-ignore lint/a11y/noAutofocus: con trỏ vào ô vừa double-click sửa
+          autoFocus
+          onBlur={(e) => {
+            onCommit(fromDateInput(e.target.value, withTime));
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+      );
+    }
     return (
       <input
         type="text"
@@ -675,7 +730,7 @@ function EditableCell({
       title={canWrite ? "Nhấn đúp để sửa" : "Không có quyền sửa cột này"}
       className={cn("block truncate", canWrite ? "cursor-text" : "opacity-70")}
     >
-      {str}
+      {isDate ? fmtDateCell(str, withTime) : str}
     </span>
   );
 }
@@ -868,6 +923,20 @@ function EditableListWidget({
     });
   }, [filteredRows, pending]);
 
+  // Dán dữ liệu (PasteGridModal) → cập nhật nhiều dòng: overlay pending (hiện
+  // ngay) + lưu từng dòng (gom field). Lỗi 1 dòng không chặn dòng khác.
+  const applyPaste = async (updates: Array<{ rowId: string; changes: Record<string, string> }>) => {
+    if (!updates.length) return;
+    setPending((prev) => {
+      const next = new Map(prev);
+      for (const u of updates) next.set(u.rowId, { ...(next.get(u.rowId) ?? {}), ...u.changes });
+      return next;
+    });
+    for (const u of updates) {
+      await onSave(u.rowId, u.changes).catch((e) => setSaveErr((e as Error).message));
+    }
+  };
+
   // Cột TanStack: cell = ô sửa inline. Cột số → summary=sum (footer tổng hợp).
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
@@ -990,6 +1059,7 @@ function EditableListWidget({
             label={title}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
+            onPasteApply={applyPaste}
           />
         </div>
       )}
@@ -1224,7 +1294,11 @@ function ServerPagedListWidget({
                     loading="lazy"
                   />
                 );
-              return <span className="block truncate">{s}</span>;
+              const disp =
+                f.type === "date" || f.type === "datetime"
+                  ? fmtDateCell(s, f.type === "datetime")
+                  : s;
+              return <span className="block truncate">{disp}</span>;
             },
       })),
     [visibleFields, columnLabels, editable, rbacRole, myGroupIds],
