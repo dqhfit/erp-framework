@@ -9,7 +9,8 @@
    - Modal "Gán trang": auto gợi ý + nút "Tự nhận diện lại" + lật/nhập trang tay.
    - pdfjs nặng → import ĐỘNG (@/lib/pdf) để vào chunk lazy.
    ========================================================== */
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { Modal } from "@/components/ui";
 import {
@@ -117,7 +118,7 @@ export function DrawingPageCell({ masp, detail, page, canWrite, onCommit }: Cell
         if (data && assigned <= texts.length) {
           const pdfMod = await import("@/lib/pdf");
           const pdf = await pdfMod.loadPdf(data.url);
-          const dataUrl = await pdfMod.renderPageToDataUrl(pdf, assigned, 160);
+          const dataUrl = await pdfMod.renderPageToDataUrl(pdf, assigned, 260);
           if (alive) setThumb(dataUrl);
         }
         const aScore = scorePageForDetail(texts[assigned - 1] ?? "", detail);
@@ -155,30 +156,32 @@ export function DrawingPageCell({ masp, detail, page, canWrite, onCommit }: Cell
     <div className="flex items-center gap-1.5">
       {assigned > 0 ? (
         <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(true);
-            }}
-            title={`Bản vẽ trang ${assigned} — bấm để xem/đổi`}
-            className="shrink-0"
-          >
-            {thumb ? (
-              <img
-                src={thumb}
-                alt={`Trang ${assigned}`}
-                className={cn(
-                  "h-12 w-auto max-w-[88px] rounded border object-contain bg-white",
-                  mismatch ? "border-warning ring-1 ring-warning" : "border-border",
-                )}
-              />
-            ) : (
-              <span className="inline-flex h-12 w-16 items-center justify-center rounded border border-border text-[10px] text-muted">
-                tr.{assigned}…
-              </span>
-            )}
-          </button>
+          <HoverPreview masp={masp} pageNum={assigned} className="inline-flex shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(true);
+              }}
+              title={`Bản vẽ trang ${assigned} — rê chuột để xem, bấm để đổi`}
+              className="shrink-0"
+            >
+              {thumb ? (
+                <img
+                  src={thumb}
+                  alt={`Trang ${assigned}`}
+                  className={cn(
+                    "h-12 w-auto max-w-[88px] rounded border object-contain bg-white",
+                    mismatch ? "border-warning ring-1 ring-warning" : "border-border",
+                  )}
+                />
+              ) : (
+                <span className="inline-flex h-12 w-16 items-center justify-center rounded border border-border text-[10px] text-muted">
+                  tr.{assigned}…
+                </span>
+              )}
+            </button>
+          </HoverPreview>
           {mismatch && (
             <button
               type="button"
@@ -194,24 +197,26 @@ export function DrawingPageCell({ masp, detail, page, canWrite, onCommit }: Cell
           )}
         </>
       ) : suggest ? (
-        <span
-          className="inline-flex items-center gap-1 text-[11px] text-accent"
-          title="Tự nhận diện theo mã/tên/kích thước"
-        >
-          ✨ Gợi ý tr.{suggest}
-          {canWrite && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCommit(String(suggest));
-              }}
-              className="rounded bg-accent/15 px-1 py-0.5 hover:bg-accent/25"
-            >
-              ✓ Dùng
-            </button>
-          )}
-        </span>
+        <HoverPreview masp={masp} pageNum={suggest} className="inline-flex">
+          <span
+            className="inline-flex items-center gap-1 text-[11px] text-accent"
+            title="Rê chuột để xem trang gợi ý"
+          >
+            ✨ Gợi ý tr.{suggest}
+            {canWrite && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCommit(String(suggest));
+                }}
+                className="rounded bg-accent/15 px-1 py-0.5 hover:bg-accent/25"
+              >
+                ✓ Dùng
+              </button>
+            )}
+          </span>
+        </HoverPreview>
       ) : (
         <span className="text-muted text-xs">—</span>
       )}
@@ -310,7 +315,7 @@ function AssignDrawingPageModal({ masp, detail, currentPage, onSave, onClose }: 
     let alive = true;
     (async () => {
       const pdfMod = await import("@/lib/pdf");
-      const dataUrl = await pdfMod.renderPageToDataUrl(pdfRef.current, page, 640);
+      const dataUrl = await pdfMod.renderPageToDataUrl(pdfRef.current, page, 2000);
       if (alive) setPreview(dataUrl);
     })().catch(() => {});
     return () => {
@@ -415,15 +420,189 @@ function AssignDrawingPageModal({ masp, detail, currentPage, onSave, onClose }: 
               <span className="ml-auto text-muted">Không tự tìm thấy trang khớp — chọn tay</span>
             )}
           </div>
-          <div className="flex max-h-[60vh] items-center justify-center overflow-auto rounded border border-border bg-bg-soft p-2">
+          <div className="h-[60vh] overflow-hidden rounded border border-border">
             {preview ? (
-              <img src={preview} alt={`Trang ${page}`} className="max-w-full bg-white shadow" />
+              <ZoomableImage src={preview} alt={`Trang ${page}`} />
             ) : (
-              <span className="py-10 text-sm text-muted">Đang render trang…</span>
+              <div className="flex h-full items-center justify-center text-sm text-muted">
+                Đang render trang…
+              </div>
             )}
           </div>
         </div>
       )}
     </Modal>
+  );
+}
+
+/* ----- Ảnh trang PDF có ZOOM + cuộn để xem chi tiết (dùng chung hover-card +
+   modal). Render sẵn ở độ phân giải cao; zoom = đổi bề rộng hiển thị, hộp
+   overflow-auto để kéo xem. ----- */
+function ZoomableImage({ src, alt }: { src: string; alt: string }) {
+  const [zoom, setZoom] = useState(1);
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const dec = () => setZoom((z) => Math.max(1, round2(z - 0.5)));
+  const inc = () => setZoom((z) => Math.min(5, round2(z + 0.5)));
+  return (
+    <div className="flex h-full w-full flex-col bg-bg-soft">
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-panel-2 px-2 py-1 text-xs">
+        <button
+          type="button"
+          onClick={dec}
+          className="rounded px-2 py-0.5 hover:bg-hover"
+          title="Thu nhỏ"
+        >
+          −
+        </button>
+        <span className="w-10 text-center text-muted tabular-nums">{Math.round(zoom * 100)}%</span>
+        <button
+          type="button"
+          onClick={inc}
+          className="rounded px-2 py-0.5 hover:bg-hover"
+          title="Phóng to"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom(1)}
+          className="ml-1 rounded px-2 py-0.5 text-muted hover:bg-hover"
+          title="Vừa khít khung"
+        >
+          Vừa khít
+        </button>
+        <span className="ml-auto text-[10px] text-muted">Cuộn/kéo để xem chi tiết</span>
+      </div>
+      <div className="flex-1 overflow-auto p-1">
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          className="block bg-white"
+          style={{ width: `${zoom * 100}%`, maxWidth: "none", height: "auto" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Vị trí popover hover: ưu tiên bên phải ô, hết chỗ thì sang trái; kẹp trong viewport. */
+function popPos(rect: DOMRect) {
+  const m = 8;
+  const w = Math.min(620, Math.round(window.innerWidth * 0.5));
+  const h = Math.round(window.innerHeight * 0.72);
+  let left = rect.right + m;
+  if (left + w > window.innerWidth - m) left = Math.max(m, rect.left - w - m);
+  let top = Math.min(rect.top, window.innerHeight - m - h);
+  if (top < m) top = m;
+  return { left, top, width: w, height: h };
+}
+
+/* ----- Rê chuột vào ô/gợi ý → hiện popover xem trang PDF (render nét, có zoom),
+   không cần mở modal. Popover tương tác được (di chuột vào để zoom) nhờ đóng
+   trễ; portal ra body để không bị overflow của bảng cắt. ----- */
+function HoverPreview({
+  masp,
+  pageNum,
+  className = "inline-flex",
+  children,
+}: {
+  masp: string;
+  pageNum: number;
+  className?: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [img, setImg] = useState<string | null>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  const startedRef = useRef(false);
+
+  // Đổi sản phẩm/trang → bỏ ảnh đã render (cho render lại đúng trang).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cố ý phụ thuộc masp/pageNum để reset khi đổi (body không đọc nhưng cần chạy lại)
+  useEffect(() => {
+    setImg(null);
+    startedRef.current = false;
+  }, [masp, pageNum]);
+
+  // Dọn timer khi unmount.
+  useEffect(
+    () => () => {
+      if (openTimer.current) window.clearTimeout(openTimer.current);
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+
+  const startRender = () => {
+    if (startedRef.current) return; // chỉ render 1 lần (tránh StrictMode 2×)
+    startedRef.current = true;
+    (async () => {
+      try {
+        const data = await getProductPdf(masp);
+        if (!data || pageNum > data.texts.length) return;
+        const pdfMod = await import("@/lib/pdf");
+        const pdf = await pdfMod.loadPdf(data.url);
+        const url = await pdfMod.renderPageToDataUrl(pdf, pageNum, 2000);
+        setImg(url);
+      } catch {
+        /* lỗi render → giữ trạng thái "đang tải" */
+      }
+    })();
+  };
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 180);
+  };
+  const onEnter = () => {
+    cancelClose();
+    if (wrapRef.current) setRect(wrapRef.current.getBoundingClientRect());
+    if (openTimer.current) window.clearTimeout(openTimer.current);
+    openTimer.current = window.setTimeout(() => {
+      setOpen(true);
+      startRender();
+    }, 130);
+  };
+  const onLeave = () => {
+    if (openTimer.current) window.clearTimeout(openTimer.current);
+    scheduleClose();
+  };
+
+  if (!pageNum || pageNum < 1) return <>{children}</>;
+
+  const pos = rect ? popPos(rect) : null;
+
+  return (
+    <span ref={wrapRef} onMouseEnter={onEnter} onMouseLeave={onLeave} className={className}>
+      {children}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+            className="fixed z-[55] flex flex-col overflow-hidden rounded-lg border border-border bg-panel shadow-2xl"
+            style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}
+          >
+            {img ? (
+              <ZoomableImage src={img} alt={`Trang ${pageNum}`} />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-xs text-muted">
+                Đang tải bản xem…
+              </div>
+            )}
+          </div>,
+          document.body,
+        )}
+    </span>
   );
 }

@@ -12,7 +12,9 @@ import * as pdfjs from "pdfjs-dist";
 // Worker pdf.js — Vite trả URL asset; chạy off-main-thread.
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+// ?v=1: đổi URL để bỏ qua bản worker .mjs từng bị cache SAI MIME (octet-stream,
+// immutable 1 năm) trước khi nginx được vá — vẫn khớp location ~* \.mjs$.
+pdfjs.GlobalWorkerOptions.workerSrc = `${workerUrl}?v=1`;
 
 // Cache document theo URL — lưới nhiều dòng cùng 1 PDF sản phẩm → load 1 lần.
 const docCache = new Map<string, Promise<PDFDocumentProxy>>();
@@ -50,7 +52,8 @@ export async function renderPageToDataUrl(
 ): Promise<string> {
   const page = await pdf.getPage(pageNum);
   const base = page.getViewport({ scale: 1 });
-  const scale = Math.min(2, Math.max(0.2, maxWidth / base.width));
+  // Trần 3 (thay 2) để trang born-digital nhỏ (A4) render sắc, zoom vẫn rõ.
+  const scale = Math.min(3, Math.max(0.2, maxWidth / base.width));
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement("canvas");
   canvas.width = Math.ceil(viewport.width);
