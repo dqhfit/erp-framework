@@ -4089,6 +4089,13 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [fillId]);
+  // Hàng (1-based) bắt đầu của widget fill — để dựng gridTemplateRows: các hàng
+  // trên cố định ROW_H, hàng widget fill = 1fr → lấp KHÍT phần dư (không làm
+  // tròn theo bội số ROW_H như cách giãn span cũ → hết khoảng trống dưới list).
+  const fillRowStart = useMemo(() => {
+    const fc = renderComps.find((c) => c.id === fillId);
+    return fc ? (fc.y ?? 0) + 1 : 0;
+  }, [renderComps, fillId]);
   const resizeRef = useRef<{
     compId: string;
     dir: "e" | "s" | "se";
@@ -4301,6 +4308,14 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                 style={{
                   gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)",
                   gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
+                  // Có widget fill ở đáy: ghim chiều cao grid = availH + hàng cuối
+                  // = 1fr → widget fill lấp khít chiều cao còn lại, không chừa dư.
+                  ...(!isMobile && fillId && availH > 0 && fillRowStart > 0
+                    ? {
+                        height: availH,
+                        gridTemplateRows: `repeat(${fillRowStart - 1}, ${ROW_H}px) minmax(0, 1fr)`,
+                      }
+                    : {}),
                 }}
               >
                 {/* Ghost placeholder during drag */}
@@ -4355,7 +4370,12 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
                           ? { minHeight: h * ROW_H }
                           : {
                               gridColumn: `${colStart} / span ${w}`,
-                              gridRow: `${rowStart} / span ${h}`,
+                              // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
+                              // còn lại span theo số hàng h.
+                              gridRow:
+                                c.id === fillId && availH > 0
+                                  ? `${rowStart} / -1`
+                                  : `${rowStart} / span ${h}`,
                             }
                       }
                       onDragStart={
