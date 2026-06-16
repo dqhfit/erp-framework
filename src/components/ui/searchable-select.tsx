@@ -34,6 +34,8 @@ interface SearchableSelectProps {
   triggerClassName?: string;
   /** Hiện ĐỦ nội dung option (xuống dòng thay vì cắt) + dropdown rộng hơn. */
   wrapOptions?: boolean;
+  /** Ẩn ô tìm kiếm (dropdown ít option, vd bộ lọc 2-3 mục). */
+  noSearch?: boolean;
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -53,6 +55,7 @@ export function SearchableSelect({
   className,
   triggerClassName,
   wrapOptions,
+  noSearch,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -177,20 +180,22 @@ export function SearchableSelect({
               wrapOptions ? "max-w-[min(460px,92vw)]" : "max-w-[280px]",
             )}
           >
-            <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
-              <I.Search size={13} className="shrink-0 text-muted" />
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setActiveIdx(0);
-                }}
-                onKeyDown={onKeyDown}
-                placeholder={searchPlaceholder}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
-              />
-            </div>
+            {!noSearch && (
+              <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+                <I.Search size={13} className="shrink-0 text-muted" />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActiveIdx(0);
+                  }}
+                  onKeyDown={onKeyDown}
+                  placeholder={searchPlaceholder}
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+                />
+              </div>
+            )}
             <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
               {filtered.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted italic">{emptyText}</li>

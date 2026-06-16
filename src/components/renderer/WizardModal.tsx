@@ -201,8 +201,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // 1-entity mode: mọi bước dùng wizardEntityId; else: entity riêng từng bước.
   const stepEntityId = wizardEntityId ?? current.entity;
   const ent = stepEntityId ? entities.find((e) => e.id === stepEntityId) : undefined;
+  // Map theo current.fields để GIỮ ĐÚNG THỨ TỰ cấu hình (filter sẽ giữ thứ tự
+  // entity gốc → sai vị trí ô nhập). Không có → toàn bộ field entity.
   const visibleFields = current.fields?.length
-    ? (ent?.fields ?? []).filter((f) => current.fields!.includes(f.name))
+    ? (current.fields
+        .map((n) => (ent?.fields ?? []).find((f) => f.name === n))
+        .filter(Boolean) as EntityField[])
     : (ent?.fields ?? []);
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
@@ -319,8 +323,23 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const typeOf = (k: string) => mFields.find((f) => f.name === k)?.type;
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(shared)) {
-          if (v === "") continue;
           const t = typeOf(k);
+          // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
+          if (t === "multiselect" || t === "multienum" || t === "multilookup") {
+            payload[k] = v
+              ? v
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+            continue;
+          }
+          // Boolean: "true"/"false" → bool (vd active mặc định khi thêm).
+          if (t === "boolean" || t === "bool") {
+            payload[k] = v === "true" || v === "1";
+            continue;
+          }
+          if (v === "") continue;
           payload[k] = t === "date" || t === "datetime" ? toIsoDate(v) : v;
         }
         const saved = editId
@@ -389,12 +408,146 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     }
   };
 
+  // Upload ảnh → base64 vào form (cho field type "image" ở cột phải).
+  const onPickImage = (name: string, file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setField(name, String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
+  // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
+  const renderControl = (f: EntityField) =>
+    current.fieldLookups?.[f.name] ? (
+      (() => {
+        const lk = current.fieldLookups?.[f.name];
+        if (!lk) return null;
+        const src = detailLookupData[lk.entity] ?? [];
+        const labels = lk.labelFields ?? [lk.valueField];
+        const opts = src.map((r) => {
+          const val = String(r[lk.valueField] ?? "");
+          const lbl = labels
+            .map((x) => r[x])
+            .filter((x) => x != null && String(x) !== "")
+            .join(" — ");
+          return { value: val, label: lbl || val };
+        });
+        const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+        return (
+          <SearchableSelect
+            className="w-full"
+            value={form[f.name] ?? ""}
+            onChange={(v) => {
+              setField(f.name, v);
+              if (lk.autofill) {
+                const rec = src.find((r) => String(r[lk.valueField] ?? "") === v);
+                for (const [tgt, srcField] of Object.entries(lk.autofill)) {
+                  const val = rec ? rec[srcField] : undefined;
+                  setField(tgt, val == null ? "" : String(val));
+                }
+              }
+            }}
+            options={opts}
+            emptyOption={`— chọn ${srcLabel} —`}
+            searchPlaceholder={`Tìm ${srcLabel}…`}
+          />
+        );
+      })()
+    ) : (f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+      <LookupPicker
+        refEntityId={f.ref}
+        value={form[f.name] ?? ""}
+        onChange={(v) => setField(f.name, v)}
+        multi={f.type === "multi-lookup"}
+      />
+    ) : f.type === "multiselect" && f.options?.length ? (
+      // Chọn nhiều bằng checkbox — lưu CSV "a,b" (vừa khoá string của form).
+      (() => {
+        const arr = (form[f.name] ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return (
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-0.5">
+            {f.options?.map((opt) => (
+              <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="accent-accent"
+                  checked={arr.includes(opt)}
+                  onChange={(e) =>
+                    setField(
+                      f.name,
+                      (e.target.checked ? [...arr, opt] : arr.filter((x) => x !== opt)).join(","),
+                    )
+                  }
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        );
+      })()
+    ) : f.type === "select" && f.options?.length ? (
+      <SearchableSelect
+        className="w-full"
+        value={form[f.name] ?? ""}
+        onChange={(v) => setField(f.name, v)}
+        options={f.options.map((o) => ({ value: o, label: o }))}
+        emptyOption="— chọn —"
+      />
+    ) : f.type === "boolean" ? (
+      <label className="flex items-center gap-2 text-sm mt-0.5 cursor-pointer">
+        <input
+          type="checkbox"
+          className="accent-accent"
+          checked={form[f.name] === "true"}
+          onChange={(e) => setField(f.name, e.target.checked ? "true" : "false")}
+        />
+        {f.label}
+      </label>
+    ) : f.type === "longtext" ? (
+      <textarea
+        className="input w-full resize-none"
+        rows={3}
+        value={form[f.name] ?? ""}
+        onChange={(e) => setField(f.name, e.target.value)}
+        placeholder={f.label}
+      />
+    ) : (
+      <input
+        className="input w-full"
+        type={
+          f.type === "number" || f.type === "currency" || f.type === "integer"
+            ? "number"
+            : f.type === "date" || f.type === "datetime"
+              ? "date"
+              : f.type === "email"
+                ? "email"
+                : "text"
+        }
+        value={form[f.name] ?? ""}
+        onChange={(e) => setField(f.name, e.target.value)}
+        placeholder={f.label}
+      />
+    );
+
+  // Field ảnh tách sang cột phải (khung lớn); field khác ở cột trái.
+  const imgFields = visibleFields.filter((f) => f.type === "image");
+  const leftFields = visibleFields.filter((f) => f.type !== "image");
+
   return (
     <Modal
       open
       onClose={onCancel}
       title={step.title || "Wizard"}
-      width={wizardSteps.some((s) => s.detail) ? 920 : 540}
+      width={
+        wizardSteps.some((s) => s.detail)
+          ? 920
+          : imgFields.length > 0 || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
+            ? 720
+            : 540
+      }
     >
       <div className="flex flex-col gap-4">
         {/* Thanh step indicator */}
@@ -535,100 +688,72 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             </div>
           ) : ent ? (
             visibleFields.length > 0 ? (
-              visibleFields.map((f) => (
-                <div key={f.id}>
-                  <label className="block text-xs font-medium mb-0.5">
-                    {f.label}
-                    {f.required ? <span className="text-danger ml-0.5">*</span> : null}
-                  </label>
-                  {current.fieldLookups?.[f.name] ? (
-                    (() => {
-                      const lk = current.fieldLookups?.[f.name];
-                      if (!lk) return null;
-                      const src = detailLookupData[lk.entity] ?? [];
-                      const labels = lk.labelFields ?? [lk.valueField];
-                      const opts = src.map((r) => {
-                        const val = String(r[lk.valueField] ?? "");
-                        const lbl = labels
-                          .map((x) => r[x])
-                          .filter((x) => x != null && String(x) !== "")
-                          .join(" — ");
-                        return { value: val, label: lbl || val };
-                      });
-                      const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
-                      return (
-                        <SearchableSelect
-                          className="w-full"
-                          value={form[f.name] ?? ""}
-                          onChange={(v) => {
-                            setField(f.name, v);
-                            // Tự điền field khác từ record nguồn đã chọn.
-                            if (lk.autofill) {
-                              const rec = src.find((r) => String(r[lk.valueField] ?? "") === v);
-                              for (const [tgt, srcField] of Object.entries(lk.autofill)) {
-                                const val = rec ? rec[srcField] : undefined;
-                                setField(tgt, val == null ? "" : String(val));
-                              }
-                            }
-                          }}
-                          options={opts}
-                          emptyOption={`— chọn ${srcLabel} —`}
-                          searchPlaceholder={`Tìm ${srcLabel}…`}
-                        />
-                      );
-                    })()
-                  ) : (f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
-                    <LookupPicker
-                      refEntityId={f.ref}
-                      value={form[f.name] ?? ""}
-                      onChange={(v) => setField(f.name, v)}
-                      multi={f.type === "multi-lookup"}
-                    />
-                  ) : f.type === "select" && f.options?.length ? (
-                    <SearchableSelect
-                      className="w-full"
-                      value={form[f.name] ?? ""}
-                      onChange={(v) => setField(f.name, v)}
-                      options={f.options.map((o) => ({ value: o, label: o }))}
-                      emptyOption="— chọn —"
-                    />
-                  ) : f.type === "boolean" ? (
-                    <label className="flex items-center gap-2 text-sm mt-0.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="accent-accent"
-                        checked={form[f.name] === "true"}
-                        onChange={(e) => setField(f.name, e.target.checked ? "true" : "false")}
-                      />
-                      {f.label}
-                    </label>
-                  ) : f.type === "longtext" ? (
-                    <textarea
-                      className="input w-full resize-none"
-                      rows={3}
-                      value={form[f.name] ?? ""}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                      placeholder={f.label}
-                    />
-                  ) : (
-                    <input
-                      className="input w-full"
-                      type={
-                        f.type === "number" || f.type === "currency" || f.type === "integer"
-                          ? "number"
-                          : f.type === "date" || f.type === "datetime"
-                            ? "date"
-                            : f.type === "email"
-                              ? "email"
-                              : "text"
-                      }
-                      value={form[f.name] ?? ""}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                      placeholder={f.label}
-                    />
+              <div className="flex gap-4 items-start">
+                {/* Cột trái: các trường nhập (1 hoặc 2 cột theo current.cols) */}
+                <div
+                  className={cn(
+                    "min-w-0",
+                    imgFields.length > 0 ? "flex-1" : "w-full",
+                    (current.cols ?? 1) >= 2 ? "grid grid-cols-2 gap-x-4 gap-y-2.5" : "space-y-2.5",
                   )}
+                >
+                  {leftFields.map((f) => (
+                    <div
+                      key={f.id}
+                      className={
+                        (current.cols ?? 1) >= 2 && f.type === "longtext" ? "col-span-2" : undefined
+                      }
+                    >
+                      <label className="block text-xs font-medium mb-0.5">
+                        {f.label}
+                        {f.required ? <span className="text-danger ml-0.5">*</span> : null}
+                      </label>
+                      {renderControl(f)}
+                    </div>
+                  ))}
                 </div>
-              ))
+                {/* Cột phải: khung ảnh + upload */}
+                {imgFields.length > 0 && (
+                  <div className="w-56 shrink-0 space-y-3">
+                    {imgFields.map((f) => (
+                      <div key={f.id}>
+                        <label className="block text-xs font-medium mb-1">{f.label}</label>
+                        {form[f.name] ? (
+                          // biome-ignore lint/performance/noImgElement: preview ảnh base64/URL trong modal
+                          <img
+                            src={form[f.name]}
+                            alt=""
+                            className="w-full h-48 object-contain rounded border border-border bg-panel-2"
+                          />
+                        ) : (
+                          <div className="w-full h-48 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
+                            No image data
+                          </div>
+                        )}
+                        {!readOnly && (
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="text-xs"
+                              onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
+                            />
+                            {form[f.name] && (
+                              <button
+                                type="button"
+                                className="text-xs text-danger hover:underline"
+                                onClick={() => setField(f.name, "")}
+                              >
+                                Xoá
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="text-xs text-muted italic">Entity này chưa có trường nào.</p>
             )
