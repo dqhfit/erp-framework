@@ -480,6 +480,12 @@ export const I = {
       <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" />
     </Icon>
   ),
+  Archive: (p: IP) => (
+    <Icon {...p}>
+      <rect x="2" y="3" width="20" height="5" rx="1" />
+      <path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8M10 12h4" />
+    </Icon>
+  ),
   Server: (p: IP) => (
     <Icon {...p}>
       <rect x="2" y="3" width="20" height="8" rx="2" />

@@ -640,6 +640,9 @@ export const workflows = pgTable(
     // publishedGraph: bản ĐÃ PUBLISH — runner chạy bản này. null = chưa publish.
     publishedGraph: jsonb("published_graph"),
     isActive: boolean("is_active").notNull().default(false),
+    // sourceTemplateId: id template (workflow-templates.ts) nếu workflow clone từ
+    // thư viện mẫu — null = tạo tay. Dùng để biết nguồn gốc / cập nhật về sau.
+    sourceTemplateId: text("source_template_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -1052,6 +1055,52 @@ export const workflowRuns = pgTable(
   },
   (t) => ({
     workflowIdIdx: index("workflow_runs_workflow_id_idx").on(t.workflowId),
+  }),
+);
+
+/* ─── Guardrails — bài học từ node fail lặp lại (Loops!-style) ───
+   Khi một node trong workflow fail lặp cùng lỗi (gom theo fingerprint),
+   ghi nhận + đếm; chạm ngưỡng → sinh "lesson" (LLM, fail-safe) để tự
+   chèn vào system prompt các lần chạy sau, tránh lặp lỗi. Tương tự
+   .ralph/guardrails.md nhưng multi-tenant, gắn theo workflow + node. */
+export const workflowGuardrails = pgTable(
+  "workflow_guardrails",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: "cascade" }),
+    // nodeId: id node trong graph gặp lỗi (định danh chỗ lỗi).
+    nodeId: text("node_id").notNull(),
+    // fingerprint: SHA-256 rút gọn của thông điệp lỗi (gom trùng — như client_errors).
+    fingerprint: text("fingerprint").notNull(),
+    // errorSample: thông điệp lỗi gốc (cắt ngắn) để người/LLM hiểu ngữ cảnh.
+    errorSample: text("error_sample").notNull(),
+    failCount: integer("fail_count").notNull().default(1),
+    // lesson: bài học chèn vào prompt; null = chưa có (LLM lỗi hoặc chờ người viết).
+    lesson: text("lesson"),
+    // status: active = đang áp dụng/chèn; archived = đã xử lý, không chèn nữa.
+    status: text("status").notNull().default("active"),
+    firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    thresholdMetAt: timestamp("threshold_met_at"),
+    updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uk: uniqueIndex("workflow_guardrails_uk").on(
+      t.companyId,
+      t.workflowId,
+      t.nodeId,
+      t.fingerprint,
+    ),
+    listIdx: index("workflow_guardrails_list_idx").on(t.companyId, t.workflowId, t.status),
   }),
 );
 

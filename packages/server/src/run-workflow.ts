@@ -33,6 +33,7 @@ import { makeCallAgent } from "./llm-client";
 import { makeCallTool } from "./mcp-client";
 import { notifyApprovers } from "./notifications-router";
 import { makeInvokeProcedure } from "./procedure-runner";
+import { recordNodeFailures } from "./workflow-guardrails";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
 interface RawGraph {
@@ -318,7 +319,9 @@ function makeRunnerCallbacks(
   const callTool = override.callTool ?? makeCallTool(db, wf.companyId);
   return {
     callTool,
-    callAgent: override.callAgent ?? makeCallAgent(db),
+    // Truyền ctx workflow để callAgent chèn guardrails (bài học lỗi) vào prompt.
+    callAgent:
+      override.callAgent ?? makeCallAgent(db, { companyId: wf.companyId, workflowId: wf.id }),
     registry: pluginRegistry,
     runCode: makeRunCode({ callTool, companyId: wf.companyId }),
     invokeProcedure: makeInvokeProcedure({
@@ -495,6 +498,12 @@ export async function executeWorkflow(
         finishedAt: new Date(),
       })
       .where(eq(workflowRuns.id, run.id));
+
+    // Guardrails: ghi nhận node fail lặp lại (gom theo fingerprint) — CHỈ run
+    // gốc (depth 0) để khỏi nhân đôi từ sub-run. Best-effort, không vỡ flow.
+    if (depth === 0) {
+      await recordNodeFailures(db, wf.companyId, workflowId, result.steps).catch(() => {});
+    }
 
     // Ghi nhật ký hành động (gộp token của các bước agent).
     const tIn = result.steps.reduce((n, s) => n + (s.tokens?.input_tokens ?? 0), 0);

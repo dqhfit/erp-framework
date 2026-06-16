@@ -158,6 +158,10 @@ const MAX_FOREACH = 1000;
    DB/LLM, tránh chạm WORKFLOW_TIMEOUT khi mảng lớn. Kết quả giữ đúng thứ tự. */
 const FOREACH_CONCURRENCY = 5;
 
+/** Cap số vòng của node loop-until — mỗi vòng là một sub-run TUẦN TỰ (tốn LLM/DB)
+   nên trần thấp hơn foreach; WORKFLOW_TIMEOUT_MS vẫn là hàng rào cuối chống hang. */
+const MAX_LOOP_UNTIL_ITERS = 50;
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Đọc cấu hình độ tin cậy per-node: retry/backoff + timeout.
@@ -755,6 +759,73 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
                 `Lặp ${arr.length} phần tử${failed ? ` (${failed} lỗi)` : ""}`,
                 t0,
                 results,
+              );
+              break;
+            }
+            case "loop-until": {
+              // Lặp TUẦN TỰ một workflow con tới khi biểu thức dừng đúng, hoặc
+              // chạm trần maxIterations. Khác foreach: tuần tự + có điều kiện
+              // dừng + early-break. Mỗi vòng là một executeWorkflow riêng nên
+              // _depth guard (<=5) + WORKFLOW_TIMEOUT_MS đã chặn vòng vô hạn/hang;
+              // node này tính 1 step ở parent nên không đụng maxSteps.
+              const subId = typeof cfg.workflowId === "string" ? cfg.workflowId : "";
+              const expr = typeof cfg.expr === "string" ? cfg.expr.trim() : "";
+              if (!subId) {
+                step = mkStep(node, "skipped", "Chưa chọn workflow con — bỏ qua", t0);
+                break;
+              }
+              if (!expr) {
+                step = mkStep(node, "skipped", "Chưa có biểu thức dừng — bỏ qua", t0);
+                break;
+              }
+              if (!opt.runSubWorkflow) {
+                step = mkStep(node, "error", "Server không cấu hình runSubWorkflow", t0);
+                break;
+              }
+              // Clamp 1..MAX: số rác / <1 → về mặc định 10.
+              const wanted = Math.floor(Number(cfg.maxIterations ?? 10));
+              const maxIters = Math.max(
+                1,
+                Math.min(
+                  MAX_LOOP_UNTIL_ITERS,
+                  Number.isFinite(wanted) && wanted >= 1 ? wanted : 10,
+                ),
+              );
+              let iterations = 0;
+              let success = false;
+              let subErr = false;
+              for (let i = 0; i < maxIters; i++) {
+                iterations = i + 1;
+                // `iteration` (1-based) lộ cho workflow con + biểu thức dừng.
+                const sub = await opt.runSubWorkflow(subId, {
+                  ...vars,
+                  ...inputs,
+                  iteration: iterations,
+                });
+                Object.assign(vars, sub.vars);
+                if (sub.status === "error") {
+                  subErr = true;
+                  break;
+                }
+                const cond = evaluate(expr, { ...vars, ...inputs });
+                if (cond.ok && !!cond.value) {
+                  success = true;
+                  break;
+                }
+              }
+              const out = { iterations, success, maxIterations: maxIters };
+              vars[`loop_until_${node.id}`] = out;
+              rawOutput = out;
+              step = mkStep(
+                node,
+                success ? "ok" : "error",
+                subErr
+                  ? `Loop-until dừng do workflow con lỗi ở vòng ${iterations}`
+                  : success
+                    ? `Loop-until đạt điều kiện sau ${iterations} vòng`
+                    : `Loop-until vượt trần ${maxIters} vòng mà chưa đạt điều kiện`,
+                t0,
+                out,
               );
               break;
             }

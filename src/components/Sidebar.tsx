@@ -1454,6 +1454,18 @@ export function Sidebar() {
               onDelete={can("delete", "workflow") ? handleDeleteWorkflow : undefined}
               onRename={can("edit", "workflow") ? handleRenameWorkflow : undefined}
               onNavigate={collapseOpsSettings}
+              extraButtons={
+                can("create", "workflow") && !collapsed ? (
+                  <button
+                    type="button"
+                    title="Thư viện workflow mẫu"
+                    onClick={() => navigate({ to: "/workflows/gallery" })}
+                    className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-foreground hover:bg-hover transition-colors"
+                  >
+                    <I.Library size={13} />
+                  </button>
+                ) : undefined
+              }
               items={filterBySearch(userWorkflows).map((w) => ({
                 id: w.id,
                 name: w.name,

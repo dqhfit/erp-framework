@@ -33,6 +33,12 @@ import { runEntitySync } from "./run-entity-sync";
 import { runHeartbeat } from "./run-heartbeat";
 import { runKbIngest } from "./run-kb-ingest";
 import { executeWorkflow, registerDelayResumeEnqueuer, resumeWorkflowRun } from "./run-workflow";
+import {
+  type GuardrailLessonJobData,
+  QUEUE_GUARDRAIL_LESSON,
+  registerEnqueueGuardrailLesson,
+  synthesizeLesson,
+} from "./workflow-guardrails";
 
 const QUEUE_RUN = "workflow-run";
 /** Queue resume node delay dài sau khi hết hạn (pg-boss startAfter). */
@@ -85,6 +91,7 @@ export async function startJobs(): Promise<void> {
   await boss.createQueue(QUEUE_BACKUP);
   await boss.createQueue(QUEUE_FEEDBACK_AI);
   await boss.createQueue(QUEUE_MIGRATION);
+  await boss.createQueue(QUEUE_GUARDRAIL_LESSON);
 
   // Worker: chạy workflow khi có job.
   await boss.work<RunJobData>(QUEUE_RUN, async (jobs) => {
@@ -173,6 +180,23 @@ export async function startJobs(): Promise<void> {
   registerEnqueueFeedbackAi(async (id) => {
     if (!boss) throw new Error("Job runner chưa sẵn sàng");
     await boss.send(QUEUE_FEEDBACK_AI, { feedbackId: id });
+  });
+
+  // Worker: sinh "lesson" guardrail bằng LLM (fail-safe). Tách khỏi run để
+  // không chặn workflow + sống qua restart (bền hơn fire-and-forget inline).
+  await boss.work<GuardrailLessonJobData>(QUEUE_GUARDRAIL_LESSON, async (jobs) => {
+    for (const job of jobs) {
+      try {
+        await synthesizeLesson(db, job.data.companyId, job.data.guardrailId, job.data.errorSample);
+      } catch (e) {
+        console.error("[guardrail-lesson] lỗi:", (e as Error).message);
+      }
+    }
+  });
+  // DI: workflow-guardrails enqueue mà không import jobs.ts (tránh circular).
+  registerEnqueueGuardrailLesson(async (data) => {
+    if (!boss) throw new Error("Job runner chưa sẵn sàng");
+    await boss.send(QUEUE_GUARDRAIL_LESSON, data);
   });
 
   // Migration worker — DI tương tự để migration-router enqueue không cần

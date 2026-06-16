@@ -392,6 +392,96 @@ describe("workflow-runner subworkflow + foreach", () => {
   });
 });
 
+describe("workflow-runner loop-until", () => {
+  function luOpt(
+    cfg: Record<string, unknown>,
+    runSub: (
+      id: string,
+      vars: Record<string, unknown>,
+    ) => Promise<{ status: string; vars: Record<string, unknown> }>,
+  ) {
+    return {
+      workflowId: "w",
+      workflowName: "t",
+      nodes: [
+        { id: "t", type: "trigger", label: "T" },
+        { id: "lu", type: "loop-until", label: "Lặp", config: cfg },
+      ] as WfNode[],
+      edges: [{ source: "t", target: "lu" }] as WfEdge[],
+      callTool: async () => ({}),
+      runSubWorkflow: runSub,
+    };
+  }
+
+  it("dừng khi biểu thức đúng, gom trạng thái vào loop_until_<id>", async () => {
+    let runs = 0;
+    const res = await runWorkflow(
+      luOpt({ workflowId: "c", expr: "{count} >= 3", maxIterations: 10 }, async (_id, vars) => {
+        runs++;
+        return { status: "completed", vars: { count: vars.iteration } };
+      }),
+    );
+    expect(res.status).toBe("completed");
+    expect(runs).toBe(3);
+    const out = res.vars.loop_until_lu as { iterations: number; success: boolean };
+    expect(out.success).toBe(true);
+    expect(out.iterations).toBe(3);
+  });
+
+  it("vượt trần maxIterations → node error, success=false", async () => {
+    let runs = 0;
+    const res = await runWorkflow(
+      luOpt({ workflowId: "c", expr: "{count} >= 99", maxIterations: 4 }, async (_id, vars) => {
+        runs++;
+        return { status: "completed", vars: { count: vars.iteration } };
+      }),
+    );
+    expect(res.status).toBe("error");
+    expect(runs).toBe(4);
+    const out = res.vars.loop_until_lu as { iterations: number; success: boolean };
+    expect(out.success).toBe(false);
+    expect(out.iterations).toBe(4);
+  });
+
+  it("workflow con lỗi giữa chừng → dừng + error", async () => {
+    let runs = 0;
+    const res = await runWorkflow(
+      luOpt({ workflowId: "c", expr: "{count} >= 5", maxIterations: 10 }, async (_id, vars) => {
+        runs++;
+        if ((vars.iteration as number) === 2) return { status: "error", vars: {} };
+        return { status: "completed", vars: { count: vars.iteration } };
+      }),
+    );
+    expect(res.status).toBe("error");
+    expect(runs).toBe(2);
+  });
+
+  it("thiếu biểu thức dừng → skipped, không chạy con", async () => {
+    let runs = 0;
+    const res = await runWorkflow(
+      luOpt({ workflowId: "c" }, async () => {
+        runs++;
+        return { status: "completed", vars: {} };
+      }),
+    );
+    expect(res.status).toBe("completed");
+    expect(runs).toBe(0);
+    expect(res.steps.find((s) => s.nodeId === "lu")?.status).toBe("skipped");
+  });
+
+  it("clamp maxIterations về trần 50 khi vượt", async () => {
+    let runs = 0;
+    const res = await runWorkflow(
+      luOpt({ workflowId: "c", expr: "{n} > 99999", maxIterations: 999 }, async (_id, vars) => {
+        runs++;
+        return { status: "completed", vars: { n: vars.iteration } };
+      }),
+    );
+    expect(res.status).toBe("error");
+    expect(runs).toBe(50);
+  });
+});
+
 describe("workflow-runner độ tin cậy (retry / timeout / error-branch)", () => {
   it("retry: thành công sau N lần thử", async () => {
     let attempts = 0;

@@ -16,6 +16,7 @@ import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import type { RunWorkflowOptions } from "@erp-framework/core";
 import { decryptSecret } from "./crypto";
+import { formatGuardrailPreamble, loadActiveGuardrails } from "./workflow-guardrails";
 
 type AgentResult = {
   text: string;
@@ -122,8 +123,26 @@ async function callOpenAiCompat(
   };
 }
 
-/** Tạo hàm callAgent cho workflow runner — đọc LLM profile từ DB. */
-export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent"]> {
+/** Tạo hàm callAgent cho workflow runner — đọc LLM profile từ DB.
+ *  ctx (tuỳ chọn): khi có companyId + workflowId, nạp guardrails (bài học từ
+ *  lỗi lặp) MỘT LẦN/run (memo trong closure) rồi chèn vào đầu system prompt
+ *  để agent tránh lặp lại lỗi cũ. Toàn-workflow (mọi node agent nhận chung). */
+export function makeCallAgent(
+  db: DB,
+  ctx?: { companyId: string; workflowId: string },
+): NonNullable<RunWorkflowOptions["callAgent"]> {
+  // Memo guardrail preamble theo run (mỗi executeWorkflow tạo 1 callAgent).
+  let preamblePromise: Promise<string> | null = null;
+  const getPreamble = (): Promise<string> => {
+    if (!ctx) return Promise.resolve("");
+    if (!preamblePromise) {
+      preamblePromise = loadActiveGuardrails(db, ctx.companyId, ctx.workflowId)
+        .then(formatGuardrailPreamble)
+        // Fail-safe: lỗi nạp guardrail không được chặn node agent.
+        .catch(() => "");
+    }
+    return preamblePromise;
+  };
   return async (cfg, vars) => {
     const wanted = typeof cfg.profile === "string" ? cfg.profile : undefined;
     // Workflow agent node chạy server-side (thường theo lịch, không user) →
@@ -136,10 +155,13 @@ export function makeCallAgent(db: DB): NonNullable<RunWorkflowOptions["callAgent
     const p = rows[0];
     if (!p) throw new Error("Chưa có LLM profile — không chạy được node agent");
 
-    const system =
+    const baseSystem =
       typeof cfg.system === "string"
         ? cfg.system
         : "Bạn là một agent trong workflow ERP. Trả lời ngắn gọn.";
+    // Chèn guardrails (nếu có) lên đầu để agent đọc bài học trước khi làm.
+    const preamble = await getPreamble();
+    const system = preamble ? `${preamble}\n${baseSystem}` : baseSystem;
     const prompt =
       typeof cfg.prompt === "string"
         ? cfg.prompt

@@ -3,7 +3,7 @@
    Tách khỏi router.ts (Sprint 1 P2.8 step 4).
    ========================================================== */
 
-import { workflowRuns, workflows, workflowVersions } from "@erp-framework/db";
+import { workflowGuardrails, workflowRuns, workflows, workflowVersions } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -15,7 +15,8 @@ import {
   recentRuns,
   resumeWorkflowRun,
 } from "./run-workflow";
-import { rbacProcedure, router } from "./trpc";
+import { approvedProcedure, rbacProcedure, router } from "./trpc";
+import { WORKFLOW_TEMPLATES } from "./workflow-templates";
 
 /** Chặn lưu/publish graph có node requiresRole cao hơn role người thao tác —
  *  ném FORBIDDEN thân thiện thay vì Error thô. */
@@ -43,6 +44,66 @@ export const workflowsRouter = router({
         .from(workflows)
         .where(and(eq(workflows.id, input), eq(workflows.companyId, ctx.user.companyId)));
       return row ?? null;
+    }),
+
+  /* ── Template gallery: thư viện workflow dựng sẵn (Loops!-style) ── */
+  // Danh sách template TĨNH — chỉ cần đăng nhập (như agents.listTemplates).
+  listTemplates: approvedProcedure.query(() => WORKFLOW_TEMPLATES),
+
+  // Clone template → workflow mới của công ty (deep-copy graph, lưu nguồn gốc).
+  instantiateTemplate: rbacProcedure("create", "workflow")
+    .input(z.object({ templateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tpl = WORKFLOW_TEMPLATES.find((t) => t.id === input.templateId);
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template không tồn tại" });
+      const [row] = await ctx.db
+        .insert(workflows)
+        .values({
+          companyId: ctx.user.companyId,
+          name: tpl.name,
+          triggerType: tpl.triggerType,
+          graph: structuredClone(tpl.graph),
+          sourceTemplateId: tpl.id,
+        })
+        .returning();
+      if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insert thất bại" });
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        kind: "workflow.created",
+        objectType: "workflow",
+        target: tpl.name,
+        detail: `Tạo workflow từ template "${tpl.id}"`,
+        actorUserId: ctx.user.id,
+      });
+      return row;
+    }),
+
+  // Cập nhật workflow hiện có theo template mới nhất: ghi đè graph (NHÁP) +
+  // triggerType, set sourceTemplateId. KHÔNG đụng publishedGraph (cần publish
+  // lại để runner dùng) → tránh đổi hành vi runtime ngoài ý muốn.
+  applyTemplate: rbacProcedure("edit", "workflow")
+    .input(z.object({ workflowId: z.string().uuid(), templateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tpl = WORKFLOW_TEMPLATES.find((t) => t.id === input.templateId);
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template không tồn tại" });
+      const [ex] = await ctx.db
+        .select({ companyId: workflows.companyId })
+        .from(workflows)
+        .where(eq(workflows.id, input.workflowId));
+      if (!ex || ex.companyId !== ctx.user.companyId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Workflow không tồn tại" });
+      }
+      const [row] = await ctx.db
+        .update(workflows)
+        .set({
+          graph: structuredClone(tpl.graph),
+          triggerType: tpl.triggerType,
+          sourceTemplateId: tpl.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(workflows.id, input.workflowId))
+        .returning();
+      return row;
     }),
 
   save: rbacProcedure("edit", "workflow")
@@ -282,4 +343,62 @@ export const workflowsRouter = router({
   runs: rbacProcedure("view", "workflow")
     .input(z.string().uuid())
     .query(({ ctx, input }) => recentRuns(ctx.db, input, ctx.user.companyId)),
+
+  /* ── Guardrails: bài học từ node fail lặp lại (Loops!-style) ──
+     list/update/archive — mọi truy vấn scope companyId (chống đọc chéo). */
+  guardrails: router({
+    list: rbacProcedure("view", "workflow")
+      .input(z.string().uuid())
+      .query(({ ctx, input }) =>
+        ctx.db
+          .select()
+          .from(workflowGuardrails)
+          .where(
+            and(
+              eq(workflowGuardrails.workflowId, input),
+              eq(workflowGuardrails.companyId, ctx.user.companyId),
+            ),
+          )
+          .orderBy(desc(workflowGuardrails.failCount)),
+      ),
+
+    // Sửa/ghi bài học (lesson) — chèn vào prompt các lần chạy sau.
+    update: rbacProcedure("edit", "workflow")
+      .input(z.object({ id: z.string().uuid(), lesson: z.string().max(2000) }))
+      .mutation(async ({ ctx, input }) => {
+        const [row] = await ctx.db
+          .update(workflowGuardrails)
+          .set({
+            lesson: input.lesson,
+            status: "active",
+            updatedBy: ctx.user.id,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(workflowGuardrails.id, input.id),
+              eq(workflowGuardrails.companyId, ctx.user.companyId),
+            ),
+          )
+          .returning();
+        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Guardrail không tồn tại" });
+        return row;
+      }),
+
+    // Lưu trữ (không chèn vào prompt nữa) — đã xử lý xong lỗi.
+    archive: rbacProcedure("edit", "workflow")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db
+          .update(workflowGuardrails)
+          .set({ status: "archived", updatedBy: ctx.user.id, updatedAt: new Date() })
+          .where(
+            and(
+              eq(workflowGuardrails.id, input),
+              eq(workflowGuardrails.companyId, ctx.user.companyId),
+            ),
+          );
+        return { ok: true };
+      }),
+  }),
 });

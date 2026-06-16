@@ -7,7 +7,8 @@ export type NodeType =
   | "approval"
   | "delay"
   | "code"
-  | "procedure";
+  | "procedure"
+  | "loop-until";
 
 export interface WorkflowNode {
   id: string;

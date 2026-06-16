@@ -547,6 +547,20 @@
       "when": 1783703400000,
       "tag": "0077_users_legacy_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1783703500000,
+      "tag": "0078_workflow_guardrails",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1783703600000,
+      "tag": "0079_workflow_template_origin",
+      "breakpoints": true
     }
   ]
 }

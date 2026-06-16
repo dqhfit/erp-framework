@@ -8,7 +8,7 @@ import type { RunStep } from "@erp-framework/core";
    ========================================================== */
 import { useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Chip, Input, Modal, Select } from "@/components/ui";
+import { Button, Chip, Input, Modal, Select, Textarea } from "@/components/ui";
 import { CRON_PRESETS, describeCron, nextCronRun, parseCron } from "@/lib/cron";
 import { dialog } from "@/lib/dialog";
 
@@ -35,6 +35,16 @@ interface RunRow {
   status: string;
   steps?: unknown;
   startedAt?: string | Date;
+}
+
+interface GuardrailRow {
+  id: string;
+  nodeId: string;
+  errorSample: string;
+  failCount: number;
+  lesson: string | null;
+  status: string;
+  lastSeenAt?: string | Date;
 }
 
 const STEP_COLOR: Record<RunStep["status"], string> = {
@@ -117,7 +127,7 @@ function StepRow({
 }
 
 export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Props) {
-  const [tab, setTab] = useState<"run" | "schedule">("run");
+  const [tab, setTab] = useState<"run" | "schedule" | "guardrails">("run");
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [result, setResult] = useState<string>("");
@@ -129,6 +139,10 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
   const [schedules, setSchedules] = useState<ServerSchedule[]>([]);
   const [cronExpr, setCronExpr] = useState("0 9 * * *");
   const [schErr, setSchErr] = useState("");
+
+  // Guardrails: bài học từ node fail lặp; draft lesson đang sửa theo id.
+  const [guardrails, setGuardrails] = useState<GuardrailRow[]>([]);
+  const [lessonDraft, setLessonDraft] = useState<Record<string, string>>({});
 
   const mySchedules = schedules.filter((s) => s.workflowId === workflowId);
 
@@ -146,13 +160,45 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
       .then((rows) => setSchedules(rows as ServerSchedule[]))
       .catch((e) => setSchErr((e as Error).message));
   }, []);
+  const loadGuardrails = useCallback(() => {
+    objects.workflows.guardrails
+      .list(workflowId)
+      .then((rows) => setGuardrails(rows as GuardrailRow[]))
+      .catch(() => {
+        /* bỏ qua — guardrail là phụ */
+      });
+  }, [workflowId]);
 
   useEffect(() => {
     if (open) {
       loadHistory();
       loadSchedules();
+      loadGuardrails();
     }
-  }, [open, loadHistory, loadSchedules]);
+  }, [open, loadHistory, loadSchedules, loadGuardrails]);
+
+  const saveLesson = async (id: string) => {
+    const lesson = lessonDraft[id] ?? "";
+    try {
+      await objects.workflows.guardrails.update(id, lesson);
+      loadGuardrails();
+    } catch (e) {
+      void dialog.alert((e as Error).message, { title: "Lưu bài học lỗi" });
+    }
+  };
+  const archiveGuardrail = async (id: string) => {
+    const ok = await dialog.confirm("Lưu trữ guardrail này? Sẽ không chèn vào prompt nữa.", {
+      title: "Lưu trữ guardrail",
+      confirmText: "Lưu trữ",
+    });
+    if (!ok) return;
+    try {
+      await objects.workflows.guardrails.archive(id);
+      loadGuardrails();
+    } catch (e) {
+      void dialog.alert((e as Error).message, { title: "Lưu trữ lỗi" });
+    }
+  };
 
   const doRun = async () => {
     setRunning(true);
@@ -269,6 +315,16 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
           className={`px-3 py-1.5 text-sm border-b-2 -mb-px ${tab === "schedule" ? "border-accent text-text font-medium" : "border-transparent text-muted"}`}
         >
           Lịch chạy {mySchedules.length > 0 && <Chip>{mySchedules.length}</Chip>}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("guardrails")}
+          className={`px-3 py-1.5 text-sm border-b-2 -mb-px ${tab === "guardrails" ? "border-accent text-text font-medium" : "border-transparent text-muted"}`}
+        >
+          Guardrails{" "}
+          {guardrails.filter((g) => g.status === "active").length > 0 && (
+            <Chip variant="warning">{guardrails.filter((g) => g.status === "active").length}</Chip>
+          )}
         </button>
       </div>
 
@@ -419,6 +475,57 @@ export function WorkflowRunPanel({ open, onClose, workflowId, workflowName }: Pr
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "guardrails" && (
+        <div>
+          <div className="text-xs text-muted mb-3">
+            Bài học tự gom khi một node fail lặp lại (≥3 lần cùng lỗi). Bài học đang bật được chèn
+            vào đầu system prompt của node agent các lần chạy sau để tránh lặp lỗi. Sửa lại cho rõ
+            hoặc lưu trữ khi đã xử lý.
+          </div>
+          {guardrails.length === 0 ? (
+            <div className="text-center text-muted py-6 text-sm border border-border rounded-md">
+              Chưa có guardrail nào — workflow chưa gặp lỗi lặp.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {guardrails.map((g) => (
+                <div key={g.id} className="border border-border rounded-md p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Chip variant={g.status === "active" ? "warning" : "default"}>
+                      {g.status === "active" ? "Đang bật" : "Lưu trữ"}
+                    </Chip>
+                    <Chip variant="danger">{g.failCount} lần lỗi</Chip>
+                    <span className="text-xs text-muted font-mono truncate">node {g.nodeId}</span>
+                  </div>
+                  <div className="text-[11px] text-muted mb-2 line-clamp-2">{g.errorSample}</div>
+                  <Textarea
+                    rows={2}
+                    placeholder="Bài học để chèn vào prompt (vd: kiểm tra cấu hình LLM profile trước khi gọi)…"
+                    value={lessonDraft[g.id] ?? g.lesson ?? ""}
+                    onChange={(e) => setLessonDraft((d) => ({ ...d, [g.id]: e.target.value }))}
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button size="sm" variant="primary" onClick={() => saveLesson(g.id)}>
+                      Lưu bài học
+                    </Button>
+                    {g.status === "active" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<I.Archive size={12} />}
+                        onClick={() => archiveGuardrail(g.id)}
+                      >
+                        Lưu trữ
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

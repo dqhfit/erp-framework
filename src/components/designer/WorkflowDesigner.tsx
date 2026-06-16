@@ -58,6 +58,7 @@ type WorkflowNodeKind =
   | "http"
   | "subworkflow"
   | "foreach"
+  | "loop-until"
   | "llm"
   | "knowledge"
   | (string & {});
@@ -169,6 +170,13 @@ const NODE_PALETTE: NodePaletteItem[] = [
     label: "ForEach",
     desc: "Lặp mảng → chạy workflow con",
     icon: "Repeat",
+    color: "var(--accent-2)",
+  },
+  {
+    kind: "loop-until",
+    label: "Loop-Until",
+    desc: "Lặp workflow con tới khi điều kiện đúng",
+    icon: "RefreshCw",
     color: "var(--accent-2)",
   },
 ];
@@ -2041,6 +2049,65 @@ function WorkflowInner({ workflowId }: Props) {
                       Mỗi phần tử → chạy workflow con với <code>{"{item}"}</code> (đổi tên ở trên) +{" "}
                       <code>{"{index}"}</code>. Kết quả gom vào <code>vars.foreach_{sel.id}</code>.
                       Tối đa 1000 phần tử.
+                    </div>
+                  </>
+                )}
+
+                {/* ===== Loop-Until — lặp workflow con tới khi điều kiện đúng ===== */}
+                {sel.data.kind === "loop-until" && (
+                  <>
+                    <FormField label="Biểu thức dừng">
+                      <Input
+                        placeholder='{status} == "done"  — true thì dừng'
+                        value={
+                          typeof sel.data.config?.expr === "string" ? sel.data.config.expr : ""
+                        }
+                        onChange={(e) => patchConfig("expr", e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Tối đa số vòng (1–50)">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        placeholder="10"
+                        value={
+                          typeof sel.data.config?.maxIterations === "number"
+                            ? sel.data.config.maxIterations
+                            : ""
+                        }
+                        onChange={(e) =>
+                          patchConfig(
+                            "maxIterations",
+                            e.target.value === "" ? undefined : Number(e.target.value),
+                          )
+                        }
+                      />
+                    </FormField>
+                    <FormField label="Workflow con (thân vòng lặp)">
+                      <Select
+                        value={
+                          typeof sel.data.config?.workflowId === "string"
+                            ? sel.data.config.workflowId
+                            : ""
+                        }
+                        onChange={(e) => patchConfig("workflowId", e.target.value)}
+                      >
+                        <option value="">— chọn workflow —</option>
+                        {allWorkflows
+                          .filter((w) => w.id !== workflowId)
+                          .map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name}
+                            </option>
+                          ))}
+                      </Select>
+                    </FormField>
+                    <div className="text-[11px] text-muted leading-relaxed">
+                      Chạy workflow con lặp lại tới khi <code>biểu thức dừng</code> = true. Mỗi vòng
+                      lộ <code>{"{iteration}"}</code> (1-based) + merge <code>vars</code> trả về để
+                      điều kiện đọc kết quả. Trạng thái gom vào{" "}
+                      <code>vars.loop_until_{sel.id}</code>. Vượt trần → node lỗi.
                     </div>
                   </>
                 )}

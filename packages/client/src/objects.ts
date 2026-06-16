@@ -141,6 +141,19 @@ export function createObjectsClient(baseUrl: string) {
       // tiếp từ checkpoint (node đã chạy không lặp lại).
       resumeApproval: (runId: string, nodeId: string, decision: "approved" | "rejected") =>
         trpc.workflows.resumeApproval.mutate({ runId, nodeId, decision }),
+      // Template gallery: thư viện workflow dựng sẵn.
+      listTemplates: () => trpc.workflows.listTemplates.query(),
+      instantiateTemplate: (templateId: string) =>
+        trpc.workflows.instantiateTemplate.mutate({ templateId }),
+      applyTemplate: (workflowId: string, templateId: string) =>
+        trpc.workflows.applyTemplate.mutate({ workflowId, templateId }),
+      // Guardrails: bài học từ node fail lặp lại (Loops!-style).
+      guardrails: {
+        list: (workflowId: string) => trpc.workflows.guardrails.list.query(workflowId),
+        update: (id: string, lesson: string) =>
+          trpc.workflows.guardrails.update.mutate({ id, lesson }),
+        archive: (id: string) => trpc.workflows.guardrails.archive.mutate(id),
+      },
     },
     agents: {
       list: () => trpc.agents.list.query(),
