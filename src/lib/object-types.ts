@@ -44,6 +44,9 @@ export interface EntityField {
   required?: boolean;
   options?: string[];
   ref?: string;
+  /** Lookup theo GIÁ TRỊ (DataSource): field trên entity `ref` dùng làm value
+   *  lưu xuống (vd nguyên liệu lưu TÊN thay vì UUID). */
+  refValueField?: string;
   /** Ghi được không — DataSource: false cho cột JOIN/computed (read-only). */
   writable?: boolean;
   /** Cho field type "formula" */

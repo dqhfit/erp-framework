@@ -24,6 +24,9 @@ interface Props {
   autoOpen?: boolean;
   /** Gọi khi dropdown đóng (thoát chế độ sửa ô lưới). */
   onClose?: () => void;
+  /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu") thay vì record.id —
+   *  value lưu/khớp theo field đó (giữ tương thích data lưu tên/mã). */
+  valueField?: string;
 }
 
 export function LookupPicker({
@@ -34,6 +37,7 @@ export function LookupPicker({
   className,
   autoOpen,
   onClose,
+  valueField,
 }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -96,6 +100,9 @@ export function LookupPicker({
     const id = String(row.id ?? "");
     return displayField ? String(row[displayField.name] ?? id) : id;
   };
+  // Giá trị lưu xuống: theo field chỉ định (lookup-theo-tên) hoặc record.id.
+  const optValue = (row: Record<string, unknown>) =>
+    valueField ? String(row[valueField] ?? "") : String(row.id ?? "");
 
   if (multi) {
     // Giá trị lưu dạng JSON array string: '["id1","id2"]'
@@ -118,7 +125,7 @@ export function LookupPicker({
           <div className="px-2 py-2 text-xs text-muted italic">Không có bản ghi</div>
         ) : (
           rows.map((row) => {
-            const id = String(row.id ?? "");
+            const id = optValue(row);
             const checked = selected.includes(id);
             return (
               <label
@@ -141,7 +148,7 @@ export function LookupPicker({
   }
 
   // Single lookup
-  const options = rows.map((row) => ({ value: String(row.id ?? ""), label: rowLabel(row) }));
+  const options = rows.map((row) => ({ value: optValue(row), label: rowLabel(row) }));
   // Giá trị hiện tại trỏ tới record KHÔNG còn tồn tại → giữ lại làm option (đánh
   // dấu) thay vì mất giá trị cũ; user vẫn chọn lại được từ danh sách đầy đủ.
   if (value && !options.some((o) => o.value === value)) {

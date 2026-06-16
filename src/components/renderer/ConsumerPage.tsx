@@ -282,6 +282,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
             label: f.label,
             type: f.type,
             ref: f.ref,
+            refValueField: f.refValueField,
             writable: f.sourceRelationId === "base" && f.writable !== false,
           })),
         );
@@ -358,6 +359,7 @@ function useServerPagedRecords(opts: {
               label: f.label,
               type: f.type,
               ref: f.ref,
+              refValueField: f.refValueField,
               writable: f.sourceRelationId === "base" && f.writable !== false,
             })),
           );
@@ -572,6 +574,7 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
               label: f.label,
               type: f.type,
               ref: f.ref,
+              refValueField: f.refValueField,
               writable: f.sourceRelationId === "base" && f.writable !== false,
             })),
           );
@@ -634,6 +637,7 @@ function EditableCell({
   onCommit,
   fieldType,
   refEntityId,
+  refValueField,
   getLookupOptions,
 }: {
   value: unknown;
@@ -642,6 +646,8 @@ function EditableCell({
   onCommit: (v: string) => void;
   /** Loại field — "lookup"/"multi-lookup" thì ô sửa là dropdown chọn (ref). */
   fieldType?: string;
+  /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu") thay vì record.id. */
+  refValueField?: string;
   /** Entity đích của lookup (field.ref): có → chọn bản ghi entity đó. */
   refEntityId?: string;
   /** Lookup KHÔNG có entity đích → trả danh sách giá trị đang có của cột
@@ -710,6 +716,7 @@ function EditableCell({
         <LookupPicker
           refEntityId={refEntityId}
           value={str}
+          valueField={refValueField}
           multi={fieldType === "multi-lookup"}
           className="w-full"
           autoOpen
@@ -1005,6 +1012,7 @@ function EditableListWidget({
             onCommit={(v) => saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)}
             fieldType={f.type}
             refEntityId={(f as { ref?: string }).ref}
+            refValueField={(f as { refValueField?: string }).refValueField}
             getLookupOptions={() =>
               Array.from(ctx.column.getFacetedUniqueValues().keys())
                 .filter((v) => v != null && String(v).trim() !== "")
@@ -1323,6 +1331,7 @@ function ServerPagedListWidget({
                 }
                 fieldType={f.type}
                 refEntityId={(f as { ref?: string }).ref}
+                refValueField={(f as { refValueField?: string }).refValueField}
                 getLookupOptions={() =>
                   Array.from(ctx.column.getFacetedUniqueValues().keys())
                     .filter((v) => v != null && String(v).trim() !== "")
