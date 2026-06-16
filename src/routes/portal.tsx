@@ -153,8 +153,6 @@ function PortalRoute() {
     setRefreshing(false);
   }, [hydrate, activeId]);
 
-  const activePage = publishedPages.find((p) => p.id === activeId);
-
   // Có query → lọc danh sách trang theo tên (hiện phẳng thay cây menu).
   const q = search.trim().toLowerCase();
   const searchResults = q ? publishedPages.filter((p) => p.name.toLowerCase().includes(q)) : [];
@@ -439,23 +437,6 @@ function PortalRoute() {
           )}
         </main>
       </div>
-
-      {/* Footer với tên trang đang xem */}
-      {activePage && (
-        <footer className="h-7 shrink-0 flex items-center px-4 gap-2 border-t border-border bg-panel text-xs text-muted">
-          <I.Layout size={11} />
-          <span>{activePage.name}</span>
-          {activePage.publishMode === "public" && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-1">
-                <I.Globe size={10} />
-                {t("portal.public_badge")}
-              </span>
-            </>
-          )}
-        </footer>
-      )}
 
       {/* Panel trợ lý AI — fixed bên phải; portal render full-screen (không có
           AppShell) nên phải tự mount ở đây + host dialog/toast cho AgentPanel. */}

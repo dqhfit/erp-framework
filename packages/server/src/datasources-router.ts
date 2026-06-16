@@ -54,6 +54,10 @@ const dsField = z.object({
   label: z.string(),
   type: z.string(),
   writable: z.boolean().optional(),
+  // Lookup tới entity master: ref = entity đích; refValueField = field dùng
+  // làm value (lookup theo TÊN/mã thay vì UUID id). Xem DataSourceField.
+  ref: z.string().optional(),
+  refValueField: z.string().optional(),
 });
 
 const dsComputed = z.object({

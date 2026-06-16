@@ -240,6 +240,50 @@ Xem `docs/PROJECT-AUDIT-2026-05-25.md` cho:
 - Metrics baseline (LOC, deps, bundle, coverage)
 - Strengths đã xác nhận
 
+## 11. Deploy prod + Đồng bộ cấu hình lên prod (BẮT BUỘC — làm nhất quán)
+
+Prod: **https://erp.vfmgroup.vn** (Coolify/Traefik → nginx app → server:8910).
+DB prod **TÁCH BIỆT hoàn toàn** với DB dev `erp_sample` (local Docker). Hai
+vấn đề hay nhầm lẫn — luôn tách bạch:
+
+### 11.1 Deploy CODE (frontend/server) — `git push` KHÔNG tự lên prod
+
+- Prod chạy **image do Coolify build**. Push lên `main` chỉ kích CI (test/e2e
+  qua hook pre-push), **KHÔNG deploy**. Code mới (UI, server, plugin) chỉ lên
+  prod khi **Coolify redeploy** (build lại từ commit). AI **không tự bấm
+  Coolify được** → xong code phải BÁO user redeploy; ĐỪNG nói "đã lên prod".
+- **Ngoại lệ duy nhất**: `docker/nginx.conf` volume-mount (không bake) → sửa
+  nginx-only đi đường `git push → SSH git pull → docker exec nginx -s reload`,
+  KHÔNG cần Coolify redeploy. Mọi thay đổi khác = phải redeploy.
+
+### 11.2 Đồng bộ CẤU HÌNH (page / datasource / entity) lên prod
+
+- Dựng/sửa page, datasource, entity ở **local erp_sample KHÔNG tự lên prod**
+  (2 DB khác nhau). Phải đẩy chủ động qua **MCP migration** (`/mcp/migration`).
+- Cập nhật TẠI CHỖ (giữ id + published + link menu), KHÔNG tạo bản trùng:
+  - Page: `page_create_draft` + `overwrite:true` + `overwritePublished:true`.
+  - Datasource: `datasource_create_draft` + `overwrite:true`.
+  - So/soi TRƯỚC khi đè: `page_list`, `migration_query_readonly` (CHỈ-ĐỌC).
+- **Thứ tự BẮT BUỘC: deploy code TRƯỚC → rồi mới đẩy config.** Config mới gặp
+  bundle cũ (vd columnGroups/computed mà code cũ chưa hiểu) → vỡ render.
+- Đè datasource là đè TOÀN BỘ config, mà **datasource DÙNG CHUNG nhiều trang**
+  → PHẢI so field local vs prod trước; chỉ đè khi local = prod + phần thêm
+  (tránh rớt field các trang khác đang dùng).
+- **GHI data trên prod**: entity import đang **mirror-guard (chặn ghi)**. Env
+  `ERP_ALLOW_MIRROR_WRITE=1` CHỈ dành cho local — TUYỆT ĐỐI không bật trên
+  prod. Muốn user sửa/lưu data thật → **cutover `sync.state='live'`** cho module.
+
+### 11.3 MCP prod cần API key
+
+- MCP `/mcp` `/mcp/errors` `/mcp/migration` = **PROD-only**, auth bằng
+  **X-API-Key** (theo scope). Local KHÔNG có các tool này → local soi DB bằng
+  `docker exec ... psql erp_sample`.
+- Nếu session CHƯA có key MCP (tool trả unauthorized / không gọi được) →
+  **HỎI user xin API key trước**, đừng tự bịa key, đừng bỏ qua bước verify prod.
+
+Bối cảnh chi tiết: memory `project_prod_deploy_vfmgroup`,
+`project_dinhmuc_govan_prod_cutover_pending`.
+
 ---
 
 ## Bài học từ session trước (đừng lặp lại)

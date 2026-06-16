@@ -56,6 +56,10 @@ export interface DataSourceField {
   /** Entity đích nếu field này là khóa tham chiếu (lookup): suy từ relation có
    *  fromField === sourceField → cho UI dựng lookup chọn bản ghi entity đó. */
   ref?: string;
+  /** Lookup theo GIÁ TRỊ (không phải id): field trên entity `ref` dùng làm
+   *  value lưu xuống (vd nguyên liệu lưu TÊN "CAO SU" chứ không phải UUID).
+   *  Có set → picker chọn bản ghi master nhưng lưu/khớp theo field này. */
+  refValueField?: string;
 }
 
 /** Hàm gom cho aggregate quan hệ 1-N / N-N. */
