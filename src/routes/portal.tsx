@@ -13,16 +13,22 @@
 import { createLegacyMenuClient } from "@erp-framework/client";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AgentPanel } from "@/components/AgentPanel";
+import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
+import { LanguagePicker } from "@/components/LanguagePicker";
 import { MenuTree, type NavNode } from "@/components/MenuTree";
+import { NotificationBell } from "@/components/NotificationBell";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { Button } from "@/components/ui";
+import { ToastHost } from "@/components/ui/ToastHost";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { idbDeletePrefix } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { usePreferences } from "@/stores/preferences";
+import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
 function PortalRoute() {
@@ -30,6 +36,11 @@ function PortalRoute() {
   const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
+  // Theme (sáng/tối) + panel Hỏi AI — dùng chung store UI với app chính.
+  const theme = useUI((s) => s.theme);
+  const setTheme = useUI((s) => s.setTheme);
+  const agentOpen = useUI((s) => s.agentOpen);
+  const setAgentOpen = useUI((s) => s.setAgentOpen);
   const pages = useUserObjects((s) => s.pages);
   const hydrate = useUserObjects((s) => s.hydrate);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
@@ -184,6 +195,30 @@ function PortalRoute() {
         >
           <span className="hidden sm:inline">Sản lượng</span>
         </Button>
+
+        {/* Hỏi AI — mở panel trợ lý (AgentPanel mount cuối trang). */}
+        <Button
+          variant={agentOpen ? "primary" : "ghost"}
+          size="sm"
+          icon={<I.Sparkles size={13} />}
+          onClick={() => setAgentOpen(!agentOpen)}
+          title="Hỏi AI"
+        >
+          <span className="hidden sm:inline">Hỏi AI</span>
+        </Button>
+        {/* Thông báo in-app */}
+        <NotificationBell />
+        {/* Chuyển sáng/tối */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          icon={theme === "dark" ? <I.Sun size={13} /> : <I.Moon size={13} />}
+          title={t("topbar.toggle_theme")}
+        />
+        {/* Ngôn ngữ */}
+        <LanguagePicker />
+
         <span className="text-sm text-muted truncate hidden md:block">
           {user?.name ?? user?.email}
         </span>
@@ -345,8 +380,15 @@ function PortalRoute() {
           )}
         </nav>
 
-        {/* Vùng nội dung — tất cả trang được mount lazy, ẩn/hiện bằng CSS */}
-        <main className="flex-1 overflow-hidden relative">
+        {/* Vùng nội dung — tất cả trang được mount lazy, ẩn/hiện bằng CSS.
+            Dịch trái khi panel Hỏi AI mở (desktop) để không bị che. */}
+        <main
+          className="flex-1 overflow-hidden relative"
+          style={{
+            marginRight: !isMobile && agentOpen ? 400 : 0,
+            transition: "margin 200ms ease",
+          }}
+        >
           {publishedPages.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted text-sm">
               {t("portal.empty_hint")}
@@ -389,6 +431,12 @@ function PortalRoute() {
           )}
         </footer>
       )}
+
+      {/* Panel trợ lý AI — fixed bên phải; portal render full-screen (không có
+          AppShell) nên phải tự mount ở đây + host dialog/toast cho AgentPanel. */}
+      <AgentPanel />
+      <DialogHost />
+      <ToastHost />
     </div>
   );
 }

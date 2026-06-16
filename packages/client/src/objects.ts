@@ -189,6 +189,14 @@ export function createObjectsClient(baseUrl: string) {
       save: (input: ScheduleSaveInput) => trpc.schedules.save.mutate(input),
       delete: (id: string) => trpc.schedules.delete.mutate(id),
     },
+    // Thông báo in-app (per-user). UI poll ~30s.
+    notifications: {
+      list: (opts?: { onlyUnread?: boolean; limit?: number }) =>
+        trpc.notifications.list.query(opts),
+      unreadCount: () => trpc.notifications.unreadCount.query(),
+      markRead: (id: string) => trpc.notifications.markRead.mutate(id),
+      markAllRead: () => trpc.notifications.markAllRead.mutate(),
+    },
     dataSources: {
       list: () => trpc.dataSources.list.query(),
       get: (id: string) => trpc.dataSources.get.query(id),
