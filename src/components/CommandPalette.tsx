@@ -261,6 +261,13 @@ export function CommandPalette() {
         iconName: "Users",
         to: "/settings/viewer-groups",
       },
+      {
+        id: "set-shortcuts",
+        label: "Phím tắt",
+        hint: "Xem và tự đặt phím tắt bàn phím (lưu theo tài khoản)",
+        iconName: "Command",
+        to: "/settings/shortcuts",
+      },
     ],
     [t, setAgentOpen, entities, pages, workflows, agents],
   );

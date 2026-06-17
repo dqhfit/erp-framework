@@ -1,5 +1,7 @@
 import { useEffect } from "react";
+import { isTypingTarget } from "@/lib/shortcuts";
 import { useUI } from "@/stores/ui";
+import { useShortcut } from "./useShortcut";
 
 export function useGlobalShortcuts() {
   const setCmdOpen = useUI((s) => s.setCmdOpen);
@@ -7,26 +9,20 @@ export function useGlobalShortcuts() {
   const setAgentOpen = useUI((s) => s.setAgentOpen);
   const agentOpen = useUI((s) => s.agentOpen);
 
+  // Phím tắt cấu hình được (binding lấy từ preferences tài khoản).
+  useShortcut("command-palette", () => setCmdOpen(true));
+  useShortcut("toggle-agent", () => setAgentOpen(!agentOpen));
+
+  // "/" mở nhanh Command Palette — phím tắt cố định (không cấu hình), chỉ khi
+  // không gõ trong ô nhập và chưa mở palette/agent.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "k") {
+      if (e.key === "/" && !cmdOpen && !agentOpen && !isTypingTarget(document.activeElement)) {
         e.preventDefault();
         setCmdOpen(true);
-      }
-      if (mod && e.key === "/") {
-        e.preventDefault();
-        setAgentOpen(!agentOpen);
-      }
-      if (e.key === "/" && !cmdOpen && !agentOpen) {
-        const tag = (document.activeElement as HTMLElement | null)?.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA") {
-          e.preventDefault();
-          setCmdOpen(true);
-        }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cmdOpen, agentOpen, setCmdOpen, setAgentOpen]);
+  }, [cmdOpen, agentOpen, setCmdOpen]);
 }

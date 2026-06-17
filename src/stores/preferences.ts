@@ -18,6 +18,10 @@ export interface UserPreferences {
   };
   /** Danh sách yêu thích sidebar — sync across browsers qua server. */
   sidebarFavorites?: SidebarFavItem[];
+  /** Phím tắt do người dùng tự đặt (override mặc định): { shortcutId: combo }.
+   *  combo canonical, vd "mod+shift+p". Giá trị undefined = khôi phục mặc định
+   *  (server bỏ key undefined khi lưu JSON). Xem src/lib/shortcuts.ts. */
+  shortcuts?: Record<string, string | undefined>;
 }
 
 interface PreferencesState {

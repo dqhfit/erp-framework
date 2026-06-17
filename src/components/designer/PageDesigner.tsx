@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActionInspector } from "@/components/designer/ActionInspector";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
+import { BandEditor } from "@/components/designer/inspectors/BandEditor";
 import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
 import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldBinder";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
+import type { ColumnGroupNode } from "@/components/renderer/DataGrid";
 import { ROW_ACTION_OPTIONS } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useShortcut } from "@/hooks/useShortcut";
 import { useT } from "@/hooks/useT";
 import { useUndoable } from "@/hooks/useUndoable";
 import type { PageDesign } from "@/lib/ai-design-prompts";
@@ -434,6 +437,7 @@ export function PageDesigner({ pageId }: Props) {
   const publishMode = page?.publishMode ?? "private";
   const entities = useUserObjects((s) => s.entities);
   const dataSources = useUserObjects((s) => s.dataSources);
+  const dataSourceContent = useUserObjects((s) => s.dataSourceContent);
   const ready = useUserObjects((s) => s.ready);
 
   // Click ngoài dropdown publish → đóng
@@ -532,29 +536,18 @@ export function PageDesigner({ pageId }: Props) {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-  const saveRef = useRef(save);
-  saveRef.current = save;
-  const undoRef = useRef(undo);
-  undoRef.current = undo;
-  const redoRef = useRef(redo);
-  redoRef.current = redo;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "s") {
-        e.preventDefault();
-        saveRef.current();
-      } else if (e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undoRef.current();
-      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
-        e.preventDefault();
-        redoRef.current();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // Phím tắt trình dựng — binding cấu hình được ở /settings/shortcuts.
+  // (handler được ref nội bộ trong useShortcut nên luôn gọi bản mới nhất.)
+  useShortcut("designer-save", save);
+  useShortcut("designer-undo", undo);
+  useShortcut("designer-redo", redo);
+  useShortcut("designer-preview", () => {
+    // Lưu nội dung hiện tại trước khi xem trước (giống nút "Xem trước").
+    setPageContent(pageId, components);
+    setPreviewMode(true);
+  });
+  // Thoát xem trước CHỈ bật khi đang ở chế độ xem trước (mặc định Esc).
+  useShortcut("designer-exit-preview", () => setPreviewMode(false), { enabled: previewMode });
 
   // AI apply — replace toàn bộ components từ đề xuất
   const handleAiApply = (design: PageDesign) => {
@@ -1997,6 +1990,59 @@ export function PageDesigner({ pageId }: Props) {
                       );
                     })()}
 
+                  {/* ── Dải cột (banded header) — chỉ List ── */}
+                  {inspTab === "band" &&
+                    sel.kind === "list" &&
+                    (() => {
+                      const dsId = sel.config.dataSourceId as string | undefined;
+                      const shown = sel.config.fields as string[] | null | undefined;
+                      const colLabels = sel.config.columnLabels as
+                        | Record<string, string>
+                        | undefined;
+                      // Danh sách cột (field) widget hiện — nguồn entity hoặc datasource.
+                      let all: Array<{ name: string; label: string }> = [];
+                      if (dsId !== undefined) {
+                        const dsc = dataSourceContent[dsId];
+                        if (dsc) {
+                          all = [
+                            ...(dsc.fields ?? []).map((f) => ({
+                              name: f.key,
+                              label: f.label || f.key,
+                            })),
+                            ...(dsc.aggregates ?? []).map((a) => ({
+                              name: a.key,
+                              label: a.label || a.key,
+                            })),
+                            ...(dsc.computed ?? []).map((c) => ({
+                              name: c.key,
+                              label: c.label || c.key,
+                            })),
+                          ];
+                        }
+                      } else {
+                        const ent = entities.find(
+                          (e) => e.id === (sel.config.entity as string | undefined),
+                        );
+                        all = (ent?.fields ?? []).map((f) => ({
+                          name: f.name,
+                          label: f.label || f.name,
+                        }));
+                      }
+                      // Lọc theo cột đang hiển thị (null/undefined = tất cả) + áp nhãn override.
+                      const fields = (
+                        shown == null ? all : all.filter((f) => shown.includes(f.name))
+                      ).map((f) => ({ ...f, label: colLabels?.[f.name] || f.label }));
+                      return (
+                        <BandEditor
+                          value={sel.config.columnGroups as ColumnGroupNode[] | undefined}
+                          availableFields={fields}
+                          onChange={(next) =>
+                            update(sel.id, { config: { ...sel.config, columnGroups: next } })
+                          }
+                        />
+                      );
+                    })()}
+
                   {/* ── Input control components ── */}
                   {inspTab === "dieukien" &&
                     (sel.kind === "search" ||
@@ -2695,6 +2741,8 @@ function tabsForKind(kind: ComponentKind) {
   const base = [{ key: "chung", label: "Chung" }];
   if (dataKinds.includes(kind)) {
     const tabs = [...base, { key: "dulieu", label: "Dữ liệu" }];
+    // Dải cột (banded header) — chỉ lưới/bảng (list).
+    if (kind === "list") tabs.push({ key: "band", label: "Dải cột" });
     if (kind === "list" || kind === "form" || kind === "detail")
       tabs.push({ key: "hanhDong", label: "Hành động" });
     return tabs;

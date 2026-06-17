@@ -67,39 +67,42 @@ import type { SidebarFavItem } from "@/stores/preferences";
 
 type FavItem = SidebarFavItem;
 
+/* Cache localStorage để render NGAY trước khi prefs tải xong (tránh nháy rỗng). */
+function readFavsCache(): FavItem[] {
+  try {
+    const r = localStorage.getItem("sb-favs");
+    return r ? (JSON.parse(r) as FavItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+function writeFavsCache(favs: FavItem[]): void {
+  try {
+    localStorage.setItem("sb-favs", JSON.stringify(favs));
+  } catch {}
+}
+
 export function useFavs() {
   const prefs = usePreferences((s) => s.prefs);
   const savePrefs = usePreferences((s) => s.save);
   const loaded = usePreferences((s) => s.loaded);
 
-  // localStorage làm cache tạm để render ngay trước khi server phản hồi
-  const [favs, setFavs] = useState<FavItem[]>(() => {
-    try {
-      const r = localStorage.getItem("sb-favs");
-      return r ? (JSON.parse(r) as FavItem[]) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [serverApplied, setServerApplied] = useState(false);
+  // NGUỒN CHÂN LÝ là preferences store → MỌI nơi gọi useFavs (sidebar + trang
+  // chủ) đồng bộ TỨC THÌ khi ghim/bỏ ghim (cùng subscribe `prefs`, cùng re-render).
+  // Trước khi server trả về (loaded=false) dùng cache localStorage để render ngay.
+  const favs: FavItem[] = loaded
+    ? ((prefs.sidebarFavorites as FavItem[] | undefined) ?? [])
+    : readFavsCache();
 
-  // Khi prefs tải xong từ server: server thắng → override localStorage
+  // Giữ cache localStorage khớp dữ liệu server (cho lần mở app sau render ngay).
   useEffect(() => {
-    if (!loaded || serverApplied) return;
-    const serverFavs = (prefs.sidebarFavorites as FavItem[] | undefined) ?? [];
-    setFavs(serverFavs);
-    setServerApplied(true);
-    try {
-      localStorage.setItem("sb-favs", JSON.stringify(serverFavs));
-    } catch {}
-  }, [loaded, serverApplied, prefs.sidebarFavorites]);
+    if (loaded) writeFavsCache((prefs.sidebarFavorites as FavItem[] | undefined) ?? []);
+  }, [loaded, prefs.sidebarFavorites]);
 
   const save = (next: FavItem[]) => {
-    setFavs(next);
-    try {
-      localStorage.setItem("sb-favs", JSON.stringify(next));
-    } catch {}
-    // Debounce 800ms ghi lên server (qua preferences store)
+    // Cập nhật cache trước (nguồn đọc khi !loaded), rồi store (re-render mọi
+    // consumer ngay) + debounce ghi server — qua preferences store.
+    writeFavsCache(next);
     savePrefs({ sidebarFavorites: next });
   };
 
@@ -2079,6 +2082,22 @@ export function Sidebar() {
                     to: "/settings/companies",
                     label: t("sidebar.companies"),
                     iconName: "Briefcase",
+                  })
+                }
+              />
+              <SidebarItem
+                to="/settings/shortcuts"
+                active={pathname === "/settings/shortcuts"}
+                icon={<I.Command size={14} />}
+                collapsed={collapsed}
+                label="Phím tắt"
+                isFavorited={favs.isFav("/settings/shortcuts")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/settings/shortcuts",
+                    to: "/settings/shortcuts",
+                    label: "Phím tắt",
+                    iconName: "Command",
                   })
                 }
               />

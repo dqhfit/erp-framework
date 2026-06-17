@@ -15,6 +15,7 @@ import { useApplyTheme } from "@/hooks/useApplyTheme";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/stores/auth";
+import { usePreferences } from "@/stores/preferences";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
@@ -94,6 +95,10 @@ function AppShell() {
   useEffect(() => {
     const hydrate = () => void useUserObjects.getState().hydrate();
     hydrate();
+    // Nạp preferences tài khoản (phím tắt tự đặt, yêu thích…) — server là nguồn
+    // chân lý, sync giữa thiết bị. Trước đây chỉ portal nạp → đổi phím tắt/yêu
+    // thích mất sau reload ở app chính.
+    void usePreferences.getState().load();
     const onFocus = () => {
       if (document.visibilityState === "visible") hydrate();
     };
