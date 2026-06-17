@@ -26,9 +26,11 @@ interface Props {
   /** Chế độ inline: render button trực tiếp không có wrapper h-full.
    *  Dùng bởi ActionBarWidget để xếp nhiều button trong một thanh. */
   inline?: boolean;
+  /** Nút nhỏ gọn (size sm) — cho cột hành động theo dòng. */
+  compact?: boolean;
 }
 
-export function ActionWidget({ config, pageState, inline = false }: Props) {
+export function ActionWidget({ config, pageState, inline = false, compact = false }: Props) {
   const role = useAuth((s) => s.user?.role);
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -135,6 +137,7 @@ export function ActionWidget({ config, pageState, inline = false }: Props) {
   const btn = (
     <Button
       variant={variant}
+      size={compact ? "sm" : "md"}
       onClick={onClick}
       disabled={busy || !canRun}
       icon={icon}

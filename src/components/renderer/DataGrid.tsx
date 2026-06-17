@@ -73,6 +73,8 @@ interface GridColMeta {
   summary?: SummaryType;
   cellClass?: (value: unknown) => string | undefined;
   formatRules?: FormatRule[];
+  /** Ô gọn — giảm padding ngang (vd cột hành động). */
+  compact?: boolean;
 }
 
 function evalFormatRules(value: unknown, rules: FormatRule[]): string | undefined {
@@ -1580,7 +1582,8 @@ export function DataGrid<T>({
                                     : undefined,
                               }}
                               className={cn(
-                                "px-3 py-2 whitespace-nowrap border-r border-border/40 dark:border-border",
+                                "py-2 whitespace-nowrap border-r border-border/40 dark:border-border",
+                                cm?.compact ? "px-1" : "px-3",
                                 pinned && "bg-bg",
                                 ccls,
                               )}

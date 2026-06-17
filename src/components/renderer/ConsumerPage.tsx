@@ -1259,6 +1259,7 @@ function EditableListWidget({
         ),
         enableGrouping: false,
         enableSorting: false,
+        meta: { compact: true }, // giảm padding ô cho gọn
         size: inline ? undefined : 44, // popover: 1 nút nhỏ; inline: auto theo số nút
         cell: (ctx) => {
           const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
@@ -1266,9 +1267,9 @@ function EditableListWidget({
           const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
           if (inline) {
             return (
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                 {bound.map((a) => (
-                  <ActionWidget key={a.label} config={a} pageState={pageState} inline />
+                  <ActionWidget key={a.label} config={a} pageState={pageState} inline compact />
                 ))}
               </div>
             );
@@ -2306,6 +2307,7 @@ function ListWidget({
               </span>
             ),
             size: rowActsInline ? undefined : 44,
+            meta: { compact: true }, // giảm padding ô cho gọn
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
