@@ -1247,7 +1247,8 @@ function EditableListWidget({
     // Cột "Hành động" (Xem/Sửa/Xoá) — render ActionWidget cho từng dòng đã lưu
     // (dòng MỚI chưa có id → bỏ qua). Đặt đầu lưới.
     if (rowActions && rowActions.length > 0) {
-      const inline = rowActionsStyle === "inline";
+      // Mặc định INLINE (Xem/Sửa/Xoá thẳng dòng); chỉ "popover" khi đặt rõ.
+      const inline = rowActionsStyle !== "popover";
       cols.unshift({
         id: "__rowacts__",
         // Tiêu đề gọn: icon ⋯ (không chiếm chỗ như chữ "Hành động").
@@ -2291,7 +2292,8 @@ function ListWidget({
 
   // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
   // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
-  const rowActsInline = rowActionsStyle === "inline";
+  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
+  const rowActsInline = rowActionsStyle !== "popover";
   const rowActionCol =
     effectiveRowActions.length > 0
       ? [

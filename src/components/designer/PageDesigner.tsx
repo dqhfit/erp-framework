@@ -2550,18 +2550,18 @@ export function PageDesigner({ pageId }: Props) {
                         <>
                           <FormField label="Kiểu hiển thị">
                             <Select
-                              value={(sel.config.rowActionsStyle as string) ?? "popover"}
+                              value={(sel.config.rowActionsStyle as string) ?? "inline"}
                               onChange={(e) =>
                                 update(sel.id, {
                                   config: { ...sel.config, rowActionsStyle: e.target.value },
                                 })
                               }
                             >
-                              <option value="popover">Popover (nút ⋯ gọn)</option>
                               <option value="inline">Inline (nút Xem · Sửa · Xoá)</option>
+                              <option value="popover">Popover (nút ⋯ gọn)</option>
                             </Select>
                           </FormField>
-                          {((sel.config.rowActionsStyle as string) ?? "popover") === "popover" && (
+                          {((sel.config.rowActionsStyle as string) ?? "inline") === "popover" && (
                             <div className="p-2.5 rounded-md border border-border bg-bg-soft">
                               <div className="text-sm mb-0.5">Nút hiện trên popover</div>
                               <div className="text-[11px] text-muted mb-2">
