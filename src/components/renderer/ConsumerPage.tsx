@@ -257,6 +257,9 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const [fields, setFields] = useState<EntityField[]>([]);
   const [loading, setLoading] = useState<boolean>(!!dataSourceId && enabled);
   const [err, setErr] = useState("");
+  // Giữ meta thô (fields có sourceField/sourceRelationId + relations) để map
+  // field ref → cột projection khi đổi giá trị (auto điền Tên vật tư…).
+  const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
   const pageState = usePageState();
   const refreshTag = dataSourceId
     ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
@@ -277,6 +280,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     ])
       .then(([res, meta]) => {
         if (!alive) return;
+        metaRef.current = meta;
         setRows(res.rows as Record<string, unknown>[]);
         setFields(
           meta.fields.map((f) => ({
@@ -301,7 +305,45 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
       alive = false;
     };
   }, [dataSourceId, refreshTag, limit, enabled, filtersKey]);
-  return { rows, fields, loading, err };
+
+  // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
+  // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị
+  // NGAY (kể cả batch chưa lưu / prod mirror chặn ghi), không chờ server re-join.
+  const refFill = useCallback(
+    async (fieldName: string, value: string): Promise<Record<string, unknown>> => {
+      const meta = metaRef.current;
+      if (!meta) return {};
+      const f = meta.fields.find((x) => x.key === fieldName);
+      if (!f?.ref || !f.refValueField) return {};
+      const rels = meta.relations ?? [];
+      const rel =
+        rels.find((r) => r.fromField === f.sourceField && r.targetEntityId === f.ref) ??
+        rels.find((r) => r.fromField === f.sourceField);
+      if (!rel) return {};
+      const proj = meta.fields.filter((x) => x.sourceRelationId === rel.id && x.sourceField);
+      if (proj.length === 0) return {};
+      const overlay: Record<string, unknown> = {};
+      const v = String(value ?? "").trim();
+      if (!v) {
+        for (const p of proj) overlay[p.key] = "";
+        return overlay;
+      }
+      try {
+        const res = await api.getRecords(f.ref, {
+          filters: { [f.refValueField]: { op: "=", value: v } },
+          limit: 1,
+        });
+        const rec = res.rows[0]?.data as Record<string, unknown> | undefined;
+        for (const p of proj) overlay[p.key] = (rec ? rec[p.sourceField] : "") ?? "";
+      } catch {
+        return {};
+      }
+      return overlay;
+    },
+    [],
+  );
+
+  return { rows, fields, loading, err, refFill };
 }
 
 /* ── Server-side paging hook (cho bảng LỚN) — grid phát query (trang/sắp/lọc),
@@ -497,6 +539,8 @@ export interface WidgetData {
   create: (data: Record<string, unknown>) => Promise<void>;
   update: (id: string, data: Record<string, unknown>) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
+  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
 }
 
 /* ── Hook hợp nhất — widget bind ENTITY (cfg.entity) hoặc DATASOURCE
@@ -534,6 +578,7 @@ function useWidgetData(cfg: Record<string, unknown>): WidgetData {
           }
         }),
       remove: (id) => api.deleteDataSourceRecord(dataSourceId, id),
+      refFill: ds.refFill,
     };
   }
   return {
@@ -912,6 +957,8 @@ interface EditableListWidgetProps {
   selectable?: boolean;
   /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
   rowActionsHidden?: string[];
+  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
+  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -979,6 +1026,7 @@ function EditableListWidget({
   rowActions,
   selectable,
   rowActionsHidden,
+  refFill,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -989,6 +1037,9 @@ function EditableListWidget({
     stateKey ? `${stateKey}:editdraft` : undefined,
     !!batchEdit,
   );
+  // Overlay HIỂN THỊ-ONLY cho cột projection (Tên VT…) khi đổi field ref —
+  // KHÔNG đi vào `pending` (tránh ghi cột join read-only lên server).
+  const [refOverlay, setRefOverlay] = useState<Map<string, Record<string, unknown>>>(new Map());
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   // Lỗi theo TỪNG dòng sau "Lưu tất cả" — [{ id, label, msg }].
@@ -1028,6 +1079,18 @@ function EditableListWidget({
       next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), [field]: value });
       return next;
     });
+    // Đổi field REF (mã vật tư…) → auto điền cột projection (Tên VT, Quy cách…)
+    // từ record master vừa chọn — hiện NGAY (overlay), không chờ server re-join.
+    if (refFill && visibleFields.find((f) => f.name === field)?.ref) {
+      void refFill(field, value).then((overlay) => {
+        if (Object.keys(overlay).length === 0) return;
+        setRefOverlay((prev) => {
+          const next = new Map(prev);
+          next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...overlay });
+          return next;
+        });
+      });
+    }
     if (!batchEdit) {
       void onSave(rowId, { [field]: value }).catch((e) => setSaveErr((e as Error).message));
     }
@@ -1054,21 +1117,30 @@ function EditableListWidget({
       next.delete(id);
       return next;
     });
+    setRefOverlay((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   // Data hiển thị = dòng mới nháp (đầu) + filteredRows + overlay pending + dòng
   // mới nháp (cuối). Dòng mới đánh dấu __isNew để DataGrid tô nền + cho phép xoá.
   const displayData = useMemo(() => {
-    const base =
-      pending.size === 0
-        ? filteredRows
-        : filteredRows.map((row) => {
-            const p = pending.get(String(row.id));
-            return p ? { ...row, ...p } : row;
-          });
+    const hasOverlay = pending.size > 0 || refOverlay.size > 0;
+    const base = !hasOverlay
+      ? filteredRows
+      : filteredRows.map((row) => {
+          const id = String(row.id);
+          const p = pending.get(id);
+          const o = refOverlay.get(id);
+          return p || o ? { ...row, ...o, ...p } : row;
+        });
     if (newRows.length === 0) return base;
     const synth = (r: NewRowDraft) => ({
       ...createDefaults,
+      ...(refOverlay.get(r.id) ?? {}),
       ...(pending.get(r.id) ?? {}),
       id: r.id,
       __isNew: true,
@@ -1076,7 +1148,7 @@ function EditableListWidget({
     const top = newRows.filter((r) => r.pos === "top").map(synth);
     const bottom = newRows.filter((r) => r.pos === "bottom").map(synth);
     return [...top, ...base, ...bottom];
-  }, [filteredRows, pending, newRows, createDefaults]);
+  }, [filteredRows, pending, refOverlay, newRows, createDefaults]);
 
   // Dán dữ liệu (PasteGridModal) → cập nhật nhiều dòng: overlay pending (hiện
   // ngay) + lưu từng dòng (gom field). Lỗi 1 dòng không chặn dòng khác.
@@ -1234,9 +1306,14 @@ function EditableListWidget({
         setSaving(false);
         return;
       }
-      // Tạo xong → bỏ nháp dòng mới + pending của chúng.
+      // Tạo xong → bỏ nháp dòng mới + pending + overlay của chúng.
       setNewRows([]);
       setPending((prev) => {
+        const next = new Map(prev);
+        for (const id of newIds) next.delete(id);
+        return next;
+      });
+      setRefOverlay((prev) => {
         const next = new Map(prev);
         for (const id of newIds) next.delete(id);
         return next;
@@ -1251,6 +1328,9 @@ function EditableListWidget({
     if (!cancelled) {
       setPending(failed);
       setRowErrs(errs);
+      // Dòng lưu THÀNH CÔNG → bỏ overlay (refetch server mang giá trị join đúng);
+      // giữ overlay cho dòng còn lỗi (pending của chúng còn).
+      setRefOverlay((prev) => new Map([...prev].filter(([id]) => failed.has(id))));
     }
     setSaving(false);
   };
@@ -1872,6 +1952,7 @@ function ListWidget({
     isDataSource,
     update: dataUpdate,
     create: dataCreate,
+    refFill,
   } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
   // RBAC để cho phép tick checkbox boolean ngay ở lưới (chỉ khi có quyền ghi field).
@@ -2313,6 +2394,7 @@ function ListWidget({
         rowActions={effectiveRowActions}
         selectable={selectable}
         rowActionsHidden={rowActionsHidden}
+        refFill={refFill}
       />
     );
   }

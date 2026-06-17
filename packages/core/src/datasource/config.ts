@@ -141,6 +141,9 @@ export interface DataSourceMeta {
   label: string;
   baseEntityId: string;
   fields: DataSourceField[];
+  /** Quan hệ join — để widget map field ref (fromField) → cột projection của
+   *  relation đó (vd đổi mã vật tư → auto điền Tên vật tư client-side). */
+  relations?: DataSourceRelation[];
 }
 
 /** 1 row phẳng kết quả. `id` = base record id (gốc ghi); `__ids` ánh xạ

@@ -209,6 +209,9 @@ export const dataSourcesRouter = router({
         label: cfg.label,
         baseEntityId: cfg.config.baseEntityId,
         fields,
+        // Quan hệ join → widget map ref field (fromField) sang cột projection
+        // (đổi mã vật tư → auto điền Tên vật tư client-side, không chờ refetch).
+        relations: cfg.config.relations,
       };
     }),
 
