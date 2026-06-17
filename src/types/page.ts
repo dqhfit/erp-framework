@@ -163,6 +163,19 @@ export interface ActionStepOpenPopup {
   saveOutputTo: string;
 }
 
+/** Ghi đè cấu hình hiển thị 1 field ngay trong page (không sửa entity).
+ *  Chỉ override metadata hiển thị; field VẪN map về cùng cột data của entity. */
+export interface FieldOverride {
+  /** Kiểu render: text | select | multiselect | image | longtext | currency | url | boolean … */
+  type?: string;
+  /** Nhãn hiển thị trên form. */
+  label?: string;
+  /** Lựa chọn cho select/multiselect. */
+  options?: string[];
+  /** Bắt buộc nhập. */
+  required?: boolean;
+}
+
 /** Liên kết 1 field tới entity nguồn (picker) — lưu giá trị valueField. */
 export interface WizardLookupRef {
   entity: string;
@@ -206,6 +219,11 @@ export interface WizardStepDef {
   /** (1-entity) Map fieldName → picker entity: field hiện COMBOBOX chọn record
    *  từ entity nguồn (lưu valueField). Vd makhachhang → tr_khachhang. */
   fieldLookups?: Record<string, WizardLookupRef>;
+  /** Ghi đè cấu hình field NGAY TRONG TRANG (không cần sửa entity): đổi kiểu
+   *  hiển thị / nhãn / options của field. Ưu tiên hơn định nghĩa entity. Dùng để
+   *  cấu hình form đi theo page sync mà không phải chạm entities trên DB.
+   *  Vd { area: { type: "select", options: ["Trong nước","Ngoài nước"] } }. */
+  fieldOverrides?: Record<string, FieldOverride>;
   /** Sau khi tạo xong, lưu ID bản ghi vào page state key này. */
   saveOutputTo?: string;
   /** Nút hành động tuỳ chỉnh hiển thị trong bước này. */

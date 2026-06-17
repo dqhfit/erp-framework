@@ -59,6 +59,17 @@ function buildRowData(
   return out;
 }
 
+/** Áp fieldOverrides của page lên field entity: merge type/label/options/required
+ *  (override thắng). Cho phép cấu hình form sống trong page → đi theo page sync,
+ *  KHÔNG cần sửa entity trên DB. Field không có override giữ nguyên. */
+function applyFieldOverrides(
+  fields: EntityField[],
+  ov?: Record<string, { type?: string; label?: string; options?: string[]; required?: boolean }>,
+): EntityField[] {
+  if (!ov) return fields;
+  return fields.map((f) => (ov[f.name] ? ({ ...f, ...ov[f.name] } as EntityField) : f));
+}
+
 interface Props {
   step: ActionStepOpenWizard;
   pageState: PageStateLike;
@@ -77,6 +88,12 @@ const SINGLE_FORM_KEY = "__wizard_single__";
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
+  // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/
+  // nhãn/options) để form đi theo page sync mà khỏi chạm entity trên DB.
+  const fieldOv = Object.assign({}, ...wizardSteps.map((s) => s.fieldOverrides ?? {})) as Record<
+    string,
+    { type?: string; label?: string; options?: string[]; required?: boolean }
+  >;
 
   // Chế độ 1-entity: mọi bước thao tác cùng step.entity (gom field theo bước).
   const wizardEntityId = step.entity;
@@ -143,7 +160,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       .then(async (rec) => {
         const data = (rec?.data ?? {}) as Record<string, unknown>;
         // Format theo kiểu field (date/datetime → "YYYY-MM-DD" cho input date).
-        const mFields = entities.find((e) => e.id === wizardEntityId)?.fields ?? [];
+        const mFields = applyFieldOverrides(
+          entities.find((e) => e.id === wizardEntityId)?.fields ?? [],
+          fieldOv,
+        );
         const typeOf = (k: string) => mFields.find((f) => f.name === k)?.type ?? "text";
         const filled: Record<string, string> = {};
         for (const [k, v] of Object.entries(data)) {
@@ -250,11 +270,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const ent = stepEntityId ? entities.find((e) => e.id === stepEntityId) : undefined;
   // Map theo current.fields để GIỮ ĐÚNG THỨ TỰ cấu hình (filter sẽ giữ thứ tự
   // entity gốc → sai vị trí ô nhập). Không có → toàn bộ field entity.
+  const entFields = applyFieldOverrides(ent?.fields ?? [], fieldOv);
   const visibleFields = current.fields?.length
     ? (current.fields
-        .map((n) => (ent?.fields ?? []).find((f) => f.name === n))
+        .map((n) => entFields.find((f) => f.name === n))
         .filter(Boolean) as EntityField[])
-    : (ent?.fields ?? []);
+    : entFields;
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
@@ -410,7 +431,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         }
         const shared = forms[SINGLE_FORM_KEY] ?? {};
         // Field date/datetime: "YYYY-MM-DD" → ISO (đồng nhất định dạng đã lưu).
-        const mFields = entities.find((e) => e.id === wizardEntityId)?.fields ?? [];
+        const mFields = applyFieldOverrides(
+          entities.find((e) => e.id === wizardEntityId)?.fields ?? [],
+          fieldOv,
+        );
         const typeOf = (k: string) => mFields.find((f) => f.name === k)?.type;
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(shared)) {
