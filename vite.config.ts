@@ -42,7 +42,9 @@ export default defineConfig({
     // migration-plan/ là thư mục server ghi (YAML manifest, decisions.yaml,
     // ai-log, audit report). Không cho Vite watch để tránh full-reload mỗi
     // khi server ghi file (appendDecision, writeManifest, v.v.).
-    watch: { ignored: ["**/migration-plan/**"] },
+    // .cate/ là thư mục state của IDE Cate (workspace.json ghi liên tục) →
+    // KHÔNG watch, nếu không Vite full-reload trang mỗi vài giây (reload loop).
+    watch: { ignored: ["**/migration-plan/**", "**/.cate/**"] },
     // Proxy API sang server backend → trình duyệt chỉ gọi cùng origin.
     // Target dùng 127.0.0.1 (IPv4) khớp đúng địa chỉ server bind —
     // tránh việc "localhost" phân giải sang ::1 (IPv6) làm proxy lỗi.
