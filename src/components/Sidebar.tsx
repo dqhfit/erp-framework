@@ -672,6 +672,7 @@ function PagesTreeSection({
   onOpen,
   onDeletePage,
   onAssignPage,
+  onUnassignPage,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -688,6 +689,8 @@ function PagesTreeSection({
   onDeletePage?: (id: string) => void;
   /** Gán 1 trang lẻ (chưa gắn menu) vào 1 mục menu DQHF. */
   onAssignPage?: (page: { id: string; name: string }) => void;
+  /** Gỡ 1 trang ĐÃ gắn khỏi mục menu của nó (đối xứng onAssignPage). */
+  onUnassignPage?: (node: NavNode) => void;
 }) {
   const t = useT();
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
@@ -863,6 +866,7 @@ function PagesTreeSection({
                 storageKey="sidebar"
                 compact
                 isolatable
+                onUnassign={onUnassignPage}
               />
             )}
             {orphanPages.length > 0 && (
@@ -1215,6 +1219,21 @@ export function Sidebar() {
       alive = false;
     };
   }, [navReloadKey]);
+  /** Gỡ 1 trang khỏi mục menu (đặt pageId của node = null) rồi refetch cây. */
+  const handleUnassignFromMenu = async (node: NavNode) => {
+    if (!node.pageId || !node.code) return;
+    const ok = await dialog.confirm(`Gỡ “${node.name ?? "trang"}” khỏi menu?`, {
+      title: "Gỡ khỏi menu",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await createLegacyMenuClient("").setNodePage(node.code, null);
+      setNavReloadKey((k) => k + 1);
+    } catch (e) {
+      await dialog.alert(`Lỗi gỡ khỏi menu: ${(e as Error)?.message ?? e}`);
+    }
+  };
   const userWorkflows = useUserObjects((s) => s.workflows);
   const userAgents = useUserObjects((s) => s.agents);
   const userDataSources = useUserObjects((s) => s.dataSources);
@@ -1593,6 +1612,7 @@ export function Sidebar() {
                   onOpen={(to) => navigate({ to })}
                   onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
                   onAssignPage={can("edit", "settings") ? setAssignMenuPage : undefined}
+                  onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
                 />
               );
             }

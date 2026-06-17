@@ -144,10 +144,13 @@ function headerStickyStyle<T>(column: Column<T>, topOffset = 0): CSSProperties {
 /** Cột có size tường minh (cột điều khiển: hành động/checkbox) → ghim CỨNG
  *  width = minWidth = maxWidth để table-auto KHÔNG kéo giãn cột lấp chỗ trống
  *  (chỉ đặt `width` thôi vẫn bị giãn). Cột dữ liệu (size null) → undefined (auto). */
-function sizedWidth<T>(column: Column<T>): CSSProperties | undefined {
-  if (column.columnDef.size == null) return undefined;
+function sizedWidth<T>(column: Column<T>): CSSProperties {
   const w = column.getSize();
-  return { width: w, minWidth: w, maxWidth: w };
+  // table-fixed cần width trên MỌI cột để ô clip (truncate/overflow-hidden)
+  // đúng bề rộng cột. Cột điều khiển (size khai báo) ghim cứng width=min=max;
+  // cột dữ liệu chỉ đặt width để table-fixed còn phân bổ chỗ trống khi tổng
+  // bề rộng các cột < bề rộng bảng.
+  return column.columnDef.size == null ? { width: w } : { width: w, minWidth: w, maxWidth: w };
 }
 
 /** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
@@ -1268,7 +1271,20 @@ export function DataGrid<T>({
               <I.EyeOff size={13} /> Thả vào lưới để ẩn cột
             </div>
           )}
-          <table className="w-full border-collapse text-sm">
+          {/* table-fixed + width:100%/minWidth=tổng cột: mỗi cột có bề rộng
+              XÁC ĐỊNH nên ô whitespace-nowrap CLIP gọn trong cột (table-layout
+              auto KHÔNG cho truncate/overflow ăn → text tràn đè cột bên). Tổng
+              cột > container → cuộn ngang; < container → giãn lấp đầy. */}
+          <table
+            className="table-fixed border-collapse text-sm"
+            style={{
+              width: "100%",
+              minWidth:
+                table.getVisibleLeafColumns().reduce((s, c) => s + c.getSize(), 0) +
+                (selecting ? 36 : 0) +
+                (renderDetail ? 28 : 0),
+            }}
+          >
             <thead ref={theadRef} className="bg-panel-2 z-10">
               {(() => {
                 // Header lồng nhiều cấp: TanStack đặt LÁ THẬT ở hàng DƯỚI CÙNG,
@@ -1600,7 +1616,7 @@ export function DataGrid<T>({
                                 ...sizedWidth(cell.column),
                               }}
                               className={cn(
-                                "py-2 whitespace-nowrap border-r border-border/40 dark:border-border",
+                                "py-2 overflow-hidden whitespace-nowrap border-r border-border/40 dark:border-border",
                                 cm?.compact ? "px-0.5" : "px-3",
                                 pinned && "bg-bg",
                                 ccls,

@@ -108,6 +108,16 @@ function MenuPagesPage() {
     () => new Set(rows.map((r) => r.pageId).filter((x): x is string => !!x)),
     [rows],
   );
+  // Map pageId → các node menu đang trỏ tới (hiện "trong: …" + gỡ khỏi menu).
+  const nodesByPage = useMemo(() => {
+    const m = new Map<string, LegacyPageBinding[]>();
+    for (const r of rows) {
+      if (!r.pageId) continue;
+      if (!m.has(r.pageId)) m.set(r.pageId, []);
+      m.get(r.pageId)!.push(r);
+    }
+    return m;
+  }, [rows]);
   const orphanAll = useMemo(
     () => pages.filter((p) => !assignedPageIds.has(p.id)),
     [pages, assignedPageIds],
@@ -216,6 +226,22 @@ function MenuPagesPage() {
       }
     },
     [pages],
+  );
+
+  // Gỡ 1 trang khỏi MỌI mục menu đang trỏ tới nó (đối xứng "Gán vào menu").
+  const unassignPage = useCallback(
+    async (pageId: string) => {
+      const nodes = nodesByPage.get(pageId) ?? [];
+      if (nodes.length === 0) return;
+      const where = nodes.map((n) => n.name || n.sourceCode).join(", ");
+      const ok = await dialog.confirm(`Gỡ trang khỏi menu “${where}”?`, {
+        title: "Gỡ khỏi menu",
+        danger: true,
+      });
+      if (!ok) return;
+      for (const n of nodes) await assign(n.sourceCode, null);
+    },
+    [nodesByPage, assign],
   );
 
   // Tải lại rows GIỮ trạng thái mở/lọc (cho thao tác cấu trúc) — không nháy spinner.
@@ -749,6 +775,19 @@ function MenuPagesPage() {
                         {p.isPublished ? "xb" : "nháp"}
                       </span>
                       <div className="ml-auto flex shrink-0 items-center gap-1">
+                        {assignedPageIds.has(p.id) && (
+                          <span
+                            className="max-w-[10rem] shrink-0 truncate rounded bg-panel-2 px-1.5 py-0.5 text-[10px] text-muted"
+                            title={(nodesByPage.get(p.id) ?? [])
+                              .map((n) => n.name || n.sourceCode)
+                              .join(", ")}
+                          >
+                            trong:{" "}
+                            {(nodesByPage.get(p.id) ?? [])
+                              .map((n) => n.name || n.sourceCode)
+                              .join(", ")}
+                          </span>
+                        )}
                         <a
                           href={`/pages/${p.id}`}
                           target="_blank"
@@ -759,14 +798,26 @@ function MenuPagesPage() {
                         >
                           <I.Eye size={14} />
                         </a>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAssignPageId(p.id)}
-                          icon={<I.GitBranch size={14} />}
-                        >
-                          Gán vào menu
-                        </Button>
+                        {assignedPageIds.has(p.id) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => unassignPage(p.id)}
+                            icon={<I.Trash size={14} />}
+                            title="Gỡ trang khỏi mục menu"
+                          >
+                            Gỡ khỏi menu
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setAssignPageId(p.id)}
+                            icon={<I.GitBranch size={14} />}
+                          >
+                            Gán vào menu
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -90,16 +90,18 @@ function printRow(row: Record<string, unknown>, cols: RowActionColInfo[], title:
   w.document.close();
 }
 
-/** Vị trí popover: ngay dưới nút, kẹp trong viewport. */
+/** Vị trí popover: ngay dưới nút, BUNG SANG PHẢI (cột hành động ở mép trái bảng
+ *  → tránh đè sidebar/menu), kẹp trong viewport. */
 function pos(rect: DOMRect) {
-  const m = 6;
-  const w = 300;
-  let left = rect.right - w;
-  if (left < m) left = m;
+  const m = 8;
+  const w = 196;
+  let left = rect.left; // canh mép trái nút → mở sang phải, không phủ sidebar
   if (left + w > window.innerWidth - m) left = window.innerWidth - m - w;
+  if (left < m) left = m;
+  const estH = 150;
   let top = rect.bottom + 4;
   // Hết chỗ dưới → lật lên trên.
-  if (top + 120 > window.innerHeight - m) top = Math.max(m, rect.top - 120);
+  if (top + estH > window.innerHeight - m) top = Math.max(m, rect.top - estH);
   return { left, top, width: w };
 }
 
@@ -208,16 +210,16 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
             style={{ left: p.left, top: p.top, width: p.width }}
-            className="fixed z-[900] rounded-lg border border-border bg-panel p-1.5 shadow-2xl"
+            className="fixed z-[900] rounded-lg border border-border bg-panel p-1 shadow-2xl"
           >
             {shownActions.length > 0 && (
-              <div className="flex flex-wrap items-center justify-end gap-2 pb-1.5 mb-1.5 border-b border-border">
+              <div className="grid grid-cols-4 gap-0.5 pb-1 mb-1 border-b border-border">
                 {shownActions.map((a) => (
                   <ActionWidget key={a.label} config={a} pageState={pageState} inline />
                 ))}
               </div>
             )}
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="grid grid-cols-4 gap-0.5">
               {quick.map((q) => (
                 <button
                   key={q.key}
@@ -228,9 +230,9 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
                     q.run();
                     setOpen(false);
                   }}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text"
+                  className="inline-flex h-8 w-full items-center justify-center rounded text-muted hover:bg-hover hover:text-text"
                 >
-                  <q.icon size={15} />
+                  <q.icon size={16} />
                 </button>
               ))}
             </div>
