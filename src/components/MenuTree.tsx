@@ -32,6 +32,49 @@ function displayLabel(node: NavNode, clean?: boolean): string {
   return n;
 }
 
+/** Nhãn dùng để SO SÁNH gộp (bỏ đuôi " - <code>" như displayLabel, lower+trim). */
+function compareName(node: NavNode): string {
+  const nm = node.name ?? "";
+  const suffix = ` - ${node.code}`;
+  const base = nm.endsWith(suffix) ? nm.slice(0, -suffix.length) : nm;
+  return base.trim().toLowerCase();
+}
+
+/** Gộp nhóm con TRÙNG TÊN nhóm cha (vd "Danh mục › Danh mục › Danh Mục" → 1
+ *  "Danh mục"): node nhóm (có con, KHÔNG phải trang) mà tên == tên cha → bỏ node
+ *  đó, kéo con của nó lên thẳng nhóm cha, đệ quy mọi cấp. Giữ thứ tự + `code`
+ *  (trạng thái mở/thu gọn theo code vẫn đúng). Chỉ dùng ở portal (end-user) —
+ *  admin giữ nguyên cấu trúc menu gốc để quản lý. */
+function collapseSameNameGroups(nodes: NavNode[]): NavNode[] {
+  const childrenOf = new Map<string, NavNode[]>();
+  for (const n of nodes) {
+    const k = n.parentCode ?? "__root";
+    const arr = childrenOf.get(k);
+    if (arr) arr.push(n);
+    else childrenOf.set(k, [n]);
+  }
+  for (const arr of childrenOf.values()) arr.sort((a, b) => a.sort - b.sort);
+  const isGroup = (n: NavNode) => (childrenOf.get(n.code)?.length ?? 0) > 0 && n.pageId == null;
+  const out: NavNode[] = [];
+  const emit = (node: NavNode, hostCode: string | null, sortIdx: number): void => {
+    out.push({ ...node, parentCode: hostCode, sort: sortIdx });
+    let s = 0;
+    const addKids = (ofNode: NavNode): void => {
+      for (const child of childrenOf.get(ofNode.code) ?? []) {
+        if (isGroup(child) && compareName(child) === compareName(node)) {
+          addKids(child); // trùng tên cha → nâng con của child lên dưới `node`
+        } else {
+          emit(child, node.code, s++);
+        }
+      }
+    };
+    addKids(node);
+  };
+  const rootList = childrenOf.get("__root") ?? [];
+  for (const [i, root] of rootList.entries()) emit(root, null, i);
+  return out;
+}
+
 /** Map code→open, persist localStorage. Trả về trạng thái đã lưu + toggle.
  *  Node CHƯA có trong map dùng `fallback` (expandAll / depth0 / có-trang-active). */
 function useTreeExpand(storageKey?: string) {
@@ -93,6 +136,8 @@ export const MenuTree = forwardRef<
     storageKey?: string;
     /** Bỏ đuôi " - <source_code>" trong nhãn (portal). Admin để false giữ code. */
     cleanLabels?: boolean;
+    /** Gộp nhóm con trùng tên nhóm cha (portal). Admin để false giữ cấu trúc gốc. */
+    compact?: boolean;
     /** Yêu thích: kiểm tra pageId đã yêu thích chưa + toggle (bật thì hiện sao). */
     isFav?: (pageId: string) => boolean;
     onToggleFav?: (node: NavNode) => void;
@@ -105,15 +150,21 @@ export const MenuTree = forwardRef<
     expandAll = false,
     storageKey,
     cleanLabels = false,
+    compact = false,
     isFav,
     onToggleFav,
   },
   ref,
 ) {
+  // Portal: gộp các nhóm trùng tên cha cho gọn (giữ code → trạng thái mở vẫn đúng).
+  const effNodes = useMemo(
+    () => (compact ? collapseSameNameGroups(nodes) : nodes),
+    [compact, nodes],
+  );
   const { map, toggle, setAll } = useTreeExpand(storageKey);
   const childrenOf = useMemo(() => {
     const m = new Map<string, NavNode[]>();
-    for (const n of nodes) {
+    for (const n of effNodes) {
       const k = n.parentCode ?? "__root";
       const arr = m.get(k) ?? [];
       arr.push(n);
@@ -121,17 +172,17 @@ export const MenuTree = forwardRef<
     }
     for (const arr of m.values()) arr.sort((a, b) => a.sort - b.sort);
     return m;
-  }, [nodes]);
+  }, [effNodes]);
   const roots = useMemo(() => {
-    const codes = new Set(nodes.map((n) => n.code));
-    return nodes
+    const codes = new Set(effNodes.map((n) => n.code));
+    return effNodes
       .filter((n) => !n.parentCode || !codes.has(n.parentCode))
       .sort((a, b) => a.sort - b.sort);
-  }, [nodes]);
+  }, [effNodes]);
   // Code của node CÓ con (nhóm) — tập node có thể mở/thu gọn.
   const groupCodes = useMemo(
-    () => nodes.filter((n) => (childrenOf.get(n.code)?.length ?? 0) > 0).map((n) => n.code),
-    [nodes, childrenOf],
+    () => effNodes.filter((n) => (childrenOf.get(n.code)?.length ?? 0) > 0).map((n) => n.code),
+    [effNodes, childrenOf],
   );
   useImperativeHandle(
     ref,
