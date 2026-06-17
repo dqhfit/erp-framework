@@ -115,6 +115,9 @@ export function createObjectsClient(baseUrl: string) {
       /** Bật/tắt cho agent tra cứu entity qua records_search (Agentic RAG). */
       setAgentSearchable: (entityId: string, enabled: boolean) =>
         trpc.entities.setAgentSearchable.mutate({ entityId, enabled }),
+      /** Đếm số bản ghi active theo từng entity — cho thống kê trang chủ.
+       *  Trả map { entityId: số bản ghi }. */
+      recordCounts: () => trpc.entities.recordCounts.query() as Promise<Record<string, number>>,
     },
     pages: {
       list: () => trpc.pages.list.query(),

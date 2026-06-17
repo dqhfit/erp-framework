@@ -12,6 +12,7 @@ import { entityInput } from "./router-helpers";
 import {
   applyColumnLabels,
   applyFieldChange,
+  assertIdent,
   ensureEntityTable,
   type EntityStorage,
   renameFieldOnTable,
@@ -25,6 +26,58 @@ export const entitiesRouter = router({
   list: rbacProcedure("view", "entity").query(({ ctx }) =>
     ctx.db.select().from(entities).where(eq(entities.companyId, ctx.user.companyId)),
   ),
+
+  /* Đếm số bản ghi ACTIVE (deleted_at IS NULL) theo TỪNG entity của công ty —
+     phục vụ thống kê trang chủ. Trả map { entityId: số bản ghi }.
+     - EAV: GỘP 1 query GROUP BY trên entity_records cho mọi entity EAV.
+     - Bảng thật (HYBRID, meta.storage.tier='table'): count(*) MỖI bảng, BỌC
+       try/catch per-bảng (bảng đổi tên/mất → trả 0, KHÔNG vỡ cả endpoint). */
+  recordCounts: rbacProcedure("view", "entity").query(async ({ ctx }) => {
+    const companyId = ctx.user.companyId;
+    const rows = await ctx.db
+      .select({ id: entities.id, meta: entities.meta })
+      .from(entities)
+      .where(eq(entities.companyId, companyId));
+
+    const counts: Record<string, number> = {};
+    const tableBacked: Array<{ id: string; tableName: string }> = [];
+    let hasEav = false;
+    for (const r of rows) {
+      const storage = (r.meta as { storage?: EntityStorage } | null)?.storage;
+      if (storage?.tier === "table") {
+        tableBacked.push({ id: r.id, tableName: storage.tableName });
+      } else {
+        counts[r.id] = 0; // EAV: mặc định 0, điền lại từ GROUP BY bên dưới
+        hasEav = true;
+      }
+    }
+
+    // EAV: 1 query GROUP BY cho toàn bộ entity EAV của công ty.
+    if (hasEav) {
+      const eavRows = (await ctx.db
+        .select({ entityId: entityRecords.entityId, count: sql<number>`count(*)::int` })
+        .from(entityRecords)
+        .where(and(eq(entityRecords.companyId, companyId), sql`${entityRecords.deletedAt} IS NULL`))
+        .groupBy(entityRecords.entityId)) as Array<{ entityId: string; count: number }>;
+      for (const e of eavRows) if (e.entityId in counts) counts[e.entityId] = e.count;
+    }
+
+    // Bảng thật: count(*) mỗi bảng (fail-safe per-bảng).
+    await Promise.all(
+      tableBacked.map(async ({ id, tableName }) => {
+        try {
+          const tbl = sql.raw(`"${assertIdent(tableName)}"`);
+          const res = (await ctx.db.execute(
+            sql`SELECT count(*)::int AS count FROM ${tbl} WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL`,
+          )) as unknown as Array<{ count: number }>;
+          counts[id] = Number(res[0]?.count ?? 0);
+        } catch {
+          counts[id] = 0; // bảng mất/đổi tên → 0, không vỡ thống kê
+        }
+      }),
+    );
+    return counts;
+  }),
 
   get: rbacProcedure("view", "entity")
     .input(z.string().uuid())

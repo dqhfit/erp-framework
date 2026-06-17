@@ -1,11 +1,27 @@
+import { createObjectsClient } from "@erp-framework/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Kbd, Textarea } from "@/components/ui";
+import { useFavs } from "@/components/Sidebar";
+import { Button, Input, Kbd, Modal, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import type { IconName } from "@/lib/object-types";
 import { useAuth } from "@/stores/auth";
+import type { SidebarFavItem } from "@/stores/preferences";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
+
+/** Mục có thể ghim (trang/đối tượng/workflow/agent/nguồn dữ liệu) cho picker. */
+interface PinCandidate {
+  id: string;
+  label: string;
+  to: string;
+  iconName: IconName;
+  kind: string;
+}
+
+/* URL tương đối — đi qua proxy /trpc của Vite (dev) hoặc nginx (prod). */
+const api = createObjectsClient("");
 
 type Tint = "accent" | "accent-2" | "success" | "warning";
 
@@ -44,6 +60,77 @@ function getGreeting(t: (k: string) => string) {
         : t("home.greeting_night");
 }
 
+/** Modal chọn mục để ghim. Click 1 mục = ghim/bỏ ghim (giữ mở để ghim nhiều). */
+function PinPicker({
+  open,
+  onClose,
+  candidates,
+  isPinned,
+  onToggle,
+}: {
+  open: boolean;
+  onClose: () => void;
+  candidates: PinCandidate[];
+  isPinned: (id: string) => boolean;
+  onToggle: (item: SidebarFavItem) => void;
+}) {
+  const t = useT();
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const filtered = ql ? candidates.filter((c) => c.label.toLowerCase().includes(ql)) : candidates;
+  const CAP = 200;
+  const shown = filtered.slice(0, CAP);
+  return (
+    <Modal open={open} onClose={onClose} title={t("home.pin_modal_title")} width={520} align="top">
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder={t("home.pin_search")}
+        className="mb-2"
+      />
+      <div className="text-xs text-muted mb-2">{t("home.pin_hint")}</div>
+      <div className="max-h-[50vh] overflow-y-auto -mx-1">
+        {shown.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted">{t("home.pin_empty_results")}</div>
+        ) : (
+          shown.map((c) => {
+            const IconC = I[c.iconName] ?? I.Folder;
+            const pinned = isPinned(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() =>
+                  onToggle({ id: c.id, label: c.label, to: c.to, iconName: c.iconName })
+                }
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-hover/40 text-left"
+              >
+                <span className="w-7 h-7 rounded-md bg-panel-2 border border-border flex items-center justify-center text-muted shrink-0">
+                  <IconC size={14} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate text-sm">{c.label}</span>
+                  <span className="block text-[11px] text-muted">{c.kind}</span>
+                </span>
+                {pinned ? (
+                  <I.Star size={15} className="text-warning shrink-0" />
+                ) : (
+                  <I.Plus size={15} className="text-muted/50 shrink-0" />
+                )}
+              </button>
+            );
+          })
+        )}
+        {filtered.length > CAP && (
+          <div className="px-2 py-2 text-[11px] text-muted/70">
+            {t("home.pin_more", { n: filtered.length - CAP })}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function Home() {
   const t = useT();
   const user = useAuth((s) => s.user);
@@ -53,13 +140,92 @@ function Home() {
   const uPages = useUserObjects((s) => s.pages);
   const uWorkflows = useUserObjects((s) => s.workflows);
   const uAgents = useUserObjects((s) => s.agents);
+  const uDataSources = useUserObjects((s) => s.dataSources);
 
+  // Thống kê SỐ LƯỢNG mỗi loại đối tượng low-code (đếm đủ 5 loại).
   const stats: Array<{ labelKey: string; value: number; icon: IconName; tint: Tint }> = [
     { labelKey: "sidebar.entities", value: uEntities.length, icon: "Database", tint: "accent" },
     { labelKey: "sidebar.pages", value: uPages.length, icon: "Layout", tint: "accent-2" },
     { labelKey: "sidebar.workflows", value: uWorkflows.length, icon: "Workflow", tint: "success" },
     { labelKey: "sidebar.agents", value: uAgents.length, icon: "Bot", tint: "warning" },
+    {
+      labelKey: "sidebar.datasources",
+      value: uDataSources.length,
+      icon: "Layers",
+      tint: "accent",
+    },
   ];
+
+  // Số BẢN GHI theo từng đối tượng (entity) — nạp từ server 1 lần khi mở trang.
+  // null = đang tải; {} = tải xong nhưng rỗng/lỗi (fail-safe).
+  const [recordCounts, setRecordCounts] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api.entities
+      .recordCounts()
+      .then((c) => alive && setRecordCounts(c))
+      .catch(() => alive && setRecordCounts({}));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // Ghép số đếm vào entity (tên + icon), sắp xếp giảm dần theo số bản ghi.
+  const entityCounts = useMemo(() => {
+    if (!recordCounts) return [];
+    return uEntities
+      .map((e) => ({ id: e.id, name: e.name, icon: e.icon, count: recordCounts[e.id] ?? 0 }))
+      .sort((a, b) => b.count - a.count);
+  }, [recordCounts, uEntities]);
+  const totalRecords = useMemo(() => entityCounts.reduce((s, e) => s + e.count, 0), [entityCounts]);
+
+  // Truy cập nhanh — ghim công việc thường xuyên (DÙNG CHUNG ★ với sidebar).
+  const favs = useFavs();
+  const [pinOpen, setPinOpen] = useState(false);
+  const role = useAuth((s) => s.user?.role);
+  // Danh sách mục có thể ghim. Viewer chỉ ghim Trang (như sidebar — không thấy
+  // đối tượng/workflow/agent/nguồn dữ liệu).
+  const pinCandidates = useMemo<PinCandidate[]>(() => {
+    const items: PinCandidate[] = uPages.map((p) => ({
+      id: p.id,
+      label: p.name,
+      to: `/pages/${p.id}`,
+      iconName: p.icon,
+      kind: t("sidebar.pages"),
+    }));
+    if (role !== "viewer") {
+      items.push(
+        ...uEntities.map((e) => ({
+          id: e.id,
+          label: e.name,
+          to: `/entities/${e.id}`,
+          iconName: e.icon,
+          kind: t("sidebar.entities"),
+        })),
+        ...uWorkflows.map((w) => ({
+          id: w.id,
+          label: w.name,
+          to: `/workflows/${w.id}`,
+          iconName: w.icon,
+          kind: t("sidebar.workflows"),
+        })),
+        ...uAgents.map((a) => ({
+          id: a.id,
+          label: a.name,
+          to: `/agents/${a.id}`,
+          iconName: "Bot" as IconName,
+          kind: t("sidebar.agents"),
+        })),
+        ...uDataSources.map((d) => ({
+          id: d.id,
+          label: d.name,
+          to: `/datasources/${d.id}`,
+          iconName: d.icon,
+          kind: t("sidebar.datasources"),
+        })),
+      );
+    }
+    return items;
+  }, [role, t, uPages, uEntities, uWorkflows, uAgents, uDataSources]);
 
   const recents: Array<{ kind: string; name: string; icon: IconName; to: string }> = [
     ...uEntities.map((e) => ({
@@ -124,8 +290,8 @@ function Home() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {/* Stats — số lượng mỗi loại đối tượng */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
           {stats.map((s) => {
             const IconC = I[s.icon];
             return (
@@ -149,6 +315,57 @@ function Home() {
               </div>
             );
           })}
+        </div>
+
+        {/* Truy cập nhanh — ghim công việc thường xuyên (dùng chung ★ với sidebar) */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">{t("home.pinned_title")}</h2>
+            <Button
+              variant="default"
+              size="sm"
+              icon={<I.Star size={13} />}
+              onClick={() => setPinOpen(true)}
+            >
+              {t("home.pinned_add")}
+            </Button>
+          </div>
+          {favs.favs.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => setPinOpen(true)}
+              className="card w-full p-6 text-center text-sm text-muted hover:border-accent/50 transition-colors"
+            >
+              {t("home.pinned_empty")}
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {favs.favs.map((f) => {
+                const IconC = I[f.iconName as IconName] ?? I.Star;
+                return (
+                  <div key={f.id} className="relative group">
+                    <Link
+                      to={f.to}
+                      className="card p-3 flex items-center gap-3 hover:border-accent/50 transition-colors"
+                    >
+                      <span className="w-9 h-9 rounded-md bg-accent/15 text-accent flex items-center justify-center shrink-0">
+                        <IconC size={16} />
+                      </span>
+                      <span className="font-medium truncate flex-1 min-w-0 pr-4">{f.label}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => favs.remove(f.id)}
+                      className="absolute right-1.5 top-1.5 w-5 h-5 rounded-sm flex items-center justify-center text-muted/40 hover:text-danger hover:bg-hover/80 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={t("home.pinned_remove")}
+                    >
+                      <I.X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
@@ -188,6 +405,47 @@ function Home() {
                   </Link>
                 );
               })}
+            </div>
+
+            {/* Bản ghi theo đối tượng — số record thực tế trong từng entity */}
+            <div className="flex items-baseline justify-between mt-8 mb-3">
+              <h2 className="text-lg font-semibold">{t("home.records_title")}</h2>
+              {recordCounts && entityCounts.length > 0 && (
+                <span className="text-xs text-muted">
+                  {t("home.records_total", { n: totalRecords.toLocaleString("vi-VN") })}
+                </span>
+              )}
+            </div>
+            <div className="card">
+              {recordCounts === null ? (
+                <div className="p-6 text-center text-sm text-muted">
+                  {t("home.records_loading")}
+                </div>
+              ) : entityCounts.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted">{t("home.records_empty")}</div>
+              ) : (
+                <div className="max-h-[360px] overflow-y-auto divide-y divide-border">
+                  {entityCounts.map((e) => {
+                    const IconC = I[e.icon] ?? I.Database;
+                    return (
+                      <Link
+                        key={e.id}
+                        to="/entities/$id"
+                        params={{ id: e.id }}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-hover/30 cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-panel-2 border border-border flex items-center justify-center text-muted group-hover:text-text">
+                          <IconC size={14} />
+                        </div>
+                        <span className="flex-1 min-w-0 truncate text-sm">{e.name}</span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {e.count.toLocaleString("vi-VN")}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <h2 className="text-lg font-semibold mt-8 mb-3">{t("home.templates_title")}</h2>
@@ -309,6 +567,14 @@ function Home() {
             </a>
           </div>
         </div>
+
+        <PinPicker
+          open={pinOpen}
+          onClose={() => setPinOpen(false)}
+          candidates={pinCandidates}
+          isPinned={favs.isFav}
+          onToggle={favs.toggle}
+        />
       </div>
     </div>
   );

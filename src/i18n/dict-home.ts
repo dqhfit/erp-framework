@@ -25,6 +25,23 @@ export const homeVi: Dict = {
   "home.recent_view_all": "Xem tất cả",
   "home.recent_empty": 'Chưa có đối tượng nào. Bấm "+ Entity mới" để bắt đầu.',
 
+  // thống kê bản ghi theo đối tượng
+  "home.records_title": "Bản ghi theo đối tượng",
+  "home.records_total": "Tổng {n} bản ghi",
+  "home.records_loading": "Đang đếm bản ghi…",
+  "home.records_empty": "Chưa có đối tượng nào để thống kê.",
+
+  // truy cập nhanh — ghim công việc thường xuyên
+  "home.pinned_title": "Truy cập nhanh",
+  "home.pinned_add": "Ghim",
+  "home.pinned_remove": "Bỏ ghim",
+  "home.pinned_empty": 'Chưa ghim mục nào. Bấm "Ghim" để thêm công việc thường dùng vào đây.',
+  "home.pin_modal_title": "Ghim truy cập nhanh",
+  "home.pin_search": "Tìm trang, đối tượng, workflow, agent…",
+  "home.pin_hint": "Bấm để ghim/bỏ ghim. Mục đã ghim cũng hiện ở ★ trên sidebar.",
+  "home.pin_empty_results": "Không tìm thấy mục nào.",
+  "home.pin_more": "… và {n} mục nữa — gõ để lọc.",
+
   // templates
   "home.templates_title": "Bắt đầu nhanh với template",
   "home.template_use": "Dùng template",
@@ -72,6 +89,23 @@ export const homeEn: Dict = {
   "home.recent_title": "Recent",
   "home.recent_view_all": "View all",
   "home.recent_empty": 'No objects yet. Click "+ New Entity" to start.',
+
+  // records-by-object stats
+  "home.records_title": "Records by object",
+  "home.records_total": "{n} records total",
+  "home.records_loading": "Counting records…",
+  "home.records_empty": "No objects to report yet.",
+
+  // quick access — pinned frequent work
+  "home.pinned_title": "Quick access",
+  "home.pinned_add": "Pin",
+  "home.pinned_remove": "Unpin",
+  "home.pinned_empty": 'Nothing pinned yet. Click "Pin" to add your frequent work here.',
+  "home.pin_modal_title": "Pin for quick access",
+  "home.pin_search": "Search pages, objects, workflows, agents…",
+  "home.pin_hint": "Click to pin/unpin. Pinned items also appear under ★ in the sidebar.",
+  "home.pin_empty_results": "No items found.",
+  "home.pin_more": "… and {n} more — type to filter.",
 
   // templates
   "home.templates_title": "Quick start with templates",
