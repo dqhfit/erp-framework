@@ -26,7 +26,7 @@ import {
   mssqlConnections,
   pages,
 } from "@erp-framework/db";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
 import { resolveList } from "./datasource-resolver";
@@ -316,11 +316,19 @@ const TOOLS: ToolDef[] = [
       "Tạo page DRAFT (published=false — chỉ admin/designer thấy, người dùng KHÔNG thấy " +
       "đến khi publish trong PageDesigner). content = mảng PageComponent " +
       "[{id,kind,x,y,w,h,config}] (grid 12 cột). Idempotent: name đã tồn tại → skip " +
-      "(không ghi đè page người dùng đã chỉnh). Dùng cho scaffold UI từ form DQHF.",
+      "(không ghi đè page người dùng đã chỉnh). Dùng cho scaffold UI từ form DQHF. " +
+      "Truyền `id` (UUID) để GIỮ NGUYÊN id khi đẩy dev→prod (upsert theo id, update tại " +
+      "chỗ thay vì đẻ trang mới) — khớp model sync theo UUID toàn cục.",
     level: "apply",
     inputSchema: {
       type: "object",
       properties: {
+        id: {
+          type: "string",
+          description:
+            "UUID giữ nguyên dev→prod (upsert theo id). Có id: tồn tại→overwrite, chưa có→insert " +
+            "đúng id này, trùng-tên-khác-id→name_conflict. Bỏ trống = hành vi cũ (khớp theo name).",
+        },
         name: { type: "string", description: "Định danh máy ^[a-z][a-z0-9_]*$" },
         label: { type: "string", description: "Nhãn hiển thị" },
         icon: { type: "string" },
@@ -1393,6 +1401,56 @@ async function callMigrationTool(
       if (!content || content.length === 0)
         throw new McpError("content bắt buộc (PageComponent[])");
       if (content.length > 50) throw new McpError("Tối đa 50 widget mỗi page");
+      const iconVal = args.icon ? String(args.icon) : null;
+
+      // ── Nhánh GIỮ ID (đẩy dev→prod ổn định): upsert THEO id ──────────────
+      // Khớp model sync theo UUID toàn cục (sync-pages-from-prod). Có id ổn định
+      // thì lần sau đẩy = update tại chỗ, không đẻ trang mới + không phải gán menu lại.
+      const wantId = args.id ? String(args.id) : null;
+      if (wantId) {
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wantId)) {
+          throw new McpError("id sai định dạng UUID");
+        }
+        const [byId] = await db
+          .select({ id: pages.id, published: pages.published })
+          .from(pages)
+          .where(and(eq(pages.id, wantId), eq(pages.companyId, companyId)));
+        if (byId) {
+          // Đã có id này → overwrite (id ổn định nên cập nhật cả `name`).
+          const canOverwrite =
+            args.overwrite === true &&
+            (byId.published === false || args.overwritePublished === true);
+          if (!canOverwrite) return { status: "skipped_exists", pageId: byId.id, name: pageName };
+          await db
+            .update(pages)
+            .set({ name: pageName, label, icon: iconVal, content, updatedAt: new Date() })
+            .where(eq(pages.id, wantId));
+          return { status: "overwritten", pageId: wantId, name: pageName };
+        }
+        // Chưa có id này → chặn nếu TÊN đã thuộc 1 page ACTIVE khác (vỡ unique
+        // pages_company_name_idx WHERE deleted_at IS NULL). KHÔNG insert đè bậy.
+        const [byName] = await db
+          .select({ id: pages.id })
+          .from(pages)
+          .where(
+            and(
+              eq(pages.companyId, companyId),
+              isNull(pages.deletedAt),
+              sql`lower(${pages.name}) = lower(${pageName})`,
+            ),
+          );
+        if (byName) return { status: "name_conflict", pageId: byName.id, name: pageName };
+        await db.insert(pages).values({
+          id: wantId,
+          companyId,
+          name: pageName,
+          label,
+          icon: iconVal,
+          content,
+          published: false,
+        });
+        return { status: "created", pageId: wantId, name: pageName };
+      }
 
       const [exists] = await db
         .select({ id: pages.id, published: pages.published })
@@ -1409,7 +1467,7 @@ async function callMigrationTool(
             .update(pages)
             .set({
               label,
-              ...(args.icon ? { icon: String(args.icon) } : {}),
+              ...(args.icon ? { icon: iconVal } : {}),
               content,
               updatedAt: new Date(),
             })
@@ -1425,7 +1483,7 @@ async function callMigrationTool(
           companyId,
           name: pageName,
           label,
-          icon: args.icon ? String(args.icon) : null,
+          icon: iconVal,
           content,
           published: false,
         })
