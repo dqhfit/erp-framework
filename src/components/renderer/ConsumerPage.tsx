@@ -4630,13 +4630,23 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
     const FILL = new Set(["list", "chart", "kanban", "pivot", "table"]);
     let bottom: PageComponent | null = null;
     let bottomEnd = -1;
+    let tieCount = 0; // số widget cùng chạm hàng đáy (y+h lớn nhất)
     for (const c of renderComps) {
       const end = (c.y ?? 0) + (c.h ?? 0);
       if (end > bottomEnd) {
         bottomEnd = end;
         bottom = c;
+        tieCount = 1;
+      } else if (end === bottomEnd) {
+        tieCount++;
       }
     }
+    // Nhiều widget cùng chạm đáy (vd các cột full-height cạnh nhau: trái/giữa/phải
+    // đều y=0,h=20) → KHÔNG có widget "đáy" duy nhất để giãn. Nếu vẫn giãn 1 widget
+    // (gridRow "1/-1" + gridTemplateRows 1 hàng 1fr) thì các widget kia span nhiều
+    // hàng tạo hàng ngầm 76px → ép hàng 1fr co về ~0 → widget fill bị ẩn. Bỏ fill,
+    // để lưới render tự nhiên theo h (mọi cột cao bằng nhau, đều hiển thị).
+    if (tieCount > 1) return null;
     return bottom && FILL.has(bottom.kind) ? bottom.id : null;
   }, [renderComps, isMobile, layoutEditing]);
   const [availH, setAvailH] = useState(0);
