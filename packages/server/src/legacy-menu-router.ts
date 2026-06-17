@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { legacyMenuMap, legacyReports, pages } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { logActivity } from "./activity";
 import type { DB } from "./db";
@@ -101,7 +101,8 @@ export const legacyMenuRouter = router({
         published: pages.published,
       })
       .from(legacyMenuMap)
-      .leftJoin(pages, eq(legacyMenuMap.pageId, pages.id))
+      // Bỏ qua trang đã xoá mềm → pageName null → node không còn là lá hợp lệ.
+      .leftJoin(pages, and(eq(legacyMenuMap.pageId, pages.id), isNull(pages.deletedAt)))
       .where(and(eq(legacyMenuMap.companyId, ctx.user.companyId), eq(legacyMenuMap.active, true)));
     // Lá hợp lệ = node có trang tồn tại (pageName != null) + (đã publish HOẶC
     // user là admin/editor được xem draft).
@@ -147,13 +148,15 @@ export const legacyMenuRouter = router({
         active: legacyMenuMap.active,
         custom: legacyMenuMap.custom,
         portStatus: legacyMenuMap.portStatus,
-        pageId: legacyMenuMap.pageId,
+        // pageId = id trang ĐÃ JOIN (loại trang xoá mềm) → trang trong thùng rác
+        // hiện "chưa gán" ở UI, nhưng cột page_id thật vẫn giữ để restore trả lại.
+        pageId: pages.id,
         pageLabel: pages.label,
         pageName: pages.name,
         pagePublished: pages.published,
       })
       .from(legacyMenuMap)
-      .leftJoin(pages, eq(legacyMenuMap.pageId, pages.id))
+      .leftJoin(pages, and(eq(legacyMenuMap.pageId, pages.id), isNull(pages.deletedAt)))
       .where(eq(legacyMenuMap.companyId, ctx.user.companyId));
     return rows;
   }),
@@ -176,10 +179,16 @@ export const legacyMenuRouter = router({
         const [pg] = await ctx.db
           .select({ id: pages.id, published: pages.published })
           .from(pages)
-          .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)))
+          .where(
+            and(
+              eq(pages.id, input.pageId),
+              eq(pages.companyId, ctx.user.companyId),
+              isNull(pages.deletedAt),
+            ),
+          )
           .limit(1);
         if (!pg) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại." });
+          throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại hoặc đã xoá." });
         }
         // Trang nháp → xuất bản riêng tư khi gán vào menu.
         if (!pg.published) {

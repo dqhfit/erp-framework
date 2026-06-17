@@ -542,11 +542,17 @@ export const pages = pgTable(
     content: jsonb("content").notNull().default(sql`'{}'::jsonb`),
     published: boolean("published").notNull().default(false),
     publishMode: text("publish_mode").notNull().default("private"),
+    // Xoá mềm: null = active, ts = đã xoá (còn khôi phục từ thùng rác).
+    deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
-    companyNameIdx: uniqueIndex("pages_company_name_idx").on(t.companyId, t.name),
+    // Unique tên CHỈ ràng buộc trang active → trang đã xoá mềm không chiếm tên.
+    companyNameIdx: uniqueIndex("pages_company_name_idx")
+      .on(t.companyId, t.name)
+      .where(sql`${t.deletedAt} IS NULL`),
+    deletedAtIdx: index("pages_deleted_at_idx").on(t.deletedAt),
   }),
 );
 

@@ -130,7 +130,8 @@ export const settingsVi: Dict = {
   "settings.backup.subtitle":
     "Dump PostgreSQL + đồng bộ thư mục /data/uploads lên một thư mục Google Drive bạn chọn. Files sync incremental (không re-upload file chưa đổi).",
   "settings.backup.config_title": "Cấu hình",
-  "settings.backup.guide_title": "Hướng dẫn đăng nhập Google Drive (web) & lấy Folder ID",
+  "settings.backup.guide_title":
+    "Hướng dẫn: tạo Service Account, lấy JSON key & Folder ID Google Drive",
   "settings.backup.guide_open": "Mở",
   "settings.backup.guide_close": "Đóng",
   "settings.backup.key_label": "Service account JSON key",
@@ -335,7 +336,7 @@ export const settingsEn: Dict = {
   "settings.backup.subtitle":
     "PostgreSQL dump + sync /data/uploads directory to a Google Drive folder you choose. Files sync incrementally (unchanged files not re-uploaded).",
   "settings.backup.config_title": "Configuration",
-  "settings.backup.guide_title": "Guide: Sign in to Google Drive (web) & get Folder ID",
+  "settings.backup.guide_title": "Guide: create Service Account, get JSON key & Drive Folder ID",
   "settings.backup.guide_open": "Open",
   "settings.backup.guide_close": "Close",
   "settings.backup.key_label": "Service account JSON key",
