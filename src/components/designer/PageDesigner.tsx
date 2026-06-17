@@ -1624,66 +1624,6 @@ export function PageDesigner({ pageId }: Props) {
                           {sel.kind === "list" && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
                               <div className="flex flex-col leading-tight">
-                                <span className="text-sm">Cột hành động (popover)</span>
-                                <span className="text-[11px] text-muted">
-                                  Nút ⋯ mỗi dòng → rê chuột hiện popover 11 hành động: Xem · Sửa ·
-                                  Xoá + sao chép / xuất CSV / in / xem JSON… (mặc định ẩn)
-                                </span>
-                              </div>
-                              <Switch
-                                checked={sel.config.rowActionsBuiltin === true}
-                                onChange={(v) =>
-                                  update(sel.id, {
-                                    config: { ...sel.config, rowActionsBuiltin: v },
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* Bật/tắt từng nút trên popover hành động (chỉ khi cột hành động bật). */}
-                          {sel.kind === "list" && sel.config.rowActionsBuiltin === true && (
-                            <div className="p-2.5 rounded-md border border-border bg-bg-soft">
-                              <div className="text-sm mb-0.5">Nút hiện trên popover hành động</div>
-                              <div className="text-[11px] text-muted mb-2">
-                                Bỏ tích để ẩn nút khỏi popover ⋯ của từng dòng
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                {ROW_ACTION_OPTIONS.map((opt) => {
-                                  const hidden =
-                                    (sel.config.rowActionsHidden as string[] | undefined) ?? [];
-                                  return (
-                                    <label
-                                      key={opt.key}
-                                      className="flex items-center gap-1.5 text-[12px] cursor-pointer"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        className="accent-accent shrink-0"
-                                        checked={!hidden.includes(opt.key)}
-                                        onChange={(e) => {
-                                          const h =
-                                            (sel.config.rowActionsHidden as string[] | undefined) ??
-                                            [];
-                                          const next = e.target.checked
-                                            ? h.filter((k) => k !== opt.key)
-                                            : [...h, opt.key];
-                                          update(sel.id, {
-                                            config: { ...sel.config, rowActionsHidden: next },
-                                          });
-                                        }}
-                                      />
-                                      <span className="truncate">{opt.label}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {sel.kind === "list" && (
-                            <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
-                              <div className="flex flex-col leading-tight">
                                 <span className="text-sm">Chọn dòng (checkbox)</span>
                                 <span className="text-[11px] text-muted">
                                   Cho phép tích chọn dòng · chọn tất cả đã lọc / mọi trang (mặc định
@@ -2586,6 +2526,82 @@ export function PageDesigner({ pageId }: Props) {
                         update(sel.id, { config: { ...sel.config, items, align } })
                       }
                     />
+                  )}
+
+                  {/* ── Cột hành động theo dòng (Xem/Sửa/Xoá + sao chép/in…) ── */}
+                  {inspTab === "hanhDong" && sel.kind === "list" && (
+                    <div className="space-y-2 pb-2 border-b border-border/40">
+                      <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-sm">Cột hành động</span>
+                          <span className="text-[11px] text-muted">
+                            Thêm cột hành động cho từng dòng: Xem · Sửa · Xoá (+ sao chép / xuất /
+                            in…). Mặc định ẩn.
+                          </span>
+                        </div>
+                        <Switch
+                          checked={sel.config.rowActionsBuiltin === true}
+                          onChange={(v) =>
+                            update(sel.id, { config: { ...sel.config, rowActionsBuiltin: v } })
+                          }
+                        />
+                      </div>
+                      {sel.config.rowActionsBuiltin === true && (
+                        <>
+                          <FormField label="Kiểu hiển thị">
+                            <Select
+                              value={(sel.config.rowActionsStyle as string) ?? "popover"}
+                              onChange={(e) =>
+                                update(sel.id, {
+                                  config: { ...sel.config, rowActionsStyle: e.target.value },
+                                })
+                              }
+                            >
+                              <option value="popover">Popover (nút ⋯ gọn)</option>
+                              <option value="inline">Inline (nút Xem · Sửa · Xoá)</option>
+                            </Select>
+                          </FormField>
+                          {((sel.config.rowActionsStyle as string) ?? "popover") === "popover" && (
+                            <div className="p-2.5 rounded-md border border-border bg-bg-soft">
+                              <div className="text-sm mb-0.5">Nút hiện trên popover</div>
+                              <div className="text-[11px] text-muted mb-2">
+                                Bỏ tích để ẩn nút khỏi popover ⋯
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                {ROW_ACTION_OPTIONS.map((opt) => {
+                                  const hidden =
+                                    (sel.config.rowActionsHidden as string[] | undefined) ?? [];
+                                  return (
+                                    <label
+                                      key={opt.key}
+                                      className="flex items-center gap-1.5 text-[12px] cursor-pointer"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="accent-accent shrink-0"
+                                        checked={!hidden.includes(opt.key)}
+                                        onChange={(e) => {
+                                          const h =
+                                            (sel.config.rowActionsHidden as string[] | undefined) ??
+                                            [];
+                                          const next = e.target.checked
+                                            ? h.filter((k) => k !== opt.key)
+                                            : [...h, opt.key];
+                                          update(sel.id, {
+                                            config: { ...sel.config, rowActionsHidden: next },
+                                          });
+                                        }}
+                                      />
+                                      <span className="truncate">{opt.label}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
 
                   {/* ── Thanh hành động nhúng — list / form / detail ── */}

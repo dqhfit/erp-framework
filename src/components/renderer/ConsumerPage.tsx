@@ -957,6 +957,8 @@ interface EditableListWidgetProps {
   selectable?: boolean;
   /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
   rowActionsHidden?: string[];
+  /** Kiểu cột hành động: "popover" (nút ⋯, mặc định) | "inline" (nút Xem/Sửa/Xoá). */
+  rowActionsStyle?: "inline" | "popover";
   /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
   refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
 }
@@ -1026,6 +1028,7 @@ function EditableListWidget({
   rowActions,
   selectable,
   rowActionsHidden,
+  rowActionsStyle,
   refFill,
 }: EditableListWidgetProps) {
   const t = useT();
@@ -1244,18 +1247,34 @@ function EditableListWidget({
     // Cột "Hành động" (Xem/Sửa/Xoá) — render ActionWidget cho từng dòng đã lưu
     // (dòng MỚI chưa có id → bỏ qua). Đặt đầu lưới.
     if (rowActions && rowActions.length > 0) {
+      const inline = rowActionsStyle === "inline";
       cols.unshift({
         id: "__rowacts__",
-        header: () => "Hành động",
+        // Tiêu đề gọn: icon ⋯ (không chiếm chỗ như chữ "Hành động").
+        header: () => (
+          <span title="Hành động">
+            <I.MoreHorizontal size={13} className="text-muted/70" />
+          </span>
+        ),
         enableGrouping: false,
         enableSorting: false,
-        size: 64,
+        size: inline ? undefined : 44, // popover: 1 nút nhỏ; inline: auto theo số nút
         cell: (ctx) => {
           const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
           if (row.__isNew) return null;
+          const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
+          if (inline) {
+            return (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {bound.map((a) => (
+                  <ActionWidget key={a.label} config={a} pageState={pageState} inline />
+                ))}
+              </div>
+            );
+          }
           return (
             <RowActionsCell
-              actions={rowActions.map((a) => bindRowIdToAction(a, row.id))}
+              actions={bound}
               pageState={pageState}
               row={row}
               cols={visibleFields.map((f) => ({
@@ -1280,6 +1299,7 @@ function EditableListWidget({
     pageState,
     title,
     rowActionsHidden,
+    rowActionsStyle,
   ]);
 
   const saveAll = async () => {
@@ -1859,6 +1879,7 @@ function ListWidget({
   rowActions,
   rowActionsBuiltin,
   rowActionsHidden,
+  rowActionsStyle,
   selectable,
   embeddedActions,
   embeddedFilters,
@@ -1923,6 +1944,8 @@ function ListWidget({
   rowActionsBuiltin?: boolean;
   /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
   rowActionsHidden?: string[];
+  /** Kiểu cột hành động: "popover" (⋯, mặc định) | "inline" (Xem/Sửa/Xoá). */
+  rowActionsStyle?: "inline" | "popover";
   /** Bật chọn dòng (checkbox) — bật trong cài đặt list (mặc định ẩn). */
   selectable?: boolean;
   /** Nút embeddedActions render CÙNG hàng với nút "Thêm mới" trong header
@@ -2268,30 +2291,46 @@ function ListWidget({
 
   // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
   // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
+  const rowActsInline = rowActionsStyle === "inline";
   const rowActionCol =
     effectiveRowActions.length > 0
       ? [
           {
             id: "__rowacts__",
-            header: () => "Hành động",
-            // Cột gọn: 1 nút ⋯ → popover hành động (hover). Rộng cố định nhỏ.
-            size: 64,
-            enableSorting: false,
-            cell: ({ row }: { row: { original: Record<string, unknown> } }) => (
-              <RowActionsCell
-                actions={effectiveRowActions.map((a) =>
-                  bindRowIdToAction(a, row.original.id ?? row.original.ID ?? row.original._id),
-                )}
-                pageState={pageState}
-                row={row.original}
-                cols={visibleFields.map((f) => ({
-                  key: f.name,
-                  label: columnLabels?.[f.name] ?? f.label ?? f.name,
-                }))}
-                title={title}
-                hidden={rowActionsHidden}
-              />
+            // Tiêu đề gọn (icon ⋯) thay chữ "Hành động" để cột không rộng.
+            header: () => (
+              <span title="Hành động">
+                <I.MoreHorizontal size={13} className="text-muted/70" />
+              </span>
             ),
+            size: rowActsInline ? undefined : 44,
+            enableSorting: false,
+            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+              const rid = row.original.id ?? row.original.ID ?? row.original._id;
+              const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, rid));
+              if (rowActsInline) {
+                return (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {bound.map((a) => (
+                      <ActionWidget key={a.label} config={a} pageState={pageState} inline />
+                    ))}
+                  </div>
+                );
+              }
+              return (
+                <RowActionsCell
+                  actions={bound}
+                  pageState={pageState}
+                  row={row.original}
+                  cols={visibleFields.map((f) => ({
+                    key: f.name,
+                    label: columnLabels?.[f.name] ?? f.label ?? f.name,
+                  }))}
+                  title={title}
+                  hidden={rowActionsHidden}
+                />
+              );
+            },
           },
         ]
       : [];
@@ -2397,6 +2436,7 @@ function ListWidget({
         rowActions={effectiveRowActions}
         selectable={selectable}
         rowActionsHidden={rowActionsHidden}
+        rowActionsStyle={rowActionsStyle}
         refFill={refFill}
       />
     );
@@ -3882,6 +3922,7 @@ function RenderSubWidget({
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
+        rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
       />
     );
@@ -4439,6 +4480,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
+        rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
