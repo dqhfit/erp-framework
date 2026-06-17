@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { I } from "@/components/Icons";
 import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
+import { NewPageModal } from "@/components/NewPageModal";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
@@ -1204,6 +1205,7 @@ export function Sidebar() {
   const [navNodes, setNavNodes] = useState<NavNode[]>([]);
   // Trang đang gán vào menu (mở modal) + key refetch cây sau khi gán xong.
   const [assignMenuPage, setAssignMenuPage] = useState<{ id: string; name: string } | null>(null);
+  const [newPageOpen, setNewPageOpen] = useState(false);
   const [navReloadKey, setNavReloadKey] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: navReloadKey là trigger refetch chủ động (không đọc trong effect)
   useEffect(() => {
@@ -1252,7 +1254,6 @@ export function Sidebar() {
     addEntity,
     deleteEntity,
     renameEntity,
-    addPage,
     deletePage,
     renamePage,
     addWorkflow,
@@ -1309,12 +1310,9 @@ export function Sidebar() {
     addEntity({ id: r.id, name: r.name, icon: "Database", mcp: "", fields: [] });
     navigate({ to: "/entities/$id", params: { id: r.id } });
   };
-  const handleAddPage = async () => {
-    const r = await promptName("page");
-    if (!r) return;
-    addPage({ id: r.id, name: r.name, icon: "Layout", updated: "vừa xong", author: "bạn" });
-    navigate({ to: "/pages/$id", params: { id: r.id } });
-  };
+  // Tạo trang mới → mở popup (tên + gán vào menu/tạo mục menu mới). NewPageModal
+  // tự tạo trang + gán + điều hướng sang Trình dựng.
+  const handleAddPage = () => setNewPageOpen(true);
   const handleAddWorkflow = async () => {
     const r = await promptName("workflow");
     if (!r) return;
@@ -1519,14 +1517,16 @@ export function Sidebar() {
             />
           )}
           {(() => {
-            const pagesBase = isViewer
-              ? userPages.filter(
-                  (p) =>
-                    p.isPublished &&
-                    (!p.viewerGroupIds?.length ||
-                      p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
-                )
-              : userPages;
+            const pagesBase = (
+              isViewer
+                ? userPages.filter(
+                    (p) =>
+                      p.isPublished &&
+                      (!p.viewerGroupIds?.length ||
+                        p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
+                  )
+                : [...userPages]
+            ).sort((a, b) => a.name.localeCompare(b.name, "vi"));
             // Trang tĩnh: route hardcode không nằm trong userPages (vd MES Mục
             // tiêu sản xuất). Không userOwned → không xóa/rename/kéo-thả.
             const staticPages: SectionItem[] = [
@@ -2155,13 +2155,13 @@ export function Sidebar() {
                 active={pathname === "/settings/menu-pages"}
                 icon={<I.GitBranch size={14} />}
                 collapsed={collapsed}
-                label="Gán trang cho menu"
+                label="Quản lý menu"
                 isFavorited={favs.isFav("/settings/menu-pages")}
                 onToggleFavorite={() =>
                   favs.toggle({
                     id: "/settings/menu-pages",
                     to: "/settings/menu-pages",
-                    label: "Gán trang cho menu",
+                    label: "Quản lý menu",
                     iconName: "GitBranch",
                   })
                 }
@@ -2319,6 +2319,14 @@ export function Sidebar() {
         page={assignMenuPage}
         onClose={() => setAssignMenuPage(null)}
         onDone={() => setNavReloadKey((k) => k + 1)}
+      />
+      <NewPageModal
+        open={newPageOpen}
+        onClose={() => {
+          setNewPageOpen(false);
+          setNavReloadKey((k) => k + 1); // trang gán menu mới → refresh cây nav
+        }}
+        canAssignMenu={can("edit", "settings")}
       />
     </>
   );

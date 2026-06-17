@@ -1,21 +1,27 @@
 /* ==========================================================
-   settings.menu-pages — "Gán trang cho menu": UI trực quan để gắn 1 trang
+   settings.menu-pages — "Quản lý menu": UI trực quan để gắn 1 trang
    (low-code page) vào từng node menu DQHF (legacy_menu_map). Cây menu lồng
    theo parentCode; mỗi node có thể gán / đổi / gỡ trang bằng bộ chọn tìm
    kiếm. Đây là menu CỔNG DQHF (portal) — nguồn điều hướng chính.
    Backend: legacyMenu.pageBindings + legacyMenu.setNodePage (admin settings).
    ========================================================== */
-import { createLegacyMenuClient, type LegacyPageBinding } from "@erp-framework/client";
+import {
+  createLegacyMenuClient,
+  createObjectsClient,
+  type LegacyPageBinding,
+} from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, EmptyState, Input, Modal, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { menuNodeLabel } from "@/lib/menu-node-label";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useUserObjects } from "@/stores/userObjects";
+import { machineName, useUserObjects } from "@/stores/userObjects";
 
 const api = createLegacyMenuClient("");
+const objApi = createObjectsClient("");
 
 type FilterKind = "all" | "assigned" | "unassigned";
 
@@ -28,6 +34,7 @@ const STATUS_DOT: Record<string, string> = {
 function MenuPagesPage() {
   const pages = useUserObjects((s) => s.pages);
   const publishPage = useUserObjects((s) => s.publishPage);
+  const hydrate = useUserObjects((s) => s.hydrate);
   const [rows, setRows] = useState<LegacyPageBinding[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyCode, setBusyCode] = useState<string | null>(null);
@@ -77,23 +84,26 @@ function MenuPagesPage() {
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(r);
     }
+    // Sửa cấu trúc: giữ thứ tự sort (để kéo lên/xuống có nghĩa). Ngoài ra:
+    // sắp theo TÊN cho dễ tìm.
     for (const arr of m.values())
-      arr.sort((a, b) => a.sort - b.sort || (a.name ?? "").localeCompare(b.name ?? "", "vi"));
+      arr.sort(
+        structMode
+          ? (a, b) => a.sort - b.sort || (a.name ?? "").localeCompare(b.name ?? "", "vi")
+          : (a, b) => (a.name ?? "").localeCompare(b.name ?? "", "vi"),
+      );
     return m;
-  }, [rows, byCode]);
+  }, [rows, byCode, structMode]);
 
   const roots = childrenOf.get(null) ?? [];
 
   const hasChildren = useCallback((code: string) => childrenOf.has(code), [childrenOf]);
 
-  // Tuỳ chọn cho bộ chọn trang: nhãn + đánh dấu nháp; trang đã xuất bản lên đầu.
+  // Tuỳ chọn cho bộ chọn trang: nhãn + đánh dấu nháp; sắp theo TÊN.
   const pageOptions = useMemo(
     () =>
       [...pages]
-        .sort(
-          (a, b) =>
-            Number(b.isPublished) - Number(a.isPublished) || a.name.localeCompare(b.name, "vi"),
-        )
+        .sort((a, b) => a.name.localeCompare(b.name, "vi"))
         .map((p) => ({
           value: p.id,
           label: p.isPublished ? p.name : `${p.name} · nháp`,
@@ -131,10 +141,7 @@ function MenuPagesPage() {
         (p) =>
           !oq || p.name.toLowerCase().includes(oq) || (p.techName ?? "").toLowerCase().includes(oq),
       )
-      .sort(
-        (a, b) =>
-          Number(b.isPublished) - Number(a.isPublished) || a.name.localeCompare(b.name, "vi"),
-      );
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   }, [showAllPages, pages, orphanAll, orphanQ]);
 
   // Trang đang gán (object) + tuỳ chọn node đích cho modal (mọi node active, kèm
@@ -149,12 +156,10 @@ function MenuPagesPage() {
         .filter((r) => r.active)
         .map((r) => ({
           value: r.sourceCode,
-          label: r.pageId
-            ? `${r.name || r.sourceCode}  ·  hiện: ${r.pageLabel || r.pageName || "?"}`
-            : (r.name ?? r.sourceCode),
+          label: menuNodeLabel(r, byCode, { showAssigned: true }),
         }))
         .sort((a, b) => a.label.localeCompare(b.label, "vi")),
-    [rows],
+    [rows, byCode],
   );
 
   // ── Lọc + tìm kiếm: tính tập node giữ lại (match + tổ tiên) ──
@@ -290,11 +295,39 @@ function MenuPagesPage() {
     void runStruct(code, () => api.renameNode(code, name));
   };
 
+  // Thêm mục menu mới → MẶC ĐỊNH tạo kèm 1 trang mới (draft) và gán vào mục đó
+  // luôn (setNodePage tự xuất bản riêng tư). Trang để trống, mở sau ở Trình dựng.
   const addChild = async (parentCode: string | null) => {
-    const name = (await dialog.prompt("Tên mục menu mới:", "", { title: "Thêm mục" }))?.trim();
+    const name = (
+      await dialog.prompt("Tên mục menu mới (sẽ tạo kèm 1 trang mới):", "", {
+        title: "Thêm mục menu",
+      })
+    )?.trim();
     if (!name) return;
-    await runStruct(parentCode ?? "__root__", () => api.addNode(parentCode, name));
-    if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
+    setBusyCode(parentCode ?? "__root__");
+    try {
+      // 1. Tạo node menu (custom).
+      const { sourceCode } = await api.addNode(parentCode, name);
+      // 2. Tạo trang mới (draft) + lưu — await để bước gán thấy trang trong DB.
+      const pageId = crypto.randomUUID();
+      await objApi.pages.save({
+        id: pageId,
+        name: machineName(name, pageId),
+        label: name,
+        content: {},
+      });
+      // 3. Gán trang vào node (tự xuất bản riêng tư).
+      await api.setNodePage(sourceCode, pageId);
+      // 4. Làm tươi store (trang mới) + cây menu.
+      await hydrate();
+      await reloadRows();
+      if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
+      toast.success(`Đã tạo mục “${name}” + trang mới (đã gán, xuất bản riêng tư)`);
+    } catch (e) {
+      await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setBusyCode(null);
+    }
   };
 
   const removeNode = async (code: string, name: string) => {
@@ -322,7 +355,7 @@ function MenuPagesPage() {
     }
     return rows
       .filter((r) => !blocked.has(r.sourceCode))
-      .map((r) => ({ value: r.sourceCode, label: r.name || r.sourceCode }))
+      .map((r) => ({ value: r.sourceCode, label: menuNodeLabel(r, byCode) }))
       .sort((a, b) => a.label.localeCompare(b.label, "vi"));
   };
 
@@ -422,6 +455,7 @@ function MenuPagesPage() {
                         runStruct(r.sourceCode, () => api.moveNode(r.sourceCode, v || null));
                       }}
                       options={moveTargets(r.sourceCode)}
+                      wrapOptions
                       placeholder="Chọn nhánh cha…"
                       searchPlaceholder="Tìm mục cha…"
                       emptyOption="— Gốc (không cha) —"
@@ -611,7 +645,7 @@ function MenuPagesPage() {
         <header className="space-y-1">
           <h1 className="flex items-center gap-2 text-lg font-semibold text-text">
             <I.GitBranch size={18} className="text-accent" />
-            Gán trang cho menu
+            Quản lý menu
           </h1>
           <p className="text-sm text-muted">
             Gắn từng mục menu DQHF (cổng người dùng) với một trang low-code. Node đã gán trang đã
@@ -888,6 +922,7 @@ function MenuPagesPage() {
               }
             }}
             options={nodeAssignOptions}
+            wrapOptions
             placeholder="Tìm + chọn mục menu…"
             searchPlaceholder="Gõ tên mục menu…"
           />

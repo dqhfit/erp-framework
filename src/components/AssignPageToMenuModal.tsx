@@ -8,6 +8,7 @@ import { createLegacyMenuClient, type LegacyPageBinding } from "@erp-framework/c
 import { useEffect, useMemo, useState } from "react";
 import { Modal, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { buildNodeIndex, menuNodeLabel } from "@/lib/menu-node-label";
 import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
 
@@ -40,19 +41,16 @@ export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
     };
   }, [page]);
 
-  const options = useMemo(
-    () =>
-      nodes
-        .filter((n) => n.active)
-        .map((n) => ({
-          value: n.sourceCode,
-          label: n.pageId
-            ? `${n.name || n.sourceCode}  ·  hiện: ${n.pageLabel || n.pageName || "?"}`
-            : (n.name ?? n.sourceCode),
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label, "vi")),
-    [nodes],
-  );
+  const options = useMemo(() => {
+    const byCode = buildNodeIndex(nodes);
+    return nodes
+      .filter((n) => n.active)
+      .map((n) => ({
+        value: n.sourceCode,
+        label: menuNodeLabel(n, byCode, { showAssigned: true }),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+  }, [nodes]);
 
   const pick = async (sourceCode: string) => {
     if (!page || !sourceCode || busy) return;
@@ -89,6 +87,7 @@ export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
           value=""
           onChange={pick}
           options={options}
+          wrapOptions
           placeholder={nodes.length ? "Tìm + chọn mục menu…" : "Đang tải mục menu…"}
           searchPlaceholder="Gõ tên mục menu…"
         />
