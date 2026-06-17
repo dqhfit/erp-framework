@@ -93,7 +93,7 @@ function printRow(row: Record<string, unknown>, cols: RowActionColInfo[], title:
 /** Vị trí popover: ngay dưới nút, kẹp trong viewport. */
 function pos(rect: DOMRect) {
   const m = 6;
-  const w = 232;
+  const w = 300;
   let left = rect.right - w;
   if (left < m) left = m;
   if (left + w > window.innerWidth - m) left = window.innerWidth - m - w;
@@ -211,13 +211,13 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
             className="fixed z-[900] rounded-lg border border-border bg-panel p-1.5 shadow-2xl"
           >
             {shownActions.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1 pb-1.5 mb-1.5 border-b border-border">
+              <div className="flex flex-wrap items-center justify-end gap-2 pb-1.5 mb-1.5 border-b border-border">
                 {shownActions.map((a) => (
                   <ActionWidget key={a.label} config={a} pageState={pageState} inline />
                 ))}
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {quick.map((q) => (
                 <button
                   key={q.key}
