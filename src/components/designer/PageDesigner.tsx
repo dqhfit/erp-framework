@@ -145,14 +145,20 @@ function BindingSourceConfig({
         <button
           type="button"
           className={btn(!isDs)}
-          onClick={() => onChange({ dataSourceId: undefined })}
+          // Đang ở mode khác → mới chuyển (reset fields vì schema khác). Bấm nút
+          // ĐANG chọn = no-op → KHÔNG mất cấu hình cột/nhãn.
+          onClick={() => {
+            if (isDs) onChange({ dataSourceId: undefined, fields: null });
+          }}
         >
           Entity
         </button>
         <button
           type="button"
           className={btn(isDs)}
-          onClick={() => onChange({ dataSourceId: dsId ?? "", entity: undefined, fields: null })}
+          onClick={() => {
+            if (!isDs) onChange({ dataSourceId: "", entity: undefined, fields: null });
+          }}
         >
           Nguồn dữ liệu
         </button>
@@ -160,7 +166,10 @@ function BindingSourceConfig({
       {isDs && (
         <Select
           value={dsId ?? ""}
+          // Chỉ reset fields khi ĐỔI sang datasource KHÁC (schema khác). Chọn lại
+          // đúng nguồn hiện tại → giữ nguyên cấu hình cột.
           onChange={(e) =>
+            e.target.value !== dsId &&
             onChange({ dataSourceId: e.target.value, entity: undefined, fields: null })
           }
         >
@@ -1340,9 +1349,11 @@ export function PageDesigner({ pageId }: Props) {
                         }
                       />
                     )}
-                  {/* Entity selector — reset fields khi đổi entity (ẩn khi bind datasource) */}
+                  {/* Cài đặt chung + (entity-mode) bộ chọn Entity. Cài đặt list
+                     (chọn nhiều/sửa/cột hành động/chọn dòng…) hiện cho CẢ entity
+                     lẫn datasource; riêng bộ chọn Entity + checklist field ẩn khi
+                     bind datasource (đã có bộ chọn "Nguồn bind" riêng ở trên). */}
                   {inspTab === "dulieu" &&
-                    sel.config.dataSourceId === undefined &&
                     (sel.kind === "list" ||
                       sel.kind === "detail" ||
                       sel.kind === "form" ||
@@ -1358,135 +1369,143 @@ export function PageDesigner({ pageId }: Props) {
 
                       return (
                         <>
-                          <FormField label="Entity">
-                            <Select
-                              value={(sel.config.entity as string) ?? ""}
-                              onChange={(e) =>
-                                update(sel.id, {
-                                  config: {
-                                    ...sel.config,
-                                    entity: e.target.value,
-                                    fields: null,
-                                    groupBy: "",
-                                    valueField: "",
-                                  },
-                                })
-                              }
-                            >
-                              <option value="">{t("field.choose")}</option>
-                              {entities.map((en) => (
-                                <option key={en.id} value={en.id}>
-                                  {en.name}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-
-                          {/* Field checklist — list / form / detail khi đã bind entity */}
-                          {(sel.kind === "list" || sel.kind === "form" || sel.kind === "detail") &&
-                            entityFields.length > 0 && (
-                              <FormField label={t("designer.fields_to_show")}>
-                                <div className="border border-border rounded-md overflow-hidden">
-                                  <div className="max-h-44 overflow-y-auto bg-bg-soft">
-                                    {entityFields.map((f) => {
-                                      const checked =
-                                        allSelected || selectedFieldNames.includes(f.name);
-                                      const isLookup =
-                                        f.type === "lookup" || f.type === "multi-lookup";
-                                      const refEnt =
-                                        isLookup && f.ref
-                                          ? entities.find((e) => e.id === f.ref)
-                                          : null;
-                                      return (
-                                        <label
-                                          key={f.name}
-                                          className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            className="accent-accent shrink-0"
-                                            checked={checked}
-                                            onChange={(e) => {
-                                              const base = allSelected
-                                                ? entityFields.map((x) => x.name)
-                                                : [...selectedFieldNames];
-                                              const next = e.target.checked
-                                                ? base.includes(f.name)
-                                                  ? base
-                                                  : [...base, f.name]
-                                                : base.filter((n) => n !== f.name);
-                                              update(sel.id, {
-                                                config: {
-                                                  ...sel.config,
-                                                  fields:
-                                                    next.length === entityFields.length
-                                                      ? null
-                                                      : next,
-                                                },
-                                              });
-                                            }}
-                                          />
-                                          <span className="flex-1 truncate">{fieldDisp(f)}</span>
-                                          {refEnt ? (
-                                            <span className="text-[9px] text-accent shrink-0 flex items-center gap-0.5">
-                                              <I.Link size={8} />
-                                              {refEnt.name}
-                                            </span>
-                                          ) : isLookup && !f.ref ? (
-                                            <span
-                                              className="text-[9px] text-warning shrink-0 flex items-center gap-0.5"
-                                              title="Chưa chọn entity đích"
-                                            >
-                                              <I.Link size={8} />?
-                                            </span>
-                                          ) : null}
-                                          <code className="text-[10px] text-muted font-mono shrink-0">
-                                            {f.name}
-                                          </code>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                  <div className="px-2 py-1 border-t border-border flex items-center justify-between bg-panel">
-                                    <span className="text-[10px] text-muted">
-                                      {t("designer.fields_count", {
-                                        count: allSelected
-                                          ? entityFields.length
-                                          : selectedFieldNames.length,
-                                      })}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      {!allSelected && (
-                                        <button
-                                          type="button"
-                                          className="text-[10px] text-accent hover:underline"
-                                          onClick={() =>
-                                            update(sel.id, {
-                                              config: { ...sel.config, fields: null },
-                                            })
-                                          }
-                                        >
-                                          {t("designer.fields_select_all")}
-                                        </button>
-                                      )}
-                                      {(allSelected || selectedFieldNames.length > 0) && (
-                                        <button
-                                          type="button"
-                                          className="text-[10px] text-muted hover:underline"
-                                          onClick={() =>
-                                            update(sel.id, {
-                                              config: { ...sel.config, fields: [] },
-                                            })
-                                          }
-                                        >
-                                          {t("designer.fields_deselect_all")}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
+                          {sel.config.dataSourceId === undefined && (
+                            <>
+                              <FormField label="Entity">
+                                <Select
+                                  value={(sel.config.entity as string) ?? ""}
+                                  onChange={(e) =>
+                                    update(sel.id, {
+                                      config: {
+                                        ...sel.config,
+                                        entity: e.target.value,
+                                        fields: null,
+                                        groupBy: "",
+                                        valueField: "",
+                                      },
+                                    })
+                                  }
+                                >
+                                  <option value="">{t("field.choose")}</option>
+                                  {entities.map((en) => (
+                                    <option key={en.id} value={en.id}>
+                                      {en.name}
+                                    </option>
+                                  ))}
+                                </Select>
                               </FormField>
-                            )}
+
+                              {/* Field checklist — list / form / detail khi đã bind entity */}
+                              {(sel.kind === "list" ||
+                                sel.kind === "form" ||
+                                sel.kind === "detail") &&
+                                entityFields.length > 0 && (
+                                  <FormField label={t("designer.fields_to_show")}>
+                                    <div className="border border-border rounded-md overflow-hidden">
+                                      <div className="max-h-44 overflow-y-auto bg-bg-soft">
+                                        {entityFields.map((f) => {
+                                          const checked =
+                                            allSelected || selectedFieldNames.includes(f.name);
+                                          const isLookup =
+                                            f.type === "lookup" || f.type === "multi-lookup";
+                                          const refEnt =
+                                            isLookup && f.ref
+                                              ? entities.find((e) => e.id === f.ref)
+                                              : null;
+                                          return (
+                                            <label
+                                              key={f.name}
+                                              className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                className="accent-accent shrink-0"
+                                                checked={checked}
+                                                onChange={(e) => {
+                                                  const base = allSelected
+                                                    ? entityFields.map((x) => x.name)
+                                                    : [...selectedFieldNames];
+                                                  const next = e.target.checked
+                                                    ? base.includes(f.name)
+                                                      ? base
+                                                      : [...base, f.name]
+                                                    : base.filter((n) => n !== f.name);
+                                                  update(sel.id, {
+                                                    config: {
+                                                      ...sel.config,
+                                                      fields:
+                                                        next.length === entityFields.length
+                                                          ? null
+                                                          : next,
+                                                    },
+                                                  });
+                                                }}
+                                              />
+                                              <span className="flex-1 truncate">
+                                                {fieldDisp(f)}
+                                              </span>
+                                              {refEnt ? (
+                                                <span className="text-[9px] text-accent shrink-0 flex items-center gap-0.5">
+                                                  <I.Link size={8} />
+                                                  {refEnt.name}
+                                                </span>
+                                              ) : isLookup && !f.ref ? (
+                                                <span
+                                                  className="text-[9px] text-warning shrink-0 flex items-center gap-0.5"
+                                                  title="Chưa chọn entity đích"
+                                                >
+                                                  <I.Link size={8} />?
+                                                </span>
+                                              ) : null}
+                                              <code className="text-[10px] text-muted font-mono shrink-0">
+                                                {f.name}
+                                              </code>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                      <div className="px-2 py-1 border-t border-border flex items-center justify-between bg-panel">
+                                        <span className="text-[10px] text-muted">
+                                          {t("designer.fields_count", {
+                                            count: allSelected
+                                              ? entityFields.length
+                                              : selectedFieldNames.length,
+                                          })}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          {!allSelected && (
+                                            <button
+                                              type="button"
+                                              className="text-[10px] text-accent hover:underline"
+                                              onClick={() =>
+                                                update(sel.id, {
+                                                  config: { ...sel.config, fields: null },
+                                                })
+                                              }
+                                            >
+                                              {t("designer.fields_select_all")}
+                                            </button>
+                                          )}
+                                          {(allSelected || selectedFieldNames.length > 0) && (
+                                            <button
+                                              type="button"
+                                              className="text-[10px] text-muted hover:underline"
+                                              onClick={() =>
+                                                update(sel.id, {
+                                                  config: { ...sel.config, fields: [] },
+                                                })
+                                              }
+                                            >
+                                              {t("designer.fields_deselect_all")}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </FormField>
+                                )}
+                            </>
+                          )}
 
                           {/* Master (lọc theo) — widget này có thể lọc theo
                             state của bất kỳ widget khác trên trang (List

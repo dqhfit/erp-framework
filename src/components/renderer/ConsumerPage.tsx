@@ -2023,7 +2023,10 @@ function ListWidget({
         ],
       },
     ] as unknown as ActionConfig[];
-    return [...base, ...builtin];
+    // Dedup: nếu rowActions cấu hình ĐÃ có hành động trùng nhãn (Xem/Sửa/Xoá)
+    // thì bỏ builtin tương ứng → popover KHÔNG nhân đôi nút.
+    const baseLabels = new Set(base.map((a) => a.label));
+    return [...base, ...builtin.filter((b) => !baseLabels.has(b.label))];
   }, [rowActions, rowActionsBuiltin, entityId, fields]);
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
