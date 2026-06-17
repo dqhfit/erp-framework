@@ -182,3 +182,4 @@ Windows Task Scheduler:
 | `upload 403: storageQuotaExceeded` | Service account ổ riêng đầy (không phải Drive của bạn). Đảm bảo `GDRIVE_FOLDER_ID` là thư mục **của bạn** đã share cho service account. |
 | `service "db" is not running` | Stack chưa lên — `docker compose -f docker/docker-compose.yml up -d` rồi chạy lại. Nếu dùng compose file khác, đặt `BACKUP_COMPOSE_FILE`. |
 | `pg_restore: error: relation "..." already exists` | Bỏ qua được — `-c --if-exists` đã xử lý phần lớn; tham số `\|\| true` trong script không chặn flow. |
+| `pg_dump: error: aborting because of server version mismatch` | `pg_dump` client cũ hơn server (vd client 15 vs server 18). Server-side: `docker/Dockerfile.server` đã cài `postgresql-client-18` từ PGDG — **redeploy** lại image. Chạy CLI: cài/dùng `pg_dump` ≥ phiên bản server trên máy chạy. |

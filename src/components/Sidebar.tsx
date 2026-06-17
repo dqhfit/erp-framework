@@ -2167,6 +2167,22 @@ export function Sidebar() {
                 }
               />
               <SidebarItem
+                to="/settings/pages-trash"
+                active={pathname === "/settings/pages-trash"}
+                icon={<I.Trash size={14} />}
+                collapsed={collapsed}
+                label="Thùng rác trang"
+                isFavorited={favs.isFav("/settings/pages-trash")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/settings/pages-trash",
+                    to: "/settings/pages-trash",
+                    label: "Thùng rác trang",
+                    iconName: "Trash",
+                  })
+                }
+              />
+              <SidebarItem
                 to="/settings/plugins"
                 active={pathname === "/settings/plugins"}
                 icon={<I.Package size={14} />}

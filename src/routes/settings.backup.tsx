@@ -111,8 +111,10 @@ function BackupPage() {
         keyJson: keyJson.trim() || undefined,
         scheduleCron: cron.trim() || null,
       });
-      setKeyJson(""); // không giữ key trong UI sau khi lưu.
-      loadConfig();
+      // Bí mật → KHÔNG giữ key trong UI sau khi lưu (đã mã hoá lưu DB). loadConfig
+      // refresh hasKey để hiện chỉ báo "đã lưu key", tránh tưởng bị mất.
+      setKeyJson("");
+      await loadConfig();
     }, t("settings.backup.save_ok"));
 
   const runNow = () =>
@@ -143,55 +145,133 @@ function BackupPage() {
                 {t("settings.backup.guide_close")}
               </span>
             </summary>
-            <div className="px-3 pb-3 pt-1 space-y-3 text-[13px] leading-relaxed">
-              <ol className="list-decimal pl-5 space-y-1.5">
-                <li>
-                  Mở{" "}
-                  <a
-                    href="https://drive.google.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-accent hover:underline"
-                  >
-                    drive.google.com
-                  </a>{" "}
-                  trên trình duyệt và <b>đăng nhập</b> bằng tài khoản Google sẽ dùng để lưu backup
-                  (có thể là tài khoản cá nhân hoặc Workspace).
-                </li>
-                <li>
-                  Tạo một thư mục đích, ví dụ <code>ERP Backups</code> (hoặc mở thư mục đã có).
-                </li>
-                <li>
-                  Vào thư mục đó. Nhìn vào thanh địa chỉ trình duyệt — URL có dạng:
-                  <div className="my-1 font-mono text-xs bg-surface-2 rounded-sm px-2 py-1 break-all">
-                    https://drive.google.com/drive/folders/
-                    <b className="text-accent">1AbCdEfGhIjKlMnOpQrStUv...</b>
-                  </div>
-                  Phần in đậm sau <code>/folders/</code> chính là <b>Folder ID</b> — copy và dán vào
-                  ô bên dưới.
-                </li>
-                <li>
-                  Bấm chuột phải vào thư mục → <b>Share</b> (Chia sẻ) → dán email service account
-                  (dạng <code>...@&lt;project&gt;.iam.gserviceaccount.com</code>) → chọn quyền{" "}
-                  <b>Editor</b> → <b>Send</b>. Bước này bắt buộc, nếu không service account sẽ không
-                  nhìn thấy thư mục.
-                </li>
-                <li>
-                  Quay lại đây, bấm <b>Test kết nối</b> để xác minh, rồi <b>Lưu cấu hình</b>.
-                </li>
-              </ol>
-              <div className="text-xs text-muted">
-                Mẹo: nếu URL có thêm tham số kiểu <code>?usp=sharing</code>, chỉ lấy đoạn ID phía
-                trước dấu <code>?</code>. Không lấy nhầm ID của <i>file</i> (URL có{" "}
-                <code>/file/d/</code>) — phải là <code>/drive/folders/</code>.
+            <div className="px-3 pb-3 pt-1 space-y-4 text-[13px] leading-relaxed">
+              {/* A — Tạo Service Account + tải JSON key */}
+              <div className="space-y-1.5">
+                <div className="font-semibold text-text">
+                  A. Tạo Service Account &amp; tải JSON key — làm 1 lần (Google Cloud Console)
+                </div>
+                <ol className="list-decimal pl-5 space-y-1.5">
+                  <li>
+                    Mở{" "}
+                    <a
+                      href="https://console.cloud.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      Google Cloud Console
+                    </a>{" "}
+                    → đăng nhập. Trên thanh trên cùng, bấm hộp chọn project → <b>New Project</b>{" "}
+                    (đặt tên vd <code>ERP Backup</code>) → <b>Create</b>, rồi chọn đúng project vừa
+                    tạo.
+                  </li>
+                  <li>
+                    Bật Drive API: mở{" "}
+                    <a
+                      href="https://console.cloud.google.com/apis/library/drive.googleapis.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      Google Drive API
+                    </a>{" "}
+                    → bấm <b>Enable</b>. (Hoặc <b>APIs &amp; Services → Library</b> → gõ “Google
+                    Drive API”.)
+                  </li>
+                  <li>
+                    Tạo service account: mở{" "}
+                    <a
+                      href="https://console.cloud.google.com/iam-admin/serviceaccounts"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      IAM &amp; Admin → Service Accounts
+                    </a>{" "}
+                    → <b>Create service account</b> → đặt tên (vd <code>erp-backup</code>) →{" "}
+                    <b>Create and continue</b> → bỏ qua phần cấp quyền (optional) → <b>Done</b>.
+                  </li>
+                  <li>
+                    Tải JSON key: bấm vào service account vừa tạo → tab <b>Keys</b> →{" "}
+                    <b>Add key → Create new key</b> → chọn <b>JSON</b> → <b>Create</b>. File{" "}
+                    <code>.json</code> sẽ tự tải về máy.
+                  </li>
+                  <li>
+                    Mở file <code>.json</code> bằng Notepad → copy <b>toàn bộ nội dung</b> (cả dấu{" "}
+                    <code>{"{ }"}</code>) → dán vào ô <b>Service account JSON key</b> bên dưới.
+                  </li>
+                  <li>
+                    Lấy <b>email service account</b> (trường <code>client_email</code> trong file
+                    JSON, dạng <code>erp-backup@&lt;project&gt;.iam.gserviceaccount.com</code>) —
+                    cần cho bước B4.
+                  </li>
+                </ol>
+              </div>
+
+              {/* B — Folder ID + chia sẻ */}
+              <div className="space-y-1.5">
+                <div className="font-semibold text-text">
+                  B. Lấy Folder ID &amp; chia sẻ thư mục (Google Drive web)
+                </div>
+                <ol className="list-decimal pl-5 space-y-1.5">
+                  <li>
+                    Mở{" "}
+                    <a
+                      href="https://drive.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      drive.google.com
+                    </a>{" "}
+                    và <b>đăng nhập</b> bằng tài khoản Google sẽ chứa backup (cá nhân hoặc
+                    Workspace).
+                  </li>
+                  <li>
+                    Tạo thư mục đích, ví dụ <code>ERP Backups</code> (hoặc mở thư mục đã có).
+                  </li>
+                  <li>
+                    Vào thư mục đó, nhìn thanh địa chỉ — URL có dạng:
+                    <div className="my-1 font-mono text-xs bg-surface-2 rounded-sm px-2 py-1 break-all">
+                      https://drive.google.com/drive/folders/
+                      <b className="text-accent">1AbCdEfGhIjKlMnOpQrStUv...</b>
+                    </div>
+                    Phần in đậm sau <code>/folders/</code> là <b>Folder ID</b> — dán vào ô bên dưới.
+                  </li>
+                  <li>
+                    Chuột phải thư mục → <b>Share</b> (Chia sẻ) → dán <b>email service account</b>{" "}
+                    (lấy ở bước A6) → chọn quyền <b>Editor</b> → <b>Send</b>. Bắt buộc, thiếu bước
+                    này service account không thấy thư mục.
+                  </li>
+                </ol>
+                <div className="text-xs text-muted">
+                  Mẹo: URL có <code>?usp=sharing</code> thì chỉ lấy đoạn ID trước dấu <code>?</code>
+                  . Đừng nhầm ID của <i>file</i> (<code>/file/d/</code>) — phải là{" "}
+                  <code>/drive/folders/</code>.
+                </div>
+              </div>
+
+              {/* C — Hoàn tất */}
+              <div className="space-y-1.5">
+                <div className="font-semibold text-text">C. Hoàn tất trong app</div>
+                <p>
+                  Dán <b>JSON key</b> + <b>Folder ID</b> vào ô bên dưới → bấm <b>Test kết nối</b>{" "}
+                  (phải hiện ✓) → <b>Lưu cấu hình</b>.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2 text-xs">
+                ⚠ Service account <b>không có dung lượng Drive riêng</b>. Phải dùng thư mục trong
+                Drive <b>của bạn</b> rồi share cho nó (Editor); nếu để service account tự tạo thư
+                mục, upload sẽ lỗi <code>storageQuotaExceeded</code>.
               </div>
               <div className="text-xs text-muted">
-                Chưa có service account? Xem{" "}
+                Chi tiết &amp; xử lý lỗi: xem{" "}
                 <a href="/docs/BACKUP" className="text-accent hover:underline">
                   docs/BACKUP.md
-                </a>{" "}
-                — mục "Setup Google Drive (một-lần)" hướng dẫn tạo project GCP, bật Drive API và tạo
-                JSON key.
+                </a>
+                .
               </div>
             </div>
           </details>
@@ -202,9 +282,22 @@ function BackupPage() {
               cfg?.hasKey ? t("settings.backup.key_hint_has") : t("settings.backup.key_hint_no")
             }
           >
+            {cfg?.hasKey && !keyJson.trim() && (
+              <div className="mb-1.5 flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-xs text-success">
+                <I.Check size={13} className="shrink-0" />
+                <span>
+                  Đã lưu service account key (mã hoá an toàn). Ô để trống là bình thường — chỉ dán
+                  key mới khi muốn thay.
+                </span>
+              </div>
+            )}
             <Textarea
               rows={4}
-              placeholder='{"type":"service_account",...}'
+              placeholder={
+                cfg?.hasKey
+                  ? "Đã có key — để trống nếu giữ nguyên, hoặc dán key mới để thay…"
+                  : '{"type":"service_account",...}'
+              }
               value={keyJson}
               disabled={busy}
               onChange={(e) => setKeyJson(e.target.value)}

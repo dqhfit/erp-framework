@@ -124,6 +124,20 @@ export function createObjectsClient(baseUrl: string) {
       publish: (id: string, mode: "private" | "public") => trpc.pages.publish.mutate({ id, mode }),
       unpublish: (id: string) => trpc.pages.unpublish.mutate(id),
       getPublic: (id: string) => trpc.pages.getPublic.query(id),
+      // Thùng rác (xoá mềm)
+      listTrash: () =>
+        trpc.pages.listTrash.query() as Promise<
+          Array<{
+            id: string;
+            name: string;
+            label: string;
+            icon: string | null;
+            deletedAt: string | null;
+            updatedAt: string | null;
+          }>
+        >,
+      restore: (id: string) => trpc.pages.restore.mutate(id) as Promise<{ ok: true }>,
+      purge: (id: string) => trpc.pages.purge.mutate(id) as Promise<{ ok: true }>,
     },
     workflows: {
       list: () => trpc.workflows.list.query(),

@@ -19,9 +19,11 @@ import { rbacProcedure, router } from "./trpc";
  *  - "feedback:read" | "feedback:propose" | "feedback:apply" | "feedback:*" (MCP /mcp)
  *  - "errors:read" | "errors:write" | "errors:*" (MCP /mcp/errors)
  *  - "migration:read" | "migration:apply" | "migration:*" (MCP /mcp/migration)
- *  - "cad:read" | "cad:write" | "cad:*" (MCP /mcp/cad — máy trạm FreeCAD) */
+ *  - "cad:read" | "cad:write" | "cad:*" (MCP /mcp/cad — máy trạm FreeCAD)
+ *  - "backup:read" | "backup:run" | "backup:full" | "backup:*" (MCP /mcp/backup —
+ *    máy offsite kéo backup; full = tải dump DB + uploads toàn hệ thống) */
 const SCOPE_RE =
-  /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write)|feedback:(read|propose|apply|\*)|errors:(read|write|\*)|migration:(read|apply|\*)|cad:(read|write|\*))$/;
+  /^(\*|entity:[a-zA-Z0-9_*-]+:(read|write)|feedback:(read|propose|apply|\*)|errors:(read|write|\*)|migration:(read|apply|\*)|cad:(read|write|\*)|backup:(read|run|full|\*))$/;
 function validateScopes(scopes: string[]): void {
   if (scopes.length === 0) {
     throw new TRPCError({

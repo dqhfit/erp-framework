@@ -34,6 +34,7 @@ import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
 import { agenticRetrieve } from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
+import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
 import { makeCallTool } from "./mcp-client";
 import { registerErrorsMcp } from "./mcp-errors";
@@ -273,6 +274,13 @@ async function main(): Promise<void> {
   // FreeCAD MCP local) đọc sản phẩm/định mức + ghi bản vẽ "Bản vẽ AI"
   // ngược về (xem mcp-cad.ts). Mọi kết nối outbound từ máy trạm.
   registerCadMcp(app, db);
+
+  // MCP server SAO LƯU — POST /mcp/backup (JSON-RPC) + GET /mcp/backup/db|uploads
+  // (STREAM), auth X-API-Key scope backup:read|run|full. Cho máy KHÁC (offsite)
+  // kéo backup TOÀN BỘ dữ liệu theo lịch — độc lập backup push-Drive (xem
+  // mcp-backup.ts + tooling/backup-pull). Dump đa tenant → chỉ cấp backup:full
+  // cho key sao lưu riêng của operator.
+  registerBackupMcp(app, db);
 
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.

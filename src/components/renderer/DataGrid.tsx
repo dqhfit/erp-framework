@@ -27,6 +27,7 @@ import {
   type CSSProperties,
   Fragment,
   type ReactNode,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -151,6 +152,11 @@ function sizedWidth<T>(column: Column<T>): CSSProperties {
   // cột dữ liệu chỉ đặt width để table-fixed còn phân bổ chỗ trống khi tổng
   // bề rộng các cột < bề rộng bảng.
   return column.columnDef.size == null ? { width: w } : { width: w, minWidth: w, maxWidth: w };
+}
+
+/** Kẹp bề rộng autofit: +đệm, sàn 48, trần 360 (tránh cột quá hẹp/quá rộng). */
+function clampColW(w: number): number {
+  return Math.max(48, Math.min(Math.round(w) + 8, 360));
 }
 
 /** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
@@ -473,6 +479,11 @@ export function DataGrid<T>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showSelectCol, setShowSelectCol] = useState(false);
   const [allMatching, setAllMatching] = useState(false);
+  // Container cuộn (để đo nội dung ô khi autofit) + cờ "đã nạp xong state lưu"
+  // (chặn autofit-on-load đè kích thước cột người dùng đã lưu).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [restoreSettled, setRestoreSettled] = useState(false);
+  const autofitDoneRef = useRef(false);
 
   // Tiêu đề lồng nhiều cấp: gói cột phẳng thành cây nhóm khi có cấu hình.
   const tableColumns = useMemo(
@@ -515,19 +526,25 @@ export function DataGrid<T>({
   const restoredRef = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ restore 1 lần khi mount theo stateKey, các setter ổn định không cần liệt kê
   useEffect(() => {
-    if (!stateKey || restoredRef.current) return;
+    if (restoredRef.current) return;
     restoredRef.current = true;
-    idbGet<SavedGridState>(stateKey).then((saved) => {
-      if (!saved) return;
-      if (saved.sorting?.length) setSorting(saved.sorting);
-      if (saved.globalFilter) setGlobalFilter(saved.globalFilter);
-      if (saved.grouping?.length) setGrouping(saved.grouping);
-      if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
-      if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
-      if (saved.columnSizing) setColumnSizing(saved.columnSizing);
-      if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
-      if (saved.columnPinning) setColumnPinning(saved.columnPinning);
-    });
+    if (!stateKey) {
+      setRestoreSettled(true); // không lưu state → coi như đã nạp xong (cho autofit-on-load).
+      return;
+    }
+    idbGet<SavedGridState>(stateKey)
+      .then((saved) => {
+        if (!saved) return;
+        if (saved.sorting?.length) setSorting(saved.sorting);
+        if (saved.globalFilter) setGlobalFilter(saved.globalFilter);
+        if (saved.grouping?.length) setGrouping(saved.grouping);
+        if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
+        if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
+        if (saved.columnSizing) setColumnSizing(saved.columnSizing);
+        if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
+        if (saved.columnPinning) setColumnPinning(saved.columnPinning);
+      })
+      .finally(() => setRestoreSettled(true));
   }, [stateKey]);
 
   // Debounce save to IDB on state change
@@ -654,6 +671,55 @@ export function DataGrid<T>({
         }
       : {}),
   });
+
+  // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
+  // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,
+  // kể cả cột hẹp hơn mặc định). +đệm padding ngang ô. ──
+  const measureCol = useCallback((colId: string): number | null => {
+    const root = scrollRef.current;
+    if (!root) return null;
+    const cells = root.querySelectorAll<HTMLElement>(`[data-col="${CSS.escape(colId)}"]`);
+    if (!cells.length) return null;
+    const range = document.createRange();
+    let max = 0;
+    cells.forEach((el) => {
+      range.selectNodeContents(el);
+      // bề rộng nội dung (Range không tính padding ô) + đệm padding ngang ô.
+      const pad = Number.parseFloat(getComputedStyle(el).paddingLeft) * 2 || 0;
+      const w = range.getBoundingClientRect().width + pad;
+      if (w > max) max = w;
+    });
+    return max > 0 ? max : null;
+  }, []);
+  /** Autofit 1 cột → ghi columnSizing (persist). Double-click viền cột gọi cái này. */
+  const autofitColumn = useCallback(
+    (colId: string) => {
+      const w = measureCol(colId);
+      if (w != null) setColumnSizing((s) => ({ ...s, [colId]: clampColW(w) }));
+    },
+    [measureCol],
+  );
+  /** Autofit TẤT CẢ cột đang hiện. */
+  const autofitAll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const next: ColumnSizingState = {};
+    for (const col of table.getVisibleLeafColumns()) {
+      const w = measureCol(col.id);
+      if (w != null) next[col.id] = clampColW(w);
+    }
+    if (Object.keys(next).length) setColumnSizing((s) => ({ ...s, ...next }));
+  }, [measureCol, table]);
+
+  // Autofit-on-load: lần đầu có dữ liệu + đã nạp xong state lưu, mà CHƯA có size
+  // lưu → tự co cột theo nội dung (1 lần). Có size đã lưu → tôn trọng, không đè.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy 1 lần (guard ref), không phụ thuộc columnSizing
+  useEffect(() => {
+    if (autofitDoneRef.current || !restoreSettled || data.length === 0) return;
+    autofitDoneRef.current = true;
+    if (Object.keys(columnSizing).length > 0) return; // đã có size → tôn trọng
+    const id = requestAnimationFrame(() => autofitAll());
+    return () => cancelAnimationFrame(id);
+  }, [restoreSettled, data.length, autofitAll]);
 
   // Server mode: phát query ra caller khi phân trang/sắp/lọc đổi (debounce 250ms
   // để gõ search/lọc không bắn mỗi ký tự). Dùng serverMode (boolean ổn định) +
@@ -1007,6 +1073,16 @@ export function DataGrid<T>({
             {maximized ? <I.X size={13} /> : <I.Maximize size={12} />}
           </button>
 
+          {/* Tự co tất cả cột vừa nội dung */}
+          <button
+            type="button"
+            onClick={autofitAll}
+            title="Tự co tất cả cột vừa nội dung (hoặc nhắp đúp viền từng cột)"
+            className="inline-flex items-center justify-center w-7 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+          >
+            <I.Wand size={12} />
+          </button>
+
           {/* Column chooser (ẩn/hiện cột) */}
           <div className="relative" ref={colChooserRef}>
             <button
@@ -1263,7 +1339,7 @@ export function DataGrid<T>({
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-auto relative">
+        <div ref={scrollRef} className="flex-1 overflow-auto relative">
           {/* Gợi ý khi đang kéo tiêu đề cột: thả vào lưới để ẩn. pointer-events-none
               để không chặn drop trên tbody lẫn reorder trên header. */}
           {dragColId && (
@@ -1401,6 +1477,7 @@ export function DataGrid<T>({
                             }
                             setDragColId(null);
                           }}
+                          data-col={header.column.id}
                           style={{
                             ...headerStickyStyle(header.column, top),
                             // Cột điều khiển ghim cứng width; cột dữ liệu auto chia phần còn lại.
@@ -1443,14 +1520,19 @@ export function DataGrid<T>({
                               </span>
                             )}
                           </span>
-                          {/* Resize handle (kéo viền phải đổi rộng cột) */}
+                          {/* Resize handle: kéo viền đổi rộng cột; NHẮP ĐÚP → autofit nội dung. */}
                           {header.column.getCanResize() && (
                             <button
                               type="button"
-                              aria-label="Kéo đổi rộng cột"
+                              aria-label="Kéo đổi rộng cột (nhắp đúp: tự co theo nội dung)"
+                              title="Kéo để đổi rộng · Nhắp đúp để tự co theo nội dung"
                               onMouseDown={header.getResizeHandler()}
                               onTouchStart={header.getResizeHandler()}
                               onClick={(e) => e.stopPropagation()}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                autofitColumn(header.column.id);
+                              }}
                               className={cn(
                                 "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none hover:bg-accent/50",
                                 header.column.getIsResizing() && "bg-accent",
@@ -1611,13 +1693,15 @@ export function DataGrid<T>({
                           return (
                             <td
                               key={cell.id}
+                              data-col={cell.column.id}
                               style={{
                                 ...pinnedStyle(cell.column),
                                 ...sizedWidth(cell.column),
                               }}
                               className={cn(
-                                "py-2 overflow-hidden whitespace-nowrap border-r border-border/40 dark:border-border",
-                                cm?.compact ? "px-0.5" : "px-3",
+                                // py-1 (compact) + overflow-hidden mọi ô (table-fixed clip nội dung).
+                                "py-1 overflow-hidden whitespace-nowrap border-r border-border/40 dark:border-border",
+                                cm?.compact ? "px-0.5" : "px-2",
                                 pinned && "bg-bg",
                                 ccls,
                               )}

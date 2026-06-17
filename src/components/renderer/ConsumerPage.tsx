@@ -1260,7 +1260,11 @@ function EditableListWidget({
         enableGrouping: false,
         enableSorting: false,
         meta: { compact: true }, // giảm padding ô cho gọn
-        size: inline ? undefined : 28, // popover: vừa khít nút ⋯ (24px) + padding sát; inline: auto
+        // PHẢI có size số (kể cả inline) → cột được GHIM (resize kéo nhỏ/rộng được +
+        // không tự giãn theo nội dung). size undefined = table-auto, không kéo được.
+        // Mặc định inline tính theo số nút; người dùng kéo đổi, width được nhớ.
+        size: inline ? Math.min(48 + rowActions.length * 40, 240) : 28,
+        minSize: 36,
         cell: (ctx) => {
           const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
           if (row.__isNew) return null;
@@ -2306,7 +2310,10 @@ function ListWidget({
                 <I.MoreHorizontal size={13} className="text-muted/70" />
               </span>
             ),
-            size: rowActsInline ? undefined : 28, // vừa khít nút ⋯ (24px) + padding sát
+            // size số (kể cả inline) để cột được GHIM → kéo nhỏ/rộng được, không
+            // tự giãn theo nội dung. Mặc định inline tính theo số nút; nhớ width sau kéo.
+            size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
+            minSize: 36,
             meta: { compact: true }, // giảm padding ô cho gọn
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
