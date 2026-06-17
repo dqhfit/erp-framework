@@ -261,7 +261,19 @@ vấn đề hay nhầm lẫn — luôn tách bạch:
 - Dựng/sửa page, datasource, entity ở **local erp_sample KHÔNG tự lên prod**
   (2 DB khác nhau). Phải đẩy chủ động qua **MCP migration** (`/mcp/migration`).
 - Cập nhật TẠI CHỖ (giữ id + published + link menu), KHÔNG tạo bản trùng:
-  - Page: `page_create_draft` + `overwrite:true` + `overwritePublished:true`.
+  - **Page — GIỮ `id` (UUID toàn cục) là chốt CHỐNG ĐẺ TRÙNG**: `page_create_draft`
+    truyền `id` của trang → upsert theo id (update tại chỗ, `legacy_menu_map.page_id`
+    giữ nguyên, khỏi gán menu lại). BỎ `id` = khớp theo `name` (cũ) → khi tên drift
+    (đặt `<base>_<6 ký tự đầu id>`) là **đẻ trang mới**. Trùng-tên-khác-id → trả
+    `name_conflict` (không đè bậy). Kèm `overwrite:true` + `overwritePublished:true`.
+    - **Đồng bộ tự động (khuyến nghị)**: `node tooling/migration-cli/src/sync-pages.mjs`
+      — sync **2 CHIỀU** dev↔prod (prod=hub UUID), keyset + so nội dung, **MẶC ĐỊNH
+      dry** (thêm `--apply`; `--only <tên,...>` lọc). Cho 1 người NHIỀU MÁY dev. Một
+      chiều: `sync-pages-to-prod.mjs --only <tên>` (đẩy) / `sync-pages-from-prod.mjs`
+      (kéo, PROD-WINS — KHÔNG chạy khi local mới hơn).
+    - ⚠ Soi page PHẢI lọc `deleted_at IS NULL` (trang xoá mềm vẫn trả nếu không lọc);
+      `legacy_menu_map.page_id` có thể trỏ trang ĐÃ XOÁ (binding mồ côi) — kiểm trước
+      khi kết luận "trang live".
   - Datasource: `datasource_create_draft` + `overwrite:true`.
   - So/soi TRƯỚC khi đè: `page_list`, `migration_query_readonly` (CHỈ-ĐỌC).
 - **Thứ tự BẮT BUỘC: deploy code TRƯỚC → rồi mới đẩy config.** Config mới gặp
