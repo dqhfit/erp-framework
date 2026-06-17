@@ -1,0 +1,844 @@
+/* ==========================================================
+   settings.menu-pages — "Gán trang cho menu": UI trực quan để gắn 1 trang
+   (low-code page) vào từng node menu DQHF (legacy_menu_map). Cây menu lồng
+   theo parentCode; mỗi node có thể gán / đổi / gỡ trang bằng bộ chọn tìm
+   kiếm. Khác "Trình dựng menu" (/settings/navigation) — cái đó dựng cây
+   nav_items cho sidebar; trang này gán trang cho MENU CỔNG (portal DQHF).
+   Backend: legacyMenu.pageBindings + legacyMenu.setNodePage (admin settings).
+   ========================================================== */
+import { createLegacyMenuClient, type LegacyPageBinding } from "@erp-framework/client";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { I } from "@/components/Icons";
+import { Button, Card, Chip, EmptyState, Input, Modal, SearchableSelect } from "@/components/ui";
+import { dialog } from "@/lib/dialog";
+import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import { useUserObjects } from "@/stores/userObjects";
+
+const api = createLegacyMenuClient("");
+
+type FilterKind = "all" | "assigned" | "unassigned";
+
+const STATUS_DOT: Record<string, string> = {
+  xong: "bg-success",
+  dang: "bg-warning",
+  chua: "bg-muted/40",
+};
+
+function MenuPagesPage() {
+  const pages = useUserObjects((s) => s.pages);
+  const [rows, setRows] = useState<LegacyPageBinding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<FilterKind>("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [editCode, setEditCode] = useState<string | null>(null);
+  const [orphanOpen, setOrphanOpen] = useState(false);
+  const [orphanQ, setOrphanQ] = useState("");
+  const [showAllPages, setShowAllPages] = useState(false);
+  // Trang đang gán vào menu — mở modal chọn node đích.
+  const [assignPageId, setAssignPageId] = useState<string | null>(null);
+  // Chế độ sửa cấu trúc (đổi tên / chuyển nhánh / sắp xếp / thêm / ẩn / xoá node).
+  const [structMode, setStructMode] = useState(false);
+  const [renameCode, setRenameCode] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [moveCode, setMoveCode] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.pageBindings();
+      setRows(data);
+      // Mặc định mở cấp gốc để thấy nhánh đầu tiên.
+      const codes = new Set(data.map((r) => r.sourceCode));
+      const rootCodes = data
+        .filter((r) => !r.parentCode || !codes.has(r.parentCode))
+        .map((r) => r.sourceCode);
+      setExpanded(new Set(rootCodes));
+    } catch (e) {
+      await dialog.alert(`Lỗi tải menu: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const byCode = useMemo(() => new Map(rows.map((r) => [r.sourceCode, r])), [rows]);
+
+  const childrenOf = useMemo(() => {
+    const m = new Map<string | null, LegacyPageBinding[]>();
+    for (const r of rows) {
+      const k = r.parentCode && byCode.has(r.parentCode) ? r.parentCode : null;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(r);
+    }
+    for (const arr of m.values())
+      arr.sort((a, b) => a.sort - b.sort || (a.name ?? "").localeCompare(b.name ?? "", "vi"));
+    return m;
+  }, [rows, byCode]);
+
+  const roots = childrenOf.get(null) ?? [];
+
+  const hasChildren = useCallback((code: string) => childrenOf.has(code), [childrenOf]);
+
+  // Tuỳ chọn cho bộ chọn trang: nhãn + đánh dấu nháp; trang đã xuất bản lên đầu.
+  const pageOptions = useMemo(
+    () =>
+      [...pages]
+        .sort(
+          (a, b) =>
+            Number(b.isPublished) - Number(a.isPublished) || a.name.localeCompare(b.name, "vi"),
+        )
+        .map((p) => ({
+          value: p.id,
+          label: p.isPublished ? p.name : `${p.name} · nháp`,
+        })),
+    [pages],
+  );
+
+  const assignedCount = useMemo(() => rows.filter((r) => r.pageId).length, [rows]);
+
+  // ── Trang chưa gắn vào node menu nào (orphan) ──
+  const assignedPageIds = useMemo(
+    () => new Set(rows.map((r) => r.pageId).filter((x): x is string => !!x)),
+    [rows],
+  );
+  const orphanAll = useMemo(
+    () => pages.filter((p) => !assignedPageIds.has(p.id)),
+    [pages, assignedPageIds],
+  );
+  // Danh sách trang hiển thị trong mục: chưa gắn (mặc định) hoặc TẤT CẢ (toggle).
+  const listedPages = useMemo(() => {
+    const oq = orphanQ.trim().toLowerCase();
+    const base = showAllPages ? pages : orphanAll;
+    return [...base]
+      .filter(
+        (p) =>
+          !oq || p.name.toLowerCase().includes(oq) || (p.techName ?? "").toLowerCase().includes(oq),
+      )
+      .sort(
+        (a, b) =>
+          Number(b.isPublished) - Number(a.isPublished) || a.name.localeCompare(b.name, "vi"),
+      );
+  }, [showAllPages, pages, orphanAll, orphanQ]);
+
+  // Trang đang gán (object) + tuỳ chọn node đích cho modal (mọi node active, kèm
+  // trang hiện tại để biết sẽ THAY gì).
+  const assignTargetPage = useMemo(
+    () => pages.find((p) => p.id === assignPageId) ?? null,
+    [pages, assignPageId],
+  );
+  const nodeAssignOptions = useMemo(
+    () =>
+      rows
+        .filter((r) => r.active)
+        .map((r) => ({
+          value: r.sourceCode,
+          label: r.pageId
+            ? `${r.name || r.sourceCode}  ·  hiện: ${r.pageLabel || r.pageName || "?"}`
+            : (r.name ?? r.sourceCode),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, "vi")),
+    [rows],
+  );
+
+  // ── Lọc + tìm kiếm: tính tập node giữ lại (match + tổ tiên) ──
+  const query = q.trim().toLowerCase();
+  const forcedOpen = query !== "" || filter !== "all";
+
+  const keepSet = useMemo(() => {
+    if (!forcedOpen) return null; // null = không lọc, hiện cây đầy đủ
+    const matchText = (r: LegacyPageBinding) =>
+      !query ||
+      [r.name, r.sourceCode, r.winId, r.pageLabel, r.pageName].some((x) =>
+        (x ?? "").toLowerCase().includes(query),
+      );
+    const passFilter = (r: LegacyPageBinding) => {
+      if (filter === "assigned") return r.pageId != null;
+      if (filter === "unassigned") return !hasChildren(r.sourceCode) && r.pageId == null;
+      return true;
+    };
+    const keep = new Set<string>();
+    for (const r of rows) {
+      if (matchText(r) && passFilter(r)) {
+        let cur: string | null = r.sourceCode;
+        while (cur && !keep.has(cur)) {
+          keep.add(cur);
+          cur = byCode.get(cur)?.parentCode ?? null;
+        }
+      }
+    }
+    return keep;
+  }, [forcedOpen, query, filter, rows, byCode, hasChildren]);
+
+  const toggle = (code: string) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(code)) n.delete(code);
+      else n.add(code);
+      return n;
+    });
+
+  const expandAll = () => setExpanded(new Set(rows.map((r) => r.sourceCode)));
+  const collapseAll = () => setExpanded(new Set());
+
+  const assign = useCallback(
+    async (code: string, pageId: string | null) => {
+      setBusyCode(code);
+      try {
+        await api.setNodePage(code, pageId);
+        const pg = pageId ? pages.find((p) => p.id === pageId) : null;
+        setRows((rs) =>
+          rs.map((r) =>
+            r.sourceCode === code
+              ? {
+                  ...r,
+                  pageId,
+                  pageLabel: pg ? pg.name : null,
+                  pageName: pg ? (pg.techName ?? null) : null,
+                  pagePublished: pg ? (pg.isPublished ?? false) : null,
+                  portStatus: pageId ? "xong" : r.portStatus,
+                }
+              : r,
+          ),
+        );
+        setEditCode(null);
+        toast.success(pageId ? "Đã gán trang" : "Đã gỡ trang");
+      } catch (e) {
+        await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusyCode(null);
+      }
+    },
+    [pages],
+  );
+
+  // Tải lại rows GIỮ trạng thái mở/lọc (cho thao tác cấu trúc) — không nháy spinner.
+  const reloadRows = useCallback(async () => {
+    try {
+      setRows(await api.pageBindings());
+    } catch (e) {
+      await dialog.alert(`Lỗi tải lại: ${(e as Error)?.message ?? e}`);
+    }
+  }, []);
+
+  // Bọc 1 thao tác cấu trúc: đánh dấu busy → chạy → reload nhẹ.
+  const runStruct = useCallback(
+    async (code: string, fn: () => Promise<unknown>) => {
+      setBusyCode(code);
+      try {
+        await fn();
+        await reloadRows();
+      } catch (e) {
+        await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+      } finally {
+        setBusyCode(null);
+      }
+    },
+    [reloadRows],
+  );
+
+  const beginRename = (code: string, name: string) => {
+    setMoveCode(null);
+    setRenameCode(code);
+    setRenameVal(name);
+  };
+  const submitRename = (code: string) => {
+    const name = renameVal.trim();
+    setRenameCode(null);
+    if (!name) return;
+    void runStruct(code, () => api.renameNode(code, name));
+  };
+
+  const addChild = async (parentCode: string | null) => {
+    const name = (await dialog.prompt("Tên mục menu mới:", "", { title: "Thêm mục" }))?.trim();
+    if (!name) return;
+    await runStruct(parentCode ?? "__root__", () => api.addNode(parentCode, name));
+    if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
+  };
+
+  const removeNode = async (code: string, name: string) => {
+    const ok = await dialog.confirm(`Xoá mục “${name || code}”? Không thể hoàn tác.`, {
+      title: "Xoá mục",
+      danger: true,
+    });
+    if (!ok) return;
+    await runStruct(code, () => api.deleteNode(code));
+  };
+
+  // Đích chuyển nhánh cho 1 node: mọi node TRỪ chính nó + hậu duệ (tránh vòng).
+  const moveTargets = (code: string) => {
+    const blocked = new Set<string>([code]);
+    const stack = [code];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (cur === undefined) break;
+      for (const c of childrenOf.get(cur) ?? []) {
+        if (!blocked.has(c.sourceCode)) {
+          blocked.add(c.sourceCode);
+          stack.push(c.sourceCode);
+        }
+      }
+    }
+    return rows
+      .filter((r) => !blocked.has(r.sourceCode))
+      .map((r) => ({ value: r.sourceCode, label: r.name || r.sourceCode }))
+      .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+  };
+
+  // ── Render 1 node (đệ quy) ──
+  function renderNode(r: LegacyPageBinding, depth: number) {
+    if (keepSet && !keepSet.has(r.sourceCode)) return null;
+    const kids = childrenOf.get(r.sourceCode) ?? [];
+    const isGroup = kids.length > 0;
+    const open = forcedOpen || expanded.has(r.sourceCode);
+    const busy = busyCode === r.sourceCode;
+    const editing = editCode === r.sourceCode;
+    const renaming = renameCode === r.sourceCode;
+    const moving = moveCode === r.sourceCode;
+
+    return (
+      <div key={r.sourceCode}>
+        <div
+          className={cn(
+            "group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover",
+            !r.active && "opacity-50",
+          )}
+          style={{ paddingLeft: 8 + depth * 18 }}
+        >
+          {/* Chevron / spacer */}
+          {isGroup ? (
+            <button
+              type="button"
+              onClick={() => toggle(r.sourceCode)}
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted hover:text-text"
+              aria-label={open ? "Thu gọn" : "Mở rộng"}
+            >
+              {open ? <I.ChevronDown size={14} /> : <I.ChevronRight size={14} />}
+            </button>
+          ) : (
+            <span className="inline-block h-5 w-5 shrink-0" />
+          )}
+
+          {/* Icon loại node */}
+          {isGroup ? (
+            <I.Folder size={15} className="shrink-0 text-warning" />
+          ) : (
+            <I.File size={15} className="shrink-0 text-accent-2" />
+          )}
+
+          {/* Tên + mã form (hoặc ô đổi tên khi đang sửa) */}
+          {renaming ? (
+            <input
+              // biome-ignore lint/a11y/noAutofocus: ô đổi tên bật theo hành động người dùng
+              autoFocus
+              value={renameVal}
+              onChange={(e) => setRenameVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRename(r.sourceCode);
+                if (e.key === "Escape") setRenameCode(null);
+              }}
+              onBlur={() => submitRename(r.sourceCode)}
+              className="input h-7 max-w-[20rem] flex-1 py-0 text-sm"
+            />
+          ) : (
+            <span className="truncate text-sm text-text" title={r.name ?? r.sourceCode}>
+              {r.name || r.sourceCode}
+            </span>
+          )}
+          {r.custom && (
+            <span className="shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] text-accent">
+              tự thêm
+            </span>
+          )}
+          {!r.active && (
+            <span className="shrink-0 rounded bg-panel-2 px-1.5 py-0.5 text-[10px] text-muted">
+              ẩn
+            </span>
+          )}
+          {r.winId && (
+            <code className="shrink-0 rounded bg-panel-2 px-1.5 py-0.5 text-[11px] text-muted">
+              {r.winId}
+            </code>
+          )}
+          <span
+            className={cn(
+              "h-1.5 w-1.5 shrink-0 rounded-full",
+              STATUS_DOT[r.portStatus] ?? "bg-muted/40",
+            )}
+            title={`Trạng thái port: ${r.portStatus}`}
+          />
+
+          {/* Khu vực thao tác (đẩy về phải): chế độ cấu trúc HOẶC gán trang */}
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {structMode ? (
+              moving ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-64">
+                    <SearchableSelect
+                      value={r.parentCode ?? ""}
+                      onChange={(v) => {
+                        setMoveCode(null);
+                        runStruct(r.sourceCode, () => api.moveNode(r.sourceCode, v || null));
+                      }}
+                      options={moveTargets(r.sourceCode)}
+                      placeholder="Chọn nhánh cha…"
+                      searchPlaceholder="Tìm mục cha…"
+                      emptyOption="— Gốc (không cha) —"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMoveCode(null)}
+                    icon={<I.X size={14} />}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="Lên"
+                    aria-label="Đưa lên"
+                    onClick={() =>
+                      runStruct(r.sourceCode, () => api.reorderNode(r.sourceCode, "up"))
+                    }
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    <I.ChevronUp size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="Xuống"
+                    aria-label="Đưa xuống"
+                    onClick={() =>
+                      runStruct(r.sourceCode, () => api.reorderNode(r.sourceCode, "down"))
+                    }
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    <I.ChevronDown size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="Đổi tên"
+                    aria-label="Đổi tên"
+                    onClick={() => beginRename(r.sourceCode, r.name ?? "")}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    <I.Edit size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="Chuyển sang nhánh cha khác"
+                    aria-label="Chuyển nhánh"
+                    onClick={() => {
+                      setRenameCode(null);
+                      setMoveCode(r.sourceCode);
+                    }}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    <I.ArrowRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="Thêm mục con"
+                    aria-label="Thêm mục con"
+                    onClick={() => addChild(r.sourceCode)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    <I.Plus size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title={r.active ? "Ẩn khỏi menu" : "Hiện lại"}
+                    aria-label={r.active ? "Ẩn" : "Hiện"}
+                    onClick={() =>
+                      runStruct(r.sourceCode, () => api.setNodeActive(r.sourceCode, !r.active))
+                    }
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    {r.active ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                  </button>
+                  {r.custom && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      title="Xoá mục"
+                      aria-label="Xoá mục"
+                      onClick={() => removeNode(r.sourceCode, r.name ?? "")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-danger/15 hover:text-danger disabled:opacity-40"
+                    >
+                      <I.Trash size={14} />
+                    </button>
+                  )}
+                </div>
+              )
+            ) : editing ? (
+              <div className="flex items-center gap-1.5">
+                <div className="w-72">
+                  <SearchableSelect
+                    value={r.pageId ?? ""}
+                    onChange={(v) => assign(r.sourceCode, v || null)}
+                    options={pageOptions}
+                    placeholder="Tìm + chọn trang…"
+                    searchPlaceholder="Gõ tên trang…"
+                    emptyOption="— Không gán —"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditCode(null)}
+                  icon={<I.X size={14} />}
+                />
+              </div>
+            ) : r.pageId ? (
+              <>
+                <Chip className="max-w-[18rem] truncate" title={r.pageLabel ?? ""}>
+                  {r.pageLabel || r.pageName || r.pageId}
+                </Chip>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[11px]",
+                    r.pagePublished ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                  )}
+                >
+                  {r.pagePublished ? "Đã xuất bản" : "Nháp"}
+                </span>
+                <a
+                  href={`/pages/${r.pageId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text"
+                  title="Mở trang (tab mới)"
+                  aria-label="Mở trang"
+                >
+                  <I.Eye size={14} />
+                </a>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setEditCode(r.sourceCode)}
+                >
+                  Đổi
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => assign(r.sourceCode, null)}
+                  icon={<I.Trash size={14} />}
+                  title="Gỡ trang"
+                />
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => setEditCode(r.sourceCode)}
+                icon={<I.Plus size={14} />}
+              >
+                Gán trang
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {isGroup && open && kids.map((c) => renderNode(c, depth + 1))}
+      </div>
+    );
+  }
+
+  const FILTERS: { key: FilterKind; label: string }[] = [
+    { key: "all", label: "Tất cả" },
+    { key: "assigned", label: `Đã gán (${assignedCount})` },
+    { key: "unassigned", label: "Chưa gán" },
+  ];
+
+  return (
+    // h-full + overflow-y-auto: <main> app shell là overflow-hidden nên route phải
+    // tự cấp khung cuộn (giống settings.rbac/llm), nếu không cây menu dài bị cắt.
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-5xl space-y-4 p-4">
+        <header className="space-y-1">
+          <h1 className="flex items-center gap-2 text-lg font-semibold text-text">
+            <I.GitBranch size={18} className="text-accent" />
+            Gán trang cho menu
+          </h1>
+          <p className="text-sm text-muted">
+            Gắn từng mục menu DQHF (cổng người dùng) với một trang low-code. Node đã gán trang đã
+            xuất bản sẽ hiện trên menu cổng cho mọi người; trang nháp chỉ admin/editor thấy.
+          </p>
+        </header>
+
+        {/* Thanh công cụ */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[16rem]">
+            <I.Search
+              size={15}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Tìm theo tên mục, mã form, hoặc tên trang…"
+              className="pl-8"
+            />
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-panel p-0.5">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs transition-colors",
+                  filter === f.key ? "bg-accent/15 text-accent" : "text-muted hover:text-text",
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={expandAll} icon={<I.ChevronDown size={14} />}>
+            Mở hết
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={collapseAll}
+            icon={<I.ChevronRight size={14} />}
+          >
+            Thu hết
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={load}
+            icon={<I.RefreshCw size={14} />}
+            title="Tải lại"
+          />
+          <Button
+            variant={structMode ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => {
+              setStructMode((m) => !m);
+              setEditCode(null);
+              setRenameCode(null);
+              setMoveCode(null);
+            }}
+            icon={<I.Edit size={14} />}
+            title="Bật/tắt chế độ sửa cấu trúc menu"
+          >
+            Sửa cấu trúc
+          </Button>
+          {structMode && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => addChild(null)}
+              icon={<I.Plus size={14} />}
+            >
+              Thêm mục gốc
+            </Button>
+          )}
+        </div>
+
+        {structMode && (
+          <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-muted">
+            Chế độ sửa cấu trúc: đổi tên, sắp xếp (lên/xuống), chuyển nhánh cha, thêm mục con,
+            ẩn/hiện, xoá (mục tự thêm). Mọi chỉnh tay được giữ qua mỗi lần re-import DQHF.
+          </p>
+        )}
+
+        {/* Danh sách trang — thu gọn/mở rộng + tìm kiếm + nút "Gán vào menu" mỗi trang */}
+        <Card className="overflow-hidden p-0">
+          <button
+            type="button"
+            onClick={() => setOrphanOpen((o) => !o)}
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-hover"
+          >
+            {orphanOpen ? <I.ChevronDown size={15} /> : <I.ChevronRight size={15} />}
+            <I.File size={15} className="text-accent-2" />
+            <span className="text-sm font-medium text-text">
+              {showAllPages ? "Tất cả trang" : "Trang chưa gắn menu"}
+            </span>
+            <span className="rounded-full bg-panel-2 px-2 py-0.5 text-xs text-muted">
+              {showAllPages ? pages.length : orphanAll.length}
+            </span>
+            <span className="ml-auto text-xs text-muted">{orphanOpen ? "Thu gọn" : "Mở rộng"}</span>
+          </button>
+          {orphanOpen && (
+            <div className="space-y-2 border-t border-border p-3">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <I.Search
+                    size={15}
+                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                  <Input
+                    value={orphanQ}
+                    onChange={(e) => setOrphanQ(e.target.value)}
+                    placeholder={showAllPages ? "Tìm trang…" : "Tìm trang chưa gắn…"}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-panel p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllPages(false)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs transition-colors",
+                      !showAllPages ? "bg-accent/15 text-accent" : "text-muted hover:text-text",
+                    )}
+                  >
+                    Chưa gắn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllPages(true)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs transition-colors",
+                      showAllPages ? "bg-accent/15 text-accent" : "text-muted hover:text-text",
+                    )}
+                  >
+                    Tất cả
+                  </button>
+                </div>
+              </div>
+              {!showAllPages && orphanAll.length === 0 ? (
+                <p className="px-1 py-3 text-center text-sm text-muted">
+                  Mọi trang đều đã được gắn vào menu. 🎉
+                </p>
+              ) : listedPages.length === 0 ? (
+                <p className="px-1 py-3 text-center text-sm text-muted">
+                  Không có trang nào khớp “{orphanQ}”.
+                </p>
+              ) : (
+                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-1">
+                  {listedPages.map((p) => (
+                    <div
+                      key={p.id}
+                      className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
+                    >
+                      <I.File size={14} className="shrink-0 text-accent-2" />
+                      <span className="truncate text-sm text-text" title={p.name}>
+                        {p.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1 py-0.5 text-[10px]",
+                          p.isPublished
+                            ? "bg-success/15 text-success"
+                            : "bg-warning/15 text-warning",
+                        )}
+                      >
+                        {p.isPublished ? "xb" : "nháp"}
+                      </span>
+                      <div className="ml-auto flex shrink-0 items-center gap-1">
+                        <a
+                          href={`/pages/${p.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Mở trang (tab mới)"
+                          aria-label="Mở trang"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text"
+                        >
+                          <I.Eye size={14} />
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAssignPageId(p.id)}
+                          icon={<I.GitBranch size={14} />}
+                        >
+                          Gán vào menu
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="px-1 text-xs text-muted">
+                “Gán vào menu” → chọn mục menu đích; trang hiện tại của mục đó (nếu có) sẽ được thay
+                bằng trang này. Hoặc gán trực tiếp ở cây menu bên dưới.
+              </p>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-1.5">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted">
+              <I.Loader size={16} className="animate-spin" />
+              Đang tải cây menu…
+            </div>
+          ) : roots.length === 0 ? (
+            <EmptyState
+              icon={<I.GitBranch size={28} />}
+              title="Chưa có menu DQHF"
+              hint="Vào Migrate DQHF → Cockpit để import cây menu (SYS_MENU_NEW) trước."
+            />
+          ) : keepSet && keepSet.size === 0 ? (
+            <EmptyState
+              icon={<I.Search size={28} />}
+              title="Không khớp"
+              hint="Không có mục menu nào khớp bộ lọc / từ khóa hiện tại."
+            />
+          ) : (
+            <div className="space-y-0.5">{roots.map((r) => renderNode(r, 0))}</div>
+          )}
+        </Card>
+      </div>
+
+      {/* Modal gán 1 trang vào 1 mục menu (thay trang hiện tại của mục đó) */}
+      <Modal
+        open={assignPageId !== null}
+        onClose={() => setAssignPageId(null)}
+        title="Gán trang vào menu"
+        width={520}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            Chọn mục menu để gán trang{" "}
+            <span className="font-medium text-text">“{assignTargetPage?.name ?? ""}”</span>. Nếu mục
+            đã có trang, trang đó sẽ bị thay.
+          </p>
+          <SearchableSelect
+            value=""
+            onChange={(sourceCode) => {
+              if (sourceCode && assignPageId) {
+                const pid = assignPageId;
+                setAssignPageId(null);
+                assign(sourceCode, pid);
+              }
+            }}
+            options={nodeAssignOptions}
+            placeholder="Tìm + chọn mục menu…"
+            searchPlaceholder="Gõ tên mục menu…"
+          />
+          <p className="text-xs text-muted">
+            Mục đang hiện “· hiện: …” là mục đã có trang — chọn sẽ thay trang đó.
+          </p>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+export const Route = createFileRoute("/settings/menu-pages")({
+  component: MenuPagesPage,
+});

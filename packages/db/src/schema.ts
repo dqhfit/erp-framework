@@ -783,6 +783,11 @@ export const legacyMenuMap = pgTable(
     // Kết quả resolver: {procs[], controls[], repos[], tables[], filesScanned, note}.
     resolved: jsonb("resolved"),
     resolvedAt: timestamp("resolved_at"),
+    // Override cấu trúc do người dùng sửa tay (name/parentCode/sort/active) — giữ
+    // qua re-import: import ghi đè cột raw, rồi reapplyMenuOverrides() áp lại.
+    overrides: jsonb("overrides"),
+    // Node người dùng tự thêm trong app (không có trong SYS_MENU_NEW) → import bỏ qua.
+    custom: boolean("custom").default(false).notNull(),
     importedAt: timestamp("imported_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

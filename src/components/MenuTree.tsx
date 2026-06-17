@@ -46,9 +46,12 @@ function compareName(node: NavNode): string {
  *  (trạng thái mở/thu gọn theo code vẫn đúng). Chỉ dùng ở portal (end-user) —
  *  admin giữ nguyên cấu trúc menu gốc để quản lý. */
 function collapseSameNameGroups(nodes: NavNode[]): NavNode[] {
+  const codes = new Set(nodes.map((n) => n.code));
   const childrenOf = new Map<string, NavNode[]>();
   for (const n of nodes) {
-    const k = n.parentCode ?? "__root";
+    // Gốc = không có cha HOẶC cha nằm NGOÀI tập (navTree lọc có thể giữ node con
+    // mà cắt mất cha → node "mồ côi" vẫn phải coi là gốc; nếu không rớt cả nhánh).
+    const k = !n.parentCode || !codes.has(n.parentCode) ? "__root" : n.parentCode;
     const arr = childrenOf.get(k);
     if (arr) arr.push(n);
     else childrenOf.set(k, [n]);
@@ -138,6 +141,8 @@ export const MenuTree = forwardRef<
     cleanLabels?: boolean;
     /** Gộp nhóm con trùng tên nhóm cha (portal). Admin để false giữ cấu trúc gốc. */
     compact?: boolean;
+    /** Cho phép "cô lập" 1 nhóm: mỗi nhóm có nút focus → chỉ hiện riêng nhánh đó. */
+    isolatable?: boolean;
     /** Yêu thích: kiểm tra pageId đã yêu thích chưa + toggle (bật thì hiện sao). */
     isFav?: (pageId: string) => boolean;
     onToggleFav?: (node: NavNode) => void;
@@ -151,6 +156,7 @@ export const MenuTree = forwardRef<
     storageKey,
     cleanLabels = false,
     compact = false,
+    isolatable = false,
     isFav,
     onToggleFav,
   },
@@ -184,6 +190,15 @@ export const MenuTree = forwardRef<
     () => effNodes.filter((n) => (childrenOf.get(n.code)?.length ?? 0) > 0).map((n) => n.code),
     [effNodes, childrenOf],
   );
+  // Cô lập: chỉ hiện riêng 1 nhóm — ẩn MỌI nhóm khác (kể cả các nhóm cha lớn như
+  // "Đối tượng", "Vận hành"…). Nếu code không còn trong cây (đổi dữ liệu) → tự coi
+  // như tắt cô lập (hiện lại tất cả).
+  const [isolateCode, setIsolateCode] = useState<string | null>(null);
+  const isolated = useMemo(
+    () => (isolateCode ? (effNodes.find((n) => n.code === isolateCode) ?? null) : null),
+    [isolateCode, effNodes],
+  );
+  const shownRoots = isolated ? [isolated] : roots;
   useImperativeHandle(
     ref,
     () => ({
@@ -197,8 +212,26 @@ export const MenuTree = forwardRef<
     // KHÔNG bị cắt — kéo ngang để xem hết. min-w-full để vẫn lấp đầy bề
     // ngang sidebar khi nội dung ngắn.
     <div className="overflow-x-auto">
+      {/* Đang cô lập 1 nhóm → thanh báo + nút hiện lại tất cả. */}
+      {isolated && (
+        <button
+          type="button"
+          onClick={() => setIsolateCode(null)}
+          title="Hiện lại tất cả menu"
+          className="sticky left-0 w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-accent bg-accent/10 hover:bg-accent/15 border-b border-border"
+        >
+          <I.X size={12} className="shrink-0" />
+          <span className="whitespace-nowrap">
+            Đang xem riêng:{" "}
+            <span className="font-semibold lowercase first-letter:uppercase">
+              {displayLabel(isolated, cleanLabels)}
+            </span>{" "}
+            — hiện tất cả
+          </span>
+        </button>
+      )}
       <ul className="py-1 w-max min-w-full">
-        {roots.map((r) => (
+        {shownRoots.map((r) => (
           <MenuBranch
             key={r.code}
             node={r}
@@ -211,6 +244,8 @@ export const MenuTree = forwardRef<
             expandState={map}
             onToggle={toggle}
             cleanLabels={cleanLabels}
+            isolatable={isolatable}
+            onIsolate={setIsolateCode}
             isFav={isFav}
             onToggleFav={onToggleFav}
           />
@@ -231,6 +266,8 @@ function MenuBranch({
   expandState,
   onToggle,
   cleanLabels,
+  isolatable,
+  onIsolate,
   isFav,
   onToggleFav,
 }: {
@@ -245,6 +282,8 @@ function MenuBranch({
   expandState: Record<string, boolean>;
   onToggle: (code: string, currentlyOpen: boolean) => void;
   cleanLabels?: boolean;
+  isolatable?: boolean;
+  onIsolate?: (code: string) => void;
   isFav?: (pageId: string) => boolean;
   onToggleFav?: (node: NavNode) => void;
 }) {
@@ -310,20 +349,37 @@ function MenuBranch({
   if (kids.length === 0) return null; // nhóm rỗng — ẩn
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => onToggle(node.code, open)}
-        style={{ paddingLeft: 12 + depth * 12 }}
-        className="w-full text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted flex items-center gap-1.5 hover:bg-hover/40"
-      >
-        <I.ChevronRight
-          size={12}
-          className={cn("shrink-0 transition-transform", open && "rotate-90")}
-        />
-        <span className="whitespace-nowrap lowercase first-letter:uppercase">
-          {displayLabel(node, cleanLabels)}
-        </span>
-      </button>
+      <div className="group/grp flex items-center text-muted hover:bg-hover/40">
+        <button
+          type="button"
+          onClick={() => onToggle(node.code, open)}
+          style={{ paddingLeft: 12 + depth * 12 }}
+          className="flex-1 min-w-0 text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5"
+        >
+          <I.ChevronRight
+            size={12}
+            className={cn("shrink-0 transition-transform", open && "rotate-90")}
+          />
+          <span className="whitespace-nowrap lowercase first-letter:uppercase">
+            {displayLabel(node, cleanLabels)}
+          </span>
+        </button>
+        {/* Nút "cô lập" — chỉ hiện riêng nhóm này, ẩn mọi nhóm khác. Sticky ghim mép
+            phải (cây cuộn ngang). Hiện khi hover hàng nhóm. */}
+        {isolatable && onIsolate && (
+          <button
+            type="button"
+            title="Chỉ hiện riêng nhóm này"
+            onClick={(e) => {
+              e.stopPropagation();
+              onIsolate(node.code);
+            }}
+            className="sticky right-1 shrink-0 w-5 h-5 mr-1 rounded flex items-center justify-center bg-panel hover:bg-hover/60 opacity-0 group-hover/grp:opacity-100 transition-opacity"
+          >
+            <I.Focus size={12} className="text-muted" />
+          </button>
+        )}
+      </div>
       {open && (
         <ul>
           {kids.map((k) => (
@@ -339,6 +395,8 @@ function MenuBranch({
               expandState={expandState}
               onToggle={onToggle}
               cleanLabels={cleanLabels}
+              isolatable={isolatable}
+              onIsolate={onIsolate}
               isFav={isFav}
               onToggleFav={onToggleFav}
             />

@@ -62,6 +62,23 @@ export interface LegacyMenuNodeDetail {
   resolvedAt: string | null;
 }
 
+/** 1 dòng cho UI "Gán trang cho menu" — node + trang đang gán (nếu có). */
+export interface LegacyPageBinding {
+  sourceCode: string;
+  name: string | null;
+  level: number | null;
+  parentCode: string | null;
+  sort: number;
+  winId: string | null;
+  active: boolean;
+  custom: boolean;
+  portStatus: string;
+  pageId: string | null;
+  pageLabel: string | null;
+  pageName: string | null;
+  pagePublished: boolean | null;
+}
+
 export function createLegacyMenuClient(baseUrl: string) {
   const trpc = createTRPCClient<AppRouter>({
     links: [
@@ -124,6 +141,41 @@ export function createLegacyMenuClient(baseUrl: string) {
           pageId: string | null;
         }>
       >,
+    /** Liệt kê MỌI node + trang đang gán (cho UI gán trang vào menu). */
+    pageBindings: () => trpc.legacyMenu.pageBindings.query() as Promise<LegacyPageBinding[]>,
+    /** Gán/gỡ trang cho 1 node menu (pageId=null → gỡ). */
+    setNodePage: (sourceCode: string, pageId: string | null) =>
+      trpc.legacyMenu.setNodePage.mutate({ sourceCode, pageId }) as Promise<{
+        ok: true;
+        pageId: string | null;
+      }>,
+    /** Đổi tên 1 node menu. */
+    renameNode: (sourceCode: string, name: string) =>
+      trpc.legacyMenu.renameNode.mutate({ sourceCode, name }) as Promise<{ ok: true }>,
+    /** Ẩn/hiện 1 node (active=false → ẩn khỏi portal). */
+    setNodeActive: (sourceCode: string, active: boolean) =>
+      trpc.legacyMenu.setNodeActive.mutate({ sourceCode, active }) as Promise<{
+        ok: true;
+        active: boolean;
+      }>,
+    /** Chuyển 1 node sang cha khác (parentCode=null → ra gốc). */
+    moveNode: (sourceCode: string, parentCode: string | null) =>
+      trpc.legacyMenu.moveNode.mutate({ sourceCode, parentCode }) as Promise<{ ok: true }>,
+    /** Đổi thứ tự 1 node trong nhóm cùng cha (lên/xuống). */
+    reorderNode: (sourceCode: string, direction: "up" | "down") =>
+      trpc.legacyMenu.reorderNode.mutate({ sourceCode, direction }) as Promise<{
+        ok: true;
+        moved: boolean;
+      }>,
+    /** Thêm node menu tự tạo dưới 1 cha (parentCode=null → gốc). */
+    addNode: (parentCode: string | null, name: string) =>
+      trpc.legacyMenu.addNode.mutate({ parentCode, name }) as Promise<{
+        ok: true;
+        sourceCode: string;
+      }>,
+    /** Xoá 1 node (chỉ node custom không còn con). */
+    deleteNode: (sourceCode: string) =>
+      trpc.legacyMenu.deleteNode.mutate({ sourceCode }) as Promise<{ ok: true }>,
     /** Thống kê tiến độ port. */
     stats: () => trpc.legacyMenu.stats.query() as Promise<LegacyMenuStats>,
     /** Resolve source C# (env DQHF_SOURCE_DIR) → procs/controls/repos mỗi node. */

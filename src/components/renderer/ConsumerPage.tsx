@@ -1260,7 +1260,7 @@ function EditableListWidget({
         enableGrouping: false,
         enableSorting: false,
         meta: { compact: true }, // giảm padding ô cho gọn
-        size: inline ? undefined : 44, // popover: 1 nút nhỏ; inline: auto theo số nút
+        size: inline ? undefined : 28, // popover: vừa khít nút ⋯ (24px) + padding sát; inline: auto
         cell: (ctx) => {
           const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
           if (row.__isNew) return null;
@@ -2306,7 +2306,7 @@ function ListWidget({
                 <I.MoreHorizontal size={13} className="text-muted/70" />
               </span>
             ),
-            size: rowActsInline ? undefined : 44,
+            size: rowActsInline ? undefined : 28, // vừa khít nút ⋯ (24px) + padding sát
             meta: { compact: true }, // giảm padding ô cho gọn
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {

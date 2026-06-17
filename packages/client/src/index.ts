@@ -115,6 +115,7 @@ export {
   type LegacyMenuNodeDetail,
   type LegacyMenuResolved,
   type LegacyMenuStats,
+  type LegacyPageBinding,
   type LegacyReport,
 } from "./legacy-menu";
 export { LocalStorageDataSource } from "./local-storage";

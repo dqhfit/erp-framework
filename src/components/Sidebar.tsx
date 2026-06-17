@@ -1,6 +1,7 @@
 import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { I } from "@/components/Icons";
 import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NavMenuSection } from "@/components/NavMenuSection";
@@ -670,6 +671,7 @@ function PagesTreeSection({
   allPages,
   onOpen,
   onDeletePage,
+  onAssignPage,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -684,6 +686,8 @@ function PagesTreeSection({
   allPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
   onOpen: (to: string) => void;
   onDeletePage?: (id: string) => void;
+  /** Gán 1 trang lẻ (chưa gắn menu) vào 1 mục menu DQHF. */
+  onAssignPage?: (page: { id: string; name: string }) => void;
 }) {
   const t = useT();
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
@@ -694,11 +698,21 @@ function PagesTreeSection({
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  // Tìm kiếm CỤC BỘ trong nhóm "Chưa gắn menu" — chỉ lọc trang lẻ của nhóm đó.
+  const [orphanSearchOpen, setOrphanSearchOpen] = useState(false);
+  const [orphanQ, setOrphanQ] = useState("");
+  const orphanSearchRef = useRef<HTMLInputElement>(null);
+  // Thu gọn nhóm "Chưa gắn menu" + cô lập (ẩn cây menu, chỉ hiện nhóm này).
+  const [orphanCollapsed, setOrphanCollapsed] = useState(false);
+  const [orphanIsolated, setOrphanIsolated] = useState(false);
   // Ref điều khiển mở rộng / thu gọn tất cả nhánh cây menu trang (admin/editor).
   const menuTreeRef = useRef<MenuTreeHandle>(null);
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
+  useEffect(() => {
+    if (orphanSearchOpen) orphanSearchRef.current?.focus();
+  }, [orphanSearchOpen]);
   const closeSearch = () => {
     setSearchOpen(false);
     setQ("");
@@ -707,6 +721,10 @@ function PagesTreeSection({
   const kind = t("sidebar.pages").toLowerCase();
   const ql = q.trim().toLowerCase();
   const results = ql ? allPages.filter((p) => p.name.toLowerCase().includes(ql)) : [];
+  const oql = orphanQ.trim().toLowerCase();
+  const orphanFiltered = oql
+    ? orphanPages.filter((p) => p.name.toLowerCase().includes(oql))
+    : orphanPages;
   return (
     <div className="border-b border-border/40 pb-1">
       <div className="group/sec flex items-center px-3 pt-2 pb-0.5">
@@ -833,57 +851,165 @@ function PagesTreeSection({
       ) : (
         open && (
           <>
-            <MenuTree
-              ref={menuTreeRef}
-              nodes={navNodes}
-              activePageId={activePageId}
-              onSelect={(id) => {
-                onOpen(`/pages/${id}`);
-                onNavigate?.();
-              }}
-              storageKey="sidebar"
-            />
+            {!orphanIsolated && (
+              <MenuTree
+                ref={menuTreeRef}
+                nodes={navNodes}
+                activePageId={activePageId}
+                onSelect={(id) => {
+                  onOpen(`/pages/${id}`);
+                  onNavigate?.();
+                }}
+                storageKey="sidebar"
+                compact
+                isolatable
+              />
+            )}
             {orphanPages.length > 0 && (
               <div className="mt-1 pt-1 border-t border-border/30">
-                <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold">
-                  Chưa gắn menu
-                </div>
-                <ul>
-                  {orphanPages.map((p) => {
-                    const active = pathname === p.to || activePageId === p.id;
-                    const IconC = I[p.icon] ?? I.Layout;
-                    return (
-                      <li key={p.id} className="relative group/orphan">
+                <div className="group/orphsec flex items-center px-3 py-1">
+                  {orphanSearchOpen ? (
+                    <>
+                      <I.Search size={10} className="shrink-0 text-muted/60" />
+                      <input
+                        ref={orphanSearchRef}
+                        type="text"
+                        value={orphanQ}
+                        onChange={(e) => setOrphanQ(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setOrphanSearchOpen(false);
+                            setOrphanQ("");
+                          }
+                        }}
+                        placeholder="Tìm trang chưa gắn…"
+                        className="flex-1 bg-transparent outline-none text-[11px] text-text placeholder:text-muted/40 min-w-0 ml-1.5"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOrphanSearchOpen(false);
+                          setOrphanQ("");
+                        }}
+                        title={t("common.close")}
+                        className="w-4 h-4 rounded-sm flex items-center justify-center text-muted hover:text-text shrink-0"
+                      >
+                        <I.X size={10} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setOrphanCollapsed((c) => !c)}
+                        className="flex-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold hover:text-muted transition-colors"
+                        title={orphanCollapsed ? "Mở rộng" : "Thu gọn"}
+                      >
+                        <I.ChevronRight
+                          size={9}
+                          className={cn(
+                            "transition-transform shrink-0",
+                            !orphanCollapsed && "rotate-90",
+                          )}
+                        />
+                        <span>Chưa gắn menu</span>
+                        <span className="text-muted/30 normal-case tracking-normal">
+                          {orphanPages.length}
+                        </span>
+                      </button>
+                      <div className="flex items-center gap-0.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
-                            onOpen(p.to);
-                            onNavigate?.();
+                            setOrphanIsolated((v) => !v);
+                            setOrphanCollapsed(false);
                           }}
+                          title={
+                            orphanIsolated
+                              ? "Bỏ cô lập (hiện cả cây menu)"
+                              : "Cô lập (chỉ hiện nhóm này)"
+                          }
                           className={cn(
-                            "w-full text-left pl-4 pr-7 py-1.5 text-sm flex items-center gap-2 transition-colors",
-                            active
-                              ? "bg-accent/10 text-accent font-medium"
-                              : "text-text hover:bg-hover/40",
+                            "w-4 h-4 rounded-sm flex items-center justify-center transition-opacity shrink-0",
+                            orphanIsolated
+                              ? "text-accent"
+                              : "text-muted/40 hover:text-text opacity-0 group-hover/orphsec:opacity-100",
                           )}
                         >
-                          <IconC size={13} className="shrink-0 text-muted" />
-                          <span className="truncate">{p.name}</span>
+                          <I.Maximize size={10} />
                         </button>
-                        {onDeletePage && (
-                          <button
-                            type="button"
-                            onClick={() => onDeletePage(p.id)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger opacity-0 group-hover/orphan:opacity-100 transition-opacity"
-                            title={t("common.delete")}
-                          >
-                            <I.Trash size={11} />
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                        <button
+                          type="button"
+                          onClick={() => setOrphanSearchOpen(true)}
+                          title="Tìm trong nhóm này"
+                          className="w-4 h-4 rounded-sm flex items-center justify-center text-muted/40 hover:text-text opacity-0 group-hover/orphsec:opacity-100 transition-opacity shrink-0"
+                        >
+                          <I.Search size={10} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {!orphanCollapsed && (
+                  <>
+                    {oql && orphanFiltered.length === 0 && (
+                      <div className="px-4 py-1 text-[11px] text-muted/50">
+                        Không có trang khớp.
+                      </div>
+                    )}
+                    <ul>
+                      {orphanFiltered.map((p) => {
+                        const active = pathname === p.to || activePageId === p.id;
+                        const IconC = I[p.icon] ?? I.Layout;
+                        // Số nút hành động (gán + xoá) để chừa lề phải.
+                        const actN = (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
+                        return (
+                          <li key={p.id} className="relative group/orphan">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onOpen(p.to);
+                                onNavigate?.();
+                              }}
+                              className={cn(
+                                "w-full text-left pl-4 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                                actN >= 2 ? "pr-12" : "pr-7",
+                                active
+                                  ? "bg-accent/10 text-accent font-medium"
+                                  : "text-text hover:bg-hover/40",
+                              )}
+                            >
+                              <IconC size={13} className="shrink-0 text-muted" />
+                              <span className="truncate">{p.name}</span>
+                            </button>
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/orphan:opacity-100 transition-opacity">
+                              {onAssignPage && (
+                                <button
+                                  type="button"
+                                  onClick={() => onAssignPage({ id: p.id, name: p.name })}
+                                  className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/40 hover:bg-hover/80 hover:text-accent"
+                                  title="Gán vào menu"
+                                >
+                                  <I.GitBranch size={11} />
+                                </button>
+                              )}
+                              {onDeletePage && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeletePage(p.id)}
+                                  className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger"
+                                  title={t("common.delete")}
+                                >
+                                  <I.Trash size={11} />
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </>
@@ -1073,6 +1199,10 @@ export function Sidebar() {
   // Cây điều hướng TRANG theo MENU DQHF (legacy_menu_map.navTree). Admin/editor
   // thấy cả trang draft; rỗng (chưa link menu) → fallback danh sách phẳng.
   const [navNodes, setNavNodes] = useState<NavNode[]>([]);
+  // Trang đang gán vào menu (mở modal) + key refetch cây sau khi gán xong.
+  const [assignMenuPage, setAssignMenuPage] = useState<{ id: string; name: string } | null>(null);
+  const [navReloadKey, setNavReloadKey] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navReloadKey là trigger refetch chủ động (không đọc trong effect)
   useEffect(() => {
     let alive = true;
     createLegacyMenuClient("")
@@ -1084,7 +1214,7 @@ export function Sidebar() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [navReloadKey]);
   const userWorkflows = useUserObjects((s) => s.workflows);
   const userAgents = useUserObjects((s) => s.agents);
   const userDataSources = useUserObjects((s) => s.dataSources);
@@ -1462,6 +1592,7 @@ export function Sidebar() {
                   allPages={allPages}
                   onOpen={(to) => navigate({ to })}
                   onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
+                  onAssignPage={can("edit", "settings") ? setAssignMenuPage : undefined}
                 />
               );
             }
@@ -2019,6 +2150,22 @@ export function Sidebar() {
                 }
               />
               <SidebarItem
+                to="/settings/menu-pages"
+                active={pathname === "/settings/menu-pages"}
+                icon={<I.GitBranch size={14} />}
+                collapsed={collapsed}
+                label="Gán trang cho menu"
+                isFavorited={favs.isFav("/settings/menu-pages")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/settings/menu-pages",
+                    to: "/settings/menu-pages",
+                    label: "Gán trang cho menu",
+                    iconName: "GitBranch",
+                  })
+                }
+              />
+              <SidebarItem
                 to="/settings/plugins"
                 active={pathname === "/settings/plugins"}
                 icon={<I.Package size={14} />}
@@ -2151,6 +2298,11 @@ export function Sidebar() {
           )}
         </div>
       </aside>
+      <AssignPageToMenuModal
+        page={assignMenuPage}
+        onClose={() => setAssignMenuPage(null)}
+        onDone={() => setNavReloadKey((k) => k + 1)}
+      />
     </>
   );
 }

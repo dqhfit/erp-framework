@@ -141,6 +141,15 @@ function headerStickyStyle<T>(column: Column<T>, topOffset = 0): CSSProperties {
   return s;
 }
 
+/** Cột có size tường minh (cột điều khiển: hành động/checkbox) → ghim CỨNG
+ *  width = minWidth = maxWidth để table-auto KHÔNG kéo giãn cột lấp chỗ trống
+ *  (chỉ đặt `width` thôi vẫn bị giãn). Cột dữ liệu (size null) → undefined (auto). */
+function sizedWidth<T>(column: Column<T>): CSSProperties | undefined {
+  if (column.columnDef.size == null) return undefined;
+  const w = column.getSize();
+  return { width: w, minWidth: w, maxWidth: w };
+}
+
 /** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
  *  tiêu đề bao trên. Con là tên field (lá) hoặc nhóm con (lồng nhiều cấp).
  *  Khai báo ở `cfg.columnGroups` của widget list/grid. */
@@ -1255,7 +1264,7 @@ export function DataGrid<T>({
           {/* Gợi ý khi đang kéo tiêu đề cột: thả vào lưới để ẩn. pointer-events-none
               để không chặn drop trên tbody lẫn reorder trên header. */}
           {dragColId && (
-            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-danger text-white text-xs font-medium shadow-lg flex items-center gap-1.5">
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-accent text-white text-xs font-medium shadow-lg flex items-center gap-1.5">
               <I.EyeOff size={13} /> Thả vào lưới để ẩn cột
             </div>
           )}
@@ -1345,7 +1354,18 @@ export function DataGrid<T>({
                           colSpan={header.colSpan}
                           rowSpan={rowSpan}
                           draggable={!header.column.getIsGrouped()}
-                          onDragStart={() => setDragColId(header.column.id)}
+                          onDragStart={(e) => {
+                            // Resize handle nằm TRONG <th draggable> → kéo đổi rộng cột
+                            // cũng nổ dragstart. Đang resize thì KHÔNG khởi tạo kéo-ẩn-cột
+                            // (nếu không gợi ý "thả để ẩn" hiện nhầm khi chỉnh rộng cột).
+                            if (table.getState().columnSizingInfo.isResizingColumn) {
+                              e.preventDefault();
+                              return;
+                            }
+                            setDragColId(header.column.id);
+                          }}
+                          // Buông tiêu đề (thả ở đâu cũng vậy, kể cả huỷ/ra ngoài) → tắt gợi ý.
+                          onDragEnd={() => setDragColId(null)}
                           onDragOver={(e) => {
                             if (dragColId && dragColId !== header.column.id) e.preventDefault();
                           }}
@@ -1367,14 +1387,15 @@ export function DataGrid<T>({
                           }}
                           style={{
                             ...headerStickyStyle(header.column, top),
-                            // Chỉ cột có size tường minh (cột điều khiển: hành động/checkbox)
-                            // mới khoá width; cột dữ liệu để auto → tự chia phần còn lại,
-                            // tránh cột hành động bị giãn khi bảng ít cột.
-                            width:
-                              header.column.columnDef.size != null ? header.getSize() : undefined,
+                            // Cột điều khiển ghim cứng width; cột dữ liệu auto chia phần còn lại.
+                            ...sizedWidth(header.column),
                           }}
                           className={cn(
-                            "relative text-left px-2 py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
+                            "relative text-left py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
+                            // Cột điều khiển (compact) padding sát để cột hẹp tối đa.
+                            (header.column.columnDef.meta as GridColMeta | undefined)?.compact
+                              ? "px-0.5"
+                              : "px-2",
                             dragColId === header.column.id && "opacity-40",
                           )}
                         >
@@ -1576,14 +1597,11 @@ export function DataGrid<T>({
                               key={cell.id}
                               style={{
                                 ...pinnedStyle(cell.column),
-                                width:
-                                  cell.column.columnDef.size != null
-                                    ? cell.column.getSize()
-                                    : undefined,
+                                ...sizedWidth(cell.column),
                               }}
                               className={cn(
                                 "py-2 whitespace-nowrap border-r border-border/40 dark:border-border",
-                                cm?.compact ? "px-1" : "px-3",
+                                cm?.compact ? "px-0.5" : "px-3",
                                 pinned && "bg-bg",
                                 ccls,
                               )}

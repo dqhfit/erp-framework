@@ -11,7 +11,7 @@
 
 import { legacyMenuMap } from "@erp-framework/db";
 import type { MssqlClient } from "@erp-framework/mssql-client";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { DB } from "./db";
 
 /** Tên bảng menu trong DB nguồn DQHF. */
@@ -111,7 +111,29 @@ export async function importLegacyMenu(
     else imported++;
   }
 
+  // Re-import vừa GHI ĐÈ cột raw từ nguồn → áp lại chỉnh tay (overrides) lên trên
+  // để cấu trúc người dùng tự sửa (tên/cấp/thứ tự/ẩn) không bị mất.
+  await reapplyMenuOverrides(db, companyId);
+
   return { total: imported + updated, imported, updated };
+}
+
+/** Áp lại overrides cấu trúc (do người dùng sửa tay) lên cột raw — gọi sau mỗi
+ *  lần import từ SYS_MENU_NEW. Dùng key-presence (overrides ? 'key') để phân biệt
+ *  "đặt về null" (vd chuyển ra gốc parentCode=null) với "không override". */
+export async function reapplyMenuOverrides(db: DB, companyId: string): Promise<void> {
+  await db.execute(sql`
+    UPDATE legacy_menu_map SET
+      name        = CASE WHEN overrides ? 'name'       THEN overrides->>'name'              ELSE name        END,
+      parent_code = CASE WHEN overrides ? 'parentCode' THEN overrides->>'parentCode'        ELSE parent_code END,
+      sort        = CASE WHEN overrides ? 'sort'       THEN (overrides->>'sort')::int       ELSE sort        END,
+      level       = CASE WHEN overrides ? 'level'      THEN (overrides->>'level')::int      ELSE level       END,
+      active      = CASE WHEN overrides ? 'active'     THEN (overrides->>'active')::boolean ELSE active      END,
+      updated_at  = now()
+    WHERE company_id = ${companyId}
+      AND overrides IS NOT NULL
+      AND overrides <> '{}'::jsonb
+  `);
 }
 
 export interface MenuTreeNode {

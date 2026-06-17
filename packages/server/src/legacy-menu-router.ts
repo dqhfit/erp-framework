@@ -8,18 +8,79 @@
    Toàn bộ rbacProcedure("edit","settings") — admin only.
    ========================================================== */
 
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { legacyMenuMap, legacyReports, pages } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { logActivity } from "./activity";
+import type { DB } from "./db";
 import { importLegacyMenu, legacyMenuStats, listLegacyMenuTree } from "./legacy-menu";
 import { resolveAllMenuNodes, resolveTablesForProcs, slugifyModule } from "./legacy-menu-resolve";
 import { parseAllReports } from "./legacy-report-parse";
 import { openDefaultMssql } from "./migration-router";
 import { enqueueMigrationJob } from "./migration-worker";
 import { approvedProcedure, rbacProcedure, router } from "./trpc";
+
+/** Merge 1 patch vào cột overrides (jsonb): overrides = coalesce(overrides,{}) || patch.
+ *  Ghi lại chỉnh tay để reapplyMenuOverrides() áp lại sau mỗi lần re-import DQHF. */
+function mergeOverridesSql(patch: Record<string, unknown>) {
+  return sql`coalesce(${legacyMenuMap.overrides}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`;
+}
+
+interface StructRow {
+  sourceCode: string;
+  parentCode: string | null;
+  level: number | null;
+  sort: number;
+  custom: boolean;
+  name: string | null;
+}
+
+/** Nạp tối thiểu (code/parent/level/sort/custom/name) toàn company cho thao tác cấu trúc. */
+async function loadStructure(db: DB, companyId: string): Promise<StructRow[]> {
+  return await db
+    .select({
+      sourceCode: legacyMenuMap.sourceCode,
+      parentCode: legacyMenuMap.parentCode,
+      level: legacyMenuMap.level,
+      sort: legacyMenuMap.sort,
+      custom: legacyMenuMap.custom,
+      name: legacyMenuMap.name,
+    })
+    .from(legacyMenuMap)
+    .where(eq(legacyMenuMap.companyId, companyId));
+}
+
+/** Tập hậu duệ (gồm chính nó) của 1 node — chặn chuyển cha gây vòng. */
+function descendantsOf(all: StructRow[], code: string): Set<string> {
+  const childrenByParent = new Map<string | null, string[]>();
+  for (const r of all) {
+    const list = childrenByParent.get(r.parentCode) ?? [];
+    list.push(r.sourceCode);
+    childrenByParent.set(r.parentCode, list);
+  }
+  const out = new Set<string>([code]);
+  const stack = [code];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (cur === undefined) break;
+    for (const child of childrenByParent.get(cur) ?? []) {
+      if (!out.has(child)) {
+        out.add(child);
+        stack.push(child);
+      }
+    }
+  }
+  return out;
+}
+
+/** sort kế tiếp (cuối nhóm) trong nhóm cùng cha. */
+function nextSortInGroup(all: StructRow[], parentCode: string | null): number {
+  const sibs = all.filter((r) => r.parentCode === parentCode);
+  return sibs.length ? Math.max(...sibs.map((s) => s.sort)) + 10 : 0;
+}
 
 export const legacyMenuRouter = router({
   /** Cây điều hướng theo MENU DQHF — dùng chung Portal (viewer) + Sidebar
@@ -69,6 +130,278 @@ export const legacyMenuRouter = router({
         pageId: isVisibleLeaf(r) ? r.pageId : null,
       }));
   }),
+
+  /** Liệt kê MỌI node menu legacy (kể cả nhóm + node chưa gán trang) kèm tên
+   *  trang đang gán — phục vụ UI "Gán trang cho menu". Khác navTree: KHÔNG lọc
+   *  bỏ nhánh rỗng (admin cần thấy hết để gán). Admin/editor settings. */
+  pageBindings: rbacProcedure("edit", "settings").query(async ({ ctx }) => {
+    // KHÔNG lọc active — admin cần thấy cả node đang ẩn để quản/hiện lại.
+    const rows = await ctx.db
+      .select({
+        sourceCode: legacyMenuMap.sourceCode,
+        name: legacyMenuMap.name,
+        level: legacyMenuMap.level,
+        parentCode: legacyMenuMap.parentCode,
+        sort: legacyMenuMap.sort,
+        winId: legacyMenuMap.winId,
+        active: legacyMenuMap.active,
+        custom: legacyMenuMap.custom,
+        portStatus: legacyMenuMap.portStatus,
+        pageId: legacyMenuMap.pageId,
+        pageLabel: pages.label,
+        pageName: pages.name,
+        pagePublished: pages.published,
+      })
+      .from(legacyMenuMap)
+      .leftJoin(pages, eq(legacyMenuMap.pageId, pages.id))
+      .where(eq(legacyMenuMap.companyId, ctx.user.companyId));
+    return rows;
+  }),
+
+  /** Gán (hoặc gỡ) trang cho 1 node menu legacy theo sourceCode. pageId=null →
+   *  gỡ liên kết. Khi gán: page phải thuộc công ty. Đánh dấu portStatus='xong'
+   *  khi gán (node đã có trang đích) — KHÔNG đụng status khi gỡ. */
+  setNodePage: rbacProcedure("edit", "settings")
+    .input(
+      z.object({
+        sourceCode: z.string().min(1),
+        pageId: z.string().uuid().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.pageId) {
+        const [pg] = await ctx.db
+          .select({ id: pages.id })
+          .from(pages)
+          .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)))
+          .limit(1);
+        if (!pg) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại." });
+        }
+      }
+      const [row] = await ctx.db
+        .update(legacyMenuMap)
+        .set({
+          pageId: input.pageId,
+          // Gán → coi như đã có đích (xong); gỡ → giữ nguyên status.
+          ...(input.pageId ? { portStatus: "xong" } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(legacyMenuMap.companyId, ctx.user.companyId),
+            eq(legacyMenuMap.sourceCode, input.sourceCode),
+          ),
+        )
+        .returning({ id: legacyMenuMap.id });
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      }
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        actorUserId: ctx.user.id,
+        kind: "legacy_menu.set_page",
+        detail: input.pageId
+          ? `Gán trang ${input.pageId} cho menu ${input.sourceCode}`
+          : `Gỡ trang khỏi menu ${input.sourceCode}`,
+      }).catch(() => undefined);
+      return { ok: true, pageId: input.pageId };
+    }),
+
+  /** Đổi tên 1 node menu (ghi raw + override để giữ qua re-import). */
+  renameNode: rbacProcedure("edit", "settings")
+    .input(z.object({ sourceCode: z.string().min(1), name: z.string().trim().min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .update(legacyMenuMap)
+        .set({
+          name: input.name,
+          overrides: mergeOverridesSql({ name: input.name }),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(legacyMenuMap.companyId, ctx.user.companyId),
+            eq(legacyMenuMap.sourceCode, input.sourceCode),
+          ),
+        )
+        .returning({ id: legacyMenuMap.id });
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      return { ok: true };
+    }),
+
+  /** Ẩn/hiện 1 node (active). Node ẩn biến mất khỏi portal nhưng vẫn quản được ở UI admin. */
+  setNodeActive: rbacProcedure("edit", "settings")
+    .input(z.object({ sourceCode: z.string().min(1), active: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .update(legacyMenuMap)
+        .set({
+          active: input.active,
+          overrides: mergeOverridesSql({ active: input.active }),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(legacyMenuMap.companyId, ctx.user.companyId),
+            eq(legacyMenuMap.sourceCode, input.sourceCode),
+          ),
+        )
+        .returning({ id: legacyMenuMap.id });
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      return { ok: true, active: input.active };
+    }),
+
+  /** Chuyển 1 node sang cha khác (hoặc ra gốc parentCode=null). Chặn vòng. */
+  moveNode: rbacProcedure("edit", "settings")
+    .input(z.object({ sourceCode: z.string().min(1), parentCode: z.string().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.parentCode === input.sourceCode)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Không thể đặt node làm cha của chính nó.",
+        });
+      const all = await loadStructure(ctx.db, ctx.user.companyId);
+      const node = all.find((n) => n.sourceCode === input.sourceCode);
+      if (!node) throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      let parent: StructRow | null = null;
+      if (input.parentCode !== null) {
+        parent = all.find((n) => n.sourceCode === input.parentCode) ?? null;
+        if (!parent)
+          throw new TRPCError({ code: "NOT_FOUND", message: "Node cha đích không tồn tại." });
+        if (descendantsOf(all, input.sourceCode).has(input.parentCode))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Không thể chuyển vào nhánh con của chính nó (gây vòng).",
+          });
+      }
+      const newLevel = parent ? (parent.level ?? 0) + 1 : 1;
+      const newSort = nextSortInGroup(all, input.parentCode);
+      await ctx.db
+        .update(legacyMenuMap)
+        .set({
+          parentCode: input.parentCode,
+          level: newLevel,
+          sort: newSort,
+          overrides: mergeOverridesSql({
+            parentCode: input.parentCode,
+            level: newLevel,
+            sort: newSort,
+          }),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(legacyMenuMap.companyId, ctx.user.companyId),
+            eq(legacyMenuMap.sourceCode, input.sourceCode),
+          ),
+        );
+      return { ok: true };
+    }),
+
+  /** Đổi thứ tự 1 node trong nhóm cùng cha (lên/xuống). Chuẩn hoá lại sort cả nhóm. */
+  reorderNode: rbacProcedure("edit", "settings")
+    .input(z.object({ sourceCode: z.string().min(1), direction: z.enum(["up", "down"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const all = await loadStructure(ctx.db, ctx.user.companyId);
+      const node = all.find((n) => n.sourceCode === input.sourceCode);
+      if (!node) throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      const sibs = all
+        .filter((n) => n.parentCode === node.parentCode)
+        .sort((a, b) => a.sort - b.sort || (a.name ?? "").localeCompare(b.name ?? "", "vi"));
+      const ids = sibs.map((s) => s.sourceCode);
+      const idx = ids.indexOf(input.sourceCode);
+      const swapWith = input.direction === "up" ? idx - 1 : idx + 1;
+      if (swapWith < 0 || swapWith >= ids.length) return { ok: true, moved: false };
+      const [moved] = ids.splice(idx, 1);
+      ids.splice(swapWith, 0, moved as string);
+      const sortByCode = new Map(sibs.map((s) => [s.sourceCode, s.sort]));
+      await ctx.db.transaction(async (tx) => {
+        let pos = 0;
+        for (const code of ids) {
+          const newSort = pos * 10;
+          pos++;
+          if (sortByCode.get(code) === newSort) continue;
+          await tx
+            .update(legacyMenuMap)
+            .set({
+              sort: newSort,
+              overrides: mergeOverridesSql({ sort: newSort }),
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(legacyMenuMap.companyId, ctx.user.companyId),
+                eq(legacyMenuMap.sourceCode, code),
+              ),
+            );
+        }
+      });
+      return { ok: true, moved: true };
+    }),
+
+  /** Thêm node menu tự tạo (custom) dưới 1 cha (hoặc gốc). Sống sót re-import vì
+   *  source_code riêng không có trong SYS_MENU_NEW. */
+  addNode: rbacProcedure("edit", "settings")
+    .input(z.object({ parentCode: z.string().nullable(), name: z.string().trim().min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const all = await loadStructure(ctx.db, ctx.user.companyId);
+      let parent: StructRow | null = null;
+      if (input.parentCode !== null) {
+        parent = all.find((n) => n.sourceCode === input.parentCode) ?? null;
+        if (!parent) throw new TRPCError({ code: "NOT_FOUND", message: "Node cha không tồn tại." });
+      }
+      const sourceCode = `CUST-${randomUUID()}`;
+      const level = parent ? (parent.level ?? 0) + 1 : 1;
+      const sort = nextSortInGroup(all, input.parentCode);
+      await ctx.db.insert(legacyMenuMap).values({
+        companyId: ctx.user.companyId,
+        sourceId: 0,
+        sourceCode,
+        name: input.name,
+        level,
+        parentCode: input.parentCode,
+        sort,
+        custom: true,
+        active: true,
+        portStatus: "chua",
+      });
+      await logActivity(ctx.db, {
+        companyId: ctx.user.companyId,
+        actorUserId: ctx.user.id,
+        kind: "legacy_menu.add_node",
+        detail: `Thêm mục menu "${input.name}"`,
+      }).catch(() => undefined);
+      return { ok: true, sourceCode };
+    }),
+
+  /** Xoá 1 node — CHỈ node custom + không còn con. Node DQHF gốc dùng Ẩn thay vì xoá. */
+  deleteNode: rbacProcedure("edit", "settings")
+    .input(z.object({ sourceCode: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const all = await loadStructure(ctx.db, ctx.user.companyId);
+      const node = all.find((n) => n.sourceCode === input.sourceCode);
+      if (!node) throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
+      if (!node.custom)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Chỉ xoá được mục tự thêm. Mục từ DQHF hãy dùng Ẩn.",
+        });
+      if (all.some((n) => n.parentCode === input.sourceCode))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Mục còn mục con — xoá hoặc chuyển mục con trước.",
+        });
+      await ctx.db
+        .delete(legacyMenuMap)
+        .where(
+          and(
+            eq(legacyMenuMap.companyId, ctx.user.companyId),
+            eq(legacyMenuMap.sourceCode, input.sourceCode),
+          ),
+        );
+      return { ok: true };
+    }),
 
   /** Kiểm tra trạng thái cấu hình cần thiết cho cockpit (DQHF_SOURCE_DIR, MSSQL). */
   checkSetup: rbacProcedure("edit", "settings").query(async ({ ctx }) => {

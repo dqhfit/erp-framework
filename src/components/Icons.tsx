@@ -54,6 +54,15 @@ export const I = {
       <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
     </Icon>
   ),
+  Focus: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v3" />
+      <path d="M12 19v3" />
+      <path d="M2 12h3" />
+      <path d="M19 12h3" />
+    </Icon>
+  ),
   Database: (p: IP) => (
     <Icon {...p}>
       <ellipse cx="12" cy="5" rx="8" ry="3" />

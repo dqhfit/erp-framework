@@ -561,6 +561,13 @@
       "when": 1783703600000,
       "tag": "0079_workflow_template_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1783703700000,
+      "tag": "0080_legacy_menu_overrides",
+      "breakpoints": true
     }
   ]
 }

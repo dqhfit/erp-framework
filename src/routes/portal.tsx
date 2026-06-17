@@ -465,6 +465,7 @@ function PortalRoute() {
               storageKey="portal"
               cleanLabels
               compact
+              isolatable
               isFav={(id) => favs.isFav(id)}
               onToggleFav={(node) => {
                 if (!node.pageId) return;

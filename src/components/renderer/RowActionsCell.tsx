@@ -193,13 +193,13 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
         title="Hành động"
         aria-label="Hành động"
         className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded border transition-colors",
+          "inline-flex h-6 w-6 items-center justify-center rounded border transition-colors",
           open
             ? "border-accent/60 text-accent bg-accent/10"
             : "border-border text-muted hover:text-text hover:border-border",
         )}
       >
-        <I.MoreHorizontal size={16} />
+        <I.MoreHorizontal size={14} />
       </button>
       {open &&
         p &&
