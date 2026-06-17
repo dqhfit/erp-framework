@@ -654,10 +654,11 @@ function FavoritesSection({
   );
 }
 
-/* ─── PagesTreeSection — điều hướng TRANG theo CÂY MENU DQHF ───────
-   Admin/editor: cây menu (legacy_menu_map.navTree) cho trang đã gắn +
-   nhóm "Chưa gắn menu" cho trang lẻ (vẫn quản lý/xóa được). Lá click →
-   mở /pages/<id>. Khi sidebar thu nhỏ thì ẩn (cây cần bề ngang). */
+/* ─── PagesTreeSection — 2 nhóm: "Menu" + "Trang" ─────────────────
+   Admin/editor: nhóm "Menu" = cây điều hướng DQHF (legacy_menu_map.navTree,
+   trang ĐÃ gắn). Nhóm "Trang" = MỌI trang (đã/chưa gắn), mỗi trang có badge
+   "có menu" nếu đang nằm trong menu. Lá/trang click → mở /pages/<id>. Khi
+   sidebar thu nhỏ thì ẩn (cây cần bề ngang). */
 function PagesTreeSection({
   collapsed,
   pathname,
@@ -667,12 +668,10 @@ function PagesTreeSection({
   onAiAdd,
   onNavigate,
   navNodes,
-  orphanPages,
   allPages,
   onOpen,
-  onDeletePage,
-  onAssignPage,
   onUnassignPage,
+  onManageMenu,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -682,15 +681,13 @@ function PagesTreeSection({
   onAiAdd?: () => void;
   onNavigate?: () => void;
   navNodes: NavNode[];
-  orphanPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
-  /** Toàn bộ trang (gắn + chưa gắn menu) để lọc khi tìm kiếm. */
+  /** Toàn bộ trang — dùng cho ô tìm kiếm nhanh (kết quả phẳng). */
   allPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
   onOpen: (to: string) => void;
-  onDeletePage?: (id: string) => void;
-  /** Gán 1 trang lẻ (chưa gắn menu) vào 1 mục menu DQHF. */
-  onAssignPage?: (page: { id: string; name: string }) => void;
-  /** Gỡ 1 trang ĐÃ gắn khỏi mục menu của nó (đối xứng onAssignPage). */
+  /** Gỡ 1 trang ĐÃ gắn khỏi mục menu của nó. */
   onUnassignPage?: (node: NavNode) => void;
+  /** Mở trang Quản lý menu (icon trên header). */
+  onManageMenu?: () => void;
 }) {
   const t = useT();
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
@@ -701,21 +698,11 @@ function PagesTreeSection({
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  // Tìm kiếm CỤC BỘ trong nhóm "Chưa gắn menu" — chỉ lọc trang lẻ của nhóm đó.
-  const [orphanSearchOpen, setOrphanSearchOpen] = useState(false);
-  const [orphanQ, setOrphanQ] = useState("");
-  const orphanSearchRef = useRef<HTMLInputElement>(null);
-  // Thu gọn nhóm "Chưa gắn menu" + cô lập (ẩn cây menu, chỉ hiện nhóm này).
-  const [orphanCollapsed, setOrphanCollapsed] = useState(false);
-  const [orphanIsolated, setOrphanIsolated] = useState(false);
   // Ref điều khiển mở rộng / thu gọn tất cả nhánh cây menu trang (admin/editor).
   const menuTreeRef = useRef<MenuTreeHandle>(null);
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
-  useEffect(() => {
-    if (orphanSearchOpen) orphanSearchRef.current?.focus();
-  }, [orphanSearchOpen]);
   const closeSearch = () => {
     setSearchOpen(false);
     setQ("");
@@ -724,13 +711,9 @@ function PagesTreeSection({
   const kind = t("sidebar.pages").toLowerCase();
   const ql = q.trim().toLowerCase();
   const results = ql ? allPages.filter((p) => p.name.toLowerCase().includes(ql)) : [];
-  const oql = orphanQ.trim().toLowerCase();
-  const orphanFiltered = oql
-    ? orphanPages.filter((p) => p.name.toLowerCase().includes(oql))
-    : orphanPages;
   return (
-    <div className="border-b border-border/40 pb-1">
-      <div className="group/sec flex items-center px-3 pt-2 pb-0.5">
+    <div>
+      <div className="group/sec flex items-center px-3 py-0.5">
         {searchOpen ? (
           <>
             <I.Search size={11} className="shrink-0 text-muted" />
@@ -765,58 +748,70 @@ function PagesTreeSection({
                 size={9}
                 className={cn("transition-transform shrink-0", open && "rotate-90")}
               />
-              <span>{t("sidebar.pages")}</span>
+              <span>Menu</span>
             </button>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-              {open && navNodes.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => menuTreeRef.current?.expandAll()}
-                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
-                    title="Mở rộng tất cả"
-                  >
-                    <I.ChevronDown size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => menuTreeRef.current?.collapseAll()}
-                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
-                    title="Thu gọn tất cả"
-                  >
-                    <I.ChevronUp size={11} />
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
-                title={t("sidebar.search")}
-              >
-                <I.Search size={11} />
-              </button>
-              {onAiAdd && (
+            {open && (
+              <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                {navNodes.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => menuTreeRef.current?.expandAll()}
+                      className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                      title="Mở rộng các nhánh"
+                    >
+                      <I.ChevronDown size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => menuTreeRef.current?.collapseAll()}
+                      className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                      title="Thu gọn các nhánh"
+                    >
+                      <I.ChevronUp size={11} />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
-                  onClick={onAiAdd}
-                  className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent"
-                  title={t("sidebar.add_ai", { kind })}
-                >
-                  <I.Sparkles size={11} />
-                </button>
-              )}
-              {onAdd && (
-                <button
-                  type="button"
-                  onClick={onAdd}
+                  onClick={() => setSearchOpen(true)}
                   className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
-                  title={t("sidebar.add_blank", { kind })}
+                  title={t("sidebar.search")}
                 >
-                  <I.Plus size={12} />
+                  <I.Search size={11} />
                 </button>
-              )}
-            </div>
+                {onManageMenu && (
+                  <button
+                    type="button"
+                    onClick={onManageMenu}
+                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                    title="Quản lý menu"
+                  >
+                    <I.Settings size={11} />
+                  </button>
+                )}
+                {onAiAdd && (
+                  <button
+                    type="button"
+                    onClick={onAiAdd}
+                    className="w-5 h-5 rounded-sm hover:bg-accent/20 flex items-center justify-center text-accent"
+                    title={t("sidebar.add_ai", { kind })}
+                  >
+                    <I.Sparkles size={11} />
+                  </button>
+                )}
+                {onAdd && (
+                  <button
+                    type="button"
+                    onClick={onAdd}
+                    className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text"
+                    title={t("sidebar.add_blank", { kind })}
+                  >
+                    <I.Plus size={12} />
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -853,171 +848,216 @@ function PagesTreeSection({
         </ul>
       ) : (
         open && (
+          <MenuTree
+            ref={menuTreeRef}
+            nodes={navNodes}
+            activePageId={activePageId}
+            onSelect={(id) => {
+              onOpen(`/pages/${id}`);
+              onNavigate?.();
+            }}
+            storageKey="sidebar"
+            compact
+            onUnassign={onUnassignPage}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+/* ─── PagesListSection — nhóm "Trang" NGANG HÀNG với "Menu" ────────
+   Liệt kê MỌI trang (đã/chưa gắn menu); trang đã nằm trong menu có badge.
+   Mỗi trang: gán-vào-menu / xoá. Section riêng (thu gọn + tìm kiếm). */
+function PagesListSection({
+  collapsed,
+  pathname,
+  allPages,
+  navNodes,
+  onOpen,
+  onNavigate,
+  onDeletePage,
+  onAssignPage,
+  open,
+  onToggle,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  allPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
+  navNodes: NavNode[];
+  onOpen: (to: string) => void;
+  onNavigate?: () => void;
+  onDeletePage?: (id: string) => void;
+  onAssignPage?: (page: { id: string; name: string }) => void;
+  /** Mở/đóng section (controlled bởi Sidebar — để "thu gọn tất cả" tác động). */
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const t = useT();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [menuFilter, setMenuFilter] = useState<"all" | "with" | "no">("all");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+  if (collapsed || allPages.length === 0) return null;
+  const matched = pathname.match(/^\/(?:pages|view)\/([^/]+)/);
+  const activePageId = matched?.[1] ?? null;
+  const linkedPageIds = new Set(navNodes.filter((n) => n.pageId).map((n) => n.pageId as string));
+  const ql = q.trim().toLowerCase();
+  // Lọc: theo ô tìm + theo trạng thái menu (tất cả / đã có / chưa có).
+  const filtered = allPages.filter((p) => {
+    if (ql && !p.name.toLowerCase().includes(ql)) return false;
+    const has = linkedPageIds.has(p.id);
+    if (menuFilter === "with" && !has) return false;
+    if (menuFilter === "no" && has) return false;
+    return true;
+  });
+  return (
+    <div>
+      <div className="group/sec flex items-center px-3 py-0.5">
+        {searchOpen ? (
           <>
-            {!orphanIsolated && (
-              <MenuTree
-                ref={menuTreeRef}
-                nodes={navNodes}
-                activePageId={activePageId}
-                onSelect={(id) => {
-                  onOpen(`/pages/${id}`);
-                  onNavigate?.();
-                }}
-                storageKey="sidebar"
-                compact
-                isolatable
-                onUnassign={onUnassignPage}
+            <I.Search size={11} className="shrink-0 text-muted" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  setQ("");
+                }
+              }}
+              placeholder="Tìm trang…"
+              className="flex-1 bg-transparent outline-none text-[12px] text-text placeholder:text-muted/50 min-w-0 ml-1.5"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setQ("");
+              }}
+              title={t("common.close")}
+              className="w-5 h-5 rounded-sm flex items-center justify-center text-muted hover:text-text shrink-0"
+            >
+              <I.X size={11} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex-1 flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted/60 hover:text-muted transition-colors"
+            >
+              <I.ChevronRight
+                size={9}
+                className={cn("transition-transform shrink-0", open && "rotate-90")}
               />
-            )}
-            {orphanPages.length > 0 && (
-              <div className="mt-1 pt-1 border-t border-border/30">
-                <div className="group/orphsec flex items-center px-3 py-1">
-                  {orphanSearchOpen ? (
-                    <>
-                      <I.Search size={10} className="shrink-0 text-muted/60" />
-                      <input
-                        ref={orphanSearchRef}
-                        type="text"
-                        value={orphanQ}
-                        onChange={(e) => setOrphanQ(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            setOrphanSearchOpen(false);
-                            setOrphanQ("");
-                          }
-                        }}
-                        placeholder="Tìm trang chưa gắn…"
-                        className="flex-1 bg-transparent outline-none text-[11px] text-text placeholder:text-muted/40 min-w-0 ml-1.5"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOrphanSearchOpen(false);
-                          setOrphanQ("");
-                        }}
-                        title={t("common.close")}
-                        className="w-4 h-4 rounded-sm flex items-center justify-center text-muted hover:text-text shrink-0"
-                      >
-                        <I.X size={10} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setOrphanCollapsed((c) => !c)}
-                        className="flex-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold hover:text-muted transition-colors"
-                        title={orphanCollapsed ? "Mở rộng" : "Thu gọn"}
-                      >
-                        <I.ChevronRight
-                          size={9}
-                          className={cn(
-                            "transition-transform shrink-0",
-                            !orphanCollapsed && "rotate-90",
-                          )}
-                        />
-                        <span>Chưa gắn menu</span>
-                        <span className="text-muted/30 normal-case tracking-normal">
-                          {orphanPages.length}
-                        </span>
-                      </button>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOrphanIsolated((v) => !v);
-                            setOrphanCollapsed(false);
-                          }}
-                          title={
-                            orphanIsolated
-                              ? "Bỏ cô lập (hiện cả cây menu)"
-                              : "Cô lập (chỉ hiện nhóm này)"
-                          }
-                          className={cn(
-                            "w-4 h-4 rounded-sm flex items-center justify-center transition-opacity shrink-0",
-                            orphanIsolated
-                              ? "text-accent"
-                              : "text-muted/40 hover:text-text opacity-0 group-hover/orphsec:opacity-100",
-                          )}
-                        >
-                          <I.Maximize size={10} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setOrphanSearchOpen(true)}
-                          title="Tìm trong nhóm này"
-                          className="w-4 h-4 rounded-sm flex items-center justify-center text-muted/40 hover:text-text opacity-0 group-hover/orphsec:opacity-100 transition-opacity shrink-0"
-                        >
-                          <I.Search size={10} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {!orphanCollapsed && (
-                  <>
-                    {oql && orphanFiltered.length === 0 && (
-                      <div className="px-4 py-1 text-[11px] text-muted/50">
-                        Không có trang khớp.
-                      </div>
-                    )}
-                    <ul>
-                      {orphanFiltered.map((p) => {
-                        const active = pathname === p.to || activePageId === p.id;
-                        const IconC = I[p.icon] ?? I.Layout;
-                        // Số nút hành động (gán + xoá) để chừa lề phải.
-                        const actN = (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
-                        return (
-                          <li key={p.id} className="relative group/orphan">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onOpen(p.to);
-                                onNavigate?.();
-                              }}
-                              className={cn(
-                                "w-full text-left pl-4 py-1.5 text-sm flex items-center gap-2 transition-colors",
-                                actN >= 2 ? "pr-12" : "pr-7",
-                                active
-                                  ? "bg-accent/10 text-accent font-medium"
-                                  : "text-text hover:bg-hover/40",
-                              )}
-                            >
-                              <IconC size={13} className="shrink-0 text-muted" />
-                              <span className="truncate">{p.name}</span>
-                            </button>
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/orphan:opacity-100 transition-opacity">
-                              {onAssignPage && (
-                                <button
-                                  type="button"
-                                  onClick={() => onAssignPage({ id: p.id, name: p.name })}
-                                  className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/40 hover:bg-hover/80 hover:text-accent"
-                                  title="Gán vào menu"
-                                >
-                                  <I.GitBranch size={11} />
-                                </button>
-                              )}
-                              {onDeletePage && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeletePage(p.id)}
-                                  className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger"
-                                  title={t("common.delete")}
-                                >
-                                  <I.Trash size={11} />
-                                </button>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                )}
-              </div>
+              <span>Trang</span>
+              <span className="text-muted/30 normal-case tracking-normal">{allPages.length}</span>
+            </button>
+            {open && (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                title="Tìm trang"
+                className="w-5 h-5 rounded-sm hover:bg-hover/60 flex items-center justify-center text-muted hover:text-text opacity-0 group-hover/sec:opacity-100 transition-opacity"
+              >
+                <I.Search size={11} />
+              </button>
             )}
           </>
-        )
+        )}
+      </div>
+      {open && (
+        <>
+          {/* Lọc theo trạng thái menu */}
+          <div className="flex items-center gap-1 px-3 pb-1">
+            {(
+              [
+                ["all", "Tất cả"],
+                ["with", "Có menu"],
+                ["no", "Chưa"],
+              ] as const
+            ).map(([k, lbl]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setMenuFilter(k)}
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] transition-colors",
+                  menuFilter === k ? "bg-accent/15 text-accent" : "text-muted/60 hover:text-text",
+                )}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+          <ul>
+            {filtered.length === 0 ? (
+              <li className="px-4 py-1 text-[11px] text-muted/50">Không có trang khớp.</li>
+            ) : (
+              filtered.map((p) => {
+                const active = pathname === p.to || activePageId === p.id;
+                const IconC = I[p.icon] ?? I.Layout;
+                const hasMenu = linkedPageIds.has(p.id);
+                const actN = (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
+                return (
+                  <li key={p.id} className="relative group/pg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpen(p.to);
+                        onNavigate?.();
+                      }}
+                      className={cn(
+                        "w-full text-left pl-4 py-1.5 text-sm flex items-center gap-2 transition-colors",
+                        actN >= 2 ? "pr-12" : "pr-7",
+                        active
+                          ? "bg-accent/10 text-accent font-medium"
+                          : "text-text hover:bg-hover/40",
+                      )}
+                    >
+                      <IconC size={13} className="shrink-0 text-muted" />
+                      <span className="truncate">{p.name}</span>
+                      {hasMenu && (
+                        <span title="Đã có trong menu" className="shrink-0 text-accent/70">
+                          <I.GitBranch size={10} />
+                        </span>
+                      )}
+                    </button>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/pg:opacity-100 transition-opacity">
+                      {onAssignPage && (
+                        <button
+                          type="button"
+                          onClick={() => onAssignPage({ id: p.id, name: p.name })}
+                          className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/40 hover:bg-hover/80 hover:text-accent"
+                          title="Gán vào menu"
+                        >
+                          <I.GitBranch size={11} />
+                        </button>
+                      )}
+                      {onDeletePage && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePage(p.id)}
+                          className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger"
+                          title={t("common.delete")}
+                        >
+                          <I.Trash size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -1090,6 +1130,7 @@ export function Sidebar() {
     const defaults = {
       entities: true,
       pages: true,
+      pagesList: true,
       workflows: true,
       agents: true,
       datasources: true,
@@ -1109,6 +1150,7 @@ export function Sidebar() {
     setSectionsOpen({
       entities: next,
       pages: next,
+      pagesList: next,
       workflows: next,
       agents: next,
       datasources: next,
@@ -1182,6 +1224,7 @@ export function Sidebar() {
         ...sectionsOpen,
         entities: true,
         pages: true,
+        pagesList: true,
         workflows: true,
         agents: true,
         datasources: true,
@@ -1560,26 +1603,11 @@ export function Sidebar() {
             ];
             if (search.trim() && pageItems.length === 0) return null;
             // CÂY MENU DQHF: khi có node link trang + không thu nhỏ + không tìm
-            // kiếm → điều hướng theo cây (giống Portal). Trang chưa gắn menu →
-            // nhóm "Chưa gắn menu" cuối cây (vẫn xóa được). Ngược lại: danh
-            // sách phẳng (fallback chưa link menu, hoặc đang search/thu nhỏ).
-            const linkedPageIds = new Set(
-              navNodes.filter((n) => n.pageId).map((n) => n.pageId as string),
-            );
+            // kiếm → 2 nhóm: "Menu" (cây điều hướng) + "Trang" (mọi trang, badge
+            // "có menu"). Ngược lại: danh sách phẳng (fallback hoặc search/thu nhỏ).
             const useTree = navNodes.some((n) => n.pageId) && !collapsed && !search.trim();
             if (useTree) {
-              const orphanPages = [
-                ...staticPages.map((s) => ({
-                  id: s.id,
-                  name: s.name,
-                  icon: s.iconName,
-                  to: s.to,
-                })),
-                ...pagesBase
-                  .filter((p) => !linkedPageIds.has(p.id))
-                  .map((p) => ({ id: p.id, name: p.name, icon: p.icon, to: `/pages/${p.id}` })),
-              ];
-              // Toàn bộ trang (gắn + chưa gắn) để ô tìm kiếm lọc.
+              // Toàn bộ trang (đã/chưa gắn menu) cho nhóm "Trang".
               const allPages = [
                 ...staticPages.map((s) => ({
                   id: s.id,
@@ -1595,22 +1623,40 @@ export function Sidebar() {
                 })),
               ];
               return (
-                <PagesTreeSection
-                  collapsed={collapsed}
-                  pathname={pathname}
-                  open={effectiveSectionsOpen.pages}
-                  onToggle={toggle("pages")}
-                  onAdd={can("create", "page") ? handleAddPage : undefined}
-                  onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
-                  onNavigate={collapseOpsSettings}
-                  navNodes={navNodes}
-                  orphanPages={orphanPages}
-                  allPages={allPages}
-                  onOpen={(to) => navigate({ to })}
-                  onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
-                  onAssignPage={can("edit", "settings") ? setAssignMenuPage : undefined}
-                  onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
-                />
+                // Menu + Trang CÙNG MỘT NHÓM (viền dưới chung).
+                <div className="border-b border-border/40">
+                  <PagesTreeSection
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    open={effectiveSectionsOpen.pages}
+                    onToggle={toggle("pages")}
+                    onAdd={can("create", "page") ? handleAddPage : undefined}
+                    onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
+                    onNavigate={collapseOpsSettings}
+                    navNodes={navNodes}
+                    allPages={allPages}
+                    onOpen={(to) => navigate({ to })}
+                    onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
+                    onManageMenu={
+                      can("edit", "settings")
+                        ? () => navigate({ to: "/settings/menu-pages" })
+                        : undefined
+                    }
+                  />
+                  {/* "Trang" cùng nhóm với "Menu" — mọi trang + badge có-menu. */}
+                  <PagesListSection
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    allPages={allPages}
+                    navNodes={navNodes}
+                    onOpen={(to) => navigate({ to })}
+                    onNavigate={collapseOpsSettings}
+                    onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
+                    onAssignPage={can("edit", "settings") ? setAssignMenuPage : undefined}
+                    open={effectiveSectionsOpen.pagesList}
+                    onToggle={toggle("pagesList")}
+                  />
+                </div>
               );
             }
             return (
