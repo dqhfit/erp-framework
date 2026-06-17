@@ -169,6 +169,11 @@ export async function runActionSteps(
         const stamp = Date.now();
         for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
       }
+      // ...và refresh các datasource (list join) liên quan.
+      if (step.invalidateDataSources?.length) {
+        const stamp = Date.now();
+        for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
+      }
       continue;
     }
     if (step.kind === "delete-record") {
