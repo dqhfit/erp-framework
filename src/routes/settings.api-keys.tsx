@@ -56,6 +56,12 @@ function scopeCovers(a: string, b: string): boolean {
     if (pa[1] === "apply") return pb[1] === "read" || pb[1] === "apply";
     return false; // migration:read chỉ bao chính nó
   }
+  if (pa[0] === "backup" && pb[0] === "backup") {
+    if (pa[1] === "*") return true;
+    // full (tải dump toàn hệ thống) bao luôn read — khớp hasBackupScope.
+    if (pa[1] === "full") return pb[1] === "read" || pb[1] === "full";
+    return false; // backup:read / backup:run chỉ bao chính nó
+  }
   return false;
 }
 
@@ -77,15 +83,16 @@ function ScopeEditor({
   onChange: (next: string[]) => void;
   disabled?: boolean;
 }) {
-  const [kind, setKind] = useState<"entity" | "feedback" | "errors" | "migration" | "all">(
-    "entity",
-  );
+  const [kind, setKind] = useState<
+    "entity" | "feedback" | "errors" | "migration" | "backup" | "all"
+  >("entity");
   const [entityName, setEntityName] = useState("*");
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(false);
   const [fbLevel, setFbLevel] = useState<"read" | "propose" | "apply">("propose");
   const [errLevel, setErrLevel] = useState<"read" | "write">("read");
   const [migLevel, setMigLevel] = useState<"read" | "apply">("read");
+  const [backupLevel, setBackupLevel] = useState<"read" | "run" | "full">("full");
 
   // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
   // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
@@ -99,6 +106,7 @@ function ScopeEditor({
     if (kind === "feedback") return addScopes([`feedback:${fbLevel}`]);
     if (kind === "errors") return addScopes([`errors:${errLevel}`]);
     if (kind === "migration") return addScopes([`migration:${migLevel}`]);
+    if (kind === "backup") return addScopes([`backup:${backupLevel}`]);
     const name = entityName.trim() || "*";
     const out: string[] = [];
     if (read) out.push(`entity:${name}:read`);
@@ -147,6 +155,7 @@ function ScopeEditor({
             <option value="feedback">Phản hồi (MCP)</option>
             <option value="errors">Lỗi (MCP)</option>
             <option value="migration">Migration (MCP)</option>
+            <option value="backup">Sao lưu (MCP)</option>
             <option value="all">Toàn quyền (*)</option>
           </Select>
         </label>
@@ -226,6 +235,22 @@ function ScopeEditor({
             >
               <option value="read">read — đọc trạng thái sync / job / entity</option>
               <option value="apply">apply — đọc + bật agentSearchable, rename bảng</option>
+            </Select>
+          </label>
+        )}
+
+        {kind === "backup" && (
+          <label className="text-xs text-muted flex flex-col gap-1">
+            Mức
+            <Select
+              value={backupLevel}
+              disabled={disabled}
+              onChange={(e) => setBackupLevel(e.target.value as typeof backupLevel)}
+              className="w-80"
+            >
+              <option value="read">read — xem dung lượng DB / uploads (backup_info)</option>
+              <option value="run">run — kích hoạt backup push-Drive</option>
+              <option value="full">full — TẢI dump DB + uploads toàn hệ thống (máy offsite)</option>
             </Select>
           </label>
         )}
