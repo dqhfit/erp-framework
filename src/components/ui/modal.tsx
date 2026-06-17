@@ -1,6 +1,7 @@
 import { type ReactNode, useId } from "react";
 import { createPortal } from "react-dom";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { cn } from "@/lib/utils";
 import { I } from "../Icons";
 import { Button } from "./button";
 
@@ -11,8 +12,18 @@ interface ModalProps {
   width?: number;
   children?: ReactNode;
   footer?: ReactNode;
+  /** Vị trí dọc: "center" (mặc định) hoặc "top" (sát ngay dưới header). */
+  align?: "center" | "top";
 }
-export function Modal({ open, onClose, title, width = 480, children, footer }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  width = 480,
+  children,
+  footer,
+  align = "center",
+}: ModalProps) {
   // Hook gom Escape + Tab/Shift+Tab trap + return focus về trigger.
   const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
   const titleId = useId();
@@ -20,7 +31,12 @@ export function Modal({ open, onClose, title, width = 480, children, footer }: M
   return createPortal(
     <div className="fixed inset-0 z-900 overflow-y-auto" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-none" />
-      <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
+      <div
+        className={cn(
+          "flex min-h-full justify-center px-2 pb-4 sm:px-4",
+          align === "top" ? "items-start pt-14" : "items-center pt-2 sm:pt-4",
+        )}
+      >
         <div
           ref={containerRef}
           role="dialog"

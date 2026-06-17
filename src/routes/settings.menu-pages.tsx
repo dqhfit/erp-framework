@@ -2,8 +2,7 @@
    settings.menu-pages — "Gán trang cho menu": UI trực quan để gắn 1 trang
    (low-code page) vào từng node menu DQHF (legacy_menu_map). Cây menu lồng
    theo parentCode; mỗi node có thể gán / đổi / gỡ trang bằng bộ chọn tìm
-   kiếm. Khác "Trình dựng menu" (/settings/navigation) — cái đó dựng cây
-   nav_items cho sidebar; trang này gán trang cho MENU CỔNG (portal DQHF).
+   kiếm. Đây là menu CỔNG DQHF (portal) — nguồn điều hướng chính.
    Backend: legacyMenu.pageBindings + legacyMenu.setNodePage (admin settings).
    ========================================================== */
 import { createLegacyMenuClient, type LegacyPageBinding } from "@erp-framework/client";
@@ -28,6 +27,7 @@ const STATUS_DOT: Record<string, string> = {
 
 function MenuPagesPage() {
   const pages = useUserObjects((s) => s.pages);
+  const publishPage = useUserObjects((s) => s.publishPage);
   const [rows, setRows] = useState<LegacyPageBinding[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyCode, setBusyCode] = useState<string | null>(null);
@@ -191,7 +191,7 @@ function MenuPagesPage() {
     async (code: string, pageId: string | null) => {
       setBusyCode(code);
       try {
-        await api.setNodePage(code, pageId);
+        const res = await api.setNodePage(code, pageId);
         const pg = pageId ? pages.find((p) => p.id === pageId) : null;
         setRows((rs) =>
           rs.map((r) =>
@@ -201,21 +201,30 @@ function MenuPagesPage() {
                   pageId,
                   pageLabel: pg ? pg.name : null,
                   pageName: pg ? (pg.techName ?? null) : null,
-                  pagePublished: pg ? (pg.isPublished ?? false) : null,
+                  // Gán → trang đã xuất bản (backend tự xuất bản nháp); gỡ → null.
+                  pagePublished: pageId ? true : null,
                   portStatus: pageId ? "xong" : r.portStatus,
                 }
               : r,
           ),
         );
+        // Trang nháp vừa được backend xuất bản riêng tư → đồng bộ store.
+        if (pageId && res.autoPublished) publishPage(pageId, "private");
         setEditCode(null);
-        toast.success(pageId ? "Đã gán trang" : "Đã gỡ trang");
+        toast.success(
+          pageId
+            ? res.autoPublished
+              ? "Đã gán + xuất bản riêng tư"
+              : "Đã gán trang"
+            : "Đã gỡ trang",
+        );
       } catch (e) {
         await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
       } finally {
         setBusyCode(null);
       }
     },
-    [pages],
+    [pages, publishPage],
   );
 
   // Tải lại rows GIỮ trạng thái mở/lọc (cho thao tác cấu trúc) — không nháy spinner.
@@ -810,6 +819,7 @@ function MenuPagesPage() {
         onClose={() => setAssignPageId(null)}
         title="Gán trang vào menu"
         width={520}
+        align="top"
       >
         <div className="space-y-3">
           <p className="text-sm text-muted">
