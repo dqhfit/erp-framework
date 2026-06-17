@@ -148,6 +148,7 @@ export function createLegacyMenuClient(baseUrl: string) {
       trpc.legacyMenu.setNodePage.mutate({ sourceCode, pageId }) as Promise<{
         ok: true;
         pageId: string | null;
+        autoPublished: boolean;
       }>,
     /** Đổi tên 1 node menu. */
     renameNode: (sourceCode: string, name: string) =>

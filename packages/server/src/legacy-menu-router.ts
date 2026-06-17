@@ -160,7 +160,9 @@ export const legacyMenuRouter = router({
 
   /** Gán (hoặc gỡ) trang cho 1 node menu legacy theo sourceCode. pageId=null →
    *  gỡ liên kết. Khi gán: page phải thuộc công ty. Đánh dấu portStatus='xong'
-   *  khi gán (node đã có trang đích) — KHÔNG đụng status khi gỡ. */
+   *  khi gán (node đã có trang đích) — KHÔNG đụng status khi gỡ.
+   *  Gán trang còn NHÁP → mặc định XUẤT BẢN RIÊNG TƯ (để hiện trên menu cổng);
+   *  KHÔNG hạ trang đang public xuống private. */
   setNodePage: rbacProcedure("edit", "settings")
     .input(
       z.object({
@@ -169,14 +171,23 @@ export const legacyMenuRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      let autoPublished = false;
       if (input.pageId) {
         const [pg] = await ctx.db
-          .select({ id: pages.id })
+          .select({ id: pages.id, published: pages.published })
           .from(pages)
           .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)))
           .limit(1);
         if (!pg) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại." });
+        }
+        // Trang nháp → xuất bản riêng tư khi gán vào menu.
+        if (!pg.published) {
+          await ctx.db
+            .update(pages)
+            .set({ published: true, publishMode: "private", updatedAt: new Date() })
+            .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)));
+          autoPublished = true;
         }
       }
       const [row] = await ctx.db
@@ -202,10 +213,10 @@ export const legacyMenuRouter = router({
         actorUserId: ctx.user.id,
         kind: "legacy_menu.set_page",
         detail: input.pageId
-          ? `Gán trang ${input.pageId} cho menu ${input.sourceCode}`
+          ? `Gán trang ${input.pageId} cho menu ${input.sourceCode}${autoPublished ? " (xuất bản riêng tư)" : ""}`
           : `Gỡ trang khỏi menu ${input.sourceCode}`,
       }).catch(() => undefined);
-      return { ok: true, pageId: input.pageId };
+      return { ok: true, pageId: input.pageId, autoPublished };
     }),
 
   /** Đổi tên 1 node menu (ghi raw + override để giữ qua re-import). */

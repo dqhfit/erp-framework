@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
+import { useUserObjects } from "@/stores/userObjects";
 
 const api = createLegacyMenuClient("");
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
+  const publishPage = useUserObjects((s) => s.publishPage);
   const [nodes, setNodes] = useState<LegacyPageBinding[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -56,8 +58,10 @@ export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
     if (!page || !sourceCode || busy) return;
     setBusy(true);
     try {
-      await api.setNodePage(sourceCode, page.id);
-      toast.success("Đã gán trang vào menu");
+      const res = await api.setNodePage(sourceCode, page.id);
+      // Trang nháp vừa được backend xuất bản riêng tư → đồng bộ store.
+      if (res.autoPublished) publishPage(page.id, "private");
+      toast.success(res.autoPublished ? "Đã gán + xuất bản riêng tư" : "Đã gán trang vào menu");
       onDone?.();
       onClose();
     } catch (e) {
@@ -68,7 +72,13 @@ export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
   };
 
   return (
-    <Modal open={page !== null} onClose={onClose} title="Gán trang vào menu" width={520}>
+    <Modal
+      open={page !== null}
+      onClose={onClose}
+      title="Gán trang vào menu"
+      width={520}
+      align="top"
+    >
       <div className="space-y-3">
         <p className="text-sm text-muted">
           Chọn mục menu để gán trang{" "}
