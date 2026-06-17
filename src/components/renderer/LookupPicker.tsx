@@ -59,6 +59,33 @@ export function LookupPicker({
   const dispName = displayField?.name;
   // Field mã (giá trị lưu) khác field hiển thị → nhãn ghép "mã — tên".
   const codeField = valueField && valueField !== dispName ? valueField : undefined;
+  // Cột hiển thị trong dropdown (NHIỀU CỘT): mã (valueField) + tên (displayField)
+  // + vài field text/số nữa của entity (bỏ field hệ thống + mô tả dài). ≥2 cột →
+  // bật chế độ lưới nhiều cột.
+  const cellFields = (() => {
+    const usable = (refEnt?.fields ?? []).filter(
+      (f) =>
+        !["lookup", "multi-lookup", "formula", "collection"].includes(f.type) &&
+        f.name !== "id" &&
+        !/(^|_)(create_by|create_date|update_by|update_date|ngaytao|ngaysua|nguoitao|nguoisua|deleted)/.test(
+          f.name,
+        ) &&
+        !/(mota|ghichu|note|description)/.test(f.name),
+    );
+    const out: typeof usable = [];
+    const add = (name?: string) => {
+      const f = name ? usable.find((x) => x.name === name) : undefined;
+      if (f && !out.some((x) => x.name === f.name)) out.push(f);
+    };
+    add(valueField);
+    add(dispName);
+    for (const f of usable) {
+      if (out.length >= 4) break;
+      if (!out.some((x) => x.name === f.name)) out.push(f);
+    }
+    return out;
+  })();
+  const multiCol = cellFields.length >= 2;
   const seq = useRef(0);
   const debRef = useRef<number | null>(null);
 
@@ -229,7 +256,12 @@ export function LookupPicker({
   }
 
   // Single lookup
-  const options = rows.map((row) => ({ value: optValue(row), label: rowLabel(row) }));
+  const options = rows.map((row) => {
+    const cells = multiCol ? cellFields.map((f) => String(row[f.name] ?? "")) : undefined;
+    return cells
+      ? { value: optValue(row), label: rowLabel(row), cells, searchText: cells.join(" ") }
+      : { value: optValue(row), label: rowLabel(row) };
+  });
   // Giá trị hiện tại không có trong danh sách hiện → giữ lại làm option để không
   // mất giá trị cũ. Entity lớn (đang tìm) chỉ hiện mã (có thể chưa nạp); entity
   // nhỏ đã nạp đủ mà vẫn thiếu → đánh dấu "(không tồn tại)".
@@ -251,6 +283,7 @@ export function LookupPicker({
       onClose={onClose}
       onSearch={serverMode ? onSearch : undefined}
       loading={searching}
+      columnHeaders={multiCol ? cellFields.map((f) => f.label ?? f.name) : undefined}
     />
   );
 }

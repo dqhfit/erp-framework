@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 export interface SearchableSelectOption {
   value: string;
   label: string;
+  /** Giá trị từng cột (chế độ nhiều cột) — render thẳng hàng theo columnHeaders. */
+  cells?: string[];
+  /** Chuỗi dùng để LỌC client (nếu khác label, vd gộp mọi cột). */
+  searchText?: string;
 }
 
 interface SearchableSelectProps {
@@ -46,6 +50,9 @@ interface SearchableSelectProps {
   onSearch?: (q: string) => void;
   /** Đang tải kết quả tìm (hiện dòng "Đang tìm…"). Dùng với onSearch. */
   loading?: boolean;
+  /** Có → DROPDOWN NHIỀU CỘT: hiện hàng tiêu đề + mỗi option render theo
+   *  `option.cells` thẳng hàng (lưới). Dropdown rộng hơn. */
+  columnHeaders?: string[];
 }
 
 /** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
@@ -70,7 +77,14 @@ export function SearchableSelect({
   onClose,
   onSearch,
   loading,
+  columnHeaders,
 }: SearchableSelectProps) {
+  const multiCol = !!columnHeaders && columnHeaders.length > 0;
+  const gridCols = multiCol
+    ? `minmax(64px,auto) ${Array((columnHeaders?.length ?? 1) - 1)
+        .fill("minmax(0,1fr)")
+        .join(" ")}`.trim()
+    : undefined;
   const [open, setOpen] = useState(!!autoOpen);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
@@ -102,7 +116,8 @@ export function SearchableSelect({
     if (onSearch) return allOptions;
     const q = normalize(query.trim());
     if (!q) return allOptions;
-    return allOptions.filter((o) => normalize(o.label).includes(q));
+    // Lọc theo searchText (gộp mọi cột) nếu có, ngược lại theo label.
+    return allOptions.filter((o) => normalize(o.searchText ?? o.label).includes(q));
   }, [allOptions, query, onSearch]);
 
   // Đóng khi click ra ngoài.
@@ -199,7 +214,11 @@ export function SearchableSelect({
             style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
             className={cn(
               "z-[1000] w-max rounded-md border border-border bg-panel shadow-lg",
-              wrapOptions ? "max-w-[min(460px,92vw)]" : "max-w-[280px]",
+              multiCol
+                ? "max-w-[min(760px,96vw)]"
+                : wrapOptions
+                  ? "max-w-[min(460px,92vw)]"
+                  : "max-w-[280px]",
             )}
           >
             {!noSearch && (
@@ -219,6 +238,20 @@ export function SearchableSelect({
                 />
               </div>
             )}
+            {/* Hàng tiêu đề cột (chế độ nhiều cột). */}
+            {multiCol && (
+              <div
+                className="grid gap-2 border-b border-border bg-panel-2/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted"
+                style={{ gridTemplateColumns: gridCols }}
+              >
+                {columnHeaders?.map((h, ci) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: cột tĩnh, không đổi thứ tự
+                  <span key={`${h}-${ci}`} className="truncate">
+                    {h}
+                  </span>
+                ))}
+              </div>
+            )}
             <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
               {loading && <li className="px-3 py-1.5 text-xs text-muted italic">Đang tìm…</li>}
               {!loading && filtered.length === 0 ? (
@@ -234,16 +267,33 @@ export function SearchableSelect({
                         onClick={() => pick(o.value)}
                         onMouseEnter={() => setActiveIdx(i)}
                         className={cn(
-                          "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
+                          "w-full px-3 py-1.5 text-left text-sm",
                           isActive ? "bg-accent/10 text-text" : "text-text/90 hover:bg-hover/40",
+                          isSel && "font-medium text-accent",
                         )}
                       >
-                        <span
-                          className={wrapOptions ? "whitespace-normal break-words" : "truncate"}
-                        >
-                          {o.label}
-                        </span>
-                        {isSel && <I.Check size={13} className="shrink-0 text-accent" />}
+                        {multiCol && o.cells ? (
+                          <div
+                            className="grid items-center gap-2"
+                            style={{ gridTemplateColumns: gridCols }}
+                          >
+                            {o.cells.map((c, ci) => (
+                              // biome-ignore lint/suspicious/noArrayIndexKey: cột tĩnh, không đổi thứ tự
+                              <span key={`${o.value}-${ci}`} className="truncate" title={c}>
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="flex items-center justify-between gap-2">
+                            <span
+                              className={wrapOptions ? "whitespace-normal break-words" : "truncate"}
+                            >
+                              {o.label}
+                            </span>
+                            {isSel && <I.Check size={13} className="shrink-0 text-accent" />}
+                          </span>
+                        )}
                       </button>
                     </li>
                   );
