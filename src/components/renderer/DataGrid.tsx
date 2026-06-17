@@ -145,12 +145,13 @@ function headerStickyStyle<T>(column: Column<T>, topOffset = 0): CSSProperties {
 /** Cột có size tường minh (cột điều khiển: hành động/checkbox) → ghim CỨNG
  *  width = minWidth = maxWidth để table-auto KHÔNG kéo giãn cột lấp chỗ trống
  *  (chỉ đặt `width` thôi vẫn bị giãn). Cột dữ liệu (size null) → undefined (auto). */
-function sizedWidth<T>(column: Column<T>, sizing: ColumnSizingState): CSSProperties | undefined {
-  // Ghim width khi: cột điều khiển có size tường minh, HOẶC người dùng đã kéo /
-  // autofit (có entry trong columnSizing). Còn lại → undefined (table-auto theo nội dung).
-  if (column.columnDef.size == null && sizing[column.id] == null) return undefined;
+function sizedWidth<T>(column: Column<T>): CSSProperties {
   const w = column.getSize();
-  return { width: w, minWidth: w, maxWidth: w };
+  // table-fixed cần width trên MỌI cột để ô clip (truncate/overflow-hidden)
+  // đúng bề rộng cột. Cột điều khiển (size khai báo) ghim cứng width=min=max;
+  // cột dữ liệu chỉ đặt width để table-fixed còn phân bổ chỗ trống khi tổng
+  // bề rộng các cột < bề rộng bảng.
+  return column.columnDef.size == null ? { width: w } : { width: w, minWidth: w, maxWidth: w };
 }
 
 /** Kẹp bề rộng autofit: +đệm, sàn 48, trần 360 (tránh cột quá hẹp/quá rộng). */
@@ -671,18 +672,24 @@ export function DataGrid<T>({
       : {}),
   });
 
-  // ── Autofit cột theo nội dung: đo scrollWidth (gồm cả phần tràn) của mọi ô
-  // [data-col] trong container cuộn → lấy max → kẹp. ──
+  // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
+  // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,
+  // kể cả cột hẹp hơn mặc định). +đệm padding ngang ô. ──
   const measureCol = useCallback((colId: string): number | null => {
     const root = scrollRef.current;
     if (!root) return null;
     const cells = root.querySelectorAll<HTMLElement>(`[data-col="${CSS.escape(colId)}"]`);
     if (!cells.length) return null;
+    const range = document.createRange();
     let max = 0;
     cells.forEach((el) => {
-      if (el.scrollWidth > max) max = el.scrollWidth;
+      range.selectNodeContents(el);
+      // bề rộng nội dung (Range không tính padding ô) + đệm padding ngang ô.
+      const pad = Number.parseFloat(getComputedStyle(el).paddingLeft) * 2 || 0;
+      const w = range.getBoundingClientRect().width + pad;
+      if (w > max) max = w;
     });
-    return max;
+    return max > 0 ? max : null;
   }, []);
   /** Autofit 1 cột → ghi columnSizing (persist). Double-click viền cột gọi cái này. */
   const autofitColumn = useCallback(
@@ -1340,7 +1347,20 @@ export function DataGrid<T>({
               <I.EyeOff size={13} /> Thả vào lưới để ẩn cột
             </div>
           )}
-          <table className="w-full border-collapse text-sm">
+          {/* table-fixed + width:100%/minWidth=tổng cột: mỗi cột có bề rộng
+              XÁC ĐỊNH nên ô whitespace-nowrap CLIP gọn trong cột (table-layout
+              auto KHÔNG cho truncate/overflow ăn → text tràn đè cột bên). Tổng
+              cột > container → cuộn ngang; < container → giãn lấp đầy. */}
+          <table
+            className="table-fixed border-collapse text-sm"
+            style={{
+              width: "100%",
+              minWidth:
+                table.getVisibleLeafColumns().reduce((s, c) => s + c.getSize(), 0) +
+                (selecting ? 36 : 0) +
+                (renderDetail ? 28 : 0),
+            }}
+          >
             <thead ref={theadRef} className="bg-panel-2 z-10">
               {(() => {
                 // Header lồng nhiều cấp: TanStack đặt LÁ THẬT ở hàng DƯỚI CÙNG,
@@ -1461,7 +1481,7 @@ export function DataGrid<T>({
                           style={{
                             ...headerStickyStyle(header.column, top),
                             // Cột điều khiển ghim cứng width; cột dữ liệu auto chia phần còn lại.
-                            ...sizedWidth(header.column, columnSizing),
+                            ...sizedWidth(header.column),
                           }}
                           className={cn(
                             "relative text-left py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
@@ -1676,12 +1696,12 @@ export function DataGrid<T>({
                               data-col={cell.column.id}
                               style={{
                                 ...pinnedStyle(cell.column),
-                                ...sizedWidth(cell.column, columnSizing),
+                                ...sizedWidth(cell.column),
                               }}
                               className={cn(
-                                "py-1 whitespace-nowrap border-r border-border/40 dark:border-border",
-                                // compact (cột hành động): clip khi kéo nhỏ để nút không tràn cột bên.
-                                cm?.compact ? "px-0.5 overflow-hidden" : "px-2",
+                                // py-1 (compact) + overflow-hidden mọi ô (table-fixed clip nội dung).
+                                "py-1 overflow-hidden whitespace-nowrap border-r border-border/40 dark:border-border",
+                                cm?.compact ? "px-0.5" : "px-2",
                                 pinned && "bg-bg",
                                 ccls,
                               )}

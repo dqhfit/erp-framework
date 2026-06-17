@@ -146,6 +146,8 @@ export const MenuTree = forwardRef<
     /** Yêu thích: kiểm tra pageId đã yêu thích chưa + toggle (bật thì hiện sao). */
     isFav?: (pageId: string) => boolean;
     onToggleFav?: (node: NavNode) => void;
+    /** Admin: gỡ trang khỏi mục menu (đối xứng "Gán vào menu"). Bỏ trống = không hiện nút. */
+    onUnassign?: (node: NavNode) => void;
   }
 >(function MenuTree(
   {
@@ -159,6 +161,7 @@ export const MenuTree = forwardRef<
     isolatable = false,
     isFav,
     onToggleFav,
+    onUnassign,
   },
   ref,
 ) {
@@ -248,6 +251,7 @@ export const MenuTree = forwardRef<
             onIsolate={setIsolateCode}
             isFav={isFav}
             onToggleFav={onToggleFav}
+            onUnassign={onUnassign}
           />
         ))}
       </ul>
@@ -270,6 +274,7 @@ function MenuBranch({
   onIsolate,
   isFav,
   onToggleFav,
+  onUnassign,
 }: {
   node: NavNode;
   childrenOf: Map<string, NavNode[]>;
@@ -286,6 +291,7 @@ function MenuBranch({
   onIsolate?: (code: string) => void;
   isFav?: (pageId: string) => boolean;
   onToggleFav?: (node: NavNode) => void;
+  onUnassign?: (node: NavNode) => void;
 }) {
   const kids = childrenOf.get(node.code) ?? [];
   const myLabel = displayLabel(node, cleanLabels);
@@ -341,6 +347,21 @@ function MenuBranch({
             )}
           >
             <I.Star size={12} className={favored ? "text-warning" : "text-muted"} />
+          </button>
+        )}
+        {/* Gỡ khỏi menu (admin) — đối xứng "Gán vào menu". Sticky ghim mép phải,
+            hiện khi hover. Khác nút xoá trang (đây chỉ bỏ liên kết node↔trang). */}
+        {onUnassign && node.pageId && (
+          <button
+            type="button"
+            title="Gỡ khỏi menu"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnassign(node);
+            }}
+            className="sticky right-1 shrink-0 w-5 h-5 mr-1 rounded flex items-center justify-center bg-panel text-muted hover:bg-danger/15 hover:text-danger opacity-0 group-hover/leaf:opacity-100 transition-opacity"
+          >
+            <I.X size={12} />
           </button>
         )}
       </li>
@@ -399,6 +420,7 @@ function MenuBranch({
               onIsolate={onIsolate}
               isFav={isFav}
               onToggleFav={onToggleFav}
+              onUnassign={onUnassign}
             />
           ))}
         </ul>

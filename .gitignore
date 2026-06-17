@@ -61,3 +61,6 @@ migration-plan/ai-log/
 # Dump du lieu (prod sample) — KHONG commit (chua data + users)
 *.sql.gz
 erp-sample.sql*
+
+# Dump dữ liệu kéo từ prod (Màu sắc/Khách hàng/Hệ hàng) — KHÔNG commit
+.prod-data-dump/
