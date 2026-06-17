@@ -148,6 +148,8 @@ export const MenuTree = forwardRef<
     onToggleFav?: (node: NavNode) => void;
     /** Admin: gỡ trang khỏi mục menu (đối xứng "Gán vào menu"). Bỏ trống = không hiện nút. */
     onUnassign?: (node: NavNode) => void;
+    /** Admin: đổi TRANG liên kết của mục menu ngay tại cây. Bỏ trống = không hiện nút. */
+    onChangePage?: (node: NavNode) => void;
   }
 >(function MenuTree(
   {
@@ -162,6 +164,7 @@ export const MenuTree = forwardRef<
     isFav,
     onToggleFav,
     onUnassign,
+    onChangePage,
   },
   ref,
 ) {
@@ -252,6 +255,7 @@ export const MenuTree = forwardRef<
             isFav={isFav}
             onToggleFav={onToggleFav}
             onUnassign={onUnassign}
+            onChangePage={onChangePage}
           />
         ))}
       </ul>
@@ -275,6 +279,7 @@ function MenuBranch({
   isFav,
   onToggleFav,
   onUnassign,
+  onChangePage,
 }: {
   node: NavNode;
   childrenOf: Map<string, NavNode[]>;
@@ -292,6 +297,7 @@ function MenuBranch({
   isFav?: (pageId: string) => boolean;
   onToggleFav?: (node: NavNode) => void;
   onUnassign?: (node: NavNode) => void;
+  onChangePage?: (node: NavNode) => void;
 }) {
   const kids = childrenOf.get(node.code) ?? [];
   const myLabel = displayLabel(node, cleanLabels);
@@ -331,38 +337,57 @@ function MenuBranch({
           <I.Layout size={13} className="shrink-0 text-muted" />
           <span className="whitespace-nowrap lowercase first-letter:uppercase">{myLabel}</span>
         </button>
-        {/* Sao yêu thích — sticky GHIM mép phải vùng nhìn (cây cuộn ngang w-max
-            nên absolute-right bị ra ngoài). Hiện khi hover, luôn hiện nếu đã thích. */}
-        {onToggleFav && node.pageId && (
-          <button
-            type="button"
-            title={favored ? "Bỏ yêu thích" : "Yêu thích"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFav(node);
-            }}
-            className={cn(
-              "sticky right-1 shrink-0 w-5 h-5 mr-1 rounded flex items-center justify-center bg-panel hover:bg-hover/60 transition-opacity",
-              favored ? "opacity-100" : "opacity-0 group-hover/leaf:opacity-100",
+        {/* Nhóm nút thao tác — STICKY ghim mép phải vùng nhìn (cây cuộn ngang
+            w-max nên absolute-right bị ra ngoài). Gộp 1 dải để nhiều nút không
+            chồng lên nhau. Sao luôn hiện nếu đã thích; còn lại hiện khi hover. */}
+        {node.pageId && (onToggleFav || onChangePage || onUnassign) && (
+          <div className="sticky right-1 shrink-0 mr-1 flex items-center gap-0.5">
+            {onToggleFav && (
+              <button
+                type="button"
+                title={favored ? "Bỏ yêu thích" : "Yêu thích"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFav(node);
+                }}
+                className={cn(
+                  "w-5 h-5 rounded flex items-center justify-center bg-panel hover:bg-hover/60 transition-opacity",
+                  favored ? "opacity-100" : "opacity-0 group-hover/leaf:opacity-100",
+                )}
+              >
+                <I.Star size={12} className={favored ? "text-warning" : "text-muted"} />
+              </button>
             )}
-          >
-            <I.Star size={12} className={favored ? "text-warning" : "text-muted"} />
-          </button>
-        )}
-        {/* Gỡ khỏi menu (admin) — đối xứng "Gán vào menu". Sticky ghim mép phải,
-            hiện khi hover. Khác nút xoá trang (đây chỉ bỏ liên kết node↔trang). */}
-        {onUnassign && node.pageId && (
-          <button
-            type="button"
-            title="Gỡ khỏi menu"
-            onClick={(e) => {
-              e.stopPropagation();
-              onUnassign(node);
-            }}
-            className="sticky right-1 shrink-0 w-5 h-5 mr-1 rounded flex items-center justify-center bg-panel text-muted hover:bg-danger/15 hover:text-danger opacity-0 group-hover/leaf:opacity-100 transition-opacity"
-          >
-            <I.X size={12} />
-          </button>
+            {/* Đổi trang liên kết (admin) — mở picker chọn trang khác cho mục này. */}
+            {onChangePage && (
+              <button
+                type="button"
+                title="Đổi trang liên kết"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChangePage(node);
+                }}
+                className="w-5 h-5 rounded flex items-center justify-center bg-panel text-muted hover:bg-accent/15 hover:text-accent opacity-0 group-hover/leaf:opacity-100 transition-opacity"
+              >
+                <I.Repeat size={12} />
+              </button>
+            )}
+            {/* Gỡ khỏi menu (admin) — đối xứng "Gán vào menu". Khác nút xoá trang
+                (đây chỉ bỏ liên kết node↔trang). */}
+            {onUnassign && (
+              <button
+                type="button"
+                title="Gỡ khỏi menu"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnassign(node);
+                }}
+                className="w-5 h-5 rounded flex items-center justify-center bg-panel text-muted hover:bg-danger/15 hover:text-danger opacity-0 group-hover/leaf:opacity-100 transition-opacity"
+              >
+                <I.X size={12} />
+              </button>
+            )}
+          </div>
         )}
       </li>
     );
@@ -421,6 +446,7 @@ function MenuBranch({
               isFav={isFav}
               onToggleFav={onToggleFav}
               onUnassign={onUnassign}
+              onChangePage={onChangePage}
             />
           ))}
         </ul>

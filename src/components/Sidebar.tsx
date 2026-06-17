@@ -2,6 +2,7 @@ import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
+import { ChangeMenuNodePageModal } from "@/components/ChangeMenuNodePageModal";
 import { I } from "@/components/Icons";
 import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NewPageModal } from "@/components/NewPageModal";
@@ -674,6 +675,7 @@ function PagesTreeSection({
   allPages,
   onOpen,
   onUnassignPage,
+  onChangeNodePage,
   onManageMenu,
 }: {
   collapsed: boolean;
@@ -689,6 +691,8 @@ function PagesTreeSection({
   onOpen: (to: string) => void;
   /** Gỡ 1 trang ĐÃ gắn khỏi mục menu của nó. */
   onUnassignPage?: (node: NavNode) => void;
+  /** Đổi TRANG liên kết của 1 mục menu (mở picker chọn trang khác). */
+  onChangeNodePage?: (node: NavNode) => void;
   /** Mở trang Quản lý menu (icon trên header). */
   onManageMenu?: () => void;
 }) {
@@ -862,6 +866,7 @@ function PagesTreeSection({
             storageKey="sidebar"
             compact
             onUnassign={onUnassignPage}
+            onChangePage={onChangeNodePage}
           />
         )
       )}
@@ -1251,6 +1256,12 @@ export function Sidebar() {
   const [navNodes, setNavNodes] = useState<NavNode[]>([]);
   // Trang đang gán vào menu (mở modal) + key refetch cây sau khi gán xong.
   const [assignMenuPage, setAssignMenuPage] = useState<{ id: string; name: string } | null>(null);
+  // Mục menu đang đổi trang liên kết (mở ChangeMenuNodePageModal).
+  const [changeNodePage, setChangeNodePage] = useState<{
+    code: string;
+    name: string;
+    pageId: string | null;
+  } | null>(null);
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [navReloadKey, setNavReloadKey] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: navReloadKey là trigger refetch chủ động (không đọc trong effect)
@@ -1640,6 +1651,16 @@ export function Sidebar() {
                     allPages={allPages}
                     onOpen={(to) => navigate({ to })}
                     onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
+                    onChangeNodePage={
+                      can("edit", "settings")
+                        ? (node) =>
+                            setChangeNodePage({
+                              code: node.code,
+                              name: node.name ?? "",
+                              pageId: node.pageId,
+                            })
+                        : undefined
+                    }
                     onManageMenu={
                       can("edit", "settings")
                         ? () => navigate({ to: "/settings/menu-pages" })
@@ -2383,6 +2404,11 @@ export function Sidebar() {
       <AssignPageToMenuModal
         page={assignMenuPage}
         onClose={() => setAssignMenuPage(null)}
+        onDone={() => setNavReloadKey((k) => k + 1)}
+      />
+      <ChangeMenuNodePageModal
+        node={changeNodePage}
+        onClose={() => setChangeNodePage(null)}
         onDone={() => setNavReloadKey((k) => k + 1)}
       />
       <NewPageModal
