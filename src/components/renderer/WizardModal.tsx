@@ -187,6 +187,53 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       .finally(() => setLoading(false));
   }, [wizardEntityId, editId]);
 
+  // (DETAIL-ONLY, SỬA) Wizard không có entity cha (vd "Cập nhật quy trình" link
+  // theo recordId = màu đang chọn). Nếu bản ghi cha đã có dòng con → nạp sẵn để
+  // người dùng sửa trực tiếp. Dòng mang _rid → goNext() update; dòng mới → create.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ nạp khi đổi record/entity; KHÔNG bám wizardSteps để khỏi reset input
+  useEffect(() => {
+    if (wizardEntityId || !editId) return;
+    const detailOnlySteps = wizardSteps.filter((s) => s.detail);
+    if (detailOnlySteps.length === 0) return;
+    setLoading(true);
+    let alive = true;
+    (async () => {
+      const loaded: Record<string, Record<string, string>[]> = {};
+      for (const s of detailOnlySteps) {
+        const dc = s.detail;
+        if (!dc) continue;
+        const dEnt = entities.find((e) => e.id === dc.entity);
+        const dFields = dc.fields?.length
+          ? (dEnt?.fields ?? []).filter((f) => dc.fields?.includes(f.name))
+          : (dEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection");
+        const res = await api
+          .getRecords(dc.entity, {
+            filters: { [dc.linkField]: { op: "=", value: editId } },
+            limit: 1000,
+          })
+          .catch(() => ({ rows: [] }) as { rows: { id: string; data: unknown }[] });
+        const mapped = res.rows.map((r) => {
+          const d = (r.data ?? {}) as Record<string, unknown>;
+          const row: Record<string, string> = { _rid: r.id };
+          for (const f of dFields) row[f.name] = toStr(d[f.name], f.type);
+          return row;
+        });
+        // Chưa có dòng nào → để 1 dòng trống cho người dùng nhập mới.
+        loaded[s.id] = mapped.length > 0 ? mapped : [{}];
+      }
+      if (alive) setDetailRows(loaded);
+    })()
+      .catch((e) => {
+        if (alive) setErr((e as Error).message);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [wizardEntityId, editId]);
+
   if (wizardSteps.length === 0) {
     return (
       <Modal open onClose={onCancel} title={step.title || "Wizard"} width={540}>
@@ -311,6 +358,50 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setBusy(true);
     setErr("");
     try {
+      // ── Chế độ DETAIL-ONLY: không entity cha; tạo/sửa NHIỀU dòng con (vd các
+      //    bước quy trình) link tới recordId (vd màu đang chọn) qua linkField. ──
+      const detailOnlySteps = !wizardEntityId ? wizardSteps.filter((s) => s.detail) : [];
+      if (detailOnlySteps.length > 0) {
+        if (!isLast) {
+          setActiveIdx((i) => i + 1);
+          return;
+        }
+        if (!editId) {
+          setErr("Hãy chọn bản ghi (vd màu sơn) ở danh sách trước khi nhập.");
+          setBusy(false);
+          return;
+        }
+        // (SỬA) xoá các dòng cũ người dùng đã bỏ trước khi ghi.
+        for (const rid of deletedDetail) await api.deleteRecord(rid);
+        let created = 0;
+        for (const s of detailOnlySteps) {
+          const dc = s.detail;
+          if (!dc) continue;
+          const dEnt = entities.find((e) => e.id === dc.entity);
+          const dFields = dc.fields?.length
+            ? (dEnt?.fields ?? []).filter((f) => dc.fields?.includes(f.name))
+            : (dEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection");
+          for (const r of detailRows[s.id] ?? []) {
+            const hasData = Object.entries(r).some(
+              ([k, v]) => k !== "_rid" && (v ?? "").trim() !== "",
+            );
+            const data = buildRowData(r, dFields);
+            if (dc.linkField) data[dc.linkField] = editId;
+            if (dc.computed)
+              for (const [tf, factors] of Object.entries(dc.computed))
+                data[tf] = computeProduct(r, factors);
+            // Dòng cũ (_rid) → update; dòng mới có dữ liệu → create.
+            if (r._rid) await api.updateRecord(r._rid, data);
+            else if (hasData) {
+              await api.createRecord(dc.entity, data);
+              created++;
+            }
+          }
+        }
+        onDone({ created });
+        return;
+      }
+
       // ── Chế độ 1-entity: gom field qua các bước, chỉ LƯU ở bước cuối ──
       if (wizardEntityId) {
         if (!isLast) {

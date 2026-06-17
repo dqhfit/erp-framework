@@ -235,6 +235,8 @@ export interface ActionStepOpenWizard {
   recordIdBinding?: BindingValue;
   /** Sau khi lưu xong → đặt cờ __refresh cho các entity này (list reload). */
   invalidateEntities?: string[];
+  /** Sau khi lưu xong → refresh các datasource (list join `dataSourceId`) theo id. */
+  invalidateDataSources?: string[];
   /** Chế độ XEM (chỉ đọc): nạp dữ liệu như sửa nhưng khoá mọi input, KHÔNG lưu. */
   readOnly?: boolean;
   /** (1-entity, TẠO MỚI) Giá trị mặc định điền sẵn cho form (fieldName → giá trị
