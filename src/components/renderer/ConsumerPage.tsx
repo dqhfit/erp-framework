@@ -813,6 +813,10 @@ function EditableCell({
   }
   return (
     <span
+      // Marker để autofit (nhắp đúp viền cột) đo bề rộng CHỮ thật trong ô. Span
+      // "block truncate" rộng đầy ô → nếu đo cả span sẽ ra đúng bề rộng HIỆN TẠI
+      // (không co theo nội dung); DataGrid.measureCol ưu tiên đo node con này.
+      data-col-content=""
       onDoubleClick={canWrite ? () => setEditing(true) : undefined}
       title={canWrite ? "Nhấn đúp để sửa" : "Không có quyền sửa cột này"}
       className={cn(

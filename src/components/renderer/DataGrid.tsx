@@ -683,7 +683,12 @@ export function DataGrid<T>({
     const range = document.createRange();
     let max = 0;
     cells.forEach((el) => {
-      range.selectNodeContents(el);
+      // Header: đo RIÊNG span nội dung (data-col-content), BỎ nút resize ghim
+      // `absolute right-0` — nếu trùm cả nút thì Range kéo tới mép phải ô → đo ra
+      // đúng bề rộng HIỆN TẠI của cột (không co theo nội dung) → nhắp đúp chỉ nhích
+      // thêm chút mỗi lần thay vì fit. Ô dữ liệu không có marker → đo cả ô như cũ.
+      const target = el.querySelector<HTMLElement>("[data-col-content]") ?? el;
+      range.selectNodeContents(target);
       // bề rộng nội dung (Range không tính padding ô) + đệm padding ngang ô.
       const pad = Number.parseFloat(getComputedStyle(el).paddingLeft) * 2 || 0;
       const w = range.getBoundingClientRect().width + pad;
@@ -1361,6 +1366,18 @@ export function DataGrid<T>({
                 (renderDetail ? 28 : 0),
             }}
           >
+            {/* table-fixed lấy bề rộng cột từ <col> (ưu tiên hơn ô hàng đầu) hoặc
+                từ ô HÀNG ĐẦU. Có banded header → hàng đầu là DẢI NHÓM (th colSpan,
+                KHÔNG mang width) nên width đặt trên <th> LÁ (nằm ở hàng dưới) bị
+                table-fixed BỎ QUA → kéo đổi rộng cột trong dải không ăn. <colgroup>
+                mang width từng cột lá nên resize ăn cả khi có band lẫn không. */}
+            <colgroup>
+              {selecting && <col style={{ width: 36 }} />}
+              {renderDetail && <col style={{ width: 28 }} />}
+              {table.getVisibleLeafColumns().map((col) => (
+                <col key={col.id} style={{ width: col.getSize() }} />
+              ))}
+            </colgroup>
             <thead ref={theadRef} className="bg-panel-2 z-10">
               {(() => {
                 // Header lồng nhiều cấp: TanStack đặt LÁ THẬT ở hàng DƯỚI CÙNG,
@@ -1493,6 +1510,9 @@ export function DataGrid<T>({
                           )}
                         >
                           <span
+                            // Đánh dấu vùng NỘI DUNG header để autofit (nhắp đúp viền)
+                            // đo đúng bề rộng chữ — KHÔNG dính nút resize absolute.
+                            data-col-content=""
                             onClick={
                               header.column.getCanSort()
                                 ? header.column.getToggleSortingHandler()
@@ -1534,7 +1554,9 @@ export function DataGrid<T>({
                                 autofitColumn(header.column.id);
                               }}
                               className={cn(
-                                "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none hover:bg-accent/50",
+                                // Vùng kéo rộng 10px ghim mép phải (dễ trúng hơn 6px cũ,
+                                // nhất là cột hẹp / cột lá trong dải nhiều cấp ô thấp).
+                                "absolute right-0 top-0 h-full w-2.5 cursor-col-resize select-none touch-none hover:bg-accent/40",
                                 header.column.getIsResizing() && "bg-accent",
                               )}
                             />
