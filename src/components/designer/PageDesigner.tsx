@@ -2467,23 +2467,27 @@ export function PageDesigner({ pageId }: Props) {
                         linkField?: string;
                       };
                       const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both" | "both2" | "tabs";
+                        orientation?: "h" | "v" | "both" | "both2" | "both3" | "tabs";
                         count?: number;
                         ratio?: number;
                         ratioV?: number;
                         panelA?: PanelCfg;
                         panelB?: PanelCfg;
                         panelC?: PanelCfg;
+                        panelD?: PanelCfg;
                       };
                       const panelA = splitCfg.panelA ?? {};
                       const panelB = splitCfg.panelB ?? {};
                       const panelC = splitCfg.panelC ?? {};
+                      const panelD = splitCfg.panelD ?? {};
                       const orientation = splitCfg.orientation ?? "h";
                       const count = splitCfg.count ?? 2;
                       const ratio = splitCfg.ratio ?? 40;
                       const ratioV = splitCfg.ratioV ?? 50;
                       const isCombo = orientation === "both" || orientation === "both2";
-                      const showPanelC = isCombo || count >= 3;
+                      const isBoth3 = orientation === "both3";
+                      const showPanelC = isCombo || isBoth3 || count >= 3;
+                      const showPanelD = isBoth3;
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
@@ -2592,6 +2596,7 @@ export function PageDesigner({ pageId }: Props) {
                                     | "v"
                                     | "both"
                                     | "both2"
+                                    | "both3"
                                     | "tabs",
                                 })
                               }
@@ -2600,10 +2605,11 @@ export function PageDesigner({ pageId }: Props) {
                               <option value="v">Dọc (trên / dưới)</option>
                               <option value="both">A | (B trên / C dưới)</option>
                               <option value="both2">(A trên / B dưới) | C</option>
+                              <option value="both3">(A/B) | (C/D)</option>
                               <option value="tabs">Dạng Tab</option>
                             </Select>
                           </FormField>
-                          {!isCombo && (
+                          {!isCombo && !isBoth3 && (
                             <FormField label="Số panel">
                               <Select
                                 value={count}
@@ -2628,7 +2634,7 @@ export function PageDesigner({ pageId }: Props) {
                               />
                             </FormField>
                           )}
-                          {isCombo && (
+                          {(isCombo || isBoth3) && (
                             <>
                               <FormField label={`Tỉ lệ ngang: ${ratio}%`}>
                                 <input
@@ -2650,6 +2656,22 @@ export function PageDesigner({ pageId }: Props) {
                                   className="w-full accent-accent"
                                 />
                               </FormField>
+                              {isBoth3 && (
+                                <FormField label={`Tỉ lệ dọc C/D: ${splitCfg.ratioV2 ?? 50}%`}>
+                                  <input
+                                    type="range"
+                                    min={20}
+                                    max={80}
+                                    value={splitCfg.ratioV2 ?? 50}
+                                    onChange={(e) =>
+                                      updateSplit({
+                                        ratioV2: Number(e.target.value),
+                                      } as typeof splitCfg)
+                                    }
+                                    className="w-full accent-accent"
+                                  />
+                                </FormField>
+                              )}
                             </>
                           )}
                           <PanelFields
@@ -2673,6 +2695,15 @@ export function PageDesigner({ pageId }: Props) {
                               linkedEnt={entC}
                               defaultKind="list"
                               onUpdate={(p) => updateSplit({ panelC: p })}
+                            />
+                          )}
+                          {showPanelD && (
+                            <PanelFields
+                              label={panelLabel("D")}
+                              panel={panelD}
+                              linkedEnt={entities.find((e) => e.id === panelD.entity)}
+                              defaultKind="list"
+                              onUpdate={(p) => updateSplit({ panelD: p } as typeof splitCfg)}
                             />
                           )}
                         </>
@@ -3637,6 +3668,7 @@ function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
   const pA = (cfg.panelA as Partial<SplitGridCell>) ?? {};
   const pB = (cfg.panelB as Partial<SplitGridCell>) ?? {};
   const pC = (cfg.panelC as Partial<SplitGridCell>) ?? {};
+  const pD = (cfg.panelD as Partial<SplitGridCell>) ?? {};
   if (orientation === "v") {
     return {
       cols: 1,
@@ -3666,6 +3698,18 @@ function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
         { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
         { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
         { ...pC, id: "C", col: 2, row: 1, colSpan: 1, rowSpan: 2 },
+      ],
+    };
+  }
+  if (orientation === "both3") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pD, id: "D", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
       ],
     };
   }
@@ -4334,6 +4378,7 @@ function ComponentBody({
       panelA,
       panelB,
       panelC,
+      panelD,
     } = comp.config as {
       orientation?: string;
       count?: number;
@@ -4342,15 +4387,18 @@ function ComponentBody({
       panelA?: { kind?: string; entity?: string; title?: string };
       panelB?: { kind?: string; entity?: string; title?: string };
       panelC?: { kind?: string; entity?: string; title?: string };
+      panelD?: { kind?: string; entity?: string; title?: string };
     };
     const entA = entities.find((e) => e.id === panelA?.entity);
     const entB = entities.find((e) => e.id === panelB?.entity);
     const entC = entities.find((e) => e.id === panelC?.entity);
+    const entD = entities.find((e) => e.id === panelD?.entity);
     const isBoth = orientation === "both";
     const isBoth2 = orientation === "both2";
+    const isBoth3 = orientation === "both3";
     const isTabs = orientation === "tabs";
-    const isH = !isBoth && !isBoth2 && !isTabs && orientation !== "v";
-    const splitCount = isBoth || isBoth2 ? 3 : Math.max(2, Math.min(3, count));
+    const isH = !isBoth && !isBoth2 && !isBoth3 && !isTabs && orientation !== "v";
+    const splitCount = isBoth || isBoth2 || isBoth3 ? 3 : Math.max(2, Math.min(3, count));
 
     const PanelPreview = ({
       label,
@@ -4465,6 +4513,116 @@ function ComponentBody({
               onDrop={onSplitPanelDrop}
             >
               <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+            </SplitPanelDropZone>
+          </div>
+        </div>
+      );
+    }
+
+    if (isBoth2) {
+      return (
+        <div className="h-full flex flex-row overflow-hidden text-[10px]">
+          <div
+            className="flex flex-col overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <SplitPanelDropZone
+            panelKey="C"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+          </SplitPanelDropZone>
+        </div>
+      );
+    }
+
+    if (isBoth3) {
+      const ratioV2 =
+        ((comp.config as Record<string, unknown>).ratioV2 as number | undefined) ?? 50;
+      return (
+        <div className="h-full flex flex-row overflow-hidden text-[10px]">
+          <div
+            className="flex flex-col overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <SplitPanelDropZone
+              panelKey="C"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV2}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="D"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="D"
+                ent={entD}
+                title={panelD?.title}
+                kind={panelD?.kind}
+                bg="bg-panel-2/20"
+              />
             </SplitPanelDropZone>
           </div>
         </div>

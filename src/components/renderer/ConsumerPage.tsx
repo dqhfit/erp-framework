@@ -4333,37 +4333,46 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const isTabs = orientation === "tabs";
   const isBoth = orientation === "both";
   const isBoth2 = orientation === "both2";
-  const isH = !isBoth && !isBoth2 && !isTabs && orientation !== "v";
+  const isBoth3 = orientation === "both3";
+  const isH = !isBoth && !isBoth2 && !isBoth3 && !isTabs && orientation !== "v";
 
   const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
   const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
   const panelC = (cfg.panelC as SplitPanelCfg | undefined) ?? {};
+  const panelD = (cfg.panelD as SplitPanelCfg | undefined) ?? {};
   const kindA = panelA.kind ?? "list";
   const kindB = panelB.kind ?? "detail";
   const kindC = panelC.kind ?? "list";
+  const kindD = panelD.kind ?? "list";
   const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey);
   const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey);
   const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey);
+  const cfgD = buildSubCfg({ ...panelD, kind: kindD }, splitKey);
 
   // Ratios — initialized from saved config, adjusted by drag at runtime only
   const savedRatios = cfg.splitRatios as number[] | undefined;
   const initRatioH = (cfg.ratio as number) ?? 40;
   const initRatioV = (cfg.ratioV as number) ?? 50;
-  const panelCount = isBoth || isBoth2 ? 2 : count;
+  const initRatioV2 = (cfg.ratioV2 as number) ?? 50;
+  const panelCount = isBoth || isBoth2 || isBoth3 ? 2 : count;
   const initMain = savedRatios ?? (panelCount >= 3 ? [33, 33, 34] : [initRatioH, 100 - initRatioH]);
   const initBothV = [initRatioV, 100 - initRatioV];
+  const initBothV2 = [initRatioV2, 100 - initRatioV2];
 
   // All hooks unconditional (React rules)
   const containerRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
+  const rightRef2 = useRef<HTMLDivElement>(null);
   const mainRef = containerRef as React.RefObject<HTMLDivElement | null>;
   const bvRef = rightRef as React.RefObject<HTMLDivElement | null>;
+  const bvRef2 = rightRef2 as React.RefObject<HTMLDivElement | null>;
   const { ratios: mainR, onHandleDrag: onMainDrag } = useSplitRatios(
     initMain,
     mainRef,
-    isH || isBoth || isBoth2 ? "h" : "v",
+    isH || isBoth || isBoth2 || isBoth3 ? "h" : "v",
   );
   const { ratios: bothVR, onHandleDrag: onBothVDrag } = useSplitRatios(initBothV, bvRef, "v");
+  const { ratios: bothVR2, onHandleDrag: onBothVDrag2 } = useSplitRatios(initBothV2, bvRef2, "v");
   const [activeTab, setActiveTab] = useState("A");
 
   const handleCls = (ax: "h" | "v") =>
@@ -4459,6 +4468,39 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
         <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
         <div className="flex-1 overflow-hidden">
           <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both3 ((A/B) | (C/D)) ────────────────────────────────────────────
+  if (isBoth3) {
+    const total3 = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total3) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
+    const vTotal2 = bothVR2[0]! + bothVR2[1]!;
+    const vPct2 = (bothVR2[0]! / vTotal2) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
+        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${hPct}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
+        <div ref={rightRef2} className="flex flex-col flex-1 overflow-hidden">
+          <div className="overflow-hidden" style={{ height: `${vPct2}%` }}>
+            <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag2(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindD} cfg={cfgD} stateKey={`${comp.id}:d`} />
+          </div>
         </div>
       </div>
     );
