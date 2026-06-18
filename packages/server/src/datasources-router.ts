@@ -58,6 +58,9 @@ const dsField = z.object({
   // làm value (lookup theo TÊN/mã thay vì UUID id). Xem DataSourceField.
   ref: z.string().optional(),
   refValueField: z.string().optional(),
+  // Nhật ký: base field tự điền+lưu từ cột projection của ref khi đổi mã ref
+  // (key cột projection, vd "material_tenvt"). Xem DataSourceField.snapshotFrom.
+  snapshotFrom: z.string().optional(),
 });
 
 const dsComputed = z.object({

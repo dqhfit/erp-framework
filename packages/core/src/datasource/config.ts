@@ -60,6 +60,11 @@ export interface DataSourceField {
    *  value lưu xuống (vd nguyên liệu lưu TÊN "CAO SU" chứ không phải UUID).
    *  Có set → picker chọn bản ghi master nhưng lưu/khớp theo field này. */
   refValueField?: string;
+  /** NHẬT KÝ (snapshot): field BASE này tự điền + LƯU từ 1 cột projection của
+   *  ref khi đổi mã ref. Giá trị = `key` của cột projection (vd "material_tenvt").
+   *  Đóng băng giá trị tại thời điểm chọn — KHÁC cột join (đổi theo ref về sau).
+   *  Chỉ áp cho field writable thuộc base; bỏ trống = không snapshot. */
+  snapshotFrom?: string;
 }
 
 /** Hàm gom cho aggregate quan hệ 1-N / N-N. */

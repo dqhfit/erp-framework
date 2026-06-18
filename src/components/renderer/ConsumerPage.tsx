@@ -309,25 +309,24 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
   // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị
   // NGAY (kể cả batch chưa lưu / prod mirror chặn ghi), không chờ server re-join.
-  const refFill = useCallback(
-    async (fieldName: string, value: string): Promise<Record<string, unknown>> => {
-      const meta = metaRef.current;
-      if (!meta) return {};
-      const f = meta.fields.find((x) => x.key === fieldName);
-      if (!f?.ref || !f.refValueField) return {};
-      const rels = meta.relations ?? [];
-      const rel =
-        rels.find((r) => r.fromField === f.sourceField && r.targetEntityId === f.ref) ??
-        rels.find((r) => r.fromField === f.sourceField);
-      if (!rel) return {};
-      const proj = meta.fields.filter((x) => x.sourceRelationId === rel.id && x.sourceField);
-      if (proj.length === 0) return {};
-      const overlay: Record<string, unknown> = {};
-      const v = String(value ?? "").trim();
-      if (!v) {
-        for (const p of proj) overlay[p.key] = "";
-        return overlay;
-      }
+  const refFill = useCallback(async (fieldName: string, value: string): Promise<RefFillResult> => {
+    const empty: RefFillResult = { overlay: {}, snapshot: {} };
+    const meta = metaRef.current;
+    if (!meta) return empty;
+    const f = meta.fields.find((x) => x.key === fieldName);
+    if (!f?.ref || !f.refValueField) return empty;
+    const rels = meta.relations ?? [];
+    const rel =
+      rels.find((r) => r.fromField === f.sourceField && r.targetEntityId === f.ref) ??
+      rels.find((r) => r.fromField === f.sourceField);
+    if (!rel) return empty;
+    const proj = meta.fields.filter((x) => x.sourceRelationId === rel.id && x.sourceField);
+    if (proj.length === 0) return empty;
+    const overlay: Record<string, unknown> = {};
+    const v = String(value ?? "").trim();
+    if (!v) {
+      for (const p of proj) overlay[p.key] = "";
+    } else {
       try {
         const res = await api.getRecords(f.ref, {
           filters: { [f.refValueField]: { op: "=", value: v } },
@@ -336,12 +335,25 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
         const rec = res.rows[0]?.data as Record<string, unknown> | undefined;
         for (const p of proj) overlay[p.key] = (rec ? rec[p.sourceField] : "") ?? "";
       } catch {
-        return {};
+        return empty;
       }
-      return overlay;
-    },
-    [],
-  );
+    }
+    // NHẬT KÝ (snapshot): cột BASE có `snapshotFrom` = key 1 cột projection vừa
+    // tính trong overlay → GHI (lưu) giá trị đó vào field base, đóng băng tại
+    // thời điểm chọn. Khác overlay (chỉ hiển thị, đổi theo ref về sau).
+    const snapshot: Record<string, string> = {};
+    for (const bf of meta.fields) {
+      if (
+        bf.sourceRelationId === "base" &&
+        bf.writable !== false &&
+        bf.snapshotFrom &&
+        Object.hasOwn(overlay, bf.snapshotFrom)
+      ) {
+        snapshot[bf.sourceField] = String(overlay[bf.snapshotFrom] ?? "");
+      }
+    }
+    return { overlay, snapshot };
+  }, []);
 
   return { rows, fields, loading, err, refFill };
 }
@@ -528,6 +540,13 @@ function useServerPagedRecords(opts: {
   };
 }
 
+/** Kết quả refFill: `overlay` = cột projection (hiển thị-only, đổi theo ref về
+ *  sau); `snapshot` = cột base có snapshotFrom (GHI vào pending để đóng băng). */
+export interface RefFillResult {
+  overlay: Record<string, unknown>;
+  snapshot: Record<string, string>;
+}
+
 export interface WidgetData {
   rows: Record<string, unknown>[];
   /** Field meta để render cột/label (entity fields HOẶC datasource flat fields). */
@@ -539,8 +558,8 @@ export interface WidgetData {
   create: (data: Record<string, unknown>) => Promise<void>;
   update: (id: string, data: Record<string, unknown>) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
-  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
+  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) + snapshot. */
+  refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
 }
 
 /* ── Hook hợp nhất — widget bind ENTITY (cfg.entity) hoặc DATASOURCE
@@ -964,7 +983,7 @@ interface EditableListWidgetProps {
   /** Kiểu cột hành động: "popover" (nút ⋯, mặc định) | "inline" (nút Xem/Sửa/Xoá). */
   rowActionsStyle?: "inline" | "popover";
   /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
-  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
+  refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -1089,13 +1108,26 @@ function EditableListWidget({
     // Đổi field REF (mã vật tư…) → auto điền cột projection (Tên VT, Quy cách…)
     // từ record master vừa chọn — hiện NGAY (overlay), không chờ server re-join.
     if (refFill && visibleFields.find((f) => f.name === field)?.ref) {
-      void refFill(field, value).then((overlay) => {
-        if (Object.keys(overlay).length === 0) return;
-        setRefOverlay((prev) => {
-          const next = new Map(prev);
-          next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...overlay });
-          return next;
-        });
+      void refFill(field, value).then(({ overlay, snapshot }) => {
+        if (Object.keys(overlay).length > 0) {
+          setRefOverlay((prev) => {
+            const next = new Map(prev);
+            next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...overlay });
+            return next;
+          });
+        }
+        // NHẬT KÝ: cột base có snapshotFrom → ghi VÀO pending (sẽ LƯU) để đóng
+        // băng giá trị ref tại thời điểm chọn. Non-batch lưu ngay như ô thường.
+        if (Object.keys(snapshot).length > 0) {
+          setPending((prev) => {
+            const next = new Map(prev);
+            next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...snapshot });
+            return next;
+          });
+          if (!batchEdit) {
+            void onSave(rowId, snapshot).catch((e) => setSaveErr((e as Error).message));
+          }
+        }
       });
     }
     if (!batchEdit) {
