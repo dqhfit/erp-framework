@@ -376,6 +376,9 @@ export interface DataGridProps<T> {
   /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
    *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
   pageJump?: { token: number; to: "first" | "last" };
+  /** Sắp xếp mặc định khi chưa có view lưu — vd {field:"id",dir:"desc"} để bản
+   *  ghi mới nhất lên đầu. Bản ghi sửa giữ vị trí (id không đổi). */
+  defaultSort?: { field: string; dir: "asc" | "desc" };
   /** Bật CHỌN DÒNG (checkbox). Khi true: toolbar có nút bật/tắt cột tích; tích
    *  tiêu đề = chọn/bỏ MỌI dòng đã lọc; server mode thêm "Chọn tất cả N dòng". */
   enableSelection?: boolean;
@@ -443,6 +446,7 @@ export function DataGrid<T>({
   inlineAddRow,
   addRowPos,
   pageJump,
+  defaultSort,
   enableSelection,
   onSelectionChange,
   bulkActions,
@@ -469,7 +473,9 @@ export function DataGrid<T>({
   // deps effect (sẽ fire mỗi render → fetch loop).
   const serverRef = useRef(server);
   serverRef.current = server;
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    defaultSort ? [{ id: defaultSort.field, desc: defaultSort.dir === "desc" }] : [],
+  );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: pageSize && pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE,

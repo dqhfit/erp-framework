@@ -643,6 +643,41 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         onChange={(e) => setField(f.name, e.target.value)}
         placeholder={f.label}
       />
+    ) : f.type === "file" ? (
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+          <span className="btn btn-default text-xs px-3 py-1.5 shrink-0 whitespace-nowrap">
+            Chọn file
+          </span>
+          <span className="text-xs text-muted truncate min-w-0">
+            {form[f.name]
+              ? form[f.name].startsWith("data:")
+                ? "File đã chọn"
+                : (form[f.name].split("/").pop() ?? form[f.name])
+              : "Chưa chọn file"}
+          </span>
+          <input
+            type="file"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => setField(f.name, String(reader.result));
+              reader.readAsDataURL(file);
+            }}
+          />
+        </label>
+        {form[f.name] && (
+          <button
+            type="button"
+            className="text-muted hover:text-danger shrink-0"
+            onClick={() => setField(f.name, "")}
+          >
+            <I.X size={14} />
+          </button>
+        )}
+      </div>
     ) : (
       <input
         className="input w-full"
@@ -947,6 +982,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         {/* Hành động của bước */}
         {renderAction && (current.actions?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+            {/* biome-ignore lint/style/noNonNullAssertion: guard (actions?.length ?? 0) > 0 trên */}
             {current.actions!.map((a) => renderAction(a, a.id))}
           </div>
         )}

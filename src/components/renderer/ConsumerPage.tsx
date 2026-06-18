@@ -1980,6 +1980,7 @@ function ListWidget({
   embeddedFilters,
   addRowAtEnd,
   addRowPos,
+  defaultSort,
   refetchOnSave,
 }: {
   entityId?: string;
@@ -2070,6 +2071,9 @@ function ListWidget({
   addRowAtEnd?: boolean;
   /** Vị trí dòng thêm mới: "top" | "bottom" (cfg.addRowPos, mặc định "bottom"). */
   addRowPos?: "top" | "bottom";
+  /** Sắp xếp mặc định khi chưa có view lưu — vd {field:"id",dir:"desc"} bản ghi
+   *  mới lên đầu. Bản ghi sửa giữ vị trí (id không đổi). */
+  defaultSort?: { field: string; dir: "asc" | "desc" };
   /** Sau khi LƯU 1 ô inline (non-batch) → nạp lại lưới để cập nhật các cột phụ
    *  thuộc do server tính lại (vd diện tích sơn = base × phần trăm). */
   refetchOnSave?: boolean;
@@ -2658,6 +2662,7 @@ function ListWidget({
               searchStateKey ? (v: string) => pageState.set(searchStateKey, v) : undefined
             }
             pageSize={pageSize}
+            defaultSort={defaultSort}
             enableSelection={selectable}
           />
         )}
@@ -4074,6 +4079,7 @@ function RenderSubWidget({
         selectable={cfg.selectable === true}
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
+        defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
       />
     );
   }
@@ -4637,6 +4643,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         selectable={cfg.selectable === true}
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
+        defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
