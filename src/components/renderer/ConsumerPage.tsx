@@ -4166,61 +4166,61 @@ function RenderSubWidget({
   return null;
 }
 
+/** Grid Layout N×M — kind="grid", config.cells[] */
+function GridWidget({ comp }: { comp: PageComponent }) {
+  const cfg = comp.config ?? {};
+  const splitKey = `split_${comp.id}_sel`;
+  const cols = (cfg.cols as number) || 2;
+  const rows = (cfg.rows as number) || 1;
+  const cells = (cfg.cells as SplitGridCell[]) ?? [];
+  const colFr = (cfg.colFr as number[] | undefined) ?? Array(cols).fill(1);
+  const rowFr = (cfg.rowFr as number[] | undefined) ?? Array(rows).fill(1);
+
+  return (
+    <div
+      className="h-full w-full overflow-hidden"
+      style={{
+        display: "grid",
+        gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+        gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+      }}
+    >
+      {cells.map((cell) => {
+        const kind = cell.kind ?? "list";
+        const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
+        return (
+          <div
+            key={cell.id}
+            className="overflow-hidden"
+            style={{
+              gridColumn: `${cell.col} / span ${cell.colSpan}`,
+              gridRow: `${cell.row} / span ${cell.rowSpan}`,
+            }}
+          >
+            {cell.entity || cell.dataSourceId ? (
+              <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
+            ) : (
+              <div className="h-full flex items-center justify-center text-sm text-muted/50">
+                Chưa bind
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
-  const isGridFormat = Array.isArray(cfg.cells);
 
   // All hooks must be called unconditionally (React rules of hooks)
   const containerRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const initRatio = isGridFormat ? 40 : ((cfg.ratio as number) ?? 40);
-  const initRatioV = isGridFormat ? 50 : ((cfg.ratioV as number) ?? 50);
-  const [ratioH, onDragH] = useDragRatio(initRatio, containerRef, "h");
-  const [ratioV, onDragV] = useDragRatio(initRatioV, rightRef, "v");
+  const [ratioH, onDragH] = useDragRatio((cfg.ratio as number) ?? 40, containerRef, "h");
+  const [ratioV, onDragV] = useDragRatio((cfg.ratioV as number) ?? 50, rightRef, "v");
 
   const splitKey = `split_${comp.id}_sel`;
-
-  if (isGridFormat) {
-    const cols = cfg.cols as number;
-    const rows = cfg.rows as number;
-    const cells = cfg.cells as SplitGridCell[];
-    const colFr = (cfg.colFr as number[] | undefined) ?? Array(cols).fill(1);
-    const rowFr = (cfg.rowFr as number[] | undefined) ?? Array(rows).fill(1);
-
-    return (
-      <div
-        className="h-full w-full overflow-hidden"
-        style={{
-          display: "grid",
-          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
-          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
-        }}
-      >
-        {cells.map((cell) => {
-          const kind = cell.kind ?? "list";
-          const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
-          return (
-            <div
-              key={cell.id}
-              className="overflow-hidden"
-              style={{
-                gridColumn: `${cell.col} / span ${cell.colSpan}`,
-                gridRow: `${cell.row} / span ${cell.rowSpan}`,
-              }}
-            >
-              {cell.entity || cell.dataSourceId ? (
-                <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
-              ) : (
-                <div className="h-full flex items-center justify-center text-sm text-muted/50">
-                  Chưa bind
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
 
   // Old format
   const orientation = (cfg.orientation as string) ?? "h";
@@ -4786,6 +4786,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
   if (comp.kind === "step") return <StepWidget cfg={cfg} />;
   if (comp.kind === "split") return <SplitWidget comp={comp} />;
+  if (comp.kind === "grid") return <GridWidget comp={comp} />;
   if (comp.kind === "search") return <SearchWidget cfg={cfg} />;
   if (comp.kind === "filter") return <FilterWidget cfg={cfg} />;
   if (comp.kind === "combobox") return <ComboboxWidget cfg={cfg} />;
