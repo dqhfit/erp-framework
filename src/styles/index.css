@@ -492,3 +492,17 @@ textarea.input {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Drag-to-scroll: cursor gợi ý có thể kéo ngang trên cell dữ liệu */
+.datagrid-scroll td { cursor: grab; }
+.datagrid-scroll input,
+.datagrid-scroll button,
+.datagrid-scroll a,
+.datagrid-scroll select,
+.datagrid-scroll textarea { cursor: auto; }
+/* Khi đang kéo: toàn container grabbing, tắt text-select */
+.datagrid-scroll.is-drag-scrolling,
+.datagrid-scroll.is-drag-scrolling * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}

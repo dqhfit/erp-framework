@@ -37,6 +37,7 @@ import {
 import { I } from "@/components/Icons";
 import { PasteGridModal } from "@/components/renderer/PasteGridModal";
 import { Chip, Input } from "@/components/ui";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { idbGet, idbSet } from "@/lib/page-state-idb";
@@ -509,6 +510,7 @@ export function DataGrid<T>({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [restoreSettled, setRestoreSettled] = useState(false);
   const autofitDoneRef = useRef(false);
+  useDragScroll(scrollRef);
 
   // Tiêu đề lồng nhiều cấp: gói cột phẳng thành cây nhóm khi có cấu hình.
   const tableColumns = useMemo(
@@ -1408,7 +1410,7 @@ export function DataGrid<T>({
           )}
         </div>
       ) : (
-        <div ref={scrollRef} className="flex-1 overflow-auto relative">
+        <div ref={scrollRef} className="flex-1 overflow-auto relative datagrid-scroll">
           {/* Gợi ý khi đang kéo tiêu đề cột: thả vào lưới để ẩn. pointer-events-none
               để không chặn drop trên tbody lẫn reorder trên header. */}
           {dragColId && (
