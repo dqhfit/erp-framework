@@ -65,3 +65,7 @@ erp-sample.sql*
 
 # Dump dữ liệu kéo từ prod (Màu sắc/Khách hàng/Hệ hàng) — KHÔNG commit
 .prod-data-dump/
+
+# Dữ liệu import (file nguồn để nạp vào DB) — KHÔNG commit
+data-import/
+**/data-import/

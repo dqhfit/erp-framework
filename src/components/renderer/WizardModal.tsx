@@ -70,6 +70,18 @@ function applyFieldOverrides(
   return fields.map((f) => (ov[f.name] ? ({ ...f, ...ov[f.name] } as EntityField) : f));
 }
 
+/** Ép giá trị khoá liên kết (linkField) theo KIỂU field đích: field số (vd
+ *  tr_quytrinh_son_chitiet.id_quytrinh là numeric) nhận chuỗi "1" sẽ bị server
+ *  từ chối ("phải là số"). Chuyển sang Number khi field đích là số. */
+function coerceLinkValue(value: unknown, fields: EntityField[], fieldName: string): unknown {
+  const f = fields.find((x) => x.name === fieldName);
+  if (f && (f.type === "number" || f.type === "integer" || f.type === "currency")) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : value;
+  }
+  return value;
+}
+
 interface Props {
   step: ActionStepOpenWizard;
   pageState: PageStateLike;
@@ -407,7 +419,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               ([k, v]) => k !== "_rid" && (v ?? "").trim() !== "",
             );
             const data = buildRowData(r, dFields);
-            if (dc.linkField) data[dc.linkField] = editId;
+            if (dc.linkField)
+              data[dc.linkField] = coerceLinkValue(editId, dEnt?.fields ?? [], dc.linkField);
             if (dc.computed)
               for (const [tf, factors] of Object.entries(dc.computed))
                 data[tf] = computeProduct(r, factors);
@@ -479,7 +492,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               ([k, v]) => k !== "_rid" && (v ?? "").trim() !== "",
             );
             const data = buildRowData(r, dFields);
-            if (keyVal) data[dc.linkField] = keyVal;
+            if (keyVal)
+              data[dc.linkField] = coerceLinkValue(keyVal, dEnt?.fields ?? [], dc.linkField);
             if (dc.computed)
               for (const [tf, factors] of Object.entries(dc.computed))
                 data[tf] = computeProduct(r, factors);
