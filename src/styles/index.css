@@ -500,9 +500,8 @@ textarea.input {
 .datagrid-scroll a,
 .datagrid-scroll select,
 .datagrid-scroll textarea { cursor: auto; }
-/* Khi đang kéo: toàn container grabbing, tắt text-select */
+/* Khi đang kéo ngang: toàn container grabbing */
 .datagrid-scroll.is-drag-scrolling,
 .datagrid-scroll.is-drag-scrolling * {
   cursor: grabbing !important;
-  user-select: none !important;
 }

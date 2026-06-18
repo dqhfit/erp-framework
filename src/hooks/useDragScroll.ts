@@ -1,10 +1,15 @@
 import { useEffect } from "react";
 
-/** Kéo-để-cuộn trên container overflow-auto.
- *  - Chỉ kích hoạt khi pointer xuống trên <td> (cell dữ liệu), không phải <th>/header.
- *  - Không can thiệp input/button/a/select/textarea.
- *  - Nếu di chuyển > 5px: cuộn, nuốt click để row-click không nổ.
- *  - Nếu di chuyển ≤ 5px: click vẫn bubble bình thường.
+/** Kéo-để-cuộn NGANG trên container overflow-auto.
+ *
+ *  Nguyên tắc: chỉ "chiếm" pointer khi gesture RÕ RÀNG là ngang
+ *  (|dx| > |dy| × 1.5 và |dx| > 6px). Kéo dọc / chéo / text-select
+ *  vẫn dùng hành vi gốc của trình duyệt — bôi đen chữ vẫn hoạt động.
+ *
+ *  - Chỉ kích hoạt khi pointer DOWN trên <td> (body), không phải <th>.
+ *  - Không can thiệp input/button/a/select/textarea/contenteditable.
+ *  - Sau khi commit scroll: nuốt click (capture phase) để row-click không nổ.
+ *  - Kéo chưa đủ ngưỡng hoặc kéo dọc: click vẫn bubble bình thường.
  */
 export function useDragScroll(ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -18,13 +23,11 @@ export function useDragScroll(ref: React.RefObject<HTMLElement | null>) {
     let startX = 0;
     let startY = 0;
     let startSL = 0;
-    let startST = 0;
-    let dragged = false;
+    let scrolling = false; // đã commit sang chế độ scroll ngang
 
     function onPointerDown(e: PointerEvent) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       const target = e.target as HTMLElement;
-      // Chỉ bắt đầu kéo khi pointer DOWN trên cell dữ liệu (td), không phải header (th)
       if (!target.closest("td")) return;
       if (target.closest(SKIP)) return;
 
@@ -32,24 +35,33 @@ export function useDragScroll(ref: React.RefObject<HTMLElement | null>) {
       startX = e.clientX;
       startY = e.clientY;
       startSL = node.scrollLeft;
-      startST = node.scrollTop;
-      dragged = false;
-      node.setPointerCapture(e.pointerId);
+      scrolling = false;
+      // Chưa capture — chờ xác định hướng gesture trong pointermove
     }
 
     function onPointerMove(e: PointerEvent) {
       if (e.pointerId !== capturedId) return;
       const dx = startX - e.clientX;
       const dy = startY - e.clientY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
 
-      if (!dragged && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-        dragged = true;
-        node.classList.add("is-drag-scrolling");
+      if (!scrolling) {
+        if (absDx < 6 && absDy < 6) return; // chưa đủ để quyết định
+
+        if (absDx > absDy * 1.5) {
+          // Gesture ngang rõ ràng → commit scroll, capture pointer
+          scrolling = true;
+          node.setPointerCapture(e.pointerId);
+          node.classList.add("is-drag-scrolling");
+        } else {
+          // Kéo dọc / chéo → nhường lại cho browser (text-select, scroll dọc)
+          capturedId = null;
+          return;
+        }
       }
-      if (dragged) {
-        node.scrollLeft = startSL + dx;
-        node.scrollTop = startST + dy;
-      }
+
+      node.scrollLeft = startSL + dx;
     }
 
     function onPointerUp(e: PointerEvent) {
@@ -61,11 +73,11 @@ export function useDragScroll(ref: React.RefObject<HTMLElement | null>) {
       } catch {}
     }
 
-    // Nuốt click trong capture phase khi đã drag đủ xa
+    // Nuốt click (capture phase) sau khi đã scroll để row-click không nổ
     function onClickCapture(e: MouseEvent) {
-      if (dragged) {
+      if (scrolling) {
         e.stopPropagation();
-        dragged = false;
+        scrolling = false;
       }
     }
 
