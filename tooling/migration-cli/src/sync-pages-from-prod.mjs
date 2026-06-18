@@ -1,12 +1,8 @@
-/* sync-pages-from-prod.mjs — Kéo bảng `pages` (định nghĩa trang low-code) từ
-   PROD (https://erp.vfmgroup.vn) về DB dev local (erp_sample), upsert theo id.
-   - Đọc prod CHỈ-ĐỌC qua MCP migration_query_readonly (JSON-RPC, X-API-Key đọc
-     từ ~/.claude.json — KHÔNG in key).
-   - Cùng company_id 2 bên → khớp trực tiếp theo id (UUID toàn cục).
-   - PROD WINS: trang trùng id → ghi đè; trang chỉ có ở prod → thêm mới;
-     trang chỉ có ở local → GIỮ NGUYÊN (không xoá), báo lại để tự quyết.
-   - Va chạm unique (company_id, name) khác id → xoá bản local cũ rồi nạp bản prod.
-   Node thuần + postgres-js. Chạy: node tooling/migration-cli/src/sync-pages-from-prod.mjs
+/* sync-pages-from-prod.mjs — Kéo `pages` + datasources phụ thuộc từ PROD về local.
+   - PROD WINS: trang trùng id → ghi đè; mới ở prod → thêm; chỉ local → GIỮ + báo.
+   - DS kéo về lưu với PROD UUID (prod-as-hub) — entity UUID dịch prod→local theo tên.
+   - Thêm --no-deps để bỏ qua sync datasource.
+   Chạy: node tooling/migration-cli/src/sync-pages-from-prod.mjs
 */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -16,8 +12,8 @@ import postgres from "postgres";
 
 const COMPANY = "00000000-0000-0000-0000-000000000001";
 const URL = "https://erp.vfmgroup.vn/mcp/migration";
+const NO_DEPS = process.argv.includes("--no-deps");
 
-// DATABASE_URL local: ưu tiên packages/db/.env, fallback mặc định docker.
 function localDbUrl() {
   try {
     const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -29,7 +25,6 @@ function localDbUrl() {
 }
 const LOCAL = localDbUrl();
 
-// ── API key MCP từ ~/.claude.json (không in ra) ──
 function findKey() {
   const cfg = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf8"));
   const proj = cfg.projects?.["D:/code/cowok/Apps/erp-framework"];
@@ -51,7 +46,12 @@ async function mcp(name, args) {
   const res = await fetch(URL, {
     method: "POST",
     headers: { "X-API-Key": KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: ++rpc, method: "tools/call", params: { name, arguments: args } }),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: ++rpc,
+      method: "tools/call",
+      params: { name, arguments: args },
+    }),
   });
   const j = await res.json();
   if (j.error) throw new Error(j.error.message);
@@ -60,7 +60,7 @@ async function mcp(name, args) {
   return JSON.parse(t);
 }
 
-// ── Kéo toàn bộ pages prod (batch để tránh cap ~200KB/response) ──
+// ── Fetch pages from prod (keyset pagination) ────────────────────────────
 async function fetchProdPages() {
   const out = [];
   const LIMIT = 50;
@@ -76,6 +76,93 @@ async function fetchProdPages() {
   return out;
 }
 
+// ── Extract DS IDs from page content ────────────────────────────────────
+function extractDsIds(content) {
+  const components = Array.isArray(content) ? content : (content?.components ?? []);
+  const dsIds = new Set();
+  function walk(cfg) {
+    if (!cfg || typeof cfg !== "object") return;
+    if (typeof cfg.dataSourceId === "string" && cfg.dataSourceId.length === 36)
+      dsIds.add(cfg.dataSourceId);
+    for (const v of Object.values(cfg)) {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === "object") walk(v);
+    }
+  }
+  components.forEach((c) => walk(c.config ?? {}));
+  return dsIds;
+}
+
+// ── Entity maps ──────────────────────────────────────────────────────────
+async function buildEntityMaps(sqldb) {
+  const localRows = await sqldb`SELECT id, name FROM entities WHERE company_id = ${COMPANY}`;
+  const prodSql = `SELECT coalesce(json_agg(e),'[]') AS data FROM (SELECT id, name FROM entities WHERE company_id = '${COMPANY}' ORDER BY id) e`;
+  const prodR = await mcp("migration_query_readonly", { sql: prodSql });
+  const prodRows = prodR.rows?.[0]?.data ?? [];
+  return {
+    local: { byName: new Map(localRows.map((r) => [r.name, r.id])) },
+    prod: { byId: new Map(prodRows.map((r) => [r.id, r.name])) },
+  };
+}
+
+function translateEntityId(id, prodById, localByName) {
+  if (!id) return id;
+  const name = prodById.get(id);
+  if (!name) return id;
+  return localByName.get(name) ?? id;
+}
+
+function translateDsConfig(cfg, prodById, localByName) {
+  if (!cfg) return cfg;
+  const tr = (id) => translateEntityId(id, prodById, localByName);
+  return {
+    ...cfg,
+    baseEntityId: tr(cfg.baseEntityId),
+    relations: (cfg.relations ?? []).map((r) => ({ ...r, targetEntityId: tr(r.targetEntityId) })),
+    aggregates: (cfg.aggregates ?? []).map((a) => ({
+      ...a,
+      targetEntityId: tr(a.targetEntityId),
+      ...(a.via ? { via: { ...a.via, farEntityId: tr(a.via.farEntityId) } } : {}),
+    })),
+    fields: (cfg.fields ?? []).map((f) => ({
+      ...f,
+      ...(f.ref ? { ref: tr(f.ref) } : {}),
+    })),
+  };
+}
+
+// ── Pull datasources from prod ────────────────────────────────────────────
+async function pullDatasources(dsIds, entityMaps, sqldb) {
+  if (dsIds.size === 0) return;
+  const ids = [...dsIds];
+  const sql = `SELECT coalesce(json_agg(d),'[]') AS data FROM (SELECT id, name, label, icon, config FROM datasources WHERE company_id = '${COMPANY}' AND id IN (${ids.map((id) => `'${id}'`).join(",")}) ORDER BY id) d`;
+  const r = await mcp("migration_query_readonly", { sql });
+  const rows = r.rows?.[0]?.data ?? [];
+
+  for (const ds of rows) {
+    const cfg = translateDsConfig(ds.config, entityMaps.prod.byId, entityMaps.local.byName);
+    // Xoá bản local trùng TÊN nhưng khác id (thay bằng prod UUID).
+    await sqldb`
+      DELETE FROM datasources
+      WHERE company_id = ${COMPANY} AND lower(name) = lower(${ds.name}) AND id <> ${ds.id}`;
+    await sqldb`
+      INSERT INTO datasources (id, company_id, name, label, icon, config, updated_at)
+      VALUES (${ds.id}, ${COMPANY}, ${ds.name}, ${ds.label}, ${ds.icon ?? null},
+              ${sqldb.json(cfg)}, now())
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name, label = EXCLUDED.label, icon = EXCLUDED.icon,
+        config = EXCLUDED.config, updated_at = now()`;
+    console.log(`   [DS] ↓ ${ds.name} [${ds.id.slice(0, 8)}]`);
+  }
+
+  const notFound = ids.filter((id) => !rows.find((d) => d.id === id));
+  if (notFound.length)
+    console.log(
+      `   [DS] ⚠ ${notFound.length} DS trong trang không tìm thấy prod: ${notFound.map((id) => id.slice(0, 8)).join(", ")}`,
+    );
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────
 const sqldb = postgres(LOCAL, { max: 1 });
 try {
   console.log("1) Kéo pages từ prod…");
@@ -83,18 +170,38 @@ try {
   const prodIds = new Set(prod.map((p) => p.id));
   const prodNames = prod.map((p) => p.name);
 
+  // Collect all datasource IDs referenced across all prod pages
+  const allDsIds = new Set();
+  if (!NO_DEPS) {
+    for (const p of prod) {
+      const ids = extractDsIds(p.content);
+      for (const id of ids) allDsIds.add(id);
+    }
+  }
+
   console.log("2) Trạng thái local trước khi sync…");
   const before = await sqldb`SELECT id, name FROM pages WHERE company_id = ${COMPANY}`;
   const beforeIds = new Set(before.map((r) => r.id));
   const newOnes = prod.filter((p) => !beforeIds.has(p.id)).length;
   const updated = prod.length - newOnes;
   const localOnly = before.filter((r) => !prodIds.has(r.id));
-
   console.log(`   local: ${before.length} trang | sẽ THÊM ${newOnes}, GHI ĐÈ ${updated}.`);
+  if (!NO_DEPS && allDsIds.size)
+    console.log(`   sẽ đồng bộ ${allDsIds.size} datasource phụ thuộc.`);
 
-  console.log("3) Upsert (prod wins)…");
+  // ── Pull datasources trước (local cần DS với prod UUID khi đọc page) ──
+  if (!NO_DEPS && allDsIds.size) {
+    console.log("3) Đồng bộ datasource phụ thuộc về local…");
+    const entityMaps = await buildEntityMaps(sqldb);
+    console.log(
+      `   local ${entityMaps.local.byName.size} entity · prod ${entityMaps.prod.byId.size} entity`,
+    );
+    await pullDatasources(allDsIds, entityMaps, sqldb);
+  }
+
+  const step = !NO_DEPS && allDsIds.size ? "4" : "3";
+  console.log(`${step}) Upsert pages (prod wins)…`);
   await sqldb.begin(async (tx) => {
-    // Xoá bản local trùng TÊN nhưng khác id (tránh vỡ unique company+name).
     const clash = await tx`
       SELECT id, name FROM pages
       WHERE company_id = ${COMPANY} AND name = ANY(${prodNames}) AND id <> ALL(${[...prodIds]})`;
