@@ -3,7 +3,7 @@
    Cấp session config (JWT-signed) để browser khởi tạo editor.
    File serve + callback xử lý ở REST endpoint trong index.ts.
    ========================================================== */
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { roleCan } from "@erp-framework/core";
 import { knowledgeSources } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
@@ -16,6 +16,7 @@ const OO_JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET ?? "";
 
 /** Ký JWT HS256 với ONLYOFFICE_JWT_SECRET (không cần thêm dep jsonwebtoken). */
 export function signOoJwt(payload: unknown): string {
+  if (!OO_JWT_SECRET) throw new Error("ONLYOFFICE_JWT_SECRET not set");
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const sig = createHmac("sha256", OO_JWT_SECRET).update(`${header}.${body}`).digest("base64url");
@@ -24,18 +25,24 @@ export function signOoJwt(payload: unknown): string {
 
 /** Verify + decode JWT. Ném lỗi nếu sai chữ ký hoặc hết hạn. */
 export function verifyOoJwt(token: string): unknown {
+  if (!OO_JWT_SECRET) throw new Error("ONLYOFFICE_JWT_SECRET not set — không thể xác thực token");
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("JWT format invalid");
   const [header, body, sig] = parts as [string, string, string];
   const expected = createHmac("sha256", OO_JWT_SECRET)
     .update(`${header}.${body}`)
     .digest("base64url");
-  if (sig !== expected) throw new Error("JWT signature invalid");
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as Record<string, unknown>;
-  if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) {
+  // So sánh constant-time tránh timing attack.
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    throw new Error("JWT signature invalid");
+  }
+  const decoded = JSON.parse(Buffer.from(body, "base64url").toString()) as Record<string, unknown>;
+  if (typeof decoded.exp === "number" && decoded.exp < Math.floor(Date.now() / 1000)) {
     throw new Error("JWT expired");
   }
-  return payload;
+  return decoded;
 }
 
 /** Map MIME type → OnlyOffice documentType + fileType. */

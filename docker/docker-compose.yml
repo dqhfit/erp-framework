@@ -87,7 +87,8 @@ services:
       # Giá trị này là URL mà ONLYOFFICE container dùng để kéo file + gửi callback
       # (server→server qua Docker DNS). KHÔNG đổi khi tên service giữ nguyên "server".
       ERP_INTERNAL_URL: http://server:8910
-      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-change-me-onlyoffice-jwt}
+      # Phải đặt trong .env — bỏ trống = tắt tính năng OnlyOffice (server trả lỗi).
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
@@ -223,7 +224,7 @@ services:
     restart: unless-stopped
     environment:
       JWT_ENABLED: "true"
-      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-change-me-onlyoffice-jwt}
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
       JWT_HEADER: Authorization
       WOPI_ENABLED: "false"
     volumes:

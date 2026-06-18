@@ -1030,6 +1030,19 @@ async function handleOoCallback(sourceId: string, body: Record<string, unknown>)
     return;
   }
 
+  // Chặn SSRF: chỉ cho phép fetch từ host onlyoffice (Docker DNS) qua http.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(downloadUrl);
+  } catch {
+    console.error(`[doc/callback] URL không hợp lệ: ${downloadUrl}`);
+    return;
+  }
+  if (parsedUrl.protocol !== "http:" || parsedUrl.hostname !== "onlyoffice") {
+    console.error(`[doc/callback] URL bị chặn (chỉ nhận onlyoffice nội bộ): ${downloadUrl}`);
+    return;
+  }
+
   const [source] = await db
     .select()
     .from(knowledgeSources)
@@ -1045,8 +1058,8 @@ async function handleOoCallback(sourceId: string, body: Record<string, unknown>)
     return;
   }
 
-  // Tải file mới về từ OnlyOffice (URL tạm, hết hạn sau 15 phút).
-  const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(30_000) });
+  // Tải file mới về từ OnlyOffice (URL tạm, hết hạn sau 15 phút). Không theo redirect.
+  const res = await fetch(downloadUrl, { redirect: "error", signal: AbortSignal.timeout(30_000) });
   if (!res.ok) {
     console.error(`[doc/callback] Tải file thất bại: ${res.status} ${downloadUrl}`);
     return;
