@@ -1231,6 +1231,41 @@ export function PageDesigner({ pageId }: Props) {
                     setResizingId(c.id);
                     setSelected(c.id);
                   }}
+                  onSplitPanelDrop={
+                    c.kind === "split"
+                      ? (panel, srcId) => {
+                          const src = components.find((cc) => cc.id === srcId);
+                          if (!src) return;
+                          const panelKey = `panel${panel}` as "panelA" | "panelB" | "panelC";
+                          const existing = (c.config[panelKey] ?? {}) as Record<string, unknown>;
+                          update(c.id, {
+                            config: {
+                              ...c.config,
+                              [panelKey]: {
+                                linkField: existing.linkField, // giữ cấu hình liên kết cũ
+                                kind: src.kind,
+                                entity: src.config.entity,
+                                dataSourceId: src.config.dataSourceId,
+                                title: src.config.title,
+                                fields: src.config.fields,
+                                columnLabels: src.config.columnLabels,
+                                columnGroups: src.config.columnGroups,
+                                serverPaging: src.config.serverPaging,
+                                editable: src.config.editable,
+                                batchEdit: src.config.batchEdit,
+                                excelMode: src.config.excelMode,
+                                loadGate: src.config.loadGate,
+                                defaultSort: src.config.defaultSort,
+                                multiSelect: src.config.multiSelect,
+                                rowLimit: src.config.rowLimit,
+                                pageSize: src.config.pageSize,
+                              },
+                            },
+                          });
+                          setSelected(c.id);
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -3015,6 +3050,7 @@ interface ComponentCardProps {
   onDragOver: () => void;
   onDragLeave: () => void;
   onResizeStart: (dir: "e" | "s" | "se", mouseX: number, mouseY: number) => void;
+  onSplitPanelDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
 }
 function ComponentCard({
   comp,
@@ -3031,6 +3067,7 @@ function ComponentCard({
   onDragOver,
   onDragLeave,
   onResizeStart,
+  onSplitPanelDrop,
 }: ComponentCardProps) {
   // Widget nhập chưa gắn nguồn nào (entity/options/stateKey) → badge nhắc.
   const unbound =
@@ -3103,11 +3140,11 @@ function ComponentCard({
       <div className="flex-1 overflow-hidden min-h-0">
         {isScalableKind(comp.kind) ? (
           <ScaleToFit>
-            <ComponentBody comp={comp} />
+            <ComponentBody comp={comp} onSplitPanelDrop={onSplitPanelDrop} />
           </ScaleToFit>
         ) : (
           // Danh sách/tương tác: giữ nguyên kích thước, tự cuộn — không scale.
-          <ComponentBody comp={comp} />
+          <ComponentBody comp={comp} onSplitPanelDrop={onSplitPanelDrop} />
         )}
       </div>
       {!previewMode && (
@@ -3193,7 +3230,64 @@ function PreviewBox({ icon, label, hint }: { icon: IconName; label: string; hint
   );
 }
 
-function ComponentBody({ comp }: { comp: PageComponent }) {
+/** Vùng thả component vào 1 panel của Split — hiển thị highlight khi kéo vào. */
+function SplitPanelDropZone({
+  panelKey,
+  className,
+  style,
+  onDrop,
+  children,
+}: {
+  panelKey: "A" | "B" | "C";
+  className?: string;
+  style?: React.CSSProperties;
+  onDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
+  children: React.ReactNode;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <div
+      className={cn("relative", over && "ring-2 ring-inset ring-accent ring-offset-0", className)}
+      style={style}
+      onDragOver={(e) => {
+        // Chỉ chấp nhận kéo component (text/plain = comp.id), không nhận palette.
+        if (e.dataTransfer.types.includes("text/plain")) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!over) setOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+          setOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        setOver(false);
+        const srcId = e.dataTransfer.getData("text/plain");
+        if (srcId && onDrop) onDrop(panelKey, srcId);
+      }}
+    >
+      {children}
+      {over && (
+        <div className="absolute inset-0 flex items-center justify-center bg-accent/15 pointer-events-none z-10 rounded">
+          <span className="text-[10px] font-semibold text-accent bg-bg/90 px-2 py-0.5 rounded shadow">
+            Thả vào panel {panelKey}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComponentBody({
+  comp,
+  onSplitPanelDrop,
+}: {
+  comp: PageComponent;
+  onSplitPanelDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
+}) {
   const entities = useUserObjects((s) => s.entities);
   const dataSourceContent = useUserObjects((s) => s.dataSourceContent);
   const { fieldDisp } = useFieldDisplay();
@@ -3745,7 +3839,12 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
     if (isBoth) {
       return (
         <div className="h-full flex flex-row overflow-hidden text-[10px]">
-          <div className="overflow-hidden border-r border-border/40" style={{ width: `${ratio}%` }}>
+          <SplitPanelDropZone
+            panelKey="A"
+            className="overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+            onDrop={onSplitPanelDrop}
+          >
             <PanelPreview
               label="A"
               ent={entA}
@@ -3753,11 +3852,13 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
               kind={panelA?.kind}
               bg="bg-accent/5"
             />
-          </div>
+          </SplitPanelDropZone>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div
+            <SplitPanelDropZone
+              panelKey="B"
               className="overflow-hidden border-b border-border/40"
               style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
             >
               <PanelPreview
                 label="B"
@@ -3766,10 +3867,14 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
                 kind={panelB?.kind}
                 bg="bg-panel-2/30"
               />
-            </div>
-            <div className="flex-1 overflow-hidden">
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="C"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
               <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
-            </div>
+            </SplitPanelDropZone>
           </div>
         </div>
       );
@@ -3777,9 +3882,11 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
 
     return (
       <div className={`h-full flex ${isH ? "flex-row" : "flex-col"} overflow-hidden text-[10px]`}>
-        <div
+        <SplitPanelDropZone
+          panelKey="A"
           className={`overflow-hidden border-border/40 ${isH ? "border-r" : "border-b"}`}
           style={{ [isH ? "width" : "height"]: `${ratio}%` }}
+          onDrop={onSplitPanelDrop}
         >
           <PanelPreview
             label="A"
@@ -3788,8 +3895,12 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             kind={panelA?.kind}
             bg="bg-accent/5"
           />
-        </div>
-        <div className="flex-1 overflow-hidden">
+        </SplitPanelDropZone>
+        <SplitPanelDropZone
+          panelKey="B"
+          className="flex-1 overflow-hidden"
+          onDrop={onSplitPanelDrop}
+        >
           <PanelPreview
             label="B"
             ent={entB}
@@ -3797,7 +3908,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             kind={panelB?.kind}
             bg="bg-panel-2/30"
           />
-        </div>
+        </SplitPanelDropZone>
       </div>
     );
   }

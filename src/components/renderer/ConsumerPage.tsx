@@ -4003,7 +4003,26 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
 }
 
 /** Split Panel — hai sub-widget chia sẻ selection state nội bộ qua PageStateContext. */
-type SplitPanelCfg = { kind?: string; entity?: string; title?: string; linkField?: string };
+type SplitPanelCfg = {
+  kind?: string;
+  entity?: string;
+  dataSourceId?: string;
+  title?: string;
+  linkField?: string;
+  // Các trường được copy từ list/form/detail khi kéo thả vào panel
+  fields?: string[];
+  columnLabels?: Record<string, string>;
+  columnGroups?: ColumnGroupNode[];
+  serverPaging?: boolean;
+  editable?: boolean;
+  batchEdit?: boolean;
+  excelMode?: boolean;
+  multiSelect?: boolean;
+  loadGate?: string;
+  rowLimit?: number;
+  pageSize?: number;
+  defaultSort?: { field: string; dir: "asc" | "desc" };
+};
 
 function useDragRatio(
   initValue: number,
@@ -4041,7 +4060,20 @@ function buildSubCfg(panel: SplitPanelCfg, splitKey: string): Record<string, unk
   const kind = panel.kind ?? "list";
   return {
     entity: panel.entity,
+    dataSourceId: panel.dataSourceId,
     title: panel.title,
+    fields: panel.fields,
+    columnLabels: panel.columnLabels,
+    columnGroups: panel.columnGroups,
+    serverPaging: panel.serverPaging,
+    editable: panel.editable,
+    batchEdit: panel.batchEdit,
+    excelMode: panel.excelMode,
+    multiSelect: panel.multiSelect,
+    loadGate: panel.loadGate,
+    rowLimit: panel.rowLimit,
+    pageSize: panel.pageSize,
+    defaultSort: panel.defaultSort,
     ...(kind === "list" ? { selectionStateKey: splitKey } : {}),
     ...(kind === "detail" ? { recordIdFromState: splitKey } : {}),
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
