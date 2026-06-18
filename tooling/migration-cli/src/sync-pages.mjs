@@ -1,7 +1,13 @@
-/* sync-pages.mjs — Đồng bộ HAI CHIỀU bảng `pages` (+ datasources phụ thuộc)
+/* sync-pages.mjs — Đồng bộ bảng `pages` (+ datasources phụ thuộc)
    giữa DB dev local và PROD, lấy PROD làm hub chung (UUID toàn cục).
 
-   Quy tắc per-page (khớp theo id):
+   Chế độ:
+   ─ MẶC ĐỊNH (2 chiều): so timestamp → bên mới hơn thắng; content trùng → SKIP.
+   ─ --push  (1 chiều, ghi đè): BỎ QUA so sánh, luôn ĐẨY local → prod (local wins).
+   ─ --pull  (1 chiều, ghi đè): BỎ QUA so sánh, luôn KÉO prod → local (prod wins).
+   Hai flag loại trừ nhau. Kết hợp với --only để giới hạn phạm vi.
+
+   Quy tắc per-page chế độ 2 chiều (mặc định):
    - cùng id 2 bên: bên nào updated_at MỚI HƠN thắng → PUSH / PULL; bằng nhau → SKIP.
    - chỉ có ở PROD → PULL về local.
    - chỉ có ở LOCAL:
@@ -16,10 +22,12 @@
      DS kéo về local giữ nguyên PROD UUID (prod-as-hub) → page content hoạt động.
 
    MẶC ĐỊNH = DRY (chỉ in kế hoạch). Thêm --apply để thực thi.
-     node tooling/migration-cli/src/sync-pages.mjs
-     node tooling/migration-cli/src/sync-pages.mjs --apply
-     node tooling/migration-cli/src/sync-pages.mjs --only mau_sac_8f0315,khach_hang_813e1e --apply
-     node tooling/migration-cli/src/sync-pages.mjs --no-deps --apply   # bỏ qua sync DS
+     node tooling/migration-cli/src/sync-pages.mjs                                    # 2 chiều, dry
+     node tooling/migration-cli/src/sync-pages.mjs --apply                            # 2 chiều, thực thi
+     node tooling/migration-cli/src/sync-pages.mjs --push --apply                     # local wins tất cả
+     node tooling/migration-cli/src/sync-pages.mjs --pull --apply                     # prod wins tất cả
+     node tooling/migration-cli/src/sync-pages.mjs --push --only mau_sac,khach_hang --apply
+     node tooling/migration-cli/src/sync-pages.mjs --no-deps --apply                  # bỏ qua sync DS
 
    ⚠ So sánh theo updated_at; lệch đồng hồ máy dev vs prod → chọn nhầm "mới hơn".
 */
@@ -35,6 +43,12 @@ const URL = "https://erp.vfmgroup.vn/mcp/migration";
 const argv = process.argv.slice(2);
 const APPLY = argv.includes("--apply");
 const NO_DEPS = argv.includes("--no-deps");
+const FORCE_PUSH = argv.includes("--push"); // 1 chiều: local luôn thắng
+const FORCE_PULL = argv.includes("--pull"); // 1 chiều: prod luôn thắng
+if (FORCE_PUSH && FORCE_PULL) {
+  console.error("Lỗi: --push và --pull loại trừ nhau.");
+  process.exit(1);
+}
 const onlyIdx = argv.indexOf("--only");
 const ONLY = new Set(
   onlyIdx >= 0 && argv[onlyIdx + 1]
@@ -320,9 +334,12 @@ const same = (a, b) =>
 // ── Main ─────────────────────────────────────────────────────────────────
 const sqldb = postgres(LOCAL, { max: 1 });
 try {
-  console.log(
-    `Đồng bộ 2 chiều pages + datasources (PROD hub) — chế độ ${APPLY ? "APPLY" : "DRY (xem trước)"}`,
-  );
+  const modeLabel = FORCE_PUSH
+    ? "1 CHIỀU ↑ PUSH (local ghi đè prod)"
+    : FORCE_PULL
+      ? "1 CHIỀU ↓ PULL (prod ghi đè local)"
+      : "2 CHIỀU (so timestamp)";
+  console.log(`Đồng bộ pages + datasources — ${modeLabel} — ${APPLY ? "APPLY" : "DRY (xem trước)"}`);
   if (ONLY.size) console.log(`  --only: ${[...ONLY].join(", ")}`);
   if (NO_DEPS) console.log(`  --no-deps: bỏ qua đồng bộ datasource`);
 
@@ -351,19 +368,33 @@ try {
   for (const id of ids) {
     const lp = localById.get(id);
     const pp = prodById.get(id);
-    if (lp && pp) {
-      if (!inScope(lp.name) && !inScope(pp.name)) continue;
-      if (same(lp, pp)) skip++;
-      else if (lp.updated_at > pp.updated_at) toPush.push({ p: lp, why: "local mới hơn" });
-      else if (pp.updated_at > lp.updated_at) toPull.push({ p: pp, why: "prod mới hơn" });
-      else conflicts.push(lp);
-    } else if (pp && !lp) {
-      if (inScope(pp.name)) toPull.push({ p: pp, why: "mới ở prod" });
-    } else if (lp && !pp) {
-      if (!inScope(lp.name)) continue;
-      const clash = prodBaseToIds.get(baseName(lp.name));
+
+    if (FORCE_PUSH) {
+      // 1 chiều: local wins → đẩy mọi trang local trong scope (bỏ qua so sánh).
+      if (!lp || (!inScope(lp.name))) continue;
+      const clash = !pp && prodBaseToIds.get(baseName(lp.name));
       if (clash && clash.size > 0) strays.push(lp);
-      else toPush.push({ p: lp, why: "mới ở local" });
+      else toPush.push({ p: lp, why: pp ? "ghi đè prod" : "mới ở local" });
+    } else if (FORCE_PULL) {
+      // 1 chiều: prod wins → kéo mọi trang prod trong scope (bỏ qua so sánh).
+      if (!pp || !inScope(pp.name)) continue;
+      toPull.push({ p: pp, why: lp ? "ghi đè local" : "mới ở prod" });
+    } else {
+      // 2 chiều: so timestamp / content.
+      if (lp && pp) {
+        if (!inScope(lp.name) && !inScope(pp.name)) continue;
+        if (same(lp, pp)) skip++;
+        else if (lp.updated_at > pp.updated_at) toPush.push({ p: lp, why: "local mới hơn" });
+        else if (pp.updated_at > lp.updated_at) toPull.push({ p: pp, why: "prod mới hơn" });
+        else conflicts.push(lp);
+      } else if (pp && !lp) {
+        if (inScope(pp.name)) toPull.push({ p: pp, why: "mới ở prod" });
+      } else if (lp && !pp) {
+        if (!inScope(lp.name)) continue;
+        const clash = prodBaseToIds.get(baseName(lp.name));
+        if (clash && clash.size > 0) strays.push(lp);
+        else toPush.push({ p: lp, why: "mới ở local" });
+      }
     }
   }
 
