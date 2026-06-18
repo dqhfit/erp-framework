@@ -23,6 +23,7 @@ const NON_SCALABLE_KINDS = new Set([
   "chart",
   "kanban",
   "split",
+  "grid",
   "search",
   "filter",
   "combobox",
