@@ -29,7 +29,7 @@ export function Modal({
   const titleId = useId();
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-900 overflow-y-auto" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-900 overflow-y-auto">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-none" />
       <div
         className={cn(
