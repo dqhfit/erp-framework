@@ -12,6 +12,7 @@ import { computeProduct, sumField } from "@/components/renderer/MasterDetailCrea
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import type { PageStateLike } from "@/lib/run-action";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
@@ -131,6 +132,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   >({});
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
+  const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
   const lookupKey = [
@@ -537,12 +539,44 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     }
   };
 
-  // Upload ảnh → base64 vào form (cho field type "image" ở cột phải).
+  // Upload ảnh lên server → lưu URL vào form (thay base64).
   const onPickImage = (name: string, file: File | undefined) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Chỉ chấp nhận file ảnh");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 10MB");
+      return;
+    }
+    // Preview nhanh base64 local trong khi upload ngầm.
     const reader = new FileReader();
     reader.onload = () => setField(name, String(reader.result));
     reader.readAsDataURL(file);
+    setImgUploading((u) => ({ ...u, [name]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    fetch("/upload/image", { method: "POST", body: fd })
+      .then(async (res) => {
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
+          throw new Error((e as { error?: string }).error ?? "Upload thất bại");
+        }
+        return res.json() as Promise<{ url: string }>;
+      })
+      .then(({ url }) => setField(name, url))
+      .catch((e: Error) => {
+        toast.error(e.message);
+        setField(name, ""); // xoá preview nếu upload lỗi
+      })
+      .finally(() =>
+        setImgUploading((u) => {
+          const n = { ...u };
+          delete n[name];
+          return n;
+        }),
+      );
   };
 
   // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
@@ -896,17 +930,29 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                   <div className="w-56 shrink-0 space-y-3">
                     {imgFields.map((f) => (
                       <div key={f.id}>
-                        <label className="block text-xs font-medium mb-1">{f.label}</label>
+                        <label className="block text-xs font-medium mb-1 flex items-center gap-1">
+                          {f.label}
+                          {imgUploading[f.name] && (
+                            <I.Loader size={10} className="animate-spin text-accent" />
+                          )}
+                        </label>
                         {form[f.name] ? (
-                          // biome-ignore lint/performance/noImgElement: preview ảnh base64/URL trong modal
+                          // biome-ignore lint/performance/noImgElement: preview ảnh URL/base64 trong modal
                           <img
                             src={form[f.name]}
                             alt=""
-                            className="w-full h-48 object-contain rounded border border-border bg-panel-2"
+                            className={cn(
+                              "w-full h-48 object-contain rounded border border-border bg-panel-2",
+                              imgUploading[f.name] && "opacity-50",
+                            )}
                           />
                         ) : (
                           <div className="w-full h-48 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
-                            No image data
+                            {imgUploading[f.name] ? (
+                              <I.Loader size={20} className="animate-spin text-accent" />
+                            ) : (
+                              "Chưa có ảnh"
+                            )}
                           </div>
                         )}
                         {!readOnly && (
@@ -915,9 +961,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                               type="file"
                               accept="image/*"
                               className="text-xs"
+                              disabled={!!imgUploading[f.name]}
                               onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
                             />
-                            {form[f.name] && (
+                            {form[f.name] && !imgUploading[f.name] && (
                               <button
                                 type="button"
                                 className="text-xs text-danger hover:underline"

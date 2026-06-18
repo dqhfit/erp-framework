@@ -1,7 +1,9 @@
 /* index.ts — Bootstrap Fastify + tRPC + scheduler pg-boss.
    Cổng 8910 (tránh đụng bridge 8909). */
 import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
-import { mkdir, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { extname, join } from "node:path";
 import { roleCan } from "@erp-framework/core";
 import { agents, apiKeys, entities, knowledgeSources, sessions } from "@erp-framework/db";
@@ -802,6 +804,118 @@ async function main(): Promise<void> {
 
     await enqueueKbIngest(row.id);
     reply.send({ id: row.id, title: row.title, status: "pending" });
+  });
+
+  /* Upload ảnh cho field type="image" — lưu vào UPLOAD_DIR/img/<companyId>/,
+     trả { url } để frontend lưu vào field thay vì base64. */
+  app.post("/upload/image", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) {
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
+    }
+    const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+    if (!active) {
+      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+      return;
+    }
+
+    // Allowlist chỉ raster — loại trừ SVG (có thể chứa <script> → XSS).
+    const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+    const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
+
+    const file = await req.file();
+    if (!file) {
+      reply.code(400).send({ error: "Thiếu file" });
+      return;
+    }
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      reply.code(400).send({ error: "Chỉ chấp nhận JPEG/PNG/GIF/WebP" });
+      return;
+    }
+    let buf: Buffer;
+    try {
+      buf = await file.toBuffer();
+    } catch (e) {
+      reply.code(413).send({ error: `File quá lớn: ${(e as Error).message}` });
+      return;
+    }
+    if (buf.length > 10 * 1024 * 1024) {
+      reply.code(413).send({ error: "Ảnh không được vượt quá 10MB" });
+      return;
+    }
+
+    const ext = extname(file.filename || "").toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) {
+      reply.code(400).send({ error: "Định dạng file không hợp lệ" });
+      return;
+    }
+    const filename = randomUUID() + ext;
+    const dir = join(UPLOAD_DIR, "img", active.companyId);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, filename), buf);
+
+    reply.send({ url: `/files/img/${active.companyId}/${filename}` });
+  });
+
+  /* Serve ảnh entity — /files/img/:companyId/:file.
+     Kiểm tra session + xác nhận user thuộc companyId (chống cross-tenant). */
+  app.get("/files/img/:companyId/:file", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) {
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
+    }
+
+    const { companyId, file } = req.params as { companyId: string; file: string };
+    if (!/^[0-9a-f-]+$/.test(companyId) || !/^[\w.-]+$/.test(file)) {
+      reply.code(400).send({ error: "Path không hợp lệ" });
+      return;
+    }
+
+    // Xác nhận user thuộc companyId trong URL — chặn cross-tenant.
+    const membership = await resolveActiveCompany(db, s.userId, companyId);
+    if (!membership || membership.companyId !== companyId) {
+      reply.code(403).send({ error: "Không có quyền truy cập" });
+      return;
+    }
+
+    const filePath = join(UPLOAD_DIR, "img", companyId, file);
+    try {
+      await stat(filePath);
+    } catch {
+      reply.code(404).send({ error: "Không tìm thấy file" });
+      return;
+    }
+
+    const RASTER_MIME: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+    const ext = extname(file).toLowerCase();
+    const mime = RASTER_MIME[ext];
+    if (!mime) {
+      reply.code(400).send({ error: "Định dạng không hợp lệ" });
+      return;
+    }
+    reply.header("Content-Type", mime);
+    reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
+    reply.send(createReadStream(filePath));
   });
 
   await app.listen({ host: HOST, port: PORT });
