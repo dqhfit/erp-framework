@@ -984,6 +984,9 @@ interface EditableListWidgetProps {
   rowActionsStyle?: "inline" | "popover";
   /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
   refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
+  /** Bật DÒNG "＋ Thêm dòng mới" ở cuối lưới (cfg.addRowAtEnd). Chỉ tác dụng khi
+   *  batchEdit + onBulkCreate (mới có onAddRow). */
+  addRowAtEnd?: boolean;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -1053,6 +1056,7 @@ function EditableListWidget({
   rowActionsHidden,
   rowActionsStyle,
   refFill,
+  addRowAtEnd,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1490,6 +1494,7 @@ function EditableListWidget({
             onPasteCreate={onBulkCreate}
             pasteCreateDefaults={createDefaults}
             onAddRow={batchEdit && onBulkCreate ? addRow : undefined}
+            inlineAddRow={addRowAtEnd}
             pageJump={pageJump}
             enableSelection={selectable}
           />
@@ -1934,6 +1939,7 @@ function ListWidget({
   selectable,
   embeddedActions,
   embeddedFilters,
+  addRowAtEnd,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -2010,6 +2016,9 @@ function ListWidget({
     options?: string;
     optionLabels?: Record<string, string>;
   }>;
+  /** Hiện DÒNG "＋ Thêm dòng mới" ở cuối lưới (cfg.addRowAtEnd) — chỉ khi editable
+   *  + batchEdit (mới tạo được dòng nháp). */
+  addRowAtEnd?: boolean;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -2503,6 +2512,7 @@ function ListWidget({
         rowActionsHidden={rowActionsHidden}
         rowActionsStyle={rowActionsStyle}
         refFill={refFill}
+        addRowAtEnd={addRowAtEnd}
       />
     );
   }
@@ -3989,6 +3999,7 @@ function RenderSubWidget({
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
+        addRowAtEnd={cfg.addRowAtEnd === true}
       />
     );
   }
@@ -4547,6 +4558,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
+        addRowAtEnd={cfg.addRowAtEnd === true}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}

@@ -363,6 +363,9 @@ export interface DataGridProps<T> {
   /** Khi set: hiện nút "＋ Thêm dòng" (lên đầu / xuống cuối) ở toolbar → caller
    *  chèn 1 dòng nháp editable vào lưới. Chỉ lưới sửa-được + chế độ gom (batch). */
   onAddRow?: (pos: "top" | "bottom") => void;
+  /** Khi bật: hiện DÒNG "＋ Thêm dòng mới" ngay CUỐI lưới (bấm = onAddRow("bottom")).
+   *  Cần onAddRow. Bật qua tuỳ chọn cfg.addRowAtEnd của widget list sửa-được. */
+  inlineAddRow?: boolean;
   /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
    *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
   pageJump?: { token: number; to: "first" | "last" };
@@ -426,6 +429,7 @@ export function DataGrid<T>({
   onPasteCreate,
   pasteCreateDefaults,
   onAddRow,
+  inlineAddRow,
   pageJump,
   enableSelection,
   onSelectionChange,
@@ -1785,6 +1789,21 @@ export function DataGrid<T>({
                     </Fragment>
                   );
                 })
+              )}
+              {/* Dòng "＋ Thêm dòng mới" ở CUỐI lưới (bật qua tuỳ chọn addRowAtEnd).
+                  Bấm = chèn 1 dòng nháp xuống cuối (onAddRow("bottom")). */}
+              {inlineAddRow && onAddRow && (
+                <tr className="border-t border-border">
+                  <td colSpan={columns.length + leadCols} className="p-0">
+                    <button
+                      type="button"
+                      onClick={() => onAddRow("bottom")}
+                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted hover:text-accent hover:bg-accent/5 transition-colors"
+                    >
+                      <I.Plus size={13} /> Thêm dòng mới
+                    </button>
+                  </td>
+                </tr>
               )}
             </tbody>
             {showSummary && (

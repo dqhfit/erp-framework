@@ -1797,6 +1797,25 @@ export function PageDesigner({ pageId }: Props) {
                             </div>
                           )}
 
+                          {sel.kind === "list" &&
+                            sel.config.editable === true &&
+                            sel.config.batchEdit === true && (
+                              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft ml-3">
+                                <div className="flex flex-col leading-tight">
+                                  <span className="text-sm">Dòng thêm mới ở cuối lưới</span>
+                                  <span className="text-[11px] text-muted">
+                                    Hiện dòng “＋ Thêm dòng mới” ở cuối; bấm để thêm dòng nháp
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={sel.config.addRowAtEnd === true}
+                                  onChange={(v) =>
+                                    update(sel.id, { config: { ...sel.config, addRowAtEnd: v } })
+                                  }
+                                />
+                              </div>
+                            )}
+
                           {sel.kind === "list" && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
                               <div className="flex flex-col leading-tight">
