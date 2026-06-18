@@ -852,9 +852,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             </div>
           ) : ent ? (
             visibleFields.length > 0 ? (
-              <div className="flex gap-4 items-start">
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
-                <div className={cn("min-w-0", imgFields.length > 0 ? "flex-1" : "w-full")}>
+                <div className={cn("min-w-0 w-full", imgFields.length > 0 ? "sm:flex-1" : "")}>
                   {current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
@@ -871,7 +871,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             <div
                               className={cn(
                                 (current.cols ?? 1) >= 2
-                                  ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                                  ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                                   : "space-y-2.5",
                               )}
                             >
@@ -903,7 +903,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     <div
                       className={cn(
                         (current.cols ?? 1) >= 2
-                          ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                           : "space-y-2.5",
                       )}
                     >
@@ -928,7 +928,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
                 {imgFields.length > 0 && (
-                  <div className="w-56 shrink-0 space-y-3">
+                  <div className="w-full sm:w-56 sm:shrink-0 space-y-3">
                     {imgFields.map((f) => (
                       <div key={f.id}>
                         <label className="block text-xs font-medium mb-1">{f.label}</label>
@@ -946,16 +946,21 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                         )}
                         {!readOnly && (
                           <div className="flex items-center gap-2 mt-1.5">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="text-xs"
-                              onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
-                            />
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                              <span className="btn btn-default text-xs px-3 py-1.5 shrink-0">
+                                Chọn ảnh
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
+                              />
+                            </label>
                             {form[f.name] && (
                               <button
                                 type="button"
-                                className="text-xs text-danger hover:underline"
+                                className="text-xs text-danger hover:underline shrink-0"
                                 onClick={() => setField(f.name, "")}
                               >
                                 Xoá
