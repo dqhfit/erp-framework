@@ -818,28 +818,78 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           ) : ent ? (
             visibleFields.length > 0 ? (
               <div className="flex gap-4 items-start">
-                {/* Cột trái: các trường nhập (1 hoặc 2 cột theo current.cols) */}
-                <div
-                  className={cn(
-                    "min-w-0",
-                    imgFields.length > 0 ? "flex-1" : "w-full",
-                    (current.cols ?? 1) >= 2 ? "grid grid-cols-2 gap-x-4 gap-y-2.5" : "space-y-2.5",
-                  )}
-                >
-                  {leftFields.map((f) => (
-                    <div
-                      key={f.id}
-                      className={
-                        (current.cols ?? 1) >= 2 && f.type === "longtext" ? "col-span-2" : undefined
-                      }
-                    >
-                      <label className="block text-xs font-medium mb-0.5">
-                        {f.label}
-                        {f.required ? <span className="text-danger ml-0.5">*</span> : null}
-                      </label>
-                      {renderControl(f)}
+                {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
+                <div className={cn("min-w-0", imgFields.length > 0 ? "flex-1" : "w-full")}>
+                  {current.sections?.length ? (
+                    // Chế độ sections: render từng nhóm có header tiêu đề
+                    <div className="space-y-3">
+                      {current.sections.map((sec) => {
+                        const secFields = sec.fields
+                          .map((n) => leftFields.find((f) => f.name === n))
+                          .filter(Boolean) as typeof leftFields;
+                        if (!secFields.length) return null;
+                        return (
+                          <div key={sec.title}>
+                            <div className="text-xs font-semibold bg-panel-2 px-2 py-1.5 rounded-t border-b border-border mb-2">
+                              {sec.title}
+                            </div>
+                            <div
+                              className={cn(
+                                (current.cols ?? 1) >= 2
+                                  ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                                  : "space-y-2.5",
+                              )}
+                            >
+                              {secFields.map((f) => (
+                                <div
+                                  key={f.id}
+                                  className={
+                                    (current.cols ?? 1) >= 2 && f.type === "longtext"
+                                      ? "col-span-2"
+                                      : undefined
+                                  }
+                                >
+                                  <label className="block text-xs font-medium mb-0.5">
+                                    {f.label}
+                                    {f.required ? (
+                                      <span className="text-danger ml-0.5">*</span>
+                                    ) : null}
+                                  </label>
+                                  {renderControl(f)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  ) : (
+                    // Chế độ flat (mặc định)
+                    <div
+                      className={cn(
+                        (current.cols ?? 1) >= 2
+                          ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                          : "space-y-2.5",
+                      )}
+                    >
+                      {leftFields.map((f) => (
+                        <div
+                          key={f.id}
+                          className={
+                            (current.cols ?? 1) >= 2 && f.type === "longtext"
+                              ? "col-span-2"
+                              : undefined
+                          }
+                        >
+                          <label className="block text-xs font-medium mb-0.5">
+                            {f.label}
+                            {f.required ? <span className="text-danger ml-0.5">*</span> : null}
+                          </label>
+                          {renderControl(f)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
                 {imgFields.length > 0 && (

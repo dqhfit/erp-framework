@@ -228,6 +228,10 @@ export interface WizardStepDef {
   saveOutputTo?: string;
   /** Nút hành động tuỳ chỉnh hiển thị trong bước này. */
   actions?: Array<{ id: string } & ActionConfig>;
+  /** Nhóm field có tiêu đề — thay thế `fields` khi cần chia form thành các
+   *  block có header (vd "Thông tin ngân hàng", "Thông tin tài khoản").
+   *  Khi có `sections`, bỏ qua `fields` (lấy danh sách từ sections). */
+  sections?: Array<{ title: string; fields: string[] }>;
   /** Bước nhập LƯỚI chi tiết: nhiều dòng entity con, mỗi dòng tự gán linkField
    *  = giá trị parentKeyField của bản ghi chính. Có → render bảng nhập thay vì
    *  form field (chỉ dùng ở wizard 1-entity). */
