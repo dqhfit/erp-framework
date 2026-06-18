@@ -8,6 +8,7 @@
 import type { ReactElement } from "react";
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -4032,36 +4033,39 @@ type SplitGridCell = SplitPanelCfg & {
   rowSpan: number;
 };
 
-function useDragRatio(
-  initValue: number,
+/** Drag-resize cho N panel: mảng ratios + onHandleDrag(index, e) cho từng thanh ngăn */
+function useSplitRatios(
+  initRatios: number[],
   containerRef: React.RefObject<HTMLDivElement | null>,
   axis: "h" | "v",
 ) {
-  const [ratio, setRatio] = useState(initValue);
-  const dragging = useRef(false);
-
-  const onMouseDown = (e: React.MouseEvent) => {
+  const [ratios, setRatios] = useState(() => [...initRatios]);
+  const onHandleDrag = (i: number, e: React.MouseEvent) => {
     e.preventDefault();
-    dragging.current = true;
+    const start = axis === "h" ? e.clientX : e.clientY;
+    const snap = [...ratios];
+    const total = snap.reduce((a, b) => a + b, 0);
     const onMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct =
-        axis === "h"
-          ? ((ev.clientX - rect.left) / rect.width) * 100
-          : ((ev.clientY - rect.top) / rect.height) * 100;
-      setRatio(Math.min(80, Math.max(20, pct)));
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const size = axis === "h" ? rect.width : rect.height;
+      const delta = (((axis === "h" ? ev.clientX : ev.clientY) - start) / size) * total;
+      const min = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: i/i+1 always in range
+      next[i] = Math.max(min, snap[i]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: i/i+1 always in range
+      next[i + 1] = Math.max(min, snap[i]! + snap[i + 1]! - next[i]!);
+      setRatios(next);
     };
     const onUp = () => {
-      dragging.current = false;
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   };
-
-  return [ratio, onMouseDown] as const;
+  return { ratios, onHandleDrag };
 }
 
 /** Drag-resize cho grid N×M: trả colFr/rowFr local + handler mousedown cho mỗi thanh ngăn */
@@ -4323,17 +4327,14 @@ function GridWidget({ comp }: { comp: PageComponent }) {
 
 function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
-
-  // All hooks must be called unconditionally (React rules of hooks)
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rightRef = useRef<HTMLDivElement>(null);
-  const [ratioH, onDragH] = useDragRatio((cfg.ratio as number) ?? 40, containerRef, "h");
-  const [ratioV, onDragV] = useDragRatio((cfg.ratioV as number) ?? 50, rightRef, "v");
-
   const splitKey = `split_${comp.id}_sel`;
 
-  // Old format
   const orientation = (cfg.orientation as string) ?? "h";
+  const count = Math.max(2, Math.min(3, (cfg.count as number) ?? 2));
+  const isTabs = orientation === "tabs";
+  const isBoth = orientation === "both";
+  const isH = !isBoth && !isTabs && orientation !== "v";
+
   const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
   const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
   const panelC = (cfg.panelC as SplitPanelCfg | undefined) ?? {};
@@ -4343,20 +4344,93 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey);
   const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey);
   const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey);
-  const handleCls = (axis: "h" | "v") =>
-    `shrink-0 ${axis === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
-  if (orientation === "both") {
+
+  // Ratios — initialized from saved config, adjusted by drag at runtime only
+  const savedRatios = cfg.splitRatios as number[] | undefined;
+  const initRatioH = (cfg.ratio as number) ?? 40;
+  const initRatioV = (cfg.ratioV as number) ?? 50;
+  const panelCount = isBoth ? 2 : count;
+  const initMain = savedRatios ?? (panelCount >= 3 ? [33, 33, 34] : [initRatioH, 100 - initRatioH]);
+  const initBothV = [initRatioV, 100 - initRatioV];
+
+  // All hooks unconditional (React rules)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  const mainRef = containerRef as React.RefObject<HTMLDivElement | null>;
+  const bvRef = rightRef as React.RefObject<HTMLDivElement | null>;
+  const { ratios: mainR, onHandleDrag: onMainDrag } = useSplitRatios(
+    initMain,
+    mainRef,
+    isH || isBoth ? "h" : "v",
+  );
+  const { ratios: bothVR, onHandleDrag: onBothVDrag } = useSplitRatios(initBothV, bvRef, "v");
+  const [activeTab, setActiveTab] = useState("A");
+
+  const handleCls = (ax: "h" | "v") =>
+    `shrink-0 ${ax === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
+
+  // ── Tabs ──────────────────────────────────────────────────────────────
+  if (isTabs) {
+    const tabDefs = [
+      { key: "A", cfg: cfgA, kind: kindA, label: panelA.title || "A" },
+      { key: "B", cfg: cfgB, kind: kindB, label: panelB.title || "B" },
+      ...(count >= 3 ? [{ key: "C", cfg: cfgC, kind: kindC, label: panelC.title || "C" }] : []),
+    ];
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex border-b border-border shrink-0">
+          {tabDefs.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setActiveTab(p.key)}
+              className={cn(
+                "px-4 py-2 text-sm -mb-px border-b-2 transition-colors whitespace-nowrap",
+                activeTab === p.key
+                  ? "border-accent text-accent font-medium"
+                  : "border-transparent text-muted hover:text-text",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {tabDefs.map((p) => (
+            <div
+              key={p.key}
+              className="h-full overflow-hidden"
+              style={{ display: activeTab === p.key ? "block" : "none" }}
+            >
+              <RenderSubWidget
+                kind={p.kind}
+                cfg={p.cfg}
+                stateKey={`${comp.id}:${p.key.toLowerCase()}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both (A | B trên / C dưới) ────────────────────────────────────────
+  if (isBoth) {
+    const total = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
     return (
       <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
-        <div className="overflow-hidden" style={{ width: `${ratioH}%` }}>
+        <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
           <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
         </div>
-        <div onMouseDown={onDragH} className={handleCls("h")} />
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
         <div ref={rightRef} className="flex flex-col flex-1 overflow-hidden">
-          <div className="overflow-hidden" style={{ height: `${ratioV}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
             <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
           </div>
-          <div onMouseDown={onDragV} className={handleCls("v")} />
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
           <div className="flex-1 overflow-hidden">
             <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
           </div>
@@ -4364,19 +4438,37 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
       </div>
     );
   }
-  const isH = orientation !== "v";
+
+  // ── H / V (2 hoặc 3 panels) ───────────────────────────────────────────
+  const flexDir = isH ? "flex-row" : "flex-col";
+  const sizeKey = isH ? "width" : "height";
+  const dragAxis = isH ? "h" : "v";
+  const total = mainR.reduce((a, b) => a + b, 0);
+  const allPanels = [
+    { key: "a", cfg: cfgA, kind: kindA },
+    { key: "b", cfg: cfgB, kind: kindB },
+    ...(panelCount >= 3 ? [{ key: "c", cfg: cfgC, kind: kindC }] : []),
+  ];
+
   return (
-    <div
-      ref={containerRef}
-      className={`flex ${isH ? "flex-row" : "flex-col"} h-full overflow-hidden`}
-    >
-      <div className="overflow-hidden" style={{ [isH ? "width" : "height"]: `${ratioH}%` }}>
-        <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
-      </div>
-      <div onMouseDown={onDragH} className={handleCls(isH ? "h" : "v")} />
-      <div className="flex-1 overflow-hidden">
-        <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
-      </div>
+    <div ref={containerRef} className={`flex ${flexDir} h-full overflow-hidden`}>
+      {allPanels.map((p, idx) => {
+        const isLast = idx === allPanels.length - 1;
+        const pct = ((mainR[idx] ?? 1) / total) * 100;
+        return (
+          <Fragment key={p.key}>
+            <div
+              className="overflow-hidden"
+              style={isLast ? { flex: 1 } : { [sizeKey]: `${pct}%` }}
+            >
+              <RenderSubWidget kind={p.kind} cfg={p.cfg} stateKey={`${comp.id}:${p.key}`} />
+            </div>
+            {!isLast && (
+              <div onMouseDown={(e) => onMainDrag(idx, e)} className={handleCls(dragAxis)} />
+            )}
+          </Fragment>
+        );
+      })}
     </div>
   );
 }

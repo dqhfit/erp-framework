@@ -2467,7 +2467,8 @@ export function PageDesigner({ pageId }: Props) {
                         linkField?: string;
                       };
                       const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both";
+                        orientation?: "h" | "v" | "both" | "tabs";
+                        count?: number;
                         ratio?: number;
                         ratioV?: number;
                         panelA?: PanelCfg;
@@ -2478,8 +2479,10 @@ export function PageDesigner({ pageId }: Props) {
                       const panelB = splitCfg.panelB ?? {};
                       const panelC = splitCfg.panelC ?? {};
                       const orientation = splitCfg.orientation ?? "h";
+                      const count = splitCfg.count ?? 2;
                       const ratio = splitCfg.ratio ?? 40;
                       const ratioV = splitCfg.ratioV ?? 50;
+                      const showPanelC = orientation === "both" || count >= 3;
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
@@ -2570,6 +2573,9 @@ export function PageDesigner({ pageId }: Props) {
                         </>
                       );
 
+                      const panelLabel = (key: string) =>
+                        orientation === "tabs" ? `Tab ${key}` : `Panel ${key}`;
+
                       return (
                         <>
                           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
@@ -2579,53 +2585,83 @@ export function PageDesigner({ pageId }: Props) {
                             <Select
                               value={orientation}
                               onChange={(e) =>
-                                updateSplit({ orientation: e.target.value as "h" | "v" | "both" })
+                                updateSplit({
+                                  orientation: e.target.value as "h" | "v" | "both" | "tabs",
+                                })
                               }
                             >
-                              <option value="h">Ngang (trái / phải)</option>
+                              <option value="h">Ngang (trái | phải)</option>
                               <option value="v">Dọc (trên / dưới)</option>
-                              <option value="both">Cả hai (A | B trên / C dưới)</option>
+                              <option value="both">A | (B trên / C dưới)</option>
+                              <option value="tabs">Dạng Tab</option>
                             </Select>
                           </FormField>
-                          <FormField label={`Tỉ lệ ngang A: ${ratio}%`}>
-                            <input
-                              type="range"
-                              min={20}
-                              max={80}
-                              value={ratio}
-                              onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
-                              className="w-full accent-accent"
-                            />
-                          </FormField>
-                          {orientation === "both" && (
-                            <FormField label={`Tỉ lệ dọc B/C: ${ratioV}%`}>
+                          {orientation !== "both" && (
+                            <FormField label="Số panel">
+                              <Select
+                                value={count}
+                                onChange={(e) =>
+                                  updateSplit({ count: Number(e.target.value) as 2 | 3 })
+                                }
+                              >
+                                <option value={2}>2</option>
+                                <option value={3}>3</option>
+                              </Select>
+                            </FormField>
+                          )}
+                          {(orientation === "h" || orientation === "v") && count === 2 && (
+                            <FormField label={`Tỉ lệ A: ${ratio}%`}>
                               <input
                                 type="range"
                                 min={20}
                                 max={80}
-                                value={ratioV}
-                                onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                value={ratio}
+                                onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
                                 className="w-full accent-accent"
                               />
                             </FormField>
                           )}
+                          {orientation === "both" && (
+                            <>
+                              <FormField label={`Tỉ lệ ngang A: ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ dọc B/C: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                            </>
+                          )}
                           <PanelFields
-                            label="Panel A"
+                            label={panelLabel("A")}
                             panel={panelA}
                             linkedEnt={undefined}
                             defaultKind="list"
                             onUpdate={(p) => updateSplit({ panelA: p })}
                           />
                           <PanelFields
-                            label="Panel B"
+                            label={panelLabel("B")}
                             panel={panelB}
                             linkedEnt={entities.find((e) => e.id === panelB.entity)}
                             defaultKind="detail"
                             onUpdate={(p) => updateSplit({ panelB: p })}
                           />
-                          {orientation === "both" && (
+                          {showPanelC && (
                             <PanelFields
-                              label="Panel C"
+                              label={panelLabel("C")}
                               panel={panelC}
                               linkedEnt={entC}
                               defaultKind="list"
@@ -4275,6 +4311,7 @@ function ComponentBody({
   if (comp.kind === "split") {
     const {
       orientation = "h",
+      count = 2,
       ratio = 40,
       ratioV = 50,
       panelA,
@@ -4282,6 +4319,7 @@ function ComponentBody({
       panelC,
     } = comp.config as {
       orientation?: string;
+      count?: number;
       ratio?: number;
       ratioV?: number;
       panelA?: { kind?: string; entity?: string; title?: string };
@@ -4292,7 +4330,9 @@ function ComponentBody({
     const entB = entities.find((e) => e.id === panelB?.entity);
     const entC = entities.find((e) => e.id === panelC?.entity);
     const isBoth = orientation === "both";
-    const isH = orientation !== "v";
+    const isTabs = orientation === "tabs";
+    const isH = !isBoth && !isTabs && orientation !== "v";
+    const splitCount = isBoth ? 3 : Math.max(2, Math.min(3, count));
 
     const PanelPreview = ({
       label,
@@ -4327,6 +4367,48 @@ function ComponentBody({
       </div>
     );
 
+    // Tabs preview
+    if (isTabs) {
+      const tabPanelDefs = [
+        { key: "A", panel: panelA, ent: entA, bg: "bg-accent/5" },
+        { key: "B", panel: panelB, ent: entB, bg: "bg-panel-2/30" },
+        ...(splitCount >= 3 ? [{ key: "C", panel: panelC, ent: entC, bg: "" }] : []),
+      ];
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <div className="flex border-b border-border/40 shrink-0 bg-bg-soft">
+            {tabPanelDefs.map((p) => (
+              <div
+                key={p.key}
+                className={cn(
+                  "px-2 py-0.5 text-[8px] border-b-2 transition-colors",
+                  p.key === "A"
+                    ? "border-accent text-accent font-semibold"
+                    : "border-transparent text-muted",
+                )}
+              >
+                {p.panel?.title ?? p.ent?.name ?? p.key}
+              </div>
+            ))}
+          </div>
+          <SplitPanelDropZone
+            panelKey="A"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview
+              label="A"
+              ent={entA}
+              title={panelA?.title}
+              kind={panelA?.kind}
+              bg="bg-accent/5"
+            />
+          </SplitPanelDropZone>
+        </div>
+      );
+    }
+
+    // Both layout
     if (isBoth) {
       return (
         <div className="h-full flex flex-row overflow-hidden text-[10px]">
@@ -4370,35 +4452,38 @@ function ComponentBody({
         </div>
       );
     }
+
+    // H / V — 2 or 3 panels
+    const panelDefs = [
+      { key: "A", panel: panelA, ent: entA, bg: "bg-accent/5" },
+      { key: "B", panel: panelB, ent: entB, bg: "bg-panel-2/30" },
+      ...(splitCount >= 3 ? [{ key: "C", panel: panelC, ent: entC, bg: "" }] : []),
+    ];
+    const szKey = isH ? "width" : "height";
+    const borderEdge = isH ? "border-r" : "border-b";
+    const eqPct = `${Math.round(100 / panelDefs.length)}%`;
     return (
       <div className={`h-full flex ${isH ? "flex-row" : "flex-col"} overflow-hidden text-[10px]`}>
-        <SplitPanelDropZone
-          panelKey="A"
-          className={`overflow-hidden border-border/40 ${isH ? "border-r" : "border-b"}`}
-          style={{ [isH ? "width" : "height"]: `${ratio}%` }}
-          onDrop={onSplitPanelDrop}
-        >
-          <PanelPreview
-            label="A"
-            ent={entA}
-            title={panelA?.title}
-            kind={panelA?.kind}
-            bg="bg-accent/5"
-          />
-        </SplitPanelDropZone>
-        <SplitPanelDropZone
-          panelKey="B"
-          className="flex-1 overflow-hidden"
-          onDrop={onSplitPanelDrop}
-        >
-          <PanelPreview
-            label="B"
-            ent={entB}
-            title={panelB?.title}
-            kind={panelB?.kind}
-            bg="bg-panel-2/30"
-          />
-        </SplitPanelDropZone>
+        {panelDefs.map((p, idx) => {
+          const isLast = idx === panelDefs.length - 1;
+          return (
+            <SplitPanelDropZone
+              key={p.key}
+              panelKey={p.key}
+              className={cn("overflow-hidden border-border/40", !isLast && borderEdge)}
+              style={isLast ? { flex: 1 } : { [szKey]: eqPct }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label={p.key}
+                ent={p.ent}
+                title={p.panel?.title}
+                kind={p.panel?.kind}
+                bg={p.bg}
+              />
+            </SplitPanelDropZone>
+          );
+        })}
       </div>
     );
   }
