@@ -2212,7 +2212,6 @@ function ListWidget({
   // Mặc định INLINE; chỉ "popover" khi đặt rõ.
   // useMemo phải khai báo TRƯỚC early return để tuân thủ rules of hooks.
   const rowActsInline = rowActionsStyle !== "popover";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pageStateRef/visibleFieldsRef etc. đọc qua ref — stable; effectiveRowActions/rowActsInline/rowActionsHidden mới thật sự thay đổi cột
   const rowActionCol = useMemo(
     () =>
       effectiveRowActions.length > 0
@@ -4333,7 +4332,8 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const count = Math.max(2, Math.min(3, (cfg.count as number) ?? 2));
   const isTabs = orientation === "tabs";
   const isBoth = orientation === "both";
-  const isH = !isBoth && !isTabs && orientation !== "v";
+  const isBoth2 = orientation === "both2";
+  const isH = !isBoth && !isBoth2 && !isTabs && orientation !== "v";
 
   const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
   const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
@@ -4349,7 +4349,7 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const savedRatios = cfg.splitRatios as number[] | undefined;
   const initRatioH = (cfg.ratio as number) ?? 40;
   const initRatioV = (cfg.ratioV as number) ?? 50;
-  const panelCount = isBoth ? 2 : count;
+  const panelCount = isBoth || isBoth2 ? 2 : count;
   const initMain = savedRatios ?? (panelCount >= 3 ? [33, 33, 34] : [initRatioH, 100 - initRatioH]);
   const initBothV = [initRatioV, 100 - initRatioV];
 
@@ -4361,7 +4361,7 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const { ratios: mainR, onHandleDrag: onMainDrag } = useSplitRatios(
     initMain,
     mainRef,
-    isH || isBoth ? "h" : "v",
+    isH || isBoth || isBoth2 ? "h" : "v",
   );
   const { ratios: bothVR, onHandleDrag: onBothVDrag } = useSplitRatios(initBothV, bvRef, "v");
   const [activeTab, setActiveTab] = useState("A");
@@ -4434,6 +4434,31 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
           <div className="flex-1 overflow-hidden">
             <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both2 ((A trên / B dưới) | C) ────────────────────────────────────
+  if (isBoth2) {
+    const total = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
+        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${hPct}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
+        <div className="flex-1 overflow-hidden">
+          <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
         </div>
       </div>
     );

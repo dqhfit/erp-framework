@@ -2467,7 +2467,7 @@ export function PageDesigner({ pageId }: Props) {
                         linkField?: string;
                       };
                       const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both" | "tabs";
+                        orientation?: "h" | "v" | "both" | "both2" | "tabs";
                         count?: number;
                         ratio?: number;
                         ratioV?: number;
@@ -2482,7 +2482,8 @@ export function PageDesigner({ pageId }: Props) {
                       const count = splitCfg.count ?? 2;
                       const ratio = splitCfg.ratio ?? 40;
                       const ratioV = splitCfg.ratioV ?? 50;
-                      const showPanelC = orientation === "both" || count >= 3;
+                      const isCombo = orientation === "both" || orientation === "both2";
+                      const showPanelC = isCombo || count >= 3;
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
@@ -2586,17 +2587,23 @@ export function PageDesigner({ pageId }: Props) {
                               value={orientation}
                               onChange={(e) =>
                                 updateSplit({
-                                  orientation: e.target.value as "h" | "v" | "both" | "tabs",
+                                  orientation: e.target.value as
+                                    | "h"
+                                    | "v"
+                                    | "both"
+                                    | "both2"
+                                    | "tabs",
                                 })
                               }
                             >
                               <option value="h">Ngang (trái | phải)</option>
                               <option value="v">Dọc (trên / dưới)</option>
                               <option value="both">A | (B trên / C dưới)</option>
+                              <option value="both2">(A trên / B dưới) | C</option>
                               <option value="tabs">Dạng Tab</option>
                             </Select>
                           </FormField>
-                          {orientation !== "both" && (
+                          {!isCombo && (
                             <FormField label="Số panel">
                               <Select
                                 value={count}
@@ -2621,9 +2628,9 @@ export function PageDesigner({ pageId }: Props) {
                               />
                             </FormField>
                           )}
-                          {orientation === "both" && (
+                          {isCombo && (
                             <>
-                              <FormField label={`Tỉ lệ ngang A: ${ratio}%`}>
+                              <FormField label={`Tỉ lệ ngang: ${ratio}%`}>
                                 <input
                                   type="range"
                                   min={20}
@@ -2633,7 +2640,7 @@ export function PageDesigner({ pageId }: Props) {
                                   className="w-full accent-accent"
                                 />
                               </FormField>
-                              <FormField label={`Tỉ lệ dọc B/C: ${ratioV}%`}>
+                              <FormField label={`Tỉ lệ dọc A/B: ${ratioV}%`}>
                                 <input
                                   type="range"
                                   min={20}
@@ -3651,6 +3658,17 @@ function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
       ],
     };
   }
+  if (orientation === "both2") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 1, colSpan: 1, rowSpan: 2 },
+      ],
+    };
+  }
   return {
     cols: 2,
     rows: 1,
@@ -4297,7 +4315,6 @@ function ComponentBody({
               </div>
               <div className="flex-1 p-1 space-y-1">
                 {[0, 1, 2].map((i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
                   <div key={i} className="h-4 bg-panel rounded border border-border/30" />
                 ))}
               </div>
@@ -4330,9 +4347,10 @@ function ComponentBody({
     const entB = entities.find((e) => e.id === panelB?.entity);
     const entC = entities.find((e) => e.id === panelC?.entity);
     const isBoth = orientation === "both";
+    const isBoth2 = orientation === "both2";
     const isTabs = orientation === "tabs";
-    const isH = !isBoth && !isTabs && orientation !== "v";
-    const splitCount = isBoth ? 3 : Math.max(2, Math.min(3, count));
+    const isH = !isBoth && !isBoth2 && !isTabs && orientation !== "v";
+    const splitCount = isBoth || isBoth2 ? 3 : Math.max(2, Math.min(3, count));
 
     const PanelPreview = ({
       label,
