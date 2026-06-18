@@ -2,7 +2,16 @@ import { I } from "@/components/Icons";
 import { Button, Switch } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
+import { usePreferences } from "@/stores/preferences";
 import { type AccentColor, type Density, type Theme, useUI } from "@/stores/ui";
+
+const CHANGED_CELL_PRESETS: Array<{ hex: string; label: string }> = [
+  { hex: "#fdb105", label: "Hổ phách" },
+  { hex: "#22c55e", label: "Xanh lá" },
+  { hex: "#3b82f6", label: "Xanh dương" },
+  { hex: "#ec4899", label: "Hồng" },
+  { hex: "#a855f7", label: "Tím" },
+];
 
 const ACCENTS: Array<{ id: AccentColor; hex: string; label: string }> = [
   { id: "violet", hex: "#7c5cff", label: "Violet" },
@@ -28,6 +37,8 @@ export function TweaksPanel() {
     setAgentOpen,
     setCmdOpen,
   } = useUI();
+  const changedCellBg = usePreferences((s) => s.prefs.changedCellBg ?? "#fdb105");
+  const savePrefs = usePreferences((s) => s.save);
   const isMobile = useIsMobile();
 
   if (!tweaksOpen) return null;
@@ -96,6 +107,54 @@ export function TweaksPanel() {
               ]}
               onChange={(v) => setDensity(v as Density)}
             />
+          </Section>
+
+          <Section label="O thay doi">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {CHANGED_CELL_PRESETS.map((p) => (
+                <button
+                  type="button"
+                  key={p.hex}
+                  onClick={() => savePrefs({ changedCellBg: p.hex })}
+                  className={cn(
+                    "w-7 h-7 rounded-md border-2 transition-all",
+                    changedCellBg === p.hex
+                      ? "border-text scale-110"
+                      : "border-transparent hover:border-border",
+                  )}
+                  style={{ background: p.hex }}
+                  title={p.label}
+                />
+              ))}
+              {/* Custom color picker */}
+              <label
+                className="w-7 h-7 rounded-md border-2 border-border hover:border-text cursor-pointer flex items-center justify-center overflow-hidden transition-all"
+                title="Tùy chỉnh màu"
+                style={
+                  !CHANGED_CELL_PRESETS.some((p) => p.hex === changedCellBg)
+                    ? { borderColor: changedCellBg, background: changedCellBg }
+                    : undefined
+                }
+              >
+                <I.Pipette
+                  size={12}
+                  className="text-white mix-blend-difference pointer-events-none"
+                />
+                <input
+                  type="color"
+                  className="absolute opacity-0 w-0 h-0"
+                  value={changedCellBg}
+                  onChange={(e) => savePrefs({ changedCellBg: e.target.value })}
+                />
+              </label>
+              {/* Xem trước */}
+              <span
+                className="ml-1 flex-1 h-7 rounded-md text-[10px] flex items-center justify-center text-text/60"
+                style={{ backgroundColor: `rgba(${hexToRgb(changedCellBg)},0.22)` }}
+              >
+                ABC
+              </span>
+            </div>
           </Section>
 
           <Section label="Layout">
@@ -182,4 +241,11 @@ function Radio({ value, options, onChange }: RadioProps) {
       ))}
     </div>
   );
+}
+
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return Number.isNaN(r) ? "253,177,5" : `${r},${g},${b}`;
 }

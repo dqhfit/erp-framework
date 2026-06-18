@@ -22,6 +22,9 @@ export interface UserPreferences {
    *  combo canonical, vd "mod+shift+p". Giá trị undefined = khôi phục mặc định
    *  (server bỏ key undefined khi lưu JSON). Xem src/lib/shortcuts.ts. */
   shortcuts?: Record<string, string | undefined>;
+  /** Màu nền ô/dòng có giá trị thay đổi chưa lưu (hex, vd "#fdb105").
+   *  undefined = dùng mặc định amber từ CSS var. */
+  changedCellBg?: string;
 }
 
 interface PreferencesState {

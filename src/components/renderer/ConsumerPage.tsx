@@ -1215,6 +1215,9 @@ function EditableListWidget({
     return [...top, ...base, ...bottom];
   }, [filteredRows, pending, refOverlay, newRows, createDefaults]);
 
+  // Tập id dòng có thay đổi pending — truyền xuống DataGrid để tô màu.
+  const changedRowIdsEdit = useMemo(() => new Set(pending.keys()), [pending]);
+
   // Dán dữ liệu (PasteGridModal) → cập nhật nhiều dòng: overlay pending (hiện
   // ngay) + lưu từng dòng (gom field). Lỗi 1 dòng không chặn dòng khác.
   const applyPaste = async (updates: Array<{ rowId: string; changes: Record<string, string> }>) => {
@@ -1332,7 +1335,9 @@ function EditableListWidget({
                 <RemoveNewRowButton onRemove={() => removeRowRef.current(String(row.id))} />
               </div>
             );
-          const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
+          // bindRowIdToAction nhận row (hỗ trợ recordIdField — bind theo field
+          // nghiệp vụ thay vì id uuid).
+          const bound = rowActions.map((a) => bindRowIdToAction(a, row));
           if (inline) {
             return (
               // w-fit: co sát các nút (flex thường là block → giãn đầy ô, khiến
@@ -1520,6 +1525,7 @@ function EditableListWidget({
             addRowPos={addRowPos}
             pageJump={pageJump}
             enableSelection={selectable}
+            changedRowIds={changedRowIdsEdit}
           />
         </div>
       )}
@@ -1780,6 +1786,8 @@ function ServerPagedListWidget({
     });
   }, [rows, pending, editable]);
 
+  const changedRowIdsSvr = useMemo(() => new Set(pending.keys()), [pending]);
+
   const server = useMemo<ServerPagingController>(
     () => ({
       total,
@@ -1894,6 +1902,7 @@ function ServerPagedListWidget({
           pageSize={ps}
           server={server}
           enableSelection={selectable}
+          changedRowIds={changedRowIdsSvr}
         />
       </div>
     </div>
@@ -1917,8 +1926,12 @@ type RowDetailCfg = {
 };
 
 /** Gắn id của dòng vào action per-row: mọi step có recordIdBinding
- *  (open-popup/delete-record) → trỏ tới rowId của đúng dòng được bấm. */
-function bindRowIdToAction(action: ActionConfig, rowId: unknown): ActionConfig {
+ *  (open-popup/delete-record/open-wizard) → trỏ tới recordId của đúng dòng bấm.
+ *  recordId = row[action.recordIdField] nếu cấu hình (khoá nghiệp vụ, vd
+ *  id_quytrinh), ngược lại row.id (uuid). */
+function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): ActionConfig {
+  const rowId =
+    action.recordIdField != null ? row[action.recordIdField] : (row.id ?? row.ID ?? row._id);
   return {
     ...action,
     steps: action.steps.map((s) =>
@@ -1937,6 +1950,8 @@ function ListWidget({
   fields,
   columnLabels,
   selectionStateKey,
+  selectionField,
+  selectionEmits,
   filterFromState,
   filters,
   searchFromState,
@@ -1965,6 +1980,7 @@ function ListWidget({
   embeddedFilters,
   addRowAtEnd,
   addRowPos,
+  refetchOnSave,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -1979,6 +1995,12 @@ function ListWidget({
   columnLabels?: Record<string, string>;
   /** Phase V: khi click row, set page-state[selectionStateKey] = row.id. */
   selectionStateKey?: string;
+  /** Lưu giá trị field nghiệp vụ (vd "masp") vào selectionStateKey thay vì id uuid
+   *  — để list chi tiết filterFromState theo cột nghiệp vụ (master-detail không UUID). */
+  selectionField?: string;
+  /** Khi click dòng, lưu THÊM giá trị các field khác vào state ({stateKey: field}).
+   *  Vd {selKetcau: "ketcau"} để widget khác ẩn/hiện theo kết cấu SP đang chọn. */
+  selectionEmits?: Record<string, string>;
   /** Legacy single-equality filter. Khi state rỗng → hide all rows
    *  (master-detail), TRỪ KHI emptyStateShowsAll=true (combobox lọc:
    *  "tất cả" = rỗng → hiện hết). */
@@ -2048,6 +2070,9 @@ function ListWidget({
   addRowAtEnd?: boolean;
   /** Vị trí dòng thêm mới: "top" | "bottom" (cfg.addRowPos, mặc định "bottom"). */
   addRowPos?: "top" | "bottom";
+  /** Sau khi LƯU 1 ô inline (non-batch) → nạp lại lưới để cập nhật các cột phụ
+   *  thuộc do server tính lại (vd diện tích sơn = base × phần trăm). */
+  refetchOnSave?: boolean;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -2225,27 +2250,36 @@ function ListWidget({
   const selectedIds: unknown[] = Array.isArray(selectedRaw) ? selectedRaw : [];
   const selectedId = selectionStateKey && !multiSelect ? selectedRaw : undefined;
 
-  const onRowClick = selectionStateKey
-    ? (row: Record<string, unknown>) => {
-        const id = row.id ?? row.ID ?? row._id;
-        if (id == null) return;
-        if (multiSelect) {
-          const strId = String(id);
-          const cur = Array.isArray(selectedRaw) ? (selectedRaw as unknown[]) : [];
-          const already = cur.some((x) => String(x) === strId);
-          pageState.set(
-            selectionStateKey,
-            already ? cur.filter((x) => String(x) !== strId) : [...cur, id],
-          );
-        } else {
-          pageState.set(selectionStateKey, id);
+  const onRowClick =
+    selectionStateKey || selectionEmits
+      ? (row: Record<string, unknown>) => {
+          // selectionEmits: lưu thêm giá trị field khác của dòng vào state (vd
+          // ketcau → selKetcau) để widget khác ẩn/hiện theo (visibleWhen).
+          if (selectionEmits) {
+            for (const [k, f] of Object.entries(selectionEmits)) pageState.set(k, row[f] ?? "");
+          }
+          if (!selectionStateKey) return;
+          // selectionField: lưu giá trị 1 field nghiệp vụ (vd masp) thay vì id uuid
+          // — để list khác filterFromState theo cột nghiệp vụ (vd tr_dinhmuc_son.masp).
+          const id = selectionField ? row[selectionField] : (row.id ?? row.ID ?? row._id);
+          if (id == null) return;
+          if (multiSelect) {
+            const strId = String(id);
+            const cur = Array.isArray(selectedRaw) ? (selectedRaw as unknown[]) : [];
+            const already = cur.some((x) => String(x) === strId);
+            pageState.set(
+              selectionStateKey,
+              already ? cur.filter((x) => String(x) !== strId) : [...cur, id],
+            );
+          } else {
+            pageState.set(selectionStateKey, id);
+          }
         }
-      }
-    : undefined;
+      : undefined;
 
   const isRowSelected = selectionStateKey
     ? (row: Record<string, unknown>) => {
-        const id = row.id ?? row.ID ?? row._id;
+        const id = selectionField ? row[selectionField] : (row.id ?? row.ID ?? row._id);
         if (id == null) return false;
         if (multiSelect) return selectedIds.some((x) => String(x) === String(id));
         return id === selectedId || String(id) === String(selectedId);
@@ -2403,8 +2437,7 @@ function ListWidget({
             meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-              const rid = row.original.id ?? row.original.ID ?? row.original._id;
-              const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, rid));
+              const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
               if (rowActsInline) {
                 return (
                   // w-fit + data-col-content: co sát cụm nút để autofit đo đúng
@@ -2478,6 +2511,14 @@ function ListWidget({
   const saveRecord = async (rowId: unknown, changes: Record<string, unknown>) => {
     if (isDataSource) await dataUpdate(String(rowId), changes);
     else await api.updateRecord(String(rowId), changes);
+    // Cột phụ thuộc tính ở server (trigger): vd đổi % → diện tích sơn tính lại.
+    // Nạp lại lưới để hiện giá trị mới (chỉ khi cấu hình bật refetchOnSave).
+    if (refetchOnSave) {
+      pageState.set(
+        isDataSource ? `__refresh:ds:${dataSourceId}` : `__refresh:${entityId}`,
+        Date.now(),
+      );
+    }
   };
   // Bulk + dry-run validate cho batch edit — chỉ entity-backed.
   const editBatchOps: BatchOps | undefined =
@@ -4566,6 +4607,8 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
         defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
+        selectionField={cfg.selectionField as string | undefined}
+        selectionEmits={cfg.selectionEmits as Record<string, string> | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         filters={cfg.filters as FilterNode | null | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
@@ -4600,6 +4643,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         embeddedFilters={
           cfg.createForm ? (cfg.embeddedFilters as EmbeddedFilter[] | undefined) : undefined
         }
+        refetchOnSave={cfg.refetchOnSave === true}
       />,
       cfg.createForm ? [] : embActs,
       pageState,
@@ -4677,6 +4721,49 @@ function clearPersonalLayoutLS(key: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Quy tắc ẩn/hiện widget theo 1 state key (vd selKetcau). Đặt ở cfg.visibleWhen. */
+type VisibleRule = {
+  stateKey: string;
+  op: "eq" | "neq" | "in" | "nin" | "set" | "notset";
+  value?: string | string[];
+};
+function evalVisible(rule: VisibleRule, pageState: ReturnType<typeof usePageState>): boolean {
+  const raw = pageState.get(rule.stateKey);
+  const sv = raw == null ? "" : String(raw);
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return true;
+  }
+}
+/** Bọc 1 widget: ẩn hẳn (không render ô) khi visibleWhen không thỏa. Chế độ sửa
+ *  bố cục (editing) luôn hiện để còn sắp xếp được. */
+function VisibilityGate({
+  rule,
+  editing,
+  children,
+}: {
+  rule?: VisibleRule;
+  editing: boolean;
+  children: React.ReactNode;
+}) {
+  const pageState = usePageState();
+  if (editing || !rule) return <>{children}</>;
+  return evalVisible(rule, pageState) ? <>{children}</> : null;
 }
 
 export function ConsumerPage({
@@ -5079,137 +5166,142 @@ export function ConsumerPage({
                   const isBeingDragged = dragCompId === c.id;
                   const isBeingResized = resizingId === c.id;
                   return (
-                    <div
+                    <VisibilityGate
                       key={c.id}
-                      draggable={layoutEditing && !isBeingResized && !isMobile}
-                      className={cn(
-                        "card overflow-hidden",
-                        layoutEditing && !isMobile && "relative group/card",
-                        layoutEditing &&
-                          !isBeingResized &&
-                          !isMobile &&
-                          "cursor-grab active:cursor-grabbing",
-                        isBeingDragged && "opacity-40",
-                        isBeingResized && "select-none",
-                      )}
-                      style={
-                        isMobile
-                          ? { minHeight: h * ROW_H }
-                          : {
-                              gridColumn: `${colStart} / span ${w}`,
-                              // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
-                              // còn lại span theo số hàng h.
-                              gridRow:
-                                c.id === fillId && availH > 0
-                                  ? `${rowStart} / -1`
-                                  : `${rowStart} / span ${h}`,
-                            }
-                      }
-                      onDragStart={
-                        layoutEditing
-                          ? (e) => {
-                              if (isBeingResized) {
-                                e.preventDefault();
-                                return;
-                              }
-                              e.dataTransfer.effectAllowed = "move";
-                              e.dataTransfer.setData("text/plain", c.id);
-                              setDragCompId(c.id);
-                              setDropPos(null);
-                            }
-                          : undefined
-                      }
-                      onDragEnd={
-                        layoutEditing
-                          ? () => {
-                              setDragCompId(null);
-                              setDropPos(null);
-                              stopAutoScroll();
-                            }
-                          : undefined
-                      }
+                      rule={(c.config as { visibleWhen?: VisibleRule } | undefined)?.visibleWhen}
+                      editing={layoutEditing}
                     >
-                      {isMobile || !isScalableKind(c.kind) ? (
-                        // Danh sách/tương tác: giữ nguyên + tự cuộn; mobile: layout dọc.
-                        <Widget comp={c} pageId={pageId} />
-                      ) : (
-                        <ScaleToFit>
+                      <div
+                        draggable={layoutEditing && !isBeingResized && !isMobile}
+                        className={cn(
+                          "card overflow-hidden",
+                          layoutEditing && !isMobile && "relative group/card",
+                          layoutEditing &&
+                            !isBeingResized &&
+                            !isMobile &&
+                            "cursor-grab active:cursor-grabbing",
+                          isBeingDragged && "opacity-40",
+                          isBeingResized && "select-none",
+                        )}
+                        style={
+                          isMobile
+                            ? { minHeight: h * ROW_H }
+                            : {
+                                gridColumn: `${colStart} / span ${w}`,
+                                // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
+                                // còn lại span theo số hàng h.
+                                gridRow:
+                                  c.id === fillId && availH > 0
+                                    ? `${rowStart} / -1`
+                                    : `${rowStart} / span ${h}`,
+                              }
+                        }
+                        onDragStart={
+                          layoutEditing
+                            ? (e) => {
+                                if (isBeingResized) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                e.dataTransfer.effectAllowed = "move";
+                                e.dataTransfer.setData("text/plain", c.id);
+                                setDragCompId(c.id);
+                                setDropPos(null);
+                              }
+                            : undefined
+                        }
+                        onDragEnd={
+                          layoutEditing
+                            ? () => {
+                                setDragCompId(null);
+                                setDropPos(null);
+                                stopAutoScroll();
+                              }
+                            : undefined
+                        }
+                      >
+                        {isMobile || !isScalableKind(c.kind) ? (
+                          // Danh sách/tương tác: giữ nguyên + tự cuộn; mobile: layout dọc.
                           <Widget comp={c} pageId={pageId} />
-                        </ScaleToFit>
-                      )}
+                        ) : (
+                          <ScaleToFit>
+                            <Widget comp={c} pageId={pageId} />
+                          </ScaleToFit>
+                        )}
 
-                      {/* Resize handles — chỉ hiện khi layoutEditing */}
-                      {layoutEditing && (
-                        <>
-                          <div
-                            className="absolute right-0 top-0 bottom-2.5 w-1.5 cursor-ew-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              resizeRef.current = {
-                                compId: c.id,
-                                dir: "e",
-                                startMouseX: e.clientX,
-                                startMouseY: e.clientY,
-                                startW: c.w,
-                                startH: c.h,
-                                compX: c.x,
-                              };
-                              setResizingId(c.id);
-                            }}
-                          />
-                          <div
-                            className="absolute left-0 right-2.5 bottom-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              resizeRef.current = {
-                                compId: c.id,
-                                dir: "s",
-                                startMouseX: e.clientX,
-                                startMouseY: e.clientY,
-                                startW: c.w,
-                                startH: c.h,
-                                compX: c.x,
-                              };
-                              setResizingId(c.id);
-                            }}
-                          />
-                          <div
-                            className="absolute right-0 bottom-0 w-2.5 h-2.5 cursor-nwse-resize z-30 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors flex items-center justify-center"
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              resizeRef.current = {
-                                compId: c.id,
-                                dir: "se",
-                                startMouseX: e.clientX,
-                                startMouseY: e.clientY,
-                                startW: c.w,
-                                startH: c.h,
-                                compX: c.x,
-                              };
-                              setResizingId(c.id);
-                            }}
-                          >
-                            <svg
-                              width="7"
-                              height="7"
-                              viewBox="0 0 7 7"
-                              className="text-accent/70"
-                              aria-hidden="true"
+                        {/* Resize handles — chỉ hiện khi layoutEditing */}
+                        {layoutEditing && (
+                          <>
+                            <div
+                              className="absolute right-0 top-0 bottom-2.5 w-1.5 cursor-ew-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                resizeRef.current = {
+                                  compId: c.id,
+                                  dir: "e",
+                                  startMouseX: e.clientX,
+                                  startMouseY: e.clientY,
+                                  startW: c.w,
+                                  startH: c.h,
+                                  compX: c.x,
+                                };
+                                setResizingId(c.id);
+                              }}
+                            />
+                            <div
+                              className="absolute left-0 right-2.5 bottom-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                resizeRef.current = {
+                                  compId: c.id,
+                                  dir: "s",
+                                  startMouseX: e.clientX,
+                                  startMouseY: e.clientY,
+                                  startW: c.w,
+                                  startH: c.h,
+                                  compX: c.x,
+                                };
+                                setResizingId(c.id);
+                              }}
+                            />
+                            <div
+                              className="absolute right-0 bottom-0 w-2.5 h-2.5 cursor-nwse-resize z-30 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors flex items-center justify-center"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                resizeRef.current = {
+                                  compId: c.id,
+                                  dir: "se",
+                                  startMouseX: e.clientX,
+                                  startMouseY: e.clientY,
+                                  startW: c.w,
+                                  startH: c.h,
+                                  compX: c.x,
+                                };
+                                setResizingId(c.id);
+                              }}
                             >
-                              <path
-                                d="M1 6 L6 1 M3.5 6 L6 3.5"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                              <svg
+                                width="7"
+                                height="7"
+                                viewBox="0 0 7 7"
+                                className="text-accent/70"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M1 6 L6 1 M3.5 6 L6 3.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </VisibilityGate>
                   );
                 })}
               </div>
