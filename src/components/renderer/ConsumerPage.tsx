@@ -4175,38 +4175,46 @@ function GridWidget({ comp }: { comp: PageComponent }) {
   const cells = (cfg.cells as SplitGridCell[]) ?? [];
   const colFr = (cfg.colFr as number[] | undefined) ?? Array(cols).fill(1);
   const rowFr = (cfg.rowFr as number[] | undefined) ?? Array(rows).fill(1);
+  const gridLabel = cfg.label as string | undefined;
 
   return (
-    <div
-      className="h-full w-full overflow-hidden"
-      style={{
-        display: "grid",
-        gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
-        gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
-      }}
-    >
-      {cells.map((cell) => {
-        const kind = cell.kind ?? "list";
-        const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
-        return (
-          <div
-            key={cell.id}
-            className="overflow-hidden"
-            style={{
-              gridColumn: `${cell.col} / span ${cell.colSpan}`,
-              gridRow: `${cell.row} / span ${cell.rowSpan}`,
-            }}
-          >
-            {cell.entity || cell.dataSourceId ? (
-              <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
-            ) : (
-              <div className="h-full flex items-center justify-center text-sm text-muted/50">
-                Chưa bind
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div className="h-full flex flex-col overflow-hidden">
+      {gridLabel && (
+        <div className="px-3 py-1.5 border-b border-border/40 shrink-0 text-sm font-medium">
+          {gridLabel}
+        </div>
+      )}
+      <div
+        className="flex-1 overflow-hidden"
+        style={{
+          display: "grid",
+          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+        }}
+      >
+        {cells.map((cell) => {
+          const kind = cell.kind ?? "list";
+          const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
+          return (
+            <div
+              key={cell.id}
+              className="overflow-hidden"
+              style={{
+                gridColumn: `${cell.col} / span ${cell.colSpan}`,
+                gridRow: `${cell.row} / span ${cell.rowSpan}`,
+              }}
+            >
+              {cell.entity || cell.dataSourceId ? (
+                <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-muted/50">
+                  Chưa bind
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -2682,8 +2682,21 @@ export function PageDesigner({ pageId }: Props) {
                         gridRows.push(rowCells);
                       }
 
+                      const gridLabel = (sel.config.label as string | undefined) ?? "";
+
                       return (
                         <div className="space-y-3 p-1">
+                          <FormField label="Nhãn">
+                            <Input
+                              placeholder="Tiêu đề hiển thị (để trống = ẩn)"
+                              value={gridLabel}
+                              onChange={(e) =>
+                                update(sel.id, {
+                                  config: { ...sel.config, label: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </FormField>
                           {/* Grid size controls */}
                           <FormField label="Cột">
                             <div className="flex items-center gap-2">
@@ -4396,76 +4409,85 @@ function ComponentBody({
     const { cols, rows, cells } = gridCfg;
     const colFr = gridCfg.colFr ?? Array(cols).fill(1);
     const rowFr = gridCfg.rowFr ?? Array(rows).fill(1);
+    const gridLabel = comp.config.label as string | undefined;
 
     return (
-      <div
-        className="h-full w-full overflow-hidden"
-        style={{
-          display: "grid",
-          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
-          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
-        }}
-      >
-        {cells.map((cell) => {
-          const ent = entities.find((e) => e.id === cell.entity);
-          const isSelected = splitCellSelId === cell.id;
-          return (
-            <SplitPanelDropZone
-              key={cell.id}
-              panelKey={cell.id}
-              style={{
-                gridColumn: `${cell.col} / span ${cell.colSpan}`,
-                gridRow: `${cell.row} / span ${cell.rowSpan}`,
-                border: "1px solid hsl(var(--border) / 0.4)",
-              }}
-              onDrop={onSplitPanelDrop}
-              className={cn(isSelected && "ring-2 ring-inset ring-accent")}
-            >
-              <div
-                className="h-full flex flex-col overflow-hidden text-[10px] cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSplitCellClick?.(cell.id);
+      <div className="h-full flex flex-col overflow-hidden">
+        {gridLabel && (
+          <div className="px-2 py-1 border-b border-border/40 shrink-0 flex items-center gap-1.5 text-[10px]">
+            <I.LayoutGrid size={11} className="text-muted shrink-0" />
+            <span className="font-medium truncate">{gridLabel}</span>
+          </div>
+        )}
+        <div
+          className="flex-1 overflow-hidden"
+          style={{
+            display: "grid",
+            gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+            gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+          }}
+        >
+          {cells.map((cell) => {
+            const ent = entities.find((e) => e.id === cell.entity);
+            const isSelected = splitCellSelId === cell.id;
+            return (
+              <SplitPanelDropZone
+                key={cell.id}
+                panelKey={cell.id}
+                style={{
+                  gridColumn: `${cell.col} / span ${cell.colSpan}`,
+                  gridRow: `${cell.row} / span ${cell.rowSpan}`,
+                  border: "1px solid hsl(var(--border) / 0.4)",
                 }}
+                onDrop={onSplitPanelDrop}
+                className={cn(isSelected && "ring-2 ring-inset ring-accent")}
               >
-                <div className="px-1.5 py-0.5 border-b border-border/30 shrink-0 flex items-center gap-1 bg-panel/50">
-                  {ent ? (
-                    <>
-                      <span className="truncate text-[9px] text-muted">
-                        {cell.title ?? ent.name}
-                      </span>
-                      <span className="ml-auto text-[8px] text-muted/50 shrink-0">
-                        {cell.kind ?? "list"}
-                      </span>
-                    </>
-                  ) : cell.dataSourceId ? (
-                    <>
-                      <span className="truncate text-[9px] text-muted">
-                        {cell.title ?? "Datasource"}
-                      </span>
-                      <span className="ml-auto text-[8px] text-muted/50 shrink-0">
-                        {cell.kind ?? "list"}
-                      </span>
-                    </>
+                <div
+                  className="h-full flex flex-col overflow-hidden text-[10px] cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSplitCellClick?.(cell.id);
+                  }}
+                >
+                  <div className="px-1.5 py-0.5 border-b border-border/30 shrink-0 flex items-center gap-1 bg-panel/50">
+                    {ent ? (
+                      <>
+                        <span className="truncate text-[9px] text-muted">
+                          {cell.title ?? ent.name}
+                        </span>
+                        <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                          {cell.kind ?? "list"}
+                        </span>
+                      </>
+                    ) : cell.dataSourceId ? (
+                      <>
+                        <span className="truncate text-[9px] text-muted">
+                          {cell.title ?? "Datasource"}
+                        </span>
+                        <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                          {cell.kind ?? "list"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-muted/50 italic">Chưa bind</span>
+                    )}
+                  </div>
+                  {ent || cell.dataSourceId ? (
+                    <div className="flex-1 flex flex-col gap-0.5 p-1">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-2 bg-muted/15 rounded" />
+                      ))}
+                    </div>
                   ) : (
-                    <span className="text-[9px] text-muted/50 italic">Chưa bind</span>
+                    <div className="flex-1 flex items-center justify-center text-[9px] text-muted/40">
+                      {cell.row},{cell.col}
+                    </div>
                   )}
                 </div>
-                {ent || cell.dataSourceId ? (
-                  <div className="flex-1 flex flex-col gap-0.5 p-1">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-2 bg-muted/15 rounded" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-[9px] text-muted/40">
-                    {cell.row},{cell.col}
-                  </div>
-                )}
-              </div>
-            </SplitPanelDropZone>
-          );
-        })}
+              </SplitPanelDropZone>
+            );
+          })}
+        </div>
       </div>
     );
   }
