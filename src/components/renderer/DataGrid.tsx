@@ -76,6 +76,9 @@ interface GridColMeta {
   formatRules?: FormatRule[];
   /** Ô gọn — giảm padding ngang (vd cột hành động). */
   compact?: boolean;
+  /** Nhãn hiển thị ở "Chọn cột hiển thị" khi header là HÀM/JSX (toString ra mã
+   *  rác) — vd cột hành động đặt label "Hành động". */
+  label?: string;
 }
 
 function evalFormatRules(value: unknown, rules: FormatRule[]): string | undefined {
@@ -1164,11 +1167,13 @@ export function DataGrid<T>({
                             <span className="whitespace-nowrap">
                               {/* Chỉ hiện header dạng CHUỖI. Header là HÀM/JSX (vd cột
                                   hành động () => <span>) → toString() ra mã JSX rác;
-                                  fallback tên field kỹ thuật (techName) hoặc id. */}
-                              {typeof col.columnDef.header === "string"
-                                ? col.columnDef.header
-                                : ((col.columnDef.meta as GridColMeta | undefined)?.techName ??
-                                  col.id)}
+                                  fallback meta.label (vd "Hành động") → techName → id. */}
+                              {(() => {
+                                const m = col.columnDef.meta as GridColMeta | undefined;
+                                return typeof col.columnDef.header === "string"
+                                  ? col.columnDef.header
+                                  : (m?.label ?? m?.techName ?? col.id);
+                              })()}
                             </span>
                           </label>
                           {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}

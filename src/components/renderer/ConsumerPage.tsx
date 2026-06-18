@@ -1295,7 +1295,7 @@ function EditableListWidget({
         ),
         enableGrouping: false,
         enableSorting: false,
-        meta: { compact: true }, // giảm padding ô cho gọn
+        meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
         // PHẢI có size số (kể cả inline) → cột được GHIM (resize kéo nhỏ/rộng được +
         // không tự giãn theo nội dung). size undefined = table-auto, không kéo được.
         // Mặc định inline tính theo số nút; người dùng kéo đổi, width được nhớ.
@@ -2297,7 +2297,8 @@ function ListWidget({
     ? [
         {
           id: "__rowactions__",
-          header: () => "Hành động",
+          // Header chuỗi (không bọc hàm) → "Chọn cột hiển thị" hiện đúng "Hành động".
+          header: "Hành động",
           size: 96,
           enableSorting: false,
           cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
@@ -2361,7 +2362,7 @@ function ListWidget({
             // Sàn hẹp để cột compact bám sát tổng bề rộng các nút (xem __rowacts__ ở
             // EditableListWidget) — minSize cao kẹp ngược autofit làm cột rộng dư.
             minSize: 24,
-            meta: { compact: true }, // giảm padding ô cho gọn
+            meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
