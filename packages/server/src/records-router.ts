@@ -34,6 +34,7 @@ import {
   applyCascadeOnDelete,
   assertUnique,
   assertValid,
+  clearUniqueTrueFields,
   decryptDataOut,
   deepEqual,
   encryptDataIn,
@@ -210,6 +211,8 @@ export const recordsRouter = router({
       const encrypted = encryptDataIn(fields, data);
       const row = await store.insert(ctx.user.companyId, input.entityId, encrypted, ctx.user.id);
       if (!row) return row;
+      // Nếu entity có meta.uniqueTrueFields → clear boolean đó trên các record khác.
+      await clearUniqueTrueFields(ctx.db, ctx.user.companyId, input.entityId, row.id, data);
       // Fire outgoing webhooks (best-effort, không block).
       fireEntityWebhooks(ctx.db, {
         companyId: ctx.user.companyId,
@@ -329,6 +332,9 @@ export const recordsRouter = router({
       const encrypted = encryptDataIn(fields, data);
       // Merge JSONB + tăng version atomic. Audit version ghi sau khi update OK.
       const row = await store.merge(ctx.user.companyId, input.recordId, encrypted, rec.version + 1);
+      // Nếu entity có meta.uniqueTrueFields → clear boolean đó trên các record khác.
+      if (row)
+        await clearUniqueTrueFields(ctx.db, ctx.user.companyId, rec.entityId, input.recordId, data);
 
       // Ghi audit version (best-effort: lỗi không rollback update).
       if (row && Object.keys(diff).length > 0) {

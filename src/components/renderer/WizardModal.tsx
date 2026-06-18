@@ -47,7 +47,7 @@ function buildRowData(
     const v = vals[f.name];
     if (v === undefined) continue;
     if (f.type === "boolean" || f.type === "bool") {
-      if (v === "true") out[f.name] = true;
+      out[f.name] = v === "true";
       continue;
     }
     if (v.trim() === "") continue;
@@ -100,11 +100,19 @@ const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
   // DEBUG — xoá sau khi tìm ra bug
-  const _onCancel = (...a: unknown[]) => { console.trace("[WizardModal] onCancel", ...a); onCancel(); };
-  const _onDone = (d: Record<string, unknown>) => { console.trace("[WizardModal] onDone", d); onDone(d); };
+  const _onCancel = (...a: unknown[]) => {
+    console.trace("[WizardModal] onCancel", ...a);
+    onCancel();
+  };
+  const _onDone = (d: Record<string, unknown>) => {
+    console.trace("[WizardModal] onDone", d);
+    onDone(d);
+  };
   useEffect(() => {
     console.log("[WizardModal] mounted");
-    return () => { console.trace("[WizardModal] UNMOUNTED"); };
+    return () => {
+      console.trace("[WizardModal] UNMOUNTED");
+    };
   }, []);
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
@@ -684,6 +692,41 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         onChange={(e) => setField(f.name, e.target.value)}
         placeholder={f.label}
       />
+    ) : f.type === "file" ? (
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+          <span className="btn btn-default text-xs px-3 py-1.5 shrink-0 whitespace-nowrap">
+            Chọn file
+          </span>
+          <span className="text-xs text-muted truncate min-w-0">
+            {form[f.name]
+              ? String(form[f.name]).startsWith("data:")
+                ? "File đã chọn"
+                : (String(form[f.name]).split("/").pop() ?? form[f.name])
+              : "Chưa chọn file"}
+          </span>
+          <input
+            type="file"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => setField(f.name, String(reader.result));
+              reader.readAsDataURL(file);
+            }}
+          />
+        </label>
+        {form[f.name] && (
+          <button
+            type="button"
+            className="text-muted hover:text-danger shrink-0"
+            onClick={() => setField(f.name, "")}
+          >
+            <I.X size={14} />
+          </button>
+        )}
+      </div>
     ) : (
       <input
         className="input w-full"
@@ -858,9 +901,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             </div>
           ) : ent ? (
             visibleFields.length > 0 ? (
-              <div className="flex gap-4 items-start">
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
-                <div className={cn("min-w-0", imgFields.length > 0 ? "flex-1" : "w-full")}>
+                <div className={cn("min-w-0 w-full", imgFields.length > 0 ? "sm:flex-1" : "")}>
                   {current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
@@ -877,7 +920,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             <div
                               className={cn(
                                 (current.cols ?? 1) >= 2
-                                  ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                                  ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                                   : "space-y-2.5",
                               )}
                             >
@@ -909,7 +952,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     <div
                       className={cn(
                         (current.cols ?? 1) >= 2
-                          ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                           : "space-y-2.5",
                       )}
                     >
@@ -934,7 +977,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
                 {imgFields.length > 0 && (
-                  <div className="w-56 shrink-0 space-y-3">
+                  <div className="w-full sm:w-56 sm:shrink-0 space-y-3">
                     {imgFields.map((f) => (
                       <div key={f.id}>
                         <label className="block text-xs font-medium mb-1 flex items-center gap-1">
@@ -964,17 +1007,27 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                         )}
                         {!readOnly && (
                           <div className="flex items-center gap-2 mt-1.5">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="text-xs"
-                              disabled={!!imgUploading[f.name]}
-                              onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
-                            />
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                              <span
+                                className={cn(
+                                  "btn btn-default text-xs px-3 py-1.5 shrink-0",
+                                  imgUploading[f.name] && "opacity-50 pointer-events-none",
+                                )}
+                              >
+                                Chọn ảnh
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={!!imgUploading[f.name]}
+                                onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
+                              />
+                            </label>
                             {form[f.name] && !imgUploading[f.name] && (
                               <button
                                 type="button"
-                                className="text-xs text-danger hover:underline"
+                                className="text-xs text-danger hover:underline shrink-0"
                                 onClick={() => setField(f.name, "")}
                               >
                                 Xoá
@@ -1001,6 +1054,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         {/* Hành động của bước */}
         {renderAction && (current.actions?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+            {/* biome-ignore lint/style/noNonNullAssertion: guard (actions?.length ?? 0) > 0 trên */}
             {current.actions!.map((a) => renderAction(a, a.id))}
           </div>
         )}

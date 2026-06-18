@@ -536,6 +536,56 @@ export function stripUnreadableFields(
 
 /* ─── Validation ─────────────────────────────────────────── */
 
+/** Khi lưu record có field boolean `uniqueTrue: true` bằng true → clear
+ *  field đó trên mọi record khác cùng entity+company (chỉ 1 được true).
+ *  Đọc danh sách field từ `entity.meta.uniqueTrueFields` (string[]).
+ *  Hỗ trợ cả tier EAV (ext trên entity_records) lẫn bảng thật (ext cột). */
+export async function clearUniqueTrueFields(
+  db: DB,
+  companyId: string,
+  entityId: string,
+  recordId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const [ent] = await db
+    .select({ meta: entities.meta, name: entities.name })
+    .from(entities)
+    .where(eq(entities.id, entityId));
+  if (!ent) return;
+  const uniqueTrueFields: string[] =
+    ((ent.meta as Record<string, unknown>)?.uniqueTrueFields as string[]) ?? [];
+  if (uniqueTrueFields.length === 0) return;
+
+  // Lấy tableName từ meta.storage nếu tier=table
+  const storage = (ent.meta as Record<string, unknown>)?.storage as EntityStorage | undefined;
+  const tableName = storage?.tableName;
+
+  for (const fieldName of uniqueTrueFields) {
+    if (data[fieldName] !== true) continue;
+    if (tableName) {
+      // Bảng thật: update ext trực tiếp — 1 câu SQL, nhanh
+      await db.execute(
+        sql`UPDATE ${sql.raw(
+          `"${assertIdent(tableName)}"`,
+        )} SET ext = ext || ${JSON.stringify({ [fieldName]: false })}::jsonb
+          WHERE company_id = ${companyId}::uuid
+            AND id != ${recordId}::uuid
+            AND (ext->>${fieldName}) = 'true'`,
+      );
+    } else {
+      // EAV: update ext trên entity_records
+      await db.execute(
+        sql`UPDATE entity_records
+            SET ext = ext || ${JSON.stringify({ [fieldName]: false })}::jsonb
+          WHERE company_id = ${companyId}::uuid
+            AND entity_id = ${entityId}::uuid
+            AND id != ${recordId}::uuid
+            AND (ext->>${fieldName}) = 'true'`,
+      );
+    }
+  }
+}
+
 /** Kiểm unique cho các field đánh `unique: true`. Đi qua RecordStore →
  *  dispatch đúng backend (EAV `entity_records` hoặc bảng thật `er_<id>`). */
 export async function assertUnique(
