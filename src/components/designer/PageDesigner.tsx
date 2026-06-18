@@ -47,6 +47,9 @@ type ComponentKind =
   | "combobox"
   | "listbox"
   | "tagbox"
+  // "filter": bộ lọc cascade (do migration sinh) — bind datasource, phát state
+  // cho widget khác (loadGate). Không nằm trong palette nhưng sửa được ở inspector.
+  | "filter"
   | "calendar"
   | "map"
   | "pivot"
@@ -136,6 +139,11 @@ function BindingSourceConfig({
 }) {
   const dsId = cfg.dataSourceId as string | undefined;
   const isDs = dsId !== undefined;
+  // Nhớ datasource đã chọn để KHÔI PHỤC khi bấm qua lại 2 tab. Chuyển tab CHỈ đổi
+  // chế độ hiển thị, KHÔNG đụng cấu hình (giữ entity + fields). Chỉ khi CHỌN LẠI
+  // nguồn dữ liệu (Select) hoặc chọn entity (khối riêng) mới thay đổi thật.
+  // Component được key theo widget id (call site) nên state này riêng từng widget.
+  const [lastDsId, setLastDsId] = useState(isDs && dsId ? dsId : "");
   const btn = (active: boolean) =>
     cn(
       "flex-1 rounded border px-2 py-1 text-xs",
@@ -148,10 +156,11 @@ function BindingSourceConfig({
         <button
           type="button"
           className={btn(!isDs)}
-          // Đang ở mode khác → mới chuyển (reset fields vì schema khác). Bấm nút
-          // ĐANG chọn = no-op → KHÔNG mất cấu hình cột/nhãn.
+          // Sang Entity: CHỈ đổi mode. Nhớ DS để khôi phục, GIỮ entity + fields.
           onClick={() => {
-            if (isDs) onChange({ dataSourceId: undefined, fields: null });
+            if (!isDs) return;
+            if (dsId) setLastDsId(dsId);
+            onChange({ dataSourceId: undefined });
           }}
         >
           Entity
@@ -159,8 +168,10 @@ function BindingSourceConfig({
         <button
           type="button"
           className={btn(isDs)}
+          // Sang Nguồn dữ liệu: khôi phục DS đã nhớ (hoặc trống). GIỮ entity + fields.
           onClick={() => {
-            if (!isDs) onChange({ dataSourceId: "", entity: undefined, fields: null });
+            if (isDs) return;
+            onChange({ dataSourceId: lastDsId });
           }}
         >
           Nguồn dữ liệu
@@ -169,12 +180,13 @@ function BindingSourceConfig({
       {isDs && (
         <Select
           value={dsId ?? ""}
-          // Chỉ reset fields khi ĐỔI sang datasource KHÁC (schema khác). Chọn lại
-          // đúng nguồn hiện tại → giữ nguyên cấu hình cột.
-          onChange={(e) =>
-            e.target.value !== dsId &&
-            onChange({ dataSourceId: e.target.value, entity: undefined, fields: null })
-          }
+          // Chọn nguồn KHÁC = thay đổi THẬT → reset fields (schema khác). Chọn lại
+          // đúng nguồn hiện tại = no-op (giữ nguyên cấu hình cột).
+          onChange={(e) => {
+            if (e.target.value === dsId) return;
+            setLastDsId(e.target.value);
+            onChange({ dataSourceId: e.target.value, fields: null });
+          }}
         >
           <option value="">— chọn nguồn dữ liệu —</option>
           {dataSources.map((d) => (
@@ -1323,11 +1335,145 @@ export function PageDesigner({ pageId }: Props) {
                   {/* Chọn nguồn bind: Entity hoặc Nguồn dữ liệu (datasource) */}
                   {inspTab === "dulieu" && BINDING_KINDS.has(sel.kind) && (
                     <BindingSourceConfig
+                      key={sel.id}
                       cfg={sel.config}
                       dataSources={dataSources}
                       onChange={(patch) => update(sel.id, { config: { ...sel.config, ...patch } })}
                     />
                   )}
+                  {/* Filter — cấu hình bộ lọc cascade (nguồn + nhãn/giá trị/nhóm
+                     + state phát ra + nạp lại nguồn). */}
+                  {inspTab === "dulieu" &&
+                    sel.kind === "filter" &&
+                    (() => {
+                      const fcfg = sel.config as {
+                        title?: string;
+                        dataSourceId?: string;
+                        labelField?: string;
+                        valueField?: string;
+                        familyField?: string;
+                        emitStateKey?: string;
+                        refreshDataSourceId?: string;
+                      };
+                      const upd = (patch: Record<string, unknown>) =>
+                        update(sel.id, { config: { ...sel.config, ...patch } });
+                      const dsc = fcfg.dataSourceId
+                        ? dataSourceContent[fcfg.dataSourceId]
+                        : undefined;
+                      const dsCols = (dsc?.fields ?? []).map((f) => ({
+                        name: f.key,
+                        label: f.label || f.key,
+                      }));
+                      return (
+                        <>
+                          <FormField label="Tiêu đề">
+                            <Input
+                              placeholder="vd: Lọc theo sản phẩm"
+                              value={fcfg.title ?? ""}
+                              onChange={(e) => upd({ title: e.target.value })}
+                            />
+                          </FormField>
+                          <div className="rounded-md border border-border p-2 space-y-2 bg-bg-soft/40">
+                            <div className="text-xs font-semibold text-muted">
+                              Nguồn tuỳ chọn (datasource)
+                            </div>
+                            <Select
+                              value={fcfg.dataSourceId ?? ""}
+                              onChange={(e) =>
+                                upd({
+                                  dataSourceId: e.target.value,
+                                  labelField: undefined,
+                                  valueField: undefined,
+                                  familyField: undefined,
+                                })
+                              }
+                            >
+                              <option value="">— chọn nguồn dữ liệu —</option>
+                              {dataSources.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                          {dsc ? (
+                            <>
+                              <FormField label="Trường nhãn (hiển thị)">
+                                <Select
+                                  value={fcfg.labelField ?? ""}
+                                  onChange={(e) => upd({ labelField: e.target.value })}
+                                >
+                                  <option value="">— chọn —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Trường giá trị (lưu / phát ra)">
+                                <Select
+                                  value={fcfg.valueField ?? ""}
+                                  onChange={(e) => upd({ valueField: e.target.value })}
+                                >
+                                  <option value="">— chọn —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Trường nhóm (cascade, tuỳ chọn)">
+                                <Select
+                                  value={fcfg.familyField ?? ""}
+                                  onChange={(e) =>
+                                    upd({ familyField: e.target.value || undefined })
+                                  }
+                                >
+                                  <option value="">— không —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                            </>
+                          ) : (
+                            <div className="text-[11px] text-muted/70 px-0.5">
+                              Chọn nguồn dữ liệu để cấu hình trường nhãn / giá trị / nhóm.
+                            </div>
+                          )}
+                          <FormField label="State key phát ra">
+                            <Input
+                              placeholder="vd: selMasp"
+                              value={fcfg.emitStateKey ?? ""}
+                              onChange={(e) => upd({ emitStateKey: e.target.value })}
+                            />
+                            <div className="text-[10px] text-muted/70 mt-0.5 px-0.5">
+                              Widget khác (vd List) đặt “Chỉ tải khi state có giá trị” = key này để
+                              cascade.
+                            </div>
+                          </FormField>
+                          <FormField label="Nạp lại nguồn khi chọn (tuỳ chọn)">
+                            <Select
+                              value={fcfg.refreshDataSourceId ?? ""}
+                              onChange={(e) =>
+                                upd({ refreshDataSourceId: e.target.value || undefined })
+                              }
+                            >
+                              <option value="">— không —</option>
+                              {dataSources.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormField>
+                        </>
+                      );
+                    })()}
                   {inspTab === "dulieu" &&
                     RECORD_DATA_KINDS.has(sel.kind) &&
                     sel.config.dataSourceId === undefined && (
@@ -2748,6 +2894,7 @@ function tabsForKind(kind: ComponentKind) {
     return tabs;
   }
   if (inputKinds.includes(kind)) return [...base, { key: "dieukien", label: "Nguồn & Điều khiển" }];
+  if (kind === "filter") return [...base, { key: "dulieu", label: "Dữ liệu" }];
   if (kind === "split") return [...base, { key: "bocuc", label: "Bố cục" }];
   if (kind === "actionbar") return [...base, { key: "hanhDong", label: "Hành động" }];
   if (kind === "action") return [...base, { key: "cauhinh", label: "Cấu hình" }];
@@ -3762,9 +3909,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
 
   // Bộ lọc (filter) — bind datasource, phát state cho widget khác (loadGate).
   // Preview: ô dropdown stub theo labelField + caption value/family/emit.
-  // "filter" là kind có THẬT trong dữ liệu (do migration sinh, ConsumerPage render)
-  // nhưng chưa nằm trong union ComponentKind → cast string để so khớp runtime.
-  if ((comp.kind as string) === "filter") {
+  if (comp.kind === "filter") {
     const cfg = comp.config as {
       title?: string;
       labelField?: string;
