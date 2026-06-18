@@ -4833,9 +4833,18 @@ export function ConsumerPage({
     if (chromeless) setActionSlot(document.getElementById("portal-page-actions"));
   }, [chromeless]);
 
-  const baseComponents: PageComponent[] = Array.isArray(content)
-    ? (content as PageComponent[])
-    : [];
+  // Hỗ trợ 2 định dạng content: mảng cũ (PageComponent[]) hoặc mới { meta, components }.
+  type RawContent =
+    | PageComponent[]
+    | { meta?: Record<string, unknown>; components?: PageComponent[] };
+  const rawContent = content as RawContent;
+  const baseComponents: PageComponent[] = Array.isArray(rawContent)
+    ? (rawContent as PageComponent[])
+    : ((rawContent as { components?: PageComponent[] }).components ?? []);
+  const pageMeta: Record<string, unknown> = Array.isArray(rawContent)
+    ? {}
+    : ((rawContent as { meta?: Record<string, unknown> }).meta ?? {});
+  const screenFit = !!pageMeta.screenFit;
 
   /* ── Bố cục cá nhân (per-user, localStorage) ──────────── */
   const storageKey = layoutStorageKey(pageId, userId);
@@ -4883,8 +4892,17 @@ export function ConsumerPage({
   // số hàng (span) để lấp hết chiều cao còn lại của khung main → trang KHÔNG
   // cuộn ngoài, chỉ cuộn trong widget đó. Chỉ desktop + không sửa layout.
   const fillId = useMemo(() => {
-    if (isMobile || layoutEditing) return null;
+    // screenFit: toàn bộ lưới co giãn theo viewport → không cần fillId riêng.
+    if (isMobile || layoutEditing || screenFit) return null;
     const FILL = new Set(["list", "chart", "kanban", "pivot", "table"]);
+
+    // Ưu tiên: widget có config.fillHeight === true (opt-in tường minh).
+    const explicit = renderComps.filter((c) => c.config?.fillHeight === true && FILL.has(c.kind));
+    if (explicit.length === 1) return explicit[0]?.id ?? null;
+    // Nhiều widget opt-in → dùng screenFit thay vì fillId; không tự chọn 1.
+    if (explicit.length > 1) return null;
+
+    // Fallback: auto-detect widget cuộn được ở đáy (hành vi cũ).
     let bottom: PageComponent | null = null;
     let bottomEnd = -1;
     let tieCount = 0; // số widget cùng chạm hàng đáy (y+h lớn nhất)
@@ -4905,10 +4923,10 @@ export function ConsumerPage({
     // để lưới render tự nhiên theo h (mọi cột cao bằng nhau, đều hiển thị).
     if (tieCount > 1) return null;
     return bottom && FILL.has(bottom.kind) ? bottom.id : null;
-  }, [renderComps, isMobile, layoutEditing]);
+  }, [renderComps, isMobile, layoutEditing, screenFit]);
   const [availH, setAvailH] = useState(0);
   useEffect(() => {
-    if (!fillId) {
+    if (!fillId && !screenFit) {
       setAvailH(0);
       return;
     }
@@ -4919,7 +4937,7 @@ export function ConsumerPage({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [fillId]);
+  }, [fillId, screenFit]);
   // Hàng (1-based) bắt đầu của widget fill — để dựng gridTemplateRows: các hàng
   // trên cố định ROW_H, hàng widget fill = 1fr → lấp KHÍT phần dư (không làm
   // tròn theo bội số ROW_H như cách giãn span cũ → hết khoảng trống dưới list).
@@ -5137,24 +5155,28 @@ export function ConsumerPage({
                 className="grid gap-1"
                 style={{
                   gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)",
-                  gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
-                  // Có widget fill ở đáy: ghim chiều cao grid = availH + hàng cuối
-                  // = 1fr → widget fill lấp khít chiều cao còn lại, không chừa dư.
-                  // Hàng TRÊN (filter/toolbar mỏng) = auto → vừa khít nội dung,
-                  // không bị dư padding theo ROW_H 76px.
-                  ...(!isMobile && fillId && availH > 0 && fillRowStart > 0
-                    ? {
-                        height: availH,
-                        // fillRowStart===1 (widget fill ở ngay đầu, vd trang 1 lưới)
-                        // → repeat(0,…) là CSS KHÔNG hợp lệ → browser bỏ CẢ
-                        // gridTemplateRows → ô fill (1/-1) co về 1 hàng ROW_H (lưới
-                        // mất chiều cao). Chỉ phát repeat khi thật sự có hàng trên.
-                        gridTemplateRows:
-                          fillRowStart > 1
-                            ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
-                            : "minmax(0, 1fr)",
-                      }
-                    : {}),
+                  // screenFit → mỗi hàng 1fr (chia tỷ lệ theo h);
+                  // mặc định: ROW_H px cố định (mobile = auto-fit nội dung).
+                  gridAutoRows: isMobile
+                    ? "auto"
+                    : !layoutEditing && screenFit && availH > 0
+                      ? "1fr"
+                      : `${ROW_H}px`,
+                  // screenFit: ghim chiều cao = availH để fr hoạt động.
+                  ...(!isMobile && !layoutEditing && screenFit && availH > 0
+                    ? { height: availH }
+                    : // fillId: 1 widget đáy lấp hết chiều cao còn lại (hành vi cũ).
+                      !isMobile && fillId && availH > 0 && fillRowStart > 0
+                      ? {
+                          height: availH,
+                          // fillRowStart===1 → repeat(0,…) CSS không hợp lệ → chỉ
+                          // phát repeat khi có hàng trên widget fill.
+                          gridTemplateRows:
+                            fillRowStart > 1
+                              ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
+                              : "minmax(0, 1fr)",
+                        }
+                      : {}),
                 }}
               >
                 {/* Ghost placeholder during drag */}

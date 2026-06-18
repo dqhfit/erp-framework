@@ -410,6 +410,7 @@ export function PageDesigner({ pageId }: Props) {
     },
     { id: "c6", kind: "list", x: 8, y: 2, w: 4, h: 3, config: { entity: "order" } },
   ]);
+  const [pageMeta, setPageMeta] = useState<{ screenFit?: boolean }>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [dragKind, setDragKind] = useState<ComponentKind | null>(null);
   const [compSearch, setCompSearch] = useState("");
@@ -469,7 +470,15 @@ export function PageDesigner({ pageId }: Props) {
   useEffect(() => {
     if (!ready) return;
     const stored = useUserObjects.getState().pageContent[pageId];
-    if (Array.isArray(stored)) setComponents(stored as PageComponent[]);
+    if (Array.isArray(stored)) {
+      setComponents(stored as PageComponent[]);
+      setPageMeta({});
+    } else if (stored && typeof stored === "object" && "components" in stored) {
+      // Format mới: { meta, components }
+      const s = stored as { meta?: { screenFit?: boolean }; components?: PageComponent[] };
+      setComponents(s.components ?? []);
+      setPageMeta(s.meta ?? {});
+    }
     // Trang mới / chưa có nội dung (content = {} hoặc undefined) → canvas
     // TRẮNG, KHÔNG giữ lại demo/nội dung trang trước (lỗi "kế thừa trang cũ").
     else setComponents([]);
@@ -544,7 +553,7 @@ export function PageDesigner({ pageId }: Props) {
   }, []); // stable refs + functional setters only
 
   const save = () => {
-    setPageContent(pageId, components);
+    setPageContent(pageId, { meta: pageMeta, components });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -555,7 +564,7 @@ export function PageDesigner({ pageId }: Props) {
   useShortcut("designer-redo", redo);
   useShortcut("designer-preview", () => {
     // Lưu nội dung hiện tại trước khi xem trước (giống nút "Xem trước").
-    setPageContent(pageId, components);
+    setPageContent(pageId, { meta: pageMeta, components });
     setPreviewMode(true);
   });
   // Thoát xem trước CHỈ bật khi đang ở chế độ xem trước (mặc định Esc).
@@ -719,7 +728,7 @@ export function PageDesigner({ pageId }: Props) {
           size="sm"
           icon={previewMode ? <I.EyeOff size={13} /> : <I.Eye size={13} />}
           onClick={() => {
-            if (!previewMode) setPageContent(pageId, components);
+            if (!previewMode) setPageContent(pageId, { meta: pageMeta, components });
             setPreviewMode((v) => !v);
           }}
         >
@@ -1320,6 +1329,22 @@ export function PageDesigner({ pageId }: Props) {
                         Mẹo: kéo cạnh phải/đáy hoặc góc dưới-phải của widget trên canvas để đổi kích
                         thước (hoặc nhập số ô ở trên).
                       </div>
+                      {/* Tràn chiều cao — chỉ hiện cho widget cuộn được */}
+                      {(["list", "chart", "kanban", "pivot", "table"] as string[]).includes(
+                        sel.kind,
+                      ) && (
+                        <FormField
+                          label="Tràn chiều cao màn hình"
+                          hint="Widget lấp hết chiều cao còn lại của viewport. Nếu nhiều widget cùng bật → dùng 'Vừa màn hình' ở cài đặt trang."
+                        >
+                          <Switch
+                            checked={!!sel.config.fillHeight}
+                            onChange={(v) =>
+                              update(sel.id, { config: { ...sel.config, fillHeight: v } })
+                            }
+                          />
+                        </FormField>
+                      )}
                       {INPUT_WIDGET_KINDS.has(sel.kind) && (
                         <button
                           type="button"
@@ -2912,8 +2937,27 @@ export function PageDesigner({ pageId }: Props) {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-center px-6 text-sm text-muted">
-                {t("designer.select_component")}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide">
+                  Cài đặt trang
+                </div>
+                <FormField
+                  label="Vừa 1 màn hình"
+                  hint="Toàn bộ widget co giãn vừa chiều cao viewport. Mỗi widget chiếm tỷ lệ theo h. Bật khi trang có nhiều list theo chiều dọc."
+                >
+                  <Switch
+                    checked={!!pageMeta.screenFit}
+                    onChange={(v) => setPageMeta((m) => ({ ...m, screenFit: v }))}
+                  />
+                </FormField>
+                <div className="border-t border-border pt-3 text-[11px] text-muted leading-relaxed space-y-1.5">
+                  <p>Chọn 1 widget trên canvas để chỉnh cấu hình chi tiết.</p>
+                  <p>
+                    Widget cuộn được (list / chart / kanban…) cũng có thể bật{" "}
+                    <span className="text-text font-medium">Tràn chiều cao màn hình</span> riêng ở
+                    tab Chung.
+                  </p>
+                </div>
               </div>
             )}
           </aside>
