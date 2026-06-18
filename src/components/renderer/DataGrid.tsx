@@ -1390,6 +1390,11 @@ export function DataGrid<T>({
               {table.getVisibleLeafColumns().map((col) => (
                 <col key={col.id} style={{ width: col.getSize() }} />
               ))}
+              {/* Cột ĐỆM auto (không có ô) — hút phần dư khi tổng cột < bề rộng bảng,
+                  giữ MỌI cột thật ĐÚNG width của nó (width:100% sẽ kéo giãn TỈ LỆ mọi
+                  cột nếu không có đệm → cột hành động phình rộng hơn cụm nút). Tổng cột
+                  ≥ bảng thì đệm = 0 (cuộn ngang như cũ). */}
+              <col data-spacer="" />
             </colgroup>
             <thead ref={theadRef} className="bg-panel-2 z-10">
               {(() => {

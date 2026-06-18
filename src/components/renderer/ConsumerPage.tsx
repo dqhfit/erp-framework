@@ -1277,7 +1277,14 @@ function EditableListWidget({
           const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
           if (inline) {
             return (
-              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              // w-fit: co sát các nút (flex thường là block → giãn đầy ô, khiến
+              // autofit đo ra bề rộng Ô thay vì bề rộng NÚT). data-col-content:
+              // mốc để measureCol đo đúng cụm nút → cột bám sát tổng các nút.
+              <div
+                data-col-content=""
+                className="flex items-center gap-0.5 w-fit"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {bound.map((a) => (
                   <ActionWidget key={a.label} config={a} pageState={pageState} inline compact />
                 ))}
@@ -2329,7 +2336,13 @@ function ListWidget({
               const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, rid));
               if (rowActsInline) {
                 return (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  // w-fit + data-col-content: co sát cụm nút để autofit đo đúng
+                  // bề rộng các nút (flex thường giãn đầy ô → cột rộng/lệch).
+                  <div
+                    data-col-content=""
+                    className="flex items-center gap-1 w-fit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {bound.map((a) => (
                       <ActionWidget key={a.label} config={a} pageState={pageState} inline />
                     ))}
