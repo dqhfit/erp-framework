@@ -990,8 +990,11 @@ export function ExcelGrid({
               const rowHighlighted = !!selRange && dr >= selRange.r1 && dr <= selRange.r2;
               const isDataSel = isRowSelected ? isRowSelected(origRow) : false;
               return (
-                // biome-ignore lint/suspicious/noArrayIndexKey: display row index is spreadsheet identity
-                <tr key={dr} className={isDirty ? "bg-amber-50/40 dark:bg-amber-900/10" : ""}>
+                <tr
+                  // biome-ignore lint/suspicious/noArrayIndexKey: display row index is spreadsheet identity
+                  key={dr}
+                  style={isDirty ? { backgroundColor: "var(--changed-row-bg)" } : undefined}
+                >
                   {/* Row number */}
                   <td
                     className={cn(
@@ -1058,9 +1061,12 @@ export function ExcelGrid({
                           isSel &&
                             !isEditing &&
                             "outline outline-2 -outline-offset-1 outline-accent z-[1]",
-                          pending.has(rr) && "bg-amber-50/60 dark:bg-amber-900/15",
                         )}
-                        style={{ height: ROW_H, padding: 0 }}
+                        style={{
+                          height: ROW_H,
+                          padding: 0,
+                          ...(pending.has(rr) ? { backgroundColor: "var(--changed-cell-bg)" } : {}),
+                        }}
                       >
                         {isEditing ? (
                           <div className="relative">

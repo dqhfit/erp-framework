@@ -75,8 +75,16 @@
   --row-h: 36px;
   --pad: 12px;
   --pad-lg: 16px;
+
+  /* Màu nền ô/dòng có giá trị thay đổi chưa lưu (ExcelGrid pending).
+     Có thể ghi đè bằng JS qua preference changedCellBg (TweaksPanel). */
+  --changed-row-bg: rgba(253,177,5,0.10);
+  --changed-cell-bg: rgba(253,177,5,0.20);
 }
 :root.light {
+  --changed-row-bg: rgba(253,177,5,0.12);
+  --changed-cell-bg: rgba(253,177,5,0.26);
+
   --bg: 220 30% 98%;
   --bg-soft: 220 25% 95%;
   --panel: 0 0% 100%;
