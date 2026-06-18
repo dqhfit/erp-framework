@@ -730,6 +730,27 @@ export function DataGrid<T>({
       : {}),
   });
 
+  // tableRef để effect truy cập table.getAllLeafColumns() mà không cần đưa table
+  // vào deps (table có thể tạo mới mỗi render do TanStack mutable-update).
+  const tableRef = useRef(table);
+  tableRef.current = table;
+
+  // Prune stale column IDs khỏi columnOrder sau khi IDB restore xong.
+  // Xảy ra khi entity đổi schema (field xoá/đổi tên) → columnOrder cũ chứa id
+  // không tồn tại → TanStack Table log [Table] Column with id 'X' does not exist.
+  const orderPrunedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tableRef stable — không cần trong deps
+  useEffect(() => {
+    if (!restoreSettled || orderPrunedRef.current) return;
+    orderPrunedRef.current = true;
+    const validIds = new Set(tableRef.current.getAllLeafColumns().map((c) => c.id));
+    setColumnOrder((prev) => {
+      if (prev.length === 0) return prev;
+      const pruned = prev.filter((id) => validIds.has(id));
+      return pruned.length === prev.length ? prev : pruned;
+    });
+  }, [restoreSettled]);
+
   // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
   // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,
   // kể cả cột hẹp hơn mặc định). +đệm padding ngang ô. ──

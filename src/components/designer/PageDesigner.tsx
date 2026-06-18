@@ -358,7 +358,7 @@ export function PageDesigner({ pageId }: Props) {
   const isMobile = useIsMobile();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
   const setInspectorVisible = useUI((s) => s.setInspectorVisible);
-  const { fieldDisp } = useFieldDisplay();
+  const { fieldDisp, mode: fieldMode } = useFieldDisplay();
 
   const [components, setComponents, { canUndo, canRedo, undo, redo }] = useUndoable<
     PageComponent[]
@@ -2189,15 +2189,15 @@ export function PageDesigner({ pageId }: Props) {
                           all = [
                             ...(dsc.fields ?? []).map((f) => ({
                               name: f.key,
-                              label: f.label || f.key,
+                              label: fieldDisp({ name: f.key, label: f.label }),
                             })),
                             ...(dsc.aggregates ?? []).map((a) => ({
                               name: a.key,
-                              label: a.label || a.key,
+                              label: fieldDisp({ name: a.key, label: a.label }),
                             })),
                             ...(dsc.computed ?? []).map((c) => ({
                               name: c.key,
-                              label: c.label || c.key,
+                              label: fieldDisp({ name: c.key, label: c.label }),
                             })),
                           ];
                         }
@@ -2207,13 +2207,17 @@ export function PageDesigner({ pageId }: Props) {
                         );
                         all = (ent?.fields ?? []).map((f) => ({
                           name: f.name,
-                          label: f.label || f.name,
+                          label: fieldDisp(f),
                         }));
                       }
                       // Lọc theo cột đang hiển thị (null/undefined = tất cả) + áp nhãn override.
+                      // colLabels chỉ áp khi mode=label; mode=name luôn hiện tên kỹ thuật.
                       const fields = (
                         shown == null ? all : all.filter((f) => shown.includes(f.name))
-                      ).map((f) => ({ ...f, label: colLabels?.[f.name] || f.label }));
+                      ).map((f) => ({
+                        ...f,
+                        label: fieldMode === "label" ? colLabels?.[f.name] || f.label : f.name,
+                      }));
                       return (
                         <BandEditor
                           value={sel.config.columnGroups as ColumnGroupNode[] | undefined}

@@ -168,7 +168,7 @@ export function BandEditor({
                 <option value="">＋ Thêm cột vào dải…</option>
                 {pickable.map((f) => (
                   <option key={f.name} value={f.name}>
-                    {f.label || f.name}
+                    {f.label}
                   </option>
                 ))}
               </select>
