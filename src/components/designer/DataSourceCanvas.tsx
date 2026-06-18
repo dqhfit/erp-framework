@@ -196,9 +196,7 @@ function DSNode({ data, selected, id }: NodeProps<DSNodeType>) {
         {fields.map((f) => {
           const on = data.projected.has(f.name);
           const isJoin = joinSet.has(f.name);
-          // Hiển thị theo chế độ: nhãn (label) hoặc tên cột (name); tooltip hiện cái còn lại.
-          const disp = data.fieldMode === "label" ? f.label || f.name : f.name;
-          const alt = data.fieldMode === "label" ? f.name : f.label || f.name;
+          const hasLabel = !!f.label?.trim() && f.label !== f.name;
           return (
             <div
               key={f.id}
@@ -234,15 +232,13 @@ function DSNode({ data, selected, id }: NodeProps<DSNodeType>) {
                   checked={on}
                   onChange={() => data.onToggleField(data.nodeId, f.name)}
                 />
-                <span
-                  className={cn(
-                    "flex-1 truncate text-xs",
-                    data.fieldMode === "label" ? "" : "font-mono",
-                    on ? "text-text" : "text-muted",
+                <span className={cn("flex-1 min-w-0 text-xs", on ? "text-text" : "text-muted")}>
+                  <span className="block truncate">{hasLabel ? f.label : f.name}</span>
+                  {hasLabel && (
+                    <span className="block truncate font-mono text-[9px] text-muted/60">
+                      {f.name}
+                    </span>
                   )}
-                  title={alt}
-                >
-                  {disp}
                 </span>
                 {isJoin && (
                   <span className="text-accent shrink-0" title="Cột tham gia liên kết">

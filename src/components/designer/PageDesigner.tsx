@@ -5,7 +5,7 @@ import { BandEditor } from "@/components/designer/inspectors/BandEditor";
 import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
 import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldBinder";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
-import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
+import { FieldDisplayToggle, fieldBoth, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import type { ColumnGroupNode } from "@/components/renderer/DataGrid";
@@ -358,7 +358,7 @@ export function PageDesigner({ pageId }: Props) {
   const isMobile = useIsMobile();
   const inspectorVisible = useUI((s) => s.inspectorVisible);
   const setInspectorVisible = useUI((s) => s.setInspectorVisible);
-  const { fieldDisp, mode: fieldMode } = useFieldDisplay();
+  const { fieldDisp } = useFieldDisplay();
 
   const [components, setComponents, { canUndo, canRedo, undo, redo }] = useUndoable<
     PageComponent[]
@@ -1931,7 +1931,7 @@ export function PageDesigner({ pageId }: Props) {
                                     <option value="">{t("field.choose")}</option>
                                     {entityFields.map((f) => (
                                       <option key={f.name} value={f.name}>
-                                        {fieldDisp(f)}
+                                        {fieldBoth(f)}
                                       </option>
                                     ))}
                                   </Select>
@@ -1962,7 +1962,7 @@ export function PageDesigner({ pageId }: Props) {
                                       .filter((f) => ["number", "currency"].includes(f.type))
                                       .map((f) => (
                                         <option key={f.name} value={f.name}>
-                                          {fieldDisp(f)}
+                                          {fieldBoth(f)}
                                         </option>
                                       ))}
                                   </Select>
@@ -1996,7 +1996,7 @@ export function PageDesigner({ pageId }: Props) {
                                   <option value="">{t("field.choose")}</option>
                                   {entityFields.map((f) => (
                                     <option key={f.name} value={f.name}>
-                                      {fieldDisp(f)}
+                                      {fieldBoth(f)}
                                     </option>
                                   ))}
                                 </Select>
@@ -2189,15 +2189,15 @@ export function PageDesigner({ pageId }: Props) {
                           all = [
                             ...(dsc.fields ?? []).map((f) => ({
                               name: f.key,
-                              label: fieldDisp({ name: f.key, label: f.label }),
+                              label: fieldBoth({ name: f.key, label: f.label }),
                             })),
                             ...(dsc.aggregates ?? []).map((a) => ({
                               name: a.key,
-                              label: fieldDisp({ name: a.key, label: a.label }),
+                              label: fieldBoth({ name: a.key, label: a.label }),
                             })),
                             ...(dsc.computed ?? []).map((c) => ({
                               name: c.key,
-                              label: fieldDisp({ name: c.key, label: c.label }),
+                              label: fieldBoth({ name: c.key, label: c.label }),
                             })),
                           ];
                         }
@@ -2207,16 +2207,19 @@ export function PageDesigner({ pageId }: Props) {
                         );
                         all = (ent?.fields ?? []).map((f) => ({
                           name: f.name,
-                          label: fieldDisp(f),
+                          label: fieldBoth(f),
                         }));
                       }
                       // Lọc theo cột đang hiển thị (null/undefined = tất cả) + áp nhãn override.
-                      // colLabels chỉ áp khi mode=label; mode=name luôn hiện tên kỹ thuật.
+                      // BandEditor inspector luôn hiện cả nhãn lẫn tên kỹ thuật (fieldBoth).
                       const fields = (
                         shown == null ? all : all.filter((f) => shown.includes(f.name))
                       ).map((f) => ({
                         ...f,
-                        label: fieldMode === "label" ? colLabels?.[f.name] || f.label : f.name,
+                        // colLabels override (nhãn cột tuỳ chỉnh): giữ dạng "nhãn (name)"
+                        label: colLabels?.[f.name]
+                          ? fieldBoth({ name: f.name, label: colLabels[f.name] })
+                          : f.label,
                       }));
                       return (
                         <BandEditor
@@ -2322,7 +2325,7 @@ export function PageDesigner({ pageId }: Props) {
                                     <option value="">— chọn field —</option>
                                     {(optEnt?.fields ?? []).map((f) => (
                                       <option key={f.name} value={f.name}>
-                                        {fieldDisp(f)}
+                                        {fieldBoth(f)}
                                       </option>
                                     ))}
                                   </Select>
@@ -2437,7 +2440,7 @@ export function PageDesigner({ pageId }: Props) {
                                   <option value="">— chọn field —</option>
                                   {linkedEnt.fields.map((f) => (
                                     <option key={f.name} value={f.name}>
-                                      {fieldDisp(f)}
+                                      {fieldBoth(f)}
                                       {f.type === "lookup" || f.type === "multi-lookup" ? " ↗" : ""}
                                     </option>
                                   ))}
@@ -2696,7 +2699,7 @@ export function PageDesigner({ pageId }: Props) {
                                                     }}
                                                   />
                                                   <span className="flex-1 truncate">
-                                                    {fieldDisp(f)}
+                                                    {fieldBoth(f)}
                                                   </span>
                                                 </label>
                                               );
