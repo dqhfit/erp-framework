@@ -209,6 +209,15 @@ export async function runActionSteps(
         const r = await ctx.invokeModule(step.procName, args);
         procedureRuns++;
         if (step.saveOutputTo) rs.set(step.saveOutputTo, r.output);
+        // Proc trả message → hiện toast thành công có nội dung cụ thể (vd số
+        // sản phẩm/dòng đã áp dụng). ActionWidget bỏ toast chung khi có step này.
+        const out = r.output as unknown;
+        const first = Array.isArray(out) ? out[0] : out;
+        const msg =
+          first && typeof first === "object" && "message" in first
+            ? String((first as { message: unknown }).message)
+            : null;
+        ctx.toast.success(msg || "Thực hiện thành công");
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);

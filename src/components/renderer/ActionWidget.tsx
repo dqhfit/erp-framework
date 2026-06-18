@@ -115,7 +115,10 @@ export function ActionWidget({ config, pageState, inline = false, compact = fals
           openWizard(s, getter),
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
-      if (res.completed && res.procedureRuns > 0) {
+      // invoke-module-proc tự hiện toast.success có nội dung (run-action.ts) →
+      // bỏ toast chung để tránh hiện 2 thông báo.
+      const hasModuleProc = (config.steps ?? []).some((s) => s.kind === "invoke-module-proc");
+      if (res.completed && res.procedureRuns > 0 && !hasModuleProc) {
         toast.success(config.label ? `Đã chạy: ${config.label}` : "Đã chạy xong");
       }
     } catch {

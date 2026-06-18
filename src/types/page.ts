@@ -291,4 +291,8 @@ export interface ActionConfig {
   confirmMessage?: string;
   /** Tiêu đề dialog xác nhận — fallback "Xác nhận". */
   confirmTitle?: string;
+  /** (Row-action) Bind recordId theo 1 FIELD nghiệp vụ của dòng (vd "id_quytrinh")
+   *  thay vì id uuid — cho master-detail liên kết qua khoá nghiệp vụ (số/chuỗi).
+   *  Không đặt → dùng row.id (uuid) như mặc định. */
+  recordIdField?: string;
 }
