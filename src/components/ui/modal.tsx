@@ -24,12 +24,7 @@ export function Modal({
   footer,
   align = "center",
 }: ModalProps) {
-  // Hook gom Escape + Tab/Shift+Tab trap + return focus về trigger.
-  const debugClose = (...args: unknown[]) => {
-    console.trace("[Modal] onClose called", ...args);
-    onClose();
-  };
-  const containerRef = useFocusTrap<HTMLDivElement>(open, debugClose);
+  const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
   const titleId = useId();
   if (!open) return null;
   return createPortal(

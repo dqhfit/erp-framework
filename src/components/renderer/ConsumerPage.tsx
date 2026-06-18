@@ -2097,6 +2097,16 @@ function ListWidget({
     refFill,
   } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
+  // Các ref cho cell functions trong useMemo — đọc giá trị mới nhất mà không cần
+  // đưa vào deps (pageState thay identity mỗi khi set gọi; visibleFields/columnLabels
+  // /title ít đổi). Khai báo sớm (trước conditional return) để tuân thủ rules of hooks.
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
+  const _rafVisibleFields = useRef<EntityField[]>([]);
+  const _rafColumnLabels = useRef(columnLabels);
+  _rafColumnLabels.current = columnLabels;
+  const _rafTitle = useRef(title);
+  _rafTitle.current = title;
   // RBAC để cho phép tick checkbox boolean ngay ở lưới (chỉ khi có quyền ghi field).
   const listRbacRole = useRbac((s) => s.role);
   const listMyGroups = useUserObjects((s) => s.myGroupIds);
@@ -2196,6 +2206,67 @@ function ListWidget({
     }
   };
 
+  // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
+  // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
+  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
+  // useMemo phải khai báo TRƯỚC early return để tuân thủ rules of hooks.
+  const rowActsInline = rowActionsStyle !== "popover";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pageStateRef/visibleFieldsRef etc. đọc qua ref — stable; effectiveRowActions/rowActsInline/rowActionsHidden mới thật sự thay đổi cột
+  const rowActionCol = useMemo(
+    () =>
+      effectiveRowActions.length > 0
+        ? [
+            {
+              id: "__rowacts__",
+              header: () => (
+                <span title="Hành động">
+                  <I.MoreHorizontal size={13} className="text-muted/70" />
+                </span>
+              ),
+              size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
+              minSize: 24,
+              meta: { compact: true, label: "Hành động" },
+              enableSorting: false,
+              cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+                const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
+                if (rowActsInline) {
+                  return (
+                    <div
+                      data-col-content=""
+                      className="flex items-center gap-1 w-fit"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {bound.map((a) => (
+                        <ActionWidget
+                          key={a.label}
+                          config={a}
+                          pageState={pageStateRef.current}
+                          inline
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+                return (
+                  <RowActionsCell
+                    actions={bound}
+                    pageState={pageStateRef.current}
+                    row={row.original}
+                    cols={_rafVisibleFields.current.map((f) => ({
+                      key: f.name,
+                      label: _rafColumnLabels.current?.[f.name] ?? f.label ?? f.name,
+                    }))}
+                    title={_rafTitle.current}
+                    hidden={rowActionsHidden}
+                  />
+                );
+              },
+            },
+          ]
+        : [],
+    [effectiveRowActions, rowActsInline, rowActionsHidden],
+  );
+
   if (!entityId && !dataSourceId) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
   }
@@ -2209,6 +2280,7 @@ function ListWidget({
           .map((name) => allFields.find((f) => f.name === name))
           .filter(Boolean) as typeof allFields)
       : allFields.filter((f) => f.defaultVisible !== false);
+  _rafVisibleFields.current = visibleFields;
 
   // V2: filters (cây) ưu tiên — pass-through default khi state rỗng.
   let filteredRows = rows;
@@ -2417,64 +2489,6 @@ function ListWidget({
         },
       ]
     : [];
-
-  // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
-  // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
-  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
-  const rowActsInline = rowActionsStyle !== "popover";
-  const rowActionCol =
-    effectiveRowActions.length > 0
-      ? [
-          {
-            id: "__rowacts__",
-            // Tiêu đề gọn (icon ⋯) thay chữ "Hành động" để cột không rộng.
-            header: () => (
-              <span title="Hành động">
-                <I.MoreHorizontal size={13} className="text-muted/70" />
-              </span>
-            ),
-            // size số (kể cả inline) để cột được GHIM → kéo nhỏ/rộng được, không
-            // tự giãn theo nội dung. Mặc định inline tính theo số nút; nhớ width sau kéo.
-            size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
-            // Sàn hẹp để cột compact bám sát tổng bề rộng các nút (xem __rowacts__ ở
-            // EditableListWidget) — minSize cao kẹp ngược autofit làm cột rộng dư.
-            minSize: 24,
-            meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
-            enableSorting: false,
-            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-              const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
-              if (rowActsInline) {
-                return (
-                  // w-fit + data-col-content: co sát cụm nút để autofit đo đúng
-                  // bề rộng các nút (flex thường giãn đầy ô → cột rộng/lệch).
-                  <div
-                    data-col-content=""
-                    className="flex items-center gap-1 w-fit"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {bound.map((a) => (
-                      <ActionWidget key={a.label} config={a} pageState={pageState} inline />
-                    ))}
-                  </div>
-                );
-              }
-              return (
-                <RowActionsCell
-                  actions={bound}
-                  pageState={pageState}
-                  row={row.original}
-                  cols={visibleFields.map((f) => ({
-                    key: f.name,
-                    label: columnLabels?.[f.name] ?? f.label ?? f.name,
-                  }))}
-                  title={title}
-                  hidden={rowActionsHidden}
-                />
-              );
-            },
-          },
-        ]
-      : [];
 
   // Cột nút "Sửa đơn" độc lập — CHỈ khi có editForm mà KHÔNG có rowDetail
   // (có rowDetail thì nút Sửa trong cột Hành động đã mở dialog edit này).

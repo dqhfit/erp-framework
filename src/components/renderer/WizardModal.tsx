@@ -99,21 +99,7 @@ interface Props {
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
-  // DEBUG — xoá sau khi tìm ra bug
-  const _onCancel = (...a: unknown[]) => {
-    console.trace("[WizardModal] onCancel", ...a);
-    onCancel();
-  };
-  const _onDone = (d: Record<string, unknown>) => {
-    console.trace("[WizardModal] onDone", d);
-    onDone(d);
-  };
-  useEffect(() => {
-    console.log("[WizardModal] mounted");
-    return () => {
-      console.trace("[WizardModal] UNMOUNTED");
-    };
-  }, []);
+  const _onCancel = onCancel;
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
   // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/

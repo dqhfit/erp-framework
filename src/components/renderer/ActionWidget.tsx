@@ -5,7 +5,7 @@
    ========================================================== */
 import { createApiDataSource, createProceduresClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
 import { WizardModal } from "@/components/renderer/WizardModal";
@@ -31,11 +31,6 @@ interface Props {
 }
 
 export function ActionWidget({ config, pageState, inline = false, compact = false }: Props) {
-  // DEBUG — xoá sau khi tìm ra bug
-  useEffect(() => {
-    console.log("[ActionWidget] mounted", config.label, config.id);
-    return () => console.trace("[ActionWidget] UNMOUNTED", config.label, config.id);
-  }, []);
   const role = useAuth((s) => s.user?.role);
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -89,7 +84,6 @@ export function ActionWidget({ config, pageState, inline = false, compact = fals
   );
 
   const closeWizard = useCallback((value: Record<string, unknown> | null) => {
-    console.trace("[closeWizard]", value);
     setWizardStep(null);
     wizardResolveRef.current?.(value);
     wizardResolveRef.current = null;
