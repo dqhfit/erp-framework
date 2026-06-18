@@ -8,7 +8,12 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Card, Chip, Kbd } from "@/components/ui";
 import { useResolvedShortcuts } from "@/hooks/useShortcut";
-import { eventToCombo, formatCombo, SHORTCUT_CATEGORIES } from "@/lib/shortcuts";
+import {
+  eventToCombo,
+  formatCombo,
+  SHORTCUT_CATEGORIES,
+  SHORTCUT_REFERENCE,
+} from "@/lib/shortcuts";
 import { usePreferences } from "@/stores/preferences";
 
 function ShortcutsSettings() {
@@ -134,6 +139,34 @@ function ShortcutsSettings() {
             </Card>
           );
         })}
+
+        {/* Tham khảo — phím tắt CỐ ĐỊNH theo từng màn hình (không đổi được). */}
+        <div className="mt-8 mb-3">
+          <h2 className="text-lg font-semibold">Phím tắt theo màn hình</h2>
+          <div className="text-sm text-muted">
+            Các phím gắn cứng trong từng màn hình chức năng (không tự đổi được). Phím Trình dựng
+            trang ở mục trên có thể tuỳ chỉnh. <b>Ctrl/Cmd</b> = Ctrl (Windows/Linux) hoặc ⌘
+            (macOS).
+          </div>
+        </div>
+        {SHORTCUT_REFERENCE.map((g) => (
+          <Card key={g.scope} className="mb-4">
+            <div className="mb-1 font-semibold">{g.scope}</div>
+            {g.hint && <div className="text-xs text-muted mb-3">{g.hint}</div>}
+            <div className="divide-y divide-border">
+              {g.items.map((it) => (
+                <div key={it.action} className="flex items-center gap-3 py-2">
+                  <div className="flex-1 min-w-0 text-sm text-muted">{it.action}</div>
+                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                    {it.keys.map((k) => (
+                      <Kbd key={k}>{k}</Kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
 
         <div className="text-xs text-muted">
           Gợi ý: <Kbd>{formatCombo("mod+k")}</Kbd> hoặc <Kbd>/</Kbd> mở Command Palette để tìm nhanh
