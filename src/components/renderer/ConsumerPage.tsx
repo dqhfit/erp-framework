@@ -946,6 +946,24 @@ async function runBatchSave(
   return { failed, errs, cancelled: false };
 }
 
+/** Nút ✕ "Bỏ dòng mới này" — gỡ 1 dòng MỚI nháp (chưa lưu). Dùng trong cột hành
+ *  động (khi lưới có) hoặc cột ✕ riêng (khi không có cột hành động). */
+function RemoveNewRowButton({ onRemove }: { onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Bỏ dòng mới này"
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
+      className="flex items-center justify-center w-5 h-5 rounded text-danger hover:bg-danger/10"
+    >
+      <I.X size={12} />
+    </button>
+  );
+}
+
 // ─── EditableListWidget — bảng chỉnh sửa inline (qua DataGrid xịn) ────────────
 
 interface EditableListWidgetProps {
@@ -1257,8 +1275,10 @@ function EditableListWidget({
         );
       },
     }));
-    // Cột đầu ✕ để bỏ dòng MỚI nháp (chỉ hiện khi đang có dòng mới chưa lưu).
-    if (newRows.length > 0) {
+    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỈ khi lưới KHÔNG có cột hành động.
+    // Có cột hành động (__rowacts__) → ✕ nằm TRONG cột đó (cell __isNew bên dưới).
+    const hasActionCol = !!(rowActions && rowActions.length > 0);
+    if (newRows.length > 0 && !hasActionCol) {
       cols.unshift({
         id: "__rmnew",
         header: "",
@@ -1268,19 +1288,7 @@ function EditableListWidget({
         cell: (ctx) => {
           const row = ctx.row.original as { id?: unknown; __isNew?: boolean };
           if (!row.__isNew) return null;
-          return (
-            <button
-              type="button"
-              title="Bỏ dòng mới này"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeRowRef.current(String(row.id));
-              }}
-              className="flex items-center justify-center w-5 h-5 rounded text-danger hover:bg-danger/10"
-            >
-              <I.X size={12} />
-            </button>
-          );
+          return <RemoveNewRowButton onRemove={() => removeRowRef.current(String(row.id))} />;
         },
       });
     }
@@ -1308,8 +1316,18 @@ function EditableListWidget({
         // minSize cao sẽ kẹp ngược lại làm cột rộng hơn tổng bề rộng các nút.
         minSize: 24,
         cell: (ctx) => {
-          const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
-          if (row.__isNew) return null;
+          const row = ctx.row.original as Record<string, unknown> & {
+            id?: unknown;
+            __isNew?: boolean;
+          };
+          // Dòng MỚI nháp → nút ✕ bỏ dòng ngay TRONG cột hành động (thay cho
+          // Xem/Sửa/Xoá của dòng đã lưu).
+          if (row.__isNew)
+            return (
+              <div className="flex items-center w-fit" onClick={(e) => e.stopPropagation()}>
+                <RemoveNewRowButton onRemove={() => removeRowRef.current(String(row.id))} />
+              </div>
+            );
           const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
           if (inline) {
             return (
