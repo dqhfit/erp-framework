@@ -3518,7 +3518,7 @@ function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
   if (!step) return null;
   const ent = step.entity ? entities.find((e) => e.id === step.entity) : undefined;
   const visibleFields = step.fields?.length
-    ? (ent?.fields ?? []).filter((f) => step.fields!.includes(f.name))
+    ? (ent?.fields ?? []).filter((f) => step.fields?.includes(f.name))
     : (ent?.fields ?? []);
   const form = forms[step.id] ?? {};
   const setField = (k: string, v: string) =>
@@ -3674,7 +3674,7 @@ function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
       {/* Hành động của bước */}
       {(step.actions?.length ?? 0) > 0 && (
         <div className="shrink-0 px-4 py-2 border-t border-border/50 flex flex-wrap gap-2 bg-panel">
-          {step.actions!.map((a) => (
+          {step.actions?.map((a) => (
             <ActionWidget key={a.id} config={a} pageState={pageState} inline />
           ))}
         </div>
@@ -5092,7 +5092,7 @@ function VisibilityGate({
 }) {
   const pageState = usePageState();
   if (editing || !rule) return <>{children}</>;
-  return evalVisible(rule, pageState) ? <>{children}</> : null;
+  return evalVisible(rule, pageState) ? children : null;
 }
 
 export function ConsumerPage({

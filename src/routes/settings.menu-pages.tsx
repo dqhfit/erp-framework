@@ -82,7 +82,7 @@ function MenuPagesPage() {
     for (const r of rows) {
       const k = r.parentCode && byCode.has(r.parentCode) ? r.parentCode : null;
       if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(r);
+      m.get(k)?.push(r);
     }
     // Sửa cấu trúc: giữ thứ tự sort (để kéo lên/xuống có nghĩa). Ngoài ra:
     // sắp theo TÊN cho dễ tìm.
@@ -124,7 +124,7 @@ function MenuPagesPage() {
     for (const r of rows) {
       if (!r.pageId) continue;
       if (!m.has(r.pageId)) m.set(r.pageId, []);
-      m.get(r.pageId)!.push(r);
+      m.get(r.pageId)?.push(r);
     }
     return m;
   }, [rows]);
