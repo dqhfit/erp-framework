@@ -3258,7 +3258,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
                         key={c.name}
                         className="px-2 py-1 text-left font-semibold text-muted border-b border-border/40 truncate max-w-[80px]"
                       >
-                        {c.label}
+                        {fieldDisp(c)}
                       </th>
                     ))}
                   </tr>
@@ -3380,7 +3380,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             <>
               {cols.slice(0, 6).map((c) => (
                 <div key={c.name} className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-[80px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="w-[80px] shrink-0 text-muted truncate">{fieldDisp(c)}</div>
                   <div className="flex-1 h-5 border border-border/50 rounded bg-bg-soft flex items-center px-1.5">
                     <div
                       className="h-1.5 bg-muted/20 rounded"
@@ -3496,7 +3496,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             ) : (
               shown.map((c) => (
                 <div key={c.name} className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-[72px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="w-[72px] shrink-0 text-muted truncate">{fieldDisp(c)}</div>
                   <div className="flex-1 h-5 border border-border/60 rounded bg-bg flex items-center px-1.5">
                     <div
                       className="h-1.5 bg-muted/25 rounded"
