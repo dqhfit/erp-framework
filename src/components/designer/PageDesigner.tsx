@@ -472,16 +472,21 @@ export function PageDesigner({ pageId }: Props) {
     const stored = useUserObjects.getState().pageContent[pageId];
     if (Array.isArray(stored)) {
       setComponents(stored as PageComponent[]);
-      setPageMeta({});
+      // Trang cũ (mảng thuần) chưa có meta → bật screenFit mặc định.
+      setPageMeta({ screenFit: true });
     } else if (stored && typeof stored === "object" && "components" in stored) {
       // Format mới: { meta, components }
       const s = stored as { meta?: { screenFit?: boolean }; components?: PageComponent[] };
       setComponents(s.components ?? []);
-      setPageMeta(s.meta ?? {});
+      // Nếu meta.screenFit chưa khai báo tường minh → mặc định true.
+      setPageMeta({ screenFit: true, ...(s.meta ?? {}) });
     }
     // Trang mới / chưa có nội dung (content = {} hoặc undefined) → canvas
-    // TRẮNG, KHÔNG giữ lại demo/nội dung trang trước (lỗi "kế thừa trang cũ").
-    else setComponents([]);
+    // TRẮNG, screenFit bật mặc định cho trang mới.
+    else {
+      setComponents([]);
+      setPageMeta({ screenFit: true });
+    }
   }, [pageId, ready]);
 
   // Reset selection khi chuyển page
@@ -1086,6 +1091,11 @@ export function PageDesigner({ pageId }: Props) {
         <div
           ref={canvasRef}
           className="flex-1 overflow-auto canvas-dots"
+          onClick={(e) => {
+            // Click khoảng trống (không phải lên widget) → bỏ chọn + mở thuộc tính trang.
+            const hit = (e.target as HTMLElement).closest("[data-comp-id]");
+            if (!hit) setSelected(null);
+          }}
           onDragOver={(e) => {
             if (dragKind || dragCompId) {
               e.preventDefault();
@@ -3031,6 +3041,7 @@ function ComponentCard({
   return (
     <div
       draggable={!isResizing}
+      data-comp-id={comp.id}
       onClick={onSelect}
       onDragStart={(e) => {
         if (isResizing) {
