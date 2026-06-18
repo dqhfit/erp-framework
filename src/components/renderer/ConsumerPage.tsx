@@ -30,6 +30,7 @@ import {
   type ServerGridQuery,
   type ServerPagingController,
 } from "@/components/renderer/DataGrid";
+import { DocumentWidget } from "@/components/renderer/DocumentWidget";
 import { DrawingPageCell } from "@/components/renderer/DrawingPageCell";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
@@ -4669,6 +4670,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "calendar") return <CalendarWidget cfg={cfg} />;
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
+  if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
   if (comp.kind === "html") {
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/

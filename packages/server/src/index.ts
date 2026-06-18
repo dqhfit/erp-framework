@@ -55,6 +55,7 @@ import {
 } from "./router-helpers";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
+import { verifyOoJwt } from "./documents-router";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 import { bootstrapTools, shutdownTools } from "./tools";
@@ -918,6 +919,90 @@ async function main(): Promise<void> {
     reply.send(createReadStream(filePath));
   });
 
+  /* ── OnlyOffice Document Server integration ─────────────────────────────
+     2 REST endpoints phục vụ OnlyOffice container (gọi server→server qua
+     Docker DNS, KHÔNG qua browser):
+     1. GET  /doc/file/:sourceId?token=<jwt>  — stream file về cho OO
+     2. POST /doc/callback/:sourceId          — OO gọi khi user save/close
+  ─────────────────────────────────────────────────────────────────────── */
+
+  /* Serve file cho OnlyOffice kéo về để render editor.
+     Auth: JWT query param (signed với ONLYOFFICE_JWT_SECRET). */
+  app.get("/doc/file/:sourceId", async (req, reply) => {
+    const { sourceId } = req.params as { sourceId: string };
+    const { token } = req.query as { token?: string };
+    if (!token) {
+      reply.code(401).send({ error: "Thiếu token" });
+      return;
+    }
+    let payload: Record<string, unknown>;
+    try {
+      payload = verifyOoJwt(token) as Record<string, unknown>;
+    } catch {
+      reply.code(401).send({ error: "Token không hợp lệ hoặc hết hạn" });
+      return;
+    }
+    if (payload.sourceId !== sourceId) {
+      reply.code(403).send({ error: "Token không khớp sourceId" });
+      return;
+    }
+    const companyId = payload.companyId as string;
+    const [source] = await db
+      .select()
+      .from(knowledgeSources)
+      .where(and(eq(knowledgeSources.id, sourceId), eq(knowledgeSources.companyId, companyId)));
+    if (!source) {
+      reply.code(404).send({ error: "Không tìm thấy file" });
+      return;
+    }
+    const meta = (source.meta ?? {}) as Record<string, unknown>;
+    const filePath = meta.path as string | undefined;
+    if (!filePath) {
+      reply.code(404).send({ error: "File chưa được lưu" });
+      return;
+    }
+    try {
+      await stat(filePath);
+    } catch {
+      reply.code(404).send({ error: "File không tồn tại trên ổ đĩa" });
+      return;
+    }
+    const mime = (meta.mime as string | undefined) ?? "application/octet-stream";
+    reply.header("Content-Type", mime);
+    reply.header(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(source.title)}"`,
+    );
+    reply.send(createReadStream(filePath));
+  });
+
+  /* Callback từ OnlyOffice khi user save/đóng document.
+     OnlyOffice gửi Authorization: Bearer <jwt> (payload = { payload: body }).
+     status=2 → tài liệu sẵn sàng download từ body.url → ghi đè file + cập nhật editKey. */
+  app.post("/doc/callback/:sourceId", async (req, reply) => {
+    const { sourceId } = req.params as { sourceId: string };
+
+    // Verify JWT từ Authorization header
+    const authHeader = (req.headers.authorization as string | undefined) ?? "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!bearerToken) {
+      // OnlyOffice gửi không có JWT khi JWT_ENABLED=false — trả lỗi rõ ràng.
+      reply.send({ error: 1 });
+      return;
+    }
+    try {
+      const jwtPayload = verifyOoJwt(bearerToken) as Record<string, unknown>;
+      // payload chứa callback body gốc
+      const body = (jwtPayload.payload ?? jwtPayload) as Record<string, unknown>;
+      await handleOoCallback(sourceId, body);
+    } catch (e) {
+      console.warn("[doc/callback] JWT verify failed:", (e as Error).message);
+      reply.send({ error: 1 });
+      return;
+    }
+    reply.send({ error: 0 });
+  });
+
   await app.listen({ host: HOST, port: PORT });
   console.log(`ERP Framework server → http://${HOST}:${PORT}`);
 
@@ -928,6 +1013,57 @@ async function main(): Promise<void> {
 
   // MQTT bridge cho IoT — no-op nếu MQTT_URL không khai báo.
   startIotMqtt().catch((e) => console.warn("[iot-mqtt] không kết nối được:", (e as Error).message));
+}
+
+/** Xử lý OnlyOffice save callback.
+ *  status=2: document đã save, tải từ body.url về ghi đè file gốc + cập nhật editKey. */
+async function handleOoCallback(sourceId: string, body: Record<string, unknown>): Promise<void> {
+  const status = body.status as number;
+  // status 1 = đang edit (ping định kỳ), 2 = ready to save, 6 = error.
+  // Chỉ xử lý status=2 (document đã lưu xong phía OnlyOffice).
+  if (status !== 2) return;
+
+  const downloadUrl = body.url as string | undefined;
+  const newKey = body.key as string | undefined;
+  if (!downloadUrl) {
+    console.warn(`[doc/callback] sourceId=${sourceId} status=2 nhưng thiếu url`);
+    return;
+  }
+
+  const [source] = await db
+    .select()
+    .from(knowledgeSources)
+    .where(eq(knowledgeSources.id, sourceId));
+  if (!source) {
+    console.warn(`[doc/callback] sourceId=${sourceId} không tồn tại trong DB`);
+    return;
+  }
+  const meta = (source.meta ?? {}) as Record<string, unknown>;
+  const filePath = meta.path as string | undefined;
+  if (!filePath) {
+    console.warn(`[doc/callback] sourceId=${sourceId} chưa có meta.path`);
+    return;
+  }
+
+  // Tải file mới về từ OnlyOffice (URL tạm, hết hạn sau 15 phút).
+  const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) {
+    console.error(`[doc/callback] Tải file thất bại: ${res.status} ${downloadUrl}`);
+    return;
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  await writeFile(filePath, buf);
+
+  // Cập nhật editKey + size trong meta (merge jsonb, KHÔNG ghi đè toàn bộ).
+  const ooMeta = { ...((meta.onlyoffice ?? {}) as Record<string, unknown>), editKey: newKey };
+  await db
+    .update(knowledgeSources)
+    .set({
+      meta: { ...meta, size: buf.length, onlyoffice: ooMeta },
+      updatedAt: new Date(),
+    })
+    .where(eq(knowledgeSources.id, sourceId));
+  console.info(`[doc/callback] Đã lưu ${sourceId} (${buf.length} bytes), editKey=${newKey}`);
 }
 
 async function shutdown(): Promise<void> {

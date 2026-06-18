@@ -947,10 +947,15 @@ export async function enableModuleSyncForCompany(
   let modId: string;
   if (existingMod[0]) {
     modId = existingMod[0].id;
-    await db
-      .update(migrationSyncModules)
-      .set({ enabled: true, cronExpr, createdBy: userId, updatedAt: new Date() })
-      .where(eq(migrationSyncModules.id, modId));
+    // Chỉ đổi cronExpr khi caller truyền tường minh — KHÔNG dùng default để
+    // tránh đè cron đã cấu hình sẵn trên module cũ (bug gây dqhf_heavy */5).
+    const updateSet: Record<string, unknown> = {
+      enabled: true,
+      createdBy: userId,
+      updatedAt: new Date(),
+    };
+    if (input.cronExpr) updateSet.cronExpr = input.cronExpr;
+    await db.update(migrationSyncModules).set(updateSet).where(eq(migrationSyncModules.id, modId));
   } else {
     const [ins] = await db
       .insert(migrationSyncModules)

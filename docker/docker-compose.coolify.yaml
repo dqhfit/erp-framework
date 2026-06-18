@@ -87,6 +87,9 @@ services:
       # Lưu y: hardcode (KHONG dung interpolation default) vi Coolify pre-process
       # compose hay vuong form do -> build loi "load local bake definitions".
       OLLAMA_EMBED_URL: http://ollama:11434
+      # OnlyOffice — URL nội bộ Docker cho OnlyOffice kéo file + gửi callback.
+      ERP_INTERNAL_URL: http://server:8910
+      ONLYOFFICE_JWT_SECRET: ${SERVICE_PASSWORD_64_ONLYOFFICE}
     depends_on:
       db:
         condition: service_healthy
@@ -250,12 +253,30 @@ services:
       - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
     restart: "no"
 
+  # OnlyOffice Document Server — editor Word/Excel/PowerPoint trong trình duyệt.
+  # Community Edition, JWT_ENABLED bắt buộc. Kéo ~1.5GB lần đầu.
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${SERVICE_PASSWORD_64_ONLYOFFICE}
+      JWT_HEADER: Authorization
+      WOPI_ENABLED: "false"
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+    expose:
+      - "80"
+
 volumes:
   erp-pgdata:
   erp-uploads:
   bridge-data:
   ollama-data:
   mosquitto-data:
+  onlyoffice-data:
+  onlyoffice-logs:
 
 # `coolify` là network shared toàn cluster Coolify, đã tồn tại sẵn,
 # coolify-proxy (Traefik) đã join. App attach vào đây để Traefik có

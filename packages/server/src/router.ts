@@ -69,6 +69,7 @@ import { printTemplatesRouter } from "./print-templates-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
 import { preferencesRouter } from "./preferences-router";
 import { viewerGroupsRouter } from "./viewer-groups-router";
+import { documentsRouter } from "./documents-router";
 import { encryptSecret } from "./crypto";
 
 import { LEGACY_EMAIL_DOMAIN, tryLegacyMd5Login } from "./legacy-login";
@@ -695,6 +696,9 @@ export const appRouter = router({
 
   /* -- Nhom nguoi xem (viewer groups) -- phan quyen portal theo nhom -- */
   viewerGroups: viewerGroupsRouter,
+
+  /* ── OnlyOffice — cấp session config để browser khởi tạo editor ── */
+  documents: documentsRouter,
 
   /* ── Xuất/nhập cấu hình (entity+page+workflow+agent) ── */
   transfer: router({
