@@ -213,7 +213,9 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
             className="fixed z-[900] rounded-lg border border-border bg-panel p-1 shadow-2xl"
           >
             {shownActions.length > 0 && (
-              <div className="grid grid-cols-4 gap-0.5 pb-1 mb-1 border-b border-border">
+              // Nút hành động (Xem/Sửa/Xoá…) xếp SÁT nhau (flex) thay vì grid-cols-4
+              // dàn đều — vài nút sẽ không bị kéo cách xa giữa các cột.
+              <div className="flex flex-wrap items-center gap-1 pb-1 mb-1 border-b border-border">
                 {shownActions.map((a) => (
                   <ActionWidget key={a.label} config={a} pageState={pageState} inline />
                 ))}
