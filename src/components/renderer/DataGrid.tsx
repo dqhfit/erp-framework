@@ -363,9 +363,12 @@ export interface DataGridProps<T> {
   /** Khi set: hiện nút "＋ Thêm dòng" (lên đầu / xuống cuối) ở toolbar → caller
    *  chèn 1 dòng nháp editable vào lưới. Chỉ lưới sửa-được + chế độ gom (batch). */
   onAddRow?: (pos: "top" | "bottom") => void;
-  /** Khi bật: hiện DÒNG "＋ Thêm dòng mới" ngay CUỐI lưới (bấm = onAddRow("bottom")).
+  /** Khi bật: hiện DÒNG "＋ Thêm dòng mới" trong lưới (bấm = onAddRow(addRowPos)).
    *  Cần onAddRow. Bật qua tuỳ chọn cfg.addRowAtEnd của widget list sửa-được. */
   inlineAddRow?: boolean;
+  /** Vị trí dòng "＋ Thêm dòng mới" (+ dòng nháp tạo ra): ĐẦU hay CUỐI lưới.
+   *  Mặc định "bottom". cfg.addRowPos. */
+  addRowPos?: "top" | "bottom";
   /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
    *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
   pageJump?: { token: number; to: "first" | "last" };
@@ -430,6 +433,7 @@ export function DataGrid<T>({
   pasteCreateDefaults,
   onAddRow,
   inlineAddRow,
+  addRowPos,
   pageJump,
   enableSelection,
   onSelectionChange,
@@ -824,6 +828,25 @@ export function DataGrid<T>({
   const selecting = !!enableSelection && showSelectCol;
   // Số ô dẫn đầu (trước cột dữ liệu): tích chọn + nút mở chi tiết.
   const leadCols = (selecting ? 1 : 0) + (renderDetail ? 1 : 0);
+  // Dòng "＋ Thêm dòng mới" trong lưới — vị trí đầu/cuối theo addRowPos.
+  const inlineAddPos: "top" | "bottom" | null =
+    inlineAddRow && onAddRow ? (addRowPos ?? "bottom") : null;
+  const addRowTr = inlineAddPos ? (
+    <tr
+      key="__addrow"
+      className={cn("border-border", inlineAddPos === "top" ? "border-b" : "border-t")}
+    >
+      <td colSpan={columns.length + leadCols} className="p-0">
+        <button
+          type="button"
+          onClick={() => onAddRow?.(inlineAddPos)}
+          className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted hover:text-accent hover:bg-accent/5 transition-colors"
+        >
+          <I.Plus size={13} /> Thêm dòng mới
+        </button>
+      </td>
+    </tr>
+  ) : null;
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedOriginals = selectedRows.map((r) => r.original);
   // "Tất cả khớp": server mode = server.total; client mode = số dòng đã lọc.
@@ -1659,6 +1682,7 @@ export function DataGrid<T>({
                 }
               }}
             >
+              {inlineAddPos === "top" && addRowTr}
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
@@ -1790,21 +1814,8 @@ export function DataGrid<T>({
                   );
                 })
               )}
-              {/* Dòng "＋ Thêm dòng mới" ở CUỐI lưới (bật qua tuỳ chọn addRowAtEnd).
-                  Bấm = chèn 1 dòng nháp xuống cuối (onAddRow("bottom")). */}
-              {inlineAddRow && onAddRow && (
-                <tr className="border-t border-border">
-                  <td colSpan={columns.length + leadCols} className="p-0">
-                    <button
-                      type="button"
-                      onClick={() => onAddRow("bottom")}
-                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted hover:text-accent hover:bg-accent/5 transition-colors"
-                    >
-                      <I.Plus size={13} /> Thêm dòng mới
-                    </button>
-                  </td>
-                </tr>
-              )}
+              {/* Dòng "＋ Thêm dòng mới" ở CUỐI (addRowPos="bottom", mặc định). */}
+              {inlineAddPos === "bottom" && addRowTr}
             </tbody>
             {showSummary && (
               <tfoot className="sticky bottom-0 z-10 bg-panel-2 border-t-2 border-border">

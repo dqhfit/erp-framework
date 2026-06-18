@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
@@ -1002,9 +1003,11 @@ interface EditableListWidgetProps {
   rowActionsStyle?: "inline" | "popover";
   /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
   refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
-  /** Bật DÒNG "＋ Thêm dòng mới" ở cuối lưới (cfg.addRowAtEnd). Chỉ tác dụng khi
+  /** Bật DÒNG "＋ Thêm dòng mới" trong lưới (cfg.addRowAtEnd). Chỉ tác dụng khi
    *  batchEdit + onBulkCreate (mới có onAddRow). */
   addRowAtEnd?: boolean;
+  /** Vị trí dòng thêm mới: đầu hay cuối lưới (cfg.addRowPos, mặc định "bottom"). */
+  addRowPos?: "top" | "bottom";
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -1075,6 +1078,7 @@ function EditableListWidget({
   rowActionsStyle,
   refFill,
   addRowAtEnd,
+  addRowPos,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1513,6 +1517,7 @@ function EditableListWidget({
             pasteCreateDefaults={createDefaults}
             onAddRow={batchEdit && onBulkCreate ? addRow : undefined}
             inlineAddRow={addRowAtEnd}
+            addRowPos={addRowPos}
             pageJump={pageJump}
             enableSelection={selectable}
           />
@@ -1958,6 +1963,7 @@ function ListWidget({
   embeddedActions,
   embeddedFilters,
   addRowAtEnd,
+  addRowPos,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -2034,9 +2040,11 @@ function ListWidget({
     options?: string;
     optionLabels?: Record<string, string>;
   }>;
-  /** Hiện DÒNG "＋ Thêm dòng mới" ở cuối lưới (cfg.addRowAtEnd) — chỉ khi editable
+  /** Hiện DÒNG "＋ Thêm dòng mới" trong lưới (cfg.addRowAtEnd) — chỉ khi editable
    *  + batchEdit (mới tạo được dòng nháp). */
   addRowAtEnd?: boolean;
+  /** Vị trí dòng thêm mới: "top" | "bottom" (cfg.addRowPos, mặc định "bottom"). */
+  addRowPos?: "top" | "bottom";
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -2531,6 +2539,7 @@ function ListWidget({
         rowActionsStyle={rowActionsStyle}
         refFill={refFill}
         addRowAtEnd={addRowAtEnd}
+        addRowPos={addRowPos}
       />
     );
   }
@@ -4018,6 +4027,7 @@ function RenderSubWidget({
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
         addRowAtEnd={cfg.addRowAtEnd === true}
+        addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
       />
     );
   }
@@ -4577,6 +4587,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
         addRowAtEnd={cfg.addRowAtEnd === true}
+        addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
@@ -4662,12 +4673,29 @@ function clearPersonalLayoutLS(key: string): void {
   }
 }
 
-export function ConsumerPage({ pageId }: { pageId: string }) {
+export function ConsumerPage({
+  pageId,
+  chromeless = false,
+  active = false,
+}: {
+  pageId: string;
+  /** Portal: bỏ thanh tiêu đề trong trang; đẩy nút điều khiển bố cục lên header
+   *  portal (slot #portal-page-actions) qua createPortal. */
+  chromeless?: boolean;
+  /** Trang đang xem (chỉ trang active mới đẩy nút lên slot — tránh chồng nút). */
+  active?: boolean;
+}) {
   const t = useT();
   const isMobile = useIsMobile();
   const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
   const userId = useAuth((s) => s.user?.id ?? null);
+
+  // Slot header portal cho nút điều khiển bố cục khi chromeless.
+  const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (chromeless) setActionSlot(document.getElementById("portal-page-actions"));
+  }, [chromeless]);
 
   const baseComponents: PageComponent[] = Array.isArray(content)
     ? (content as PageComponent[])
@@ -4906,61 +4934,77 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
     stopAutoScroll();
   };
 
+  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — dùng cho cả thanh tiêu đề
+  // (thường) lẫn header portal (chromeless, qua createPortal).
+  const headerControls = (
+    <>
+      {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
+      {hasPersonal && !layoutEditing && !isMobile && (
+        <button
+          type="button"
+          onClick={handleReset}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
+          title="Xoá bố cục cá nhân, trở về bố cục mặc định của trang"
+        >
+          <I.Undo size={13} />
+          Mặc định
+        </button>
+      )}
+
+      {/* Nút Sắp xếp / Xong — ẩn trên mobile (kéo-thả không khả dụng) */}
+      {isMobile ? null : layoutEditing ? (
+        <button
+          type="button"
+          onClick={exitEdit}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
+        >
+          <I.Check size={13} />
+          Xong
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={enterEdit}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-hover text-muted"
+        >
+          <I.Grip size={13} />
+          Sắp xếp
+        </button>
+      )}
+    </>
+  );
+
   return (
     <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
         <div className="py-2 sm:py-3 px-px">
-          {/* Header */}
-          <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
-            <div>
-              <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
-              {layoutEditing ? (
-                <div className="text-sm text-accent font-medium mt-0.5">
-                  Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
-                </div>
-              ) : hasPersonal ? (
-                <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
-              ) : null}
+          {/* Header — ẩn khi chromeless (portal): bỏ tiêu đề + thanh; nút điều
+              khiển bố cục chuyển lên header portal. */}
+          {!chromeless && (
+            <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
+                {layoutEditing ? (
+                  <div className="text-sm text-accent font-medium mt-0.5">
+                    Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
+                  </div>
+                ) : hasPersonal ? (
+                  <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
+                ) : null}
+              </div>
+              <div className="shrink-0 flex items-center gap-2">{headerControls}</div>
             </div>
-
-            <div className="shrink-0 flex items-center gap-2">
-              {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
-              {hasPersonal && !layoutEditing && !isMobile && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
-                  title="Xoá bố cục cá nhân, trở về bố cục mặc định của trang"
-                >
-                  <I.Undo size={13} />
-                  Mặc định
-                </button>
-              )}
-
-              {/* Nút Sắp xếp / Xong — ẩn trên mobile (kéo-thả không khả dụng) */}
-              {isMobile ? null : layoutEditing ? (
-                <button
-                  type="button"
-                  onClick={exitEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
-                >
-                  <I.Check size={13} />
-                  Xong
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={enterEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-hover text-muted"
-                >
-                  <I.Grip size={13} />
-                  Sắp xếp
-                </button>
-              )}
-            </div>
-          </div>
+          )}
+          {/* Chromeless (portal): CHỈ trang đang xem đẩy nút lên header portal. */}
+          {chromeless &&
+            active &&
+            actionSlot &&
+            createPortal(
+              <div className="flex items-center gap-1.5">{headerControls}</div>,
+              actionSlot,
+            )}
 
           {displayComps.length === 0 ? (
             <div className="card p-12 text-center text-muted text-sm">{t("widget.empty_page")}</div>

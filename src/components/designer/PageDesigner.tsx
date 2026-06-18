@@ -1800,19 +1800,36 @@ export function PageDesigner({ pageId }: Props) {
                           {sel.kind === "list" &&
                             sel.config.editable === true &&
                             sel.config.batchEdit === true && (
-                              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft ml-3">
-                                <div className="flex flex-col leading-tight">
-                                  <span className="text-sm">Dòng thêm mới ở cuối lưới</span>
-                                  <span className="text-[11px] text-muted">
-                                    Hiện dòng “＋ Thêm dòng mới” ở cuối; bấm để thêm dòng nháp
-                                  </span>
+                              <div className="rounded-md border border-border bg-bg-soft ml-3 p-2.5 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex flex-col leading-tight">
+                                    <span className="text-sm">Dòng thêm mới trong lưới</span>
+                                    <span className="text-[11px] text-muted">
+                                      Hiện dòng “＋ Thêm dòng mới”; bấm để thêm dòng nháp
+                                    </span>
+                                  </div>
+                                  <Switch
+                                    checked={sel.config.addRowAtEnd === true}
+                                    onChange={(v) =>
+                                      update(sel.id, { config: { ...sel.config, addRowAtEnd: v } })
+                                    }
+                                  />
                                 </div>
-                                <Switch
-                                  checked={sel.config.addRowAtEnd === true}
-                                  onChange={(v) =>
-                                    update(sel.id, { config: { ...sel.config, addRowAtEnd: v } })
-                                  }
-                                />
+                                {sel.config.addRowAtEnd === true && (
+                                  <FormField label="Vị trí dòng thêm mới">
+                                    <Select
+                                      value={sel.config.addRowPos === "top" ? "top" : "bottom"}
+                                      onChange={(e) =>
+                                        update(sel.id, {
+                                          config: { ...sel.config, addRowPos: e.target.value },
+                                        })
+                                      }
+                                    >
+                                      <option value="bottom">Cuối lưới</option>
+                                      <option value="top">Đầu lưới</option>
+                                    </Select>
+                                  </FormField>
+                                )}
                               </div>
                             )}
 
