@@ -324,6 +324,9 @@ export interface DataGridProps<T> {
   /** Nhóm tiêu đề cột (banded header nhiều cấp). Khi set, `columns` phẳng được
    *  gói lại thành cây cột con theo cấu hình; cột ngoài nhóm giữ nguyên. */
   columnGroups?: ColumnGroupNode[];
+  /** Gom HÀNG theo cột mặc định (ids cột) khi CHƯA có view lưu — vd ["phanloai"].
+   *  User vẫn đổi được; lựa chọn của user lưu IDB sẽ override ở lần sau. */
+  defaultGrouping?: string[];
   data: T[];
   emptyText?: string;
   className?: string;
@@ -415,6 +418,7 @@ export interface ServerPagingController {
 export function DataGrid<T>({
   columns,
   columnGroups,
+  defaultGrouping,
   data,
   emptyText,
   className,
@@ -477,7 +481,7 @@ export function DataGrid<T>({
     }
   };
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [grouping, setGrouping] = useState<GroupingState>([]);
+  const [grouping, setGrouping] = useState<GroupingState>(defaultGrouping ?? []);
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [filterRowOpen, setFilterRowOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);

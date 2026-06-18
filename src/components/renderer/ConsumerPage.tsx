@@ -1952,6 +1952,7 @@ function ListWidget({
   loadGate,
   emptyStateShowsAll,
   columnGroups,
+  defaultGrouping,
   rowDetail,
   createForm,
   editForm,
@@ -1970,6 +1971,8 @@ function ListWidget({
   fields?: string[];
   /** Nhóm tiêu đề cột (banded header nhiều cấp). */
   columnGroups?: ColumnGroupNode[];
+  /** Gom HÀNG theo cột mặc định khi chưa có view lưu (vd ["phanloai"]). */
+  defaultGrouping?: string[];
   /** Override nhãn header theo cột (field name → header DQHF của form gốc).
    *  Ưu tiên hơn label DataSource (global) — cho phép mỗi page hiện đúng
    *  tiêu đề cột của form DQHF tương ứng. */
@@ -2602,6 +2605,7 @@ function ListWidget({
             data={filteredRows}
             columns={columns}
             columnGroups={columnGroups}
+            defaultGrouping={defaultGrouping}
             emptyText={filterFromState ? t("widget.select_master") : t("widget.empty_records")}
             stateKey={stateKey}
             onRowClick={onRowClick}
@@ -4006,6 +4010,7 @@ function RenderSubWidget({
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
+        defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
@@ -4559,6 +4564,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
+        defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         filters={cfg.filters as FilterNode | null | undefined}
