@@ -4348,7 +4348,10 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const isBoth = orientation === "both";
   const isBoth2 = orientation === "both2";
   const isBoth3 = orientation === "both3";
-  const isH = !isBoth && !isBoth2 && !isBoth3 && !isTabs && orientation !== "v";
+  const isBoth4 = orientation === "both4";
+  const isBoth5 = orientation === "both5";
+  const isH =
+    !isBoth && !isBoth2 && !isBoth3 && !isBoth4 && !isBoth5 && !isTabs && orientation !== "v";
 
   const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
   const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
@@ -4368,7 +4371,7 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const initRatioH = (cfg.ratio as number) ?? 40;
   const initRatioV = (cfg.ratioV as number) ?? 50;
   const initRatioV2 = (cfg.ratioV2 as number) ?? 50;
-  const panelCount = isBoth || isBoth2 || isBoth3 ? 2 : count;
+  const panelCount = isBoth || isBoth2 || isBoth3 || isBoth4 || isBoth5 ? 2 : count;
   const initMain = savedRatios ?? (panelCount >= 3 ? [33, 33, 34] : [initRatioH, 100 - initRatioH]);
   const initBothV = [initRatioV, 100 - initRatioV];
   const initBothV2 = [initRatioV2, 100 - initRatioV2];
@@ -4377,9 +4380,13 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
   const rightRef2 = useRef<HTMLDivElement>(null);
+  const subRowRef = useRef<HTMLDivElement>(null);
+  const subRowRef2 = useRef<HTMLDivElement>(null);
   const mainRef = containerRef as React.RefObject<HTMLDivElement | null>;
   const bvRef = rightRef as React.RefObject<HTMLDivElement | null>;
   const bvRef2 = rightRef2 as React.RefObject<HTMLDivElement | null>;
+  const bhRef = subRowRef as React.RefObject<HTMLDivElement | null>;
+  const bhRef2 = subRowRef2 as React.RefObject<HTMLDivElement | null>;
   const { ratios: mainR, onHandleDrag: onMainDrag } = useSplitRatios(
     initMain,
     mainRef,
@@ -4387,6 +4394,9 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   );
   const { ratios: bothVR, onHandleDrag: onBothVDrag } = useSplitRatios(initBothV, bvRef, "v");
   const { ratios: bothVR2, onHandleDrag: onBothVDrag2 } = useSplitRatios(initBothV2, bvRef2, "v");
+  // both4/both5: sub-row horizontal split (reuse ratioV for ratio source)
+  const { ratios: bothHR, onHandleDrag: onBothHDrag } = useSplitRatios(initBothV, bhRef, "h");
+  const { ratios: bothHR2, onHandleDrag: onBothHDrag2 } = useSplitRatios(initBothV, bhRef2, "h");
   const [activeTab, setActiveTab] = useState("A");
 
   const handleCls = (ax: "h" | "v") =>
@@ -4515,6 +4525,60 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
           <div className="flex-1 overflow-hidden">
             <RenderSubWidget kind={kindD} cfg={cfgD} stateKey={`${comp.id}:d`} />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both4 (A trên / B trái dưới, C phải dưới) ────────────────────────
+  if (isBoth4) {
+    const total = mainR[0]! + mainR[1]!;
+    const vPct = (mainR[0]! / total) * 100;
+    const hTotal = bothHR[0]! + bothHR[1]!;
+    const hPct = (bothHR[0]! / hTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+        <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+          <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("v")} />
+        <div ref={subRowRef} className="flex flex-row flex-1 overflow-hidden">
+          <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+          <div onMouseDown={(e) => onBothHDrag(0, e)} className={handleCls("h")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both5 (A trái trên, B phải trên / C dưới) ─────────────────────────
+  if (isBoth5) {
+    const total = mainR[0]! + mainR[1]!;
+    const vPct = (mainR[0]! / total) * 100;
+    const hTotal = bothHR2[0]! + bothHR2[1]!;
+    const hPct = (bothHR2[0]! / hTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+        <div
+          ref={subRowRef2}
+          className="flex flex-row overflow-hidden"
+          style={{ height: `${vPct}%` }}
+        >
+          <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothHDrag2(0, e)} className={handleCls("h")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("v")} />
+        <div className="flex-1 overflow-hidden">
+          <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
         </div>
       </div>
     );

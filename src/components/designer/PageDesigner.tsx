@@ -2469,7 +2469,15 @@ export function PageDesigner({ pageId }: Props) {
                         filterFromPanel?: string; // "a"|"b"|"c"|"d"
                       };
                       const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both" | "both2" | "both3" | "tabs";
+                        orientation?:
+                          | "h"
+                          | "v"
+                          | "both"
+                          | "both2"
+                          | "both3"
+                          | "both4"
+                          | "both5"
+                          | "tabs";
                         count?: number;
                         ratio?: number;
                         ratioV?: number;
@@ -2489,7 +2497,9 @@ export function PageDesigner({ pageId }: Props) {
                       const ratioV = splitCfg.ratioV ?? 50;
                       const isCombo = orientation === "both" || orientation === "both2";
                       const isBoth3 = orientation === "both3";
-                      const showPanelC = isCombo || isBoth3 || count >= 3;
+                      const isBoth4 = orientation === "both4";
+                      const isBoth5 = orientation === "both5";
+                      const showPanelC = isCombo || isBoth3 || isBoth4 || isBoth5 || count >= 3;
                       const showPanelD = isBoth3;
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
@@ -2628,6 +2638,8 @@ export function PageDesigner({ pageId }: Props) {
                                     | "both"
                                     | "both2"
                                     | "both3"
+                                    | "both4"
+                                    | "both5"
                                     | "tabs",
                                 })
                               }
@@ -2637,10 +2649,12 @@ export function PageDesigner({ pageId }: Props) {
                               <option value="both">A | (B trên / C dưới)</option>
                               <option value="both2">(A trên / B dưới) | C</option>
                               <option value="both3">(A/B) | (C/D)</option>
+                              <option value="both4">A trên / (B trái | C phải)</option>
+                              <option value="both5">(A trái | B phải) / C dưới</option>
                               <option value="tabs">Dạng Tab</option>
                             </Select>
                           </FormField>
-                          {!isCombo && !isBoth3 && (
+                          {!isCombo && !isBoth3 && !isBoth4 && !isBoth5 && (
                             <FormField label="Số panel">
                               <Select
                                 value={count}
@@ -2703,6 +2717,54 @@ export function PageDesigner({ pageId }: Props) {
                                   />
                                 </FormField>
                               )}
+                            </>
+                          )}
+                          {isBoth4 && (
+                            <>
+                              <FormField label={`Tỉ lệ dọc A/(B+C): ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ ngang B/C: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                            </>
+                          )}
+                          {isBoth5 && (
+                            <>
+                              <FormField label={`Tỉ lệ dọc (A+B)/C: ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ ngang A/B: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
                             </>
                           )}
                           {/* Tab bar cho các panel */}
@@ -3775,6 +3837,30 @@ function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
       ],
     };
   }
+  // both4: A trên (full width) / B trái dưới, C phải dưới
+  if (orientation === "both4") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 2, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  // both5: A trái trên, B phải trên / C dưới (full width)
+  if (orientation === "both5") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 1, row: 2, colSpan: 2, rowSpan: 1 },
+      ],
+    };
+  }
   return {
     cols: 2,
     rows: 1,
@@ -4458,9 +4544,13 @@ function ComponentBody({
     const isBoth = orientation === "both";
     const isBoth2 = orientation === "both2";
     const isBoth3 = orientation === "both3";
+    const isBoth4 = orientation === "both4";
+    const isBoth5 = orientation === "both5";
     const isTabs = orientation === "tabs";
-    const isH = !isBoth && !isBoth2 && !isBoth3 && !isTabs && orientation !== "v";
-    const splitCount = isBoth || isBoth2 || isBoth3 ? 3 : Math.max(2, Math.min(3, count));
+    const isH =
+      !isBoth && !isBoth2 && !isBoth3 && !isBoth4 && !isBoth5 && !isTabs && orientation !== "v";
+    const splitCount =
+      isBoth || isBoth2 || isBoth3 || isBoth4 || isBoth5 ? 3 : Math.max(2, Math.min(3, count));
 
     const PanelPreview = ({
       label,
@@ -4687,6 +4777,98 @@ function ComponentBody({
               />
             </SplitPanelDropZone>
           </div>
+        </div>
+      );
+    }
+
+    // Both4 — A trên / (B trái, C phải) dưới
+    if (isBoth4) {
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <SplitPanelDropZone
+            panelKey="A"
+            className="overflow-hidden border-b border-border/40"
+            style={{ height: `${ratio}%` }}
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview
+              label="A"
+              ent={entA}
+              title={panelA?.title}
+              kind={panelA?.kind}
+              bg="bg-accent/5"
+            />
+          </SplitPanelDropZone>
+          <div className="flex-1 flex flex-row overflow-hidden">
+            <SplitPanelDropZone
+              panelKey="B"
+              className="overflow-hidden border-r border-border/40"
+              style={{ width: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="C"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+            </SplitPanelDropZone>
+          </div>
+        </div>
+      );
+    }
+
+    // Both5 — (A trái, B phải) trên / C dưới
+    if (isBoth5) {
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <div
+            className="flex flex-row overflow-hidden border-b border-border/40"
+            style={{ height: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-r border-border/40"
+              style={{ width: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <SplitPanelDropZone
+            panelKey="C"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+          </SplitPanelDropZone>
         </div>
       );
     }
