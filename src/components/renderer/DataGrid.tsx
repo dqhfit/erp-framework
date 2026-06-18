@@ -378,6 +378,9 @@ export interface DataGridProps<T> {
   /** Bật CHỌN DÒNG (checkbox). Khi true: toolbar có nút bật/tắt cột tích; tích
    *  tiêu đề = chọn/bỏ MỌI dòng đã lọc; server mode thêm "Chọn tất cả N dòng". */
   enableSelection?: boolean;
+  /** Tập id dòng có giá trị thay đổi chưa lưu (pending). Grid tô nền
+   *  `var(--changed-row-bg)` cho các dòng này. */
+  changedRowIds?: Set<string>;
   /** Báo caller khi tập chọn đổi. allMatching=true (server mode) = đã chọn TẤT
    *  CẢ dòng khớp filter (vượt trang đang tải) — caller xử lý theo query. */
   onSelectionChange?: (info: { rows: T[]; allMatching: boolean; count: number }) => void;
@@ -442,6 +445,7 @@ export function DataGrid<T>({
   enableSelection,
   onSelectionChange,
   bulkActions,
+  changedRowIds,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -1726,6 +1730,7 @@ export function DataGrid<T>({
                   const clickable = !!onRowClick;
                   const detailOpen = renderDetail ? openDetail.has(row.id) : false;
                   const isNew = (row.original as { __isNew?: boolean }).__isNew === true;
+                  const isChanged = !isNew && !!changedRowIds?.has(row.id);
                   return (
                     <Fragment key={row.id}>
                       <tr
@@ -1739,6 +1744,7 @@ export function DataGrid<T>({
                               ? "bg-accent/10 ring-1 ring-accent"
                               : "hover:bg-hover/30",
                         ].join(" ")}
+                        style={isChanged ? { backgroundColor: "var(--changed-row-bg)" } : undefined}
                         onClick={clickable ? () => onRowClick(row.original) : undefined}
                       >
                         {selecting && (

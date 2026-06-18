@@ -1215,6 +1215,9 @@ function EditableListWidget({
     return [...top, ...base, ...bottom];
   }, [filteredRows, pending, refOverlay, newRows, createDefaults]);
 
+  // Tập id dòng có thay đổi pending — truyền xuống DataGrid để tô màu.
+  const changedRowIdsEdit = useMemo(() => new Set(pending.keys()), [pending]);
+
   // Dán dữ liệu (PasteGridModal) → cập nhật nhiều dòng: overlay pending (hiện
   // ngay) + lưu từng dòng (gom field). Lỗi 1 dòng không chặn dòng khác.
   const applyPaste = async (updates: Array<{ rowId: string; changes: Record<string, string> }>) => {
@@ -1522,6 +1525,7 @@ function EditableListWidget({
             addRowPos={addRowPos}
             pageJump={pageJump}
             enableSelection={selectable}
+            changedRowIds={changedRowIdsEdit}
           />
         </div>
       )}
@@ -1782,6 +1786,8 @@ function ServerPagedListWidget({
     });
   }, [rows, pending, editable]);
 
+  const changedRowIdsSvr = useMemo(() => new Set(pending.keys()), [pending]);
+
   const server = useMemo<ServerPagingController>(
     () => ({
       total,
@@ -1896,6 +1902,7 @@ function ServerPagedListWidget({
           pageSize={ps}
           server={server}
           enableSelection={selectable}
+          changedRowIds={changedRowIdsSvr}
         />
       </div>
     </div>
