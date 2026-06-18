@@ -4064,6 +4064,70 @@ function useDragRatio(
   return [ratio, onMouseDown] as const;
 }
 
+/** Drag-resize cho grid N×M: trả colFr/rowFr local + handler mousedown cho mỗi thanh ngăn */
+function useGridDrag(
+  initColFr: number[],
+  initRowFr: number[],
+  containerRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [colFr, setColFr] = useState(() => [...initColFr]);
+  const [rowFr, setRowFr] = useState(() => [...initRowFr]);
+
+  const onColDrag = (i: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const snap = [...colFr];
+    const total = snap.reduce((a, b) => a + b, 0);
+    const onMove = (ev: MouseEvent) => {
+      const cw = containerRef.current?.getBoundingClientRect().width ?? 0;
+      if (!cw) return;
+      const delta = ((ev.clientX - startX) / cw) * total;
+      const minFr = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: i and i+1 are always in range
+      next[i] = Math.max(minFr, snap[i]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: i and i+1 are always in range
+      next[i + 1] = Math.max(minFr, snap[i]! + snap[i + 1]! - next[i]!);
+      setColFr(next);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const onRowDrag = (j: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const snap = [...rowFr];
+    const total = snap.reduce((a, b) => a + b, 0);
+    const onMove = (ev: MouseEvent) => {
+      const ch = containerRef.current?.getBoundingClientRect().height ?? 0;
+      if (!ch) return;
+      const delta = ((ev.clientY - startY) / ch) * total;
+      const minFr = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: j and j+1 are always in range
+      next[j] = Math.max(minFr, snap[j]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: j and j+1 are always in range
+      next[j + 1] = Math.max(minFr, snap[j]! + snap[j + 1]! - next[j]!);
+      setRowFr(next);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  return { colFr, rowFr, onColDrag, onRowDrag };
+}
+
 function buildSubCfg(panel: SplitPanelCfg, splitKey: string): Record<string, unknown> {
   const kind = panel.kind ?? "list";
   return {
@@ -4166,16 +4230,38 @@ function RenderSubWidget({
   return null;
 }
 
-/** Grid Layout N×M — kind="grid", config.cells[] */
+/** Grid Layout N×M — kind="grid", config.cells[]; có drag handle giữa cột/hàng */
 function GridWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
   const splitKey = `split_${comp.id}_sel`;
   const cols = (cfg.cols as number) || 2;
   const rows = (cfg.rows as number) || 1;
   const cells = (cfg.cells as SplitGridCell[]) ?? [];
-  const colFr = (cfg.colFr as number[] | undefined) ?? Array(cols).fill(1);
-  const rowFr = (cfg.rowFr as number[] | undefined) ?? Array(rows).fill(1);
   const gridLabel = cfg.label as string | undefined;
+
+  // Normalize fr arrays to match col/row count
+  const savedColFr = cfg.colFr as number[] | undefined;
+  const savedRowFr = cfg.rowFr as number[] | undefined;
+  const initColFr: number[] = Array.from({ length: cols }, (_, i): number => savedColFr?.[i] ?? 1);
+  const initRowFr: number[] = Array.from({ length: rows }, (_, j): number => savedRowFr?.[j] ?? 1);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { colFr, rowFr, onColDrag, onRowDrag } = useGridDrag(
+    initColFr,
+    initRowFr,
+    containerRef as React.RefObject<HTMLDivElement | null>,
+  );
+
+  // Template interleaves content fr tracks with 4px handle tracks
+  // e.g. cols=3: "1fr 4px 1fr 4px 1fr"
+  const colTemplate = colFr.map((f, i) => (i < cols - 1 ? `${f}fr 4px` : `${f}fr`)).join(" ");
+  const rowTemplate = rowFr.map((f, j) => (j < rows - 1 ? `${f}fr 4px` : `${f}fr`)).join(" ");
+
+  // Content col c → display col (c-1)*2+1; colSpan s → display span s*2-1
+  const cellStyle = (cell: SplitGridCell) => ({
+    gridColumn: `${(cell.col - 1) * 2 + 1} / span ${cell.colSpan * 2 - 1}`,
+    gridRow: `${(cell.row - 1) * 2 + 1} / span ${cell.rowSpan * 2 - 1}`,
+  });
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -4185,25 +4271,41 @@ function GridWidget({ comp }: { comp: PageComponent }) {
         </div>
       )}
       <div
+        ref={containerRef}
         className="flex-1 overflow-hidden"
-        style={{
-          display: "grid",
-          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
-          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
-        }}
+        style={{ display: "grid", gridTemplateColumns: colTemplate, gridTemplateRows: rowTemplate }}
       >
+        {/* Handles rendered BEFORE cells — merged cells sit on top via DOM stacking order */}
+        {Array.from({ length: cols - 1 }, (_, i) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: thanh ngăn cột — index ổn định
+            key={`ch-${i}`}
+            className="cursor-col-resize bg-border/30 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+            style={{
+              gridColumn: `${(i + 1) * 2}`,
+              gridRow: `1 / span ${rows * 2 - 1}`,
+            }}
+            onMouseDown={(e) => onColDrag(i, e)}
+          />
+        ))}
+        {Array.from({ length: rows - 1 }, (_, j) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: thanh ngăn hàng — index ổn định
+            key={`rh-${j}`}
+            className="cursor-row-resize bg-border/30 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+            style={{
+              gridColumn: `1 / span ${cols * 2 - 1}`,
+              gridRow: `${(j + 1) * 2}`,
+            }}
+            onMouseDown={(e) => onRowDrag(j, e)}
+          />
+        ))}
+        {/* Content cells — rendered last, on top of handle divs */}
         {cells.map((cell) => {
           const kind = cell.kind ?? "list";
           const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
           return (
-            <div
-              key={cell.id}
-              className="overflow-hidden"
-              style={{
-                gridColumn: `${cell.col} / span ${cell.colSpan}`,
-                gridRow: `${cell.row} / span ${cell.rowSpan}`,
-              }}
-            >
+            <div key={cell.id} className="overflow-hidden" style={cellStyle(cell)}>
               {cell.entity || cell.dataSourceId ? (
                 <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
               ) : (
