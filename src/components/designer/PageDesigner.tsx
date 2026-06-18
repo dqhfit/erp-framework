@@ -2465,12 +2465,14 @@ export function PageDesigner({ pageId }: Props) {
                         entity?: string;
                         title?: string;
                         linkField?: string;
+                        filterFromPanel?: string; // "a"|"b"|"c"|"d"
                       };
                       const splitCfg = sel.config as {
                         orientation?: "h" | "v" | "both" | "both2" | "both3" | "tabs";
                         count?: number;
                         ratio?: number;
                         ratioV?: number;
+                        ratioV2?: number;
                         panelA?: PanelCfg;
                         panelB?: PanelCfg;
                         panelC?: PanelCfg;
@@ -2491,92 +2493,125 @@ export function PageDesigner({ pageId }: Props) {
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
-                      const entA = entities.find((e) => e.id === panelA.entity);
                       const entC = entities.find((e) => e.id === panelC.entity);
+                      // existingPanelKeys + sourcesFor: tính danh sách panel có thể lọc từ
+                      const existingPanelKeys = ["A", "B"];
+                      if (showPanelC) existingPanelKeys.push("C");
+                      if (showPanelD) existingPanelKeys.push("D");
+                      const sourcesFor = (panelKey: string) =>
+                        existingPanelKeys
+                          .filter((k) => k !== panelKey)
+                          .map((k) => ({ key: k.toLowerCase(), label: panelLabel(k) }));
 
                       const PanelFields = ({
                         label,
                         panel,
+                        availableSources,
                         linkedEnt,
                         defaultKind = "list",
                         onUpdate,
                       }: {
                         label: string;
                         panel: PanelCfg;
+                        availableSources: Array<{ key: string; label: string }>;
                         linkedEnt?: (typeof entities)[0];
                         defaultKind?: string;
                         onUpdate: (p: PanelCfg) => void;
-                      }) => (
-                        <>
-                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                            {label}
-                          </div>
-                          <FormField label="Loại">
-                            <Select
-                              value={panel.kind ?? defaultKind}
-                              onChange={(e) => onUpdate({ ...panel, kind: e.target.value })}
-                            >
-                              {subKinds.map((k) => (
-                                <option key={k} value={k}>
-                                  {k}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Entity">
-                            <Select
-                              value={panel.entity ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
-                            >
-                              <option value="">— chọn entity —</option>
-                              {entities.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                  {e.name}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Tiêu đề">
-                            <Input
-                              placeholder="Để trống = tên entity"
-                              value={panel.title ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, title: e.target.value })}
-                            />
-                          </FormField>
-                          {(panel.kind === "list" ||
-                            panel.kind === "chart" ||
-                            panel.kind === "kanban" ||
-                            panel.kind === "form") && (
-                            <FormField label="Field liên kết (→ A)">
-                              {linkedEnt ? (
+                      }) => {
+                        const srcKey = panel.filterFromPanel ?? availableSources[0]?.key ?? "a";
+                        const srcLabel =
+                          availableSources.find((s) => s.key === srcKey)?.label ??
+                          `Panel ${srcKey.toUpperCase()}`;
+                        return (
+                          <>
+                            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
+                              {label}
+                            </div>
+                            <FormField label="Loại">
+                              <Select
+                                value={panel.kind ?? defaultKind}
+                                onChange={(e) => onUpdate({ ...panel, kind: e.target.value })}
+                              >
+                                {subKinds.map((k) => (
+                                  <option key={k} value={k}>
+                                    {k}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormField>
+                            <FormField label="Entity">
+                              <Select
+                                value={panel.entity ?? ""}
+                                onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
+                              >
+                                <option value="">— chọn entity —</option>
+                                {entities.map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    {e.name}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormField>
+                            <FormField label="Tiêu đề">
+                              <Input
+                                placeholder="Để trống = tên entity"
+                                value={panel.title ?? ""}
+                                onChange={(e) => onUpdate({ ...panel, title: e.target.value })}
+                              />
+                            </FormField>
+                            {availableSources.length > 0 && (
+                              <FormField label="Lọc từ">
                                 <Select
-                                  value={panel.linkField ?? ""}
+                                  value={srcKey}
                                   onChange={(e) =>
-                                    onUpdate({ ...panel, linkField: e.target.value })
+                                    onUpdate({ ...panel, filterFromPanel: e.target.value })
                                   }
                                 >
-                                  <option value="">— chọn field —</option>
-                                  {linkedEnt.fields.map((f) => (
-                                    <option key={f.name} value={f.name}>
-                                      {fieldBoth(f)}
-                                      {f.type === "lookup" || f.type === "multi-lookup" ? " ↗" : ""}
+                                  {availableSources.map((s) => (
+                                    <option key={s.key} value={s.key}>
+                                      {s.label}
                                     </option>
                                   ))}
                                 </Select>
-                              ) : (
-                                <div className="text-[11px] text-muted italic px-1">
-                                  Bind entity trước
-                                </div>
-                              )}
-                            </FormField>
-                          )}
-                          {panel.kind === "detail" && entA && (
-                            <div className="text-[11px] text-muted italic px-1">
-                              Hiển thị record chọn từ Panel A ({entA.name})
-                            </div>
-                          )}
-                        </>
-                      );
+                              </FormField>
+                            )}
+                            {(panel.kind === "list" ||
+                              panel.kind === "chart" ||
+                              panel.kind === "kanban" ||
+                              panel.kind === "form") && (
+                              <FormField label={`Trường lọc (từ ${srcLabel})`}>
+                                {linkedEnt ? (
+                                  <Select
+                                    value={panel.linkField ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({ ...panel, linkField: e.target.value })
+                                    }
+                                  >
+                                    <option value="">— chọn field —</option>
+                                    {linkedEnt.fields.map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                        {f.type === "lookup" || f.type === "multi-lookup"
+                                          ? " ↗"
+                                          : ""}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                ) : (
+                                  <div className="text-[11px] text-muted italic px-1">
+                                    Bind entity trước
+                                  </div>
+                                )}
+                              </FormField>
+                            )}
+                            {panel.kind === "detail" && availableSources.length > 0 && (
+                              <div className="text-[11px] text-muted italic px-1">
+                                Hiển thị record chọn từ {srcLabel}
+                              </div>
+                            )}
+                          </>
+                        );
+                      };
 
                       const panelLabel = (key: string) =>
                         orientation === "tabs" ? `Tab ${key}` : `Panel ${key}`;
@@ -2677,6 +2712,7 @@ export function PageDesigner({ pageId }: Props) {
                           <PanelFields
                             label={panelLabel("A")}
                             panel={panelA}
+                            availableSources={[]}
                             linkedEnt={undefined}
                             defaultKind="list"
                             onUpdate={(p) => updateSplit({ panelA: p })}
@@ -2684,6 +2720,7 @@ export function PageDesigner({ pageId }: Props) {
                           <PanelFields
                             label={panelLabel("B")}
                             panel={panelB}
+                            availableSources={sourcesFor("B")}
                             linkedEnt={entities.find((e) => e.id === panelB.entity)}
                             defaultKind="detail"
                             onUpdate={(p) => updateSplit({ panelB: p })}
@@ -2692,6 +2729,7 @@ export function PageDesigner({ pageId }: Props) {
                             <PanelFields
                               label={panelLabel("C")}
                               panel={panelC}
+                              availableSources={sourcesFor("C")}
                               linkedEnt={entC}
                               defaultKind="list"
                               onUpdate={(p) => updateSplit({ panelC: p })}
@@ -2701,6 +2739,7 @@ export function PageDesigner({ pageId }: Props) {
                             <PanelFields
                               label={panelLabel("D")}
                               panel={panelD}
+                              availableSources={sourcesFor("D")}
                               linkedEnt={entities.find((e) => e.id === panelD.entity)}
                               defaultKind="list"
                               onUpdate={(p) => updateSplit({ panelD: p } as typeof splitCfg)}

@@ -4009,6 +4009,8 @@ type SplitPanelCfg = {
   dataSourceId?: string;
   title?: string;
   linkField?: string;
+  /** Panel nguồn để lọc/hiển thị detail: "a"|"b"|"c"|"d". Mặc định "a" (Panel A). */
+  filterFromPanel?: string;
   // Các trường được copy từ list/form/detail khi kéo thả vào panel
   fields?: string[];
   columnLabels?: Record<string, string>;
@@ -4131,8 +4133,20 @@ function useGridDrag(
   return { colFr, rowFr, onColDrag, onRowDrag };
 }
 
-function buildSubCfg(panel: SplitPanelCfg, splitKey: string): Record<string, unknown> {
+/**
+ * panelKey: "a"|"b"|"c"|"d" khi gọi từ SplitWidget — mỗi panel có key riêng để
+ * các panel khác có thể lọc độc lập. Bỏ qua (undefined) khi gọi từ GridWidget
+ * để giữ hành vi cũ (dùng chung splitKey).
+ */
+function buildSubCfg(
+  panel: SplitPanelCfg,
+  splitKey: string,
+  panelKey?: string,
+): Record<string, unknown> {
   const kind = panel.kind ?? "list";
+  // Với split widget: mỗi panel dùng key riêng; grid widget dùng splitKey chung.
+  const ownStateKey = panelKey ? `${splitKey}:${panelKey}` : splitKey;
+  const srcStateKey = panelKey ? `${splitKey}:${panel.filterFromPanel ?? "a"}` : splitKey;
   return {
     entity: panel.entity,
     dataSourceId: panel.dataSourceId,
@@ -4149,13 +4163,13 @@ function buildSubCfg(panel: SplitPanelCfg, splitKey: string): Record<string, unk
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
-    ...(kind === "list" ? { selectionStateKey: splitKey } : {}),
-    ...(kind === "detail" ? { recordIdFromState: splitKey } : {}),
+    ...(kind === "list" ? { selectionStateKey: ownStateKey } : {}),
+    ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
-      ? { filterFromState: { field: panel.linkField, stateKey: splitKey } }
+      ? { filterFromState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
     ...(kind === "form" && panel.linkField
-      ? { linkedToState: { field: panel.linkField, stateKey: splitKey } }
+      ? { linkedToState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
   };
 }
@@ -4344,10 +4358,10 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const kindB = panelB.kind ?? "detail";
   const kindC = panelC.kind ?? "list";
   const kindD = panelD.kind ?? "list";
-  const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey);
-  const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey);
-  const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey);
-  const cfgD = buildSubCfg({ ...panelD, kind: kindD }, splitKey);
+  const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey, "a");
+  const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey, "b");
+  const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey, "c");
+  const cfgD = buildSubCfg({ ...panelD, kind: kindD }, splitKey, "d");
 
   // Ratios — initialized from saved config, adjusted by drag at runtime only
   const savedRatios = cfg.splitRatios as number[] | undefined;
