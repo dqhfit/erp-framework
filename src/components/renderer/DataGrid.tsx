@@ -1387,7 +1387,15 @@ export function DataGrid<T>({
             <colgroup>
               {selecting && <col style={{ width: 36 }} />}
               {renderDetail && <col style={{ width: 28 }} />}
-              {table.getVisibleLeafColumns().map((col) => (
+              {/* PHẢI theo thứ tự GHIM (trái → giữa → phải) GIỐNG ô thân
+                  (row.getVisibleCells). getVisibleLeafColumns KHÔNG sắp theo pin →
+                  khi ghim cột, <col> lệch hàng với ô → cột ghim lấy nhầm width cột
+                  khác + kéo resize đổi nhầm cột. */}
+              {[
+                ...table.getLeftVisibleLeafColumns(),
+                ...table.getCenterVisibleLeafColumns(),
+                ...table.getRightVisibleLeafColumns(),
+              ].map((col) => (
                 <col key={col.id} style={{ width: col.getSize() }} />
               ))}
               {/* Cột ĐỆM auto (không có ô) — hút phần dư khi tổng cột < bề rộng bảng,
