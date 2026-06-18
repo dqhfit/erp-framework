@@ -4824,7 +4824,6 @@ export function ConsumerPage({
 }) {
   const t = useT();
   const isMobile = useIsMobile();
-  const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
   const userId = useAuth((s) => s.user?.id ?? null);
 
@@ -5071,8 +5070,7 @@ export function ConsumerPage({
     stopAutoScroll();
   };
 
-  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — dùng cho cả thanh tiêu đề
-  // (thường) lẫn header portal (chromeless, qua createPortal).
+  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — chỉ dùng cho header portal (chromeless).
   const headerControls = (
     <>
       {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
@@ -5117,23 +5115,6 @@ export function ConsumerPage({
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
         <div className="py-2 sm:py-3 px-px">
-          {/* Header — ẩn khi chromeless (portal): bỏ tiêu đề + thanh; nút điều
-              khiển bố cục chuyển lên header portal. */}
-          {!chromeless && (
-            <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
-              <div>
-                <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
-                {layoutEditing ? (
-                  <div className="text-sm text-accent font-medium mt-0.5">
-                    Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
-                  </div>
-                ) : hasPersonal ? (
-                  <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
-                ) : null}
-              </div>
-              <div className="shrink-0 flex items-center gap-2">{headerControls}</div>
-            </div>
-          )}
           {/* Chromeless (portal): CHỈ trang đang xem đẩy nút lên header portal. */}
           {chromeless &&
             active &&
