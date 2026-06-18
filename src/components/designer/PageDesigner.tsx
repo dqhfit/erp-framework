@@ -442,6 +442,7 @@ export function PageDesigner({ pageId }: Props) {
   const [resizingId, setResizingId] = useState<string | null>(null);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [splitCellSel, setSplitCellSel] = useState<string | null>(null);
+  const [splitPanelTab, setSplitPanelTab] = useState("A");
   const { tools: mcpTools } = useMcpClient();
   const setPageContent = useUserObjects((s) => s.setPageContent);
   const publishPage = useUserObjects((s) => s.publishPage);
@@ -2504,14 +2505,12 @@ export function PageDesigner({ pageId }: Props) {
                           .map((k) => ({ key: k.toLowerCase(), label: panelLabel(k) }));
 
                       const PanelFields = ({
-                        label,
                         panel,
                         availableSources,
                         linkedEnt,
                         defaultKind = "list",
                         onUpdate,
                       }: {
-                        label: string;
                         panel: PanelCfg;
                         availableSources: Array<{ key: string; label: string }>;
                         linkedEnt?: (typeof entities)[0];
@@ -2524,9 +2523,6 @@ export function PageDesigner({ pageId }: Props) {
                           `Panel ${srcKey.toUpperCase()}`;
                         return (
                           <>
-                            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                              {label}
-                            </div>
                             <FormField label="Loại">
                               <Select
                                 value={panel.kind ?? defaultKind}
@@ -2709,42 +2705,69 @@ export function PageDesigner({ pageId }: Props) {
                               )}
                             </>
                           )}
-                          <PanelFields
-                            label={panelLabel("A")}
-                            panel={panelA}
-                            availableSources={[]}
-                            linkedEnt={undefined}
-                            defaultKind="list"
-                            onUpdate={(p) => updateSplit({ panelA: p })}
-                          />
-                          <PanelFields
-                            label={panelLabel("B")}
-                            panel={panelB}
-                            availableSources={sourcesFor("B")}
-                            linkedEnt={entities.find((e) => e.id === panelB.entity)}
-                            defaultKind="detail"
-                            onUpdate={(p) => updateSplit({ panelB: p })}
-                          />
-                          {showPanelC && (
-                            <PanelFields
-                              label={panelLabel("C")}
-                              panel={panelC}
-                              availableSources={sourcesFor("C")}
-                              linkedEnt={entC}
-                              defaultKind="list"
-                              onUpdate={(p) => updateSplit({ panelC: p })}
-                            />
-                          )}
-                          {showPanelD && (
-                            <PanelFields
-                              label={panelLabel("D")}
-                              panel={panelD}
-                              availableSources={sourcesFor("D")}
-                              linkedEnt={entities.find((e) => e.id === panelD.entity)}
-                              defaultKind="list"
-                              onUpdate={(p) => updateSplit({ panelD: p } as typeof splitCfg)}
-                            />
-                          )}
+                          {/* Tab bar cho các panel */}
+                          {(() => {
+                            const activeTab = existingPanelKeys.includes(splitPanelTab)
+                              ? splitPanelTab
+                              : "A";
+                            return (
+                              <>
+                                <div className="flex border border-border rounded-md overflow-hidden mt-2">
+                                  {existingPanelKeys.map((k) => (
+                                    <button
+                                      key={k}
+                                      type="button"
+                                      onClick={() => setSplitPanelTab(k)}
+                                      className={cn(
+                                        "flex-1 py-1 text-xs font-medium transition-colors border-r border-border last:border-r-0",
+                                        activeTab === k
+                                          ? "bg-accent text-white"
+                                          : "text-muted hover:bg-hover/60",
+                                      )}
+                                    >
+                                      {panelLabel(k)}
+                                    </button>
+                                  ))}
+                                </div>
+                                {activeTab === "A" && (
+                                  <PanelFields
+                                    panel={panelA}
+                                    availableSources={[]}
+                                    linkedEnt={undefined}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelA: p })}
+                                  />
+                                )}
+                                {activeTab === "B" && (
+                                  <PanelFields
+                                    panel={panelB}
+                                    availableSources={sourcesFor("B")}
+                                    linkedEnt={entities.find((e) => e.id === panelB.entity)}
+                                    defaultKind="detail"
+                                    onUpdate={(p) => updateSplit({ panelB: p })}
+                                  />
+                                )}
+                                {activeTab === "C" && showPanelC && (
+                                  <PanelFields
+                                    panel={panelC}
+                                    availableSources={sourcesFor("C")}
+                                    linkedEnt={entC}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelC: p })}
+                                  />
+                                )}
+                                {activeTab === "D" && showPanelD && (
+                                  <PanelFields
+                                    panel={panelD}
+                                    availableSources={sourcesFor("D")}
+                                    linkedEnt={entities.find((e) => e.id === panelD.entity)}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelD: p } as typeof splitCfg)}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
                         </>
                       );
                     })()}
