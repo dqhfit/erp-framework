@@ -76,6 +76,9 @@ interface GridColMeta {
   formatRules?: FormatRule[];
   /** Ô gọn — giảm padding ngang (vd cột hành động). */
   compact?: boolean;
+  /** Nhãn hiển thị ở "Chọn cột hiển thị" khi header là HÀM/JSX (toString ra mã
+   *  rác) — vd cột hành động đặt label "Hành động". */
+  label?: string;
 }
 
 function evalFormatRules(value: unknown, rules: FormatRule[]): string | undefined {
@@ -154,10 +157,16 @@ function sizedWidth<T>(column: Column<T>): CSSProperties {
   return column.columnDef.size == null ? { width: w } : { width: w, minWidth: w, maxWidth: w };
 }
 
-/** Kẹp bề rộng autofit: +đệm, sàn 48, trần 360 (tránh cột quá hẹp/quá rộng). */
-function clampColW(w: number): number {
-  return Math.max(48, Math.min(Math.round(w) + 8, 360));
+/** Kẹp bề rộng autofit: +đệm, trần 360. Cột CHỮ sàn 48 + đệm 8 (tránh quá hẹp /
+ *  clip chữ). Cột COMPACT (hành động/checkbox — nội dung là nút icon, không phải
+ *  chữ) dùng sàn 24 + đệm 2 để BÁM SÁT tổng bề rộng các nút, không phình thừa. */
+function clampColW(w: number, opts?: { min?: number; pad?: number }): number {
+  const min = opts?.min ?? 48;
+  const pad = opts?.pad ?? 8;
+  return Math.max(min, Math.min(Math.round(w) + pad, 360));
 }
+/** Tham số clamp cho cột compact (nội dung nút icon) — bám sát, không sàn 48. */
+const COMPACT_CLAMP = { min: 24, pad: 2 } as const;
 
 /** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
  *  tiêu đề bao trên. Con là tên field (lá) hoặc nhóm con (lồng nhiều cấp).
@@ -315,6 +324,9 @@ export interface DataGridProps<T> {
   /** Nhóm tiêu đề cột (banded header nhiều cấp). Khi set, `columns` phẳng được
    *  gói lại thành cây cột con theo cấu hình; cột ngoài nhóm giữ nguyên. */
   columnGroups?: ColumnGroupNode[];
+  /** Gom HÀNG theo cột mặc định (ids cột) khi CHƯA có view lưu — vd ["phanloai"].
+   *  User vẫn đổi được; lựa chọn của user lưu IDB sẽ override ở lần sau. */
+  defaultGrouping?: string[];
   data: T[];
   emptyText?: string;
   className?: string;
@@ -354,6 +366,12 @@ export interface DataGridProps<T> {
   /** Khi set: hiện nút "＋ Thêm dòng" (lên đầu / xuống cuối) ở toolbar → caller
    *  chèn 1 dòng nháp editable vào lưới. Chỉ lưới sửa-được + chế độ gom (batch). */
   onAddRow?: (pos: "top" | "bottom") => void;
+  /** Khi bật: hiện DÒNG "＋ Thêm dòng mới" trong lưới (bấm = onAddRow(addRowPos)).
+   *  Cần onAddRow. Bật qua tuỳ chọn cfg.addRowAtEnd của widget list sửa-được. */
+  inlineAddRow?: boolean;
+  /** Vị trí dòng "＋ Thêm dòng mới" (+ dòng nháp tạo ra): ĐẦU hay CUỐI lưới.
+   *  Mặc định "bottom". cfg.addRowPos. */
+  addRowPos?: "top" | "bottom";
   /** Nhảy tới trang đầu/cuối khi token đổi — để sau khi thêm dòng mới (top/bottom)
    *  lưới tự lật tới trang chứa dòng đó (tránh dòng mới nằm trang khác do phân trang). */
   pageJump?: { token: number; to: "first" | "last" };
@@ -400,6 +418,7 @@ export interface ServerPagingController {
 export function DataGrid<T>({
   columns,
   columnGroups,
+  defaultGrouping,
   data,
   emptyText,
   className,
@@ -417,6 +436,8 @@ export function DataGrid<T>({
   onPasteCreate,
   pasteCreateDefaults,
   onAddRow,
+  inlineAddRow,
+  addRowPos,
   pageJump,
   enableSelection,
   onSelectionChange,
@@ -460,7 +481,7 @@ export function DataGrid<T>({
     }
   };
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [grouping, setGrouping] = useState<GroupingState>([]);
+  const [grouping, setGrouping] = useState<GroupingState>(defaultGrouping ?? []);
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [filterRowOpen, setFilterRowOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
@@ -700,9 +721,14 @@ export function DataGrid<T>({
   const autofitColumn = useCallback(
     (colId: string) => {
       const w = measureCol(colId);
-      if (w != null) setColumnSizing((s) => ({ ...s, [colId]: clampColW(w) }));
+      if (w == null) return;
+      const compact = (table.getColumn(colId)?.columnDef.meta as GridColMeta | undefined)?.compact;
+      setColumnSizing((s) => ({
+        ...s,
+        [colId]: clampColW(w, compact ? COMPACT_CLAMP : undefined),
+      }));
     },
-    [measureCol],
+    [measureCol, table],
   );
   /** Autofit TẤT CẢ cột đang hiện. */
   const autofitAll = useCallback(() => {
@@ -710,7 +736,9 @@ export function DataGrid<T>({
     const next: ColumnSizingState = {};
     for (const col of table.getVisibleLeafColumns()) {
       const w = measureCol(col.id);
-      if (w != null) next[col.id] = clampColW(w);
+      if (w == null) continue;
+      const compact = (col.columnDef.meta as GridColMeta | undefined)?.compact;
+      next[col.id] = clampColW(w, compact ? COMPACT_CLAMP : undefined);
     }
     if (Object.keys(next).length) setColumnSizing((s) => ({ ...s, ...next }));
   }, [measureCol, table]);
@@ -804,6 +832,25 @@ export function DataGrid<T>({
   const selecting = !!enableSelection && showSelectCol;
   // Số ô dẫn đầu (trước cột dữ liệu): tích chọn + nút mở chi tiết.
   const leadCols = (selecting ? 1 : 0) + (renderDetail ? 1 : 0);
+  // Dòng "＋ Thêm dòng mới" trong lưới — vị trí đầu/cuối theo addRowPos.
+  const inlineAddPos: "top" | "bottom" | null =
+    inlineAddRow && onAddRow ? (addRowPos ?? "bottom") : null;
+  const addRowTr = inlineAddPos ? (
+    <tr
+      key="__addrow"
+      className={cn("border-border", inlineAddPos === "top" ? "border-b" : "border-t")}
+    >
+      <td colSpan={columns.length + leadCols} className="p-0">
+        <button
+          type="button"
+          onClick={() => onAddRow?.(inlineAddPos)}
+          className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted hover:text-accent hover:bg-accent/5 transition-colors"
+        >
+          <I.Plus size={13} /> Thêm dòng mới
+        </button>
+      </td>
+    </tr>
+  ) : null;
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedOriginals = selectedRows.map((r) => r.original);
   // "Tất cả khớp": server mode = server.total; client mode = số dòng đã lọc.
@@ -1100,82 +1147,95 @@ export function DataGrid<T>({
               <I.ChevronDown size={10} />
             </button>
             {colChooserOpen && (
-              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-h-[320px] overflow-auto py-1">
-                {table
-                  .getAllLeafColumns()
-                  .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
-                  .map((col) => {
-                    const pin = col.getIsPinned();
-                    return (
-                      <div
-                        key={col.id}
-                        draggable
-                        onDragStart={() => setDragColId(col.id)}
-                        onDragOver={(e) => {
-                          if (dragColId && dragColId !== col.id) e.preventDefault();
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (dragColId && dragColId !== col.id) {
-                            const cur = table.getState().columnOrder;
-                            const order = cur.length
-                              ? [...cur]
-                              : table.getAllLeafColumns().map((c) => c.id);
-                            const from = order.indexOf(dragColId);
-                            const to = order.indexOf(col.id);
-                            if (from !== -1 && to !== -1) {
-                              order.splice(to, 0, ...order.splice(from, 1));
-                              setColumnOrder(order);
+              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1">
+                {/* w-max: bề rộng = hàng dài nhất (tên cột dài không bị cắt) → cuộn
+                    NGANG trong khung (max-w) thay vì truncate. min-w-full để hàng
+                    ngắn vẫn phủ hết bề rộng (hover liền mạch). */}
+                <div className="w-max min-w-full">
+                  {table
+                    .getAllLeafColumns()
+                    .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
+                    .map((col) => {
+                      const pin = col.getIsPinned();
+                      return (
+                        <div
+                          key={col.id}
+                          draggable
+                          onDragStart={() => setDragColId(col.id)}
+                          onDragOver={(e) => {
+                            if (dragColId && dragColId !== col.id) e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragColId && dragColId !== col.id) {
+                              const cur = table.getState().columnOrder;
+                              const order = cur.length
+                                ? [...cur]
+                                : table.getAllLeafColumns().map((c) => c.id);
+                              const from = order.indexOf(dragColId);
+                              const to = order.indexOf(col.id);
+                              if (from !== -1 && to !== -1) {
+                                order.splice(to, 0, ...order.splice(from, 1));
+                                setColumnOrder(order);
+                              }
                             }
-                          }
-                          setDragColId(null);
-                        }}
-                        onDragEnd={() => setDragColId(null)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40",
-                          dragColId === col.id && "opacity-40",
-                        )}
-                      >
-                        <I.Grip size={11} className="shrink-0 cursor-grab text-muted/40" />
-                        <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={col.getIsVisible()}
-                            onChange={col.getToggleVisibilityHandler()}
-                            disabled={!col.getCanHide()}
-                          />
-                          <span className="truncate">
-                            {col.columnDef.header?.toString() ?? col.id}
-                          </span>
-                        </label>
-                        {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            type="button"
-                            title={t("datagrid.pin_left")}
-                            onClick={() => col.pin(pin === "left" ? false : "left")}
-                            className={cn(
-                              "p-0.5 rounded hover:bg-hover/60",
-                              pin === "left" ? "text-accent" : "text-muted/50",
-                            )}
-                          >
-                            <I.PanelLeft size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            title={t("datagrid.pin_right")}
-                            onClick={() => col.pin(pin === "right" ? false : "right")}
-                            className={cn(
-                              "p-0.5 rounded hover:bg-hover/60",
-                              pin === "right" ? "text-accent" : "text-muted/50",
-                            )}
-                          >
-                            <I.PanelRight size={12} />
-                          </button>
+                            setDragColId(null);
+                          }}
+                          onDragEnd={() => setDragColId(null)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40",
+                            dragColId === col.id && "opacity-40",
+                          )}
+                        >
+                          <I.Grip size={11} className="shrink-0 cursor-grab text-muted/40" />
+                          <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={col.getIsVisible()}
+                              onChange={col.getToggleVisibilityHandler()}
+                              disabled={!col.getCanHide()}
+                            />
+                            <span className="whitespace-nowrap">
+                              {/* Chỉ hiện header dạng CHUỖI. Header là HÀM/JSX (vd cột
+                                  hành động () => <span>) → toString() ra mã JSX rác;
+                                  fallback meta.label (vd "Hành động") → techName → id. */}
+                              {(() => {
+                                const m = col.columnDef.meta as GridColMeta | undefined;
+                                return typeof col.columnDef.header === "string"
+                                  ? col.columnDef.header
+                                  : (m?.label ?? m?.techName ?? col.id);
+                              })()}
+                            </span>
+                          </label>
+                          {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              title={t("datagrid.pin_left")}
+                              onClick={() => col.pin(pin === "left" ? false : "left")}
+                              className={cn(
+                                "p-0.5 rounded hover:bg-hover/60",
+                                pin === "left" ? "text-accent" : "text-muted/50",
+                              )}
+                            >
+                              <I.PanelLeft size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              title={t("datagrid.pin_right")}
+                              onClick={() => col.pin(pin === "right" ? false : "right")}
+                              className={cn(
+                                "p-0.5 rounded hover:bg-hover/60",
+                                pin === "right" ? "text-accent" : "text-muted/50",
+                              )}
+                            >
+                              <I.PanelRight size={12} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                </div>
               </div>
             )}
           </div>
@@ -1374,9 +1434,22 @@ export function DataGrid<T>({
             <colgroup>
               {selecting && <col style={{ width: 36 }} />}
               {renderDetail && <col style={{ width: 28 }} />}
-              {table.getVisibleLeafColumns().map((col) => (
+              {/* PHẢI theo thứ tự GHIM (trái → giữa → phải) GIỐNG ô thân
+                  (row.getVisibleCells). getVisibleLeafColumns KHÔNG sắp theo pin →
+                  khi ghim cột, <col> lệch hàng với ô → cột ghim lấy nhầm width cột
+                  khác + kéo resize đổi nhầm cột. */}
+              {[
+                ...table.getLeftVisibleLeafColumns(),
+                ...table.getCenterVisibleLeafColumns(),
+                ...table.getRightVisibleLeafColumns(),
+              ].map((col) => (
                 <col key={col.id} style={{ width: col.getSize() }} />
               ))}
+              {/* Cột ĐỆM auto (không có ô) — hút phần dư khi tổng cột < bề rộng bảng,
+                  giữ MỌI cột thật ĐÚNG width của nó (width:100% sẽ kéo giãn TỈ LỆ mọi
+                  cột nếu không có đệm → cột hành động phình rộng hơn cụm nút). Tổng cột
+                  ≥ bảng thì đệm = 0 (cuộn ngang như cũ). */}
+              <col data-spacer="" />
             </colgroup>
             <thead ref={theadRef} className="bg-panel-2 z-10">
               {(() => {
@@ -1613,6 +1686,7 @@ export function DataGrid<T>({
                 }
               }}
             >
+              {inlineAddPos === "top" && addRowTr}
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
@@ -1744,6 +1818,8 @@ export function DataGrid<T>({
                   );
                 })
               )}
+              {/* Dòng "＋ Thêm dòng mới" ở CUỐI (addRowPos="bottom", mặc định). */}
+              {inlineAddPos === "bottom" && addRowTr}
             </tbody>
             {showSummary && (
               <tfoot className="sticky bottom-0 z-10 bg-panel-2 border-t-2 border-border">

@@ -47,6 +47,10 @@ function PortalRoute() {
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
   // Yêu thích (dùng chung sidebar, sync localStorage + server qua preferences).
   const favs = useFavs();
+  // Chỉ admin/biên tập mới thấy nút "Sửa" (mở trang đang xem trong Trình dựng);
+  // viewer thì không. Portal vốn là giao diện cho viewer nhưng admin/editor cũng
+  // vào được (qua "Xem Portal") → cho lối tắt sang sửa trang.
+  const canEdit = user?.role === "admin" || user?.role === "editor";
 
   const publishedPages = useMemo(
     () =>
@@ -115,15 +119,25 @@ function PortalRoute() {
     void loadPrefs();
   }, [loadPrefs]);
 
-  // Init activeId từ preferences (hoặc trang đầu tiên) — chạy 1 lần sau khi prefs loaded
+  // Init activeId: ưu tiên ?page=<id> (mở từ "Xem Portal" của trang đang sửa),
+  // rồi tới trang xem lần cuối, cuối cùng là trang đầu. Chỉ "chốt" (initDone) khi
+  // ĐÃ chọn được trang → tránh latch sớm lúc publishedPages chưa nạp (khiến không
+  // tự chọn trang). Chạy 1 lần sau khi prefs + danh sách trang sẵn sàng.
   const initDone = useRef(false);
   useEffect(() => {
     if (!prefsLoaded || initDone.current) return;
-    initDone.current = true;
+    const requestedId =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("page")
+        : null;
     const lastId = prefs.portal?.lastPageId;
     const initial =
-      publishedPages.find((p) => p.id === lastId)?.id ?? publishedPages[0]?.id ?? null;
+      (requestedId && publishedPages.find((p) => p.id === requestedId)?.id) ||
+      publishedPages.find((p) => p.id === lastId)?.id ||
+      publishedPages[0]?.id ||
+      null;
     if (initial) {
+      initDone.current = true;
       setActiveIdRaw(initial);
       setMountedIds(new Set([initial]));
     }
@@ -186,10 +200,31 @@ function PortalRoute() {
     return m;
   }, [navNodes]);
 
+  // Đường dẫn breadcrumb của trang đang xem (lá cuối = tên mục được chọn).
+  const activePath = useMemo(
+    () =>
+      activeId
+        ? (pagePathMap.get(activeId) ?? publishedPages.find((p) => p.id === activeId)?.name)
+        : undefined,
+    [activeId, pagePathMap, publishedPages],
+  );
+  // Khi đổi trang: cuộn breadcrumb sang PHẢI để luôn thấy tên mục đang chọn (lá
+  // cuối) — đường dẫn dài mặc định bị cắt ở mép phải.
+  const breadcrumbRef = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activePath là TRIGGER cố ý (cuộn lại mỗi khi đổi trang), không đọc trong effect
+  useEffect(() => {
+    const el = breadcrumbRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [activePath]);
+
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
       {/* Header */}
-      <header className="h-11 shrink-0 flex items-center px-3 sm:px-4 gap-2 sm:gap-3 border-b border-border bg-panel">
+      <header className="h-11 shrink-0 flex items-center px-3 sm:px-4 gap-1 sm:gap-1.5 border-b border-border bg-panel">
         {isMobile && (
           <button
             type="button"
@@ -203,12 +238,14 @@ function PortalRoute() {
         <span className="w-6 h-6 rounded bg-accent/20 text-accent flex items-center justify-center shrink-0">
           <I.Layout size={13} />
         </span>
-        {/* Breadcrumb — đường dẫn trang đang xem (fallback: tên portal khi chưa chọn). */}
-        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto whitespace-nowrap text-sm">
+        {/* Breadcrumb — đường dẫn trang đang xem (fallback: tên portal khi chưa chọn).
+            Tự cuộn sang phải để thấy lá cuối (tên mục đang chọn). */}
+        <div
+          ref={breadcrumbRef}
+          className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto whitespace-nowrap text-sm"
+        >
           {(() => {
-            const path = activeId
-              ? (pagePathMap.get(activeId) ?? publishedPages.find((p) => p.id === activeId)?.name)
-              : undefined;
+            const path = activePath;
             if (!path) return <span className="font-semibold truncate">{t("portal.title")}</span>;
             const parts = path.split(" › ");
             return parts.map((part, i) => (
@@ -222,6 +259,23 @@ function PortalRoute() {
             ));
           })()}
         </div>
+        {/* Slot nút điều khiển bố cục trang (Sắp xếp/Xong/Mặc định) — ConsumerPage
+            của trang ĐANG xem (chromeless) đẩy nút vào đây qua createPortal. */}
+        <div id="portal-page-actions" className="flex items-center gap-1.5 shrink-0" />
+        {/* Sửa trang — CHỈ admin/biên tập: mở trang đang xem trong Trình dựng. */}
+        {canEdit && activeId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<I.Edit size={13} />}
+            onClick={() =>
+              activeId && void navigate({ to: "/pages/$id", params: { id: activeId } })
+            }
+            title="Sửa trang này trong Trình dựng"
+          >
+            <span className="hidden sm:inline">Sửa</span>
+          </Button>
+        )}
         {/* Trang xưởng — lối vào cho công nhân (viewer) xem bản vẽ + nhập sản lượng. */}
         <Button
           variant="ghost"
@@ -274,6 +328,7 @@ function PortalRoute() {
           icon={<I.RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />}
           disabled={refreshing}
           onClick={() => void handleRefresh()}
+          title={t("portal.refresh")}
         >
           <span className="hidden sm:inline">{t("portal.refresh")}</span>
         </Button>
@@ -282,6 +337,7 @@ function PortalRoute() {
           size="sm"
           icon={<I.LogOut size={13} />}
           onClick={() => void logout()}
+          title={t("portal.logout")}
         >
           <span className="hidden sm:inline">{t("portal.logout")}</span>
         </Button>
@@ -535,7 +591,12 @@ function PortalRoute() {
                     p.id === activeId ? "block" : "hidden",
                   )}
                 >
-                  <ConsumerPage key={`${p.id}-${refreshKeys[p.id] ?? 0}`} pageId={p.id} />
+                  <ConsumerPage
+                    key={`${p.id}-${refreshKeys[p.id] ?? 0}`}
+                    pageId={p.id}
+                    chromeless
+                    active={p.id === activeId}
+                  />
                 </div>
               ) : null,
             )

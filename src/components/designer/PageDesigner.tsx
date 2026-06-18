@@ -47,6 +47,9 @@ type ComponentKind =
   | "combobox"
   | "listbox"
   | "tagbox"
+  // "filter": bộ lọc cascade (do migration sinh) — bind datasource, phát state
+  // cho widget khác (loadGate). Không nằm trong palette nhưng sửa được ở inspector.
+  | "filter"
   | "calendar"
   | "map"
   | "pivot"
@@ -136,6 +139,11 @@ function BindingSourceConfig({
 }) {
   const dsId = cfg.dataSourceId as string | undefined;
   const isDs = dsId !== undefined;
+  // Nhớ datasource đã chọn để KHÔI PHỤC khi bấm qua lại 2 tab. Chuyển tab CHỈ đổi
+  // chế độ hiển thị, KHÔNG đụng cấu hình (giữ entity + fields). Chỉ khi CHỌN LẠI
+  // nguồn dữ liệu (Select) hoặc chọn entity (khối riêng) mới thay đổi thật.
+  // Component được key theo widget id (call site) nên state này riêng từng widget.
+  const [lastDsId, setLastDsId] = useState(isDs && dsId ? dsId : "");
   const btn = (active: boolean) =>
     cn(
       "flex-1 rounded border px-2 py-1 text-xs",
@@ -148,10 +156,11 @@ function BindingSourceConfig({
         <button
           type="button"
           className={btn(!isDs)}
-          // Đang ở mode khác → mới chuyển (reset fields vì schema khác). Bấm nút
-          // ĐANG chọn = no-op → KHÔNG mất cấu hình cột/nhãn.
+          // Sang Entity: CHỈ đổi mode. Nhớ DS để khôi phục, GIỮ entity + fields.
           onClick={() => {
-            if (isDs) onChange({ dataSourceId: undefined, fields: null });
+            if (!isDs) return;
+            if (dsId) setLastDsId(dsId);
+            onChange({ dataSourceId: undefined });
           }}
         >
           Entity
@@ -159,8 +168,10 @@ function BindingSourceConfig({
         <button
           type="button"
           className={btn(isDs)}
+          // Sang Nguồn dữ liệu: khôi phục DS đã nhớ (hoặc trống). GIỮ entity + fields.
           onClick={() => {
-            if (!isDs) onChange({ dataSourceId: "", entity: undefined, fields: null });
+            if (isDs) return;
+            onChange({ dataSourceId: lastDsId });
           }}
         >
           Nguồn dữ liệu
@@ -169,12 +180,13 @@ function BindingSourceConfig({
       {isDs && (
         <Select
           value={dsId ?? ""}
-          // Chỉ reset fields khi ĐỔI sang datasource KHÁC (schema khác). Chọn lại
-          // đúng nguồn hiện tại → giữ nguyên cấu hình cột.
-          onChange={(e) =>
-            e.target.value !== dsId &&
-            onChange({ dataSourceId: e.target.value, entity: undefined, fields: null })
-          }
+          // Chọn nguồn KHÁC = thay đổi THẬT → reset fields (schema khác). Chọn lại
+          // đúng nguồn hiện tại = no-op (giữ nguyên cấu hình cột).
+          onChange={(e) => {
+            if (e.target.value === dsId) return;
+            setLastDsId(e.target.value);
+            onChange({ dataSourceId: e.target.value, fields: null });
+          }}
         >
           <option value="">— chọn nguồn dữ liệu —</option>
           {dataSources.map((d) => (
@@ -1323,11 +1335,145 @@ export function PageDesigner({ pageId }: Props) {
                   {/* Chọn nguồn bind: Entity hoặc Nguồn dữ liệu (datasource) */}
                   {inspTab === "dulieu" && BINDING_KINDS.has(sel.kind) && (
                     <BindingSourceConfig
+                      key={sel.id}
                       cfg={sel.config}
                       dataSources={dataSources}
                       onChange={(patch) => update(sel.id, { config: { ...sel.config, ...patch } })}
                     />
                   )}
+                  {/* Filter — cấu hình bộ lọc cascade (nguồn + nhãn/giá trị/nhóm
+                     + state phát ra + nạp lại nguồn). */}
+                  {inspTab === "dulieu" &&
+                    sel.kind === "filter" &&
+                    (() => {
+                      const fcfg = sel.config as {
+                        title?: string;
+                        dataSourceId?: string;
+                        labelField?: string;
+                        valueField?: string;
+                        familyField?: string;
+                        emitStateKey?: string;
+                        refreshDataSourceId?: string;
+                      };
+                      const upd = (patch: Record<string, unknown>) =>
+                        update(sel.id, { config: { ...sel.config, ...patch } });
+                      const dsc = fcfg.dataSourceId
+                        ? dataSourceContent[fcfg.dataSourceId]
+                        : undefined;
+                      const dsCols = (dsc?.fields ?? []).map((f) => ({
+                        name: f.key,
+                        label: f.label || f.key,
+                      }));
+                      return (
+                        <>
+                          <FormField label="Tiêu đề">
+                            <Input
+                              placeholder="vd: Lọc theo sản phẩm"
+                              value={fcfg.title ?? ""}
+                              onChange={(e) => upd({ title: e.target.value })}
+                            />
+                          </FormField>
+                          <div className="rounded-md border border-border p-2 space-y-2 bg-bg-soft/40">
+                            <div className="text-xs font-semibold text-muted">
+                              Nguồn tuỳ chọn (datasource)
+                            </div>
+                            <Select
+                              value={fcfg.dataSourceId ?? ""}
+                              onChange={(e) =>
+                                upd({
+                                  dataSourceId: e.target.value,
+                                  labelField: undefined,
+                                  valueField: undefined,
+                                  familyField: undefined,
+                                })
+                              }
+                            >
+                              <option value="">— chọn nguồn dữ liệu —</option>
+                              {dataSources.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                          {dsc ? (
+                            <>
+                              <FormField label="Trường nhãn (hiển thị)">
+                                <Select
+                                  value={fcfg.labelField ?? ""}
+                                  onChange={(e) => upd({ labelField: e.target.value })}
+                                >
+                                  <option value="">— chọn —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Trường giá trị (lưu / phát ra)">
+                                <Select
+                                  value={fcfg.valueField ?? ""}
+                                  onChange={(e) => upd({ valueField: e.target.value })}
+                                >
+                                  <option value="">— chọn —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Trường nhóm (cascade, tuỳ chọn)">
+                                <Select
+                                  value={fcfg.familyField ?? ""}
+                                  onChange={(e) =>
+                                    upd({ familyField: e.target.value || undefined })
+                                  }
+                                >
+                                  <option value="">— không —</option>
+                                  {dsCols.map((c) => (
+                                    <option key={c.name} value={c.name}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                            </>
+                          ) : (
+                            <div className="text-[11px] text-muted/70 px-0.5">
+                              Chọn nguồn dữ liệu để cấu hình trường nhãn / giá trị / nhóm.
+                            </div>
+                          )}
+                          <FormField label="State key phát ra">
+                            <Input
+                              placeholder="vd: selMasp"
+                              value={fcfg.emitStateKey ?? ""}
+                              onChange={(e) => upd({ emitStateKey: e.target.value })}
+                            />
+                            <div className="text-[10px] text-muted/70 mt-0.5 px-0.5">
+                              Widget khác (vd List) đặt “Chỉ tải khi state có giá trị” = key này để
+                              cascade.
+                            </div>
+                          </FormField>
+                          <FormField label="Nạp lại nguồn khi chọn (tuỳ chọn)">
+                            <Select
+                              value={fcfg.refreshDataSourceId ?? ""}
+                              onChange={(e) =>
+                                upd({ refreshDataSourceId: e.target.value || undefined })
+                              }
+                            >
+                              <option value="">— không —</option>
+                              {dataSources.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormField>
+                        </>
+                      );
+                    })()}
                   {inspTab === "dulieu" &&
                     RECORD_DATA_KINDS.has(sel.kind) &&
                     sel.config.dataSourceId === undefined && (
@@ -1650,6 +1796,42 @@ export function PageDesigner({ pageId }: Props) {
                               />
                             </div>
                           )}
+
+                          {sel.kind === "list" &&
+                            sel.config.editable === true &&
+                            sel.config.batchEdit === true && (
+                              <div className="rounded-md border border-border bg-bg-soft ml-3 p-2.5 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex flex-col leading-tight">
+                                    <span className="text-sm">Dòng thêm mới trong lưới</span>
+                                    <span className="text-[11px] text-muted">
+                                      Hiện dòng “＋ Thêm dòng mới”; bấm để thêm dòng nháp
+                                    </span>
+                                  </div>
+                                  <Switch
+                                    checked={sel.config.addRowAtEnd === true}
+                                    onChange={(v) =>
+                                      update(sel.id, { config: { ...sel.config, addRowAtEnd: v } })
+                                    }
+                                  />
+                                </div>
+                                {sel.config.addRowAtEnd === true && (
+                                  <FormField label="Vị trí dòng thêm mới">
+                                    <Select
+                                      value={sel.config.addRowPos === "top" ? "top" : "bottom"}
+                                      onChange={(e) =>
+                                        update(sel.id, {
+                                          config: { ...sel.config, addRowPos: e.target.value },
+                                        })
+                                      }
+                                    >
+                                      <option value="bottom">Cuối lưới</option>
+                                      <option value="top">Đầu lưới</option>
+                                    </Select>
+                                  </FormField>
+                                )}
+                              </div>
+                            )}
 
                           {sel.kind === "list" && (
                             <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
@@ -2748,6 +2930,7 @@ function tabsForKind(kind: ComponentKind) {
     return tabs;
   }
   if (inputKinds.includes(kind)) return [...base, { key: "dieukien", label: "Nguồn & Điều khiển" }];
+  if (kind === "filter") return [...base, { key: "dulieu", label: "Dữ liệu" }];
   if (kind === "split") return [...base, { key: "bocuc", label: "Bố cục" }];
   if (kind === "actionbar") return [...base, { key: "hanhDong", label: "Hành động" }];
   if (kind === "action") return [...base, { key: "cauhinh", label: "Cấu hình" }];
@@ -2950,7 +3133,38 @@ function PreviewBox({ icon, label, hint }: { icon: IconName; label: string; hint
 
 function ComponentBody({ comp }: { comp: PageComponent }) {
   const entities = useUserObjects((s) => s.entities);
+  const dataSourceContent = useUserObjects((s) => s.dataSourceContent);
   const { fieldDisp } = useFieldDisplay();
+
+  // Cột hiển thị {name,label} cho widget bind-DATASOURCE (preview canvas). Lấy
+  // ĐÚNG nguồn như inspector band-editor (PageDesigner.tsx ~2004): datasource
+  // fields + aggregates + computed; lọc/sắp theo cfg.fields; nhãn ưu tiên
+  // columnLabels. Trả bound=false khi DS chưa chọn / chưa nạp config.
+  const resolveDsCols = (
+    cfg: Record<string, unknown>,
+  ): { cols: Array<{ name: string; label: string }>; bound: boolean } => {
+    const dsId = cfg.dataSourceId as string | undefined;
+    const dsc = dsId ? dataSourceContent[dsId] : undefined;
+    if (!dsc) return { cols: [], bound: false };
+    const all = [
+      ...(dsc.fields ?? []).map((f) => ({ name: f.key, label: f.label || f.key })),
+      ...(dsc.aggregates ?? []).map((a) => ({ name: a.key, label: a.label || a.key })),
+      ...(dsc.computed ?? []).map((c) => ({ name: c.key, label: c.label || c.key })),
+    ];
+    const want = cfg.fields as string[] | null | undefined;
+    const colLabels = (cfg.columnLabels ?? {}) as Record<string, string>;
+    let cols: Array<{ name: string; label: string }>;
+    if (want == null) cols = all.slice(0, 8);
+    else if (want.length === 0) cols = [];
+    else {
+      const byName = new Map(all.map((c) => [c.name, c] as const));
+      cols = want.map((n) => byName.get(n) ?? { name: n, label: n });
+    }
+    return {
+      cols: cols.map((c) => ({ name: c.name, label: colLabels[c.name] || c.label })),
+      bound: true,
+    };
+  };
 
   if (comp.kind === "kpi") {
     const { label, value, trend, title } = comp.config as {
@@ -3017,6 +3231,59 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
       title?: string;
       embeddedActions?: ActionBarItem[];
     };
+    // Widget bind DATASOURCE → preview cột theo datasource (nhãn columnLabels).
+    const listDsId = comp.config.dataSourceId as string | undefined;
+    if (listDsId !== undefined) {
+      const { cols, bound } = resolveDsCols(comp.config);
+      if (!bound)
+        return <PreviewBox icon="Table" label={title ?? "List"} hint="Nguồn dữ liệu chưa tải" />;
+      const embItems = embActs ?? [];
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <div className="px-2 py-1 border-b border-border/40 shrink-0 flex items-center gap-1.5">
+            <I.Table size={11} className="text-muted shrink-0" />
+            <span className="font-medium truncate">{title || "Danh sách"}</span>
+            <span className="text-muted ml-auto shrink-0">{cols.length} cột</span>
+          </div>
+          {embItems.length > 0 && <EmbeddedActionStrip items={embItems} />}
+          {cols.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-muted">Chưa chọn cột</div>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-panel-2/60">
+                    {cols.map((c) => (
+                      <th
+                        key={c.name}
+                        className="px-2 py-1 text-left font-semibold text-muted border-b border-border/40 truncate max-w-[80px]"
+                      >
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 1, 2].map((row) => (
+                    <tr key={row} className="border-b border-border/20">
+                      {cols.map((c, ci) => (
+                        <td key={c.name} className="px-2 py-1">
+                          <div
+                            className="h-2 bg-muted/15 rounded"
+                            style={{ width: `${45 + ((row * 17 + ci * 13) % 45)}%` }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     const ent = entities.find((e) => e.id === entity);
     if (!ent) return <PreviewBox icon="Table" label={title ?? "List"} hint="Chưa bind entity" />;
 
@@ -3090,6 +3357,47 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
       title?: string;
       embeddedActions?: ActionBarItem[];
     };
+    // Widget bind DATASOURCE → preview trường theo datasource.
+    const formDsId = comp.config.dataSourceId as string | undefined;
+    if (formDsId !== undefined) {
+      const { cols, bound } = resolveDsCols(comp.config);
+      if (!bound)
+        return <PreviewBox icon="Edit" label={title ?? "Form"} hint="Nguồn dữ liệu chưa tải" />;
+      const embItems = embActs ?? [];
+      return (
+        <div className="h-full flex flex-col overflow-hidden p-2 gap-1 text-[10px]">
+          {embItems.length > 0 && (
+            <div className="-mx-2 -mt-2 mb-1 px-2 py-1 border-b border-border/30 bg-bg-soft/50 shrink-0">
+              <EmbeddedActionStrip items={embItems} />
+            </div>
+          )}
+          {title && (
+            <div className="text-[11px] font-medium text-text/80 mb-0.5 shrink-0">{title}</div>
+          )}
+          {cols.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-muted">Chưa chọn cột</div>
+          ) : (
+            <>
+              {cols.slice(0, 6).map((c) => (
+                <div key={c.name} className="flex items-center gap-1.5 shrink-0">
+                  <div className="w-[80px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="flex-1 h-5 border border-border/50 rounded bg-bg-soft flex items-center px-1.5">
+                    <div
+                      className="h-1.5 bg-muted/20 rounded"
+                      style={{ width: `${40 + ((c.name.length * 7) % 45)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {cols.length > 6 && (
+                <div className="text-muted mt-0.5">+{cols.length - 6} trường nữa…</div>
+              )}
+            </>
+          )}
+        </div>
+      );
+    }
+
     const ent = entities.find((e) => e.id === entity);
     if (!ent) return <PreviewBox icon="Edit" label={title ?? "Form"} hint="Chưa bind entity" />;
 
@@ -3154,6 +3462,56 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
       editable?: boolean;
       embeddedActions?: ActionBarItem[];
     };
+    // Widget bind DATASOURCE → preview trường theo datasource.
+    const detailDsId = comp.config.dataSourceId as string | undefined;
+    if (detailDsId !== undefined) {
+      const { cols, bound } = resolveDsCols(comp.config);
+      if (!bound)
+        return (
+          <PreviewBox icon="PanelRight" label={title ?? "Detail"} hint="Nguồn dữ liệu chưa tải" />
+        );
+      const embItems = embActs ?? [];
+      const shown = cols.slice(0, 6);
+      return (
+        <div className="h-full flex flex-col overflow-hidden">
+          <div className="px-2 py-1 border-b border-border/40 shrink-0 flex items-center gap-1.5 text-[10px]">
+            {editable ? (
+              <I.Edit size={11} className="text-accent shrink-0" />
+            ) : (
+              <I.PanelRight size={11} className="text-muted shrink-0" />
+            )}
+            <span className="font-medium truncate">{title || "Chi tiết"}</span>
+            {editable && (
+              <span className="ml-auto text-[9px] text-accent bg-accent/10 px-1.5 py-0.5 rounded shrink-0">
+                chỉnh sửa
+              </span>
+            )}
+          </div>
+          {embItems.length > 0 && <EmbeddedActionStrip items={embItems} />}
+          <div className="flex-1 overflow-hidden p-2 space-y-1 text-[10px]">
+            {shown.length === 0 ? (
+              <div className="flex items-center justify-center text-muted h-full">
+                Chưa chọn cột
+              </div>
+            ) : (
+              shown.map((c) => (
+                <div key={c.name} className="flex items-center gap-1.5 shrink-0">
+                  <div className="w-[72px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="flex-1 h-5 border border-border/60 rounded bg-bg flex items-center px-1.5">
+                    <div
+                      className="h-1.5 bg-muted/25 rounded"
+                      style={{ width: `${40 + ((c.name.length * 7) % 45)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+            {cols.length > 6 && <div className="text-muted">+{cols.length - 6} trường nữa…</div>}
+          </div>
+        </div>
+      );
+    }
+
     const ent = entities.find((e) => e.id === entity);
     if (!ent)
       return <PreviewBox icon="PanelRight" label={title ?? "Detail"} hint="Chưa bind entity" />;
@@ -3580,6 +3938,44 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
         <div className="shrink-0 px-2 py-1.5 border-t border-border/40 flex justify-between">
           <div className="h-5 w-12 rounded border border-border/40 bg-panel-2/50" />
           <div className="h-5 w-14 rounded bg-accent/20 border border-accent/30" />
+        </div>
+      </div>
+    );
+  }
+
+  // Bộ lọc (filter) — bind datasource, phát state cho widget khác (loadGate).
+  // Preview: ô dropdown stub theo labelField + caption value/family/emit.
+  if (comp.kind === "filter") {
+    const cfg = comp.config as {
+      title?: string;
+      labelField?: string;
+      valueField?: string;
+      familyField?: string;
+      dataSourceId?: string;
+      emitStateKey?: string;
+    };
+    const dsc = cfg.dataSourceId ? dataSourceContent[cfg.dataSourceId] : undefined;
+    const labelOf = (key?: string): string =>
+      !key ? "—" : (dsc?.fields?.find((x) => x.key === key)?.label ?? key);
+    return (
+      <div className="h-full flex flex-col overflow-hidden p-2 gap-1 text-[10px]">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <I.Search size={11} className="text-muted shrink-0" />
+          <span className="font-medium truncate">{cfg.title || "Bộ lọc"}</span>
+          {!dsc && (
+            <span className="ml-auto px-1 rounded-sm bg-warning/15 text-warning text-[9px] shrink-0">
+              chưa gắn nguồn
+            </span>
+          )}
+        </div>
+        <div className="h-6 border border-border/60 rounded bg-bg-soft flex items-center justify-between px-2 shrink-0">
+          <span className="truncate text-muted">{labelOf(cfg.labelField)}…</span>
+          <I.ChevronDown size={10} className="text-muted/60 shrink-0" />
+        </div>
+        <div className="text-[9px] text-muted/70 truncate shrink-0">
+          Lưu: {labelOf(cfg.valueField)}
+          {cfg.familyField ? ` · Nhóm: ${labelOf(cfg.familyField)}` : ""}
+          {cfg.emitStateKey ? ` · → ${cfg.emitStateKey}` : ""}
         </div>
       </div>
     );

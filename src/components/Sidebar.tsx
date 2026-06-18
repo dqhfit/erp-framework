@@ -1131,6 +1131,10 @@ export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const favs = useFavs();
+  // "Xem Portal": nếu đang mở Trình dựng 1 trang (/pages/<id>) → mở portal kèm
+  // trang đó chọn sẵn (?page=<id>) ở tab mới; ngược lại mở portal thường.
+  const editingPageId = pathname.match(/^\/pages\/([^/]+)/)?.[1];
+  const portalHref = editingPageId ? `/portal?page=${editingPageId}` : "/portal";
 
   // Trạng thái mở/đóng các section — NHỚ qua reload (localStorage). Merge với
   // defaults để key mới (thêm section sau này) vẫn có giá trị mặc định.
@@ -2355,13 +2359,16 @@ export function Sidebar() {
         {/* === User info + Đăng xuất === */}
         <div className="shrink-0 border-t border-border px-2 py-2 space-y-1.5">
           {/* Xem Portal (admin) — mở giao diện người dùng cuối ở TAB MỚI.
-             Dùng <a target="_blank"> để mở cửa sổ/tab mới, không rời SPA hiện tại. */}
+             Dùng <a target="_blank"> để mở cửa sổ/tab mới, không rời SPA hiện tại.
+             Đang sửa 1 trang → mở kèm trang đó được chọn sẵn (?page=<id>). */}
           {role === "admin" && (
             <a
-              href="/portal"
+              href={portalHref}
               target="_blank"
               rel="noopener noreferrer"
-              title="Xem Portal (mở tab mới)"
+              title={
+                editingPageId ? "Xem trang này trong Portal (tab mới)" : "Xem Portal (mở tab mới)"
+              }
               className={cn(
                 "flex items-center rounded-md text-muted hover:bg-hover/60 hover:text-text transition-colors",
                 collapsed ? "w-full h-9 justify-center" : "gap-2 px-2 py-1.5 text-[13px]",

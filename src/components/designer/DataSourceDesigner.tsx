@@ -213,6 +213,15 @@ export function DataSourceDesigner({ id }: { id: string }) {
   };
 
   const projection = cfg.fields;
+  // Cột ref (join) dùng làm NGUỒN snapshot cho field base (đóng băng giá trị khi
+  // đổi mã ref) — xem DataSourceField.snapshotFrom + ConsumerPage refFill.
+  // Gom theo quan hệ (alias) để dropdown snapshot phân biệt rõ từng ref khi 1
+  // bảng có NHIỀU ref (vd ngũ kim: material + sanpham).
+  const refCols = projection
+    .filter((f) => f.sourceRelationId !== "base")
+    .sort((a, b) =>
+      nodeAlias(a.sourceRelationId).localeCompare(nodeAlias(b.sourceRelationId), "vi"),
+    );
   const previewKeys =
     projection.length > 0 || aggregates.length > 0 || computed.length > 0
       ? [
@@ -389,6 +398,14 @@ export function DataSourceDesigner({ id }: { id: string }) {
                       <th className="px-2 py-1 text-left">Khóa (key)</th>
                       <th className="px-2 py-1 text-left">Nhãn</th>
                       <th className="px-2 py-1 text-center">Cho ghi</th>
+                      {refCols.length > 0 && (
+                        <th
+                          className="px-2 py-1 text-left"
+                          title="Đóng băng (lưu) giá trị từ cột ref khi đổi mã ref — làm nhật ký"
+                        >
+                          Snapshot ⇐
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -420,6 +437,29 @@ export function DataSourceDesigner({ id }: { id: string }) {
                             onChange={(e) => patchField(f.key, { writable: e.target.checked })}
                           />
                         </td>
+                        {refCols.length > 0 && (
+                          <td className="px-2 py-1">
+                            {f.sourceRelationId === "base" ? (
+                              <SearchableSelect
+                                className="w-44"
+                                value={f.snapshotFrom ?? ""}
+                                onChange={(v) =>
+                                  patchField(f.key, { snapshotFrom: v || undefined })
+                                }
+                                options={[
+                                  { value: "", label: "— không —" },
+                                  ...refCols.map((p) => ({
+                                    value: p.key,
+                                    // Tiền tố alias quan hệ → phân biệt từng ref (vd "material · Tên VT").
+                                    label: `${nodeAlias(p.sourceRelationId)} · ${p.label}`,
+                                  })),
+                                ]}
+                              />
+                            ) : (
+                              <span className="text-muted/40">—</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -429,6 +469,13 @@ export function DataSourceDesigner({ id }: { id: string }) {
             <p className="text-[11px] text-muted">
               Field gốc cho ghi → tạo/sửa record gốc. Field join chỉ cho ghi khi tick "Cho ghi" (ghi
               về record liên quan). Lọc/sắp xếp trên field join là gần đúng trong trang đã tải.
+              {refCols.length > 0 && (
+                <>
+                  {" "}
+                  <b>Snapshot ⇐</b>: chọn 1 cột ref để field base TỰ ĐIỀN + LƯU giá trị đó khi đổi
+                  mã ref (đóng băng làm nhật ký — không đổi theo ref về sau).
+                </>
+              )}
             </p>
           </Card>
 

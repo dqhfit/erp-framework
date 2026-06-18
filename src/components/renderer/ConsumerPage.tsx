@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createApiDataSource } from "@erp-framework/client";
@@ -309,25 +310,24 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
   // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị
   // NGAY (kể cả batch chưa lưu / prod mirror chặn ghi), không chờ server re-join.
-  const refFill = useCallback(
-    async (fieldName: string, value: string): Promise<Record<string, unknown>> => {
-      const meta = metaRef.current;
-      if (!meta) return {};
-      const f = meta.fields.find((x) => x.key === fieldName);
-      if (!f?.ref || !f.refValueField) return {};
-      const rels = meta.relations ?? [];
-      const rel =
-        rels.find((r) => r.fromField === f.sourceField && r.targetEntityId === f.ref) ??
-        rels.find((r) => r.fromField === f.sourceField);
-      if (!rel) return {};
-      const proj = meta.fields.filter((x) => x.sourceRelationId === rel.id && x.sourceField);
-      if (proj.length === 0) return {};
-      const overlay: Record<string, unknown> = {};
-      const v = String(value ?? "").trim();
-      if (!v) {
-        for (const p of proj) overlay[p.key] = "";
-        return overlay;
-      }
+  const refFill = useCallback(async (fieldName: string, value: string): Promise<RefFillResult> => {
+    const empty: RefFillResult = { overlay: {}, snapshot: {} };
+    const meta = metaRef.current;
+    if (!meta) return empty;
+    const f = meta.fields.find((x) => x.key === fieldName);
+    if (!f?.ref || !f.refValueField) return empty;
+    const rels = meta.relations ?? [];
+    const rel =
+      rels.find((r) => r.fromField === f.sourceField && r.targetEntityId === f.ref) ??
+      rels.find((r) => r.fromField === f.sourceField);
+    if (!rel) return empty;
+    const proj = meta.fields.filter((x) => x.sourceRelationId === rel.id && x.sourceField);
+    if (proj.length === 0) return empty;
+    const overlay: Record<string, unknown> = {};
+    const v = String(value ?? "").trim();
+    if (!v) {
+      for (const p of proj) overlay[p.key] = "";
+    } else {
       try {
         const res = await api.getRecords(f.ref, {
           filters: { [f.refValueField]: { op: "=", value: v } },
@@ -336,12 +336,25 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
         const rec = res.rows[0]?.data as Record<string, unknown> | undefined;
         for (const p of proj) overlay[p.key] = (rec ? rec[p.sourceField] : "") ?? "";
       } catch {
-        return {};
+        return empty;
       }
-      return overlay;
-    },
-    [],
-  );
+    }
+    // NHẬT KÝ (snapshot): cột BASE có `snapshotFrom` = key 1 cột projection vừa
+    // tính trong overlay → GHI (lưu) giá trị đó vào field base, đóng băng tại
+    // thời điểm chọn. Khác overlay (chỉ hiển thị, đổi theo ref về sau).
+    const snapshot: Record<string, string> = {};
+    for (const bf of meta.fields) {
+      if (
+        bf.sourceRelationId === "base" &&
+        bf.writable !== false &&
+        bf.snapshotFrom &&
+        Object.hasOwn(overlay, bf.snapshotFrom)
+      ) {
+        snapshot[bf.sourceField] = String(overlay[bf.snapshotFrom] ?? "");
+      }
+    }
+    return { overlay, snapshot };
+  }, []);
 
   return { rows, fields, loading, err, refFill };
 }
@@ -528,6 +541,13 @@ function useServerPagedRecords(opts: {
   };
 }
 
+/** Kết quả refFill: `overlay` = cột projection (hiển thị-only, đổi theo ref về
+ *  sau); `snapshot` = cột base có snapshotFrom (GHI vào pending để đóng băng). */
+export interface RefFillResult {
+  overlay: Record<string, unknown>;
+  snapshot: Record<string, string>;
+}
+
 export interface WidgetData {
   rows: Record<string, unknown>[];
   /** Field meta để render cột/label (entity fields HOẶC datasource flat fields). */
@@ -539,8 +559,8 @@ export interface WidgetData {
   create: (data: Record<string, unknown>) => Promise<void>;
   update: (id: string, data: Record<string, unknown>) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
-  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
+  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) + snapshot. */
+  refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
 }
 
 /* ── Hook hợp nhất — widget bind ENTITY (cfg.entity) hoặc DATASOURCE
@@ -927,6 +947,24 @@ async function runBatchSave(
   return { failed, errs, cancelled: false };
 }
 
+/** Nút ✕ "Bỏ dòng mới này" — gỡ 1 dòng MỚI nháp (chưa lưu). Dùng trong cột hành
+ *  động (khi lưới có) hoặc cột ✕ riêng (khi không có cột hành động). */
+function RemoveNewRowButton({ onRemove }: { onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Bỏ dòng mới này"
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
+      className="flex items-center justify-center w-5 h-5 rounded text-danger hover:bg-danger/10"
+    >
+      <I.X size={12} />
+    </button>
+  );
+}
+
 // ─── EditableListWidget — bảng chỉnh sửa inline (qua DataGrid xịn) ────────────
 
 interface EditableListWidgetProps {
@@ -964,7 +1002,12 @@ interface EditableListWidgetProps {
   /** Kiểu cột hành động: "popover" (nút ⋯, mặc định) | "inline" (nút Xem/Sửa/Xoá). */
   rowActionsStyle?: "inline" | "popover";
   /** Datasource: đổi field ref → overlay cột projection (Tên VT…) từ master. */
-  refFill?: (fieldName: string, value: string) => Promise<Record<string, unknown>>;
+  refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
+  /** Bật DÒNG "＋ Thêm dòng mới" trong lưới (cfg.addRowAtEnd). Chỉ tác dụng khi
+   *  batchEdit + onBulkCreate (mới có onAddRow). */
+  addRowAtEnd?: boolean;
+  /** Vị trí dòng thêm mới: đầu hay cuối lưới (cfg.addRowPos, mặc định "bottom"). */
+  addRowPos?: "top" | "bottom";
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -1034,6 +1077,8 @@ function EditableListWidget({
   rowActionsHidden,
   rowActionsStyle,
   refFill,
+  addRowAtEnd,
+  addRowPos,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1089,13 +1134,26 @@ function EditableListWidget({
     // Đổi field REF (mã vật tư…) → auto điền cột projection (Tên VT, Quy cách…)
     // từ record master vừa chọn — hiện NGAY (overlay), không chờ server re-join.
     if (refFill && visibleFields.find((f) => f.name === field)?.ref) {
-      void refFill(field, value).then((overlay) => {
-        if (Object.keys(overlay).length === 0) return;
-        setRefOverlay((prev) => {
-          const next = new Map(prev);
-          next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...overlay });
-          return next;
-        });
+      void refFill(field, value).then(({ overlay, snapshot }) => {
+        if (Object.keys(overlay).length > 0) {
+          setRefOverlay((prev) => {
+            const next = new Map(prev);
+            next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...overlay });
+            return next;
+          });
+        }
+        // NHẬT KÝ: cột base có snapshotFrom → ghi VÀO pending (sẽ LƯU) để đóng
+        // băng giá trị ref tại thời điểm chọn. Non-batch lưu ngay như ô thường.
+        if (Object.keys(snapshot).length > 0) {
+          setPending((prev) => {
+            const next = new Map(prev);
+            next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), ...snapshot });
+            return next;
+          });
+          if (!batchEdit) {
+            void onSave(rowId, snapshot).catch((e) => setSaveErr((e as Error).message));
+          }
+        }
       });
     }
     if (!batchEdit) {
@@ -1221,8 +1279,10 @@ function EditableListWidget({
         );
       },
     }));
-    // Cột đầu ✕ để bỏ dòng MỚI nháp (chỉ hiện khi đang có dòng mới chưa lưu).
-    if (newRows.length > 0) {
+    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỈ khi lưới KHÔNG có cột hành động.
+    // Có cột hành động (__rowacts__) → ✕ nằm TRONG cột đó (cell __isNew bên dưới).
+    const hasActionCol = !!(rowActions && rowActions.length > 0);
+    if (newRows.length > 0 && !hasActionCol) {
       cols.unshift({
         id: "__rmnew",
         header: "",
@@ -1232,19 +1292,7 @@ function EditableListWidget({
         cell: (ctx) => {
           const row = ctx.row.original as { id?: unknown; __isNew?: boolean };
           if (!row.__isNew) return null;
-          return (
-            <button
-              type="button"
-              title="Bỏ dòng mới này"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeRowRef.current(String(row.id));
-              }}
-              className="flex items-center justify-center w-5 h-5 rounded text-danger hover:bg-danger/10"
-            >
-              <I.X size={12} />
-            </button>
-          );
+          return <RemoveNewRowButton onRemove={() => removeRowRef.current(String(row.id))} />;
         },
       });
     }
@@ -1263,19 +1311,38 @@ function EditableListWidget({
         ),
         enableGrouping: false,
         enableSorting: false,
-        meta: { compact: true }, // giảm padding ô cho gọn
+        meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
         // PHẢI có size số (kể cả inline) → cột được GHIM (resize kéo nhỏ/rộng được +
         // không tự giãn theo nội dung). size undefined = table-auto, không kéo được.
         // Mặc định inline tính theo số nút; người dùng kéo đổi, width được nhớ.
         size: inline ? Math.min(48 + rowActions.length * 40, 240) : 28,
-        minSize: 36,
+        // Sàn hẹp: cột compact tự co theo NÚT (autofit COMPACT_CLAMP ~24-30px) —
+        // minSize cao sẽ kẹp ngược lại làm cột rộng hơn tổng bề rộng các nút.
+        minSize: 24,
         cell: (ctx) => {
-          const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
-          if (row.__isNew) return null;
+          const row = ctx.row.original as Record<string, unknown> & {
+            id?: unknown;
+            __isNew?: boolean;
+          };
+          // Dòng MỚI nháp → nút ✕ bỏ dòng ngay TRONG cột hành động (thay cho
+          // Xem/Sửa/Xoá của dòng đã lưu).
+          if (row.__isNew)
+            return (
+              <div className="flex items-center w-fit" onClick={(e) => e.stopPropagation()}>
+                <RemoveNewRowButton onRemove={() => removeRowRef.current(String(row.id))} />
+              </div>
+            );
           const bound = rowActions.map((a) => bindRowIdToAction(a, row.id));
           if (inline) {
             return (
-              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              // w-fit: co sát các nút (flex thường là block → giãn đầy ô, khiến
+              // autofit đo ra bề rộng Ô thay vì bề rộng NÚT). data-col-content:
+              // mốc để measureCol đo đúng cụm nút → cột bám sát tổng các nút.
+              <div
+                data-col-content=""
+                className="flex items-center gap-0.5 w-fit"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {bound.map((a) => (
                   <ActionWidget key={a.label} config={a} pageState={pageState} inline compact />
                 ))}
@@ -1449,6 +1516,8 @@ function EditableListWidget({
             onPasteCreate={onBulkCreate}
             pasteCreateDefaults={createDefaults}
             onAddRow={batchEdit && onBulkCreate ? addRow : undefined}
+            inlineAddRow={addRowAtEnd}
+            addRowPos={addRowPos}
             pageJump={pageJump}
             enableSelection={selectable}
           />
@@ -1883,6 +1952,7 @@ function ListWidget({
   loadGate,
   emptyStateShowsAll,
   columnGroups,
+  defaultGrouping,
   rowDetail,
   createForm,
   editForm,
@@ -1893,12 +1963,16 @@ function ListWidget({
   selectable,
   embeddedActions,
   embeddedFilters,
+  addRowAtEnd,
+  addRowPos,
 }: {
   entityId?: string;
   stateKey?: string;
   fields?: string[];
   /** Nhóm tiêu đề cột (banded header nhiều cấp). */
   columnGroups?: ColumnGroupNode[];
+  /** Gom HÀNG theo cột mặc định khi chưa có view lưu (vd ["phanloai"]). */
+  defaultGrouping?: string[];
   /** Override nhãn header theo cột (field name → header DQHF của form gốc).
    *  Ưu tiên hơn label DataSource (global) — cho phép mỗi page hiện đúng
    *  tiêu đề cột của form DQHF tương ứng. */
@@ -1969,6 +2043,11 @@ function ListWidget({
     options?: string;
     optionLabels?: Record<string, string>;
   }>;
+  /** Hiện DÒNG "＋ Thêm dòng mới" trong lưới (cfg.addRowAtEnd) — chỉ khi editable
+   *  + batchEdit (mới tạo được dòng nháp). */
+  addRowAtEnd?: boolean;
+  /** Vị trí dòng thêm mới: "top" | "bottom" (cfg.addRowPos, mặc định "bottom"). */
+  addRowPos?: "top" | "bottom";
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -2256,7 +2335,8 @@ function ListWidget({
     ? [
         {
           id: "__rowactions__",
-          header: () => "Hành động",
+          // Header chuỗi (không bọc hàm) → "Chọn cột hiển thị" hiện đúng "Hành động".
+          header: "Hành động",
           size: 96,
           enableSorting: false,
           cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
@@ -2317,15 +2397,23 @@ function ListWidget({
             // size số (kể cả inline) để cột được GHIM → kéo nhỏ/rộng được, không
             // tự giãn theo nội dung. Mặc định inline tính theo số nút; nhớ width sau kéo.
             size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
-            minSize: 36,
-            meta: { compact: true }, // giảm padding ô cho gọn
+            // Sàn hẹp để cột compact bám sát tổng bề rộng các nút (xem __rowacts__ ở
+            // EditableListWidget) — minSize cao kẹp ngược autofit làm cột rộng dư.
+            minSize: 24,
+            meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
               const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, rid));
               if (rowActsInline) {
                 return (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  // w-fit + data-col-content: co sát cụm nút để autofit đo đúng
+                  // bề rộng các nút (flex thường giãn đầy ô → cột rộng/lệch).
+                  <div
+                    data-col-content=""
+                    className="flex items-center gap-1 w-fit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {bound.map((a) => (
                       <ActionWidget key={a.label} config={a} pageState={pageState} inline />
                     ))}
@@ -2453,6 +2541,8 @@ function ListWidget({
         rowActionsHidden={rowActionsHidden}
         rowActionsStyle={rowActionsStyle}
         refFill={refFill}
+        addRowAtEnd={addRowAtEnd}
+        addRowPos={addRowPos}
       />
     );
   }
@@ -2515,6 +2605,7 @@ function ListWidget({
             data={filteredRows}
             columns={columns}
             columnGroups={columnGroups}
+            defaultGrouping={defaultGrouping}
             emptyText={filterFromState ? t("widget.select_master") : t("widget.empty_records")}
             stateKey={stateKey}
             onRowClick={onRowClick}
@@ -3919,6 +4010,7 @@ function RenderSubWidget({
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
+        defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
@@ -3939,6 +4031,8 @@ function RenderSubWidget({
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
+        addRowAtEnd={cfg.addRowAtEnd === true}
+        addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
       />
     );
   }
@@ -4470,6 +4564,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         fields={cfg.fields as string[] | undefined}
         columnLabels={cfg.columnLabels as Record<string, string> | undefined}
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
+        defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
         filters={cfg.filters as FilterNode | null | undefined}
@@ -4497,6 +4592,8 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
+        addRowAtEnd={cfg.addRowAtEnd === true}
+        addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
         // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
         embeddedActions={cfg.createForm ? embActs : undefined}
@@ -4582,12 +4679,29 @@ function clearPersonalLayoutLS(key: string): void {
   }
 }
 
-export function ConsumerPage({ pageId }: { pageId: string }) {
+export function ConsumerPage({
+  pageId,
+  chromeless = false,
+  active = false,
+}: {
+  pageId: string;
+  /** Portal: bỏ thanh tiêu đề trong trang; đẩy nút điều khiển bố cục lên header
+   *  portal (slot #portal-page-actions) qua createPortal. */
+  chromeless?: boolean;
+  /** Trang đang xem (chỉ trang active mới đẩy nút lên slot — tránh chồng nút). */
+  active?: boolean;
+}) {
   const t = useT();
   const isMobile = useIsMobile();
   const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
   const userId = useAuth((s) => s.user?.id ?? null);
+
+  // Slot header portal cho nút điều khiển bố cục khi chromeless.
+  const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (chromeless) setActionSlot(document.getElementById("portal-page-actions"));
+  }, [chromeless]);
 
   const baseComponents: PageComponent[] = Array.isArray(content)
     ? (content as PageComponent[])
@@ -4826,61 +4940,77 @@ export function ConsumerPage({ pageId }: { pageId: string }) {
     stopAutoScroll();
   };
 
+  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — dùng cho cả thanh tiêu đề
+  // (thường) lẫn header portal (chromeless, qua createPortal).
+  const headerControls = (
+    <>
+      {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
+      {hasPersonal && !layoutEditing && !isMobile && (
+        <button
+          type="button"
+          onClick={handleReset}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
+          title="Xoá bố cục cá nhân, trở về bố cục mặc định của trang"
+        >
+          <I.Undo size={13} />
+          Mặc định
+        </button>
+      )}
+
+      {/* Nút Sắp xếp / Xong — ẩn trên mobile (kéo-thả không khả dụng) */}
+      {isMobile ? null : layoutEditing ? (
+        <button
+          type="button"
+          onClick={exitEdit}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
+        >
+          <I.Check size={13} />
+          Xong
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={enterEdit}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-hover text-muted"
+        >
+          <I.Grip size={13} />
+          Sắp xếp
+        </button>
+      )}
+    </>
+  );
+
   return (
     <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
         <div className="py-2 sm:py-3 px-px">
-          {/* Header */}
-          <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
-            <div>
-              <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
-              {layoutEditing ? (
-                <div className="text-sm text-accent font-medium mt-0.5">
-                  Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
-                </div>
-              ) : hasPersonal ? (
-                <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
-              ) : null}
+          {/* Header — ẩn khi chromeless (portal): bỏ tiêu đề + thanh; nút điều
+              khiển bố cục chuyển lên header portal. */}
+          {!chromeless && (
+            <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
+                {layoutEditing ? (
+                  <div className="text-sm text-accent font-medium mt-0.5">
+                    Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
+                  </div>
+                ) : hasPersonal ? (
+                  <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
+                ) : null}
+              </div>
+              <div className="shrink-0 flex items-center gap-2">{headerControls}</div>
             </div>
-
-            <div className="shrink-0 flex items-center gap-2">
-              {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
-              {hasPersonal && !layoutEditing && !isMobile && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-danger/10 hover:border-danger/40 hover:text-danger text-muted transition-colors"
-                  title="Xoá bố cục cá nhân, trở về bố cục mặc định của trang"
-                >
-                  <I.Undo size={13} />
-                  Mặc định
-                </button>
-              )}
-
-              {/* Nút Sắp xếp / Xong — ẩn trên mobile (kéo-thả không khả dụng) */}
-              {isMobile ? null : layoutEditing ? (
-                <button
-                  type="button"
-                  onClick={exitEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent text-white hover:bg-accent/90 font-medium"
-                >
-                  <I.Check size={13} />
-                  Xong
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={enterEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border hover:bg-hover text-muted"
-                >
-                  <I.Grip size={13} />
-                  Sắp xếp
-                </button>
-              )}
-            </div>
-          </div>
+          )}
+          {/* Chromeless (portal): CHỈ trang đang xem đẩy nút lên header portal. */}
+          {chromeless &&
+            active &&
+            actionSlot &&
+            createPortal(
+              <div className="flex items-center gap-1.5">{headerControls}</div>,
+              actionSlot,
+            )}
 
           {displayComps.length === 0 ? (
             <div className="card p-12 text-center text-muted text-sm">{t("widget.empty_page")}</div>

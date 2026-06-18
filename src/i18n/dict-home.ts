@@ -65,6 +65,11 @@ export const homeVi: Dict = {
 
   "home.cmd_hint": "Mở Command Palette để tìm nhanh mọi thứ.",
 
+  // phím tắt (side rail)
+  "home.shortcuts_title": "Phím tắt",
+  "home.shortcuts_customize": "Tuỳ chỉnh",
+  "home.shortcuts_palette_alt": "Hoặc mở nhanh Command Palette",
+
   "home.guide_title": "Hướng dẫn sử dụng",
   "home.guide_desc": "Cách dùng hệ thống, từng bước",
 };
@@ -129,6 +134,11 @@ export const homeEn: Dict = {
   "home.activity_title": "System Activity",
 
   "home.cmd_hint": "Open Command Palette to search everything quickly.",
+
+  // keyboard shortcuts (side rail)
+  "home.shortcuts_title": "Shortcuts",
+  "home.shortcuts_customize": "Customize",
+  "home.shortcuts_palette_alt": "Or quickly open Command Palette",
 
   "home.guide_title": "User Guide",
   "home.guide_desc": "Step-by-step system usage",

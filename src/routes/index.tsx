@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { useFavs } from "@/components/Sidebar";
 import { Button, Input, Kbd, Modal, Textarea } from "@/components/ui";
+import { useResolvedShortcuts } from "@/hooks/useShortcut";
 import { useT } from "@/hooks/useT";
 import type { IconName } from "@/lib/object-types";
+import { formatCombo } from "@/lib/shortcuts";
 import { useAuth } from "@/stores/auth";
 import type { SidebarFavItem } from "@/stores/preferences";
 import { useUI } from "@/stores/ui";
@@ -177,6 +179,10 @@ function Home() {
       .sort((a, b) => b.count - a.count);
   }, [recordCounts, uEntities]);
   const totalRecords = useMemo(() => entityCounts.reduce((s, e) => s + e.count, 0), [entityCounts]);
+
+  // Phím tắt toàn cục — combo ĐÃ ÁP tuỳ chỉnh tài khoản (override) hoặc mặc định.
+  // Hiển thị ở side-rail; bấm "Tuỳ chỉnh" sang /settings/shortcuts để đổi.
+  const globalShortcuts = useResolvedShortcuts().filter((s) => s.category === "global");
 
   // Truy cập nhanh — ghim công việc thường xuyên (DÙNG CHUNG ★ với sidebar).
   const favs = useFavs();
@@ -541,11 +547,30 @@ function Home() {
               </ul>
             </div>
 
-            <div className="card p-4 bg-bg-soft">
-              <div className="text-sm mb-3">{t("home.cmd_hint")}</div>
-              <div className="flex items-center gap-1">
-                <Kbd>⌘</Kbd>
-                <Kbd>K</Kbd>
+            {/* Phím tắt — combo thực tế (đã áp tuỳ chỉnh tài khoản), link sang cấu hình */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-semibold flex items-center gap-2">
+                  <I.Command size={14} className="text-accent" /> {t("home.shortcuts_title")}
+                </div>
+                <Link
+                  to="/settings/shortcuts"
+                  className="text-xs text-muted hover:text-accent transition-colors"
+                >
+                  {t("home.shortcuts_customize")}
+                </Link>
+              </div>
+              <ul className="space-y-2">
+                {globalShortcuts.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-muted truncate">{s.label}</span>
+                    <Kbd>{formatCombo(s.combo)}</Kbd>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-3 text-xs text-muted">
+                <span className="truncate">{t("home.shortcuts_palette_alt")}</span>
+                <Kbd>/</Kbd>
               </div>
             </div>
 

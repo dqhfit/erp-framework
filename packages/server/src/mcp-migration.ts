@@ -17,6 +17,7 @@
 import {
   dataSources,
   entities,
+  entityRecords,
   legacyMenuMap,
   migrationFullJobs,
   migrationFullJobTables,
@@ -26,9 +27,11 @@ import {
   mssqlConnections,
   pages,
 } from "@erp-framework/db";
+import { MssqlClient } from "@erp-framework/mssql-client";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { authApiKey } from "./api-key-auth";
+import { decryptSecret } from "./crypto";
 import { resolveList } from "./datasource-resolver";
 import { dsConfig as dataSourceConfigSchema } from "./datasources-router";
 import type { DB } from "./db";
@@ -36,6 +39,7 @@ import { dropTableForEntity, renamePromotedTablesForCompany } from "./entity-pro
 import { assertIdent, type EntityStorage, syncEntityTableSchema } from "./entity-table-ddl";
 import { enableModuleSyncForCompany } from "./migration-delta-sync";
 import { createFullImportJob, type FullJobItem } from "./migration-full-import";
+import { findMigratedEntityBySourceTable } from "./migration-migrated-set";
 import { enqueueMigrationJob } from "./migration-worker";
 import { getModuleProc, getModuleProcByName } from "./module-procs";
 import { isHybridTablesEnabled } from "./record-store";
@@ -776,6 +780,55 @@ const TOOLS: ToolDef[] = [
             "true = bỏ qua denylist SYS_* (import bảng hệ thống có chủ đích, đã duyệt). " +
             "Chỉ import cột khai trong fields — bỏ cột nhạy cảm bằng cách không liệt kê chúng.",
         },
+      },
+      required: ["connectionId", "items"],
+    },
+  },
+  {
+    name: "migration_quick_migrate_tables",
+    description:
+      "Migrate nhanh bảng MSSQL vào ERP bằng SELECT TOP N (không cần PK). " +
+      "Dùng cho bảng không có primary key. Tạo entity EAV + import dữ liệu ngay (sync). " +
+      "Trả kết quả tức thời (không cần poll job). Tối đa 100k dòng/bảng.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        connectionId: { type: "string", description: "UUID kết nối MSSQL" },
+        items: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          items: {
+            type: "object",
+            properties: {
+              tableName: { type: "string", description: "vd 'dbo.quytrinh_lanuv'" },
+              entityName: { type: "string", description: "^[a-z][a-z0-9_]*$" },
+              label: { type: "string" },
+              fields: {
+                type: "array",
+                description: "Để rỗng [] = import tất cả cột",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    label: { type: "string" },
+                    type: { type: "string" },
+                  },
+                  required: ["name", "label", "type"],
+                },
+              },
+            },
+            required: ["tableName", "entityName", "label", "fields"],
+          },
+        },
+        limitPerTable: {
+          type: "number",
+          minimum: 1,
+          maximum: 100000,
+          description: "Số dòng tối đa mỗi bảng (mặc định 10000)",
+        },
+        dryRun: { type: "boolean", description: "true = chỉ đọc MSSQL, không ghi vào ERP" },
       },
       required: ["connectionId", "items"],
     },
@@ -2402,6 +2455,183 @@ async function callMigrationTool(
         companyId,
       });
       return { jobId, tables: items.length, targetTier, batchSize };
+    }
+
+    /* ── migration_quick_migrate_tables (apply) ──────────────── */
+    case "migration_quick_migrate_tables": {
+      if (!apiKeyCreatedBy) {
+        throw new McpError(
+          "API key không có người tạo (created_by null). Tạo key mới từ tài khoản admin.",
+          -32603,
+        );
+      }
+      const connectionId = String(args.connectionId ?? "");
+      if (!connectionId) throw new McpError("connectionId bắt buộc");
+      const rawItems = Array.isArray(args.items) ? args.items : [];
+      if (rawItems.length === 0) throw new McpError("items bắt buộc (>=1 bảng)");
+      const limitPerTable = Math.min(Math.max(Number(args.limitPerTable ?? 10_000), 1), 100_000);
+      const dryRun = args.dryRun === true;
+
+      const [connRow] = await db
+        .select()
+        .from(mssqlConnections)
+        .where(
+          and(eq(mssqlConnections.companyId, companyId), eq(mssqlConnections.id, connectionId)),
+        )
+        .limit(1);
+      if (!connRow) throw new McpError("Connection MSSQL không tồn tại hoặc thuộc company khác.");
+
+      const mssqlClient = MssqlClient.fromConfig({
+        host: connRow.host,
+        port: connRow.port,
+        database: connRow.database,
+        username: connRow.username,
+        password: decryptSecret(connRow.passwordEnc),
+        encrypt: connRow.encrypt,
+        trustServerCert: connRow.trustServerCert,
+        allowWrite: false,
+        requestTimeoutMs: 60_000,
+      });
+      await mssqlClient.connect();
+
+      const results: Array<Record<string, unknown>> = [];
+      try {
+        for (const rawItem of rawItems) {
+          const it = asObj(rawItem);
+          const tableName = String(it.tableName ?? "");
+          const entityName = String(it.entityName ?? "");
+          if (!/^[a-z][a-z0-9_]*$/.test(entityName)) {
+            results.push({
+              tableName,
+              entityName,
+              ok: false,
+              error: `entityName "${entityName}" sai định dạng`,
+            });
+            continue;
+          }
+          const label = String(it.label ?? entityName);
+          const fields = (Array.isArray(it.fields) ? it.fields : []).map((f) => {
+            const fo = asObj(f);
+            return {
+              name: String(fo.name ?? ""),
+              label: String(fo.label ?? fo.name ?? ""),
+              type: String(fo.type ?? "text"),
+            };
+          });
+
+          const t0 = Date.now();
+          try {
+            const rows = await mssqlClient.bulkRead<Record<string, unknown>>(tableName, {
+              limit: limitPerTable,
+            });
+            const truncated = rows.length >= limitPerTable;
+
+            const fieldNames = new Set(fields.map((f) => f.name.toLowerCase()));
+            const mapped = rows.map((r) => {
+              const data: Record<string, unknown> = {};
+              for (const [k, v] of Object.entries(r)) {
+                const key = k.toLowerCase();
+                if (fieldNames.size === 0 || fieldNames.has(key)) data[key] = v;
+              }
+              return data;
+            });
+
+            let rowsInserted = 0;
+            let entityId: string | null = null;
+            if (!dryRun) {
+              const bySource = await findMigratedEntityBySourceTable(db, companyId, tableName);
+              if (bySource) {
+                entityId = bySource.id;
+              } else {
+                const [ex] = await db
+                  .select({ id: entities.id })
+                  .from(entities)
+                  .where(and(eq(entities.companyId, companyId), eq(entities.name, entityName)))
+                  .limit(1);
+                if (ex) {
+                  entityId = ex.id;
+                } else {
+                  const [ins] = await db
+                    .insert(entities)
+                    .values({
+                      companyId,
+                      name: entityName,
+                      label,
+                      fields,
+                      meta: {
+                        source: {
+                          kind: "migration",
+                          connectionId,
+                          mssqlTable: tableName,
+                          importedAt: new Date().toISOString(),
+                          importedBy: apiKeyCreatedBy,
+                        },
+                      },
+                    })
+                    .returning({ id: entities.id });
+                  if (!ins) throw new Error(`Tạo entity "${entityName}" thất bại.`);
+                  entityId = ins.id;
+                }
+              }
+
+              if (mapped.length > 0 && entityId) {
+                const eid = entityId;
+                const inserted = await db
+                  .insert(entityRecords)
+                  .values(
+                    mapped.map((data) => ({
+                      companyId,
+                      entityId: eid,
+                      data,
+                      createdBy: apiKeyCreatedBy,
+                    })),
+                  )
+                  .returning({ id: entityRecords.id });
+                rowsInserted = inserted.length;
+
+                await db
+                  .update(entities)
+                  .set({
+                    meta: sql`coalesce(${entities.meta}, '{}'::jsonb) || ${JSON.stringify({
+                      source: {
+                        kind: "migration",
+                        connectionId,
+                        mssqlTable: tableName,
+                        importedAt: new Date().toISOString(),
+                        importedBy: apiKeyCreatedBy,
+                        rowsLastImported: rowsInserted,
+                      },
+                    })}::jsonb`,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(entities.id, eid));
+              }
+            }
+
+            results.push({
+              tableName,
+              entityName,
+              ok: true,
+              rowsRead: rows.length,
+              rowsInserted: dryRun ? 0 : rowsInserted,
+              truncated,
+              dryRun,
+              durationMs: Date.now() - t0,
+            });
+          } catch (e) {
+            results.push({
+              tableName,
+              entityName,
+              ok: false,
+              error: (e as Error).message,
+              durationMs: Date.now() - t0,
+            });
+          }
+        }
+      } finally {
+        await mssqlClient.close();
+      }
+      return results;
     }
 
     default:
