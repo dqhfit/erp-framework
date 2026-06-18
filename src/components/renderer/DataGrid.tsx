@@ -1113,82 +1113,93 @@ export function DataGrid<T>({
               <I.ChevronDown size={10} />
             </button>
             {colChooserOpen && (
-              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-h-[320px] overflow-auto py-1">
-                {table
-                  .getAllLeafColumns()
-                  .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
-                  .map((col) => {
-                    const pin = col.getIsPinned();
-                    return (
-                      <div
-                        key={col.id}
-                        draggable
-                        onDragStart={() => setDragColId(col.id)}
-                        onDragOver={(e) => {
-                          if (dragColId && dragColId !== col.id) e.preventDefault();
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (dragColId && dragColId !== col.id) {
-                            const cur = table.getState().columnOrder;
-                            const order = cur.length
-                              ? [...cur]
-                              : table.getAllLeafColumns().map((c) => c.id);
-                            const from = order.indexOf(dragColId);
-                            const to = order.indexOf(col.id);
-                            if (from !== -1 && to !== -1) {
-                              order.splice(to, 0, ...order.splice(from, 1));
-                              setColumnOrder(order);
+              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1">
+                {/* w-max: bề rộng = hàng dài nhất (tên cột dài không bị cắt) → cuộn
+                    NGANG trong khung (max-w) thay vì truncate. min-w-full để hàng
+                    ngắn vẫn phủ hết bề rộng (hover liền mạch). */}
+                <div className="w-max min-w-full">
+                  {table
+                    .getAllLeafColumns()
+                    .filter((c) => c.id !== "__expand__" && c.id !== "__select__")
+                    .map((col) => {
+                      const pin = col.getIsPinned();
+                      return (
+                        <div
+                          key={col.id}
+                          draggable
+                          onDragStart={() => setDragColId(col.id)}
+                          onDragOver={(e) => {
+                            if (dragColId && dragColId !== col.id) e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragColId && dragColId !== col.id) {
+                              const cur = table.getState().columnOrder;
+                              const order = cur.length
+                                ? [...cur]
+                                : table.getAllLeafColumns().map((c) => c.id);
+                              const from = order.indexOf(dragColId);
+                              const to = order.indexOf(col.id);
+                              if (from !== -1 && to !== -1) {
+                                order.splice(to, 0, ...order.splice(from, 1));
+                                setColumnOrder(order);
+                              }
                             }
-                          }
-                          setDragColId(null);
-                        }}
-                        onDragEnd={() => setDragColId(null)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40",
-                          dragColId === col.id && "opacity-40",
-                        )}
-                      >
-                        <I.Grip size={11} className="shrink-0 cursor-grab text-muted/40" />
-                        <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={col.getIsVisible()}
-                            onChange={col.getToggleVisibilityHandler()}
-                            disabled={!col.getCanHide()}
-                          />
-                          <span className="truncate">
-                            {col.columnDef.header?.toString() ?? col.id}
-                          </span>
-                        </label>
-                        {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            type="button"
-                            title={t("datagrid.pin_left")}
-                            onClick={() => col.pin(pin === "left" ? false : "left")}
-                            className={cn(
-                              "p-0.5 rounded hover:bg-hover/60",
-                              pin === "left" ? "text-accent" : "text-muted/50",
-                            )}
-                          >
-                            <I.PanelLeft size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            title={t("datagrid.pin_right")}
-                            onClick={() => col.pin(pin === "right" ? false : "right")}
-                            className={cn(
-                              "p-0.5 rounded hover:bg-hover/60",
-                              pin === "right" ? "text-accent" : "text-muted/50",
-                            )}
-                          >
-                            <I.PanelRight size={12} />
-                          </button>
+                            setDragColId(null);
+                          }}
+                          onDragEnd={() => setDragColId(null)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40",
+                            dragColId === col.id && "opacity-40",
+                          )}
+                        >
+                          <I.Grip size={11} className="shrink-0 cursor-grab text-muted/40" />
+                          <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={col.getIsVisible()}
+                              onChange={col.getToggleVisibilityHandler()}
+                              disabled={!col.getCanHide()}
+                            />
+                            <span className="whitespace-nowrap">
+                              {/* Chỉ hiện header dạng CHUỖI. Header là HÀM/JSX (vd cột
+                                  hành động () => <span>) → toString() ra mã JSX rác;
+                                  fallback tên field kỹ thuật (techName) hoặc id. */}
+                              {typeof col.columnDef.header === "string"
+                                ? col.columnDef.header
+                                : ((col.columnDef.meta as GridColMeta | undefined)?.techName ??
+                                  col.id)}
+                            </span>
+                          </label>
+                          {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              title={t("datagrid.pin_left")}
+                              onClick={() => col.pin(pin === "left" ? false : "left")}
+                              className={cn(
+                                "p-0.5 rounded hover:bg-hover/60",
+                                pin === "left" ? "text-accent" : "text-muted/50",
+                              )}
+                            >
+                              <I.PanelLeft size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              title={t("datagrid.pin_right")}
+                              onClick={() => col.pin(pin === "right" ? false : "right")}
+                              className={cn(
+                                "p-0.5 rounded hover:bg-hover/60",
+                                pin === "right" ? "text-accent" : "text-muted/50",
+                              )}
+                            >
+                              <I.PanelRight size={12} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                </div>
               </div>
             )}
           </div>
