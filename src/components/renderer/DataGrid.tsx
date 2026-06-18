@@ -154,10 +154,16 @@ function sizedWidth<T>(column: Column<T>): CSSProperties {
   return column.columnDef.size == null ? { width: w } : { width: w, minWidth: w, maxWidth: w };
 }
 
-/** Kẹp bề rộng autofit: +đệm, sàn 48, trần 360 (tránh cột quá hẹp/quá rộng). */
-function clampColW(w: number): number {
-  return Math.max(48, Math.min(Math.round(w) + 8, 360));
+/** Kẹp bề rộng autofit: +đệm, trần 360. Cột CHỮ sàn 48 + đệm 8 (tránh quá hẹp /
+ *  clip chữ). Cột COMPACT (hành động/checkbox — nội dung là nút icon, không phải
+ *  chữ) dùng sàn 24 + đệm 2 để BÁM SÁT tổng bề rộng các nút, không phình thừa. */
+function clampColW(w: number, opts?: { min?: number; pad?: number }): number {
+  const min = opts?.min ?? 48;
+  const pad = opts?.pad ?? 8;
+  return Math.max(min, Math.min(Math.round(w) + pad, 360));
 }
+/** Tham số clamp cho cột compact (nội dung nút icon) — bám sát, không sàn 48. */
+const COMPACT_CLAMP = { min: 24, pad: 2 } as const;
 
 /** Nhóm tiêu đề cột (banded header kiểu DQHF) — gộp nhiều cột con dưới 1 dải
  *  tiêu đề bao trên. Con là tên field (lá) hoặc nhóm con (lồng nhiều cấp).
@@ -700,9 +706,14 @@ export function DataGrid<T>({
   const autofitColumn = useCallback(
     (colId: string) => {
       const w = measureCol(colId);
-      if (w != null) setColumnSizing((s) => ({ ...s, [colId]: clampColW(w) }));
+      if (w == null) return;
+      const compact = (table.getColumn(colId)?.columnDef.meta as GridColMeta | undefined)?.compact;
+      setColumnSizing((s) => ({
+        ...s,
+        [colId]: clampColW(w, compact ? COMPACT_CLAMP : undefined),
+      }));
     },
-    [measureCol],
+    [measureCol, table],
   );
   /** Autofit TẤT CẢ cột đang hiện. */
   const autofitAll = useCallback(() => {
@@ -710,7 +721,9 @@ export function DataGrid<T>({
     const next: ColumnSizingState = {};
     for (const col of table.getVisibleLeafColumns()) {
       const w = measureCol(col.id);
-      if (w != null) next[col.id] = clampColW(w);
+      if (w == null) continue;
+      const compact = (col.columnDef.meta as GridColMeta | undefined)?.compact;
+      next[col.id] = clampColW(w, compact ? COMPACT_CLAMP : undefined);
     }
     if (Object.keys(next).length) setColumnSizing((s) => ({ ...s, ...next }));
   }, [measureCol, table]);

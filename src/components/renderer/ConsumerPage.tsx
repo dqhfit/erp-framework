@@ -1268,7 +1268,9 @@ function EditableListWidget({
         // không tự giãn theo nội dung). size undefined = table-auto, không kéo được.
         // Mặc định inline tính theo số nút; người dùng kéo đổi, width được nhớ.
         size: inline ? Math.min(48 + rowActions.length * 40, 240) : 28,
-        minSize: 36,
+        // Sàn hẹp: cột compact tự co theo NÚT (autofit COMPACT_CLAMP ~24-30px) —
+        // minSize cao sẽ kẹp ngược lại làm cột rộng hơn tổng bề rộng các nút.
+        minSize: 24,
         cell: (ctx) => {
           const row = ctx.row.original as Record<string, unknown> & { __isNew?: boolean };
           if (row.__isNew) return null;
@@ -2317,7 +2319,9 @@ function ListWidget({
             // size số (kể cả inline) để cột được GHIM → kéo nhỏ/rộng được, không
             // tự giãn theo nội dung. Mặc định inline tính theo số nút; nhớ width sau kéo.
             size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
-            minSize: 36,
+            // Sàn hẹp để cột compact bám sát tổng bề rộng các nút (xem __rowacts__ ở
+            // EditableListWidget) — minSize cao kẹp ngược autofit làm cột rộng dư.
+            minSize: 24,
             meta: { compact: true }, // giảm padding ô cho gọn
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
