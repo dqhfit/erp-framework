@@ -1329,7 +1329,7 @@ export function DataGrid<T>({
               <I.ChevronDown size={10} />
             </button>
             {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[150px]">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[200px]">
                 <button
                   type="button"
                   onClick={() => doExport("xlsx")}
