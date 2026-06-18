@@ -5214,7 +5214,7 @@ export function ConsumerPage({
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
-        <div className="py-2 sm:py-3 px-px">
+        <div className="py-0.5 px-px">
           {/* Chromeless (portal): CHỈ trang đang xem đẩy nút lên header portal. */}
           {chromeless &&
             active &&
