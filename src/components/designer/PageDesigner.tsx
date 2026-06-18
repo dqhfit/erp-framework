@@ -439,6 +439,7 @@ export function PageDesigner({ pageId }: Props) {
   } | null>(null);
   const [resizingId, setResizingId] = useState<string | null>(null);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+  const [splitCellSel, setSplitCellSel] = useState<string | null>(null);
   const { tools: mcpTools } = useMcpClient();
   const setPageContent = useUserObjects((s) => s.setPageContent);
   const publishPage = useUserObjects((s) => s.publishPage);
@@ -494,6 +495,11 @@ export function PageDesigner({ pageId }: Props) {
   useEffect(() => {
     setSelected(null);
   }, [pageId]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: splitCellSel intentionally not in deps
+  useEffect(() => {
+    setSplitCellSel(null);
+  }, [selected]);
 
   useEffect(() => {
     if (!selected) return;
@@ -1233,39 +1239,53 @@ export function PageDesigner({ pageId }: Props) {
                   }}
                   onSplitPanelDrop={
                     c.kind === "split"
-                      ? (panel, srcId) => {
+                      ? (cellId, srcId) => {
                           const src = components.find((cc) => cc.id === srcId);
                           if (!src) return;
-                          const panelKey = `panel${panel}` as "panelA" | "panelB" | "panelC";
-                          const existing = (c.config[panelKey] ?? {}) as Record<string, unknown>;
+                          const gridCfg = migrateToGrid(c.config as Record<string, unknown>);
+                          const updatedCells = gridCfg.cells.map((cell) =>
+                            cell.id === cellId
+                              ? {
+                                  ...cell,
+                                  kind: src.kind,
+                                  entity: src.config.entity as string | undefined,
+                                  dataSourceId: src.config.dataSourceId as string | undefined,
+                                  title: src.config.title as string | undefined,
+                                  fields: src.config.fields as string[] | undefined,
+                                  columnLabels: src.config.columnLabels as
+                                    | Record<string, string>
+                                    | undefined,
+                                  columnGroups: src.config.columnGroups as unknown[],
+                                  serverPaging: src.config.serverPaging as boolean | undefined,
+                                  editable: src.config.editable as boolean | undefined,
+                                  batchEdit: src.config.batchEdit as boolean | undefined,
+                                  excelMode: src.config.excelMode as boolean | undefined,
+                                  multiSelect: src.config.multiSelect as boolean | undefined,
+                                  loadGate: src.config.loadGate as string | undefined,
+                                  rowLimit: src.config.rowLimit as number | undefined,
+                                  pageSize: src.config.pageSize as number | undefined,
+                                  defaultSort: src.config.defaultSort as
+                                    | { field: string; dir: "asc" | "desc" }
+                                    | undefined,
+                                }
+                              : cell,
+                          );
                           update(c.id, {
-                            config: {
-                              ...c.config,
-                              [panelKey]: {
-                                linkField: existing.linkField, // giữ cấu hình liên kết cũ
-                                kind: src.kind,
-                                entity: src.config.entity,
-                                dataSourceId: src.config.dataSourceId,
-                                title: src.config.title,
-                                fields: src.config.fields,
-                                columnLabels: src.config.columnLabels,
-                                columnGroups: src.config.columnGroups,
-                                serverPaging: src.config.serverPaging,
-                                editable: src.config.editable,
-                                batchEdit: src.config.batchEdit,
-                                excelMode: src.config.excelMode,
-                                loadGate: src.config.loadGate,
-                                defaultSort: src.config.defaultSort,
-                                multiSelect: src.config.multiSelect,
-                                rowLimit: src.config.rowLimit,
-                                pageSize: src.config.pageSize,
-                              },
-                            },
+                            config: { ...gridCfg, cells: updatedCells },
                           });
                           setSelected(c.id);
                         }
                       : undefined
                   }
+                  onSplitCellClick={
+                    c.kind === "split"
+                      ? (cellId) => {
+                          setSplitCellSel(cellId);
+                          setSelected(c.id);
+                        }
+                      : undefined
+                  }
+                  splitCellSelId={c.kind === "split" && selected === c.id ? splitCellSel : null}
                 />
               ))}
             </div>
@@ -2416,183 +2436,232 @@ export function PageDesigner({ pageId }: Props) {
                       );
                     })()}
 
-                  {/* ── Split Panel config ── */}
+                  {/* ── Split Grid config (N×M) ── */}
                   {inspTab === "bocuc" &&
                     sel.kind === "split" &&
                     (() => {
-                      type PanelCfg = {
-                        kind?: string;
-                        entity?: string;
-                        title?: string;
-                        linkField?: string;
-                      };
-                      const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both";
-                        ratio?: number;
-                        ratioV?: number;
-                        panelA?: PanelCfg;
-                        panelB?: PanelCfg;
-                        panelC?: PanelCfg;
-                      };
-                      const panelA = splitCfg.panelA ?? {};
-                      const panelB = splitCfg.panelB ?? {};
-                      const panelC = splitCfg.panelC ?? {};
-                      const orientation = splitCfg.orientation ?? "h";
-                      const ratio = splitCfg.ratio ?? 40;
-                      const ratioV = splitCfg.ratioV ?? 50;
-                      const subKinds = ["list", "detail", "form", "chart", "kanban"];
-                      const updateSplit = (patch: typeof splitCfg) =>
-                        update(sel.id, { config: { ...sel.config, ...patch } });
-                      const entA = entities.find((e) => e.id === panelA.entity);
-                      const entC = entities.find((e) => e.id === panelC.entity);
+                      const rawCfg = sel.config as Record<string, unknown>;
+                      const gridCfg: SplitGridConfig = migrateToGrid(rawCfg);
+                      const { cols, rows, cells } = gridCfg;
+                      const selCell = splitCellSel
+                        ? cells.find((c) => c.id === splitCellSel)
+                        : null;
 
-                      const PanelFields = ({
-                        label,
-                        panel,
-                        linkedEnt,
-                        defaultKind = "list",
-                        onUpdate,
-                      }: {
-                        label: string;
-                        panel: PanelCfg;
-                        linkedEnt?: (typeof entities)[0];
-                        defaultKind?: string;
-                        onUpdate: (p: PanelCfg) => void;
-                      }) => (
-                        <>
-                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                            {label}
+                      const updateGrid = (next: SplitGridConfig) =>
+                        update(sel.id, { config: next });
+
+                      const updateCell = (patch: Partial<SplitGridCell>) => {
+                        if (!selCell) return;
+                        updateGrid({
+                          ...gridCfg,
+                          cells: cells.map((c) => (c.id === selCell.id ? { ...c, ...patch } : c)),
+                        });
+                      };
+
+                      const subKinds = ["list", "detail", "form", "chart", "kanban"];
+                      const selEnt = selCell?.entity
+                        ? entities.find((e) => e.id === selCell.entity)
+                        : undefined;
+
+                      // Build grid visual rows
+                      const gridRows: Array<Array<SplitGridCell | null>> = [];
+                      const rendered = new Set<string>();
+                      for (let r = 1; r <= rows; r++) {
+                        const rowCells: Array<SplitGridCell | null> = [];
+                        for (let c = 1; c <= cols; c++) {
+                          const cell = cellAt(cells, c, r);
+                          if (cell && !rendered.has(cell.id) && cell.col === c && cell.row === r) {
+                            rowCells.push(cell);
+                            rendered.add(cell.id);
+                          } else if (cell && rendered.has(cell.id)) {
+                            // covered by spanning cell — skip (don't push)
+                          } else {
+                            rowCells.push(null);
+                          }
+                        }
+                        gridRows.push(rowCells);
+                      }
+
+                      return (
+                        <div className="space-y-3 p-1">
+                          {/* Grid size controls */}
+                          <FormField label="Cột">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(removeGridCol(gridCfg))}
+                                disabled={cols <= 1}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Minus size={12} />
+                              </button>
+                              <span className="text-sm font-medium w-6 text-center">{cols}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(addGridCol(gridCfg))}
+                                disabled={cols >= 6}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Plus size={12} />
+                              </button>
+                              <span className="text-muted text-xs ml-2">Hàng:</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(removeGridRow(gridCfg))}
+                                disabled={rows <= 1}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Minus size={12} />
+                              </button>
+                              <span className="text-sm font-medium w-6 text-center">{rows}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(addGridRow(gridCfg))}
+                                disabled={rows >= 6}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Plus size={12} />
+                              </button>
+                            </div>
+                          </FormField>
+
+                          {/* Grid visual */}
+                          <div className="border border-border rounded overflow-hidden">
+                            <table className="w-full border-collapse table-fixed">
+                              <tbody>
+                                {gridRows.map((row, ri) => (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: row index stable
+                                  <tr key={ri}>
+                                    {row.map((cell, ci) =>
+                                      cell ? (
+                                        <td
+                                          // biome-ignore lint/suspicious/noArrayIndexKey: ci stable within row
+                                          key={ci}
+                                          colSpan={cell.colSpan}
+                                          rowSpan={cell.rowSpan}
+                                          onClick={() => setSplitCellSel(cell.id)}
+                                          className={cn(
+                                            "border border-border/40 px-1.5 py-1 text-[10px] cursor-pointer select-none truncate transition-colors",
+                                            splitCellSel === cell.id
+                                              ? "bg-accent/20 text-accent font-medium"
+                                              : "hover:bg-hover/50 text-muted",
+                                          )}
+                                        >
+                                          {cell.entity
+                                            ? (entities.find((e) => e.id === cell.entity)?.name ??
+                                              "?")
+                                            : cell.dataSourceId
+                                              ? "DS"
+                                              : `${cell.row},${cell.col}`}
+                                        </td>
+                                      ) : null,
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
-                          <FormField label="Loại">
-                            <Select
-                              value={panel.kind ?? defaultKind}
-                              onChange={(e) => onUpdate({ ...panel, kind: e.target.value })}
-                            >
-                              {subKinds.map((k) => (
-                                <option key={k} value={k}>
-                                  {k}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Entity">
-                            <Select
-                              value={panel.entity ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
-                            >
-                              <option value="">— chọn entity —</option>
-                              {entities.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                  {e.name}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Tiêu đề">
-                            <Input
-                              placeholder="Để trống = tên entity"
-                              value={panel.title ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, title: e.target.value })}
-                            />
-                          </FormField>
-                          {(panel.kind === "list" ||
-                            panel.kind === "chart" ||
-                            panel.kind === "kanban" ||
-                            panel.kind === "form") && (
-                            <FormField label="Field liên kết (→ A)">
-                              {linkedEnt ? (
-                                <Select
-                                  value={panel.linkField ?? ""}
-                                  onChange={(e) =>
-                                    onUpdate({ ...panel, linkField: e.target.value })
-                                  }
+
+                          {/* Merge / split tools */}
+                          {selCell && (
+                            <div className="flex gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(mergeRight(gridCfg, selCell.id))}
+                                disabled={selCell.col + selCell.colSpan - 1 >= cols}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.ArrowRight size={11} /> Gộp phải
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(mergeDown(gridCfg, selCell.id))}
+                                disabled={selCell.row + selCell.rowSpan - 1 >= rows}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.ArrowDown size={11} /> Gộp xuống
+                              </button>
+                              {(selCell.colSpan > 1 || selCell.rowSpan > 1) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateGrid(splitCell(gridCfg, selCell.id));
+                                    setSplitCellSel(null);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover text-warning border-warning/30"
                                 >
-                                  <option value="">— chọn field —</option>
-                                  {linkedEnt.fields.map((f) => (
-                                    <option key={f.name} value={f.name}>
-                                      {fieldBoth(f)}
-                                      {f.type === "lookup" || f.type === "multi-lookup" ? " ↗" : ""}
+                                  <I.X size={11} /> Tách ô
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Per-cell config */}
+                          {selCell && (
+                            <div className="border-t border-border pt-3 space-y-3">
+                              <div className="text-xs font-semibold text-muted">
+                                Ô {selCell.row},{selCell.col}
+                                {(selCell.colSpan > 1 || selCell.rowSpan > 1) &&
+                                  ` (span ${selCell.colSpan}×${selCell.rowSpan})`}
+                              </div>
+                              <FormField label="Loại">
+                                <Select
+                                  value={selCell.kind ?? "list"}
+                                  onChange={(e) => updateCell({ kind: e.target.value })}
+                                >
+                                  {subKinds.map((k) => (
+                                    <option key={k} value={k}>
+                                      {k}
                                     </option>
                                   ))}
                                 </Select>
-                              ) : (
-                                <div className="text-[11px] text-muted italic px-1">
-                                  Bind entity trước
-                                </div>
-                              )}
-                            </FormField>
-                          )}
-                          {panel.kind === "detail" && entA && (
-                            <div className="text-[11px] text-muted italic px-1">
-                              Hiển thị record chọn từ Panel A ({entA.name})
+                              </FormField>
+                              <FormField label="Entity">
+                                <Select
+                                  value={selCell.entity ?? ""}
+                                  onChange={(e) =>
+                                    updateCell({ entity: e.target.value || undefined })
+                                  }
+                                >
+                                  <option value="">— chọn entity —</option>
+                                  {entities.map((e) => (
+                                    <option key={e.id} value={e.id}>
+                                      {e.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Tiêu đề">
+                                <Input
+                                  value={selCell.title ?? ""}
+                                  placeholder={selEnt?.name ?? ""}
+                                  onChange={(e) =>
+                                    updateCell({ title: e.target.value || undefined })
+                                  }
+                                />
+                              </FormField>
+                              {selCell.kind &&
+                                ["detail", "form", "chart", "kanban"].includes(selCell.kind) &&
+                                selEnt && (
+                                  <FormField label="Field liên kết">
+                                    <Select
+                                      value={selCell.linkField ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({ linkField: e.target.value || undefined })
+                                      }
+                                    >
+                                      <option value="">— chọn field —</option>
+                                      {selEnt.fields.map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </FormField>
+                                )}
                             </div>
                           )}
-                        </>
-                      );
-
-                      return (
-                        <>
-                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                            Layout
-                          </div>
-                          <FormField label="Hướng">
-                            <Select
-                              value={orientation}
-                              onChange={(e) =>
-                                updateSplit({ orientation: e.target.value as "h" | "v" | "both" })
-                              }
-                            >
-                              <option value="h">Ngang (trái / phải)</option>
-                              <option value="v">Dọc (trên / dưới)</option>
-                              <option value="both">Cả hai (A | B trên / C dưới)</option>
-                            </Select>
-                          </FormField>
-                          <FormField label={`Tỉ lệ ngang A: ${ratio}%`}>
-                            <input
-                              type="range"
-                              min={20}
-                              max={80}
-                              value={ratio}
-                              onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
-                              className="w-full accent-accent"
-                            />
-                          </FormField>
-                          {orientation === "both" && (
-                            <FormField label={`Tỉ lệ dọc B/C: ${ratioV}%`}>
-                              <input
-                                type="range"
-                                min={20}
-                                max={80}
-                                value={ratioV}
-                                onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
-                                className="w-full accent-accent"
-                              />
-                            </FormField>
-                          )}
-                          <PanelFields
-                            label="Panel A"
-                            panel={panelA}
-                            linkedEnt={undefined}
-                            defaultKind="list"
-                            onUpdate={(p) => updateSplit({ panelA: p })}
-                          />
-                          <PanelFields
-                            label="Panel B"
-                            panel={panelB}
-                            linkedEnt={entities.find((e) => e.id === panelB.entity)}
-                            defaultKind="detail"
-                            onUpdate={(p) => updateSplit({ panelB: p })}
-                          />
-                          {orientation === "both" && (
-                            <PanelFields
-                              label="Panel C"
-                              panel={panelC}
-                              linkedEnt={entC}
-                              defaultKind="list"
-                              onUpdate={(p) => updateSplit({ panelC: p })}
-                            />
-                          )}
-                        </>
+                        </div>
                       );
                     })()}
 
@@ -3050,7 +3119,9 @@ interface ComponentCardProps {
   onDragOver: () => void;
   onDragLeave: () => void;
   onResizeStart: (dir: "e" | "s" | "se", mouseX: number, mouseY: number) => void;
-  onSplitPanelDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
+  onSplitPanelDrop?: (panel: string, srcId: string) => void;
+  onSplitCellClick?: (cellId: string) => void;
+  splitCellSelId?: string | null;
 }
 function ComponentCard({
   comp,
@@ -3068,6 +3139,8 @@ function ComponentCard({
   onDragLeave,
   onResizeStart,
   onSplitPanelDrop,
+  onSplitCellClick,
+  splitCellSelId,
 }: ComponentCardProps) {
   // Widget nhập chưa gắn nguồn nào (entity/options/stateKey) → badge nhắc.
   const unbound =
@@ -3140,11 +3213,21 @@ function ComponentCard({
       <div className="flex-1 overflow-hidden min-h-0">
         {isScalableKind(comp.kind) ? (
           <ScaleToFit>
-            <ComponentBody comp={comp} onSplitPanelDrop={onSplitPanelDrop} />
+            <ComponentBody
+              comp={comp}
+              onSplitPanelDrop={onSplitPanelDrop}
+              onSplitCellClick={onSplitCellClick}
+              splitCellSelId={splitCellSelId}
+            />
           </ScaleToFit>
         ) : (
           // Danh sách/tương tác: giữ nguyên kích thước, tự cuộn — không scale.
-          <ComponentBody comp={comp} onSplitPanelDrop={onSplitPanelDrop} />
+          <ComponentBody
+            comp={comp}
+            onSplitPanelDrop={onSplitPanelDrop}
+            onSplitCellClick={onSplitCellClick}
+            splitCellSelId={splitCellSelId}
+          />
         )}
       </div>
       {!previewMode && (
@@ -3230,6 +3313,196 @@ function PreviewBox({ icon, label, hint }: { icon: IconName; label: string; hint
   );
 }
 
+// ===== Split Grid types + helpers =====
+
+export type SplitGridCell = {
+  id: string;
+  col: number;
+  row: number;
+  colSpan: number;
+  rowSpan: number;
+  kind?: string;
+  entity?: string;
+  dataSourceId?: string;
+  title?: string;
+  linkField?: string;
+  fields?: string[] | null;
+  columnLabels?: Record<string, string>;
+  columnGroups?: unknown[];
+  serverPaging?: boolean;
+  editable?: boolean;
+  batchEdit?: boolean;
+  excelMode?: boolean;
+  multiSelect?: boolean;
+  loadGate?: string;
+  rowLimit?: number;
+  pageSize?: number;
+  defaultSort?: { field: string; dir: "asc" | "desc" };
+};
+
+export type SplitGridConfig = {
+  cols: number;
+  rows: number;
+  colFr?: number[];
+  rowFr?: number[];
+  cells: SplitGridCell[];
+};
+
+function isGridConfig(cfg: Record<string, unknown>): cfg is SplitGridConfig {
+  return Array.isArray(cfg.cells);
+}
+
+function cellAt(cells: SplitGridCell[], col: number, row: number): SplitGridCell | undefined {
+  return cells.find(
+    (c) => col >= c.col && col < c.col + c.colSpan && row >= c.row && row < c.row + c.rowSpan,
+  );
+}
+
+function newCell(col: number, row: number): SplitGridCell {
+  return {
+    id: `r${row}c${col}_${Math.random().toString(36).slice(2, 6)}`,
+    col,
+    row,
+    colSpan: 1,
+    rowSpan: 1,
+  };
+}
+
+export function defaultGrid(cols: number, rows: number): SplitGridConfig {
+  const cells: SplitGridCell[] = [];
+  for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) cells.push(newCell(c, r));
+  return { cols, rows, cells };
+}
+
+function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
+  if (isGridConfig(cfg)) return cfg as SplitGridConfig;
+  const orientation = (cfg.orientation as string) ?? "h";
+  const pA = (cfg.panelA as Partial<SplitGridCell>) ?? {};
+  const pB = (cfg.panelB as Partial<SplitGridCell>) ?? {};
+  const pC = (cfg.panelC as Partial<SplitGridCell>) ?? {};
+  if (orientation === "v") {
+    return {
+      cols: 1,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  if (orientation === "both") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 2 },
+        { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  return {
+    cols: 2,
+    rows: 1,
+    cells: [
+      { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+      { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+    ],
+  };
+}
+
+function addGridCol(cfg: SplitGridConfig): SplitGridConfig {
+  const newCol = cfg.cols + 1;
+  const extra: SplitGridCell[] = [];
+  for (let r = 1; r <= cfg.rows; r++) {
+    if (!cellAt(cfg.cells, newCol, r)) extra.push(newCell(newCol, r));
+  }
+  return { ...cfg, cols: newCol, cells: [...cfg.cells, ...extra] };
+}
+
+function removeGridCol(cfg: SplitGridConfig): SplitGridConfig {
+  if (cfg.cols <= 1) return cfg;
+  const col = cfg.cols;
+  const cells = cfg.cells
+    .filter((c) => c.col !== col)
+    .map((c) => {
+      const end = c.col + c.colSpan - 1;
+      if (end >= col) return { ...c, colSpan: col - c.col };
+      return c;
+    })
+    .filter((c) => c.colSpan > 0);
+  return { ...cfg, cols: col - 1, cells };
+}
+
+function addGridRow(cfg: SplitGridConfig): SplitGridConfig {
+  const newRow = cfg.rows + 1;
+  const extra: SplitGridCell[] = [];
+  for (let c = 1; c <= cfg.cols; c++) {
+    if (!cellAt(cfg.cells, c, newRow)) extra.push(newCell(c, newRow));
+  }
+  return { ...cfg, rows: newRow, cells: [...cfg.cells, ...extra] };
+}
+
+function removeGridRow(cfg: SplitGridConfig): SplitGridConfig {
+  if (cfg.rows <= 1) return cfg;
+  const row = cfg.rows;
+  const cells = cfg.cells
+    .filter((c) => c.row !== row)
+    .map((c) => {
+      const end = c.row + c.rowSpan - 1;
+      if (end >= row) return { ...c, rowSpan: row - c.row };
+      return c;
+    })
+    .filter((c) => c.rowSpan > 0);
+  return { ...cfg, rows: row - 1, cells };
+}
+
+function mergeRight(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell) return cfg;
+  const rightCol = cell.col + cell.colSpan;
+  if (rightCol > cfg.cols) return cfg;
+  const rightCell = cellAt(cfg.cells, rightCol, cell.row);
+  if (!rightCell || rightCell.rowSpan !== cell.rowSpan || rightCell.col !== rightCol) return cfg;
+  return {
+    ...cfg,
+    cells: cfg.cells
+      .filter((c) => c.id !== rightCell.id)
+      .map((c) => (c.id === cellId ? { ...c, colSpan: c.colSpan + rightCell.colSpan } : c)),
+  };
+}
+
+function mergeDown(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell) return cfg;
+  const belowRow = cell.row + cell.rowSpan;
+  if (belowRow > cfg.rows) return cfg;
+  const belowCell = cellAt(cfg.cells, cell.col, belowRow);
+  if (!belowCell || belowCell.colSpan !== cell.colSpan || belowCell.row !== belowRow) return cfg;
+  return {
+    ...cfg,
+    cells: cfg.cells
+      .filter((c) => c.id !== belowCell.id)
+      .map((c) => (c.id === cellId ? { ...c, rowSpan: c.rowSpan + belowCell.rowSpan } : c)),
+  };
+}
+
+function splitCell(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell || (cell.colSpan === 1 && cell.rowSpan === 1)) return cfg;
+  const newCells: SplitGridCell[] = [];
+  for (let r = cell.row; r < cell.row + cell.rowSpan; r++) {
+    for (let c = cell.col; c < cell.col + cell.colSpan; c++) {
+      if (r === cell.row && c === cell.col) {
+        newCells.push({ ...cell, colSpan: 1, rowSpan: 1 });
+      } else {
+        newCells.push(newCell(c, r));
+      }
+    }
+  }
+  return { ...cfg, cells: [...cfg.cells.filter((c) => c.id !== cellId), ...newCells] };
+}
+
 /** Vùng thả component vào 1 panel của Split — hiển thị highlight khi kéo vào. */
 function SplitPanelDropZone({
   panelKey,
@@ -3238,10 +3511,10 @@ function SplitPanelDropZone({
   onDrop,
   children,
 }: {
-  panelKey: "A" | "B" | "C";
+  panelKey: string;
   className?: string;
   style?: React.CSSProperties;
-  onDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
+  onDrop?: (panel: string, srcId: string) => void;
   children: React.ReactNode;
 }) {
   const [over, setOver] = useState(false);
@@ -3273,7 +3546,7 @@ function SplitPanelDropZone({
       {over && (
         <div className="absolute inset-0 flex items-center justify-center bg-accent/15 pointer-events-none z-10 rounded">
           <span className="text-[10px] font-semibold text-accent bg-bg/90 px-2 py-0.5 rounded shadow">
-            Thả vào panel {panelKey}
+            Thả vào đây
           </span>
         </div>
       )}
@@ -3284,9 +3557,13 @@ function SplitPanelDropZone({
 function ComponentBody({
   comp,
   onSplitPanelDrop,
+  onSplitCellClick,
+  splitCellSelId,
 }: {
   comp: PageComponent;
-  onSplitPanelDrop?: (panel: "A" | "B" | "C", srcId: string) => void;
+  onSplitPanelDrop?: (panel: string, srcId: string) => void;
+  onSplitCellClick?: (cellId: string) => void;
+  splitCellSelId?: string | null;
 }) {
   const entities = useUserObjects((s) => s.entities);
   const dataSourceContent = useUserObjects((s) => s.dataSourceContent);
@@ -3782,133 +4059,81 @@ function ComponentBody({
   }
 
   if (comp.kind === "split") {
-    const {
-      orientation = "h",
-      ratio = 40,
-      ratioV = 50,
-      panelA,
-      panelB,
-      panelC,
-    } = comp.config as {
-      orientation?: string;
-      ratio?: number;
-      ratioV?: number;
-      panelA?: { kind?: string; entity?: string; title?: string };
-      panelB?: { kind?: string; entity?: string; title?: string };
-      panelC?: { kind?: string; entity?: string; title?: string };
-    };
-    const entA = entities.find((e) => e.id === panelA?.entity);
-    const entB = entities.find((e) => e.id === panelB?.entity);
-    const entC = entities.find((e) => e.id === panelC?.entity);
-    const isBoth = orientation === "both";
-    const isH = orientation !== "v";
-
-    const PanelPreview = ({
-      label,
-      ent,
-      title,
-      kind,
-      bg,
-    }: {
-      label: string;
-      ent?: (typeof entities)[0];
-      title?: string;
-      kind?: string;
-      bg: string;
-    }) => (
-      <div className={`flex flex-col overflow-hidden h-full ${bg}`}>
-        <div className="px-1.5 py-0.5 border-b border-border/30 shrink-0 flex items-center gap-1">
-          <span className="font-bold text-[8px] text-muted uppercase">{label}</span>
-          {ent && <span className="text-muted truncate text-[9px]">{title ?? ent.name}</span>}
-          {kind && <span className="ml-auto text-[8px] text-muted/50">{kind}</span>}
-        </div>
-        {ent ? (
-          <div className="flex-1 flex flex-col gap-0.5 p-1">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-2.5 bg-muted/15 rounded" />
-            ))}
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-[9px] text-muted/60">
-            Chưa bind
-          </div>
-        )}
-      </div>
-    );
-
-    if (isBoth) {
-      return (
-        <div className="h-full flex flex-row overflow-hidden text-[10px]">
-          <SplitPanelDropZone
-            panelKey="A"
-            className="overflow-hidden border-r border-border/40"
-            style={{ width: `${ratio}%` }}
-            onDrop={onSplitPanelDrop}
-          >
-            <PanelPreview
-              label="A"
-              ent={entA}
-              title={panelA?.title}
-              kind={panelA?.kind}
-              bg="bg-accent/5"
-            />
-          </SplitPanelDropZone>
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <SplitPanelDropZone
-              panelKey="B"
-              className="overflow-hidden border-b border-border/40"
-              style={{ height: `${ratioV}%` }}
-              onDrop={onSplitPanelDrop}
-            >
-              <PanelPreview
-                label="B"
-                ent={entB}
-                title={panelB?.title}
-                kind={panelB?.kind}
-                bg="bg-panel-2/30"
-              />
-            </SplitPanelDropZone>
-            <SplitPanelDropZone
-              panelKey="C"
-              className="flex-1 overflow-hidden"
-              onDrop={onSplitPanelDrop}
-            >
-              <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
-            </SplitPanelDropZone>
-          </div>
-        </div>
-      );
-    }
+    const rawCfg = comp.config as Record<string, unknown>;
+    const gridCfg: SplitGridConfig = migrateToGrid(rawCfg);
+    const { cols, rows, cells } = gridCfg;
+    const colFr = gridCfg.colFr ?? Array(cols).fill(1);
+    const rowFr = gridCfg.rowFr ?? Array(rows).fill(1);
 
     return (
-      <div className={`h-full flex ${isH ? "flex-row" : "flex-col"} overflow-hidden text-[10px]`}>
-        <SplitPanelDropZone
-          panelKey="A"
-          className={`overflow-hidden border-border/40 ${isH ? "border-r" : "border-b"}`}
-          style={{ [isH ? "width" : "height"]: `${ratio}%` }}
-          onDrop={onSplitPanelDrop}
-        >
-          <PanelPreview
-            label="A"
-            ent={entA}
-            title={panelA?.title}
-            kind={panelA?.kind}
-            bg="bg-accent/5"
-          />
-        </SplitPanelDropZone>
-        <SplitPanelDropZone
-          panelKey="B"
-          className="flex-1 overflow-hidden"
-          onDrop={onSplitPanelDrop}
-        >
-          <PanelPreview
-            label="B"
-            ent={entB}
-            title={panelB?.title}
-            kind={panelB?.kind}
-            bg="bg-panel-2/30"
-          />
-        </SplitPanelDropZone>
+      <div
+        className="h-full w-full overflow-hidden"
+        style={{
+          display: "grid",
+          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+        }}
+      >
+        {cells.map((cell) => {
+          const ent = entities.find((e) => e.id === cell.entity);
+          const isSelected = splitCellSelId === cell.id;
+          return (
+            <SplitPanelDropZone
+              key={cell.id}
+              panelKey={cell.id}
+              style={{
+                gridColumn: `${cell.col} / span ${cell.colSpan}`,
+                gridRow: `${cell.row} / span ${cell.rowSpan}`,
+                border: "1px solid hsl(var(--border) / 0.4)",
+              }}
+              onDrop={onSplitPanelDrop}
+              className={cn(isSelected && "ring-2 ring-inset ring-accent")}
+            >
+              <div
+                className="h-full flex flex-col overflow-hidden text-[10px] cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSplitCellClick?.(cell.id);
+                }}
+              >
+                <div className="px-1.5 py-0.5 border-b border-border/30 shrink-0 flex items-center gap-1 bg-panel/50">
+                  {ent ? (
+                    <>
+                      <span className="truncate text-[9px] text-muted">
+                        {cell.title ?? ent.name}
+                      </span>
+                      <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                        {cell.kind ?? "list"}
+                      </span>
+                    </>
+                  ) : cell.dataSourceId ? (
+                    <>
+                      <span className="truncate text-[9px] text-muted">
+                        {cell.title ?? "Datasource"}
+                      </span>
+                      <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                        {cell.kind ?? "list"}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[9px] text-muted/50 italic">Chưa bind</span>
+                  )}
+                </div>
+                {ent || cell.dataSourceId ? (
+                  <div className="flex-1 flex flex-col gap-0.5 p-1">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-2 bg-muted/15 rounded" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-[9px] text-muted/40">
+                    {cell.col},{cell.row}
+                  </div>
+                )}
+              </div>
+            </SplitPanelDropZone>
+          );
+        })}
       </div>
     );
   }

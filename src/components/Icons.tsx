@@ -582,6 +582,11 @@ export const I = {
       <path d="M5 12h14M13 5l7 7-7 7" />
     </Icon>
   ),
+  ArrowDown: (p: IP) => (
+    <Icon {...p}>
+      <path d="M12 5v14M5 13l7 7 7-7" />
+    </Icon>
+  ),
   Tag: (p: IP) => (
     <Icon {...p}>
       <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8Z" />

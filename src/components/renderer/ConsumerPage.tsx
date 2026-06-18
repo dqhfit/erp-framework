@@ -4024,6 +4024,14 @@ type SplitPanelCfg = {
   defaultSort?: { field: string; dir: "asc" | "desc" };
 };
 
+type SplitGridCell = SplitPanelCfg & {
+  id: string;
+  col: number;
+  row: number;
+  colSpan: number;
+  rowSpan: number;
+};
+
 function useDragRatio(
   initValue: number,
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -4160,30 +4168,73 @@ function RenderSubWidget({
 
 function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
-  const orientation = (cfg.orientation as string) ?? "h";
-  const initRatio = (cfg.ratio as number) ?? 40;
-  const initRatioV = (cfg.ratioV as number) ?? 50;
-  const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
-  const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
-  const panelC = (cfg.panelC as SplitPanelCfg | undefined) ?? {};
+  const isGridFormat = Array.isArray(cfg.cells);
 
-  const splitKey = `split_${comp.id}_sel`;
-  const kindA = panelA.kind ?? "list";
-  const kindB = panelB.kind ?? "detail";
-  const kindC = panelC.kind ?? "list";
-
+  // All hooks must be called unconditionally (React rules of hooks)
   const containerRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
+  const initRatio = isGridFormat ? 40 : ((cfg.ratio as number) ?? 40);
+  const initRatioV = isGridFormat ? 50 : ((cfg.ratioV as number) ?? 50);
   const [ratioH, onDragH] = useDragRatio(initRatio, containerRef, "h");
   const [ratioV, onDragV] = useDragRatio(initRatioV, rightRef, "v");
 
+  const splitKey = `split_${comp.id}_sel`;
+
+  if (isGridFormat) {
+    const cols = cfg.cols as number;
+    const rows = cfg.rows as number;
+    const cells = cfg.cells as SplitGridCell[];
+    const colFr = (cfg.colFr as number[] | undefined) ?? Array(cols).fill(1);
+    const rowFr = (cfg.rowFr as number[] | undefined) ?? Array(rows).fill(1);
+
+    return (
+      <div
+        className="h-full w-full overflow-hidden"
+        style={{
+          display: "grid",
+          gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+          gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+        }}
+      >
+        {cells.map((cell) => {
+          const kind = cell.kind ?? "list";
+          const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
+          return (
+            <div
+              key={cell.id}
+              className="overflow-hidden"
+              style={{
+                gridColumn: `${cell.col} / span ${cell.colSpan}`,
+                gridRow: `${cell.row} / span ${cell.rowSpan}`,
+              }}
+            >
+              {cell.entity || cell.dataSourceId ? (
+                <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-muted/50">
+                  Chưa bind
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Old format
+  const orientation = (cfg.orientation as string) ?? "h";
+  const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
+  const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
+  const panelC = (cfg.panelC as SplitPanelCfg | undefined) ?? {};
+  const kindA = panelA.kind ?? "list";
+  const kindB = panelB.kind ?? "detail";
+  const kindC = panelC.kind ?? "list";
   const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey);
   const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey);
   const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey);
-
   const handleCls = (axis: "h" | "v") =>
     `shrink-0 ${axis === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
-
   if (orientation === "both") {
     return (
       <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
@@ -4203,7 +4254,6 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
       </div>
     );
   }
-
   const isH = orientation !== "v";
   return (
     <div
@@ -4214,7 +4264,7 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
         <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
       </div>
       <div onMouseDown={onDragH} className={handleCls(isH ? "h" : "v")} />
-      <div className="overflow-hidden flex-1">
+      <div className="flex-1 overflow-hidden">
         <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
       </div>
     </div>
