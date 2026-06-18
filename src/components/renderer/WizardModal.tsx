@@ -99,6 +99,13 @@ interface Props {
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
+  // DEBUG — xoá sau khi tìm ra bug
+  const _onCancel = (...a: unknown[]) => { console.trace("[WizardModal] onCancel", ...a); onCancel(); };
+  const _onDone = (d: Record<string, unknown>) => { console.trace("[WizardModal] onDone", d); onDone(d); };
+  useEffect(() => {
+    console.log("[WizardModal] mounted");
+    return () => { console.trace("[WizardModal] UNMOUNTED"); };
+  }, []);
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
   // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/
@@ -270,7 +277,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
   if (wizardSteps.length === 0) {
     return (
-      <Modal open onClose={onCancel} title={step.title || "Wizard"} width={540}>
+      <Modal open onClose={_onCancel} title={step.title || "Wizard"} width={540}>
         <p className="text-sm text-muted text-center py-6">Wizard chưa cấu hình bước nào.</p>
       </Modal>
     );
@@ -386,7 +393,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const goNext = async () => {
     // Chế độ XEM (chỉ đọc): chỉ điều hướng giữa các bước, KHÔNG lưu gì.
     if (readOnly) {
-      if (isLast) onCancel();
+      if (isLast) _onCancel();
       else setActiveIdx((i) => i + 1);
       return;
     }
@@ -702,7 +709,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   return (
     <Modal
       open
-      onClose={onCancel}
+      onClose={_onCancel}
       title={step.title || "Wizard"}
       width={
         wizardSteps.some((s) => s.detail)
@@ -1004,7 +1011,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             variant="ghost"
             onClick={() => {
               if (activeIdx === 0) {
-                onCancel();
+                _onCancel();
               } else {
                 setErr("");
                 setActiveIdx((i) => i - 1);
