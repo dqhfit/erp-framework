@@ -46,7 +46,7 @@ function buildRowData(
     const v = vals[f.name];
     if (v === undefined) continue;
     if (f.type === "boolean" || f.type === "bool") {
-      if (v === "true") out[f.name] = true;
+      out[f.name] = v === "true";
       continue;
     }
     if (v.trim() === "") continue;
