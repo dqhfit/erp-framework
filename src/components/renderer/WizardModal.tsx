@@ -651,9 +651,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           </span>
           <span className="text-xs text-muted truncate min-w-0">
             {form[f.name]
-              ? form[f.name].startsWith("data:")
+              ? String(form[f.name]).startsWith("data:")
                 ? "File đã chọn"
-                : (form[f.name].split("/").pop() ?? form[f.name])
+                : (String(form[f.name]).split("/").pop() ?? form[f.name])
               : "Chưa chọn file"}
           </span>
           <input

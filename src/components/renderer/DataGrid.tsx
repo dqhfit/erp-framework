@@ -272,6 +272,24 @@ function exportRowsCsv<T>(
   URL.revokeObjectURL(url);
 }
 
+/** Xuất Excel (.xlsx) từ dữ liệu đang hiển thị. Dynamic import xlsx để không
+ *  tăng initial bundle (lazy chunk). */
+async function exportRowsXlsx<T>(
+  cols: Array<{ id: string; header: string }>,
+  rows: Row<T>[],
+  filename: string,
+) {
+  const XLSX = await import("xlsx");
+  const wsData = [
+    cols.map((c) => c.header),
+    ...rows.map((r) => cols.map((c) => r.getValue(c.id) ?? "")),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+  XLSX.writeFile(wb, `${filename || "export"}.xlsx`);
+}
+
 /** Ngưỡng cardinality để dựng datalist gợi ý. Cột có > ngưỡng giá trị phân
  *  biệt (mã/tên...) thì datalist vô dụng + sort mỗi render rất tốn → bỏ qua,
  *  chỉ giữ ô lọc contains. */
@@ -388,6 +406,9 @@ export interface DataGridProps<T> {
   /** Báo caller khi tập chọn đổi. allMatching=true (server mode) = đã chọn TẤT
    *  CẢ dòng khớp filter (vượt trang đang tải) — caller xử lý theo query. */
   onSelectionChange?: (info: { rows: T[]; allMatching: boolean; count: number }) => void;
+  /** Callback xuất TOÀN BỘ dữ liệu (kể cả trang chưa tải). Khi set, nút xuất
+   *  gọi callback này thay vì chỉ xuất dòng đang tải (dùng cho server-paged). */
+  onExportAll?: (format: "xlsx" | "csv") => Promise<void>;
   /** Hành động hàng loạt hiện ở thanh chọn (ngoài "Xuất CSV đã chọn" có sẵn). */
   bulkActions?: Array<{
     label: string;
@@ -451,6 +472,7 @@ export function DataGrid<T>({
   onSelectionChange,
   bulkActions,
   changedRowIds,
+  onExportAll,
 }: DataGridProps<T>) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -499,6 +521,9 @@ export function DataGrid<T>({
   const groupPickerRef = useRef<HTMLDivElement>(null);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [colChooserOpen, setColChooserOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportBtnRef = useRef<HTMLDivElement>(null);
   const colChooserRef = useRef<HTMLDivElement>(null);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
@@ -884,6 +909,17 @@ export function DataGrid<T>({
   useEffect(() => {
     onSelectionChange?.({ rows: selectedOriginals, allMatching, count: selectedCount });
   }, [rowSelection, allMatching]);
+  // Đóng menu export khi click ngoài vùng nút.
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (exportBtnRef.current && !exportBtnRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [exportMenuOpen]);
   // Summary footer (DevExpress-style): cột set meta.summary → kiểu đó; cột số
   // không set → auto "sum". Có ≥1 cột summary mới hiện footer.
   // Server mode: tính client trên 1 trang là SAI → dùng server.summary (toàn
@@ -915,6 +951,30 @@ export function DataGrid<T>({
   const rangeTo = Math.min(totalCount, (pagination.pageIndex + 1) * pagination.pageSize);
   const pageBtn =
     "p-1 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
+
+  const doExport = async (format: "xlsx" | "csv") => {
+    setExportMenuOpen(false);
+    setExporting(true);
+    try {
+      if (onExportAll) {
+        await onExportAll(format);
+      } else if (format === "xlsx") {
+        await exportRowsXlsx(
+          exportCols,
+          table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
+          label || "export",
+        );
+      } else {
+        exportRowsCsv(
+          exportCols,
+          table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
+          label || "export",
+        );
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div
@@ -1252,21 +1312,45 @@ export function DataGrid<T>({
             )}
           </div>
 
-          {/* Export CSV (Excel) — cột đang hiện + dòng đã lọc/sắp */}
-          <button
-            type="button"
-            onClick={() =>
-              exportRowsCsv(
-                exportCols,
-                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
-                label || "export",
-              )
-            }
-            title={t("datagrid.export")}
-            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-          >
-            <I.Download size={11} />
-          </button>
+          {/* Export dropdown: Excel / CSV */}
+          <div ref={exportBtnRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((v) => !v)}
+              disabled={exporting}
+              title="Tải xuống"
+              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors disabled:opacity-50"
+            >
+              {exporting ? (
+                <I.Loader size={11} className="animate-spin" />
+              ) : (
+                <I.Download size={11} />
+              )}
+              <I.ChevronDown size={10} />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[150px]">
+                <button
+                  type="button"
+                  onClick={() => doExport("xlsx")}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text hover:bg-hover transition-colors"
+                >
+                  <I.FileSpreadsheet size={13} className="text-success" />
+                  Excel (.xlsx)
+                  {onExportAll && <span className="ml-auto text-muted/60">toàn bộ</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doExport("csv")}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text hover:bg-hover transition-colors"
+                >
+                  <I.FileText size={13} className="text-muted" />
+                  CSV (.csv)
+                  {onExportAll && <span className="ml-auto text-muted/60">toàn bộ</span>}
+                </button>
+              </div>
+            )}
+          </div>
 
           {serverMode && server?.loading && (
             <I.Loader size={12} className="shrink-0 animate-spin text-muted" />

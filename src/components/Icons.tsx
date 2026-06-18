@@ -363,6 +363,13 @@ export const I = {
       <path d="M14 2v6h6" />
     </Icon>
   ),
+  FileSpreadsheet: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h2v2H8zm4 0h2v2h-2zm4 0h2v2h-2zM8 17h2v2H8zm4 0h2v2h-2zm4 0h2v2h-2z" />
+    </Icon>
+  ),
   FileText: (p: IP) => (
     <Icon {...p}>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />

@@ -2664,6 +2664,27 @@ function ListWidget({
             pageSize={pageSize}
             defaultSort={defaultSort}
             enableSelection={selectable}
+            onExportAll={
+              entityId && !isDataSource
+                ? async (format) => {
+                    const r = await api.exportRecords(entityId, "csv");
+                    const name = title ?? ent?.name ?? "export";
+                    if (format === "xlsx") {
+                      const XLSX = await import("xlsx");
+                      const wb = XLSX.read(r.content, { type: "string" });
+                      XLSX.writeFile(wb, `${name}.xlsx`);
+                    } else {
+                      const blob = new Blob([r.content], { type: "text/csv;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${name}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
+                  }
+                : undefined
+            }
           />
         )}
       </div>
