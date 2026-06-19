@@ -77,6 +77,12 @@ export interface LegacyPageBinding {
   pageLabel: string | null;
   pageName: string | null;
   pagePublished: boolean | null;
+  /** Route tĩnh trang built-in (vd "/knowledge") nếu node gán trang built-in
+   *  thay vì trang DB. Loại trừ với pageId. */
+  staticRoute: string | null;
+  /** "folder" = thư mục thuần (kể cả chưa có con) — KHÔNG cho gán trang lên
+   *  chính nó; trang phải đặt làm mục con. null = mục thường. */
+  kind: "folder" | null;
 }
 
 export function createLegacyMenuClient(baseUrl: string) {
@@ -149,6 +155,8 @@ export function createLegacyMenuClient(baseUrl: string) {
         ok: true;
         pageId: string | null;
         autoPublished: boolean;
+        /** Trang cũ bị thay là trang rỗng/tạm → đã xoá mềm. */
+        deletedOldPage: boolean;
       }>,
     /** Đổi tên 1 node menu. */
     renameNode: (sourceCode: string, name: string) =>
@@ -168,9 +176,10 @@ export function createLegacyMenuClient(baseUrl: string) {
         ok: true;
         moved: boolean;
       }>,
-    /** Thêm node menu tự tạo dưới 1 cha (parentCode=null → gốc). */
-    addNode: (parentCode: string | null, name: string) =>
-      trpc.legacyMenu.addNode.mutate({ parentCode, name }) as Promise<{
+    /** Thêm node menu tự tạo dưới 1 cha (parentCode=null → gốc).
+     *  kind="folder" → thư mục (không gán trang được); bỏ trống/"page" → mục thường. */
+    addNode: (parentCode: string | null, name: string, kind?: "folder" | "page") =>
+      trpc.legacyMenu.addNode.mutate({ parentCode, name, kind }) as Promise<{
         ok: true;
         sourceCode: string;
       }>,

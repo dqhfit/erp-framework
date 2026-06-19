@@ -29,6 +29,19 @@ function mergeOverridesSql(patch: Record<string, unknown>) {
   return sql`coalesce(${legacyMenuMap.overrides}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`;
 }
 
+/** Trang RỖNG = placeholder/tạm (chưa có widget nào). content có 2 dạng: mảng
+ *  components trực tiếp, hoặc object {components:[...]} (trang tạm mới tạo = {}).
+ *  Dùng để dọn trang tạm khi bị thay bằng trang khác trên cùng 1 mục menu. */
+function isEmptyPageContent(content: unknown): boolean {
+  if (content == null) return true;
+  if (Array.isArray(content)) return content.length === 0;
+  if (typeof content === "object") {
+    const comps = (content as { components?: unknown }).components;
+    return !Array.isArray(comps) || comps.length === 0;
+  }
+  return true;
+}
+
 interface StructRow {
   sourceCode: string;
   parentCode: string | null;
@@ -99,15 +112,26 @@ export const legacyMenuRouter = router({
         pageId: legacyMenuMap.pageId,
         pageName: pages.name,
         published: pages.published,
+        overrides: legacyMenuMap.overrides,
       })
       .from(legacyMenuMap)
       // Bỏ qua trang đã xoá mềm → pageName null → node không còn là lá hợp lệ.
       .leftJoin(pages, and(eq(legacyMenuMap.pageId, pages.id), isNull(pages.deletedAt)))
       .where(and(eq(legacyMenuMap.companyId, ctx.user.companyId), eq(legacyMenuMap.active, true)));
-    // Lá hợp lệ = node có trang tồn tại (pageName != null) + (đã publish HOẶC
-    // user là admin/editor được xem draft).
-    const isVisibleLeaf = (r: (typeof rows)[number]) =>
-      r.pageId != null && r.pageName != null && (r.published === true || includeDrafts);
+    // Route tĩnh (trang built-in id="/...") lưu ở overrides.staticRoute.
+    const routeOf = (r: (typeof rows)[number]): string | null => {
+      const ov = r.overrides as { staticRoute?: unknown } | null;
+      return typeof ov?.staticRoute === "string" ? ov.staticRoute : null;
+    };
+    // Đích điều hướng của node: trang DB hợp lệ (publish HOẶC admin/editor xem
+    // draft), nếu không thì route tĩnh. Trả về string đích hoặc null.
+    const targetOf = (r: (typeof rows)[number]): string | null => {
+      if (r.pageId != null && r.pageName != null && (r.published === true || includeDrafts))
+        return r.pageId;
+      return routeOf(r);
+    };
+    // Lá hợp lệ = có đích điều hướng (trang hợp lệ hoặc route tĩnh).
+    const isVisibleLeaf = (r: (typeof rows)[number]) => targetOf(r) != null;
     // Chỉ giữ node lá hợp lệ HOẶC node nhóm có hậu duệ dẫn tới lá hợp lệ.
     const byCode = new Map(rows.map((r) => [r.sourceCode, r]));
     const hasLeaf = new Set<string>();
@@ -128,7 +152,9 @@ export const legacyMenuRouter = router({
         level: r.level,
         parentCode: r.parentCode,
         sort: r.sort,
-        pageId: isVisibleLeaf(r) ? r.pageId : null,
+        // pageId mang ĐÍCH điều hướng: uuid trang DB HOẶC route tĩnh ("/...").
+        // Frontend phân biệt bằng tiền tố "/".
+        pageId: targetOf(r),
       }));
   }),
 
@@ -154,11 +180,21 @@ export const legacyMenuRouter = router({
         pageLabel: pages.label,
         pageName: pages.name,
         pagePublished: pages.published,
+        overrides: legacyMenuMap.overrides,
       })
       .from(legacyMenuMap)
       .leftJoin(pages, and(eq(legacyMenuMap.pageId, pages.id), isNull(pages.deletedAt)))
       .where(eq(legacyMenuMap.companyId, ctx.user.companyId));
-    return rows;
+    // Tách route tĩnh + đánh dấu thư mục khỏi overrides → field riêng cho UI gán.
+    return rows.map(({ overrides, ...r }) => {
+      const ov = overrides as { staticRoute?: unknown; kind?: unknown } | null;
+      return {
+        ...r,
+        staticRoute: typeof ov?.staticRoute === "string" ? ov.staticRoute : null,
+        // kind='folder' = thư mục thuần (kể cả chưa có con) → UI không cho gán trang.
+        kind: ov?.kind === "folder" ? "folder" : null,
+      };
+    });
   }),
 
   /** Gán (hoặc gỡ) trang cho 1 node menu legacy theo sourceCode. pageId=null →
@@ -170,18 +206,67 @@ export const legacyMenuRouter = router({
     .input(
       z.object({
         sourceCode: z.string().min(1),
-        pageId: z.string().uuid().nullable(),
+        // Đích gán: uuid trang DB, HOẶC route tĩnh trang built-in ("/..."),
+        // HOẶC null để gỡ. Route lưu ở overrides.staticRoute (không là FK).
+        pageId: z
+          .string()
+          .nullable()
+          .refine(
+            (v) =>
+              v == null ||
+              v.startsWith("/") ||
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v),
+            { message: "pageId phải là uuid trang hoặc route built-in (/...)." },
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const raw = input.pageId;
+      const isRoute = raw?.startsWith("/") ?? false;
       let autoPublished = false;
-      if (input.pageId) {
+      // Trang đang gán ở mục này TRƯỚC khi thay (để dọn trang tạm rỗng nếu bị thay).
+      let oldPageId: string | null = null;
+      // CHẶN gán trang/route vào THƯ MỤC: thư mục = mục có con HOẶC đánh dấu
+      // overrides.kind='folder'. Trang phải đặt LÀM MỤC CON bên trong, không gán
+      // lên chính thư mục (gây node vừa-nhóm-vừa-lá → vỡ điều hướng).
+      if (raw) {
+        const [target] = await ctx.db
+          .select({ overrides: legacyMenuMap.overrides, pageId: legacyMenuMap.pageId })
+          .from(legacyMenuMap)
+          .where(
+            and(
+              eq(legacyMenuMap.companyId, ctx.user.companyId),
+              eq(legacyMenuMap.sourceCode, input.sourceCode),
+            ),
+          )
+          .limit(1);
+        oldPageId = target?.pageId ?? null;
+        const markedFolder = (target?.overrides as { kind?: unknown } | null)?.kind === "folder";
+        const [child] = await ctx.db
+          .select({ id: legacyMenuMap.id })
+          .from(legacyMenuMap)
+          .where(
+            and(
+              eq(legacyMenuMap.companyId, ctx.user.companyId),
+              eq(legacyMenuMap.parentCode, input.sourceCode),
+            ),
+          )
+          .limit(1);
+        if (markedFolder || child) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Không gán trang vào thư mục. Hãy thêm trang làm mục con bên trong thư mục.",
+          });
+        }
+      }
+      // Trang DB thật (uuid) → kiểm tra tồn tại + auto-publish nháp.
+      if (raw && !isRoute) {
         const [pg] = await ctx.db
           .select({ id: pages.id, published: pages.published })
           .from(pages)
           .where(
             and(
-              eq(pages.id, input.pageId),
+              eq(pages.id, raw),
               eq(pages.companyId, ctx.user.companyId),
               isNull(pages.deletedAt),
             ),
@@ -195,16 +280,22 @@ export const legacyMenuRouter = router({
           await ctx.db
             .update(pages)
             .set({ published: true, publishMode: "private", updatedAt: new Date() })
-            .where(and(eq(pages.id, input.pageId), eq(pages.companyId, ctx.user.companyId)));
+            .where(and(eq(pages.id, raw), eq(pages.companyId, ctx.user.companyId)));
           autoPublished = true;
         }
       }
       const [row] = await ctx.db
         .update(legacyMenuMap)
         .set({
-          pageId: input.pageId,
-          // Gán → coi như đã có đích (xong); gỡ → giữ nguyên status.
-          ...(input.pageId ? { portStatus: "xong" } : {}),
+          // page_id (FK) chỉ giữ uuid trang DB; route tĩnh → null FK.
+          pageId: isRoute ? null : raw,
+          // overrides.staticRoute: set khi gán route (giữ qua re-import DQHF nhờ
+          // reapplyMenuOverrides bỏ qua key này); xoá key khi gán trang/gỡ.
+          overrides: isRoute
+            ? mergeOverridesSql({ staticRoute: raw })
+            : sql`coalesce(${legacyMenuMap.overrides}, '{}'::jsonb) - 'staticRoute'`,
+          // Gán (trang hoặc route) → coi như đã có đích (xong); gỡ → giữ status.
+          ...(raw ? { portStatus: "xong" } : {}),
           updatedAt: new Date(),
         })
         .where(
@@ -217,15 +308,54 @@ export const legacyMenuRouter = router({
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Node menu không tồn tại." });
       }
+      // THAY trang: nếu trang CŨ bị thay là trang RỖNG (placeholder/tạm) → xoá mềm
+      // để khỏi bỏ lại trang rác. Trang cũ CÓ dữ liệu → giữ (về trạng thái chưa gắn).
+      let deletedOldPage = false;
+      if (raw && oldPageId && oldPageId !== raw) {
+        const [oldPg] = await ctx.db
+          .select({ content: pages.content })
+          .from(pages)
+          .where(
+            and(
+              eq(pages.id, oldPageId),
+              eq(pages.companyId, ctx.user.companyId),
+              isNull(pages.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (oldPg && isEmptyPageContent(oldPg.content)) {
+          // Node hiện tại đã đổi page_id ở trên → chỉ xoá khi KHÔNG còn mục menu
+          // nào khác trỏ tới trang này (tránh xoá trang đang dùng chỗ khác).
+          const [stillUsed] = await ctx.db
+            .select({ id: legacyMenuMap.id })
+            .from(legacyMenuMap)
+            .where(
+              and(
+                eq(legacyMenuMap.companyId, ctx.user.companyId),
+                eq(legacyMenuMap.pageId, oldPageId),
+              ),
+            )
+            .limit(1);
+          if (!stillUsed) {
+            await ctx.db
+              .update(pages)
+              .set({ deletedAt: new Date(), updatedAt: new Date() })
+              .where(and(eq(pages.id, oldPageId), eq(pages.companyId, ctx.user.companyId)));
+            deletedOldPage = true;
+          }
+        }
+      }
       await logActivity(ctx.db, {
         companyId: ctx.user.companyId,
         actorUserId: ctx.user.id,
         kind: "legacy_menu.set_page",
-        detail: input.pageId
-          ? `Gán trang ${input.pageId} cho menu ${input.sourceCode}${autoPublished ? " (xuất bản riêng tư)" : ""}`
+        detail: raw
+          ? `Gán ${isRoute ? `trang built-in ${raw}` : `trang ${raw}`} cho menu ${input.sourceCode}${
+              autoPublished ? " (xuất bản riêng tư)" : ""
+            }${deletedOldPage ? " (xoá trang tạm cũ)" : ""}`
           : `Gỡ trang khỏi menu ${input.sourceCode}`,
       }).catch(() => undefined);
-      return { ok: true, pageId: input.pageId, autoPublished };
+      return { ok: true, pageId: raw, autoPublished, deletedOldPage };
     }),
 
   /** Đổi tên 1 node menu (ghi raw + override để giữ qua re-import). */
@@ -363,7 +493,15 @@ export const legacyMenuRouter = router({
   /** Thêm node menu tự tạo (custom) dưới 1 cha (hoặc gốc). Sống sót re-import vì
    *  source_code riêng không có trong SYS_MENU_NEW. */
   addNode: rbacProcedure("edit", "settings")
-    .input(z.object({ parentCode: z.string().nullable(), name: z.string().trim().min(1).max(200) }))
+    .input(
+      z.object({
+        parentCode: z.string().nullable(),
+        name: z.string().trim().min(1).max(200),
+        // "folder" = thư mục (đánh dấu overrides.kind, KHÔNG cho gán trang).
+        // "page"/bỏ trống = mục thường (gán trang được).
+        kind: z.enum(["folder", "page"]).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const all = await loadStructure(ctx.db, ctx.user.companyId);
       let parent: StructRow | null = null;
@@ -385,12 +523,15 @@ export const legacyMenuRouter = router({
         custom: true,
         active: true,
         portStatus: "chua",
+        // Đánh dấu thư mục để phân biệt cả khi CHƯA có con (reapplyMenuOverrides
+        // bỏ qua key 'kind' nên giữ qua re-import DQHF).
+        overrides: input.kind === "folder" ? { kind: "folder" } : null,
       });
       await logActivity(ctx.db, {
         companyId: ctx.user.companyId,
         actorUserId: ctx.user.id,
         kind: "legacy_menu.add_node",
-        detail: `Thêm mục menu "${input.name}"`,
+        detail: `Thêm ${input.kind === "folder" ? "thư mục" : "mục"} menu "${input.name}"`,
       }).catch(() => undefined);
       return { ok: true, sourceCode };
     }),
