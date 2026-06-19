@@ -1090,8 +1090,8 @@ export function DataGrid<T>({
               </span>
             )}
 
-            {/* Dải nút — cuộn ngang khi quá chật */}
-            <div className="flex items-center gap-1 overflow-x-auto shrink-0">
+            {/* Dải nút — min-w-0 cho phép bị nén; overflow-x-auto cuộn khi chật */}
+            <div className="flex items-center gap-1 overflow-x-auto min-w-0">
               {/* Column filter toggle */}
               <button
                 type="button"
