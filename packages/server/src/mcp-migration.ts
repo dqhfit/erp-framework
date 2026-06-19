@@ -1450,10 +1450,27 @@ async function callMigrationTool(
         throw new McpError("name sai định dạng (^[a-z][a-z0-9_]*$)");
       }
       if (!label) throw new McpError("label bắt buộc");
-      const content = Array.isArray(args.content) ? args.content : null;
-      if (!content || content.length === 0)
-        throw new McpError("content bắt buộc (PageComponent[])");
-      if (content.length > 50) throw new McpError("Tối đa 50 widget mỗi page");
+      // Chấp nhận cả mảng thuần (cũ) lẫn object {meta?, components} (mới từ PageDesigner)
+      const rawContent = args.content as unknown;
+      let contentComponents: unknown[];
+      let contentToStore: unknown;
+      if (Array.isArray(rawContent)) {
+        contentComponents = rawContent;
+        contentToStore = rawContent;
+      } else if (
+        rawContent &&
+        typeof rawContent === "object" &&
+        Array.isArray((rawContent as Record<string, unknown>).components)
+      ) {
+        contentComponents = (rawContent as Record<string, unknown>).components as unknown[];
+        contentToStore = rawContent;
+      } else {
+        contentComponents = [];
+        contentToStore = null;
+      }
+      if (!contentToStore || contentComponents.length === 0)
+        throw new McpError("content bắt buộc (PageComponent[] hoặc {components: PageComponent[]})");
+      if (contentComponents.length > 50) throw new McpError("Tối đa 50 widget mỗi page");
       const iconVal = args.icon ? String(args.icon) : null;
 
       // ── Nhánh GIỮ ID (đẩy dev→prod ổn định): upsert THEO id ──────────────
@@ -1476,7 +1493,13 @@ async function callMigrationTool(
           if (!canOverwrite) return { status: "skipped_exists", pageId: byId.id, name: pageName };
           await db
             .update(pages)
-            .set({ name: pageName, label, icon: iconVal, content, updatedAt: new Date() })
+            .set({
+              name: pageName,
+              label,
+              icon: iconVal,
+              content: contentToStore,
+              updatedAt: new Date(),
+            })
             .where(eq(pages.id, wantId));
           return { status: "overwritten", pageId: wantId, name: pageName };
         }
@@ -1499,7 +1522,7 @@ async function callMigrationTool(
           name: pageName,
           label,
           icon: iconVal,
-          content,
+          content: contentToStore,
           published: false,
         });
         return { status: "created", pageId: wantId, name: pageName };
@@ -1521,7 +1544,7 @@ async function callMigrationTool(
             .set({
               label,
               ...(args.icon ? { icon: iconVal } : {}),
-              content,
+              content: contentToStore,
               updatedAt: new Date(),
             })
             .where(eq(pages.id, exists.id));
@@ -1537,7 +1560,7 @@ async function callMigrationTool(
           name: pageName,
           label,
           icon: iconVal,
-          content,
+          content: contentToStore,
           published: false,
         })
         .returning({ id: pages.id });
