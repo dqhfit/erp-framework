@@ -320,7 +320,7 @@ export function ExcelGrid({
       setSuggestions([]);
       return;
     }
-    const pfx = m[1]?.toUpperCase();
+    const pfx = m[1]?.toUpperCase() ?? "";
     setSuggestions(FORMULA_FNS.filter((fn) => fn.startsWith(pfx) && fn !== pfx).slice(0, 8));
     setSuggIdx(0);
   }, [editing, editVal]);

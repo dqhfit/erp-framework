@@ -2303,7 +2303,7 @@ function ProcsPanel({ procs, moduleName }: { procs: ManifestProcRow[]; moduleNam
                       <td className="px-2 py-1 text-right">{p.writes?.length ?? 0}</td>
                       <td className="px-2 py-1 text-[10px]">
                         {(p.flags ?? []).slice(0, 3).join(", ")}
-                        {(p.flags?.length ?? 0) > 3 && ` +${p.flags?.length - 3}`}
+                        {(p.flags?.length ?? 0) > 3 && ` +${(p.flags?.length ?? 0) - 3}`}
                       </td>
                     </tr>
                     {isOpen && (

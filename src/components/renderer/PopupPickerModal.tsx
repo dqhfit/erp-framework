@@ -49,7 +49,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
   const [formSeed, setFormSeed] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
 
   /* Fetch records (list) / record đơn (detail) / record nạp form sửa (form+recordId) */
@@ -130,6 +130,37 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
       alive = false;
     };
   }, [step.popupMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onConfirmForm = async () => {
+    const data: Record<string, unknown> = {};
+    for (const f of visibleFields) {
+      const raw = formValues[f.name] ?? "";
+      if (f.type === "boolean" || f.type === "bool") data[f.name] = raw === "true";
+      else if (f.type === "number" || f.type === "integer" || f.type === "currency") {
+        data[f.name] = raw === "" ? null : Number(raw);
+      } else {
+        data[f.name] = raw;
+      }
+    }
+
+    if (!step.persist) {
+      onSelect(data);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (recordId != null) {
+        await api.updateRecord(String(recordId), data);
+        onSelect({ ...(formSeed ?? {}), ...data, id: recordId });
+      } else {
+        const created = await api.createRecord(step.entity, data);
+        onSelect({ ...data, id: created.id });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const defaultTitle =
     step.popupMode === "list"
@@ -358,38 +389,38 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                     {f.label}
                     {f.required && <span className="text-danger ml-0.5">*</span>}
                   </label>
-                  ) : f.options && f.options.length > 0 ? (
-                    <SearchableSelect
-                      className="w-full"
-                      value={formValues[f.name] ?? ""}
-                      onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
-                      options={f.options.map((opt) => ({ value: opt, label: opt }))}
-                      emptyOption="— chọn —"
-                    />
-                  ) : f.type === "text" || f.type === "longtext" ? (
-                    <textarea
-                      className="input w-full resize-none"
-                      rows={f.type === "longtext" ? 3 : 1}
-                      value={formValues[f.name] ?? ""}
-                      onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      placeholder={f.label}
-                    />
-                  ) : (
-                    <Input
-                      type={
-                        f.type === "number" || f.type === "integer"
-                          ? "number"
-                          : f.type === "date"
-                            ? "date"
-                            : "text"
-                      }
-                      value={formValues[f.name] ?? ""}
-                      onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      placeholder={f.label}
-                    />
-                  )}
-                </div>
-              ))
+                ) : f.options && f.options.length > 0 ? (
+                  <SearchableSelect
+                    className="w-full"
+                    value={formValues[f.name] ?? ""}
+                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                    options={f.options.map((opt) => ({ value: opt, label: opt }))}
+                    emptyOption="— chọn —"
+                  />
+                ) : f.type === "text" || f.type === "longtext" ? (
+                  <textarea
+                    className="input w-full resize-none"
+                    rows={f.type === "longtext" ? 3 : 1}
+                    value={formValues[f.name] ?? ""}
+                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                    placeholder={f.label}
+                  />
+                ) : (
+                  <Input
+                    type={
+                      f.type === "number" || f.type === "integer"
+                        ? "number"
+                        : f.type === "date"
+                          ? "date"
+                          : "text"
+                    }
+                    value={formValues[f.name] ?? ""}
+                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                    placeholder={f.label}
+                  />
+                )}
+              </div>
+            ))
           )}
         </div>
       )}

@@ -189,8 +189,6 @@ export interface ActionStepOpenPopup {
   invalidateEntities?: string[];
   /** Key page state để lưu kết quả (object đã chọn / nhập) */
   saveOutputTo: string;
-  /** Form: giới hạn + thứ tự field hiển thị (mặc định lấy field entity). */
-  fields?: string[];
   /** Form: render field này thành dropdown — hoặc lấy options từ entity khác
    *  (hiện `labelField`, lưu `valueField`), hoặc dùng `options` tĩnh (value≠label,
    *  vd Phân loại: TRONG→"Màu trong"). */
@@ -250,6 +248,8 @@ export interface WizardStepDef {
   id: string;
   title: string;
   description?: string;
+  /** Số cột hiển thị của form trong bước này. */
+  cols?: 1 | 2;
   /** Entity để tạo bản ghi trong bước này (không bắt buộc). */
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
