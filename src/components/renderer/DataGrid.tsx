@@ -1922,6 +1922,17 @@ export function DataGrid<T>({
                         </th>
                       );
                     })}
+                    {/* Ô đệm cho cột spacer (<col data-spacer="">) — hút phần dư khi
+                      màn hình rộng. Không có ô này thì vùng spacer trong thead trống,
+                      tbody row 1 hiện xuyên qua → "header nằm chung với dòng 1". */}
+                    {rowIndex === 0 && (
+                      <th
+                        aria-hidden
+                        rowSpan={totalRows}
+                        style={{ position: "sticky", top: 0, zIndex: 12 }}
+                        className="bg-panel-2"
+                      />
+                    )}
                   </tr>
                 ));
               })()}
@@ -1945,6 +1956,11 @@ export function DataGrid<T>({
                       ) : null}
                     </th>
                   ))}
+                  <th
+                    aria-hidden
+                    style={{ position: "sticky", top: filterTop, zIndex: 12 }}
+                    className="bg-panel-2/95"
+                  />
                 </tr>
               )}
             </thead>
