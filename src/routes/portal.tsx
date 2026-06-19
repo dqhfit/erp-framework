@@ -155,10 +155,17 @@ function PortalRoute() {
   // Chọn trang: đổi tab + đóng drawer trên mobile.
   const onSelectPage = useCallback(
     (id: string) => {
+      // id = route built-in ("/...") → điều hướng thẳng tới route đó (trang built-in
+      // không render trong portal). Ngược lại là uuid trang DB → render trong portal.
+      if (id.startsWith("/")) {
+        void navigate({ to: id });
+        if (isMobile) setNavOpen(false);
+        return;
+      }
       setActiveId(id);
       if (isMobile) setNavOpen(false);
     },
-    [setActiveId, isMobile],
+    [setActiveId, isMobile, navigate],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -525,10 +532,14 @@ function PortalRoute() {
               isFav={(id) => favs.isFav(id)}
               onToggleFav={(node) => {
                 if (!node.pageId) return;
+                // Route built-in ("/...") → "to" là chính route; trang DB → /pages/<id>.
+                const isRoute = node.pageId.startsWith("/");
                 favs.toggle({
                   id: node.pageId,
-                  to: `/pages/${node.pageId}`,
-                  label: publishedPages.find((p) => p.id === node.pageId)?.name ?? node.name ?? "",
+                  to: isRoute ? node.pageId : `/pages/${node.pageId}`,
+                  label: isRoute
+                    ? (node.name ?? node.pageId)
+                    : (publishedPages.find((p) => p.id === node.pageId)?.name ?? node.name ?? ""),
                   iconName: "Layout",
                 });
               }}

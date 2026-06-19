@@ -12,8 +12,9 @@ import {
 } from "@erp-framework/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { I } from "@/components/Icons";
-import { Button, Card, Chip, EmptyState, Input, Modal, SearchableSelect } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { menuNodeLabel } from "@/lib/menu-node-label";
 import { toast } from "@/lib/toast";
@@ -150,18 +151,6 @@ function MenuPagesPage() {
     () => pages.find((p) => p.id === assignPageId) ?? null,
     [pages, assignPageId],
   );
-  const nodeAssignOptions = useMemo(
-    () =>
-      rows
-        .filter((r) => r.active)
-        .map((r) => ({
-          value: r.sourceCode,
-          label: menuNodeLabel(r, byCode, { showAssigned: true }),
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label, "vi")),
-    [rows, byCode],
-  );
-
   // ── Lọc + tìm kiếm: tính tập node giữ lại (match + tổ tiên) ──
   const query = q.trim().toLowerCase();
   const forcedOpen = query !== "" || filter !== "all";
@@ -225,12 +214,16 @@ function MenuPagesPage() {
         );
         // Trang nháp vừa được backend xuất bản riêng tư → đồng bộ store.
         if (pageId && res.autoPublished) publishPage(pageId, "private");
+        // Backend xoá mềm trang tạm cũ → làm tươi store để nó biến mất khỏi danh sách.
+        if (res.deletedOldPage) await hydrate();
         setEditCode(null);
         toast.success(
           pageId
-            ? res.autoPublished
-              ? "Đã gán + xuất bản riêng tư"
-              : "Đã gán trang"
+            ? res.deletedOldPage
+              ? "Đã thay trang (xoá trang tạm cũ)"
+              : res.autoPublished
+                ? "Đã gán + xuất bản riêng tư"
+                : "Đã gán trang"
             : "Đã gỡ trang",
         );
       } catch (e) {
@@ -239,7 +232,7 @@ function MenuPagesPage() {
         setBusyCode(null);
       }
     },
-    [pages, publishPage],
+    [pages, publishPage, hydrate],
   );
 
   // Gỡ 1 trang khỏi MỌI mục menu đang trỏ tới nó (đối xứng "Gán vào menu").
@@ -295,20 +288,14 @@ function MenuPagesPage() {
     void runStruct(code, () => api.renameNode(code, name));
   };
 
-  // Thêm mục menu mới → MẶC ĐỊNH tạo kèm 1 trang mới (draft) và gán vào mục đó
-  // luôn (setNodePage tự xuất bản riêng tư). Trang để trống, mở sau ở Trình dựng.
-  const addChild = async (parentCode: string | null) => {
-    const name = (
-      await dialog.prompt("Tên mục menu mới (sẽ tạo kèm 1 trang mới):", "", {
-        title: "Thêm mục menu",
-      })
-    )?.trim();
+  // Thêm TRANG con: tạo node (kind=page) + 1 trang mới (draft) gán vào node đó
+  // (setNodePage tự xuất bản riêng tư). Trang để trống, mở sau ở Trình dựng.
+  const addPage = async (parentCode: string | null) => {
+    const name = (await dialog.prompt("Tên trang mới:", "", { title: "Thêm trang" }))?.trim();
     if (!name) return;
     setBusyCode(parentCode ?? "__root__");
     try {
-      // 1. Tạo node menu (custom).
-      const { sourceCode } = await api.addNode(parentCode, name);
-      // 2. Tạo trang mới (draft) + lưu — await để bước gán thấy trang trong DB.
+      const { sourceCode } = await api.addNode(parentCode, name, "page");
       const pageId = crypto.randomUUID();
       await objApi.pages.save({
         id: pageId,
@@ -316,13 +303,28 @@ function MenuPagesPage() {
         label: name,
         content: {},
       });
-      // 3. Gán trang vào node (tự xuất bản riêng tư).
       await api.setNodePage(sourceCode, pageId);
-      // 4. Làm tươi store (trang mới) + cây menu.
-      await hydrate();
+      await hydrate(); // store trang mới
       await reloadRows();
       if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
-      toast.success(`Đã tạo mục “${name}” + trang mới (đã gán, xuất bản riêng tư)`);
+      toast.success(`Đã tạo trang “${name}” (đã gán, xuất bản riêng tư)`);
+    } catch (e) {
+      await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setBusyCode(null);
+    }
+  };
+
+  // Thêm THƯ MỤC con: chỉ tạo node nhóm (kind=folder, KHÔNG trang) để chứa mục con.
+  const addFolder = async (parentCode: string | null) => {
+    const name = (await dialog.prompt("Tên thư mục mới:", "", { title: "Thêm thư mục" }))?.trim();
+    if (!name) return;
+    setBusyCode(parentCode ?? "__root__");
+    try {
+      await api.addNode(parentCode, name, "folder");
+      await reloadRows();
+      if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
+      toast.success(`Đã tạo thư mục “${name}”`);
     } catch (e) {
       await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
     } finally {
@@ -364,6 +366,8 @@ function MenuPagesPage() {
     if (keepSet && !keepSet.has(r.sourceCode)) return null;
     const kids = childrenOf.get(r.sourceCode) ?? [];
     const isGroup = kids.length > 0;
+    // Thư mục = có con HOẶC đánh dấu kind=folder (thư mục rỗng). Không gán trang.
+    const isFolder = isGroup || r.kind === "folder";
     const open = forcedOpen || expanded.has(r.sourceCode);
     const busy = busyCode === r.sourceCode;
     const editing = editCode === r.sourceCode;
@@ -393,8 +397,8 @@ function MenuPagesPage() {
             <span className="inline-block h-5 w-5 shrink-0" />
           )}
 
-          {/* Icon loại node */}
-          {isGroup ? (
+          {/* Icon loại node: thư mục (vàng) vs mục trang (xanh) */}
+          {isFolder ? (
             <I.Folder size={15} className="shrink-0 text-warning" />
           ) : (
             <I.File size={15} className="shrink-0 text-accent-2" />
@@ -517,16 +521,32 @@ function MenuPagesPage() {
                   >
                     <I.ArrowRight size={14} />
                   </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    title="Thêm mục con"
-                    aria-label="Thêm mục con"
-                    onClick={() => addChild(r.sourceCode)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
-                  >
-                    <I.Plus size={15} />
-                  </button>
+                  {/* Thêm con CHỈ cho thư mục / mục trống. Mục đã là trang là điểm
+                      cuối — không cho thêm con (tránh trang biến thành thư mục). */}
+                  {(isFolder || !r.pageId) && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title="Thêm thư mục con"
+                        aria-label="Thêm thư mục con"
+                        onClick={() => addFolder(r.sourceCode)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-warning/15 hover:text-warning disabled:opacity-40"
+                      >
+                        <I.FolderPlus size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title="Thêm trang con"
+                        aria-label="Thêm trang con"
+                        onClick={() => addPage(r.sourceCode)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-accent-2/15 hover:text-accent-2 disabled:opacity-40"
+                      >
+                        <I.FilePlus size={15} />
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     disabled={busy}
@@ -552,6 +572,32 @@ function MenuPagesPage() {
                     </button>
                   )}
                 </div>
+              )
+            ) : isFolder ? (
+              // THƯ MỤC: không gán trang lên chính nó. Trang đặt làm mục con (+).
+              r.pageId ? (
+                // Thư mục lỡ gắn trang (dữ liệu cũ/sai) → cảnh báo + cho gỡ để dọn.
+                <>
+                  <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[11px] text-warning">
+                    thư mục đang gắn trang — nên gỡ
+                  </span>
+                  <Chip className="max-w-[14rem] truncate" title={r.pageLabel ?? ""}>
+                    {r.pageLabel || r.pageName || r.pageId}
+                  </Chip>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => assign(r.sourceCode, null)}
+                    icon={<I.Trash size={14} />}
+                    title="Gỡ trang khỏi thư mục"
+                  />
+                </>
+              ) : (
+                <span className="text-[11px] text-muted">
+                  thư mục ·{" "}
+                  {kids.length ? `${kids.length} mục con` : "trống — dùng + để thêm trang"}
+                </span>
               )
             ) : editing ? (
               <div className="flex items-center gap-1.5">
@@ -715,21 +761,35 @@ function MenuPagesPage() {
             Sửa cấu trúc
           </Button>
           {structMode && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => addChild(null)}
-              icon={<I.Plus size={14} />}
-            >
-              Thêm mục gốc
-            </Button>
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => addFolder(null)}
+                icon={<I.FolderPlus size={14} />}
+              >
+                Thêm thư mục gốc
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => addPage(null)}
+                icon={<I.FilePlus size={14} />}
+              >
+                Thêm trang gốc
+              </Button>
+            </>
           )}
         </div>
 
         {structMode && (
           <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-muted">
-            Chế độ sửa cấu trúc: đổi tên, sắp xếp (lên/xuống), chuyển nhánh cha, thêm mục con,
-            ẩn/hiện, xoá (mục tự thêm). Mọi chỉnh tay được giữ qua mỗi lần re-import DQHF.
+            Chế độ sửa cấu trúc: đổi tên, sắp xếp, chuyển nhánh, ẩn/hiện, xoá.{" "}
+            <I.FolderPlus size={12} className="inline text-warning" /> = thêm{" "}
+            <span className="text-warning">thư mục con</span> (chứa mục, không gắn trang);{" "}
+            <I.FilePlus size={12} className="inline text-accent-2" /> = thêm{" "}
+            <span className="text-accent-2">trang con</span> (tạo trang mới + gắn). Chỉnh tay được
+            giữ qua mỗi lần re-import DQHF.
           </p>
         )}
 
@@ -898,39 +958,15 @@ function MenuPagesPage() {
         </Card>
       </div>
 
-      {/* Modal gán 1 trang vào 1 mục menu (thay trang hiện tại của mục đó) */}
-      <Modal
-        open={assignPageId !== null}
+      {/* Gán 1 trang vào 1 mục menu — DUYỆT CÂY (chọn đúng vị trí), hỗ trợ thêm
+          mục con + gắn trang built-in. Đồng bộ với nút "Gán vào menu" ở Sidebar. */}
+      <AssignPageToMenuModal
+        page={assignTargetPage}
         onClose={() => setAssignPageId(null)}
-        title="Gán trang vào menu"
-        width={520}
-        align="top"
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-muted">
-            Chọn mục menu để gán trang{" "}
-            <span className="font-medium text-text">“{assignTargetPage?.name ?? ""}”</span>. Nếu mục
-            đã có trang, trang đó sẽ bị thay.
-          </p>
-          <SearchableSelect
-            value=""
-            onChange={(sourceCode) => {
-              if (sourceCode && assignPageId) {
-                const pid = assignPageId;
-                setAssignPageId(null);
-                assign(sourceCode, pid);
-              }
-            }}
-            options={nodeAssignOptions}
-            wrapOptions
-            placeholder="Tìm + chọn mục menu…"
-            searchPlaceholder="Gõ tên mục menu…"
-          />
-          <p className="text-xs text-muted">
-            Mục đang hiện “· hiện: …” là mục đã có trang — chọn sẽ thay trang đó.
-          </p>
-        </div>
-      </Modal>
+        onDone={() => {
+          void load();
+        }}
+      />
     </div>
   );
 }

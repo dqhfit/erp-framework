@@ -862,7 +862,8 @@ function PagesTreeSection({
             nodes={navNodes}
             activePageId={activePageId}
             onSelect={(id) => {
-              onOpen(`/pages/${id}`);
+              // id = route built-in ("/...") → mở thẳng; ngược lại là uuid trang DB.
+              onOpen(id.startsWith("/") ? id : `/pages/${id}`);
               onNavigate?.();
             }}
             storageKey="sidebar"
@@ -1083,7 +1084,12 @@ function PagesListSection({
                 // không gắn cờ được. Chỉ trang thật mới cho picker.
                 const isRealPage = !p.id.startsWith("/");
                 const showPicker = canSetStatus && isRealPage;
-                const actN = (showPicker ? 1 : 0) + (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
+                // Gán-menu áp cho CẢ trang built-in (id route "/…") — backend lưu
+                // route vào overrides.staticRoute. Nhưng XÓA chỉ cho trang DB thật
+                // (không xoá được màn built-in).
+                const showAssign = !!onAssignPage;
+                const showDelete = !!onDeletePage && isRealPage;
+                const actN = (showPicker ? 1 : 0) + (showAssign ? 1 : 0) + (showDelete ? 1 : 0);
                 return (
                   <li key={p.id} className="relative group/pg">
                     <button
@@ -1123,20 +1129,20 @@ function PagesListSection({
                           iconTrigger
                         />
                       )}
-                      {onAssignPage && (
+                      {showAssign && (
                         <button
                           type="button"
-                          onClick={() => onAssignPage({ id: p.id, name: p.name })}
+                          onClick={() => onAssignPage?.({ id: p.id, name: p.name })}
                           className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/40 hover:bg-hover/80 hover:text-accent"
                           title="Gán vào menu"
                         >
                           <I.GitBranch size={11} />
                         </button>
                       )}
-                      {onDeletePage && (
+                      {showDelete && (
                         <button
                           type="button"
-                          onClick={() => onDeletePage(p.id)}
+                          onClick={() => onDeletePage?.(p.id)}
                           className="w-5 h-5 rounded-sm flex items-center justify-center text-muted/30 hover:text-danger"
                           title={t("common.delete")}
                         >
