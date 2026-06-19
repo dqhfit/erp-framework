@@ -131,10 +131,13 @@ async function resolvePublic(
   if (allow.length && !allow.includes(u.hostname)) {
     throw new Error(`Host không nằm trong allowlist: ${u.hostname}`);
   }
-  const literal = isIP(u.hostname);
+  // URL API trả "[::1]" cho IPv6 literal — strip ngoặc vuông trước khi gọi isIP
+  const bareHost =
+    u.hostname.startsWith("[") && u.hostname.endsWith("]") ? u.hostname.slice(1, -1) : u.hostname;
+  const literal = isIP(bareHost);
   if (literal) {
-    if (isPrivateIp(u.hostname, literal)) throw new Error(`Chặn IP nội bộ (SSRF): ${u.hostname}`);
-    return { u, addrs: [{ address: u.hostname, family: literal }] };
+    if (isPrivateIp(bareHost, literal)) throw new Error(`Chặn IP nội bộ (SSRF): ${u.hostname}`);
+    return { u, addrs: [{ address: bareHost, family: literal }] };
   }
   const addrs = await lookup(u.hostname, { all: true });
   for (const a of addrs) {
