@@ -1978,6 +1978,7 @@ function ListWidget({
   rowActionsBuiltin,
   rowActionsHidden,
   rowActionsStyle,
+  editFields,
   selectable,
   embeddedActions,
   embeddedFilters,
@@ -2056,6 +2057,8 @@ function ListWidget({
   rowActions?: ActionConfig[];
   /** Cột hành động dựng sẵn (Xem/Sửa/Xoá) — bật trong cài đặt list (mặc định ẩn). */
   rowActionsBuiltin?: boolean;
+  /** Field hiển thị trong form sửa built-in (khác list columns). Mặc định = fields. */
+  editFields?: string[];
   /** Key các nút bị ẩn trên popover hành động (cài đặt list). */
   rowActionsHidden?: string[];
   /** Kiểu cột hành động: "popover" (⋯, mặc định) | "inline" (Xem/Sửa/Xoá). */
@@ -2157,8 +2160,10 @@ function ListWidget({
             kind: "open-popup",
             title: "Sửa",
             entity: entityId,
-            fields,
+            fields: editFields ?? fields,
             popupMode: "form",
+            persist: true,
+            invalidateEntities: [entityId],
             saveOutputTo: "_edited",
           },
         ],
@@ -2185,7 +2190,7 @@ function ListWidget({
     // thì bỏ builtin tương ứng → popover KHÔNG nhân đôi nút.
     const baseLabels = new Set(base.map((a) => a.label));
     return [...base, ...builtin.filter((b) => !baseLabels.has(b.label))];
-  }, [rowActions, rowActionsBuiltin, entityId, fields]);
+  }, [rowActions, rowActionsBuiltin, entityId, fields, editFields]);
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
   // "=" (resolve fromState qua pageState) — vd masp = sản phẩm đang chọn ở bộ
@@ -4337,6 +4342,7 @@ function RenderSubWidget({
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        editFields={cfg.editFields as string[] | undefined}
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
@@ -5212,6 +5218,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         editForm={cfg.editForm as CreateFormCfg | undefined}
         rowActions={cfg.rowActions as ActionConfig[] | undefined}
         rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+        editFields={cfg.editFields as string[] | undefined}
         rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
         rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         selectable={cfg.selectable === true}
