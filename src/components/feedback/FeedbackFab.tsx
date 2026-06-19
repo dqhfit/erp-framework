@@ -2,52 +2,96 @@
    FeedbackFab — nút nổi kéo-thả được, hiện trên mọi route.
    - Kéo: Pointer Events API (pointer capture → drag mượt ra ngoài button).
    - Click vs drag: ngưỡng 5px; nếu di < 5px → mở modal.
-   - Vị trí lưu localStorage, clamp vào viewport khi load.
+   - Vị trí persist IndexedDB (erp_ui / fab_pos / "feedback").
+     IDB đọc async → bắt đầu ở góc phải-dưới, nhảy về vị trí đã lưu
+     sau vài ms (thường không nhận ra được).
    ========================================================== */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { I } from "@/components/Icons";
 import { useT } from "@/hooks/useT";
 
-const STORAGE_KEY = "feedback_fab_pos";
+// ── IndexedDB helpers (key-value đơn giản, không cần lib) ──────────────
+
+const IDB_NAME = "erp_ui";
+const IDB_STORE = "fab_pos";
+const IDB_KEY = "feedback";
+const IDB_VERSION = 1;
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbRead(): Promise<{ x: number; y: number } | null> {
+  try {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const req = db.transaction(IDB_STORE, "readonly").objectStore(IDB_STORE).get(IDB_KEY);
+      req.onsuccess = () => resolve((req.result as { x: number; y: number } | undefined) ?? null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function idbWrite(pos: { x: number; y: number }): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(pos, IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {}
+}
+
+// ── Component ───────────────────────────────────────────────────────────
+
 const SIZE = 48; // w-12 h-12
 
 function clamp(v: number, lo: number, hi: number) {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-function loadPos() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const { x, y } = JSON.parse(raw) as { x: number; y: number };
-      return {
-        x: clamp(x, 0, window.innerWidth - SIZE),
-        y: clamp(y, 0, window.innerHeight - SIZE),
-      };
-    }
-  } catch {}
+function defaultPos() {
   return { x: window.innerWidth - SIZE - 24, y: window.innerHeight - SIZE - 24 };
 }
 
 export function FeedbackFab() {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState(loadPos);
-  // Ref lưu điểm bắt đầu kéo; null = không kéo.
+  const [pos, setPos] = useState(defaultPos);
+
+  // Đọc vị trí đã lưu từ IDB sau khi mount.
+  useEffect(() => {
+    idbRead().then((saved) => {
+      if (!saved) return;
+      setPos({
+        x: clamp(saved.x, 0, window.innerWidth - SIZE),
+        y: clamp(saved.y, 0, window.innerHeight - SIZE),
+      });
+    });
+  }, []);
+
   const drag = useRef<{ px: number; py: number; bx: number; by: number } | null>(null);
   const didMove = useRef(false);
-  // Luôn giữ ref đồng bộ state để onPointerUp đọc được vị trí mới nhất.
   const latestPos = useRef(pos);
   latestPos.current = pos;
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-    // Chỉ xử lý chuột trái (button=0) hoặc cảm ứng/stylus.
     if (e.pointerType === "mouse" && e.button !== 0) return;
     drag.current = { px: e.clientX, py: e.clientY, bx: pos.x, by: pos.y };
     didMove.current = false;
-    // Giữ mọi pointer event trên button dù con trỏ thoát ra ngoài.
     btnRef.current?.setPointerCapture(e.pointerId);
     e.preventDefault();
   };
@@ -70,9 +114,7 @@ export function FeedbackFab() {
     if (!didMove.current) {
       setOpen(true);
     } else {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(latestPos.current));
-      } catch {}
+      idbWrite(latestPos.current);
     }
   };
 
