@@ -4269,8 +4269,12 @@ function buildSubCfg(
         }
       : {}),
     ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
-    // linkField đơn (backwards compat) → filterFromState như cũ
-    ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
+    // linkField đơn (backwards compat) → filterFromState như cũ.
+    // Bỏ qua khi linkConditions đã khai báo: linkConditions ưu tiên + filterFromState
+    // sẽ dùng row-id (uuid) làm stateKey → không bao giờ khớp field nghiệp vụ → ẩn hết.
+    ...((kind === "list" || kind === "chart" || kind === "kanban") &&
+    panel.linkField &&
+    !panel.linkConditions?.length
       ? { filterFromState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
     // linkConditions: mảng điều kiện AND — fromField → key phụ; bỏ fromField → key chính
