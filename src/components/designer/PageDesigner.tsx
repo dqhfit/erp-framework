@@ -2478,6 +2478,20 @@ export function PageDesigner({ pageId }: Props) {
                           fromField?: string;
                           toField: string;
                         }>;
+                        // list
+                        editable?: boolean;
+                        selectable?: boolean;
+                        batchEdit?: boolean;
+                        excelMode?: boolean;
+                        serverPaging?: boolean;
+                        multiSelect?: boolean;
+                        rowLimit?: number;
+                        addRowAtEnd?: boolean;
+                        addRowPos?: string;
+                        // chart
+                        chartKind?: string;
+                        groupBy?: string;
+                        valueField?: string;
                       };
                       const splitCfg = sel.config as {
                         orientation?:
@@ -2838,6 +2852,159 @@ export function PageDesigner({ pageId }: Props) {
                             {panel.kind === "detail" && availableSources.length > 0 && (
                               <div className="text-[11px] text-muted italic px-1">
                                 Hiển thị record chọn từ {srcLabel}
+                              </div>
+                            )}
+
+                            {/* ── Tuỳ chọn theo loại ─────────────────── */}
+                            {(panel.kind === "list" || (!panel.kind && defaultKind === "list")) && (
+                              <div className="flex flex-col gap-1.5">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mt-1">
+                                  Tuỳ chọn bảng
+                                </div>
+                                {(
+                                  [
+                                    ["editable", "Có thể sửa", null],
+                                    ["selectable", "Chọn dòng (checkbox)", null],
+                                    ["multiSelect", "Chọn nhiều dòng", null],
+                                    ["excelMode", "Chế độ Excel", null],
+                                    ["serverPaging", "Phân trang server", null],
+                                  ] as [keyof PanelCfg, string, string | null][]
+                                ).map(([key, label]) => (
+                                  <div key={key} className="flex items-center justify-between">
+                                    <span className="text-xs">{label}</span>
+                                    <Switch
+                                      checked={panel[key] === true}
+                                      onChange={(v) => {
+                                        const extra: Partial<PanelCfg> =
+                                          key === "excelMode" && v
+                                            ? { serverPaging: false }
+                                            : key === "serverPaging" && v
+                                              ? { excelMode: false }
+                                              : {};
+                                        onUpdate({ ...panel, [key]: v, ...extra });
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                                {panel.editable === true && (
+                                  <div className="flex items-center justify-between ml-3">
+                                    <span className="text-xs">Batch edit</span>
+                                    <Switch
+                                      checked={panel.batchEdit === true}
+                                      onChange={(v) => onUpdate({ ...panel, batchEdit: v })}
+                                    />
+                                  </div>
+                                )}
+                                {panel.editable === true && panel.batchEdit === true && (
+                                  <div className="flex items-center justify-between ml-3">
+                                    <span className="text-xs">Thêm dòng mới</span>
+                                    <Switch
+                                      checked={panel.addRowAtEnd === true}
+                                      onChange={(v) => onUpdate({ ...panel, addRowAtEnd: v })}
+                                    />
+                                  </div>
+                                )}
+                                <FormField label="Giới hạn dòng">
+                                  <Input
+                                    type="number"
+                                    placeholder="Mặc định 500"
+                                    value={panel.rowLimit ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({
+                                        ...panel,
+                                        rowLimit: e.target.value
+                                          ? Number(e.target.value)
+                                          : undefined,
+                                      })
+                                    }
+                                  />
+                                </FormField>
+                              </div>
+                            )}
+
+                            {panel.kind === "chart" && (
+                              <div className="flex flex-col gap-1.5">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mt-1">
+                                  Cấu hình biểu đồ
+                                </div>
+                                <FormField label="Loại">
+                                  <Select
+                                    value={panel.chartKind ?? "bar"}
+                                    onChange={(e) =>
+                                      onUpdate({ ...panel, chartKind: e.target.value })
+                                    }
+                                  >
+                                    <option value="bar">Bar</option>
+                                    <option value="line">Line</option>
+                                    <option value="area">Area</option>
+                                    <option value="pie">Pie</option>
+                                    <option value="doughnut">Doughnut</option>
+                                  </Select>
+                                </FormField>
+                                <FormField label="Field nhóm">
+                                  <Select
+                                    value={panel.groupBy ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({
+                                        ...panel,
+                                        groupBy: e.target.value || undefined,
+                                      })
+                                    }
+                                  >
+                                    <option value="">— chọn field —</option>
+                                    {(linkedEnt?.fields ?? []).map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </FormField>
+                                <FormField label="Field giá trị">
+                                  <Select
+                                    value={panel.valueField ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({
+                                        ...panel,
+                                        valueField: e.target.value || undefined,
+                                      })
+                                    }
+                                  >
+                                    <option value="">Đếm số bản ghi</option>
+                                    {(linkedEnt?.fields ?? [])
+                                      .filter((f) => ["number", "currency"].includes(f.type))
+                                      .map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
+                                  </Select>
+                                </FormField>
+                              </div>
+                            )}
+
+                            {panel.kind === "kanban" && (
+                              <div className="flex flex-col gap-1.5">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mt-1">
+                                  Cấu hình Kanban
+                                </div>
+                                <FormField label="Field nhóm cột">
+                                  <Select
+                                    value={panel.groupBy ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({
+                                        ...panel,
+                                        groupBy: e.target.value || undefined,
+                                      })
+                                    }
+                                  >
+                                    <option value="">— chọn field —</option>
+                                    {(linkedEnt?.fields ?? []).map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </FormField>
                               </div>
                             )}
                           </>
@@ -3291,6 +3458,147 @@ export function PageDesigner({ pageId }: Props) {
                                     </Select>
                                   </FormField>
                                 )}
+
+                              {/* ── Tuỳ chọn theo loại ─────────────── */}
+                              {(selCell.kind === "list" || !selCell.kind) && (
+                                <div className="flex flex-col gap-1.5 pt-1">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                                    Tuỳ chọn bảng
+                                  </div>
+                                  {(
+                                    [
+                                      ["editable", "Có thể sửa"],
+                                      ["selectable", "Chọn dòng (checkbox)"],
+                                      ["multiSelect", "Chọn nhiều dòng"],
+                                      ["excelMode", "Chế độ Excel"],
+                                      ["serverPaging", "Phân trang server"],
+                                    ] as [keyof SplitGridCell, string][]
+                                  ).map(([key, label]) => (
+                                    <div key={key} className="flex items-center justify-between">
+                                      <span className="text-xs">{label}</span>
+                                      <Switch
+                                        checked={selCell[key] === true}
+                                        onChange={(v) => {
+                                          const extra: Partial<SplitGridCell> =
+                                            key === "excelMode" && v
+                                              ? { serverPaging: false }
+                                              : key === "serverPaging" && v
+                                                ? { excelMode: false }
+                                                : {};
+                                          updateCell({ [key]: v, ...extra });
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                  {selCell.editable === true && (
+                                    <div className="flex items-center justify-between ml-3">
+                                      <span className="text-xs">Batch edit</span>
+                                      <Switch
+                                        checked={selCell.batchEdit === true}
+                                        onChange={(v) => updateCell({ batchEdit: v })}
+                                      />
+                                    </div>
+                                  )}
+                                  {selCell.editable === true && selCell.batchEdit === true && (
+                                    <div className="flex items-center justify-between ml-3">
+                                      <span className="text-xs">Thêm dòng mới</span>
+                                      <Switch
+                                        checked={selCell.addRowAtEnd === true}
+                                        onChange={(v) => updateCell({ addRowAtEnd: v })}
+                                      />
+                                    </div>
+                                  )}
+                                  <FormField label="Giới hạn dòng">
+                                    <Input
+                                      type="number"
+                                      placeholder="Mặc định 500"
+                                      value={selCell.rowLimit ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({
+                                          rowLimit: e.target.value
+                                            ? Number(e.target.value)
+                                            : undefined,
+                                        })
+                                      }
+                                    />
+                                  </FormField>
+                                </div>
+                              )}
+
+                              {selCell.kind === "chart" && (
+                                <div className="flex flex-col gap-1.5 pt-1">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                                    Cấu hình biểu đồ
+                                  </div>
+                                  <FormField label="Loại">
+                                    <Select
+                                      value={selCell.chartKind ?? "bar"}
+                                      onChange={(e) => updateCell({ chartKind: e.target.value })}
+                                    >
+                                      <option value="bar">Bar</option>
+                                      <option value="line">Line</option>
+                                      <option value="area">Area</option>
+                                      <option value="pie">Pie</option>
+                                      <option value="doughnut">Doughnut</option>
+                                    </Select>
+                                  </FormField>
+                                  <FormField label="Field nhóm">
+                                    <Select
+                                      value={selCell.groupBy ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({ groupBy: e.target.value || undefined })
+                                      }
+                                    >
+                                      <option value="">— chọn field —</option>
+                                      {(selEnt?.fields ?? []).map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </FormField>
+                                  <FormField label="Field giá trị">
+                                    <Select
+                                      value={selCell.valueField ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({ valueField: e.target.value || undefined })
+                                      }
+                                    >
+                                      <option value="">Đếm số bản ghi</option>
+                                      {(selEnt?.fields ?? [])
+                                        .filter((f) => ["number", "currency"].includes(f.type))
+                                        .map((f) => (
+                                          <option key={f.name} value={f.name}>
+                                            {fieldBoth(f)}
+                                          </option>
+                                        ))}
+                                    </Select>
+                                  </FormField>
+                                </div>
+                              )}
+
+                              {selCell.kind === "kanban" && (
+                                <div className="flex flex-col gap-1.5 pt-1">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                                    Cấu hình Kanban
+                                  </div>
+                                  <FormField label="Field nhóm cột">
+                                    <Select
+                                      value={selCell.groupBy ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({ groupBy: e.target.value || undefined })
+                                      }
+                                    >
+                                      <option value="">— chọn field —</option>
+                                      {(selEnt?.fields ?? []).map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </FormField>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -3964,13 +4272,19 @@ export type SplitGridCell = {
   columnGroups?: unknown[];
   serverPaging?: boolean;
   editable?: boolean;
+  selectable?: boolean;
   batchEdit?: boolean;
   excelMode?: boolean;
   multiSelect?: boolean;
+  addRowAtEnd?: boolean;
+  addRowPos?: string;
   loadGate?: string;
   rowLimit?: number;
   pageSize?: number;
   defaultSort?: { field: string; dir: "asc" | "desc" };
+  chartKind?: string;
+  groupBy?: string;
+  valueField?: string;
 };
 
 export type SplitGridConfig = {
