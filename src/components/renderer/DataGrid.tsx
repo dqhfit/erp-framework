@@ -1090,144 +1090,147 @@ export function DataGrid<T>({
               </span>
             )}
 
-            {/* Dải nút — min-w-0 cho phép bị nén; overflow-x-auto cuộn khi chật */}
-            <div className="flex items-center gap-1 overflow-x-auto min-w-0">
-              {/* Column filter toggle */}
-              <button
-                type="button"
-                onClick={() => setFilterRowOpen((v) => !v)}
-                title={
-                  activeFilterCount > 0 ? `Lọc cột (${activeFilterCount} đang bật)` : "Lọc cột"
-                }
-                className={cn(
-                  "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
-                  filterRowOpen || activeFilterCount > 0
-                    ? "border-primary/60 text-primary bg-primary/10"
-                    : "border-border text-muted hover:text-text hover:border-border",
-                )}
-              >
-                <I.Filter size={11} />
-                {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
-              </button>
-
-              {/* Group-by / sort / select picker — trigger only; dropdown thoát ra ngoài overflow */}
-              <div ref={groupPickerRef}>
+            {/* Dải nút: div ngoài = scroll container (bị nén bởi flex cha);
+                div trong = flex tự nhiên, nút không bị co → tràn → cuộn */}
+            <div className="overflow-x-auto min-w-0">
+              <div className="flex items-center gap-1">
+                {/* Column filter toggle */}
                 <button
                   type="button"
-                  onClick={() => setGroupPickerOpen((v) => !v)}
-                  title="Nhóm · Sắp xếp · Chọn dòng"
+                  onClick={() => setFilterRowOpen((v) => !v)}
+                  title={
+                    activeFilterCount > 0 ? `Lọc cột (${activeFilterCount} đang bật)` : "Lọc cột"
+                  }
                   className={cn(
-                    "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors",
-                    grouping.length > 0 || sorting.length > 0 || showSelectCol
-                      ? "border-accent/50 text-accent bg-accent/10"
+                    "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
+                    filterRowOpen || activeFilterCount > 0
+                      ? "border-primary/60 text-primary bg-primary/10"
                       : "border-border text-muted hover:text-text hover:border-border",
                   )}
                 >
-                  <I.Layers size={11} />
-                  <I.ChevronDown size={10} />
+                  <I.Filter size={11} />
+                  {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
                 </button>
-              </div>
 
-              {/* Chuyển đổi xem: lưới ↔ card — 1 nút toggle */}
-              <button
-                type="button"
-                onClick={() => setViewMode((v) => (v === "grid" ? "card" : "grid"))}
-                title={viewMode === "grid" ? "Chuyển sang dạng card" : "Chuyển sang dạng lưới"}
-                className={cn(
-                  "inline-flex items-center justify-center px-1.5 h-6 rounded border border-border transition-colors shrink-0",
-                  viewMode === "card"
-                    ? "bg-accent/15 text-accent border-accent/40"
-                    : "text-muted hover:text-text hover:border-border",
-                )}
-              >
-                {viewMode === "grid" ? <I.Layout size={12} /> : <I.Table size={12} />}
-              </button>
-
-              {/* Phóng to / thu nhỏ lưới toàn màn hình */}
-              <button
-                type="button"
-                onClick={() => setMaximized((m) => !m)}
-                title={maximized ? "Thu nhỏ (Esc)" : "Phóng to toàn màn hình"}
-                className="inline-flex items-center justify-center px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
-              >
-                {maximized ? <I.X size={12} /> : <I.Maximize size={11} />}
-              </button>
-
-              {/* Tự co tất cả cột vừa nội dung */}
-              <button
-                type="button"
-                onClick={autofitAll}
-                title="Tự co tất cả cột vừa nội dung (hoặc nhắp đúp viền từng cột)"
-                className="inline-flex items-center justify-center w-6 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-              >
-                <I.Wand size={11} />
-              </button>
-
-              {/* Dán dữ liệu (paste TSV cập nhật theo cột khóa) */}
-              {onPasteApply && (
-                <button
-                  type="button"
-                  onClick={() => setPasteOpen(true)}
-                  title="Dán dữ liệu cập nhật (từ Excel)"
-                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
-                >
-                  <I.ClipboardList size={11} />
-                </button>
-              )}
-
-              {/* Thêm dòng nháp vào lưới — lên ĐẦU (＋↑) hoặc xuống CUỐI (＋↓) */}
-              {onAddRow && (
-                <div className="inline-flex shrink-0 overflow-hidden rounded border border-border">
+                {/* Group-by / sort / select picker — trigger only; dropdown thoát ra ngoài overflow */}
+                <div ref={groupPickerRef}>
                   <button
                     type="button"
-                    onClick={() => onAddRow("top")}
-                    title="Thêm dòng mới lên ĐẦU lưới"
-                    className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text"
+                    onClick={() => setGroupPickerOpen((v) => !v)}
+                    title="Nhóm · Sắp xếp · Chọn dòng"
+                    className={cn(
+                      "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors",
+                      grouping.length > 0 || sorting.length > 0 || showSelectCol
+                        ? "border-accent/50 text-accent bg-accent/10"
+                        : "border-border text-muted hover:text-text hover:border-border",
+                    )}
                   >
-                    <I.Plus size={11} />
-                    <I.ChevronUp size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onAddRow("bottom")}
-                    title="Thêm dòng mới xuống CUỐI lưới"
-                    className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text border-l border-border"
-                  >
-                    <I.Plus size={11} />
-                    <I.ChevronDown size={11} />
+                    <I.Layers size={11} />
+                    <I.ChevronDown size={10} />
                   </button>
                 </div>
-              )}
 
-              {/* Column chooser — trigger only */}
-              <div ref={colChooserRef}>
+                {/* Chuyển đổi xem: lưới ↔ card — 1 nút toggle */}
                 <button
                   type="button"
-                  onClick={() => setColChooserOpen((v) => !v)}
-                  title={t("datagrid.columns")}
-                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-                >
-                  <I.Table size={11} />
-                  <I.ChevronDown size={10} />
-                </button>
-              </div>
-
-              {/* Export — trigger only */}
-              <div ref={exportBtnRef}>
-                <button
-                  type="button"
-                  onClick={() => setExportMenuOpen((v) => !v)}
-                  disabled={exporting}
-                  title="Tải xuống"
-                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors disabled:opacity-50"
-                >
-                  {exporting ? (
-                    <I.Loader size={11} className="animate-spin" />
-                  ) : (
-                    <I.Download size={11} />
+                  onClick={() => setViewMode((v) => (v === "grid" ? "card" : "grid"))}
+                  title={viewMode === "grid" ? "Chuyển sang dạng card" : "Chuyển sang dạng lưới"}
+                  className={cn(
+                    "inline-flex items-center justify-center px-1.5 h-6 rounded border border-border transition-colors shrink-0",
+                    viewMode === "card"
+                      ? "bg-accent/15 text-accent border-accent/40"
+                      : "text-muted hover:text-text hover:border-border",
                   )}
-                  <I.ChevronDown size={10} />
+                >
+                  {viewMode === "grid" ? <I.Layout size={12} /> : <I.Table size={12} />}
                 </button>
+
+                {/* Phóng to / thu nhỏ lưới toàn màn hình */}
+                <button
+                  type="button"
+                  onClick={() => setMaximized((m) => !m)}
+                  title={maximized ? "Thu nhỏ (Esc)" : "Phóng to toàn màn hình"}
+                  className="inline-flex items-center justify-center px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+                >
+                  {maximized ? <I.X size={12} /> : <I.Maximize size={11} />}
+                </button>
+
+                {/* Tự co tất cả cột vừa nội dung */}
+                <button
+                  type="button"
+                  onClick={autofitAll}
+                  title="Tự co tất cả cột vừa nội dung (hoặc nhắp đúp viền từng cột)"
+                  className="inline-flex items-center justify-center w-6 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+                >
+                  <I.Wand size={11} />
+                </button>
+
+                {/* Dán dữ liệu (paste TSV cập nhật theo cột khóa) */}
+                {onPasteApply && (
+                  <button
+                    type="button"
+                    onClick={() => setPasteOpen(true)}
+                    title="Dán dữ liệu cập nhật (từ Excel)"
+                    className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+                  >
+                    <I.ClipboardList size={11} />
+                  </button>
+                )}
+
+                {/* Thêm dòng nháp vào lưới — lên ĐẦU (＋↑) hoặc xuống CUỐI (＋↓) */}
+                {onAddRow && (
+                  <div className="inline-flex shrink-0 overflow-hidden rounded border border-border">
+                    <button
+                      type="button"
+                      onClick={() => onAddRow("top")}
+                      title="Thêm dòng mới lên ĐẦU lưới"
+                      className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text"
+                    >
+                      <I.Plus size={11} />
+                      <I.ChevronUp size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAddRow("bottom")}
+                      title="Thêm dòng mới xuống CUỐI lưới"
+                      className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text border-l border-border"
+                    >
+                      <I.Plus size={11} />
+                      <I.ChevronDown size={11} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Column chooser — trigger only */}
+                <div ref={colChooserRef}>
+                  <button
+                    type="button"
+                    onClick={() => setColChooserOpen((v) => !v)}
+                    title={t("datagrid.columns")}
+                    className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+                  >
+                    <I.Table size={11} />
+                    <I.ChevronDown size={10} />
+                  </button>
+                </div>
+
+                {/* Export — trigger only */}
+                <div ref={exportBtnRef}>
+                  <button
+                    type="button"
+                    onClick={() => setExportMenuOpen((v) => !v)}
+                    disabled={exporting}
+                    title="Tải xuống"
+                    className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors disabled:opacity-50"
+                  >
+                    {exporting ? (
+                      <I.Loader size={11} className="animate-spin" />
+                    ) : (
+                      <I.Download size={11} />
+                    )}
+                    <I.ChevronDown size={10} />
+                  </button>
+                </div>
               </div>
             </div>
 
