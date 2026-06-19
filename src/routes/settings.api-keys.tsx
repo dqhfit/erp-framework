@@ -62,6 +62,12 @@ function scopeCovers(a: string, b: string): boolean {
     if (pa[1] === "full") return pb[1] === "read" || pb[1] === "full";
     return false; // backup:read / backup:run chỉ bao chính nó
   }
+  if (pa[0] === "menu" && pb[0] === "menu") {
+    if (pa[1] === "*") return true;
+    // write bao luôn read — khớp hasMenuScope.
+    if (pa[1] === "write") return pb[1] === "read" || pb[1] === "write";
+    return false; // menu:read chỉ bao chính nó
+  }
   return false;
 }
 
@@ -84,7 +90,7 @@ function ScopeEditor({
   disabled?: boolean;
 }) {
   const [kind, setKind] = useState<
-    "entity" | "feedback" | "errors" | "migration" | "backup" | "all"
+    "entity" | "feedback" | "errors" | "migration" | "backup" | "menu" | "all"
   >("entity");
   const [entityName, setEntityName] = useState("*");
   const [read, setRead] = useState(true);
@@ -93,6 +99,7 @@ function ScopeEditor({
   const [errLevel, setErrLevel] = useState<"read" | "write">("read");
   const [migLevel, setMigLevel] = useState<"read" | "apply">("read");
   const [backupLevel, setBackupLevel] = useState<"read" | "run" | "full">("full");
+  const [menuLevel, setMenuLevel] = useState<"read" | "write">("read");
 
   // Thêm + chuẩn hoá: bỏ trùng VÀ bỏ scope bị scope rộng hơn bao (vd thêm
   // "*" sẽ gom hết; thêm feedback:propose loại bỏ feedback:read thừa).
@@ -107,6 +114,7 @@ function ScopeEditor({
     if (kind === "errors") return addScopes([`errors:${errLevel}`]);
     if (kind === "migration") return addScopes([`migration:${migLevel}`]);
     if (kind === "backup") return addScopes([`backup:${backupLevel}`]);
+    if (kind === "menu") return addScopes([`menu:${menuLevel}`]);
     const name = entityName.trim() || "*";
     const out: string[] = [];
     if (read) out.push(`entity:${name}:read`);
@@ -156,6 +164,7 @@ function ScopeEditor({
             <option value="errors">Lỗi (MCP)</option>
             <option value="migration">Migration (MCP)</option>
             <option value="backup">Sao lưu (MCP)</option>
+            <option value="menu">Menu (MCP)</option>
             <option value="all">Toàn quyền (*)</option>
           </Select>
         </label>
@@ -251,6 +260,21 @@ function ScopeEditor({
               <option value="read">read — xem dung lượng DB / uploads (backup_info)</option>
               <option value="run">run — kích hoạt backup push-Drive</option>
               <option value="full">full — TẢI dump DB + uploads toàn hệ thống (máy offsite)</option>
+            </Select>
+          </label>
+        )}
+
+        {kind === "menu" && (
+          <label className="text-xs text-muted flex flex-col gap-1">
+            Mức
+            <Select
+              value={menuLevel}
+              disabled={disabled}
+              onChange={(e) => setMenuLevel(e.target.value as typeof menuLevel)}
+              className="w-64"
+            >
+              <option value="read">read — đọc cây menu</option>
+              <option value="write">write — đọc + thêm / sửa / xoá node menu</option>
             </Select>
           </label>
         )}
