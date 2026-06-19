@@ -16,9 +16,11 @@ export interface KnowledgeSource {
   error: string | null;
   /** Biểu thức cron tự nạp lại (chỉ nguồn entity); null = tắt. */
   reindexCron: string | null;
-  /** Phân quyền: "company" = mọi user trong công ty xem; "restricted" =
-   *  chỉ admin + người tạo + user/nhóm được cấp. Mặc định "company". */
-  visibility?: "company" | "restricted";
+  /** Phân quyền: "private" = chỉ người tạo; "restricted" = user/nhóm được cấp;
+   *  "company" = mọi user trong công ty (mặc định); "public" = ai có link. */
+  visibility?: "private" | "company" | "restricted" | "public";
+  /** UUID cho link chia sẻ công khai (chỉ khi visibility="public"). */
+  shareToken?: string | null;
   /** Dữ liệu phụ: nguồn text chứa { text } — dùng cho form sửa. ingest =
    *  thống kê tiến độ/tốc độ embedding lần nạp gần nhất (worker ghi). */
   meta?: Record<string, unknown> & {
@@ -67,8 +69,11 @@ export function createKnowledgeClient(baseUrl: string) {
     ],
   });
   return {
-    /** Tất cả nguồn tri thức của công ty. */
-    list: () => trpc.knowledge.sources.list.query(),
+    /** Tất cả nguồn tri thức của công ty (không lọc scope). */
+    list: () => trpc.knowledge.sources.list.query({}),
+    /** Lọc theo scope cho trang Documents. */
+    listByScope: (scope: "mine" | "shared" | "company") =>
+      trpc.knowledge.sources.list.query({ scope }),
     /** Một nguồn theo id (null nếu không có). */
     get: (id: string) => trpc.knowledge.sources.get.query(id),
     /** Xoá nguồn (cascade xoá các đoạn). */
@@ -97,10 +102,40 @@ export function createKnowledgeClient(baseUrl: string) {
     /** Đặt phân quyền nguồn: visibility + thay thế danh sách nhóm + user. */
     setAcl: (input: {
       id: string;
-      visibility: "company" | "restricted";
+      visibility: "private" | "company" | "restricted" | "public";
       groupIds: string[];
       userIds: string[];
     }) => trpc.knowledge.sources.setAcl.mutate(input),
+    /** Sinh share link công khai (idempotent). Trả { token }. */
+    generateShareLink: (sourceId: string) =>
+      trpc.knowledge.sources.generateShareLink.mutate(sourceId),
+    /** Thu hồi share link công khai → visibility trở về "company". */
+    revokeShareLink: (sourceId: string) => trpc.knowledge.sources.revokeShareLink.mutate(sourceId),
+    /** Tải file lên với visibility tùy chọn. */
+    uploadWithVisibility: async (
+      file: File,
+      visibility: "private" | "company" | "restricted" | "public" = "company",
+    ): Promise<{ id: string; title: string; status: string }> => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("visibility", visibility);
+      const res = await fetch(base + "/upload", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = `Tải lên lỗi ${res.status}`;
+        try {
+          const j = (await res.json()) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* body không phải JSON */
+        }
+        throw new Error(msg);
+      }
+      return res.json() as Promise<{ id: string; title: string; status: string }>;
+    },
     /** Cấu hình embedding hiện tại (null nếu chưa có). */
     getEmbeddingProfile: () => trpc.knowledge.embeddingProfile.get.query(),
     /** Lưu cấu hình embedding. */

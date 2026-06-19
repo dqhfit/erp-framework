@@ -1,12 +1,12 @@
 /* ==========================================================
    knowledge-acl.ts — Phân quyền truy cập nguồn tri thức theo user/nhóm.
 
-   Mô hình (xem migration 0068 + schema knowledgeSources.visibility):
-   - visibility='company' (mặc định): mọi user có quyền RBAC view:knowledge
-     trong công ty đều xem (tương thích ngược).
-   - visibility='restricted': chỉ admin (luôn) + người tạo (created_by) +
-     user được cấp riêng (resource_members resource_type='knowledge') +
-     thành viên nhóm được gắn (knowledge_source_viewer_groups).
+   Mô hình visibility (migration 0068 + 0085):
+   - "private": chỉ người tạo (created_by) và admin.
+   - "restricted": chỉ admin + người tạo + user/nhóm được cấp riêng.
+   - "company" (mặc định): mọi user có quyền RBAC view:knowledge trong công ty.
+   - "public": ai cũng truy cập được (qua share_token, không cần login).
+     Luôn accessible — knowledgeAccessibleSql trả true cho public.
 
    Hàm lõi `knowledgeAccessibleSql` trả 1 biểu thức boolean SQL referencing
    bảng knowledge_sources — dùng chung cho subquery trong knowledge-search
@@ -44,7 +44,9 @@ export async function resolveKnowledgeAcl(
 }
 
 /** Biểu thức SQL: "row knowledge_sources này user truy cập được?".
- *  CHỈ hợp lệ khi knowledge_sources là bảng đang query (không alias). */
+ *  CHỈ hợp lệ khi knowledge_sources là bảng đang query (không alias).
+ *  "public" luôn accessible (share link); "company" accessible với mọi
+ *  user trong công ty; "restricted"/"private" kiểm tra created_by + members. */
 export function knowledgeAccessibleSql(acl: KnowledgeAcl): SQL {
   const groupClause =
     acl.groupIds.length > 0
@@ -56,7 +58,8 @@ export function knowledgeAccessibleSql(acl: KnowledgeAcl): SQL {
               )}))`
       : sql``;
   return sql`(
-    knowledge_sources.visibility = 'company'
+    knowledge_sources.visibility = 'public'
+    OR knowledge_sources.visibility = 'company'
     OR knowledge_sources.created_by = ${acl.userId}::uuid
     OR EXISTS (SELECT 1 FROM resource_members rm
         WHERE rm.resource_type = 'knowledge'

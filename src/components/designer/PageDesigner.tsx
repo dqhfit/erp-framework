@@ -22,6 +22,7 @@ import {
   Switch,
   Textarea,
 } from "@/components/ui";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useShortcut } from "@/hooks/useShortcut";
@@ -2566,17 +2567,15 @@ export function PageDesigner({ pageId }: Props) {
                               </Select>
                             </FormField>
                             <FormField label="Entity">
-                              <Select
+                              <SearchableSelect
                                 value={panel.entity ?? ""}
-                                onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
-                              >
-                                <option value="">— chọn entity —</option>
-                                {entities.map((e) => (
-                                  <option key={e.id} value={e.id}>
-                                    {e.name}
-                                  </option>
-                                ))}
-                              </Select>
+                                onChange={(v) => onUpdate({ ...panel, entity: v })}
+                                emptyOption="— chọn entity —"
+                                options={[...entities]
+                                  .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+                                  .map((e) => ({ value: e.id, label: e.name }))}
+                                className="w-full"
+                              />
                             </FormField>
                             <FormField label="Tiêu đề">
                               <Input
@@ -2601,6 +2600,32 @@ export function PageDesigner({ pageId }: Props) {
                                 </Select>
                               </FormField>
                             )}
+                            {/* Trường lọc đơn — nhanh cho master-detail 1 field */}
+                            {availableSources.length > 0 &&
+                              (panel.kind === "list" ||
+                                panel.kind === "chart" ||
+                                panel.kind === "kanban" ||
+                                panel.kind === "form" ||
+                                (!panel.kind &&
+                                  (defaultKind === "list" ||
+                                    defaultKind === "chart" ||
+                                    defaultKind === "kanban"))) && (
+                                <FormField label="Trường lọc">
+                                  <Select
+                                    value={panel.linkField ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({ ...panel, linkField: e.target.value || undefined })
+                                    }
+                                  >
+                                    <option value="">— không dùng —</option>
+                                    {(linkedEnt?.fields ?? []).map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </FormField>
+                              )}
                             {/* ── Cột phát (nhiều) — list panel phát nhiều field vào state ── */}
                             {(panel.kind === "list" || (!panel.kind && defaultKind === "list")) && (
                               <div className="flex flex-col gap-1">
@@ -3228,19 +3253,15 @@ export function PageDesigner({ pageId }: Props) {
                                 </Select>
                               </FormField>
                               <FormField label="Entity">
-                                <Select
+                                <SearchableSelect
                                   value={selCell.entity ?? ""}
-                                  onChange={(e) =>
-                                    updateCell({ entity: e.target.value || undefined })
-                                  }
-                                >
-                                  <option value="">— chọn entity —</option>
-                                  {entities.map((e) => (
-                                    <option key={e.id} value={e.id}>
-                                      {e.name}
-                                    </option>
-                                  ))}
-                                </Select>
+                                  onChange={(v) => updateCell({ entity: v || undefined })}
+                                  emptyOption="— chọn entity —"
+                                  options={[...entities]
+                                    .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+                                    .map((e) => ({ value: e.id, label: e.name }))}
+                                  className="w-full"
+                                />
                               </FormField>
                               <FormField label="Tiêu đề">
                                 <Input

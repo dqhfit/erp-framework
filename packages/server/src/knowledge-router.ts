@@ -17,7 +17,8 @@ import {
   viewerGroups,
 } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { enqueueKbIngest } from "./jobs";
@@ -29,20 +30,46 @@ import { rbacProcedure, router } from "./trpc";
 export const knowledgeRouter = router({
   /* ── Quản lý nguồn tri thức ── */
   sources: router({
-    list: rbacProcedure("view", "knowledge").query(async ({ ctx }) => {
-      // Admin xem mọi nguồn (acl=null); user thường lọc theo visibility +
-      // nhóm/user được cấp. Xem knowledge-acl.ts.
-      const acl = await resolveKnowledgeAcl(ctx.db, ctx.user.role, ctx.user.id);
-      return ctx.db
-        .select()
-        .from(knowledgeSources)
-        .where(
-          acl
-            ? and(eq(knowledgeSources.companyId, ctx.user.companyId), knowledgeAccessibleSql(acl))
-            : eq(knowledgeSources.companyId, ctx.user.companyId),
-        )
-        .orderBy(desc(knowledgeSources.createdAt));
-    }),
+    list: rbacProcedure("view", "knowledge")
+      .input(
+        z
+          .object({
+            // scope lọc tab Documents: "mine" = của tôi, "shared" = được chia sẻ,
+            // "company" = toàn công ty. undefined = tất cả (dùng cho KB search).
+            scope: z.enum(["mine", "shared", "company"]).optional(),
+          })
+          .optional(),
+      )
+      .query(async ({ ctx, input }) => {
+        // Admin xem mọi nguồn (acl=null); user thường lọc theo visibility +
+        // nhóm/user được cấp. Xem knowledge-acl.ts.
+        const acl = await resolveKnowledgeAcl(ctx.db, ctx.user.role, ctx.user.id);
+        const baseWhere = acl
+          ? and(eq(knowledgeSources.companyId, ctx.user.companyId), knowledgeAccessibleSql(acl))
+          : eq(knowledgeSources.companyId, ctx.user.companyId);
+
+        const scope = input?.scope;
+        let scopeWhere = undefined;
+        if (scope === "mine") {
+          scopeWhere = eq(knowledgeSources.createdBy, ctx.user.id);
+        } else if (scope === "shared") {
+          // Được chia sẻ riêng: restricted/private có mình trong members/groups,
+          // nhưng KHÔNG phải do mình tạo.
+          scopeWhere = and(
+            ne(knowledgeSources.createdBy, ctx.user.id),
+            ne(knowledgeSources.visibility, "company"),
+            ne(knowledgeSources.visibility, "public"),
+          );
+        } else if (scope === "company") {
+          scopeWhere = eq(knowledgeSources.visibility, "company");
+        }
+
+        return ctx.db
+          .select()
+          .from(knowledgeSources)
+          .where(scopeWhere ? and(baseWhere, scopeWhere) : baseWhere)
+          .orderBy(desc(knowledgeSources.createdAt));
+      }),
 
     get: rbacProcedure("view", "knowledge")
       .input(z.string().uuid())
@@ -164,14 +191,16 @@ export const knowledgeRouter = router({
       .input(
         z.object({
           id: z.string().uuid(),
-          visibility: z.enum(["company", "restricted"]),
+          // "private": chỉ người tạo; "restricted": có members; "company": mọi user;
+          // "public": ai có link. Khi có member mà chọn private → tự động restricted.
+          visibility: z.enum(["private", "company", "restricted", "public"]),
           groupIds: z.array(z.string().uuid()).default([]),
           userIds: z.array(z.string().uuid()).default([]),
         }),
       )
       .mutation(async ({ ctx, input }) => {
         const [src] = await ctx.db
-          .select({ id: knowledgeSources.id })
+          .select({ id: knowledgeSources.id, shareToken: knowledgeSources.shareToken })
           .from(knowledgeSources)
           .where(
             and(
@@ -196,9 +225,18 @@ export const knowledgeRouter = router({
             ).map((g) => g.id)
           : [];
 
+        // Private + có member → effective restricted (member thắng).
+        const hasMembers = validGroupIds.length > 0 || input.userIds.length > 0;
+        const effectiveVisibility =
+          input.visibility === "private" && hasMembers ? "restricted" : input.visibility;
+
+        // Nếu chuyển khỏi "public" → xoá share_token để vô hiệu link cũ.
+        const tokenPatch =
+          effectiveVisibility !== "public" && src.shareToken ? { shareToken: null as null } : {};
+
         await ctx.db
           .update(knowledgeSources)
-          .set({ visibility: input.visibility, updatedAt: new Date() })
+          .set({ visibility: effectiveVisibility, updatedAt: new Date(), ...tokenPatch })
           .where(eq(knowledgeSources.id, input.id));
 
         // Thay thế toàn bộ nhóm được gắn.
@@ -216,6 +254,40 @@ export const knowledgeRouter = router({
         for (const userId of input.userIds) {
           await upsertResourceMember(ctx.db, "knowledge", input.id, userId, "viewer", ctx.user.id);
         }
+        return { ok: true };
+      }),
+
+    /* Sinh share link công khai (set visibility="public" + share_token). */
+    generateShareLink: rbacProcedure("edit", "knowledge")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        const [src] = await ctx.db
+          .select({ id: knowledgeSources.id, shareToken: knowledgeSources.shareToken })
+          .from(knowledgeSources)
+          .where(
+            and(eq(knowledgeSources.id, input), eq(knowledgeSources.companyId, ctx.user.companyId)),
+          );
+        if (!src) throw new TRPCError({ code: "NOT_FOUND", message: "Nguồn không tồn tại" });
+
+        // Tái dùng token nếu đã có (idempotent).
+        const token = src.shareToken ?? randomUUID();
+        await ctx.db
+          .update(knowledgeSources)
+          .set({ visibility: "public", shareToken: token, updatedAt: new Date() })
+          .where(eq(knowledgeSources.id, input));
+        return { token };
+      }),
+
+    /* Thu hồi share link: xoá token + đặt lại visibility về "company". */
+    revokeShareLink: rbacProcedure("edit", "knowledge")
+      .input(z.string().uuid())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.db
+          .update(knowledgeSources)
+          .set({ visibility: "company", shareToken: null, updatedAt: new Date() })
+          .where(
+            and(eq(knowledgeSources.id, input), eq(knowledgeSources.companyId, ctx.user.companyId)),
+          );
         return { ok: true };
       }),
   }),
