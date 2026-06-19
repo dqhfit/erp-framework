@@ -1317,11 +1317,14 @@ export const knowledgeSources = pgTable(
     title: text("title").notNull(),
     // status: "pending" | "processing" | "ready" | "error"
     status: text("status").notNull().default("pending"),
-    // visibility: "company" = mọi user có quyền view:knowledge trong công ty
-    //   đều xem (mặc định, tương thích ngược); "restricted" = chỉ admin +
-    //   người tạo + user/nhóm được cấp (resource_members resource_type=
-    //   'knowledge' + knowledge_source_viewer_groups). Xem knowledge-acl.ts.
+    // visibility: "private" = chỉ người tạo; "restricted" = chỉ admin +
+    //   người tạo + user/nhóm được cấp; "company" = mọi user trong công ty
+    //   (mặc định, tương thích ngược); "public" = ai có share_token đều xem.
+    //   Xem knowledge-acl.ts.
     visibility: text("visibility").notNull().default("company"),
+    // share_token: UUID cho link chia sẻ công khai (không cần login).
+    // Chỉ set khi visibility='public'. Unique index đảm bảo không trùng.
+    shareToken: uuid("share_token"),
     // meta: file → { path, mime, size, originalName }; entity → { entityId };
     //       text → { text }
     meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),

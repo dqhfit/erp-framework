@@ -210,6 +210,30 @@ export const I = {
       <line x1="12" y1="15" x2="12" y2="3" />
     </Icon>
   ),
+  Upload: (p: IP) => (
+    <Icon {...p}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </Icon>
+  ),
+  Share: (p: IP) => (
+    <Icon {...p}>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </Icon>
+  ),
+  FileX: (p: IP) => (
+    <Icon {...p}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="m14.5 12.5-5 5" />
+      <path d="m9.5 12.5 5 5" />
+    </Icon>
+  ),
   Play: (p: IP) => (
     <Icon {...p}>
       <path d="m6 4 14 8-14 8V4Z" />

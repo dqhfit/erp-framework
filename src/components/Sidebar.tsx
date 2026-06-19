@@ -1945,6 +1945,22 @@ export function Sidebar() {
                 })
               }
             />
+            <SidebarItem
+              to="/documents"
+              active={pathname === "/documents"}
+              icon={<I.FileText size={14} />}
+              collapsed={collapsed}
+              label={t("sidebar.documents")}
+              isFavorited={favs.isFav("/documents")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/documents",
+                  to: "/documents",
+                  label: t("sidebar.documents"),
+                  iconName: "FileText",
+                })
+              }
+            />
             {/* MES / Sản xuất — port DQHF */}
             <SidebarItem
               to="/banve"

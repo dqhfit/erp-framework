@@ -775,6 +775,13 @@ async function main(): Promise<void> {
     const originalName = file.filename || "tài-liệu";
     const mime = file.mimetype || "application/octet-stream";
 
+    // Nhận visibility từ form field (mặc định "company").
+    const rawVis = (req.body as Record<string, unknown> | undefined)?.visibility;
+    const visibility =
+      typeof rawVis === "string" && ["private", "restricted", "company", "public"].includes(rawVis)
+        ? rawVis
+        : "company";
+
     const [row] = await db
       .insert(knowledgeSources)
       .values({
@@ -782,6 +789,7 @@ async function main(): Promise<void> {
         kind: "file",
         title: originalName,
         status: "pending",
+        visibility,
         meta: { originalName, mime, size: buf.length },
         createdBy: s.userId,
       })
@@ -917,6 +925,91 @@ async function main(): Promise<void> {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
     reply.send(createReadStream(filePath));
+  });
+
+  /* ── Public share file endpoint (không cần login) ─────────────────────
+     Dùng cho link chia sẻ công khai: knowledge_sources.visibility='public'
+     + share_token match → stream file ra browser, không cần session. */
+  app.get("/doc/share-file/:token", async (req, reply) => {
+    const { token } = req.params as { token: string };
+    const { download } = req.query as { download?: string };
+    const [source] = await db
+      .select()
+      .from(knowledgeSources)
+      .where(
+        and(eq(knowledgeSources.shareToken, token), eq(knowledgeSources.visibility, "public")),
+      );
+    if (!source) {
+      reply.code(404).send({ error: "Link không hợp lệ hoặc đã hết hạn" });
+      return;
+    }
+    const meta = (source.meta ?? {}) as Record<string, unknown>;
+    const filePath = meta.path as string | undefined;
+    if (!filePath) {
+      reply.code(404).send({ error: "File chưa được lưu" });
+      return;
+    }
+    try {
+      await stat(filePath);
+    } catch {
+      reply.code(404).send({ error: "File không tồn tại trên ổ đĩa" });
+      return;
+    }
+    const rawMime = (meta.mime as string | undefined) ?? "application/octet-stream";
+    // Chỉ serve inline cho MIME an toàn (không chạy JS trên app origin).
+    // Mọi loại khác (text/html, text/xml, ...) → attachment + octet-stream.
+    const SAFE_INLINE = new Set([
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+    ]);
+    const safeMime = SAFE_INLINE.has(rawMime) ? rawMime : "application/octet-stream";
+    const isInline = SAFE_INLINE.has(rawMime) && download !== "1";
+    reply.header("Content-Type", safeMime);
+    reply.header(
+      "Content-Disposition",
+      `${isInline ? "inline" : "attachment"}; filename="${encodeURIComponent(source.title)}"`,
+    );
+    reply.header("X-Content-Type-Options", "nosniff");
+    // sandbox: ngăn script/form nếu browser interpret content như document
+    reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self' blob:;");
+    reply.header("X-File-Title", encodeURIComponent(source.title));
+    reply.header("X-File-Kind", source.kind ?? "file");
+    reply.send(createReadStream(filePath));
+  });
+
+  /* Endpoint JSON metadata (không cần login) cho trang share SPA. */
+  app.get("/doc/share-meta/:token", async (req, reply) => {
+    const { token } = req.params as { token: string };
+    const [source] = await db
+      .select({
+        id: knowledgeSources.id,
+        title: knowledgeSources.title,
+        kind: knowledgeSources.kind,
+        meta: knowledgeSources.meta,
+        createdAt: knowledgeSources.createdAt,
+      })
+      .from(knowledgeSources)
+      .where(
+        and(eq(knowledgeSources.shareToken, token), eq(knowledgeSources.visibility, "public")),
+      );
+    if (!source) {
+      reply.code(404).send({ error: "Link không hợp lệ hoặc đã hết hạn" });
+      return;
+    }
+    const meta = (source.meta ?? {}) as Record<string, unknown>;
+    reply.send({
+      id: source.id,
+      title: source.title,
+      kind: source.kind,
+      mime: (meta.mime as string | undefined) ?? "application/octet-stream",
+      originalName: (meta.originalName as string | undefined) ?? source.title,
+      size: (meta.size as number | undefined) ?? 0,
+      createdAt: source.createdAt,
+    });
   });
 
   /* ── OnlyOffice Document Server integration ─────────────────────────────
