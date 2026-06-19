@@ -2555,6 +2555,10 @@ export function PageDesigner({ pageId }: Props) {
                         rowActionsBuiltin?: boolean;
                         rowActionsHidden?: string[];
                         rowActionsStyle?: "inline" | "popover";
+                        loadFilters?: Record<
+                          string,
+                          { op: string; value: string | number | boolean }
+                        >;
                         // chart
                         chartKind?: string;
                         groupBy?: string;

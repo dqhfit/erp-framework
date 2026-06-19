@@ -4117,6 +4117,7 @@ type SplitPanelCfg = {
   excelMode?: boolean;
   multiSelect?: boolean;
   loadGate?: string;
+  loadFilters?: LoadFilters;
   rowLimit?: number;
   pageSize?: number;
   defaultSort?: { field: string; dir: "asc" | "desc" };
@@ -4265,6 +4266,7 @@ function buildSubCfg(
     excelMode: panel.excelMode,
     multiSelect: panel.multiSelect,
     loadGate: panel.loadGate,
+    loadFilters: panel.loadFilters,
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
