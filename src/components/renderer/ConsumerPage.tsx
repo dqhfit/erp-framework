@@ -1955,6 +1955,7 @@ function ListWidget({
   selectionField,
   selectionEmits,
   filterFromState,
+  filterConditions,
   filters,
   searchFromState,
   searchStateKey,
@@ -2008,6 +2009,10 @@ function ListWidget({
    *  (master-detail), TRỪ KHI emptyStateShowsAll=true (combobox lọc:
    *  "tất cả" = rỗng → hiện hết). */
   filterFromState?: { field: string; stateKey: string };
+  /** Nhiều điều kiện lọc AND từ nhiều cột phát / nhiều panel.
+   *  Áp sau filterFromState (không thay thế). Khi bất kỳ điều kiện nào rỗng
+   *  (state chưa có giá trị) → ẩn hết hàng (master-detail UX). */
+  filterConditions?: Array<{ field: string; stateKey: string }>;
   /** V2: cây filter nâng cao. Ưu tiên hơn filterFromState. Pass-through khi
    *  state rỗng (page mới mở vẫn show full list). */
   filters?: FilterNode | null;
@@ -2305,6 +2310,26 @@ function ListWidget({
     } else if (!emptyStateShowsAll && !Array.isArray(stateVal)) {
       // Rỗng + không bật emptyStateShowsAll → ẩn hết (master-detail).
       filteredRows = [];
+    }
+  }
+  // filterConditions: AND nhiều điều kiện bổ sung (từ sourceFields đa cột).
+  // Bất kỳ điều kiện nào rỗng → ẩn hết (master-detail UX nhất quán).
+  if (filterConditions?.length) {
+    const vals = filterConditions.map((c) => pageState.get(c.stateKey));
+    const anyEmpty = vals.some(
+      (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0),
+    );
+    if (anyEmpty) {
+      filteredRows = [];
+    } else {
+      filteredRows = filteredRows.filter((r) =>
+        filterConditions.every((c, i) => {
+          const sv = vals[i];
+          const v = r[c.field];
+          if (Array.isArray(sv)) return (sv as string[]).includes(String(v));
+          return v === sv || String(v) === String(sv);
+        }),
+      );
     }
   }
 
@@ -3212,6 +3237,9 @@ function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
     (cfg.valueField as string) || (cfg.field as string) || (cfg.metric as string) || "";
   const kind = ((cfg.kind as string) || "bar") as ChartKind;
   const filterFromState = cfg.filterFromState as { field: string; stateKey: string } | undefined;
+  const filterConditions = cfg.filterConditions as
+    | Array<{ field: string; stateKey: string }>
+    | undefined;
   const filters = cfg.filters as FilterNode | null | undefined;
   const pageState = usePageState();
   // Chỉ truy vấn khi đã cấu hình field nhóm (entity/datasource từ cfg).
@@ -3239,6 +3267,21 @@ function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
       });
     } else {
       rows = [];
+    }
+  }
+  if (filterConditions?.length) {
+    const vals = filterConditions.map((c) => pageState.get(c.stateKey));
+    const anyEmpty = vals.some((v) => v === undefined || v === null || v === "");
+    if (anyEmpty) {
+      rows = [];
+    } else {
+      rows = rows.filter((r) =>
+        filterConditions.every((c, i) => {
+          const sv = vals[i];
+          const v = r[c.field];
+          return v === sv || String(v) === String(sv);
+        }),
+      );
     }
   }
 
@@ -3418,6 +3461,9 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const entityId = cfg.entity as string | undefined;
   const groupBy = (cfg.groupBy as string) || "status";
   const filterFromState = cfg.filterFromState as { field: string; stateKey: string } | undefined;
+  const filterConditions = cfg.filterConditions as
+    | Array<{ field: string; stateKey: string }>
+    | undefined;
   const filters = cfg.filters as FilterNode | null | undefined;
   const ent = useEntity(entityId);
   const { rows: allRows, loading, err } = useWidgetData(cfg);
@@ -3441,6 +3487,21 @@ function KanbanWidget({ cfg }: { cfg: Record<string, unknown> }) {
       });
     } else {
       rows = [];
+    }
+  }
+  if (filterConditions?.length) {
+    const vals = filterConditions.map((c) => pageState.get(c.stateKey));
+    const anyEmpty = vals.some((v) => v === undefined || v === null || v === "");
+    if (anyEmpty) {
+      rows = [];
+    } else {
+      rows = rows.filter((r) =>
+        filterConditions.every((c, i) => {
+          const sv = vals[i];
+          const v = r[c.field];
+          return v === sv || String(v) === String(sv);
+        }),
+      );
     }
   }
 
@@ -4009,6 +4070,18 @@ type SplitPanelCfg = {
   dataSourceId?: string;
   title?: string;
   linkField?: string;
+  /** Cột phát khi chọn dòng — giá trị của cột này được lưu vào state thay vì row.id.
+   *  Dùng khi panel nguồn liên kết với panel đích qua business-key (vd masp, code)
+   *  thay vì UUID. Panel đích đặt linkField = cột có cùng giá trị đó. */
+  sourceField?: string;
+  /** Nhiều cột phát cùng lúc. Mỗi cột fieldX được lưu vào state key
+   *  `${splitKey}:${panelKey}:${fieldX}`. Panel đích dùng linkConditions
+   *  để khai báo điều kiện lọc theo cột phát tương ứng. */
+  sourceFields?: string[];
+  /** Nhiều điều kiện lọc (AND). Mỗi điều kiện chỉ định: panel nguồn phát
+   *  (fromPanel), cột phát từ panel đó (fromField, bỏ trống = dùng main key),
+   *  và cột trong panel này để so sánh (toField). */
+  linkConditions?: Array<{ fromPanel?: string; fromField?: string; toField: string }>;
   /** Panel nguồn để lọc/hiển thị detail: "a"|"b"|"c"|"d". Mặc định "a" (Panel A). */
   filterFromPanel?: string;
   // Các trường được copy từ list/form/detail khi kéo thả vào panel
@@ -4163,10 +4236,38 @@ function buildSubCfg(
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
-    ...(kind === "list" ? { selectionStateKey: ownStateKey } : {}),
+    ...(kind === "list"
+      ? {
+          selectionStateKey: ownStateKey,
+          ...(panel.sourceField ? { selectionField: panel.sourceField } : {}),
+          // sourceFields: mỗi field phát thêm 1 state key riêng {ownStateKey}:{field}
+          ...(panel.sourceFields?.length
+            ? {
+                selectionEmits: Object.fromEntries(
+                  panel.sourceFields.map((f) => [`${ownStateKey}:${f}`, f]),
+                ),
+              }
+            : {}),
+        }
+      : {}),
     ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
+    // linkField đơn (backwards compat) → filterFromState như cũ
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
       ? { filterFromState: { field: panel.linkField, stateKey: srcStateKey } }
+      : {}),
+    // linkConditions: mảng điều kiện AND — fromField → key phụ; bỏ fromField → key chính
+    ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkConditions?.length
+      ? {
+          filterConditions: panel.linkConditions.map((c) => {
+            const fp = c.fromPanel ?? panel.filterFromPanel ?? "a";
+            const fromStateKey = panelKey
+              ? c.fromField
+                ? `${splitKey}:${fp}:${c.fromField}`
+                : `${splitKey}:${fp}`
+              : splitKey;
+            return { field: c.toField, stateKey: fromStateKey };
+          }),
+        }
       : {}),
     ...(kind === "form" && panel.linkField
       ? { linkedToState: { field: panel.linkField, stateKey: srcStateKey } }
@@ -5081,6 +5182,9 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         selectionField={cfg.selectionField as string | undefined}
         selectionEmits={cfg.selectionEmits as Record<string, string> | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
+        filterConditions={
+          cfg.filterConditions as Array<{ field: string; stateKey: string }> | undefined
+        }
         filters={cfg.filters as FilterNode | null | undefined}
         searchFromState={cfg.searchFromState as string | undefined}
         searchStateKey={cfg.searchStateKey as string | undefined}

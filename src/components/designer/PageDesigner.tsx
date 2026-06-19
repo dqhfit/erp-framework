@@ -2469,7 +2469,14 @@ export function PageDesigner({ pageId }: Props) {
                         entity?: string;
                         title?: string;
                         linkField?: string;
+                        sourceField?: string;
+                        sourceFields?: string[];
                         filterFromPanel?: string; // "a"|"b"|"c"|"d"
+                        linkConditions?: Array<{
+                          fromPanel?: string;
+                          fromField?: string;
+                          toField: string;
+                        }>;
                       };
                       const splitCfg = sel.config as {
                         orientation?:
@@ -2512,10 +2519,20 @@ export function PageDesigner({ pageId }: Props) {
                       const existingPanelKeys = ["A", "B"];
                       if (showPanelC) existingPanelKeys.push("C");
                       if (showPanelD) existingPanelKeys.push("D");
+                      const panelByKey: Record<string, typeof panelA> = {
+                        a: panelA,
+                        b: panelB,
+                        c: panelC,
+                        d: panelD,
+                      };
                       const sourcesFor = (panelKey: string) =>
                         existingPanelKeys
                           .filter((k) => k !== panelKey)
-                          .map((k) => ({ key: k.toLowerCase(), label: panelLabel(k) }));
+                          .map((k) => ({
+                            key: k.toLowerCase(),
+                            label: panelLabel(k),
+                            entityId: panelByKey[k.toLowerCase()]?.entity,
+                          }));
 
                       const PanelFields = ({
                         panel,
@@ -2525,7 +2542,7 @@ export function PageDesigner({ pageId }: Props) {
                         onUpdate,
                       }: {
                         panel: PanelCfg;
-                        availableSources: Array<{ key: string; label: string }>;
+                        availableSources: Array<{ key: string; label: string; entityId?: string }>;
                         linkedEnt?: (typeof entities)[0];
                         defaultKind?: string;
                         onUpdate: (p: PanelCfg) => void;
@@ -2584,35 +2601,215 @@ export function PageDesigner({ pageId }: Props) {
                                 </Select>
                               </FormField>
                             )}
-                            {(panel.kind === "list" ||
-                              panel.kind === "chart" ||
-                              panel.kind === "kanban" ||
-                              panel.kind === "form") && (
-                              <FormField label={`Trường lọc (từ ${srcLabel})`}>
+                            {/* ── Cột phát (nhiều) — list panel phát nhiều field vào state ── */}
+                            {(panel.kind === "list" || (!panel.kind && defaultKind === "list")) && (
+                              <div className="flex flex-col gap-1">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mt-1">
+                                  Cột phát khi chọn dòng
+                                </div>
+                                {(panel.sourceFields ?? []).map((sf, i) => (
+                                  <div
+                                    key={sf}
+                                    className="flex items-center gap-1 text-xs bg-panel-2 px-2 py-0.5 rounded"
+                                  >
+                                    <span className="flex-1 font-mono">{sf}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        onUpdate({
+                                          ...panel,
+                                          sourceFields: (panel.sourceFields ?? []).filter(
+                                            (_, j) => j !== i,
+                                          ),
+                                        })
+                                      }
+                                      className="text-muted hover:text-danger"
+                                    >
+                                      <I.X size={10} />
+                                    </button>
+                                  </div>
+                                ))}
                                 {linkedEnt ? (
                                   <Select
-                                    value={panel.linkField ?? ""}
-                                    onChange={(e) =>
-                                      onUpdate({ ...panel, linkField: e.target.value })
-                                    }
+                                    value=""
+                                    onChange={(e) => {
+                                      if (!e.target.value) return;
+                                      const cur = panel.sourceFields ?? [];
+                                      if (!cur.includes(e.target.value))
+                                        onUpdate({
+                                          ...panel,
+                                          sourceFields: [...cur, e.target.value],
+                                        });
+                                    }}
                                   >
-                                    <option value="">— chọn field —</option>
-                                    {linkedEnt.fields.map((f) => (
-                                      <option key={f.name} value={f.name}>
-                                        {fieldBoth(f)}
-                                        {f.type === "lookup" || f.type === "multi-lookup"
-                                          ? " ↗"
-                                          : ""}
-                                      </option>
-                                    ))}
+                                    <option value="">+ Thêm cột phát…</option>
+                                    {linkedEnt.fields
+                                      .filter((f) => !(panel.sourceFields ?? []).includes(f.name))
+                                      .map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
                                   </Select>
                                 ) : (
-                                  <div className="text-[11px] text-muted italic px-1">
-                                    Bind entity trước
+                                  <div className="text-[11px] text-muted italic">
+                                    Bind entity để chọn cột phát
                                   </div>
                                 )}
-                              </FormField>
+                              </div>
                             )}
+                            {/* ── Điều kiện lọc (nhiều) — AND của các cột phát từ panel khác ── */}
+                            {availableSources.length > 0 &&
+                              (panel.kind === "list" ||
+                                panel.kind === "chart" ||
+                                panel.kind === "kanban" ||
+                                panel.kind === "form") && (
+                                <div className="flex flex-col gap-1">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mt-1">
+                                    Điều kiện lọc (AND)
+                                  </div>
+                                  {(panel.linkConditions ?? []).map((cond, i) => {
+                                    const fp = cond.fromPanel ?? availableSources[0]?.key ?? "a";
+                                    const srcEnt = entities.find(
+                                      (e) => e.id === panelByKey[fp]?.entity,
+                                    );
+                                    const srcEmitFields = panelByKey[fp]?.sourceFields ?? [];
+                                    const condKey = `${fp}:${cond.fromField ?? "main"}:${cond.toField}`;
+                                    return (
+                                      <div
+                                        key={condKey}
+                                        className="flex flex-col gap-1 border border-border rounded p-1.5 text-xs"
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <Select
+                                            value={fp}
+                                            onChange={(e) =>
+                                              onUpdate({
+                                                ...panel,
+                                                linkConditions: (panel.linkConditions ?? []).map(
+                                                  (c, j) =>
+                                                    j === i
+                                                      ? {
+                                                          ...c,
+                                                          fromPanel: e.target.value,
+                                                          fromField: undefined,
+                                                        }
+                                                      : c,
+                                                ),
+                                              })
+                                            }
+                                          >
+                                            {availableSources.map((s) => (
+                                              <option key={s.key} value={s.key}>
+                                                {s.label}
+                                              </option>
+                                            ))}
+                                          </Select>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              onUpdate({
+                                                ...panel,
+                                                linkConditions: (panel.linkConditions ?? []).filter(
+                                                  (_, j) => j !== i,
+                                                ),
+                                              })
+                                            }
+                                            className="shrink-0 text-muted hover:text-danger"
+                                          >
+                                            <I.X size={10} />
+                                          </button>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted/60 shrink-0 text-[10px]">
+                                            cột phát:
+                                          </span>
+                                          <Select
+                                            value={cond.fromField ?? ""}
+                                            onChange={(e) =>
+                                              onUpdate({
+                                                ...panel,
+                                                linkConditions: (panel.linkConditions ?? []).map(
+                                                  (c, j) =>
+                                                    j === i
+                                                      ? {
+                                                          ...c,
+                                                          fromField: e.target.value || undefined,
+                                                        }
+                                                      : c,
+                                                ),
+                                              })
+                                            }
+                                          >
+                                            <option value="">(chọn dòng chính)</option>
+                                            {srcEmitFields.map((f) => {
+                                              const ef = srcEnt?.fields.find((x) => x.name === f);
+                                              return (
+                                                <option key={f} value={f}>
+                                                  {ef ? fieldBoth(ef) : f}
+                                                </option>
+                                              );
+                                            })}
+                                          </Select>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted/60 shrink-0 text-[10px]">
+                                            → cột lọc:
+                                          </span>
+                                          {linkedEnt ? (
+                                            <Select
+                                              value={cond.toField}
+                                              onChange={(e) =>
+                                                onUpdate({
+                                                  ...panel,
+                                                  linkConditions: (panel.linkConditions ?? []).map(
+                                                    (c, j) =>
+                                                      j === i
+                                                        ? { ...c, toField: e.target.value }
+                                                        : c,
+                                                  ),
+                                                })
+                                              }
+                                            >
+                                              <option value="">— chọn field —</option>
+                                              {linkedEnt.fields.map((f) => (
+                                                <option key={f.name} value={f.name}>
+                                                  {fieldBoth(f)}
+                                                  {f.type === "lookup" || f.type === "multi-lookup"
+                                                    ? " ↗"
+                                                    : ""}
+                                                </option>
+                                              ))}
+                                            </Select>
+                                          ) : (
+                                            <span className="text-muted italic">
+                                              Bind entity trước
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onUpdate({
+                                        ...panel,
+                                        linkConditions: [
+                                          ...(panel.linkConditions ?? []),
+                                          {
+                                            fromPanel: availableSources[0]?.key,
+                                            toField: "",
+                                          },
+                                        ],
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 text-xs text-muted hover:text-text border border-dashed border-border rounded px-2 py-0.5 mt-0.5"
+                                  >
+                                    <I.Plus size={10} /> Thêm điều kiện
+                                  </button>
+                                </div>
+                              )}
                             {panel.kind === "detail" && availableSources.length > 0 && (
                               <div className="text-[11px] text-muted italic px-1">
                                 Hiển thị record chọn từ {srcLabel}
@@ -2798,7 +2995,7 @@ export function PageDesigner({ pageId }: Props) {
                                   <PanelFields
                                     panel={panelA}
                                     availableSources={[]}
-                                    linkedEnt={undefined}
+                                    linkedEnt={entities.find((e) => e.id === panelA.entity)}
                                     defaultKind="list"
                                     onUpdate={(p) => updateSplit({ panelA: p })}
                                   />
