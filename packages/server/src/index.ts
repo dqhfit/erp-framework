@@ -39,6 +39,7 @@ import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
 import { makeCallTool } from "./mcp-client";
+import { registerMenuMcp } from "./mcp-menu";
 import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
 import { registerMigrationMcp } from "./mcp-migration";
@@ -284,6 +285,11 @@ async function main(): Promise<void> {
   // mcp-backup.ts + tooling/backup-pull). Dump đa tenant → chỉ cấp backup:full
   // cho key sao lưu riêng của operator.
   registerBackupMcp(app, db);
+
+  // MCP server quan ly Menu — POST /mcp/menu (JSON-RPC), auth X-API-Key
+  // scope menu:read|write. AI doc cay menu + them/doi-ten/chuyen/xoa node +
+  // gan trang; khong can vao UI /settings/menu-pages (xem mcp-menu.ts).
+  registerMenuMcp(app, db);
 
   // Webhook ngoài kích hoạt workflow — POST /webhooks/workflow/:token
   // (token = triggerConfig.token; không cần auth header). Trigger 'webhook'.
