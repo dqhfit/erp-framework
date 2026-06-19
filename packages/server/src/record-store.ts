@@ -500,6 +500,10 @@ class TableRecordStore implements RecordStore {
           conds.push(arr.length > 0 ? inArray(e, arr) : sql`1 = 0`);
           break;
         }
+        case "is-not-true":
+          // NULL-safe: NULL và 'false' đều khớp (khác với '!=' bỏ qua NULL)
+          conds.push(sql`COALESCE(${e}, 'false') <> 'true'`);
+          break;
       }
     }
     // q (full-text) trên search_tsv (set khi insert/merge/replace từ field searchable).

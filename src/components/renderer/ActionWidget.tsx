@@ -31,7 +31,8 @@ interface Props {
 }
 
 export function ActionWidget({ config, pageState, inline = false, compact = false }: Props) {
-  const role = useAuth((s) => s.user?.role);
+  const user = useAuth((s) => s.user);
+  const role = user?.role;
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [popupStep, setPopupStep] = useState<ActionStepOpenPopup | null>(null);
@@ -104,6 +105,7 @@ export function ActionWidget({ config, pageState, inline = false, compact = fals
       const ctx = {
         pageState,
         procClient,
+        currentUser: user ? { name: user.name, email: user.email } : undefined,
         deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
         createRecord: (entityId: string, data: Record<string, unknown>) =>
           recordsApi.createRecord(entityId, data).then((r) => r.id),

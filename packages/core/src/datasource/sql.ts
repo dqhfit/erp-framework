@@ -989,6 +989,8 @@ function condToSql(lhs: string, op: FilterOp, value: unknown): string {
     }
     case "!=":
       return `${lhs} <> ${lit(value)}`;
+    case "is-not-true":
+      return `COALESCE(${lhs}::text, 'false') <> 'true'`;
     default:
       return `${lhs} ${op} ${lit(value)}`;
   }

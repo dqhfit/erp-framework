@@ -157,7 +157,7 @@ export interface EntityRecord {
   updatedAt: string;
 }
 
-export type FilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in";
+export type FilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in" | "is-not-true";
 
 /** Tham số truy vấn record động. */
 export interface QueryParams {

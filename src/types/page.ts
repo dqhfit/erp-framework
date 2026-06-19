@@ -146,6 +146,18 @@ export interface ActionStepUpdateRecord {
   /** Invalidate records của entity sau khi sửa → list re-fetch. */
   invalidateEntities?: string[];
 }
+export interface ActionStepUpdateFields {
+  id: string;
+  kind: "update-fields";
+  /** Nguồn recordId — thường state "sel" gán từ selectionStateKey. */
+  recordIdBinding: BindingValue;
+  /** Map field slug → giá trị. Hỗ trợ token đặc biệt: "$currentUser" (tên
+   *  người dùng đang đăng nhập), "$now" (ISO timestamp hiện tại), hoặc
+   *  BindingValue bình thường. */
+  fields: Record<string, "$currentUser" | "$now" | BindingValue>;
+  /** Invalidate list sau update. */
+  invalidateEntities?: string[];
+}
 export interface ActionStepNavigate {
   id: string;
   kind: "navigate";
@@ -311,6 +323,7 @@ export type ActionStep =
   | ActionStepDeleteRecord
   | ActionStepCreateRecord
   | ActionStepUpdateRecord
+  | ActionStepUpdateFields
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepRefresh

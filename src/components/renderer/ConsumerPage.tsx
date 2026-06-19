@@ -115,7 +115,7 @@ function usePageState(): PageStateCtx {
 
 /* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
 
-type LoadFilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in";
+type LoadFilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in" | "is-not-true";
 /** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
 type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 
@@ -1937,7 +1937,11 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
   return {
     ...action,
     steps: action.steps.map((s) =>
-      s.kind === "open-popup" || s.kind === "delete-record" || s.kind === "open-wizard"
+      s.kind === "open-popup" ||
+      s.kind === "delete-record" ||
+      s.kind === "open-wizard" ||
+      s.kind === "update-fields" ||
+      s.kind === "update-record"
         ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
         : s,
     ),
@@ -4827,6 +4831,8 @@ function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
 function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const pageState = usePageState();
   const field = cfg.field as string | undefined;
+  /** Field phụ hiển thị kèm trong nhãn: "${field} — ${labelField}". */
+  const labelField = cfg.labelField as string | undefined;
   const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
@@ -4835,14 +4841,25 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
   const dynamicOpts = useMemo(() => {
     if (!field || !rows.length) return [];
-    return [...new Set(rows.map((r) => String(r[field] ?? "")).filter(Boolean))].sort();
-  }, [rows, field]);
+    const seen = new Set<string>();
+    const out: { value: string; label: string }[] = [];
+    for (const r of rows) {
+      const v = String(r[field] ?? "");
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      const extra = labelField ? String(r[labelField] ?? "") : "";
+      out.push({ value: v, label: extra ? `${v} — ${extra}` : v });
+    }
+    out.sort((a, b) => a.value.localeCompare(b.value));
+    return out;
+  }, [rows, field, labelField]);
 
   const options = staticOpts
     ? staticOpts
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
+        .map((o) => ({ value: o, label: o }))
     : dynamicOpts;
 
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
@@ -4854,7 +4871,7 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         className="w-full"
         value={val}
         onChange={(v) => pageState.set(stateKey, v)}
-        options={options.map((o) => ({ value: o, label: o }))}
+        options={options}
         emptyOption="— tất cả —"
       />
     </div>

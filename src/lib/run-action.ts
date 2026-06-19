@@ -31,6 +31,8 @@ export interface ActionContext {
   /** Cập nhật 1 bản ghi (records.update). Optional — thiếu thì step
    *  update-record báo lỗi nhẹ. */
   updateRecord?: (recordId: string, data: Record<string, unknown>) => Promise<void>;
+  /** Thông tin người dùng hiện tại — dùng cho token $currentUser. */
+  currentUser?: { name: string; email: string };
   /** Gọi proc Tier D đã port (module-procs) cho nút nghiệp vụ (Duyệt...). */
   invokeModule?: (name: string, args: Record<string, unknown>) => Promise<{ output: unknown }>;
   dialog: {
@@ -280,6 +282,43 @@ export async function runActionSteps(
         }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "lưu thay đổi"), { title: "Không lưu được" });
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "update-fields") {
+      if (!ctx.updateRecord) {
+        ctx.toast.error("Cập nhật không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const rid = resolveBinding(step.recordIdBinding, rs.get);
+      if (rid == null || rid === "") {
+        await ctx.dialog.alert("Vui lòng chọn một dòng trong danh sách trước.", {
+          title: "Chưa chọn dòng",
+        });
+        return { completed: false, procedureRuns };
+      }
+      const data: Record<string, unknown> = {};
+      for (const [field, val] of Object.entries(step.fields)) {
+        if (val === "$currentUser") {
+          data[field] = ctx.currentUser?.name ?? ctx.currentUser?.email ?? "";
+        } else if (val === "$now") {
+          data[field] = new Date().toISOString();
+        } else {
+          data[field] = resolveBinding(val as BindingValue, rs.get);
+        }
+      }
+      try {
+        await ctx.updateRecord(String(rid), data);
+        ctx.toast.success("Đã lưu");
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "cập nhật bản ghi"), {
+          title: "Không lưu được",
+        });
         throw e;
       }
       continue;

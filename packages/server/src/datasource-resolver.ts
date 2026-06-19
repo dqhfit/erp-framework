@@ -117,6 +117,9 @@ function matchOp(val: unknown, op: FilterOp, target: unknown): boolean {
             .map((s) => s.trim());
       return arr.includes(String(val ?? ""));
     }
+    case "is-not-true":
+      // NULL-safe: null/undefined/'false'/false đều khớp
+      return val !== true && val !== "true";
     default:
       return true;
   }

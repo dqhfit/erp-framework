@@ -346,6 +346,7 @@ function StepRow({
     "delete-record": "Xoá bản ghi",
     "create-record": "Tạo bản ghi",
     "update-record": "Sửa bản ghi",
+    "update-fields": "Cập nhật trường trực tiếp",
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
     refresh: "Nạp lại lưới",
