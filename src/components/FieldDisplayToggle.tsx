@@ -17,6 +17,16 @@ export function useFieldDisplay() {
   return { mode, fieldDisp };
 }
 
+/**
+ * Hiển thị đồng thời tên kỹ thuật + nhãn của 1 field — dùng ở designer
+ * khi cần thấy cả hai cùng lúc (inspector dropdown, chip, ERD node…).
+ * Khi label trùng hoặc trống: chỉ trả name.
+ */
+export function fieldBoth(f: { name: string; label?: string }): string {
+  const label = f.label?.trim() ?? "";
+  return label && label !== f.name ? `${label} (${f.name})` : f.name;
+}
+
 /** Toggle segmented "Tên cột | Nhãn" — đặt ở toolbar/panel của designer. */
 export function FieldDisplayToggle({
   className,

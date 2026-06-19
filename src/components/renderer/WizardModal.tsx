@@ -12,6 +12,7 @@ import { computeProduct, sumField } from "@/components/renderer/MasterDetailCrea
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import type { PageStateLike } from "@/lib/run-action";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
@@ -98,6 +99,7 @@ interface Props {
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
+  const _onCancel = onCancel;
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
   // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/
@@ -131,6 +133,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   >({});
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
+  const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
   const lookupKey = [
@@ -268,7 +271,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
   if (wizardSteps.length === 0) {
     return (
-      <Modal open onClose={onCancel} title={step.title || "Wizard"} width={540}>
+      <Modal open onClose={_onCancel} title={step.title || "Wizard"} width={540}>
         <p className="text-sm text-muted text-center py-6">Wizard chưa cấu hình bước nào.</p>
       </Modal>
     );
@@ -384,7 +387,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const goNext = async () => {
     // Chế độ XEM (chỉ đọc): chỉ điều hướng giữa các bước, KHÔNG lưu gì.
     if (readOnly) {
-      if (isLast) onCancel();
+      if (isLast) _onCancel();
       else setActiveIdx((i) => i + 1);
       return;
     }
@@ -537,12 +540,44 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     }
   };
 
-  // Upload ảnh → base64 vào form (cho field type "image" ở cột phải).
+  // Upload ảnh lên server → lưu URL vào form (thay base64).
   const onPickImage = (name: string, file: File | undefined) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Chỉ chấp nhận file ảnh");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 10MB");
+      return;
+    }
+    // Preview nhanh base64 local trong khi upload ngầm.
     const reader = new FileReader();
     reader.onload = () => setField(name, String(reader.result));
     reader.readAsDataURL(file);
+    setImgUploading((u) => ({ ...u, [name]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    fetch("/upload/image", { method: "POST", body: fd })
+      .then(async (res) => {
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
+          throw new Error((e as { error?: string }).error ?? "Upload thất bại");
+        }
+        return res.json() as Promise<{ url: string }>;
+      })
+      .then(({ url }) => setField(name, url))
+      .catch((e: Error) => {
+        toast.error(e.message);
+        setField(name, ""); // xoá preview nếu upload lỗi
+      })
+      .finally(() =>
+        setImgUploading((u) => {
+          const n = { ...u };
+          delete n[name];
+          return n;
+        }),
+      );
   };
 
   // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
@@ -703,7 +738,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   return (
     <Modal
       open
-      onClose={onCancel}
+      onClose={_onCancel}
       title={step.title || "Wizard"}
       width={
         wizardSteps.some((s) => s.detail)
@@ -852,9 +887,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             </div>
           ) : ent ? (
             visibleFields.length > 0 ? (
-              <div className="flex gap-4 items-start">
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
-                <div className={cn("min-w-0", imgFields.length > 0 ? "flex-1" : "w-full")}>
+                <div className={cn("min-w-0 w-full", imgFields.length > 0 ? "sm:flex-1" : "")}>
                   {current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
@@ -871,7 +906,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             <div
                               className={cn(
                                 (current.cols ?? 1) >= 2
-                                  ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                                  ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                                   : "space-y-2.5",
                               )}
                             >
@@ -903,7 +938,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     <div
                       className={cn(
                         (current.cols ?? 1) >= 2
-                          ? "grid grid-cols-2 gap-x-4 gap-y-2.5"
+                          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
                           : "space-y-2.5",
                       )}
                     >
@@ -928,34 +963,57 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
                 {imgFields.length > 0 && (
-                  <div className="w-56 shrink-0 space-y-3">
+                  <div className="w-full sm:w-56 sm:shrink-0 space-y-3">
                     {imgFields.map((f) => (
                       <div key={f.id}>
-                        <label className="block text-xs font-medium mb-1">{f.label}</label>
+                        <label className="block text-xs font-medium mb-1 flex items-center gap-1">
+                          {f.label}
+                          {imgUploading[f.name] && (
+                            <I.Loader size={10} className="animate-spin text-accent" />
+                          )}
+                        </label>
                         {form[f.name] ? (
-                          // biome-ignore lint/performance/noImgElement: preview ảnh base64/URL trong modal
+                          // biome-ignore lint/performance/noImgElement: preview ảnh URL/base64 trong modal
                           <img
                             src={form[f.name]}
                             alt=""
-                            className="w-full h-48 object-contain rounded border border-border bg-panel-2"
+                            className={cn(
+                              "w-full h-48 object-contain rounded border border-border bg-panel-2",
+                              imgUploading[f.name] && "opacity-50",
+                            )}
                           />
                         ) : (
                           <div className="w-full h-48 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
-                            No image data
+                            {imgUploading[f.name] ? (
+                              <I.Loader size={20} className="animate-spin text-accent" />
+                            ) : (
+                              "Chưa có ảnh"
+                            )}
                           </div>
                         )}
                         {!readOnly && (
                           <div className="flex items-center gap-2 mt-1.5">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="text-xs"
-                              onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
-                            />
-                            {form[f.name] && (
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                              <span
+                                className={cn(
+                                  "btn btn-default text-xs px-3 py-1.5 shrink-0",
+                                  imgUploading[f.name] && "opacity-50 pointer-events-none",
+                                )}
+                              >
+                                Chọn ảnh
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={!!imgUploading[f.name]}
+                                onChange={(e) => onPickImage(f.name, e.target.files?.[0])}
+                              />
+                            </label>
+                            {form[f.name] && !imgUploading[f.name] && (
                               <button
                                 type="button"
-                                className="text-xs text-danger hover:underline"
+                                className="text-xs text-danger hover:underline shrink-0"
                                 onClick={() => setField(f.name, "")}
                               >
                                 Xoá
@@ -993,7 +1051,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             variant="ghost"
             onClick={() => {
               if (activeIdx === 0) {
-                onCancel();
+                _onCancel();
               } else {
                 setErr("");
                 setActiveIdx((i) => i - 1);

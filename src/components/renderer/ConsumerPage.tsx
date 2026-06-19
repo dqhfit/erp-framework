@@ -8,6 +8,7 @@
 import type { ReactElement } from "react";
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -30,6 +31,7 @@ import {
   type ServerGridQuery,
   type ServerPagingController,
 } from "@/components/renderer/DataGrid";
+import { DocumentWidget } from "@/components/renderer/DocumentWidget";
 import { DrawingPageCell } from "@/components/renderer/DrawingPageCell";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
@@ -2096,6 +2098,16 @@ function ListWidget({
     refFill,
   } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
   const pageState = usePageState();
+  // Các ref cho cell functions trong useMemo — đọc giá trị mới nhất mà không cần
+  // đưa vào deps (pageState thay identity mỗi khi set gọi; visibleFields/columnLabels
+  // /title ít đổi). Khai báo sớm (trước conditional return) để tuân thủ rules of hooks.
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
+  const _rafVisibleFields = useRef<EntityField[]>([]);
+  const _rafColumnLabels = useRef(columnLabels);
+  _rafColumnLabels.current = columnLabels;
+  const _rafTitle = useRef(title);
+  _rafTitle.current = title;
   // RBAC để cho phép tick checkbox boolean ngay ở lưới (chỉ khi có quyền ghi field).
   const listRbacRole = useRbac((s) => s.role);
   const listMyGroups = useUserObjects((s) => s.myGroupIds);
@@ -2195,6 +2207,66 @@ function ListWidget({
     }
   };
 
+  // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
+  // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
+  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
+  // useMemo phải khai báo TRƯỚC early return để tuân thủ rules of hooks.
+  const rowActsInline = rowActionsStyle !== "popover";
+  const rowActionCol = useMemo(
+    () =>
+      effectiveRowActions.length > 0
+        ? [
+            {
+              id: "__rowacts__",
+              header: () => (
+                <span title="Hành động">
+                  <I.MoreHorizontal size={13} className="text-muted/70" />
+                </span>
+              ),
+              size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
+              minSize: 24,
+              meta: { compact: true, label: "Hành động" },
+              enableSorting: false,
+              cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
+                const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
+                if (rowActsInline) {
+                  return (
+                    <div
+                      data-col-content=""
+                      className="flex items-center gap-1 w-fit"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {bound.map((a) => (
+                        <ActionWidget
+                          key={a.label}
+                          config={a}
+                          pageState={pageStateRef.current}
+                          inline
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+                return (
+                  <RowActionsCell
+                    actions={bound}
+                    pageState={pageStateRef.current}
+                    row={row.original}
+                    cols={_rafVisibleFields.current.map((f) => ({
+                      key: f.name,
+                      label: _rafColumnLabels.current?.[f.name] ?? f.label ?? f.name,
+                    }))}
+                    title={_rafTitle.current}
+                    hidden={rowActionsHidden}
+                  />
+                );
+              },
+            },
+          ]
+        : [],
+    [effectiveRowActions, rowActsInline, rowActionsHidden],
+  );
+
   if (!entityId && !dataSourceId) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
   }
@@ -2208,6 +2280,7 @@ function ListWidget({
           .map((name) => allFields.find((f) => f.name === name))
           .filter(Boolean) as typeof allFields)
       : allFields.filter((f) => f.defaultVisible !== false);
+  _rafVisibleFields.current = visibleFields;
 
   // V2: filters (cây) ưu tiên — pass-through default khi state rỗng.
   let filteredRows = rows;
@@ -2416,64 +2489,6 @@ function ListWidget({
         },
       ]
     : [];
-
-  // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
-  // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
-  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
-  const rowActsInline = rowActionsStyle !== "popover";
-  const rowActionCol =
-    effectiveRowActions.length > 0
-      ? [
-          {
-            id: "__rowacts__",
-            // Tiêu đề gọn (icon ⋯) thay chữ "Hành động" để cột không rộng.
-            header: () => (
-              <span title="Hành động">
-                <I.MoreHorizontal size={13} className="text-muted/70" />
-              </span>
-            ),
-            // size số (kể cả inline) để cột được GHIM → kéo nhỏ/rộng được, không
-            // tự giãn theo nội dung. Mặc định inline tính theo số nút; nhớ width sau kéo.
-            size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
-            // Sàn hẹp để cột compact bám sát tổng bề rộng các nút (xem __rowacts__ ở
-            // EditableListWidget) — minSize cao kẹp ngược autofit làm cột rộng dư.
-            minSize: 24,
-            meta: { compact: true, label: "Hành động" }, // gọn + nhãn ở "Chọn cột hiển thị"
-            enableSorting: false,
-            cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-              const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
-              if (rowActsInline) {
-                return (
-                  // w-fit + data-col-content: co sát cụm nút để autofit đo đúng
-                  // bề rộng các nút (flex thường giãn đầy ô → cột rộng/lệch).
-                  <div
-                    data-col-content=""
-                    className="flex items-center gap-1 w-fit"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {bound.map((a) => (
-                      <ActionWidget key={a.label} config={a} pageState={pageState} inline />
-                    ))}
-                  </div>
-                );
-              }
-              return (
-                <RowActionsCell
-                  actions={bound}
-                  pageState={pageState}
-                  row={row.original}
-                  cols={visibleFields.map((f) => ({
-                    key: f.name,
-                    label: columnLabels?.[f.name] ?? f.label ?? f.name,
-                  }))}
-                  title={title}
-                  hidden={rowActionsHidden}
-                />
-              );
-            },
-          },
-        ]
-      : [];
 
   // Cột nút "Sửa đơn" độc lập — CHỈ khi có editForm mà KHÔNG có rowDetail
   // (có rowDetail thì nút Sửa trong cột Hành động đã mở dialog edit này).
@@ -3502,7 +3517,7 @@ function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
   if (!step) return null;
   const ent = step.entity ? entities.find((e) => e.id === step.entity) : undefined;
   const visibleFields = step.fields?.length
-    ? (ent?.fields ?? []).filter((f) => step.fields!.includes(f.name))
+    ? (ent?.fields ?? []).filter((f) => step.fields?.includes(f.name))
     : (ent?.fields ?? []);
   const form = forms[step.id] ?? {};
   const setField = (k: string, v: string) =>
@@ -3658,7 +3673,7 @@ function StepWidget({ cfg }: { cfg: Record<string, unknown> }) {
       {/* Hành động của bước */}
       {(step.actions?.length ?? 0) > 0 && (
         <div className="shrink-0 px-4 py-2 border-t border-border/50 flex flex-wrap gap-2 bg-panel">
-          {step.actions!.map((a) => (
+          {step.actions?.map((a) => (
             <ActionWidget key={a.id} config={a} pageState={pageState} inline />
           ))}
         </div>
@@ -3988,30 +4003,100 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
 }
 
 /** Split Panel — hai sub-widget chia sẻ selection state nội bộ qua PageStateContext. */
-type SplitPanelCfg = { kind?: string; entity?: string; title?: string; linkField?: string };
+type SplitPanelCfg = {
+  kind?: string;
+  entity?: string;
+  dataSourceId?: string;
+  title?: string;
+  linkField?: string;
+  /** Panel nguồn để lọc/hiển thị detail: "a"|"b"|"c"|"d". Mặc định "a" (Panel A). */
+  filterFromPanel?: string;
+  // Các trường được copy từ list/form/detail khi kéo thả vào panel
+  fields?: string[];
+  columnLabels?: Record<string, string>;
+  columnGroups?: ColumnGroupNode[];
+  serverPaging?: boolean;
+  editable?: boolean;
+  batchEdit?: boolean;
+  excelMode?: boolean;
+  multiSelect?: boolean;
+  loadGate?: string;
+  rowLimit?: number;
+  pageSize?: number;
+  defaultSort?: { field: string; dir: "asc" | "desc" };
+};
 
-function useDragRatio(
-  initValue: number,
+type SplitGridCell = SplitPanelCfg & {
+  id: string;
+  col: number;
+  row: number;
+  colSpan: number;
+  rowSpan: number;
+};
+
+/** Drag-resize cho N panel: mảng ratios + onHandleDrag(index, e) cho từng thanh ngăn */
+function useSplitRatios(
+  initRatios: number[],
   containerRef: React.RefObject<HTMLDivElement | null>,
   axis: "h" | "v",
 ) {
-  const [ratio, setRatio] = useState(initValue);
-  const dragging = useRef(false);
-
-  const onMouseDown = (e: React.MouseEvent) => {
+  const [ratios, setRatios] = useState(() => [...initRatios]);
+  const onHandleDrag = (i: number, e: React.MouseEvent) => {
     e.preventDefault();
-    dragging.current = true;
+    const start = axis === "h" ? e.clientX : e.clientY;
+    const snap = [...ratios];
+    const total = snap.reduce((a, b) => a + b, 0);
     const onMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct =
-        axis === "h"
-          ? ((ev.clientX - rect.left) / rect.width) * 100
-          : ((ev.clientY - rect.top) / rect.height) * 100;
-      setRatio(Math.min(80, Math.max(20, pct)));
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const size = axis === "h" ? rect.width : rect.height;
+      const delta = (((axis === "h" ? ev.clientX : ev.clientY) - start) / size) * total;
+      const min = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: i/i+1 always in range
+      next[i] = Math.max(min, snap[i]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: i/i+1 always in range
+      next[i + 1] = Math.max(min, snap[i]! + snap[i + 1]! - next[i]!);
+      setRatios(next);
     };
     const onUp = () => {
-      dragging.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+  return { ratios, onHandleDrag };
+}
+
+/** Drag-resize cho grid N×M: trả colFr/rowFr local + handler mousedown cho mỗi thanh ngăn */
+function useGridDrag(
+  initColFr: number[],
+  initRowFr: number[],
+  containerRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [colFr, setColFr] = useState(() => [...initColFr]);
+  const [rowFr, setRowFr] = useState(() => [...initRowFr]);
+
+  const onColDrag = (i: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const snap = [...colFr];
+    const total = snap.reduce((a, b) => a + b, 0);
+    const onMove = (ev: MouseEvent) => {
+      const cw = containerRef.current?.getBoundingClientRect().width ?? 0;
+      if (!cw) return;
+      const delta = ((ev.clientX - startX) / cw) * total;
+      const minFr = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: i and i+1 are always in range
+      next[i] = Math.max(minFr, snap[i]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: i and i+1 are always in range
+      next[i + 1] = Math.max(minFr, snap[i]! + snap[i + 1]! - next[i]!);
+      setColFr(next);
+    };
+    const onUp = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -4019,21 +4104,72 @@ function useDragRatio(
     document.addEventListener("mouseup", onUp);
   };
 
-  return [ratio, onMouseDown] as const;
+  const onRowDrag = (j: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const snap = [...rowFr];
+    const total = snap.reduce((a, b) => a + b, 0);
+    const onMove = (ev: MouseEvent) => {
+      const ch = containerRef.current?.getBoundingClientRect().height ?? 0;
+      if (!ch) return;
+      const delta = ((ev.clientY - startY) / ch) * total;
+      const minFr = total * 0.05;
+      const next = [...snap];
+      // biome-ignore lint/style/noNonNullAssertion: j and j+1 are always in range
+      next[j] = Math.max(minFr, snap[j]! + delta);
+      // biome-ignore lint/style/noNonNullAssertion: j and j+1 are always in range
+      next[j + 1] = Math.max(minFr, snap[j]! + snap[j + 1]! - next[j]!);
+      setRowFr(next);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  return { colFr, rowFr, onColDrag, onRowDrag };
 }
 
-function buildSubCfg(panel: SplitPanelCfg, splitKey: string): Record<string, unknown> {
+/**
+ * panelKey: "a"|"b"|"c"|"d" khi gọi từ SplitWidget — mỗi panel có key riêng để
+ * các panel khác có thể lọc độc lập. Bỏ qua (undefined) khi gọi từ GridWidget
+ * để giữ hành vi cũ (dùng chung splitKey).
+ */
+function buildSubCfg(
+  panel: SplitPanelCfg,
+  splitKey: string,
+  panelKey?: string,
+): Record<string, unknown> {
   const kind = panel.kind ?? "list";
+  // Với split widget: mỗi panel dùng key riêng; grid widget dùng splitKey chung.
+  const ownStateKey = panelKey ? `${splitKey}:${panelKey}` : splitKey;
+  const srcStateKey = panelKey ? `${splitKey}:${panel.filterFromPanel ?? "a"}` : splitKey;
   return {
     entity: panel.entity,
+    dataSourceId: panel.dataSourceId,
     title: panel.title,
-    ...(kind === "list" ? { selectionStateKey: splitKey } : {}),
-    ...(kind === "detail" ? { recordIdFromState: splitKey } : {}),
+    fields: panel.fields,
+    columnLabels: panel.columnLabels,
+    columnGroups: panel.columnGroups,
+    serverPaging: panel.serverPaging,
+    editable: panel.editable,
+    batchEdit: panel.batchEdit,
+    excelMode: panel.excelMode,
+    multiSelect: panel.multiSelect,
+    loadGate: panel.loadGate,
+    rowLimit: panel.rowLimit,
+    pageSize: panel.pageSize,
+    defaultSort: panel.defaultSort,
+    ...(kind === "list" ? { selectionStateKey: ownStateKey } : {}),
+    ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
-      ? { filterFromState: { field: panel.linkField, stateKey: splitKey } }
+      ? { filterFromState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
     ...(kind === "form" && panel.linkField
-      ? { linkedToState: { field: panel.linkField, stateKey: splitKey } }
+      ? { linkedToState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
   };
 }
@@ -4111,44 +4247,223 @@ function RenderSubWidget({
   return null;
 }
 
+/** Grid Layout N×M — kind="grid", config.cells[]; có drag handle giữa cột/hàng */
+function GridWidget({ comp }: { comp: PageComponent }) {
+  const cfg = comp.config ?? {};
+  const splitKey = `split_${comp.id}_sel`;
+  const cols = (cfg.cols as number) || 2;
+  const rows = (cfg.rows as number) || 1;
+  const cells = (cfg.cells as SplitGridCell[]) ?? [];
+  const gridLabel = cfg.label as string | undefined;
+
+  // Normalize fr arrays to match col/row count
+  const savedColFr = cfg.colFr as number[] | undefined;
+  const savedRowFr = cfg.rowFr as number[] | undefined;
+  const initColFr: number[] = Array.from({ length: cols }, (_, i): number => savedColFr?.[i] ?? 1);
+  const initRowFr: number[] = Array.from({ length: rows }, (_, j): number => savedRowFr?.[j] ?? 1);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { colFr, rowFr, onColDrag, onRowDrag } = useGridDrag(
+    initColFr,
+    initRowFr,
+    containerRef as React.RefObject<HTMLDivElement | null>,
+  );
+
+  // Template interleaves content fr tracks with 4px handle tracks
+  // e.g. cols=3: "1fr 4px 1fr 4px 1fr"
+  const colTemplate = colFr.map((f, i) => (i < cols - 1 ? `${f}fr 4px` : `${f}fr`)).join(" ");
+  const rowTemplate = rowFr.map((f, j) => (j < rows - 1 ? `${f}fr 4px` : `${f}fr`)).join(" ");
+
+  // Content col c → display col (c-1)*2+1; colSpan s → display span s*2-1
+  const cellStyle = (cell: SplitGridCell) => ({
+    gridColumn: `${(cell.col - 1) * 2 + 1} / span ${cell.colSpan * 2 - 1}`,
+    gridRow: `${(cell.row - 1) * 2 + 1} / span ${cell.rowSpan * 2 - 1}`,
+  });
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {gridLabel && (
+        <div className="px-3 py-1.5 border-b border-border/40 shrink-0 text-sm font-medium">
+          {gridLabel}
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-hidden"
+        style={{ display: "grid", gridTemplateColumns: colTemplate, gridTemplateRows: rowTemplate }}
+      >
+        {/* Handles rendered BEFORE cells — merged cells sit on top via DOM stacking order */}
+        {Array.from({ length: cols - 1 }, (_, i) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: thanh ngăn cột — index ổn định
+            key={`ch-${i}`}
+            className="cursor-col-resize bg-border/30 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+            style={{
+              gridColumn: `${(i + 1) * 2}`,
+              gridRow: `1 / span ${rows * 2 - 1}`,
+            }}
+            onMouseDown={(e) => onColDrag(i, e)}
+          />
+        ))}
+        {Array.from({ length: rows - 1 }, (_, j) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: thanh ngăn hàng — index ổn định
+            key={`rh-${j}`}
+            className="cursor-row-resize bg-border/30 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+            style={{
+              gridColumn: `1 / span ${cols * 2 - 1}`,
+              gridRow: `${(j + 1) * 2}`,
+            }}
+            onMouseDown={(e) => onRowDrag(j, e)}
+          />
+        ))}
+        {/* Content cells — rendered last, on top of handle divs */}
+        {cells.map((cell) => {
+          const kind = cell.kind ?? "list";
+          const cellCfg = buildSubCfg(cell as SplitPanelCfg, splitKey);
+          return (
+            <div key={cell.id} className="overflow-hidden" style={cellStyle(cell)}>
+              {cell.entity || cell.dataSourceId ? (
+                <RenderSubWidget kind={kind} cfg={cellCfg} stateKey={`${comp.id}:${cell.id}`} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-muted/50">
+                  Chưa bind
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
+  const splitKey = `split_${comp.id}_sel`;
+
   const orientation = (cfg.orientation as string) ?? "h";
-  const initRatio = (cfg.ratio as number) ?? 40;
-  const initRatioV = (cfg.ratioV as number) ?? 50;
+  const count = Math.max(2, Math.min(3, (cfg.count as number) ?? 2));
+  const isTabs = orientation === "tabs";
+  const isBoth = orientation === "both";
+  const isBoth2 = orientation === "both2";
+  const isBoth3 = orientation === "both3";
+  const isBoth4 = orientation === "both4";
+  const isBoth5 = orientation === "both5";
+  const isH =
+    !isBoth && !isBoth2 && !isBoth3 && !isBoth4 && !isBoth5 && !isTabs && orientation !== "v";
+
   const panelA = (cfg.panelA as SplitPanelCfg | undefined) ?? {};
   const panelB = (cfg.panelB as SplitPanelCfg | undefined) ?? {};
   const panelC = (cfg.panelC as SplitPanelCfg | undefined) ?? {};
-
-  const splitKey = `split_${comp.id}_sel`;
+  const panelD = (cfg.panelD as SplitPanelCfg | undefined) ?? {};
   const kindA = panelA.kind ?? "list";
   const kindB = panelB.kind ?? "detail";
   const kindC = panelC.kind ?? "list";
+  const kindD = panelD.kind ?? "list";
+  const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey, "a");
+  const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey, "b");
+  const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey, "c");
+  const cfgD = buildSubCfg({ ...panelD, kind: kindD }, splitKey, "d");
 
+  // Ratios — initialized from saved config, adjusted by drag at runtime only
+  const savedRatios = cfg.splitRatios as number[] | undefined;
+  const initRatioH = (cfg.ratio as number) ?? 40;
+  const initRatioV = (cfg.ratioV as number) ?? 50;
+  const initRatioV2 = (cfg.ratioV2 as number) ?? 50;
+  const panelCount = isBoth || isBoth2 || isBoth3 || isBoth4 || isBoth5 ? 2 : count;
+  const initMain = savedRatios ?? (panelCount >= 3 ? [33, 33, 34] : [initRatioH, 100 - initRatioH]);
+  const initBothV = [initRatioV, 100 - initRatioV];
+  const initBothV2 = [initRatioV2, 100 - initRatioV2];
+
+  // All hooks unconditional (React rules)
   const containerRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const [ratioH, onDragH] = useDragRatio(initRatio, containerRef, "h");
-  const [ratioV, onDragV] = useDragRatio(initRatioV, rightRef, "v");
+  const rightRef2 = useRef<HTMLDivElement>(null);
+  const subRowRef = useRef<HTMLDivElement>(null);
+  const subRowRef2 = useRef<HTMLDivElement>(null);
+  const mainRef = containerRef as React.RefObject<HTMLDivElement | null>;
+  const bvRef = rightRef as React.RefObject<HTMLDivElement | null>;
+  const bvRef2 = rightRef2 as React.RefObject<HTMLDivElement | null>;
+  const bhRef = subRowRef as React.RefObject<HTMLDivElement | null>;
+  const bhRef2 = subRowRef2 as React.RefObject<HTMLDivElement | null>;
+  const { ratios: mainR, onHandleDrag: onMainDrag } = useSplitRatios(
+    initMain,
+    mainRef,
+    isH || isBoth || isBoth2 || isBoth3 ? "h" : "v",
+  );
+  const { ratios: bothVR, onHandleDrag: onBothVDrag } = useSplitRatios(initBothV, bvRef, "v");
+  const { ratios: bothVR2, onHandleDrag: onBothVDrag2 } = useSplitRatios(initBothV2, bvRef2, "v");
+  // both4/both5: sub-row horizontal split (reuse ratioV for ratio source)
+  const { ratios: bothHR, onHandleDrag: onBothHDrag } = useSplitRatios(initBothV, bhRef, "h");
+  const { ratios: bothHR2, onHandleDrag: onBothHDrag2 } = useSplitRatios(initBothV, bhRef2, "h");
+  const [activeTab, setActiveTab] = useState("A");
 
-  const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey);
-  const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey);
-  const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey);
+  const handleCls = (ax: "h" | "v") =>
+    `shrink-0 ${ax === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
 
-  const handleCls = (axis: "h" | "v") =>
-    `shrink-0 ${axis === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
+  // ── Tabs ──────────────────────────────────────────────────────────────
+  if (isTabs) {
+    const tabDefs = [
+      { key: "A", cfg: cfgA, kind: kindA, label: panelA.title || "A" },
+      { key: "B", cfg: cfgB, kind: kindB, label: panelB.title || "B" },
+      ...(count >= 3 ? [{ key: "C", cfg: cfgC, kind: kindC, label: panelC.title || "C" }] : []),
+    ];
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex border-b border-border shrink-0">
+          {tabDefs.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setActiveTab(p.key)}
+              className={cn(
+                "px-4 py-2 text-sm -mb-px border-b-2 transition-colors whitespace-nowrap",
+                activeTab === p.key
+                  ? "border-accent text-accent font-medium"
+                  : "border-transparent text-muted hover:text-text",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {tabDefs.map((p) => (
+            <div
+              key={p.key}
+              className="h-full overflow-hidden"
+              style={{ display: activeTab === p.key ? "block" : "none" }}
+            >
+              <RenderSubWidget
+                kind={p.kind}
+                cfg={p.cfg}
+                stateKey={`${comp.id}:${p.key.toLowerCase()}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  if (orientation === "both") {
+  // ── Both (A | B trên / C dưới) ────────────────────────────────────────
+  if (isBoth) {
+    const total = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
     return (
       <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
-        <div className="overflow-hidden" style={{ width: `${ratioH}%` }}>
+        <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
           <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
         </div>
-        <div onMouseDown={onDragH} className={handleCls("h")} />
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
         <div ref={rightRef} className="flex flex-col flex-1 overflow-hidden">
-          <div className="overflow-hidden" style={{ height: `${ratioV}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
             <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
           </div>
-          <div onMouseDown={onDragV} className={handleCls("v")} />
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
           <div className="flex-1 overflow-hidden">
             <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
           </div>
@@ -4157,19 +4472,148 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
     );
   }
 
-  const isH = orientation !== "v";
+  // ── Both2 ((A trên / B dưới) | C) ────────────────────────────────────
+  if (isBoth2) {
+    const total = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
+        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${hPct}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
+        <div className="flex-1 overflow-hidden">
+          <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both3 ((A/B) | (C/D)) ────────────────────────────────────────────
+  if (isBoth3) {
+    const total3 = mainR[0]! + mainR[1]!;
+    const hPct = (mainR[0]! / total3) * 100;
+    const vTotal = bothVR[0]! + bothVR[1]!;
+    const vPct = (bothVR[0]! / vTotal) * 100;
+    const vTotal2 = bothVR2[0]! + bothVR2[1]!;
+    const vPct2 = (bothVR2[0]! / vTotal2) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-row h-full overflow-hidden">
+        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${hPct}%` }}>
+          <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("h")} />
+        <div ref={rightRef2} className="flex flex-col flex-1 overflow-hidden">
+          <div className="overflow-hidden" style={{ height: `${vPct2}%` }}>
+            <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+          </div>
+          <div onMouseDown={(e) => onBothVDrag2(0, e)} className={handleCls("v")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindD} cfg={cfgD} stateKey={`${comp.id}:d`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both4 (A trên / B trái dưới, C phải dưới) ────────────────────────
+  if (isBoth4) {
+    const total = mainR[0]! + mainR[1]!;
+    const vPct = (mainR[0]! / total) * 100;
+    const hTotal = bothHR[0]! + bothHR[1]!;
+    const hPct = (bothHR[0]! / hTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+        <div className="overflow-hidden" style={{ height: `${vPct}%` }}>
+          <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("v")} />
+        <div ref={subRowRef} className="flex flex-row flex-1 overflow-hidden">
+          <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+          <div onMouseDown={(e) => onBothHDrag(0, e)} className={handleCls("h")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Both5 (A trái trên, B phải trên / C dưới) ─────────────────────────
+  if (isBoth5) {
+    const total = mainR[0]! + mainR[1]!;
+    const vPct = (mainR[0]! / total) * 100;
+    const hTotal = bothHR2[0]! + bothHR2[1]!;
+    const hPct = (bothHR2[0]! / hTotal) * 100;
+    return (
+      <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+        <div
+          ref={subRowRef2}
+          className="flex flex-row overflow-hidden"
+          style={{ height: `${vPct}%` }}
+        >
+          <div className="overflow-hidden" style={{ width: `${hPct}%` }}>
+            <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
+          </div>
+          <div onMouseDown={(e) => onBothHDrag2(0, e)} className={handleCls("h")} />
+          <div className="flex-1 overflow-hidden">
+            <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
+          </div>
+        </div>
+        <div onMouseDown={(e) => onMainDrag(0, e)} className={handleCls("v")} />
+        <div className="flex-1 overflow-hidden">
+          <RenderSubWidget kind={kindC} cfg={cfgC} stateKey={`${comp.id}:c`} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── H / V (2 hoặc 3 panels) ───────────────────────────────────────────
+  const flexDir = isH ? "flex-row" : "flex-col";
+  const sizeKey = isH ? "width" : "height";
+  const dragAxis = isH ? "h" : "v";
+  const total = mainR.reduce((a, b) => a + b, 0);
+  const allPanels = [
+    { key: "a", cfg: cfgA, kind: kindA },
+    { key: "b", cfg: cfgB, kind: kindB },
+    ...(panelCount >= 3 ? [{ key: "c", cfg: cfgC, kind: kindC }] : []),
+  ];
+
   return (
-    <div
-      ref={containerRef}
-      className={`flex ${isH ? "flex-row" : "flex-col"} h-full overflow-hidden`}
-    >
-      <div className="overflow-hidden" style={{ [isH ? "width" : "height"]: `${ratioH}%` }}>
-        <RenderSubWidget kind={kindA} cfg={cfgA} stateKey={`${comp.id}:a`} />
-      </div>
-      <div onMouseDown={onDragH} className={handleCls(isH ? "h" : "v")} />
-      <div className="overflow-hidden flex-1">
-        <RenderSubWidget kind={kindB} cfg={cfgB} stateKey={`${comp.id}:b`} />
-      </div>
+    <div ref={containerRef} className={`flex ${flexDir} h-full overflow-hidden`}>
+      {allPanels.map((p, idx) => {
+        const isLast = idx === allPanels.length - 1;
+        const pct = ((mainR[idx] ?? 1) / total) * 100;
+        return (
+          <Fragment key={p.key}>
+            <div
+              className="overflow-hidden"
+              style={isLast ? { flex: 1 } : { [sizeKey]: `${pct}%` }}
+            >
+              <RenderSubWidget kind={p.kind} cfg={p.cfg} stateKey={`${comp.id}:${p.key}`} />
+            </div>
+            {!isLast && (
+              <div onMouseDown={(e) => onMainDrag(idx, e)} className={handleCls(dragAxis)} />
+            )}
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -4689,6 +5133,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
   if (comp.kind === "step") return <StepWidget cfg={cfg} />;
   if (comp.kind === "split") return <SplitWidget comp={comp} />;
+  if (comp.kind === "grid") return <GridWidget comp={comp} />;
   if (comp.kind === "search") return <SearchWidget cfg={cfg} />;
   if (comp.kind === "filter") return <FilterWidget cfg={cfg} />;
   if (comp.kind === "combobox") return <ComboboxWidget cfg={cfg} />;
@@ -4697,6 +5142,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "calendar") return <CalendarWidget cfg={cfg} />;
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
+  if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
   if (comp.kind === "html") {
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/
@@ -4791,7 +5237,7 @@ function VisibilityGate({
 }) {
   const pageState = usePageState();
   if (editing || !rule) return <>{children}</>;
-  return evalVisible(rule, pageState) ? <>{children}</> : null;
+  return evalVisible(rule, pageState) ? children : null;
 }
 
 export function ConsumerPage({
@@ -4808,7 +5254,6 @@ export function ConsumerPage({
 }) {
   const t = useT();
   const isMobile = useIsMobile();
-  const page = useUserObjects((s) => s.pages).find((p) => p.id === pageId);
   const content = useUserObjects((s) => s.pageContent[pageId]);
   const userId = useAuth((s) => s.user?.id ?? null);
 
@@ -4818,9 +5263,18 @@ export function ConsumerPage({
     if (chromeless) setActionSlot(document.getElementById("portal-page-actions"));
   }, [chromeless]);
 
-  const baseComponents: PageComponent[] = Array.isArray(content)
-    ? (content as PageComponent[])
-    : [];
+  // Hỗ trợ 2 định dạng content: mảng cũ (PageComponent[]) hoặc mới { meta, components }.
+  type RawContent =
+    | PageComponent[]
+    | { meta?: Record<string, unknown>; components?: PageComponent[] };
+  const rawContent = content as RawContent;
+  const baseComponents: PageComponent[] = Array.isArray(rawContent)
+    ? (rawContent as PageComponent[])
+    : ((rawContent as { components?: PageComponent[] }).components ?? []);
+  const pageMeta: Record<string, unknown> = Array.isArray(rawContent)
+    ? {}
+    : ((rawContent as { meta?: Record<string, unknown> }).meta ?? {});
+  const screenFit = !!pageMeta.screenFit;
 
   /* ── Bố cục cá nhân (per-user, localStorage) ──────────── */
   const storageKey = layoutStorageKey(pageId, userId);
@@ -4868,8 +5322,17 @@ export function ConsumerPage({
   // số hàng (span) để lấp hết chiều cao còn lại của khung main → trang KHÔNG
   // cuộn ngoài, chỉ cuộn trong widget đó. Chỉ desktop + không sửa layout.
   const fillId = useMemo(() => {
-    if (isMobile || layoutEditing) return null;
+    // screenFit: toàn bộ lưới co giãn theo viewport → không cần fillId riêng.
+    if (isMobile || layoutEditing || screenFit) return null;
     const FILL = new Set(["list", "chart", "kanban", "pivot", "table"]);
+
+    // Ưu tiên: widget có config.fillHeight === true (opt-in tường minh).
+    const explicit = renderComps.filter((c) => c.config?.fillHeight === true && FILL.has(c.kind));
+    if (explicit.length === 1) return explicit[0]?.id ?? null;
+    // Nhiều widget opt-in → dùng screenFit thay vì fillId; không tự chọn 1.
+    if (explicit.length > 1) return null;
+
+    // Fallback: auto-detect widget cuộn được ở đáy (hành vi cũ).
     let bottom: PageComponent | null = null;
     let bottomEnd = -1;
     let tieCount = 0; // số widget cùng chạm hàng đáy (y+h lớn nhất)
@@ -4890,10 +5353,10 @@ export function ConsumerPage({
     // để lưới render tự nhiên theo h (mọi cột cao bằng nhau, đều hiển thị).
     if (tieCount > 1) return null;
     return bottom && FILL.has(bottom.kind) ? bottom.id : null;
-  }, [renderComps, isMobile, layoutEditing]);
+  }, [renderComps, isMobile, layoutEditing, screenFit]);
   const [availH, setAvailH] = useState(0);
   useEffect(() => {
-    if (!fillId) {
+    if (!fillId && !screenFit) {
       setAvailH(0);
       return;
     }
@@ -4904,7 +5367,7 @@ export function ConsumerPage({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [fillId]);
+  }, [fillId, screenFit]);
   // Hàng (1-based) bắt đầu của widget fill — để dựng gridTemplateRows: các hàng
   // trên cố định ROW_H, hàng widget fill = 1fr → lấp KHÍT phần dư (không làm
   // tròn theo bội số ROW_H như cách giãn span cũ → hết khoảng trống dưới list).
@@ -5055,8 +5518,7 @@ export function ConsumerPage({
     stopAutoScroll();
   };
 
-  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — dùng cho cả thanh tiêu đề
-  // (thường) lẫn header portal (chromeless, qua createPortal).
+  // Nút điều khiển bố cục (Mặc định / Sắp xếp / Xong) — chỉ dùng cho header portal (chromeless).
   const headerControls = (
     <>
       {/* Nút trở về mặc định — hiện khi có bố cục cá nhân */}
@@ -5100,24 +5562,7 @@ export function ConsumerPage({
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
-        <div className="py-2 sm:py-3 px-px">
-          {/* Header — ẩn khi chromeless (portal): bỏ tiêu đề + thanh; nút điều
-              khiển bố cục chuyển lên header portal. */}
-          {!chromeless && (
-            <div className="mb-2 px-2 sm:px-3 flex items-center justify-between gap-3">
-              <div>
-                <h1 className="text-lg font-semibold leading-tight">{page?.name ?? "Trang"}</h1>
-                {layoutEditing ? (
-                  <div className="text-sm text-accent font-medium mt-0.5">
-                    Kéo để di chuyển — kéo cạnh/góc để thay đổi kích thước
-                  </div>
-                ) : hasPersonal ? (
-                  <div className="text-sm text-muted mt-0.5">Đang dùng bố cục cá nhân</div>
-                ) : null}
-              </div>
-              <div className="shrink-0 flex items-center gap-2">{headerControls}</div>
-            </div>
-          )}
+        <div className="py-0.5 px-px">
           {/* Chromeless (portal): CHỈ trang đang xem đẩy nút lên header portal. */}
           {chromeless &&
             active &&
@@ -5140,24 +5585,28 @@ export function ConsumerPage({
                 className="grid gap-1"
                 style={{
                   gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)",
-                  gridAutoRows: isMobile ? "auto" : `${ROW_H}px`,
-                  // Có widget fill ở đáy: ghim chiều cao grid = availH + hàng cuối
-                  // = 1fr → widget fill lấp khít chiều cao còn lại, không chừa dư.
-                  // Hàng TRÊN (filter/toolbar mỏng) = auto → vừa khít nội dung,
-                  // không bị dư padding theo ROW_H 76px.
-                  ...(!isMobile && fillId && availH > 0 && fillRowStart > 0
-                    ? {
-                        height: availH,
-                        // fillRowStart===1 (widget fill ở ngay đầu, vd trang 1 lưới)
-                        // → repeat(0,…) là CSS KHÔNG hợp lệ → browser bỏ CẢ
-                        // gridTemplateRows → ô fill (1/-1) co về 1 hàng ROW_H (lưới
-                        // mất chiều cao). Chỉ phát repeat khi thật sự có hàng trên.
-                        gridTemplateRows:
-                          fillRowStart > 1
-                            ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
-                            : "minmax(0, 1fr)",
-                      }
-                    : {}),
+                  // screenFit → mỗi hàng 1fr (chia tỷ lệ theo h);
+                  // mặc định: ROW_H px cố định (mobile = auto-fit nội dung).
+                  gridAutoRows: isMobile
+                    ? "auto"
+                    : !layoutEditing && screenFit && availH > 0
+                      ? "1fr"
+                      : `${ROW_H}px`,
+                  // screenFit: ghim chiều cao = availH để fr hoạt động.
+                  ...(!isMobile && !layoutEditing && screenFit && availH > 0
+                    ? { height: availH }
+                    : // fillId: 1 widget đáy lấp hết chiều cao còn lại (hành vi cũ).
+                      !isMobile && fillId && availH > 0 && fillRowStart > 0
+                      ? {
+                          height: availH,
+                          // fillRowStart===1 → repeat(0,…) CSS không hợp lệ → chỉ
+                          // phát repeat khi có hàng trên widget fill.
+                          gridTemplateRows:
+                            fillRowStart > 1
+                              ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
+                              : "minmax(0, 1fr)",
+                        }
+                      : {}),
                 }}
               >
                 {/* Ghost placeholder during drag */}

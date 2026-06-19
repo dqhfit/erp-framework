@@ -320,7 +320,7 @@ export function ExcelGrid({
       setSuggestions([]);
       return;
     }
-    const pfx = m[1]!.toUpperCase();
+    const pfx = m[1]?.toUpperCase();
     setSuggestions(FORMULA_FNS.filter((fn) => fn.startsWith(pfx) && fn !== pfx).slice(0, 8));
     setSuggIdx(0);
   }, [editing, editVal]);
@@ -557,7 +557,7 @@ export function ExcelGrid({
         const fn = suggestions[suggIdx];
         if (fn) {
           e.preventDefault();
-          setEditVal(editVal.replace(/([A-Z][A-Z0-9]*)$/i, fn + "("));
+          setEditVal(editVal.replace(/([A-Z][A-Z0-9]*)$/i, `${fn}(`));
           setSuggestions([]);
           return;
         }
@@ -607,12 +607,12 @@ export function ExcelGrid({
       if (e.shiftKey || e.ctrlKey || e.metaKey) {
         if (idx === -1) return [...prev, { col: origC, dir: "asc" }];
         const next = [...prev];
-        if (next[idx]!.dir === "asc") next[idx] = { col: origC, dir: "desc" };
+        if (next[idx]?.dir === "asc") next[idx] = { col: origC, dir: "desc" };
         else next.splice(idx, 1);
         return next;
       }
       if (prev.length === 1 && idx === 0) {
-        if (prev[0]!.dir === "asc") return [{ col: origC, dir: "desc" }];
+        if (prev[0]?.dir === "asc") return [{ col: origC, dir: "desc" }];
         return [];
       }
       return [{ col: origC, dir: "asc" }];
@@ -1099,7 +1099,7 @@ export function ExcelGrid({
                                     )}
                                     onMouseDown={(e) => {
                                       e.preventDefault();
-                                      setEditVal(editVal.replace(/([A-Z][A-Z0-9]*)$/i, fn + "("));
+                                      setEditVal(editVal.replace(/([A-Z][A-Z0-9]*)$/i, `${fn}(`));
                                       setSuggestions([]);
                                       inputRef.current?.focus();
                                     }}

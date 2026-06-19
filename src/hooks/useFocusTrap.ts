@@ -24,6 +24,9 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
   // thêm nó vào deps — tránh effect re-run mỗi khi parent re-render.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  // Timestamp của lần cuối file input trong container fire change.
+  // Dùng để bỏ qua Escape do Chrome/Windows phát khi file picker đóng.
+  const lastFileChangeMs = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -37,8 +40,27 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
       (first ?? container).focus();
     }
 
+    // Ghi nhận file change để guard Escape bên dưới.
+    const handleFileChange = (e: Event) => {
+      if ((e.target as HTMLInputElement | null)?.type === "file")
+        lastFileChangeMs.current = Date.now();
+    };
+    container?.addEventListener("change", handleFileChange);
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // Chrome/Windows fire Escape khi file picker đóng (cả sau khi chọn xong).
+        // Guard 1: e.target là file input (nếu Escape fire trước khi input bị disabled).
+        // Guard 2: activeElement là file input (nếu input chưa bị disabled/blur).
+        // Guard 3: Escape trong vòng 500ms sau file change (trường hợp input đã disabled).
+        const tgt = e.target as HTMLInputElement | null;
+        const act = document.activeElement as HTMLInputElement | null;
+        if (
+          tgt?.type === "file" ||
+          act?.type === "file" ||
+          Date.now() - lastFileChangeMs.current < 500
+        )
+          return;
         e.stopPropagation();
         onCloseRef.current();
         return;
@@ -67,6 +89,7 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
     window.addEventListener("keydown", handleKey);
     return () => {
       window.removeEventListener("keydown", handleKey);
+      container?.removeEventListener("change", handleFileChange);
       // Restore focus chỉ khi previous element còn trong DOM.
       const prev = previousFocusRef.current;
       if (prev && document.body.contains(prev)) prev.focus();

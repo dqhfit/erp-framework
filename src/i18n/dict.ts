@@ -244,6 +244,7 @@ const VI: Dict = {
   "page.comp.kpi": "KPI",
   "page.comp.kanban": "Kanban",
   "page.comp.split": "Split Panel",
+  "page.comp.grid": "Grid Layout",
   "page.comp.search": "Tìm kiếm",
   "page.comp.combobox": "Combobox",
   "page.comp.listbox": "Listbox",

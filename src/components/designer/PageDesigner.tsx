@@ -5,7 +5,7 @@ import { BandEditor } from "@/components/designer/inspectors/BandEditor";
 import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
 import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldBinder";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
-import { FieldDisplayToggle, useFieldDisplay } from "@/components/FieldDisplayToggle";
+import { FieldDisplayToggle, fieldBoth, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import type { ColumnGroupNode } from "@/components/renderer/DataGrid";
@@ -43,6 +43,7 @@ type ComponentKind =
   | "kpi"
   | "kanban"
   | "split"
+  | "grid"
   | "search"
   | "combobox"
   | "listbox"
@@ -83,6 +84,7 @@ const PALETTE: Array<{
   { kind: "kpi", label: "KPI", icon: "TrendUp", defaultSize: { w: 3, h: 2 } },
   { kind: "kanban", label: "Kanban", icon: "Kanban", defaultSize: { w: 12, h: 4 } },
   { kind: "split", label: "Split Panel", icon: "Columns2", defaultSize: { w: 12, h: 5 } },
+  { kind: "grid", label: "Grid Layout", icon: "LayoutGrid", defaultSize: { w: 12, h: 5 } },
   { kind: "search", label: "Search", icon: "Search", defaultSize: { w: 4, h: 2 } },
   { kind: "combobox", label: "Combobox", icon: "ChevronDown", defaultSize: { w: 3, h: 2 } },
   { kind: "listbox", label: "Listbox", icon: "List", defaultSize: { w: 3, h: 4 } },
@@ -410,6 +412,7 @@ export function PageDesigner({ pageId }: Props) {
     },
     { id: "c6", kind: "list", x: 8, y: 2, w: 4, h: 3, config: { entity: "order" } },
   ]);
+  const [pageMeta, setPageMeta] = useState<{ screenFit?: boolean }>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [dragKind, setDragKind] = useState<ComponentKind | null>(null);
   const [compSearch, setCompSearch] = useState("");
@@ -438,6 +441,8 @@ export function PageDesigner({ pageId }: Props) {
   } | null>(null);
   const [resizingId, setResizingId] = useState<string | null>(null);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+  const [splitCellSel, setSplitCellSel] = useState<string | null>(null);
+  const [splitPanelTab, setSplitPanelTab] = useState("A");
   const { tools: mcpTools } = useMcpClient();
   const setPageContent = useUserObjects((s) => s.setPageContent);
   const publishPage = useUserObjects((s) => s.publishPage);
@@ -469,10 +474,23 @@ export function PageDesigner({ pageId }: Props) {
   useEffect(() => {
     if (!ready) return;
     const stored = useUserObjects.getState().pageContent[pageId];
-    if (Array.isArray(stored)) setComponents(stored as PageComponent[]);
+    if (Array.isArray(stored)) {
+      setComponents(stored as PageComponent[]);
+      // Trang cũ (mảng thuần) chưa có meta → bật screenFit mặc định.
+      setPageMeta({ screenFit: true });
+    } else if (stored && typeof stored === "object" && "components" in stored) {
+      // Format mới: { meta, components }
+      const s = stored as { meta?: { screenFit?: boolean }; components?: PageComponent[] };
+      setComponents(s.components ?? []);
+      // Nếu meta.screenFit chưa khai báo tường minh → mặc định true.
+      setPageMeta({ screenFit: true, ...(s.meta ?? {}) });
+    }
     // Trang mới / chưa có nội dung (content = {} hoặc undefined) → canvas
-    // TRẮNG, KHÔNG giữ lại demo/nội dung trang trước (lỗi "kế thừa trang cũ").
-    else setComponents([]);
+    // TRẮNG, screenFit bật mặc định cho trang mới.
+    else {
+      setComponents([]);
+      setPageMeta({ screenFit: true });
+    }
   }, [pageId, ready]);
 
   // Reset selection khi chuyển page
@@ -480,6 +498,11 @@ export function PageDesigner({ pageId }: Props) {
   useEffect(() => {
     setSelected(null);
   }, [pageId]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: splitCellSel intentionally not in deps
+  useEffect(() => {
+    setSplitCellSel(null);
+  }, [selected]);
 
   useEffect(() => {
     if (!selected) return;
@@ -544,7 +567,7 @@ export function PageDesigner({ pageId }: Props) {
   }, []); // stable refs + functional setters only
 
   const save = () => {
-    setPageContent(pageId, components);
+    setPageContent(pageId, { meta: pageMeta, components });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -555,7 +578,7 @@ export function PageDesigner({ pageId }: Props) {
   useShortcut("designer-redo", redo);
   useShortcut("designer-preview", () => {
     // Lưu nội dung hiện tại trước khi xem trước (giống nút "Xem trước").
-    setPageContent(pageId, components);
+    setPageContent(pageId, { meta: pageMeta, components });
     setPreviewMode(true);
   });
   // Thoát xem trước CHỈ bật khi đang ở chế độ xem trước (mặc định Esc).
@@ -719,7 +742,7 @@ export function PageDesigner({ pageId }: Props) {
           size="sm"
           icon={previewMode ? <I.EyeOff size={13} /> : <I.Eye size={13} />}
           onClick={() => {
-            if (!previewMode) setPageContent(pageId, components);
+            if (!previewMode) setPageContent(pageId, { meta: pageMeta, components });
             setPreviewMode((v) => !v);
           }}
         >
@@ -1077,6 +1100,11 @@ export function PageDesigner({ pageId }: Props) {
         <div
           ref={canvasRef}
           className="flex-1 overflow-auto canvas-dots"
+          onClick={(e) => {
+            // Click khoảng trống (không phải lên widget) → bỏ chọn + mở thuộc tính trang.
+            const hit = (e.target as HTMLElement).closest("[data-comp-id]");
+            if (!hit) setSelected(null);
+          }}
           onDragOver={(e) => {
             if (dragKind || dragCompId) {
               e.preventDefault();
@@ -1212,6 +1240,72 @@ export function PageDesigner({ pageId }: Props) {
                     setResizingId(c.id);
                     setSelected(c.id);
                   }}
+                  onSplitPanelDrop={
+                    c.kind === "split"
+                      ? (panelKey, srcId) => {
+                          const src = components.find((cc) => cc.id === srcId);
+                          if (!src) return;
+                          const pKey = `panel${panelKey}` as "panelA" | "panelB" | "panelC";
+                          const existing = (c.config[pKey] ?? {}) as Record<string, unknown>;
+                          update(c.id, {
+                            config: {
+                              ...c.config,
+                              [pKey]: {
+                                linkField: existing.linkField,
+                                kind: src.kind,
+                                entity: src.config.entity,
+                                title: src.config.title,
+                              },
+                            },
+                          });
+                          setSelected(c.id);
+                        }
+                      : c.kind === "grid"
+                        ? (cellId, srcId) => {
+                            const src = components.find((cc) => cc.id === srcId);
+                            if (!src) return;
+                            const gridCfg = migrateToGrid(c.config as Record<string, unknown>);
+                            const updatedCells = gridCfg.cells.map((cell) =>
+                              cell.id === cellId
+                                ? {
+                                    ...cell,
+                                    kind: src.kind,
+                                    entity: src.config.entity as string | undefined,
+                                    dataSourceId: src.config.dataSourceId as string | undefined,
+                                    title: src.config.title as string | undefined,
+                                    fields: src.config.fields as string[] | undefined,
+                                    columnLabels: src.config.columnLabels as
+                                      | Record<string, string>
+                                      | undefined,
+                                    columnGroups: src.config.columnGroups as unknown[],
+                                    serverPaging: src.config.serverPaging as boolean | undefined,
+                                    editable: src.config.editable as boolean | undefined,
+                                    batchEdit: src.config.batchEdit as boolean | undefined,
+                                    excelMode: src.config.excelMode as boolean | undefined,
+                                    multiSelect: src.config.multiSelect as boolean | undefined,
+                                    loadGate: src.config.loadGate as string | undefined,
+                                    rowLimit: src.config.rowLimit as number | undefined,
+                                    pageSize: src.config.pageSize as number | undefined,
+                                    defaultSort: src.config.defaultSort as
+                                      | { field: string; dir: "asc" | "desc" }
+                                      | undefined,
+                                  }
+                                : cell,
+                            );
+                            update(c.id, { config: { ...gridCfg, cells: updatedCells } });
+                            setSelected(c.id);
+                          }
+                        : undefined
+                  }
+                  onSplitCellClick={
+                    c.kind === "grid"
+                      ? (cellId) => {
+                          setSplitCellSel(cellId);
+                          setSelected(c.id);
+                        }
+                      : undefined
+                  }
+                  splitCellSelId={c.kind === "grid" && selected === c.id ? splitCellSel : null}
                 />
               ))}
             </div>
@@ -1320,6 +1414,22 @@ export function PageDesigner({ pageId }: Props) {
                         Mẹo: kéo cạnh phải/đáy hoặc góc dưới-phải của widget trên canvas để đổi kích
                         thước (hoặc nhập số ô ở trên).
                       </div>
+                      {/* Tràn chiều cao — chỉ hiện cho widget cuộn được */}
+                      {(["list", "chart", "kanban", "pivot", "table"] as string[]).includes(
+                        sel.kind,
+                      ) && (
+                        <FormField
+                          label="Tràn chiều cao màn hình"
+                          hint="Widget lấp hết chiều cao còn lại của viewport. Nếu nhiều widget cùng bật → dùng 'Vừa màn hình' ở cài đặt trang."
+                        >
+                          <Switch
+                            checked={!!sel.config.fillHeight}
+                            onChange={(v) =>
+                              update(sel.id, { config: { ...sel.config, fillHeight: v } })
+                            }
+                          />
+                        </FormField>
+                      )}
                       {INPUT_WIDGET_KINDS.has(sel.kind) && (
                         <button
                           type="button"
@@ -1931,7 +2041,7 @@ export function PageDesigner({ pageId }: Props) {
                                     <option value="">{t("field.choose")}</option>
                                     {entityFields.map((f) => (
                                       <option key={f.name} value={f.name}>
-                                        {fieldDisp(f)}
+                                        {fieldBoth(f)}
                                       </option>
                                     ))}
                                   </Select>
@@ -1962,7 +2072,7 @@ export function PageDesigner({ pageId }: Props) {
                                       .filter((f) => ["number", "currency"].includes(f.type))
                                       .map((f) => (
                                         <option key={f.name} value={f.name}>
-                                          {fieldDisp(f)}
+                                          {fieldBoth(f)}
                                         </option>
                                       ))}
                                   </Select>
@@ -1996,7 +2106,7 @@ export function PageDesigner({ pageId }: Props) {
                                   <option value="">{t("field.choose")}</option>
                                   {entityFields.map((f) => (
                                     <option key={f.name} value={f.name}>
-                                      {fieldDisp(f)}
+                                      {fieldBoth(f)}
                                     </option>
                                   ))}
                                 </Select>
@@ -2189,15 +2299,15 @@ export function PageDesigner({ pageId }: Props) {
                           all = [
                             ...(dsc.fields ?? []).map((f) => ({
                               name: f.key,
-                              label: f.label || f.key,
+                              label: fieldBoth({ name: f.key, label: f.label }),
                             })),
                             ...(dsc.aggregates ?? []).map((a) => ({
                               name: a.key,
-                              label: a.label || a.key,
+                              label: fieldBoth({ name: a.key, label: a.label }),
                             })),
                             ...(dsc.computed ?? []).map((c) => ({
                               name: c.key,
-                              label: c.label || c.key,
+                              label: fieldBoth({ name: c.key, label: c.label }),
                             })),
                           ];
                         }
@@ -2207,13 +2317,20 @@ export function PageDesigner({ pageId }: Props) {
                         );
                         all = (ent?.fields ?? []).map((f) => ({
                           name: f.name,
-                          label: f.label || f.name,
+                          label: fieldBoth(f),
                         }));
                       }
                       // Lọc theo cột đang hiển thị (null/undefined = tất cả) + áp nhãn override.
+                      // BandEditor inspector luôn hiện cả nhãn lẫn tên kỹ thuật (fieldBoth).
                       const fields = (
                         shown == null ? all : all.filter((f) => shown.includes(f.name))
-                      ).map((f) => ({ ...f, label: colLabels?.[f.name] || f.label }));
+                      ).map((f) => ({
+                        ...f,
+                        // colLabels override (nhãn cột tuỳ chỉnh): giữ dạng "nhãn (name)"
+                        label: colLabels?.[f.name]
+                          ? fieldBoth({ name: f.name, label: colLabels[f.name] })
+                          : f.label,
+                      }));
                       return (
                         <BandEditor
                           value={sel.config.columnGroups as ColumnGroupNode[] | undefined}
@@ -2318,7 +2435,7 @@ export function PageDesigner({ pageId }: Props) {
                                     <option value="">— chọn field —</option>
                                     {(optEnt?.fields ?? []).map((f) => (
                                       <option key={f.name} value={f.name}>
-                                        {fieldDisp(f)}
+                                        {fieldBoth(f)}
                                       </option>
                                     ))}
                                   </Select>
@@ -2339,7 +2456,8 @@ export function PageDesigner({ pageId }: Props) {
                       );
                     })()}
 
-                  {/* ── Split Panel config ── */}
+                  {/* ── Split Grid config (N×M) ── */}
+                  {/* ── Split Panel cũ (2–3 panel, drag-resize) ── */}
                   {inspTab === "bocuc" &&
                     sel.kind === "split" &&
                     (() => {
@@ -2348,110 +2466,161 @@ export function PageDesigner({ pageId }: Props) {
                         entity?: string;
                         title?: string;
                         linkField?: string;
+                        filterFromPanel?: string; // "a"|"b"|"c"|"d"
                       };
                       const splitCfg = sel.config as {
-                        orientation?: "h" | "v" | "both";
+                        orientation?:
+                          | "h"
+                          | "v"
+                          | "both"
+                          | "both2"
+                          | "both3"
+                          | "both4"
+                          | "both5"
+                          | "tabs";
+                        count?: number;
                         ratio?: number;
                         ratioV?: number;
+                        ratioV2?: number;
                         panelA?: PanelCfg;
                         panelB?: PanelCfg;
                         panelC?: PanelCfg;
+                        panelD?: PanelCfg;
                       };
                       const panelA = splitCfg.panelA ?? {};
                       const panelB = splitCfg.panelB ?? {};
                       const panelC = splitCfg.panelC ?? {};
+                      const panelD = splitCfg.panelD ?? {};
                       const orientation = splitCfg.orientation ?? "h";
+                      const count = splitCfg.count ?? 2;
                       const ratio = splitCfg.ratio ?? 40;
                       const ratioV = splitCfg.ratioV ?? 50;
+                      const isCombo = orientation === "both" || orientation === "both2";
+                      const isBoth3 = orientation === "both3";
+                      const isBoth4 = orientation === "both4";
+                      const isBoth5 = orientation === "both5";
+                      const showPanelC = isCombo || isBoth3 || isBoth4 || isBoth5 || count >= 3;
+                      const showPanelD = isBoth3;
                       const subKinds = ["list", "detail", "form", "chart", "kanban"];
                       const updateSplit = (patch: typeof splitCfg) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
-                      const entA = entities.find((e) => e.id === panelA.entity);
                       const entC = entities.find((e) => e.id === panelC.entity);
+                      // existingPanelKeys + sourcesFor: tính danh sách panel có thể lọc từ
+                      const existingPanelKeys = ["A", "B"];
+                      if (showPanelC) existingPanelKeys.push("C");
+                      if (showPanelD) existingPanelKeys.push("D");
+                      const sourcesFor = (panelKey: string) =>
+                        existingPanelKeys
+                          .filter((k) => k !== panelKey)
+                          .map((k) => ({ key: k.toLowerCase(), label: panelLabel(k) }));
 
                       const PanelFields = ({
-                        label,
                         panel,
+                        availableSources,
                         linkedEnt,
                         defaultKind = "list",
                         onUpdate,
                       }: {
-                        label: string;
                         panel: PanelCfg;
+                        availableSources: Array<{ key: string; label: string }>;
                         linkedEnt?: (typeof entities)[0];
                         defaultKind?: string;
                         onUpdate: (p: PanelCfg) => void;
-                      }) => (
-                        <>
-                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                            {label}
-                          </div>
-                          <FormField label="Loại">
-                            <Select
-                              value={panel.kind ?? defaultKind}
-                              onChange={(e) => onUpdate({ ...panel, kind: e.target.value })}
-                            >
-                              {subKinds.map((k) => (
-                                <option key={k} value={k}>
-                                  {k}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Entity">
-                            <Select
-                              value={panel.entity ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
-                            >
-                              <option value="">— chọn entity —</option>
-                              {entities.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                  {e.name}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField label="Tiêu đề">
-                            <Input
-                              placeholder="Để trống = tên entity"
-                              value={panel.title ?? ""}
-                              onChange={(e) => onUpdate({ ...panel, title: e.target.value })}
-                            />
-                          </FormField>
-                          {(panel.kind === "list" ||
-                            panel.kind === "chart" ||
-                            panel.kind === "kanban" ||
-                            panel.kind === "form") && (
-                            <FormField label="Field liên kết (→ A)">
-                              {linkedEnt ? (
+                      }) => {
+                        const srcKey = panel.filterFromPanel ?? availableSources[0]?.key ?? "a";
+                        const srcLabel =
+                          availableSources.find((s) => s.key === srcKey)?.label ??
+                          `Panel ${srcKey.toUpperCase()}`;
+                        return (
+                          <>
+                            <FormField label="Loại">
+                              <Select
+                                value={panel.kind ?? defaultKind}
+                                onChange={(e) => onUpdate({ ...panel, kind: e.target.value })}
+                              >
+                                {subKinds.map((k) => (
+                                  <option key={k} value={k}>
+                                    {k}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormField>
+                            <FormField label="Entity">
+                              <Select
+                                value={panel.entity ?? ""}
+                                onChange={(e) => onUpdate({ ...panel, entity: e.target.value })}
+                              >
+                                <option value="">— chọn entity —</option>
+                                {entities.map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    {e.name}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormField>
+                            <FormField label="Tiêu đề">
+                              <Input
+                                placeholder="Để trống = tên entity"
+                                value={panel.title ?? ""}
+                                onChange={(e) => onUpdate({ ...panel, title: e.target.value })}
+                              />
+                            </FormField>
+                            {availableSources.length > 0 && (
+                              <FormField label="Lọc từ">
                                 <Select
-                                  value={panel.linkField ?? ""}
+                                  value={srcKey}
                                   onChange={(e) =>
-                                    onUpdate({ ...panel, linkField: e.target.value })
+                                    onUpdate({ ...panel, filterFromPanel: e.target.value })
                                   }
                                 >
-                                  <option value="">— chọn field —</option>
-                                  {linkedEnt.fields.map((f) => (
-                                    <option key={f.name} value={f.name}>
-                                      {fieldDisp(f)}
-                                      {f.type === "lookup" || f.type === "multi-lookup" ? " ↗" : ""}
+                                  {availableSources.map((s) => (
+                                    <option key={s.key} value={s.key}>
+                                      {s.label}
                                     </option>
                                   ))}
                                 </Select>
-                              ) : (
-                                <div className="text-[11px] text-muted italic px-1">
-                                  Bind entity trước
-                                </div>
-                              )}
-                            </FormField>
-                          )}
-                          {panel.kind === "detail" && entA && (
-                            <div className="text-[11px] text-muted italic px-1">
-                              Hiển thị record chọn từ Panel A ({entA.name})
-                            </div>
-                          )}
-                        </>
-                      );
+                              </FormField>
+                            )}
+                            {(panel.kind === "list" ||
+                              panel.kind === "chart" ||
+                              panel.kind === "kanban" ||
+                              panel.kind === "form") && (
+                              <FormField label={`Trường lọc (từ ${srcLabel})`}>
+                                {linkedEnt ? (
+                                  <Select
+                                    value={panel.linkField ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({ ...panel, linkField: e.target.value })
+                                    }
+                                  >
+                                    <option value="">— chọn field —</option>
+                                    {linkedEnt.fields.map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                        {f.type === "lookup" || f.type === "multi-lookup"
+                                          ? " ↗"
+                                          : ""}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                ) : (
+                                  <div className="text-[11px] text-muted italic px-1">
+                                    Bind entity trước
+                                  </div>
+                                )}
+                              </FormField>
+                            )}
+                            {panel.kind === "detail" && availableSources.length > 0 && (
+                              <div className="text-[11px] text-muted italic px-1">
+                                Hiển thị record chọn từ {srcLabel}
+                              </div>
+                            )}
+                          </>
+                        );
+                      };
+
+                      const panelLabel = (key: string) =>
+                        orientation === "tabs" ? `Tab ${key}` : `Panel ${key}`;
 
                       return (
                         <>
@@ -2462,60 +2631,448 @@ export function PageDesigner({ pageId }: Props) {
                             <Select
                               value={orientation}
                               onChange={(e) =>
-                                updateSplit({ orientation: e.target.value as "h" | "v" | "both" })
+                                updateSplit({
+                                  orientation: e.target.value as
+                                    | "h"
+                                    | "v"
+                                    | "both"
+                                    | "both2"
+                                    | "both3"
+                                    | "both4"
+                                    | "both5"
+                                    | "tabs",
+                                })
                               }
                             >
-                              <option value="h">Ngang (trái / phải)</option>
+                              <option value="h">Ngang (trái | phải)</option>
                               <option value="v">Dọc (trên / dưới)</option>
-                              <option value="both">Cả hai (A | B trên / C dưới)</option>
+                              <option value="both">A | (B trên / C dưới)</option>
+                              <option value="both2">(A trên / B dưới) | C</option>
+                              <option value="both3">(A/B) | (C/D)</option>
+                              <option value="both4">A trên / (B trái | C phải)</option>
+                              <option value="both5">(A trái | B phải) / C dưới</option>
+                              <option value="tabs">Dạng Tab</option>
                             </Select>
                           </FormField>
-                          <FormField label={`Tỉ lệ ngang A: ${ratio}%`}>
-                            <input
-                              type="range"
-                              min={20}
-                              max={80}
-                              value={ratio}
-                              onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
-                              className="w-full accent-accent"
-                            />
-                          </FormField>
-                          {orientation === "both" && (
-                            <FormField label={`Tỉ lệ dọc B/C: ${ratioV}%`}>
+                          {!isCombo && !isBoth3 && !isBoth4 && !isBoth5 && (
+                            <FormField label="Số panel">
+                              <Select
+                                value={count}
+                                onChange={(e) =>
+                                  updateSplit({ count: Number(e.target.value) as 2 | 3 })
+                                }
+                              >
+                                <option value={2}>2</option>
+                                <option value={3}>3</option>
+                              </Select>
+                            </FormField>
+                          )}
+                          {(orientation === "h" || orientation === "v") && count === 2 && (
+                            <FormField label={`Tỉ lệ A: ${ratio}%`}>
                               <input
                                 type="range"
                                 min={20}
                                 max={80}
-                                value={ratioV}
-                                onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                value={ratio}
+                                onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
                                 className="w-full accent-accent"
                               />
                             </FormField>
                           )}
-                          <PanelFields
-                            label="Panel A"
-                            panel={panelA}
-                            linkedEnt={undefined}
-                            defaultKind="list"
-                            onUpdate={(p) => updateSplit({ panelA: p })}
-                          />
-                          <PanelFields
-                            label="Panel B"
-                            panel={panelB}
-                            linkedEnt={entities.find((e) => e.id === panelB.entity)}
-                            defaultKind="detail"
-                            onUpdate={(p) => updateSplit({ panelB: p })}
-                          />
-                          {orientation === "both" && (
-                            <PanelFields
-                              label="Panel C"
-                              panel={panelC}
-                              linkedEnt={entC}
-                              defaultKind="list"
-                              onUpdate={(p) => updateSplit({ panelC: p })}
-                            />
+                          {(isCombo || isBoth3) && (
+                            <>
+                              <FormField label={`Tỉ lệ ngang: ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ dọc A/B: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              {isBoth3 && (
+                                <FormField label={`Tỉ lệ dọc C/D: ${splitCfg.ratioV2 ?? 50}%`}>
+                                  <input
+                                    type="range"
+                                    min={20}
+                                    max={80}
+                                    value={splitCfg.ratioV2 ?? 50}
+                                    onChange={(e) =>
+                                      updateSplit({
+                                        ratioV2: Number(e.target.value),
+                                      } as typeof splitCfg)
+                                    }
+                                    className="w-full accent-accent"
+                                  />
+                                </FormField>
+                              )}
+                            </>
                           )}
+                          {isBoth4 && (
+                            <>
+                              <FormField label={`Tỉ lệ dọc A/(B+C): ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ ngang B/C: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                            </>
+                          )}
+                          {isBoth5 && (
+                            <>
+                              <FormField label={`Tỉ lệ dọc (A+B)/C: ${ratio}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratio}
+                                  onChange={(e) => updateSplit({ ratio: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                              <FormField label={`Tỉ lệ ngang A/B: ${ratioV}%`}>
+                                <input
+                                  type="range"
+                                  min={20}
+                                  max={80}
+                                  value={ratioV}
+                                  onChange={(e) => updateSplit({ ratioV: Number(e.target.value) })}
+                                  className="w-full accent-accent"
+                                />
+                              </FormField>
+                            </>
+                          )}
+                          {/* Tab bar cho các panel */}
+                          {(() => {
+                            const activeTab = existingPanelKeys.includes(splitPanelTab)
+                              ? splitPanelTab
+                              : "A";
+                            return (
+                              <>
+                                <div className="flex border border-border rounded-md overflow-hidden mt-2">
+                                  {existingPanelKeys.map((k) => (
+                                    <button
+                                      key={k}
+                                      type="button"
+                                      onClick={() => setSplitPanelTab(k)}
+                                      className={cn(
+                                        "flex-1 py-1 text-xs font-medium transition-colors border-r border-border last:border-r-0",
+                                        activeTab === k
+                                          ? "bg-accent text-white"
+                                          : "text-muted hover:bg-hover/60",
+                                      )}
+                                    >
+                                      {panelLabel(k)}
+                                    </button>
+                                  ))}
+                                </div>
+                                {activeTab === "A" && (
+                                  <PanelFields
+                                    panel={panelA}
+                                    availableSources={[]}
+                                    linkedEnt={undefined}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelA: p })}
+                                  />
+                                )}
+                                {activeTab === "B" && (
+                                  <PanelFields
+                                    panel={panelB}
+                                    availableSources={sourcesFor("B")}
+                                    linkedEnt={entities.find((e) => e.id === panelB.entity)}
+                                    defaultKind="detail"
+                                    onUpdate={(p) => updateSplit({ panelB: p })}
+                                  />
+                                )}
+                                {activeTab === "C" && showPanelC && (
+                                  <PanelFields
+                                    panel={panelC}
+                                    availableSources={sourcesFor("C")}
+                                    linkedEnt={entC}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelC: p })}
+                                  />
+                                )}
+                                {activeTab === "D" && showPanelD && (
+                                  <PanelFields
+                                    panel={panelD}
+                                    availableSources={sourcesFor("D")}
+                                    linkedEnt={entities.find((e) => e.id === panelD.entity)}
+                                    defaultKind="list"
+                                    onUpdate={(p) => updateSplit({ panelD: p } as typeof splitCfg)}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
                         </>
+                      );
+                    })()}
+
+                  {/* ── Grid Layout N×M (gộp ô, per-cell config) ── */}
+                  {inspTab === "bocuc" &&
+                    sel.kind === "grid" &&
+                    (() => {
+                      const rawCfg = sel.config as Record<string, unknown>;
+                      const gridCfg: SplitGridConfig = migrateToGrid(rawCfg);
+                      const { cols, rows, cells } = gridCfg;
+                      const selCell = splitCellSel
+                        ? cells.find((c) => c.id === splitCellSel)
+                        : null;
+
+                      const updateGrid = (next: SplitGridConfig) =>
+                        update(sel.id, { config: next });
+
+                      const updateCell = (patch: Partial<SplitGridCell>) => {
+                        if (!selCell) return;
+                        updateGrid({
+                          ...gridCfg,
+                          cells: cells.map((c) => (c.id === selCell.id ? { ...c, ...patch } : c)),
+                        });
+                      };
+
+                      const subKinds = ["list", "detail", "form", "chart", "kanban"];
+                      const selEnt = selCell?.entity
+                        ? entities.find((e) => e.id === selCell.entity)
+                        : undefined;
+
+                      // Build grid visual rows
+                      const gridRows: Array<Array<SplitGridCell | null>> = [];
+                      const rendered = new Set<string>();
+                      for (let r = 1; r <= rows; r++) {
+                        const rowCells: Array<SplitGridCell | null> = [];
+                        for (let c = 1; c <= cols; c++) {
+                          const cell = cellAt(cells, c, r);
+                          if (cell && !rendered.has(cell.id) && cell.col === c && cell.row === r) {
+                            rowCells.push(cell);
+                            rendered.add(cell.id);
+                          } else if (cell && rendered.has(cell.id)) {
+                            // covered by spanning cell — skip (don't push)
+                          } else {
+                            rowCells.push(null);
+                          }
+                        }
+                        gridRows.push(rowCells);
+                      }
+
+                      const gridLabel = (sel.config.label as string | undefined) ?? "";
+
+                      return (
+                        <div className="space-y-3 p-1">
+                          <FormField label="Nhãn">
+                            <Input
+                              placeholder="Tiêu đề hiển thị (để trống = ẩn)"
+                              value={gridLabel}
+                              onChange={(e) =>
+                                update(sel.id, {
+                                  config: { ...sel.config, label: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </FormField>
+                          {/* Grid size controls */}
+                          <FormField label="Cột">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(removeGridCol(gridCfg))}
+                                disabled={cols <= 1}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Minus size={12} />
+                              </button>
+                              <span className="text-sm font-medium w-6 text-center">{cols}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(addGridCol(gridCfg))}
+                                disabled={cols >= 6}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Plus size={12} />
+                              </button>
+                              <span className="text-muted text-xs ml-2">Hàng:</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(removeGridRow(gridCfg))}
+                                disabled={rows <= 1}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Minus size={12} />
+                              </button>
+                              <span className="text-sm font-medium w-6 text-center">{rows}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(addGridRow(gridCfg))}
+                                disabled={rows >= 6}
+                                className="w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.Plus size={12} />
+                              </button>
+                            </div>
+                          </FormField>
+
+                          {/* Grid visual */}
+                          <div className="border border-border rounded overflow-hidden">
+                            <table className="w-full border-collapse table-fixed">
+                              <tbody>
+                                {gridRows.map((row, ri) => (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: row index stable
+                                  <tr key={ri}>
+                                    {row.map((cell, ci) =>
+                                      cell ? (
+                                        <td
+                                          // biome-ignore lint/suspicious/noArrayIndexKey: ci stable within row
+                                          key={ci}
+                                          colSpan={cell.colSpan}
+                                          rowSpan={cell.rowSpan}
+                                          onClick={() => setSplitCellSel(cell.id)}
+                                          className={cn(
+                                            "border border-border/40 px-1.5 py-1 text-[10px] cursor-pointer select-none truncate transition-colors",
+                                            splitCellSel === cell.id
+                                              ? "bg-accent/20 text-accent font-medium"
+                                              : "hover:bg-hover/50 text-muted",
+                                          )}
+                                        >
+                                          {cell.entity
+                                            ? (entities.find((e) => e.id === cell.entity)?.name ??
+                                              "?")
+                                            : cell.dataSourceId
+                                              ? "DS"
+                                              : `${cell.row},${cell.col}`}
+                                        </td>
+                                      ) : null,
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Merge / split tools */}
+                          {selCell && (
+                            <div className="flex gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(mergeRight(gridCfg, selCell.id))}
+                                disabled={selCell.col + selCell.colSpan - 1 >= cols}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.ArrowRight size={11} /> Gộp phải
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateGrid(mergeDown(gridCfg, selCell.id))}
+                                disabled={selCell.row + selCell.rowSpan - 1 >= rows}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40"
+                              >
+                                <I.ArrowDown size={11} /> Gộp xuống
+                              </button>
+                              {(selCell.colSpan > 1 || selCell.rowSpan > 1) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateGrid(splitCell(gridCfg, selCell.id));
+                                    setSplitCellSel(null);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded hover:bg-hover text-warning border-warning/30"
+                                >
+                                  <I.X size={11} /> Tách ô
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Per-cell config */}
+                          {selCell && (
+                            <div className="border-t border-border pt-3 space-y-3">
+                              <div className="text-xs font-semibold text-muted">
+                                Ô {selCell.row},{selCell.col}
+                                {(selCell.colSpan > 1 || selCell.rowSpan > 1) &&
+                                  ` (span ${selCell.colSpan}×${selCell.rowSpan})`}
+                              </div>
+                              <FormField label="Loại">
+                                <Select
+                                  value={selCell.kind ?? "list"}
+                                  onChange={(e) => updateCell({ kind: e.target.value })}
+                                >
+                                  {subKinds.map((k) => (
+                                    <option key={k} value={k}>
+                                      {k}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Entity">
+                                <Select
+                                  value={selCell.entity ?? ""}
+                                  onChange={(e) =>
+                                    updateCell({ entity: e.target.value || undefined })
+                                  }
+                                >
+                                  <option value="">— chọn entity —</option>
+                                  {entities.map((e) => (
+                                    <option key={e.id} value={e.id}>
+                                      {e.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormField>
+                              <FormField label="Tiêu đề">
+                                <Input
+                                  value={selCell.title ?? ""}
+                                  placeholder={selEnt?.name ?? ""}
+                                  onChange={(e) =>
+                                    updateCell({ title: e.target.value || undefined })
+                                  }
+                                />
+                              </FormField>
+                              {selCell.kind &&
+                                ["detail", "form", "chart", "kanban"].includes(selCell.kind) &&
+                                selEnt && (
+                                  <FormField label="Field liên kết">
+                                    <Select
+                                      value={selCell.linkField ?? ""}
+                                      onChange={(e) =>
+                                        updateCell({ linkField: e.target.value || undefined })
+                                      }
+                                    >
+                                      <option value="">— chọn field —</option>
+                                      {selEnt.fields.map((f) => (
+                                        <option key={f.name} value={f.name}>
+                                          {fieldBoth(f)}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </FormField>
+                                )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
 
@@ -2692,7 +3249,7 @@ export function PageDesigner({ pageId }: Props) {
                                                     }}
                                                   />
                                                   <span className="flex-1 truncate">
-                                                    {fieldDisp(f)}
+                                                    {fieldBoth(f)}
                                                   </span>
                                                 </label>
                                               );
@@ -2905,8 +3462,27 @@ export function PageDesigner({ pageId }: Props) {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-center px-6 text-sm text-muted">
-                {t("designer.select_component")}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide">
+                  Cài đặt trang
+                </div>
+                <FormField
+                  label="Vừa 1 màn hình"
+                  hint="Toàn bộ widget co giãn vừa chiều cao viewport. Mỗi widget chiếm tỷ lệ theo h. Bật khi trang có nhiều list theo chiều dọc."
+                >
+                  <Switch
+                    checked={!!pageMeta.screenFit}
+                    onChange={(v) => setPageMeta((m) => ({ ...m, screenFit: v }))}
+                  />
+                </FormField>
+                <div className="border-t border-border pt-3 text-[11px] text-muted leading-relaxed space-y-1.5">
+                  <p>Chọn 1 widget trên canvas để chỉnh cấu hình chi tiết.</p>
+                  <p>
+                    Widget cuộn được (list / chart / kanban…) cũng có thể bật{" "}
+                    <span className="text-text font-medium">Tràn chiều cao màn hình</span> riêng ở
+                    tab Chung.
+                  </p>
+                </div>
               </div>
             )}
           </aside>
@@ -2932,6 +3508,7 @@ function tabsForKind(kind: ComponentKind) {
   if (inputKinds.includes(kind)) return [...base, { key: "dieukien", label: "Nguồn & Điều khiển" }];
   if (kind === "filter") return [...base, { key: "dulieu", label: "Dữ liệu" }];
   if (kind === "split") return [...base, { key: "bocuc", label: "Bố cục" }];
+  if (kind === "grid") return [...base, { key: "bocuc", label: "Bố cục" }];
   if (kind === "actionbar") return [...base, { key: "hanhDong", label: "Hành động" }];
   if (kind === "action") return [...base, { key: "cauhinh", label: "Cấu hình" }];
   if (kind === "step") return [...base, { key: "buoc", label: "Bước" }];
@@ -2954,6 +3531,9 @@ interface ComponentCardProps {
   onDragOver: () => void;
   onDragLeave: () => void;
   onResizeStart: (dir: "e" | "s" | "se", mouseX: number, mouseY: number) => void;
+  onSplitPanelDrop?: (panel: string, srcId: string) => void;
+  onSplitCellClick?: (cellId: string) => void;
+  splitCellSelId?: string | null;
 }
 function ComponentCard({
   comp,
@@ -2970,6 +3550,9 @@ function ComponentCard({
   onDragOver,
   onDragLeave,
   onResizeStart,
+  onSplitPanelDrop,
+  onSplitCellClick,
+  splitCellSelId,
 }: ComponentCardProps) {
   // Widget nhập chưa gắn nguồn nào (entity/options/stateKey) → badge nhắc.
   const unbound =
@@ -2980,6 +3563,7 @@ function ComponentCard({
   return (
     <div
       draggable={!isResizing}
+      data-comp-id={comp.id}
       onClick={onSelect}
       onDragStart={(e) => {
         if (isResizing) {
@@ -3041,11 +3625,21 @@ function ComponentCard({
       <div className="flex-1 overflow-hidden min-h-0">
         {isScalableKind(comp.kind) ? (
           <ScaleToFit>
-            <ComponentBody comp={comp} />
+            <ComponentBody
+              comp={comp}
+              onSplitPanelDrop={onSplitPanelDrop}
+              onSplitCellClick={onSplitCellClick}
+              splitCellSelId={splitCellSelId}
+            />
           </ScaleToFit>
         ) : (
           // Danh sách/tương tác: giữ nguyên kích thước, tự cuộn — không scale.
-          <ComponentBody comp={comp} />
+          <ComponentBody
+            comp={comp}
+            onSplitPanelDrop={onSplitPanelDrop}
+            onSplitCellClick={onSplitCellClick}
+            splitCellSelId={splitCellSelId}
+          />
         )}
       </div>
       {!previewMode && (
@@ -3131,7 +3725,306 @@ function PreviewBox({ icon, label, hint }: { icon: IconName; label: string; hint
   );
 }
 
-function ComponentBody({ comp }: { comp: PageComponent }) {
+// ===== Split Grid types + helpers =====
+
+export type SplitGridCell = {
+  id: string;
+  col: number;
+  row: number;
+  colSpan: number;
+  rowSpan: number;
+  kind?: string;
+  entity?: string;
+  dataSourceId?: string;
+  title?: string;
+  linkField?: string;
+  fields?: string[] | null;
+  columnLabels?: Record<string, string>;
+  columnGroups?: unknown[];
+  serverPaging?: boolean;
+  editable?: boolean;
+  batchEdit?: boolean;
+  excelMode?: boolean;
+  multiSelect?: boolean;
+  loadGate?: string;
+  rowLimit?: number;
+  pageSize?: number;
+  defaultSort?: { field: string; dir: "asc" | "desc" };
+};
+
+export type SplitGridConfig = {
+  cols: number;
+  rows: number;
+  colFr?: number[];
+  rowFr?: number[];
+  cells: SplitGridCell[];
+};
+
+function isGridConfig(cfg: Record<string, unknown>): cfg is SplitGridConfig {
+  return Array.isArray(cfg.cells);
+}
+
+function cellAt(cells: SplitGridCell[], col: number, row: number): SplitGridCell | undefined {
+  return cells.find(
+    (c) => col >= c.col && col < c.col + c.colSpan && row >= c.row && row < c.row + c.rowSpan,
+  );
+}
+
+function newCell(col: number, row: number): SplitGridCell {
+  return {
+    id: `r${row}c${col}_${Math.random().toString(36).slice(2, 6)}`,
+    col,
+    row,
+    colSpan: 1,
+    rowSpan: 1,
+  };
+}
+
+export function defaultGrid(cols: number, rows: number): SplitGridConfig {
+  const cells: SplitGridCell[] = [];
+  for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) cells.push(newCell(c, r));
+  return { cols, rows, cells };
+}
+
+function migrateToGrid(cfg: Record<string, unknown>): SplitGridConfig {
+  if (isGridConfig(cfg)) return cfg as SplitGridConfig;
+  const orientation = (cfg.orientation as string) ?? "h";
+  const pA = (cfg.panelA as Partial<SplitGridCell>) ?? {};
+  const pB = (cfg.panelB as Partial<SplitGridCell>) ?? {};
+  const pC = (cfg.panelC as Partial<SplitGridCell>) ?? {};
+  const pD = (cfg.panelD as Partial<SplitGridCell>) ?? {};
+  if (orientation === "v") {
+    return {
+      cols: 1,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  if (orientation === "both") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 2 },
+        { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  if (orientation === "both2") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 1, colSpan: 1, rowSpan: 2 },
+      ],
+    };
+  }
+  if (orientation === "both3") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pD, id: "D", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  // both4: A trên (full width) / B trái dưới, C phải dưới
+  if (orientation === "both4") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 2, rowSpan: 1 },
+        { ...pB, id: "B", col: 1, row: 2, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 2, row: 2, colSpan: 1, rowSpan: 1 },
+      ],
+    };
+  }
+  // both5: A trái trên, B phải trên / C dưới (full width)
+  if (orientation === "both5") {
+    return {
+      cols: 2,
+      rows: 2,
+      cells: [
+        { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        { ...pC, id: "C", col: 1, row: 2, colSpan: 2, rowSpan: 1 },
+      ],
+    };
+  }
+  return {
+    cols: 2,
+    rows: 1,
+    cells: [
+      { ...pA, id: "A", col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+      { ...pB, id: "B", col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+    ],
+  };
+}
+
+function addGridCol(cfg: SplitGridConfig): SplitGridConfig {
+  const newCol = cfg.cols + 1;
+  const extra: SplitGridCell[] = [];
+  for (let r = 1; r <= cfg.rows; r++) {
+    if (!cellAt(cfg.cells, newCol, r)) extra.push(newCell(newCol, r));
+  }
+  return { ...cfg, cols: newCol, cells: [...cfg.cells, ...extra] };
+}
+
+function removeGridCol(cfg: SplitGridConfig): SplitGridConfig {
+  if (cfg.cols <= 1) return cfg;
+  const col = cfg.cols;
+  const cells = cfg.cells
+    .filter((c) => c.col !== col)
+    .map((c) => {
+      const end = c.col + c.colSpan - 1;
+      if (end >= col) return { ...c, colSpan: col - c.col };
+      return c;
+    })
+    .filter((c) => c.colSpan > 0);
+  return { ...cfg, cols: col - 1, cells };
+}
+
+function addGridRow(cfg: SplitGridConfig): SplitGridConfig {
+  const newRow = cfg.rows + 1;
+  const extra: SplitGridCell[] = [];
+  for (let c = 1; c <= cfg.cols; c++) {
+    if (!cellAt(cfg.cells, c, newRow)) extra.push(newCell(c, newRow));
+  }
+  return { ...cfg, rows: newRow, cells: [...cfg.cells, ...extra] };
+}
+
+function removeGridRow(cfg: SplitGridConfig): SplitGridConfig {
+  if (cfg.rows <= 1) return cfg;
+  const row = cfg.rows;
+  const cells = cfg.cells
+    .filter((c) => c.row !== row)
+    .map((c) => {
+      const end = c.row + c.rowSpan - 1;
+      if (end >= row) return { ...c, rowSpan: row - c.row };
+      return c;
+    })
+    .filter((c) => c.rowSpan > 0);
+  return { ...cfg, rows: row - 1, cells };
+}
+
+function mergeRight(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell) return cfg;
+  const rightCol = cell.col + cell.colSpan;
+  if (rightCol > cfg.cols) return cfg;
+  const rightCell = cellAt(cfg.cells, rightCol, cell.row);
+  if (!rightCell || rightCell.rowSpan !== cell.rowSpan || rightCell.col !== rightCol) return cfg;
+  return {
+    ...cfg,
+    cells: cfg.cells
+      .filter((c) => c.id !== rightCell.id)
+      .map((c) => (c.id === cellId ? { ...c, colSpan: c.colSpan + rightCell.colSpan } : c)),
+  };
+}
+
+function mergeDown(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell) return cfg;
+  const belowRow = cell.row + cell.rowSpan;
+  if (belowRow > cfg.rows) return cfg;
+  const belowCell = cellAt(cfg.cells, cell.col, belowRow);
+  if (!belowCell || belowCell.colSpan !== cell.colSpan || belowCell.row !== belowRow) return cfg;
+  return {
+    ...cfg,
+    cells: cfg.cells
+      .filter((c) => c.id !== belowCell.id)
+      .map((c) => (c.id === cellId ? { ...c, rowSpan: c.rowSpan + belowCell.rowSpan } : c)),
+  };
+}
+
+function splitCell(cfg: SplitGridConfig, cellId: string): SplitGridConfig {
+  const cell = cfg.cells.find((c) => c.id === cellId);
+  if (!cell || (cell.colSpan === 1 && cell.rowSpan === 1)) return cfg;
+  const newCells: SplitGridCell[] = [];
+  for (let r = cell.row; r < cell.row + cell.rowSpan; r++) {
+    for (let c = cell.col; c < cell.col + cell.colSpan; c++) {
+      if (r === cell.row && c === cell.col) {
+        newCells.push({ ...cell, colSpan: 1, rowSpan: 1 });
+      } else {
+        newCells.push(newCell(c, r));
+      }
+    }
+  }
+  return { ...cfg, cells: [...cfg.cells.filter((c) => c.id !== cellId), ...newCells] };
+}
+
+/** Vùng thả component vào 1 panel của Split — hiển thị highlight khi kéo vào. */
+function SplitPanelDropZone({
+  panelKey,
+  className,
+  style,
+  onDrop,
+  children,
+}: {
+  panelKey: string;
+  className?: string;
+  style?: React.CSSProperties;
+  onDrop?: (panel: string, srcId: string) => void;
+  children: React.ReactNode;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <div
+      className={cn("relative", over && "ring-2 ring-inset ring-accent ring-offset-0", className)}
+      style={style}
+      onDragOver={(e) => {
+        // Chỉ chấp nhận kéo component (text/plain = comp.id), không nhận palette.
+        if (e.dataTransfer.types.includes("text/plain")) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!over) setOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+          setOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        setOver(false);
+        const srcId = e.dataTransfer.getData("text/plain");
+        if (srcId && onDrop) onDrop(panelKey, srcId);
+      }}
+    >
+      {children}
+      {over && (
+        <div className="absolute inset-0 flex items-center justify-center bg-accent/15 pointer-events-none z-10 rounded">
+          <span className="text-[10px] font-semibold text-accent bg-bg/90 px-2 py-0.5 rounded shadow">
+            Thả vào đây
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComponentBody({
+  comp,
+  onSplitPanelDrop,
+  onSplitCellClick,
+  splitCellSelId,
+}: {
+  comp: PageComponent;
+  onSplitPanelDrop?: (panel: string, srcId: string) => void;
+  onSplitCellClick?: (cellId: string) => void;
+  splitCellSelId?: string | null;
+}) {
   const entities = useUserObjects((s) => s.entities);
   const dataSourceContent = useUserObjects((s) => s.dataSourceContent);
   const { fieldDisp } = useFieldDisplay();
@@ -3258,7 +4151,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
                         key={c.name}
                         className="px-2 py-1 text-left font-semibold text-muted border-b border-border/40 truncate max-w-[80px]"
                       >
-                        {c.label}
+                        {fieldDisp(c)}
                       </th>
                     ))}
                   </tr>
@@ -3380,7 +4273,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             <>
               {cols.slice(0, 6).map((c) => (
                 <div key={c.name} className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-[80px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="w-[80px] shrink-0 text-muted truncate">{fieldDisp(c)}</div>
                   <div className="flex-1 h-5 border border-border/50 rounded bg-bg-soft flex items-center px-1.5">
                     <div
                       className="h-1.5 bg-muted/20 rounded"
@@ -3496,7 +4389,7 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
             ) : (
               shown.map((c) => (
                 <div key={c.name} className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-[72px] shrink-0 text-muted truncate">{c.label}</div>
+                  <div className="w-[72px] shrink-0 text-muted truncate">{fieldDisp(c)}</div>
                   <div className="flex-1 h-5 border border-border/60 rounded bg-bg flex items-center px-1.5">
                     <div
                       className="h-1.5 bg-muted/25 rounded"
@@ -3614,7 +4507,6 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
               </div>
               <div className="flex-1 p-1 space-y-1">
                 {[0, 1, 2].map((i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
                   <div key={i} className="h-4 bg-panel rounded border border-border/30" />
                 ))}
               </div>
@@ -3628,24 +4520,37 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
   if (comp.kind === "split") {
     const {
       orientation = "h",
+      count = 2,
       ratio = 40,
       ratioV = 50,
       panelA,
       panelB,
       panelC,
+      panelD,
     } = comp.config as {
       orientation?: string;
+      count?: number;
       ratio?: number;
       ratioV?: number;
       panelA?: { kind?: string; entity?: string; title?: string };
       panelB?: { kind?: string; entity?: string; title?: string };
       panelC?: { kind?: string; entity?: string; title?: string };
+      panelD?: { kind?: string; entity?: string; title?: string };
     };
     const entA = entities.find((e) => e.id === panelA?.entity);
     const entB = entities.find((e) => e.id === panelB?.entity);
     const entC = entities.find((e) => e.id === panelC?.entity);
+    const entD = entities.find((e) => e.id === panelD?.entity);
     const isBoth = orientation === "both";
-    const isH = orientation !== "v";
+    const isBoth2 = orientation === "both2";
+    const isBoth3 = orientation === "both3";
+    const isBoth4 = orientation === "both4";
+    const isBoth5 = orientation === "both5";
+    const isTabs = orientation === "tabs";
+    const isH =
+      !isBoth && !isBoth2 && !isBoth3 && !isBoth4 && !isBoth5 && !isTabs && orientation !== "v";
+    const splitCount =
+      isBoth || isBoth2 || isBoth3 || isBoth4 || isBoth5 ? 3 : Math.max(2, Math.min(3, count));
 
     const PanelPreview = ({
       label,
@@ -3680,10 +4585,35 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
       </div>
     );
 
-    if (isBoth) {
+    // Tabs preview
+    if (isTabs) {
+      const tabPanelDefs = [
+        { key: "A", panel: panelA, ent: entA, bg: "bg-accent/5" },
+        { key: "B", panel: panelB, ent: entB, bg: "bg-panel-2/30" },
+        ...(splitCount >= 3 ? [{ key: "C", panel: panelC, ent: entC, bg: "" }] : []),
+      ];
       return (
-        <div className="h-full flex flex-row overflow-hidden text-[10px]">
-          <div className="overflow-hidden border-r border-border/40" style={{ width: `${ratio}%` }}>
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <div className="flex border-b border-border/40 shrink-0 bg-bg-soft">
+            {tabPanelDefs.map((p) => (
+              <div
+                key={p.key}
+                className={cn(
+                  "px-2 py-0.5 text-[8px] border-b-2 transition-colors",
+                  p.key === "A"
+                    ? "border-accent text-accent font-semibold"
+                    : "border-transparent text-muted",
+                )}
+              >
+                {p.panel?.title ?? p.ent?.name ?? p.key}
+              </div>
+            ))}
+          </div>
+          <SplitPanelDropZone
+            panelKey="A"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
             <PanelPreview
               label="A"
               ent={entA}
@@ -3691,11 +4621,35 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
               kind={panelA?.kind}
               bg="bg-accent/5"
             />
-          </div>
+          </SplitPanelDropZone>
+        </div>
+      );
+    }
+
+    // Both layout
+    if (isBoth) {
+      return (
+        <div className="h-full flex flex-row overflow-hidden text-[10px]">
+          <SplitPanelDropZone
+            panelKey="A"
+            className="overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview
+              label="A"
+              ent={entA}
+              title={panelA?.title}
+              kind={panelA?.kind}
+              bg="bg-accent/5"
+            />
+          </SplitPanelDropZone>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div
+            <SplitPanelDropZone
+              panelKey="B"
               className="overflow-hidden border-b border-border/40"
               style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
             >
               <PanelPreview
                 label="B"
@@ -3704,37 +4658,340 @@ function ComponentBody({ comp }: { comp: PageComponent }) {
                 kind={panelB?.kind}
                 bg="bg-panel-2/30"
               />
-            </div>
-            <div className="flex-1 overflow-hidden">
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="C"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
               <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
-            </div>
+            </SplitPanelDropZone>
           </div>
         </div>
       );
     }
 
+    if (isBoth2) {
+      return (
+        <div className="h-full flex flex-row overflow-hidden text-[10px]">
+          <div
+            className="flex flex-col overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <SplitPanelDropZone
+            panelKey="C"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+          </SplitPanelDropZone>
+        </div>
+      );
+    }
+
+    if (isBoth3) {
+      const ratioV2 =
+        ((comp.config as Record<string, unknown>).ratioV2 as number | undefined) ?? 50;
+      return (
+        <div className="h-full flex flex-row overflow-hidden text-[10px]">
+          <div
+            className="flex flex-col overflow-hidden border-r border-border/40"
+            style={{ width: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <SplitPanelDropZone
+              panelKey="C"
+              className="overflow-hidden border-b border-border/40"
+              style={{ height: `${ratioV2}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="D"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="D"
+                ent={entD}
+                title={panelD?.title}
+                kind={panelD?.kind}
+                bg="bg-panel-2/20"
+              />
+            </SplitPanelDropZone>
+          </div>
+        </div>
+      );
+    }
+
+    // Both4 — A trên / (B trái, C phải) dưới
+    if (isBoth4) {
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <SplitPanelDropZone
+            panelKey="A"
+            className="overflow-hidden border-b border-border/40"
+            style={{ height: `${ratio}%` }}
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview
+              label="A"
+              ent={entA}
+              title={panelA?.title}
+              kind={panelA?.kind}
+              bg="bg-accent/5"
+            />
+          </SplitPanelDropZone>
+          <div className="flex-1 flex flex-row overflow-hidden">
+            <SplitPanelDropZone
+              panelKey="B"
+              className="overflow-hidden border-r border-border/40"
+              style={{ width: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="C"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+            </SplitPanelDropZone>
+          </div>
+        </div>
+      );
+    }
+
+    // Both5 — (A trái, B phải) trên / C dưới
+    if (isBoth5) {
+      return (
+        <div className="h-full flex flex-col overflow-hidden text-[10px]">
+          <div
+            className="flex flex-row overflow-hidden border-b border-border/40"
+            style={{ height: `${ratio}%` }}
+          >
+            <SplitPanelDropZone
+              panelKey="A"
+              className="overflow-hidden border-r border-border/40"
+              style={{ width: `${ratioV}%` }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="A"
+                ent={entA}
+                title={panelA?.title}
+                kind={panelA?.kind}
+                bg="bg-accent/5"
+              />
+            </SplitPanelDropZone>
+            <SplitPanelDropZone
+              panelKey="B"
+              className="flex-1 overflow-hidden"
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label="B"
+                ent={entB}
+                title={panelB?.title}
+                kind={panelB?.kind}
+                bg="bg-panel-2/30"
+              />
+            </SplitPanelDropZone>
+          </div>
+          <SplitPanelDropZone
+            panelKey="C"
+            className="flex-1 overflow-hidden"
+            onDrop={onSplitPanelDrop}
+          >
+            <PanelPreview label="C" ent={entC} title={panelC?.title} kind={panelC?.kind} bg="" />
+          </SplitPanelDropZone>
+        </div>
+      );
+    }
+
+    // H / V — 2 or 3 panels
+    const panelDefs = [
+      { key: "A", panel: panelA, ent: entA, bg: "bg-accent/5" },
+      { key: "B", panel: panelB, ent: entB, bg: "bg-panel-2/30" },
+      ...(splitCount >= 3 ? [{ key: "C", panel: panelC, ent: entC, bg: "" }] : []),
+    ];
+    const szKey = isH ? "width" : "height";
+    const borderEdge = isH ? "border-r" : "border-b";
+    const eqPct = `${Math.round(100 / panelDefs.length)}%`;
     return (
       <div className={`h-full flex ${isH ? "flex-row" : "flex-col"} overflow-hidden text-[10px]`}>
+        {panelDefs.map((p, idx) => {
+          const isLast = idx === panelDefs.length - 1;
+          return (
+            <SplitPanelDropZone
+              key={p.key}
+              panelKey={p.key}
+              className={cn("overflow-hidden border-border/40", !isLast && borderEdge)}
+              style={isLast ? { flex: 1 } : { [szKey]: eqPct }}
+              onDrop={onSplitPanelDrop}
+            >
+              <PanelPreview
+                label={p.key}
+                ent={p.ent}
+                title={p.panel?.title}
+                kind={p.panel?.kind}
+                bg={p.bg}
+              />
+            </SplitPanelDropZone>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (comp.kind === "grid") {
+    const rawCfg = comp.config as Record<string, unknown>;
+    const gridCfg: SplitGridConfig = isGridConfig(rawCfg) ? rawCfg : defaultGrid(2, 1);
+    const { cols, rows, cells } = gridCfg;
+    const colFr = gridCfg.colFr ?? Array(cols).fill(1);
+    const rowFr = gridCfg.rowFr ?? Array(rows).fill(1);
+    const gridLabel = comp.config.label as string | undefined;
+
+    return (
+      <div className="h-full flex flex-col overflow-hidden">
+        {gridLabel && (
+          <div className="px-2 py-1 border-b border-border/40 shrink-0 flex items-center gap-1.5 text-[10px]">
+            <I.LayoutGrid size={11} className="text-muted shrink-0" />
+            <span className="font-medium truncate">{gridLabel}</span>
+          </div>
+        )}
         <div
-          className={`overflow-hidden border-border/40 ${isH ? "border-r" : "border-b"}`}
-          style={{ [isH ? "width" : "height"]: `${ratio}%` }}
+          className="flex-1 overflow-hidden"
+          style={{
+            display: "grid",
+            gridTemplateColumns: colFr.map((f) => `${f}fr`).join(" "),
+            gridTemplateRows: rowFr.map((f) => `${f}fr`).join(" "),
+          }}
         >
-          <PanelPreview
-            label="A"
-            ent={entA}
-            title={panelA?.title}
-            kind={panelA?.kind}
-            bg="bg-accent/5"
-          />
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <PanelPreview
-            label="B"
-            ent={entB}
-            title={panelB?.title}
-            kind={panelB?.kind}
-            bg="bg-panel-2/30"
-          />
+          {cells.map((cell) => {
+            const ent = entities.find((e) => e.id === cell.entity);
+            const isSelected = splitCellSelId === cell.id;
+            return (
+              <SplitPanelDropZone
+                key={cell.id}
+                panelKey={cell.id}
+                style={{
+                  gridColumn: `${cell.col} / span ${cell.colSpan}`,
+                  gridRow: `${cell.row} / span ${cell.rowSpan}`,
+                  border: "1px solid hsl(var(--border) / 0.4)",
+                }}
+                onDrop={onSplitPanelDrop}
+                className={cn(isSelected && "ring-2 ring-inset ring-accent")}
+              >
+                <div
+                  className="h-full flex flex-col overflow-hidden text-[10px] cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSplitCellClick?.(cell.id);
+                  }}
+                >
+                  <div className="px-1.5 py-0.5 border-b border-border/30 shrink-0 flex items-center gap-1 bg-panel/50">
+                    {ent ? (
+                      <>
+                        <span className="truncate text-[9px] text-muted">
+                          {cell.title ?? ent.name}
+                        </span>
+                        <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                          {cell.kind ?? "list"}
+                        </span>
+                      </>
+                    ) : cell.dataSourceId ? (
+                      <>
+                        <span className="truncate text-[9px] text-muted">
+                          {cell.title ?? "Datasource"}
+                        </span>
+                        <span className="ml-auto text-[8px] text-muted/50 shrink-0">
+                          {cell.kind ?? "list"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-muted/50 italic">Chưa bind</span>
+                    )}
+                  </div>
+                  {ent || cell.dataSourceId ? (
+                    <div className="flex-1 flex flex-col gap-0.5 p-1">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-2 bg-muted/15 rounded" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-[9px] text-muted/40">
+                      {cell.row},{cell.col}
+                    </div>
+                  )}
+                </div>
+              </SplitPanelDropZone>
+            );
+          })}
         </div>
       </div>
     );

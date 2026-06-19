@@ -525,9 +525,14 @@ export function DataGrid<T>({
   const [exporting, setExporting] = useState(false);
   const exportBtnRef = useRef<HTMLDivElement>(null);
   const colChooserRef = useRef<HTMLDivElement>(null);
+  const groupDropdownRef = useRef<HTMLDivElement>(null);
+  const colDropdownRef = useRef<HTMLDivElement>(null);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   const [dragColId, setDragColId] = useState<string | null>(null);
+  const [dragSortId, setDragSortId] = useState<string | null>(null);
+  const [dragGroupId, setDragGroupId] = useState<string | null>(null);
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ left: [], right: [] });
   // Master-detail: id dòng đang mở panel chi tiết.
   const [openDetail, setOpenDetail] = useState<Set<string>>(new Set());
@@ -641,7 +646,8 @@ export function DataGrid<T>({
   useEffect(() => {
     if (!groupPickerOpen) return;
     const handler = (e: MouseEvent) => {
-      if (groupPickerRef.current && !groupPickerRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (!groupPickerRef.current?.contains(t) && !groupDropdownRef.current?.contains(t)) {
         setGroupPickerOpen(false);
       }
     };
@@ -653,7 +659,8 @@ export function DataGrid<T>({
   useEffect(() => {
     if (!colChooserOpen) return;
     const handler = (e: MouseEvent) => {
-      if (colChooserRef.current && !colChooserRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (!colChooserRef.current?.contains(t) && !colDropdownRef.current?.contains(t)) {
         setColChooserOpen(false);
       }
     };
@@ -729,6 +736,27 @@ export function DataGrid<T>({
         }
       : {}),
   });
+
+  // tableRef để effect truy cập table.getAllLeafColumns() mà không cần đưa table
+  // vào deps (table có thể tạo mới mỗi render do TanStack mutable-update).
+  const tableRef = useRef(table);
+  tableRef.current = table;
+
+  // Prune stale column IDs khỏi columnOrder sau khi IDB restore xong.
+  // Xảy ra khi entity đổi schema (field xoá/đổi tên) → columnOrder cũ chứa id
+  // không tồn tại → TanStack Table log [Table] Column with id 'X' does not exist.
+  const orderPrunedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tableRef stable — không cần trong deps
+  useEffect(() => {
+    if (!restoreSettled || orderPrunedRef.current) return;
+    orderPrunedRef.current = true;
+    const validIds = new Set(tableRef.current.getAllLeafColumns().map((c) => c.id));
+    setColumnOrder((prev) => {
+      if (prev.length === 0) return prev;
+      const pruned = prev.filter((id) => validIds.has(id));
+      return pruned.length === prev.length ? prev : pruned;
+    });
+  }, [restoreSettled]);
 
   // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
   // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,
@@ -851,7 +879,9 @@ export function DataGrid<T>({
   const sortableColumns = table
     .getAllColumns()
     .filter((c) => c.getCanGroup() && c.id !== "__expand__");
-  const availableGroupCols = sortableColumns.filter((c) => !grouping.includes(c.id));
+  const allSortableCols = table
+    .getAllLeafColumns()
+    .filter((c) => c.getCanSort() && !["__expand__", "__select__", "__rowacts__"].includes(c.id));
   const activeFilterCount = columnFilters.length;
   const filteredRows = table.getFilteredRowModel().rows;
   const filteredCount = filteredRows.length;
@@ -913,7 +943,8 @@ export function DataGrid<T>({
   useEffect(() => {
     if (!exportMenuOpen) return;
     const handler = (e: MouseEvent) => {
-      if (exportBtnRef.current && !exportBtnRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (!exportBtnRef.current?.contains(t) && !exportDropdownRef.current?.contains(t)) {
         setExportMenuOpen(false);
       }
     };
@@ -950,7 +981,7 @@ export function DataGrid<T>({
   const rangeFrom = totalCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
   const rangeTo = Math.min(totalCount, (pagination.pageIndex + 1) * pagination.pageSize);
   const pageBtn =
-    "p-1 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
+    "p-0.5 rounded text-muted hover:bg-hover/40 disabled:opacity-30 disabled:hover:bg-transparent";
 
   const doExport = async (format: "xlsx" | "csv") => {
     setExportMenuOpen(false);
@@ -986,243 +1017,419 @@ export function DataGrid<T>({
       )}
     >
       {toolbar && (
-        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-panel-2/40 shrink-0 flex-wrap">
-          {label && <span className="text-xs font-semibold text-muted mr-1 shrink-0">{label}</span>}
+        <div className="border-b border-border bg-panel-2/40 shrink-0">
+          {/* Hàng 1: tiêu đề + tìm kiếm + filter + chọn dòng */}
+          <div className="flex items-center gap-1 px-2 py-1">
+            {/* Tên list + đếm dòng xếp dọc — gom vào 1 cột nhỏ bên trái */}
+            {label && (
+              <div className="flex flex-col shrink-0 mr-0.5 leading-none">
+                <span className="text-xs font-semibold text-muted">{label}</span>
+                <span className="text-[10px] text-muted/60 mt-0.5">
+                  {serverMode
+                    ? t("datagrid.row_count_server", { total: totalCount })
+                    : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
+                </span>
+              </div>
+            )}
 
-          {/* Global search */}
-          <div className="relative flex-1 min-w-[140px] max-w-full sm:max-w-[260px]">
-            <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
-            <Input
-              placeholder={t("datagrid.search_placeholder")}
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-7! pr-6! h-7 text-xs"
-            />
-            {globalFilter && (
+            {/* Global search */}
+            <div className="relative flex-1 min-w-0">
+              <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
+              <Input
+                placeholder={t("datagrid.search_placeholder")}
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-7! pr-6! h-6 text-xs"
+              />
+              {globalFilter && (
+                <button
+                  type="button"
+                  onClick={() => setGlobalFilter("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+                >
+                  <I.X size={11} />
+                </button>
+              )}
+            </div>
+
+            {/* Bật/tắt cột tích chọn dòng */}
+            {enableSelection && (
               <button
                 type="button"
-                onClick={() => setGlobalFilter("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+                onClick={() =>
+                  setShowSelectCol((v) => {
+                    if (v) clearSelection();
+                    return !v;
+                  })
+                }
+                title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
+                className={cn(
+                  "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
+                  selecting
+                    ? "border-accent/60 text-accent bg-accent/10"
+                    : "border-border text-muted hover:text-text hover:border-border",
+                )}
               >
-                <I.X size={11} />
+                <I.Check size={12} />
+                {someSelected && <span>{selectedCount}</span>}
               </button>
+            )}
+
+            {serverMode && server?.loading && (
+              <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
             )}
           </div>
 
-          {/* Column filter toggle */}
-          <button
-            type="button"
-            onClick={() => setFilterRowOpen((v) => !v)}
-            className={cn(
-              "inline-flex items-center gap-1 px-2 h-7 rounded text-xs border transition-colors",
-              filterRowOpen || activeFilterCount > 0
-                ? "border-primary/60 text-primary bg-primary/10"
-                : "border-border text-muted hover:text-text hover:border-border",
-            )}
-          >
-            <I.Filter size={11} />
-            {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
-          </button>
+          {/* Hàng 2: outer z-20 → dropdown không bị clip overflow; inner scroll → button strip */}
+          <div className="relative z-20">
+            <div className="flex items-center gap-1 px-2 pb-1 overflow-x-auto">
+              {/* Column filter toggle */}
+              <button
+                type="button"
+                onClick={() => setFilterRowOpen((v) => !v)}
+                title={
+                  activeFilterCount > 0 ? `Lọc cột (${activeFilterCount} đang bật)` : "Lọc cột"
+                }
+                className={cn(
+                  "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
+                  filterRowOpen || activeFilterCount > 0
+                    ? "border-primary/60 text-primary bg-primary/10"
+                    : "border-border text-muted hover:text-text hover:border-border",
+                )}
+              >
+                <I.Filter size={11} />
+                {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+              </button>
 
-          {/* Bật/tắt cột tích chọn dòng */}
-          {enableSelection && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowSelectCol((v) => {
-                  if (v) clearSelection();
-                  return !v;
-                })
-              }
-              title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
-              className={cn(
-                "inline-flex items-center gap-1 px-2 h-7 rounded text-xs border transition-colors",
-                selecting
-                  ? "border-accent/60 text-accent bg-accent/10"
-                  : "border-border text-muted hover:text-text hover:border-border",
-              )}
-            >
-              <I.Check size={12} />
-              {someSelected && <span>{selectedCount}</span>}
-            </button>
-          )}
-
-          {/* Grouping chips + picker */}
-          {grouping.length > 0 && (
-            <div className="inline-flex items-center gap-1 flex-wrap">
-              {grouping.map((colId) => (
-                <span
-                  key={colId}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/15 text-primary text-xs"
+              {/* Group-by / sort / select picker — trigger only; dropdown thoát ra ngoài overflow */}
+              <div ref={groupPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setGroupPickerOpen((v) => !v)}
+                  title="Nhóm · Sắp xếp · Chọn dòng"
+                  className={cn(
+                    "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors",
+                    grouping.length > 0 || sorting.length > 0 || showSelectCol
+                      ? "border-accent/50 text-accent bg-accent/10"
+                      : "border-border text-muted hover:text-text hover:border-border",
+                  )}
                 >
-                  <I.Layers size={10} />
-                  {table.getColumn(colId)?.columnDef.header?.toString() ?? colId}
+                  <I.Layers size={11} />
+                  <I.ChevronDown size={10} />
+                </button>
+              </div>
+
+              {/* Chuyển đổi xem: lưới ↔ card — 1 nút toggle */}
+              <button
+                type="button"
+                onClick={() => setViewMode((v) => (v === "grid" ? "card" : "grid"))}
+                title={viewMode === "grid" ? "Chuyển sang dạng card" : "Chuyển sang dạng lưới"}
+                className={cn(
+                  "inline-flex items-center justify-center px-1.5 h-6 rounded border border-border transition-colors shrink-0",
+                  viewMode === "card"
+                    ? "bg-accent/15 text-accent border-accent/40"
+                    : "text-muted hover:text-text hover:border-border",
+                )}
+              >
+                {viewMode === "grid" ? <I.Layout size={12} /> : <I.Table size={12} />}
+              </button>
+
+              {/* Phóng to / thu nhỏ lưới toàn màn hình */}
+              <button
+                type="button"
+                onClick={() => setMaximized((m) => !m)}
+                title={maximized ? "Thu nhỏ (Esc)" : "Phóng to toàn màn hình"}
+                className="inline-flex items-center justify-center px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+              >
+                {maximized ? <I.X size={12} /> : <I.Maximize size={11} />}
+              </button>
+
+              {/* Tự co tất cả cột vừa nội dung */}
+              <button
+                type="button"
+                onClick={autofitAll}
+                title="Tự co tất cả cột vừa nội dung (hoặc nhắp đúp viền từng cột)"
+                className="inline-flex items-center justify-center w-6 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+              >
+                <I.Wand size={11} />
+              </button>
+
+              {/* Dán dữ liệu (paste TSV cập nhật theo cột khóa) */}
+              {onPasteApply && (
+                <button
+                  type="button"
+                  onClick={() => setPasteOpen(true)}
+                  title="Dán dữ liệu cập nhật (từ Excel)"
+                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
+                >
+                  <I.ClipboardList size={11} />
+                </button>
+              )}
+
+              {/* Thêm dòng nháp vào lưới — lên ĐẦU (＋↑) hoặc xuống CUỐI (＋↓) */}
+              {onAddRow && (
+                <div className="inline-flex shrink-0 overflow-hidden rounded border border-border">
                   <button
                     type="button"
-                    onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
-                    className="ml-0.5 hover:text-danger"
+                    onClick={() => onAddRow("top")}
+                    title="Thêm dòng mới lên ĐẦU lưới"
+                    className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text"
                   >
-                    <I.X size={10} />
+                    <I.Plus size={11} />
+                    <I.ChevronUp size={11} />
                   </button>
-                </span>
-              ))}
-            </div>
-          )}
+                  <button
+                    type="button"
+                    onClick={() => onAddRow("bottom")}
+                    title="Thêm dòng mới xuống CUỐI lưới"
+                    className="inline-flex items-center gap-0.5 px-1.5 h-6 text-xs text-muted hover:bg-hover hover:text-text border-l border-border"
+                  >
+                    <I.Plus size={11} />
+                    <I.ChevronDown size={11} />
+                  </button>
+                </div>
+              )}
 
-          {/* Group-by cần toàn bộ dòng (client-side) → ẩn ở server mode. */}
-          <div className={cn("relative", serverMode && "hidden")} ref={groupPickerRef}>
-            <button
-              type="button"
-              onClick={() => setGroupPickerOpen((v) => !v)}
-              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-            >
-              <I.Layers size={11} />
-              {t("datagrid.group_btn")}
-              <I.ChevronDown size={10} />
-            </button>
+              {/* Column chooser — trigger only */}
+              <div ref={colChooserRef}>
+                <button
+                  type="button"
+                  onClick={() => setColChooserOpen((v) => !v)}
+                  title={t("datagrid.columns")}
+                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+                >
+                  <I.Table size={11} />
+                  <I.ChevronDown size={10} />
+                </button>
+              </div>
+
+              {/* Export — trigger only */}
+              <div ref={exportBtnRef}>
+                <button
+                  type="button"
+                  onClick={() => setExportMenuOpen((v) => !v)}
+                  disabled={exporting}
+                  title="Tải xuống"
+                  className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors disabled:opacity-50"
+                >
+                  {exporting ? (
+                    <I.Loader size={11} className="animate-spin" />
+                  ) : (
+                    <I.Download size={11} />
+                  )}
+                  <I.ChevronDown size={10} />
+                </button>
+              </div>
+            </div>
+
+            {/* Group/sort/select dropdown — ngoài overflow-x-auto, không bị cắt */}
             {groupPickerOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[160px] py-1">
-                {availableGroupCols.length === 0 ? (
-                  <div className="px-3 py-1.5 text-xs text-muted">
-                    {t("datagrid.group_all_grouped")}
-                  </div>
-                ) : (
-                  availableGroupCols.map((col) => (
+              <div
+                ref={groupDropdownRef}
+                className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
+              >
+                {/* ── Sắp xếp ── */}
+                <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                  Sắp xếp
+                </div>
+                {sorting.map((s) => {
+                  const col = table.getColumn(s.id);
+                  if (!col) return null;
+                  return (
+                    <div
+                      key={s.id}
+                      draggable
+                      onDragStart={() => setDragSortId(s.id)}
+                      onDragEnd={() => setDragSortId(null)}
+                      onDragOver={(e) => {
+                        if (dragSortId && dragSortId !== s.id) e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (!dragSortId || dragSortId === s.id) return;
+                        const from = sorting.findIndex((x) => x.id === dragSortId);
+                        const to = sorting.findIndex((x) => x.id === s.id);
+                        if (from === -1 || to === -1) return;
+                        const next = [...sorting];
+                        next.splice(to, 0, ...next.splice(from, 1));
+                        setSorting(next);
+                        setDragSortId(null);
+                      }}
+                      className={cn(
+                        "flex items-center gap-1 px-2 text-xs",
+                        dragSortId === s.id && "opacity-40",
+                      )}
+                    >
+                      <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSorting(
+                            sorting.map((x) => (x.id === s.id ? { ...x, desc: !x.desc } : x)),
+                          )
+                        }
+                        className="flex flex-1 items-center gap-1.5 py-1 text-left hover:text-text transition-colors"
+                      >
+                        {s.desc ? (
+                          <I.ChevronDown size={11} className="shrink-0 text-accent" />
+                        ) : (
+                          <I.ChevronUp size={11} className="shrink-0 text-accent" />
+                        )}
+                        <span className="text-text">
+                          {(col.columnDef.header as string | undefined) ?? s.id}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSorting(sorting.filter((x) => x.id !== s.id))}
+                        className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                      >
+                        <I.X size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {allSortableCols
+                  .filter((col) => !sorting.find((s) => s.id === col.id))
+                  .map((col) => (
                     <button
                       key={col.id}
                       type="button"
-                      onClick={() => {
-                        setGrouping((prev) => [...prev, col.id]);
-                        setExpanded(true);
-                        setGroupPickerOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
+                      onClick={() => setSorting([...sorting, { id: col.id, desc: false }])}
+                      className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
                     >
-                      {col.columnDef.header?.toString() ?? col.id}
+                      <I.ChevronsUpDown size={11} className="shrink-0 text-muted/30" />
+                      {(col.columnDef.header as string | undefined) ?? col.id}
                     </button>
-                  ))
+                  ))}
+                {sorting.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setSorting([])}
+                    className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                  >
+                    Bỏ tất cả sắp xếp
+                  </button>
                 )}
-                {grouping.length > 0 && (
+
+                {/* ── Nhóm theo ── */}
+                {!serverMode && (
+                  <>
+                    <div className="border-t border-border my-1" />
+                    <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                      Nhóm theo
+                    </div>
+                    {/* Active groups — draggable để đổi thứ tự cấp nhóm */}
+                    {grouping.map((colId) => {
+                      const col = table.getColumn(colId);
+                      if (!col) return null;
+                      return (
+                        <div
+                          key={colId}
+                          draggable
+                          onDragStart={() => setDragGroupId(colId)}
+                          onDragEnd={() => setDragGroupId(null)}
+                          onDragOver={(e) => {
+                            if (dragGroupId && dragGroupId !== colId) e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (!dragGroupId || dragGroupId === colId) return;
+                            const from = grouping.indexOf(dragGroupId);
+                            const to = grouping.indexOf(colId);
+                            if (from === -1 || to === -1) return;
+                            const next = [...grouping];
+                            next.splice(to, 0, ...next.splice(from, 1));
+                            setGrouping(next);
+                            setDragGroupId(null);
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 px-2 text-xs",
+                            dragGroupId === colId && "opacity-40",
+                          )}
+                        >
+                          <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                          <span className="flex flex-1 items-center gap-1.5 py-1 text-text">
+                            <I.Layers size={11} className="shrink-0 text-accent" />
+                            {(col.columnDef.header as string | undefined) ?? colId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
+                            className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                          >
+                            <I.X size={10} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {/* Inactive groups — click để thêm */}
+                    {sortableColumns
+                      .filter((col) => !grouping.includes(col.id))
+                      .map((col) => (
+                        <button
+                          key={col.id}
+                          type="button"
+                          onClick={() => {
+                            setGrouping((prev) => [...prev, col.id]);
+                            setExpanded(true);
+                          }}
+                          className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
+                        >
+                          <I.Layers size={11} className="shrink-0 text-muted/30" />
+                          {(col.columnDef.header as string | undefined) ?? col.id}
+                        </button>
+                      ))}
+                    {grouping.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGrouping([]);
+                          setGroupPickerOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                      >
+                        Bỏ tất cả nhóm
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* ── Tích chọn dòng ── */}
+                {enableSelection && (
                   <>
                     <div className="border-t border-border my-1" />
                     <button
                       type="button"
-                      onClick={() => {
-                        setGrouping([]);
-                        setGroupPickerOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-danger hover:bg-hover/40 transition-colors"
+                      onClick={() =>
+                        setShowSelectCol((v) => {
+                          if (v) clearSelection();
+                          return !v;
+                        })
+                      }
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
                     >
-                      {t("datagrid.group_clear")}
+                      <div
+                        className={cn(
+                          "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                          showSelectCol ? "bg-accent border-accent" : "border-border",
+                        )}
+                      >
+                        {showSelectCol && <I.Check size={9} className="text-white" />}
+                      </div>
+                      <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
                     </button>
                   </>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Chuyển đổi xem: lưới (bảng) ↔ card */}
-          <div className="ml-auto inline-flex items-center rounded border border-border overflow-hidden shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              title="Xem dạng lưới (bảng)"
-              className={cn(
-                "inline-flex items-center justify-center px-2 h-7 transition-colors",
-                viewMode === "grid"
-                  ? "bg-accent/15 text-accent"
-                  : "text-muted hover:text-text hover:bg-hover/40",
-              )}
-            >
-              <I.Table size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("card")}
-              title="Xem dạng card"
-              className={cn(
-                "inline-flex items-center justify-center px-2 h-7 border-l border-border transition-colors",
-                viewMode === "card"
-                  ? "bg-accent/15 text-accent"
-                  : "text-muted hover:text-text hover:bg-hover/40",
-              )}
-            >
-              <I.Layout size={12} />
-            </button>
-          </div>
-
-          {/* Dán dữ liệu (paste TSV cập nhật theo cột khóa) */}
-          {onPasteApply && (
-            <button
-              type="button"
-              onClick={() => setPasteOpen(true)}
-              title="Dán dữ liệu cập nhật (từ Excel)"
-              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
-            >
-              <I.ClipboardList size={12} />
-            </button>
-          )}
-
-          {/* Thêm dòng nháp vào lưới — lên ĐẦU (＋↑) hoặc xuống CUỐI (＋↓) */}
-          {onAddRow && (
-            <div className="inline-flex shrink-0 overflow-hidden rounded border border-border">
-              <button
-                type="button"
-                onClick={() => onAddRow("top")}
-                title="Thêm dòng mới lên ĐẦU lưới"
-                className="inline-flex items-center gap-0.5 px-1.5 h-7 text-xs text-muted hover:bg-hover hover:text-text"
-              >
-                <I.Plus size={11} />
-                <I.ChevronUp size={11} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onAddRow("bottom")}
-                title="Thêm dòng mới xuống CUỐI lưới"
-                className="inline-flex items-center gap-0.5 px-1.5 h-7 text-xs text-muted hover:bg-hover hover:text-text border-l border-border"
-              >
-                <I.Plus size={11} />
-                <I.ChevronDown size={11} />
-              </button>
-            </div>
-          )}
-
-          {/* Phóng to / thu nhỏ lưới toàn màn hình */}
-          <button
-            type="button"
-            onClick={() => setMaximized((m) => !m)}
-            title={maximized ? "Thu nhỏ (Esc)" : "Phóng to toàn màn hình"}
-            className="inline-flex items-center justify-center px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors shrink-0"
-          >
-            {maximized ? <I.X size={13} /> : <I.Maximize size={12} />}
-          </button>
-
-          {/* Tự co tất cả cột vừa nội dung */}
-          <button
-            type="button"
-            onClick={autofitAll}
-            title="Tự co tất cả cột vừa nội dung (hoặc nhắp đúp viền từng cột)"
-            className="inline-flex items-center justify-center w-7 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-          >
-            <I.Wand size={12} />
-          </button>
-
-          {/* Column chooser (ẩn/hiện cột) */}
-          <div className="relative" ref={colChooserRef}>
-            <button
-              type="button"
-              onClick={() => setColChooserOpen((v) => !v)}
-              title={t("datagrid.columns")}
-              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-            >
-              <I.Table size={11} />
-              <I.ChevronDown size={10} />
-            </button>
+            {/* Col chooser dropdown — ngoài overflow-x-auto */}
             {colChooserOpen && (
-              <div className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1">
-                {/* w-max: bề rộng = hàng dài nhất (tên cột dài không bị cắt) → cuộn
-                    NGANG trong khung (max-w) thay vì truncate. min-w-full để hàng
-                    ngắn vẫn phủ hết bề rộng (hover liền mạch). */}
+              <div
+                ref={colDropdownRef}
+                className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1"
+              >
                 <div className="w-max min-w-full">
                   {table
                     .getAllLeafColumns()
@@ -1268,9 +1475,6 @@ export function DataGrid<T>({
                               disabled={!col.getCanHide()}
                             />
                             <span className="whitespace-nowrap">
-                              {/* Chỉ hiện header dạng CHUỖI. Header là HÀM/JSX (vd cột
-                                  hành động () => <span>) → toString() ra mã JSX rác;
-                                  fallback meta.label (vd "Hành động") → techName → id. */}
                               {(() => {
                                 const m = col.columnDef.meta as GridColMeta | undefined;
                                 return typeof col.columnDef.header === "string"
@@ -1279,7 +1483,6 @@ export function DataGrid<T>({
                               })()}
                             </span>
                           </label>
-                          {/* Ghim cột (sticky) — trái / phải / bỏ (bấm lại = bỏ) */}
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button
                               type="button"
@@ -1310,26 +1513,13 @@ export function DataGrid<T>({
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Export dropdown: Excel / CSV */}
-          <div ref={exportBtnRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setExportMenuOpen((v) => !v)}
-              disabled={exporting}
-              title="Tải xuống"
-              className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors disabled:opacity-50"
-            >
-              {exporting ? (
-                <I.Loader size={11} className="animate-spin" />
-              ) : (
-                <I.Download size={11} />
-              )}
-              <I.ChevronDown size={10} />
-            </button>
+            {/* Export dropdown — ngoài overflow-x-auto */}
             {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[200px]">
+              <div
+                ref={exportDropdownRef}
+                className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[200px]"
+              >
                 <button
                   type="button"
                   onClick={() => doExport("xlsx")}
@@ -1351,15 +1541,6 @@ export function DataGrid<T>({
               </div>
             )}
           </div>
-
-          {serverMode && server?.loading && (
-            <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
-          )}
-          <Chip className="shrink-0 text-xs">
-            {serverMode
-              ? t("datagrid.row_count_server", { total: totalCount })
-              : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
-          </Chip>
         </div>
       )}
 
@@ -1670,7 +1851,7 @@ export function DataGrid<T>({
                             ...sizedWidth(header.column),
                           }}
                           className={cn(
-                            "relative text-left py-1 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
+                            "relative text-left py-0.5 font-semibold text-xs uppercase tracking-wide text-muted whitespace-nowrap bg-panel-2 border-r border-border/40 dark:border-border",
                             // Cột điều khiển (compact) padding sát để cột hẹp tối đa.
                             (header.column.columnDef.meta as GridColMeta | undefined)?.compact
                               ? "px-0.5"
@@ -1949,16 +2130,16 @@ export function DataGrid<T>({
       )}
 
       {pageCount > 1 && (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 border-t border-border bg-panel-2/40 shrink-0 text-[11px] text-muted">
-          <span>
+        <div className="flex items-center gap-1 px-2 py-0.5 border-t border-border bg-panel-2/40 shrink-0 text-[11px] text-muted overflow-x-auto">
+          <span className="shrink-0">
             {t("datagrid.page_range", { from: rangeFrom, to: rangeTo, total: totalCount })}
           </span>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1">
             <select
               value={pagination.pageSize}
               onChange={(e) => setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })}
               title={t("datagrid.per_page")}
-              className="h-6 rounded border border-border bg-panel px-1.5 text-[11px]"
+              className="h-5 rounded border border-border bg-panel px-1 text-[11px]"
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
                 <option key={n} value={n}>

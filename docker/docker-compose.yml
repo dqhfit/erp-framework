@@ -83,6 +83,12 @@ services:
       FREECAD_MCP_SECRET: ${FREECAD_MCP_SECRET:-please-change-this-freecad-secret}
       # Thư mục lưu bản vẽ (gồm "Bản vẽ AI" sinh ra) — GET /banvesvc/file đọc.
       BANVE_FILES_DIR: /data/banve
+      # OnlyOffice — server dùng URL NỘI BỘ khi cấp session cho trình duyệt.
+      # Giá trị này là URL mà ONLYOFFICE container dùng để kéo file + gửi callback
+      # (server→server qua Docker DNS). KHÔNG đổi khi tên service giữ nguyên "server".
+      ERP_INTERNAL_URL: http://server:8910
+      # Phải đặt trong .env — bỏ trống = tắt tính năng OnlyOffice (server trả lỗi).
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
@@ -208,6 +214,25 @@ services:
     expose:
       - "8920"
 
+  # OnlyOffice Document Server — cho phép người dùng xem + sửa file văn phòng
+  # (Word/Excel/PowerPoint/PDF) trực tiếp trên trình duyệt. Community Edition
+  # miễn phí, giới hạn ~20 kết nối đồng thời. JWT_ENABLED=true bắt buộc để
+  # server (ERP) ký + verify mọi yêu cầu qua OnlyOffice.
+  # Pull lần đầu chậm (~1.5GB). Không mở port ra ngoài — nginx proxy /onlyoffice/.
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
+      JWT_HEADER: Authorization
+      WOPI_ENABLED: "false"
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+    expose:
+      - "80"
+
 volumes:
   erp-pgdata:
   bridge-data:
@@ -217,3 +242,5 @@ volumes:
   mosquitto-data:
   erp-migration: # manifest migrate + decisions + ai-log + audit (persist qua redeploy)
   erp-golden: # golden baseline cho verify proc
+  onlyoffice-data:
+  onlyoffice-logs:

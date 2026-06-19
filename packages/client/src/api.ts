@@ -308,6 +308,13 @@ export class ApiDataSource implements DataSource {
       context: (context as Record<string, unknown> | undefined) ?? undefined,
     });
   }
+
+  /* ── OnlyOffice Document Session ── */
+  /** Lấy JWT-signed config để browser khởi tạo OnlyOffice DocEditor.
+   *  sourceId = id của knowledge_source (kind=file). */
+  getDocumentSession(sourceId: string, mode: "view" | "edit" = "view") {
+    return this.trpc.documents.getSession.query({ sourceId, mode });
+  }
 }
 
 /** Tạo nhanh ApiDataSource từ URL gốc server (vd http://127.0.0.1:8910). */

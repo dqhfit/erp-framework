@@ -2303,7 +2303,7 @@ function ProcsPanel({ procs, moduleName }: { procs: ManifestProcRow[]; moduleNam
                       <td className="px-2 py-1 text-right">{p.writes?.length ?? 0}</td>
                       <td className="px-2 py-1 text-[10px]">
                         {(p.flags ?? []).slice(0, 3).join(", ")}
-                        {(p.flags?.length ?? 0) > 3 && ` +${p.flags!.length - 3}`}
+                        {(p.flags?.length ?? 0) > 3 && ` +${p.flags?.length - 3}`}
                       </td>
                     </tr>
                     {isOpen && (
@@ -6052,7 +6052,7 @@ function NormalizeRenameView({
   const [picked, setPicked] = useState<Set<number>>(() => {
     // Mặc định: tick all severity=high.
     return new Set(
-      result.renames.map((_, i) => i).filter((i) => result.renames[i]!.severity === "high"),
+      result.renames.map((_, i) => i).filter((i) => result.renames[i]?.severity === "high"),
     );
   });
   const [busy, setBusy] = useState(false);
@@ -6226,7 +6226,7 @@ function NormalizeRenameView({
                     }
                     className="text-[9px]!"
                   >
-                    {r.severity[0]!.toUpperCase()}
+                    {r.severity[0]?.toUpperCase()}
                   </Chip>
                 </td>
               </tr>
@@ -6851,7 +6851,7 @@ function CodegenProcDialog({
           </div>
         </div>
       )}
-      {migStatus && migStatus.active && !migStatus.isClean && (
+      {migStatus?.active && !migStatus.isClean && (
         <div className="p-2.5 rounded border border-warning/40 bg-warning/5">
           <div className="font-medium text-warning flex items-center gap-1.5">
             <I.AlertCircle size={12} /> Đang chờ {migStatus.missingTables.length} bảng migrate data
