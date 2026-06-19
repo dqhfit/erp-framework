@@ -1068,15 +1068,28 @@ async function handleOoCallback(sourceId: string, body: Record<string, unknown>)
   await writeFile(filePath, buf);
 
   // Cập nhật editKey + size trong meta (merge jsonb, KHÔNG ghi đè toàn bộ).
+  // Đặt status=pending để worker KB biết cần nạp lại embedding.
   const ooMeta = { ...((meta.onlyoffice ?? {}) as Record<string, unknown>), editKey: newKey };
   await db
     .update(knowledgeSources)
     .set({
+      status: "pending",
+      error: null,
       meta: { ...meta, size: buf.length, onlyoffice: ooMeta },
       updatedAt: new Date(),
     })
     .where(eq(knowledgeSources.id, sourceId));
-  console.info(`[doc/callback] Đã lưu ${sourceId} (${buf.length} bytes), editKey=${newKey}`);
+
+  try {
+    await enqueueKbIngest(sourceId);
+    console.info(
+      `[doc/callback] Đã lưu ${sourceId} (${buf.length} bytes), enqueued KB re-ingest, editKey=${newKey}`,
+    );
+  } catch (e) {
+    console.error(
+      `[doc/callback] File lưu OK nhưng enqueue re-ingest thất bại: ${(e as Error).message}`,
+    );
+  }
 }
 
 async function shutdown(): Promise<void> {
