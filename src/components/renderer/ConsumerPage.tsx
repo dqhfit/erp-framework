@@ -222,9 +222,9 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
       .getRecords(entityId, { limit, filters })
       .then((res) => {
         if (alive) {
-          // Gộp id canonical (r.id) vào row phẳng — row-action (Sửa/Xóa) +
-          // chọn dòng cần id thật để bind recordId; data EAV/HYBRID có thể
-          // KHÔNG chứa id (xem nhánh datasource cũng làm tương tự).
+          // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
+          // cũ kiểu integer ở entity mirror) đè lên → recordId sai (Invalid
+          // UUID) khi select/sửa/xóa. Khớp đường datasource (useDataSourceRecords).
           setRows(res.rows.map((r) => ({ ...r.data, id: r.id })));
           setLoading(false);
         }
@@ -1243,11 +1243,12 @@ function EditableListWidget({
       enableGrouping: true,
       meta: {
         techName: f.name,
-        summary: f.type === "number" || f.type === "integer" ? ("sum" as const) : undefined,
+        ...(f.type === "number" || f.type === "integer" || f.type === "currency"
+          ? { summary: "sum" as const }
+          : { noSummary: true }),
       },
       cell: (ctx) => {
         const row = ctx.row.original as Record<string, unknown> & { id?: unknown };
-        // Cột "Bản vẽ (trang PDF)": thumbnail + nút gán trang thay ô sửa thường.
         if (f.type === "drawing_page") {
           return (
             <DrawingPageCell
@@ -1255,7 +1256,6 @@ function EditableListWidget({
               detail={{
                 mact: String(row.mact ?? ""),
                 chitiet: String(row.chitiet ?? ""),
-                // Kích thước tinh chế (dày × rộng × dài) để nhận diện trang.
                 dims: [row.dayy_tc, row.rong_tc, row.dai_tc].map((v) => v as string | number),
               }}
               page={String(ctx.getValue() ?? "")}
@@ -1986,6 +1986,7 @@ function ListWidget({
   addRowPos,
   defaultSort,
   refetchOnSave,
+  valueLabels,
 }: {
   entityId?: string;
   stateKey?: string;
@@ -2087,6 +2088,8 @@ function ListWidget({
   /** Sau khi LƯU 1 ô inline (non-batch) → nạp lại lưới để cập nhật các cột phụ
    *  thuộc do server tính lại (vd diện tích sơn = base × phần trăm). */
   refetchOnSave?: boolean;
+  /** Map value→label hiển thị theo cột (vd Phân loại TRONG→"Màu trong"). */
+  valueLabels?: Record<string, Record<string, string>>;
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -2217,309 +2220,35 @@ function ListWidget({
     }
   };
 
+
   // Cột "Hành động" theo dòng từ cấu hình rowActions (vd Sửa/Xóa) — mỗi nút là
   // ActionWidget với recordIdBinding trỏ tới id của đúng dòng.
-  // Mặc định INLINE; chỉ "popover" khi đặt rõ.
-  // useMemo phải khai báo TRƯỚC early return để tuân thủ rules of hooks.
-  const rowActsInline = rowActionsStyle !== "popover";
-  const rowActionCol = useMemo(
-    () =>
-      effectiveRowActions.length > 0
-        ? [
-            {
-              id: "__rowacts__",
-              header: () => (
-                <span title="Hành động">
-                  <I.MoreHorizontal size={13} className="text-muted/70" />
-                </span>
-              ),
-              size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
-              minSize: 24,
-              meta: { compact: true, label: "Hành động" },
-              enableSorting: false,
-              cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-                const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
-                if (rowActsInline) {
-                  return (
-                    <div
-                      data-col-content=""
-                      className="flex items-center gap-1 w-fit"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {bound.map((a) => (
-                        <ActionWidget
-                          key={a.label}
-                          config={a}
-                          pageState={pageStateRef.current}
-                          inline
-                        />
-                      ))}
-                    </div>
-                  );
-                }
-                return (
-                  <RowActionsCell
-                    actions={bound}
-                    pageState={pageStateRef.current}
-                    row={row.original}
-                    cols={_rafVisibleFields.current.map((f) => ({
-                      key: f.name,
-                      label: _rafColumnLabels.current?.[f.name] ?? f.label ?? f.name,
-                    }))}
-                    title={_rafTitle.current}
-                    hidden={rowActionsHidden}
-                  />
-                );
-              },
-            },
-          ]
-        : [],
-    [effectiveRowActions, rowActsInline, rowActionsHidden],
-  );
-
-  if (!entityId && !dataSourceId) {
-    return <div className="p-3 text-xs text-muted">{t("widget.no_entity_list")}</div>;
-  }
-  const allFields = isDataSource ? dataFields : (ent?.fields ?? []);
-
-  // fields=[...] → dùng đúng list đó THEO THỨ TỰ fields (bám layout grid DQHF);
-  // không có config → lọc theo defaultVisible của field (giữ thứ tự nguồn).
-  const visibleFields =
-    fields && fields.length > 0
-      ? (fields
-          .map((name) => allFields.find((f) => f.name === name))
-          .filter(Boolean) as typeof allFields)
-      : allFields.filter((f) => f.defaultVisible !== false);
-  _rafVisibleFields.current = visibleFields;
-
-  // V2: filters (cây) ưu tiên — pass-through default khi state rỗng.
-  let filteredRows = rows;
-  if (filters) {
-    filteredRows = applyFilters(rows, filters, pageState);
-  } else if (filterFromState) {
-    // Legacy: hide all khi state rỗng (master-detail UX truyền thống).
-    const stateVal = pageState.get(filterFromState.stateKey);
-    if (
-      stateVal !== undefined &&
-      stateVal !== null &&
-      stateVal !== "" &&
-      !(Array.isArray(stateVal) && stateVal.length === 0)
-    ) {
-      filteredRows = rows.filter((r) => {
-        const v = r[filterFromState.field];
-        if (Array.isArray(stateVal)) {
-          return (stateVal as string[]).includes(String(v));
-        }
-        return v === stateVal || String(v) === String(stateVal);
-      });
-    } else if (!emptyStateShowsAll && !Array.isArray(stateVal)) {
-      // Rỗng + không bật emptyStateShowsAll → ẩn hết (master-detail).
-      filteredRows = [];
-    }
-  }
-  // filterConditions: AND nhiều điều kiện bổ sung (từ sourceFields đa cột).
-  // Bất kỳ điều kiện nào rỗng → ẩn hết (master-detail UX nhất quán).
-  if (filterConditions?.length) {
-    const vals = filterConditions.map((c) => pageState.get(c.stateKey));
-    const anyEmpty = vals.some(
-      (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0),
-    );
-    if (anyEmpty) {
-      filteredRows = [];
-    } else {
-      filteredRows = filteredRows.filter((r) =>
-        filterConditions.every((c, i) => {
-          const sv = vals[i];
-          const v = r[c.field];
-          if (Array.isArray(sv)) return (sv as string[]).includes(String(v));
-          return v === sv || String(v) === String(sv);
-        }),
-      );
-    }
-  }
-
-  // Phase V: text search từ Search widget.
-  if (searchFromState) {
-    const q = ((pageState.get(searchFromState) as string) ?? "").toLowerCase().trim();
-    if (q) {
-      filteredRows = filteredRows.filter((row) =>
-        visibleFields.some((f) =>
-          String(row[f.name] ?? "")
-            .toLowerCase()
-            .includes(q),
-        ),
-      );
-    }
-  }
-
-  // Phase V: row click → set state. Khi multiSelect=true, toggle id trong mảng.
-  const selectedRaw = selectionStateKey ? pageState.get(selectionStateKey) : undefined;
-  const selectedIds: unknown[] = Array.isArray(selectedRaw) ? selectedRaw : [];
-  const selectedId = selectionStateKey && !multiSelect ? selectedRaw : undefined;
-
-  const onRowClick =
-    selectionStateKey || selectionEmits
-      ? (row: Record<string, unknown>) => {
-          // selectionEmits: lưu thêm giá trị field khác của dòng vào state (vd
-          // ketcau → selKetcau) để widget khác ẩn/hiện theo (visibleWhen).
-          if (selectionEmits) {
-            for (const [k, f] of Object.entries(selectionEmits)) pageState.set(k, row[f] ?? "");
-          }
-          if (!selectionStateKey) return;
-          // selectionField: lưu giá trị 1 field nghiệp vụ (vd masp) thay vì id uuid
-          // — để list khác filterFromState theo cột nghiệp vụ (vd tr_dinhmuc_son.masp).
-          const id = selectionField ? row[selectionField] : (row.id ?? row.ID ?? row._id);
-          if (id == null) return;
-          if (multiSelect) {
-            const strId = String(id);
-            const cur = Array.isArray(selectedRaw) ? (selectedRaw as unknown[]) : [];
-            const already = cur.some((x) => String(x) === strId);
-            pageState.set(
-              selectionStateKey,
-              already ? cur.filter((x) => String(x) !== strId) : [...cur, id],
-            );
-          } else {
-            pageState.set(selectionStateKey, id);
-          }
-        }
-      : undefined;
-
-  const isRowSelected = selectionStateKey
-    ? (row: Record<string, unknown>) => {
-        const id = selectionField ? row[selectionField] : (row.id ?? row.ID ?? row._id);
-        if (id == null) return false;
-        if (multiSelect) return selectedIds.some((x) => String(x) === String(id));
-        return id === selectedId || String(id) === String(selectedId);
-      }
-    : undefined;
-
-  const fieldColumns = visibleFields.map((f) => ({
-    accessorKey: f.name,
-    // Header DQHF per-page (columnLabels) ưu tiên hơn label DataSource global.
-    header: columnLabels?.[f.name] ?? f.label,
-    // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
-    meta: { techName: f.name },
-    cell: (c: { getValue: () => unknown; row: { original: Record<string, unknown> } }) => {
-      const raw = c.getValue();
-      // Field ảnh: render thumbnail (base64/URL) thay vì hiện chuỗi base64 thô.
-      if (f.type === "image") {
-        const s = raw == null ? "" : String(raw);
-        if (s.startsWith("data:image/") || /^https?:\/\//.test(s))
-          return (
-            <img
-              src={s}
-              alt=""
-              className="h-7 max-w-[90px] object-contain mx-auto"
-              loading="lazy"
-            />
-          );
-        return "";
-      }
-      // Field boolean: checkbox tick ngay ở lưới → lưu (nếu có quyền ghi field).
-      if (f.type === "boolean" || f.type === "bool") {
-        const canWrite = fieldCan(listRbacRole, "write", f, listMyGroups);
-        const rid = c.row.original.id ?? c.row.original.ID ?? c.row.original._id;
-        const okey = `${rid}:${f.name}`;
-        const checked =
-          okey in boolOverrides
-            ? boolOverrides[okey]
-            : raw === true || raw === "true" || raw === 1 || raw === "1";
-        return (
-          <input
-            type="checkbox"
-            checked={checked}
-            disabled={!canWrite || rid == null}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => {
-              if (rid == null) return;
-              const next = e.target.checked;
-              // Cập nhật lạc quan tại chỗ (không refetch → không nhảy thứ tự).
-              setBoolOverrides((prev) => ({ ...prev, [okey]: next }));
-              void dataUpdate(String(rid), { [f.name]: next }).catch(() => {
-                // Lưu lỗi → revert override.
-                setBoolOverrides((prev) => ({ ...prev, [okey]: !next }));
-              });
-            }}
-            className="accent-accent mx-auto block cursor-pointer disabled:cursor-default"
-          />
-        );
-      }
-      return applyFieldFormat(f, raw);
-    },
-  }));
-
-  const checkboxCol =
-    multiSelect && selectionStateKey
+  const rowActionCol =
+    rowActions && rowActions.length > 0
       ? [
           {
-            id: "__select__",
-            header: () => null,
-            size: 36,
+            id: "__rowacts__",
+            header: () => "Hành động",
+            size: 30 + rowActions.length * 70,
+            enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-              const id = row.original.id ?? row.original.ID ?? row.original._id;
-              const checked = id != null && selectedIds.some((x) => String(x) === String(id));
+              const rid = row.original.id ?? row.original.ID ?? row.original._id;
               return (
-                <span
-                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mx-auto ${checked ? "bg-accent border-accent" : "border-border"}`}
-                >
-                  {checked && <I.Check size={9} className="text-white" />}
-                </span>
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {rowActions.map((a) => (
+                    <ActionWidget
+                      key={a.label}
+                      config={bindRowIdToAction(a, rid)}
+                      pageState={pageState}
+                      inline
+                    />
+                  ))}
+                </div>
               );
             },
           },
         ]
       : [];
-
-  // Cột "Hành động" theo dòng: nút Xem (read-only) + Sửa (editable) → mở dialog
-  // record con lọc theo parentField. stopPropagation để không kích hoạt row-click.
-  const actionCol = rowDetail
-    ? [
-        {
-          id: "__rowactions__",
-          // Header chuỗi (không bọc hàm) → "Chọn cột hiển thị" hiện đúng "Hành động".
-          header: "Hành động",
-          size: 96,
-          enableSorting: false,
-          cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
-            const pv = row.original[rowDetail.parentField];
-            const rid = row.original.id ?? row.original.ID ?? row.original._id;
-            return (
-              <div className="flex items-center gap-1 justify-center">
-                {/* editForm có cấu hình → Xem mở dialog master+detail read-only;
-                    không thì giữ hành vi cũ (xem danh sách dòng con). */}
-                <button
-                  type="button"
-                  title="Xem chi tiết"
-                  className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: true });
-                    else setDetailModal({ value: pv, editable: false });
-                  }}
-                >
-                  <I.Eye size={14} />
-                </button>
-                {/* editForm có cấu hình → nút Sửa mở dialog master+detail mới;
-                    không thì giữ hành vi cũ (sửa inline dòng con). */}
-                <button
-                  type="button"
-                  title={editForm ? "Sửa đơn hàng" : "Sửa chi tiết"}
-                  className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: false });
-                    else setDetailModal({ value: pv, editable: true });
-                  }}
-                >
-                  <I.Edit size={14} />
-                </button>
-              </div>
-            );
-          },
-        },
-      ]
-    : [];
-
   // Cột nút "Sửa đơn" độc lập — CHỈ khi có editForm mà KHÔNG có rowDetail
   // (có rowDetail thì nút Sửa trong cột Hành động đã mở dialog edit này).
   const editFormCol =
@@ -2552,6 +2281,9 @@ function ListWidget({
           },
         ]
       : [];
+
+  const actionCol: ColumnDef<Record<string, unknown>>[] = [];
+  const checkboxCol: ColumnDef<Record<string, unknown>>[] = [];
 
   const columns = [...editFormCol, ...rowActionCol, ...actionCol, ...checkboxCol, ...fieldColumns];
 
@@ -2640,9 +2372,7 @@ function ListWidget({
   // ── Chế độ mặc định (read-only) ─────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
-      {(createForm ||
-        (embeddedActions && embeddedActions.length > 0) ||
-        (embeddedFilters && embeddedFilters.length > 0)) && (
+      {(createForm || (embeddedActions && embeddedActions.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
           {createForm && (
             <Button
@@ -2656,26 +2386,6 @@ function ListWidget({
           {embeddedActions?.map((item) => (
             <ActionWidget key={item.id} config={item} pageState={pageState} inline />
           ))}
-          {/* Dropdown lọc cạnh nút Thêm */}
-          {embeddedFilters?.map((flt) => {
-            const opts = (flt.options ?? "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            return (
-              <div key={flt.stateKey} className="flex items-center gap-1 ml-1">
-                {flt.label && <span className="text-xs text-muted shrink-0">{flt.label}:</span>}
-                <SearchableSelect
-                  className="min-w-[150px]"
-                  value={(pageState.get(flt.stateKey) as string) ?? ""}
-                  onChange={(v) => pageState.set(flt.stateKey, v)}
-                  options={opts.map((o) => ({ value: o, label: flt.optionLabels?.[o] ?? o }))}
-                  emptyOption="Tất cả"
-                  noSearch
-                />
-              </div>
-            );
-          })}
         </div>
       )}
       {loading && (
@@ -4792,8 +4502,6 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
-  // Map value→nhãn hiển thị (vd TRONG→"Màu trong") — combobox lưu value, hiện nhãn.
-  const optionLabels = (cfg.optionLabels as Record<string, string> | undefined) ?? {};
   const val = (pageState.get(stateKey) as string) ?? "";
 
   const dynamicOpts = useMemo(() => {
@@ -4817,8 +4525,8 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         className="w-full"
         value={val}
         onChange={(v) => pageState.set(stateKey, v)}
-        options={options.map((o) => ({ value: o, label: optionLabels[o] ?? o }))}
-        emptyOption="Tất cả"
+        options={options.map((o) => ({ value: o, label: o }))}
+        emptyOption="— tất cả —"
       />
     </div>
   );
@@ -5072,21 +4780,12 @@ function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
 type ActionBarItem = ActionConfig & { id: string };
 
-type EmbeddedFilter = {
-  label?: string;
-  stateKey: string;
-  options?: string;
-  optionLabels?: Record<string, string>;
-};
-
 /** Strip hành động nhúng bên trong widget (list/form/detail). */
 function EmbeddedActionStrip({
   items,
-  filters,
   pageState,
 }: {
   items: ActionBarItem[];
-  filters?: EmbeddedFilter[];
   pageState: ReturnType<typeof usePageState>;
 }) {
   return (
@@ -5094,40 +4793,20 @@ function EmbeddedActionStrip({
       {items.map((item) => (
         <ActionWidget key={item.id} config={item} pageState={pageState} inline />
       ))}
-      {filters?.map((flt) => {
-        const opts = (flt.options ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return (
-          <div key={flt.stateKey} className="flex items-center gap-1 ml-1">
-            {flt.label && <span className="text-xs text-muted shrink-0">{flt.label}:</span>}
-            <SearchableSelect
-              className="min-w-[150px]"
-              value={(pageState.get(flt.stateKey) as string) ?? ""}
-              onChange={(v) => pageState.set(flt.stateKey, v)}
-              options={opts.map((o) => ({ value: o, label: flt.optionLabels?.[o] ?? o }))}
-              emptyOption="Tất cả"
-              noSearch
-            />
-          </div>
-        );
-      })}
     </div>
   );
 }
 
-/** Bọc widget có embeddedActions/filters trong flex-col với strip ở trên. */
+/** Bọc widget có embeddedActions trong flex-col với strip hành động ở trên. */
 function withEmbeddedActions(
   content: ReactElement,
   items: ActionBarItem[],
   pageState: ReturnType<typeof usePageState>,
-  filters?: EmbeddedFilter[],
 ): ReactElement {
-  if (items.length === 0 && (!filters || filters.length === 0)) return content;
+  if (items.length === 0) return content;
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <EmbeddedActionStrip items={items} filters={filters} pageState={pageState} />
+      <EmbeddedActionStrip items={items} pageState={pageState} />
       <div className="flex-1 min-h-0 overflow-hidden">{content}</div>
     </div>
   );
@@ -5249,10 +4928,10 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
           cfg.createForm ? (cfg.embeddedFilters as EmbeddedFilter[] | undefined) : undefined
         }
         refetchOnSave={cfg.refetchOnSave === true}
+        valueLabels={cfg.valueLabels as Record<string, Record<string, string>> | undefined}
       />,
       cfg.createForm ? [] : embActs,
       pageState,
-      cfg.createForm ? undefined : (cfg.embeddedFilters as EmbeddedFilter[] | undefined),
     );
   }
   if (comp.kind === "form") {

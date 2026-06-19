@@ -105,9 +105,13 @@ export function ActionWidget({ config, pageState, inline = false, compact = fals
         pageState,
         procClient,
         deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
+        createRecord: (entityId: string, data: Record<string, unknown>) =>
+          recordsApi.createRecord(entityId, data).then((r) => r.id),
+        updateRecord: (recordId: string, data: Record<string, unknown>) =>
+          recordsApi.updateRecord(recordId, data).then(() => undefined),
         invokeModule: (name: string, args: Record<string, unknown>) =>
           procClient.invokeModule(name, args),
-        dialog: { confirm: dialog.confirm },
+        dialog: { confirm: dialog.confirm, alert: dialog.alert },
         toast: { success: toast.success, error: toast.error, info: toast.info },
         navigate: (href: string) => void navigate({ to: href }),
         openPopup,

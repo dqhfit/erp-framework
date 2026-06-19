@@ -344,6 +344,8 @@ function StepRow({
     "invoke-module-proc": "Gọi proc nghiệp vụ (Tier D)",
     confirm: "Hỏi xác nhận",
     "delete-record": "Xoá bản ghi",
+    "create-record": "Tạo bản ghi",
+    "update-record": "Sửa bản ghi",
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
     refresh: "Nạp lại lưới",

@@ -73,6 +73,8 @@ export interface FormatRule {
 interface GridColMeta {
   techName?: string;
   summary?: SummaryType;
+  /** Chặn auto-tổng (vd cột chữ như "Hiệu ứng" lỡ chứa giá trị số → không cộng). */
+  noSummary?: boolean;
   cellClass?: (value: unknown) => string | undefined;
   formatRules?: FormatRule[];
   /** Ô gọn — giảm padding ngang (vd cột hành động). */
@@ -272,22 +274,26 @@ function exportRowsCsv<T>(
   URL.revokeObjectURL(url);
 }
 
-/** Xuất Excel (.xlsx) từ dữ liệu đang hiển thị. Dynamic import xlsx để không
- *  tăng initial bundle (lazy chunk). */
+/** Xuất .xlsx THẬT (workbook Excel) các cột đang hiện + rows đã lọc/sắp.
+ *  Lazy-load `write-excel-file` (dynamic import → tách chunk riêng, chỉ tải
+ *  khi người dùng bấm xuất, không nuốt main bundle). */
 async function exportRowsXlsx<T>(
   cols: Array<{ id: string; header: string }>,
   rows: Row<T>[],
   filename: string,
 ) {
-  const XLSX = await import("xlsx");
-  const wsData = [
-    cols.map((c) => c.header),
-    ...rows.map((r) => cols.map((c) => r.getValue(c.id) ?? "")),
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  XLSX.writeFile(wb, `${filename || "export"}.xlsx`);
+  const { default: writeXlsxFile } = await import("write-excel-file/browser");
+  const header = cols.map((c) => ({ value: c.header, fontWeight: "bold" as const }));
+  const body = rows.map((r) =>
+    cols.map((c) => {
+      const v = r.getValue(c.id);
+      if (typeof v === "number" && Number.isFinite(v)) return { type: Number, value: v } as const;
+      if (v == null || v === "") return { type: String, value: "" } as const;
+      return { type: String, value: String(v) } as const;
+    }),
+  );
+  // biome-ignore lint/suspicious/noExplicitAny: cell-shape của write-excel-file (Row[][]) khó biểu diễn tĩnh
+  await writeXlsxFile([header, ...body] as any).toFile(`${filename || "export"}.xlsx`);
 }
 
 /** Ngưỡng cardinality để dựng datalist gợi ý. Cột có > ngưỡng giá trị phân
@@ -958,9 +964,14 @@ export function DataGrid<T>({
   const clientSummaryByCol = new Map<string, { type: SummaryType; value: number }>();
   if (!serverMode) {
     for (const col of leafCols) {
-      const metaSummary = (col.columnDef.meta as GridColMeta | undefined)?.summary;
-      const type: SummaryType | null =
-        metaSummary ?? (isNumericColumn(filteredRows, col.id) ? "sum" : null);
+      const colMeta = col.columnDef.meta as GridColMeta | undefined;
+      const type: SummaryType | null = colMeta?.summary
+        ? colMeta.summary
+        : colMeta?.noSummary
+          ? null
+          : isNumericColumn(filteredRows, col.id)
+            ? "sum"
+            : null;
       if (type)
         clientSummaryByCol.set(col.id, {
           type,
@@ -1032,52 +1043,40 @@ export function DataGrid<T>({
               </div>
             )}
 
-            {/* Global search */}
-            <div className="relative flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[140px] max-w-full sm:max-w-[260px]">
               <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
               <Input
                 placeholder={t("datagrid.search_placeholder")}
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-7! pr-6! h-6 text-xs"
+                className="pl-7! pr-7! h-7 text-xs"
               />
               {globalFilter && (
                 <button
                   type="button"
-                  onClick={() => setGlobalFilter("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+                  onClick={() =>
+                    setShowSelectCol((v) => {
+                      if (v) clearSelection();
+                      return !v;
+                    })
+                  }
+                  title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
+                    selecting
+                      ? "border-accent/60 text-accent bg-accent/10"
+                      : "border-border text-muted hover:text-text hover:border-border",
+                  )}
                 >
-                  <I.X size={11} />
+                  <I.Check size={12} />
+                  {someSelected && <span>{selectedCount}</span>}
                 </button>
               )}
+
+              {serverMode && server?.loading && (
+                <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
+              )}
             </div>
-
-            {/* Bật/tắt cột tích chọn dòng */}
-            {enableSelection && (
-              <button
-                type="button"
-                onClick={() =>
-                  setShowSelectCol((v) => {
-                    if (v) clearSelection();
-                    return !v;
-                  })
-                }
-                title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
-                className={cn(
-                  "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
-                  selecting
-                    ? "border-accent/60 text-accent bg-accent/10"
-                    : "border-border text-muted hover:text-text hover:border-border",
-                )}
-              >
-                <I.Check size={12} />
-                {someSelected && <span>{selectedCount}</span>}
-              </button>
-            )}
-
-            {serverMode && server?.loading && (
-              <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
-            )}
           </div>
 
           {/* Hàng 2: outer z-20 → dropdown không bị clip overflow; inner scroll → button strip */}
@@ -1541,6 +1540,47 @@ export function DataGrid<T>({
               </div>
             )}
           </div>
+
+          {/* Xuất Excel .xlsx (workbook thật) — cột đang hiện + dòng đã lọc/sắp */}
+          <button
+            type="button"
+            onClick={() => {
+              void exportRowsXlsx(
+                exportCols,
+                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
+                label || "export",
+              );
+            }}
+            title={t("datagrid.export_xlsx")}
+            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+          >
+            <I.Table size={11} />
+          </button>
+
+          {/* Xuất CSV — cột đang hiện + dòng đã lọc/sắp */}
+          <button
+            type="button"
+            onClick={() =>
+              exportRowsCsv(
+                exportCols,
+                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
+                label || "export",
+              )
+            }
+            title={t("datagrid.export")}
+            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
+          >
+            <I.Download size={11} />
+          </button>
+
+          {serverMode && server?.loading && (
+            <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
+          )}
+          <Chip className="shrink-0 text-xs">
+            {serverMode
+              ? t("datagrid.row_count_server", { total: totalCount })
+              : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
+          </Chip>
         </div>
       )}
 

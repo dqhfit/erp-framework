@@ -26,10 +26,17 @@ export interface ActionContext {
   /** Xoá 1 bản ghi theo recordId (records.deleteRecord). Optional — context
    *  không cung cấp thì step delete-record báo lỗi nhẹ. */
   deleteRecord?: (recordId: string) => Promise<void>;
+  /** Tạo 1 bản ghi (records.create) → trả id mới. Optional. */
+  createRecord?: (entityId: string, data: Record<string, unknown>) => Promise<string | undefined>;
+  /** Cập nhật 1 bản ghi (records.update). Optional — thiếu thì step
+   *  update-record báo lỗi nhẹ. */
+  updateRecord?: (recordId: string, data: Record<string, unknown>) => Promise<void>;
   /** Gọi proc Tier D đã port (module-procs) cho nút nghiệp vụ (Duyệt...). */
   invokeModule?: (name: string, args: Record<string, unknown>) => Promise<{ output: unknown }>;
   dialog: {
     confirm: (message: string, opts?: { title?: string; danger?: boolean }) => Promise<boolean>;
+    /** Popup thông báo (modal, phải bấm OK) — dùng báo lỗi rõ ràng. */
+    alert: (message: string, opts?: { title?: string }) => Promise<void>;
   };
   toast: {
     success: (msg: string) => void;
@@ -45,6 +52,19 @@ export interface ActionContext {
     step: ActionStepOpenWizard,
     getter: (key: string) => unknown,
   ) => Promise<Record<string, unknown> | null>;
+}
+
+/** Lỗi có phải do thiếu quyền / chưa đăng nhập không. */
+function isPermissionError(msg: string): boolean {
+  return /không có quyền|forbidden|unauthorized|permission|cần đăng nhập|đang đồng bộ/i.test(msg);
+}
+/** Thông điệp lỗi thân thiện cho popup — lỗi quyền nói rõ, kèm chi tiết. */
+function friendlyActionError(e: unknown, action: string): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (isPermissionError(msg)) {
+    return `Bạn không có quyền ${action} (hoặc dữ liệu đang khoá ghi).\nLiên hệ quản trị viên để được cấp quyền.\n\nChi tiết: ${msg}`;
+  }
+  return `Không thể ${action}.\n\nChi tiết: ${msg}`;
 }
 
 /* ── Interpolate {{state.key}} → values[key] ───────────────── */
@@ -146,6 +166,17 @@ export async function runActionSteps(
         ctx.toast.error("Popup không khả dụng trong ngữ cảnh này");
         return { completed: false, procedureRuns };
       }
+      // Popup cần record sẵn (Sửa/Xem có recordIdBinding) mà chưa chọn dòng →
+      // báo + dừng, tránh mở form RỖNG gây nhầm là "Thêm".
+      if (step.recordIdBinding) {
+        const rid = resolveBinding(step.recordIdBinding, rs.get);
+        if (rid == null || rid === "") {
+          await ctx.dialog.alert("Vui lòng chọn một dòng trong danh sách trước.", {
+            title: "Chưa chọn dòng",
+          });
+          return { completed: false, procedureRuns };
+        }
+      }
       const result = await ctx.openPopup(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
@@ -194,7 +225,61 @@ export async function runActionSteps(
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
         }
       } catch (e) {
-        ctx.toast.error(`Lỗi xoá: ${e instanceof Error ? e.message : String(e)}`);
+        await ctx.dialog.alert(friendlyActionError(e, "xoá bản ghi"), { title: "Không xoá được" });
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "create-record") {
+      if (!ctx.createRecord) {
+        ctx.toast.error("Tạo bản ghi không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const data = resolveBinding(step.dataBinding, rs.get);
+      if (data == null || typeof data !== "object") {
+        // Người dùng huỷ popup (không có output) → dừng êm, không báo lỗi.
+        return { completed: false, procedureRuns };
+      }
+      try {
+        const newId = await ctx.createRecord(step.entity, data as Record<string, unknown>);
+        ctx.toast.success("Đã thêm");
+        if (step.saveOutputTo && newId) rs.set(step.saveOutputTo, newId);
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "thêm bản ghi"), {
+          title: "Không thêm được",
+        });
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "update-record") {
+      if (!ctx.updateRecord) {
+        ctx.toast.error("Cập nhật không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const rid = resolveBinding(step.recordIdBinding, rs.get);
+      if (rid == null || rid === "") {
+        ctx.toast.info("Chưa chọn bản ghi để sửa");
+        return { completed: false, procedureRuns };
+      }
+      const data = resolveBinding(step.dataBinding, rs.get);
+      if (data == null || typeof data !== "object") {
+        // Người dùng huỷ popup (không có output) → dừng êm, không báo lỗi.
+        return { completed: false, procedureRuns };
+      }
+      try {
+        await ctx.updateRecord(String(rid), data as Record<string, unknown>);
+        ctx.toast.success("Đã lưu");
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "lưu thay đổi"), { title: "Không lưu được" });
         throw e;
       }
       continue;
@@ -223,7 +308,9 @@ export async function runActionSteps(
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
         }
       } catch (e) {
-        ctx.toast.error(`Lỗi ${step.procName}: ${e instanceof Error ? e.message : String(e)}`);
+        await ctx.dialog.alert(friendlyActionError(e, `chạy ${step.procName}`), {
+          title: "Thao tác thất bại",
+        });
         throw e;
       }
       continue;
@@ -243,8 +330,9 @@ export async function runActionSteps(
           }
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        ctx.toast.error(`Lỗi gọi ${step.procedureName}: ${msg}`);
+        await ctx.dialog.alert(friendlyActionError(e, `chạy ${step.procedureName}`), {
+          title: "Thao tác thất bại",
+        });
         // Throw to signal failure — caller có thể catch để khôi phục UI.
         throw e;
       }

@@ -344,7 +344,7 @@ export function EntityData({ entityId }: { entityId: string }) {
           <div className="relative w-[280px]">
             <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
             <Input
-              className="pl-7"
+              className="pl-7!"
               placeholder="Tìm kiếm full-text..."
               value={q}
               onChange={(e) => setQ(e.target.value)}

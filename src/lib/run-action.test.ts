@@ -31,7 +31,13 @@ function makeCtx(
     ctx: {
       pageState: ps,
       procClient: { invoke } as unknown as ProceduresClient,
-      dialog: { confirm: vi.fn().mockResolvedValue(confirmResult) },
+      dialog: {
+        confirm: vi.fn().mockResolvedValue(confirmResult),
+        alert: vi.fn((m: string) => {
+          toastErrors.push(m);
+          return Promise.resolve();
+        }),
+      },
       toast: {
         success: vi.fn(),
         error: vi.fn((m: string) => toastErrors.push(m)),

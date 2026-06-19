@@ -127,7 +127,16 @@ function AppShell() {
     pathname.startsWith("/portal") ||
     STANDALONE_PREFIXES.some((p) => pathname.startsWith(p))
   )
-    return <Outlet />;
+    // Standalone/portal/view bỏ AppShell chrome — NHƯNG vẫn cần DialogHost +
+    // ToastHost, nếu không confirm/alert/toast (vd nút Thêm/Sửa/Xóa) không có
+    // nơi render → promise treo, nút xoay mãi không phản hồi.
+    return (
+      <>
+        <Outlet />
+        <DialogHost />
+        <ToastHost />
+      </>
+    );
 
   if (isEmbedMode()) {
     return (

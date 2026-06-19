@@ -70,6 +70,24 @@ const SEED: SeedEntity[] = [
       },
     ],
   },
+  {
+    // Danh mục "Hệ hàng" — port từ form cũ frmCaiDatHeSoHeHang (bảng tr_hehang).
+    // Bỏ cột id integer của hệ cũ; framework tự cấp record id (uuid).
+    name: "tr_hehang",
+    label: "Hệ hàng",
+    icon: "Layers",
+    fields: [
+      { name: "tenhh", label: "Tên hệ hàng", type: "text", required: true },
+      { name: "khachhang", label: "Khách hàng", type: "text" },
+      { name: "heso", label: "Hệ số", type: "number" },
+      { name: "ghichu", label: "Ghi chú", type: "text" },
+    ],
+    records: [
+      { tenhh: "Hệ hàng A", khachhang: "Công ty Gỗ Việt", heso: 1.0, ghichu: "Dòng tiêu chuẩn" },
+      { tenhh: "Hệ hàng B", khachhang: "Nội thất An Phú", heso: 1.2, ghichu: "Dòng cao cấp" },
+      { tenhh: "Hệ hàng C", khachhang: "", heso: 0.9, ghichu: "" },
+    ],
+  },
 ];
 
 /** Lấy id "Công ty mặc định" — tạo nếu chưa có. */
@@ -169,6 +187,84 @@ async function seedPage(companyId: string, entityIds: Record<string, string>): P
     content,
   });
   console.log(`✓ Page "Tổng quan kinh doanh"`);
+}
+
+/** Trang "Danh mục" quản lý Hệ hàng (tr_hehang): Thêm (form) + Sửa (list
+ *  editable inline) + Xóa (action nhúng theo dòng đang chọn) + Xuất Excel
+ *  (.xlsx — nút có sẵn trong DataGrid). Idempotent: đã có → bỏ qua. */
+async function seedDanhMuc(
+  companyId: string,
+  entityIds: Record<string, string>,
+): Promise<void> {
+  const name = "danh_muc";
+  const [exist] = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(eq(pages.name, name), eq(pages.companyId, companyId)));
+  if (exist) {
+    console.log(`• Bỏ qua page "${name}" — đã tồn tại`);
+    return;
+  }
+  const entId = entityIds.tr_hehang ?? "";
+  // Key page-state lưu id dòng đang chọn → nút Xóa đọc lại để xoá đúng record.
+  const SEL = "hehang_sel";
+  const cols = ["tenhh", "khachhang", "heso", "ghichu"];
+  const content = [
+    {
+      id: "frm_them",
+      kind: "form",
+      x: 0,
+      y: 0,
+      w: 12,
+      h: 3,
+      config: { entity: entId, title: "Thêm hệ hàng", fields: cols },
+    },
+    {
+      id: "ds_hehang",
+      kind: "list",
+      x: 0,
+      y: 3,
+      w: 12,
+      h: 8,
+      config: {
+        entity: entId,
+        title: "Danh mục hệ hàng",
+        fields: cols,
+        // Sửa: double-click ô để sửa inline, lưu thẳng về record.
+        editable: true,
+        // Click dòng → lưu id vào page-state[SEL] cho nút Xóa.
+        selectionStateKey: SEL,
+        // Nút Xóa nhúng trên thanh công cụ list — xoá dòng đang chọn (có confirm).
+        embeddedActions: [
+          {
+            id: "act_xoa",
+            label: "Xóa",
+            icon: "Trash",
+            variant: "danger",
+            requireConfirm: true,
+            confirmTitle: "Xác nhận xóa",
+            confirmMessage: "Xóa hệ hàng đang chọn? Hãy chọn 1 dòng trước khi xóa.",
+            steps: [
+              {
+                id: "s_xoa",
+                kind: "delete-record",
+                recordIdBinding: { source: "state", key: SEL },
+                invalidateEntities: [entId],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ];
+  await db.insert(pages).values({
+    companyId,
+    name,
+    label: "Danh mục",
+    icon: "Layers",
+    content,
+  });
+  console.log(`✓ Page "Danh mục" (Hệ hàng: thêm/sửa/xóa/xuất Excel)`);
 }
 
 /** Workflow mẫu — trigger thủ công, graph rỗng để designer điền sau. */
@@ -306,6 +402,7 @@ async function seed(): Promise<void> {
   const companyId = await defaultCompanyId();
   const ids = await seedEntities(companyId);
   await seedPage(companyId, ids);
+  await seedDanhMuc(companyId, ids);
   await seedWorkflow(companyId);
   await seedAgent(companyId);
   await seedCEO(companyId);

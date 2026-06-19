@@ -118,6 +118,34 @@ export interface ActionStepDeleteRecord {
   /** Invalidate records của entity sau khi xoá → list re-fetch. */
   invalidateEntities?: string[];
 }
+/** Tạo bản ghi mới (records.create). Thường ghép sau 1 step open-popup form
+ *  (saveOutputTo) — popup nhập liệu rồi create-record ghi vào entity. Nút
+ *  "Thêm" của list map tới đây (cùng kiểu form với "Sửa"). */
+export interface ActionStepCreateRecord {
+  id: string;
+  kind: "create-record";
+  /** Entity để tạo bản ghi. */
+  entity: string;
+  /** Nguồn dữ liệu — thường state key lưu output của open-popup form. */
+  dataBinding: BindingValue;
+  /** Lưu id bản ghi vừa tạo vào page state. */
+  saveOutputTo?: string;
+  /** Invalidate records của entity sau khi tạo → list re-fetch. */
+  invalidateEntities?: string[];
+}
+/** Cập nhật bản ghi đang chọn (records.update theo recordId). Thường ghép
+ *  sau 1 step open-popup form (saveOutputTo) — popup nạp sẵn record để sửa,
+ *  rồi update-record ghi lại. Nút "Sửa" của list map tới đây. */
+export interface ActionStepUpdateRecord {
+  id: string;
+  kind: "update-record";
+  /** Nguồn recordId (thường state "sel" — dòng đang chọn). */
+  recordIdBinding: BindingValue;
+  /** Nguồn dữ liệu update — thường state key lưu output của open-popup form. */
+  dataBinding: BindingValue;
+  /** Invalidate records của entity sau khi sửa → list re-fetch. */
+  invalidateEntities?: string[];
+}
 export interface ActionStepNavigate {
   id: string;
   kind: "navigate";
@@ -161,6 +189,19 @@ export interface ActionStepOpenPopup {
   invalidateEntities?: string[];
   /** Key page state để lưu kết quả (object đã chọn / nhập) */
   saveOutputTo: string;
+  /** Form: giới hạn + thứ tự field hiển thị (mặc định lấy field entity). */
+  fields?: string[];
+  /** Form: render field này thành dropdown — hoặc lấy options từ entity khác
+   *  (hiện `labelField`, lưu `valueField`), hoặc dùng `options` tĩnh (value≠label,
+   *  vd Phân loại: TRONG→"Màu trong"). */
+  lookups?: Array<{
+    field: string;
+    entity?: string;
+    valueField?: string;
+    labelField?: string;
+    /** Options tĩnh — dùng thay cho fetch entity. */
+    options?: Array<{ value: string; label: string }>;
+  }>;
 }
 
 /** Ghi đè cấu hình hiển thị 1 field ngay trong page (không sửa entity).
@@ -213,9 +254,6 @@ export interface WizardStepDef {
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
   fields?: string[];
-  /** Số cột bố trí field trong form (1 mặc định; 2 = 2 cột như form DQHF).
-   *  Field longtext luôn span hết hàng. */
-  cols?: number;
   /** (1-entity) Map fieldName → picker entity: field hiện COMBOBOX chọn record
    *  từ entity nguồn (lưu valueField). Vd makhachhang → tr_khachhang. */
   fieldLookups?: Record<string, WizardLookupRef>;
@@ -271,6 +309,8 @@ export type ActionStep =
   | ActionStepProcedure
   | ActionStepInvokeModule
   | ActionStepDeleteRecord
+  | ActionStepCreateRecord
+  | ActionStepUpdateRecord
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepRefresh

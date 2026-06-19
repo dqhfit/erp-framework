@@ -5552,7 +5552,7 @@ function ComponentBody({
       <div className="p-2 flex flex-col gap-1 h-full">
         {label && <div className="text-[10px] font-medium text-muted">{label}</div>}
         <div className="relative flex items-center h-7 border border-border/50 rounded bg-bg-soft px-2">
-          <span className="text-[10px] text-muted/60 flex-1">Tất cả</span>
+          <span className="text-[10px] text-muted/60 flex-1">— tất cả —</span>
           <I.ChevronDown size={11} className="text-muted shrink-0" />
         </div>
       </div>
