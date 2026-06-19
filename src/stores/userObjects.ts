@@ -1,4 +1,4 @@
-import { createObjectsClient } from "@erp-framework/client";
+import { createObjectsClient, type PageFlag } from "@erp-framework/client";
 import type { DataSourceConfig } from "@erp-framework/core";
 /* ==========================================================
    userObjects — Đối tượng low-code (entity / page / workflow /
@@ -117,6 +117,7 @@ function rowToPage(r: Row): MockPage {
     isPublished: (r.published as boolean) ?? false,
     publishMode: ((r.publishMode ?? r.publish_mode) as "private" | "public") ?? "private",
     viewerGroupIds: (r.viewerGroupIds as string[]) ?? [],
+    status: (r.status as string | null) ?? null,
   };
 }
 
@@ -168,6 +169,8 @@ interface UserObjectsState {
   dataSourceContent: Record<string, DataSourceConfig>;
   myGroupIds: string[];
   viewerGroupsList: MockViewerGroup[];
+  /** Cờ trạng thái TÙY CHỈNH ("cờ của tôi") per-company. */
+  pageFlags: PageFlag[];
 
   hydrate: () => Promise<void>;
 
@@ -185,6 +188,18 @@ interface UserObjectsState {
   setPageContent: (id: string, data: unknown) => void;
   publishPage: (id: string, mode: "private" | "public") => void;
   unpublishPage: (id: string) => void;
+  /** Gắn/đổi/gỡ cờ trạng thái cho trang (status = key built-in | id cờ tùy chỉnh | null). */
+  setPageStatus: (id: string, status: string | null) => void;
+  /** Cờ tùy chỉnh: upsert (id rỗng = tạo mới) — trả về cờ đã lưu. */
+  savePageFlag: (input: {
+    id?: string;
+    label: string;
+    color: PageFlag["color"];
+    icon?: string | null;
+    sortOrder?: number;
+  }) => Promise<PageFlag | undefined>;
+  /** Xoá cờ tùy chỉnh + gỡ khỏi mọi trang đang gắn. */
+  deletePageFlag: (id: string) => void;
 
   addWorkflow: (w: MockWorkflow) => void;
   deleteWorkflow: (id: string) => void;
@@ -229,10 +244,11 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   dataSourceContent: {},
   myGroupIds: [],
   viewerGroupsList: [],
+  pageFlags: [],
 
   hydrate: async () => {
     try {
-      const [ents, pgs, wfs, ags, dss, myGroups, vGroups] = await Promise.all([
+      const [ents, pgs, wfs, ags, dss, myGroups, vGroups, pFlags] = await Promise.all([
         api.entities.list(),
         api.pages.list(),
         api.workflows.list(),
@@ -242,6 +258,7 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
         api.viewerGroups
           .list()
           .catch(() => [] as Awaited<ReturnType<typeof api.viewerGroups.list>>),
+        api.pages.flagList().catch(() => [] as PageFlag[]),
       ]);
       const pageContent: Record<string, unknown> = {};
       for (const r of pgs as Row[]) pageContent[r.id as string] = r.content ?? {};
@@ -265,6 +282,7 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
         dataSourceContent,
         myGroupIds: myGroups,
         viewerGroupsList: vGroups as MockViewerGroup[],
+        pageFlags: pFlags,
       });
     } catch (e) {
       console.error("[userObjects] hydrate lỗi:", e);
@@ -375,6 +393,38 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
       pages: s.pages.map((p) => (p.id === id ? { ...p, isPublished: false } : p)),
     }));
     bg(api.pages.unpublish(id), "hủy xuất bản page");
+  },
+  setPageStatus: (id, status) => {
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, status } : p)),
+    }));
+    bg(api.pages.setStatus(id, status), "đổi cờ trang");
+  },
+  savePageFlag: async (input) => {
+    try {
+      const saved = await api.pages.flagSave(input);
+      set((s) => {
+        const i = s.pageFlags.findIndex((f) => f.id === saved.id);
+        if (i >= 0) {
+          const n = [...s.pageFlags];
+          n[i] = saved;
+          return { pageFlags: n };
+        }
+        return { pageFlags: [...s.pageFlags, saved] };
+      });
+      return saved;
+    } catch (e) {
+      console.error("[userObjects] lưu cờ tùy chỉnh lỗi:", e);
+      return undefined;
+    }
+  },
+  deletePageFlag: (id) => {
+    set((s) => ({
+      pageFlags: s.pageFlags.filter((f) => f.id !== id),
+      // Gỡ cờ vừa xoá khỏi mọi trang đang gắn (đồng bộ optimistic với server).
+      pages: s.pages.map((p) => (p.status === id ? { ...p, status: null } : p)),
+    }));
+    bg(api.pages.flagDelete(id), "xoá cờ tùy chỉnh");
   },
 
   /* ── Workflow ── */

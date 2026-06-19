@@ -109,6 +109,8 @@ export interface MockPage {
   isPublished?: boolean;
   publishMode?: "private" | "public";
   viewerGroupIds?: string[];
+  /** Cờ trạng thái: key built-in (new/in_progress/…) hoặc id cờ tùy chỉnh. null = chưa gắn. */
+  status?: string | null;
 }
 
 export interface MockViewerGroup {

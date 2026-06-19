@@ -53,6 +53,25 @@ export interface PageSaveInput {
   icon?: string;
   content?: Record<string, unknown>;
 }
+/** Token màu hợp lệ cho cờ tùy chỉnh (semantic, đổi theo theme). */
+export type FlagColor = "accent" | "accent-2" | "success" | "warning" | "danger" | "neutral";
+export interface PageFlag {
+  id: string;
+  companyId: string;
+  label: string;
+  color: FlagColor;
+  icon: string | null;
+  sortOrder: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+export interface PageFlagSaveInput {
+  id?: string;
+  label: string;
+  color: FlagColor;
+  icon?: string | null;
+  sortOrder?: number;
+}
 export interface AgentSaveInput {
   id?: string;
   name: string;
@@ -127,6 +146,13 @@ export function createObjectsClient(baseUrl: string) {
       publish: (id: string, mode: "private" | "public") => trpc.pages.publish.mutate({ id, mode }),
       unpublish: (id: string) => trpc.pages.unpublish.mutate(id),
       getPublic: (id: string) => trpc.pages.getPublic.query(id),
+      // Cờ trạng thái: gắn/đổi/gỡ (status = key built-in | id cờ tùy chỉnh | null).
+      setStatus: (id: string, status: string | null) => trpc.pages.setStatus.mutate({ id, status }),
+      // Cờ TÙY CHỈNH (page_flags) — "cờ của tôi", per-company.
+      flagList: () => trpc.pages.flagList.query() as Promise<PageFlag[]>,
+      flagSave: (input: PageFlagSaveInput) =>
+        trpc.pages.flagSave.mutate(input) as Promise<PageFlag>,
+      flagDelete: (id: string) => trpc.pages.flagDelete.mutate(id) as Promise<{ ok: true }>,
       // Thùng rác (xoá mềm)
       listTrash: () =>
         trpc.pages.listTrash.query() as Promise<

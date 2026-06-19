@@ -2,12 +2,24 @@
    pages-router.ts — CRUD page metadata (low-code designer).
    Tách khỏi router.ts (Sprint 1 P2.8 step 6).
    ========================================================== */
-import { navItems, pages, pageViewerGroups } from "@erp-framework/db";
+import { navItems, pageFlags, pages, pageViewerGroups } from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { pageInput } from "./router-helpers";
 import { publicProcedure, rbacProcedure, router } from "./trpc";
+
+// Token màu hợp lệ cho cờ tùy chỉnh (semantic, đổi theo theme — không hardcode hex).
+// Nhãn/màu cờ built-in định nghĩa ở frontend src/lib/page-status.ts; server chỉ
+// lưu key (built-in) hoặc id (uuid cờ tùy chỉnh) trong pages.status.
+const FLAG_COLOR_TOKENS = [
+  "accent",
+  "accent-2",
+  "success",
+  "warning",
+  "danger",
+  "neutral",
+] as const;
 
 export const pagesRouter = router({
   // Chỉ trang ACTIVE (chưa xoá mềm).
@@ -132,15 +144,107 @@ export const pagesRouter = router({
         }
         const [row] = await ctx.db
           .insert(pages)
-          .values({ id: input.id, companyId: ctx.user.companyId, ...values })
+          // Trang mới tạo → tự gắn cờ "Mới tạo" (status='new').
+          .values({ id: input.id, companyId: ctx.user.companyId, status: "new", ...values })
           .returning();
         return row;
       }
       const [row] = await ctx.db
         .insert(pages)
+        .values({ companyId: ctx.user.companyId, status: "new", ...values })
+        .returning();
+      return row;
+    }),
+
+  // Gắn / đổi / gỡ cờ trạng thái cho 1 trang. status = key built-in,
+  // id (uuid) cờ tùy chỉnh, hoặc null (gỡ cờ).
+  setStatus: rbacProcedure("edit", "page")
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.string().max(64).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .update(pages)
+        .set({ status: input.status, updatedAt: new Date() })
+        .where(
+          and(
+            eq(pages.id, input.id),
+            eq(pages.companyId, ctx.user.companyId),
+            isNull(pages.deletedAt),
+          ),
+        )
+        .returning({ id: pages.id, status: pages.status });
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Trang không tồn tại." });
+      return row;
+    }),
+
+  // ── Cờ TÙY CHỈNH (page_flags) — "cờ của tôi", per-company ───────────────
+  flagList: rbacProcedure("view", "page").query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(pageFlags)
+      .where(eq(pageFlags.companyId, ctx.user.companyId))
+      .orderBy(asc(pageFlags.sortOrder), asc(pageFlags.createdAt));
+  }),
+
+  // Upsert 1 cờ tùy chỉnh (id rỗng = tạo mới).
+  flagSave: rbacProcedure("edit", "page")
+    .input(
+      z.object({
+        id: z.string().uuid().optional(),
+        label: z.string().min(1).max(64),
+        color: z.enum(FLAG_COLOR_TOKENS),
+        icon: z.string().max(40).nullable().optional(),
+        sortOrder: z.number().int().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const values = {
+        label: input.label,
+        color: input.color,
+        icon: input.icon ?? null,
+        sortOrder: input.sortOrder ?? 0,
+      };
+      if (input.id) {
+        const [ex] = await ctx.db
+          .select({ companyId: pageFlags.companyId })
+          .from(pageFlags)
+          .where(eq(pageFlags.id, input.id));
+        if (ex && ex.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cờ thuộc công ty khác" });
+        }
+        if (ex) {
+          const [row] = await ctx.db
+            .update(pageFlags)
+            .set({ ...values, updatedAt: new Date() })
+            .where(eq(pageFlags.id, input.id))
+            .returning();
+          return row;
+        }
+      }
+      const [row] = await ctx.db
+        .insert(pageFlags)
         .values({ companyId: ctx.user.companyId, ...values })
         .returning();
       return row;
+    }),
+
+  // Xoá 1 cờ tùy chỉnh + gỡ cờ đó khỏi mọi trang đang gắn (status = null).
+  flagDelete: rbacProcedure("edit", "page")
+    .input(z.string().uuid())
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(pageFlags)
+        .where(and(eq(pageFlags.id, input), eq(pageFlags.companyId, ctx.user.companyId)));
+      // Gỡ binding mồ côi: trang nào đang trỏ cờ vừa xoá → bỏ cờ.
+      await ctx.db
+        .update(pages)
+        .set({ status: null })
+        .where(and(eq(pages.companyId, ctx.user.companyId), eq(pages.status, input)));
+      return { ok: true };
     }),
 
   // XOÁ MỀM: đánh dấu deleted_at → trang vào thùng rác (khôi phục được). KHÔNG

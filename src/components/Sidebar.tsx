@@ -6,10 +6,12 @@ import { ChangeMenuNodePageModal } from "@/components/ChangeMenuNodePageModal";
 import { I } from "@/components/Icons";
 import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { NewPageModal } from "@/components/NewPageModal";
+import { FlagDot, PageStatusPicker } from "@/components/PageStatusFlag";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import type { IconName } from "@/lib/object-types";
+import { BUILTIN_PAGE_FLAGS, resolveFlag } from "@/lib/page-status";
 import { type ObjectType, roleCan } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
@@ -877,6 +879,15 @@ function PagesTreeSection({
 /* ─── PagesListSection — nhóm "Trang" NGANG HÀNG với "Menu" ────────
    Liệt kê MỌI trang (đã/chưa gắn menu); trang đã nằm trong menu có badge.
    Mỗi trang: gán-vào-menu / xoá. Section riêng (thu gọn + tìm kiếm). */
+/** Item trang cho danh sách Sidebar (kèm cờ trạng thái). */
+type PageListItem = {
+  id: string;
+  name: string;
+  icon: IconName;
+  to: string;
+  status?: string | null;
+};
+
 function PagesListSection({
   collapsed,
   pathname,
@@ -886,25 +897,31 @@ function PagesListSection({
   onNavigate,
   onDeletePage,
   onAssignPage,
+  canSetStatus,
   open,
   onToggle,
 }: {
   collapsed: boolean;
   pathname: string;
-  allPages: Array<{ id: string; name: string; icon: IconName; to: string }>;
+  allPages: PageListItem[];
   navNodes: NavNode[];
   onOpen: (to: string) => void;
   onNavigate?: () => void;
   onDeletePage?: (id: string) => void;
   onAssignPage?: (page: { id: string; name: string }) => void;
+  /** Có quyền sửa trang → cho gắn/đổi cờ trạng thái ngay trong danh sách. */
+  canSetStatus?: boolean;
   /** Mở/đóng section (controlled bởi Sidebar — để "thu gọn tất cả" tác động). */
   open: boolean;
   onToggle: () => void;
 }) {
   const t = useT();
+  const pageFlags = useUserObjects((s) => s.pageFlags);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const [menuFilter, setMenuFilter] = useState<"all" | "with" | "no">("all");
+  // Lọc theo cờ trạng thái: null = tất cả, "none" = chưa gắn cờ, else = value cờ.
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
@@ -914,12 +931,24 @@ function PagesListSection({
   const activePageId = matched?.[1] ?? null;
   const linkedPageIds = new Set(navNodes.filter((n) => n.pageId).map((n) => n.pageId as string));
   const ql = q.trim().toLowerCase();
-  // Lọc: theo ô tìm + theo trạng thái menu (tất cả / đã có / chưa có).
+  // Cờ thực sự đang dùng trên các trang (để chỉ hiện chip lọc có ý nghĩa).
+  const usedFlagValues = new Set(
+    allPages.map((p) => resolveFlag(p.status, pageFlags)?.value).filter(Boolean) as string[],
+  );
+  const filterFlags = [
+    ...BUILTIN_PAGE_FLAGS,
+    ...pageFlags.map((f) => ({ value: f.id, label: f.label })),
+  ].filter((f) => usedFlagValues.has(f.value));
+  // Lọc: theo ô tìm + trạng thái menu (tất cả/đã có/chưa có) + cờ trạng thái.
   const filtered = allPages.filter((p) => {
     if (ql && !p.name.toLowerCase().includes(ql)) return false;
     const has = linkedPageIds.has(p.id);
     if (menuFilter === "with" && !has) return false;
     if (menuFilter === "no" && has) return false;
+    if (statusFilter) {
+      const fv = resolveFlag(p.status, pageFlags)?.value ?? null;
+      if (statusFilter === "none" ? fv !== null : fv !== statusFilter) return false;
+    }
     return true;
   });
   return (
@@ -1005,6 +1034,42 @@ function PagesListSection({
               </button>
             ))}
           </div>
+          {/* Lọc theo cờ trạng thái — chỉ hiện cờ đang được dùng trên trang. */}
+          {filterFlags.length > 0 && (
+            <div className="flex items-center gap-1 px-3 pb-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setStatusFilter(null)}
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] transition-colors inline-flex items-center gap-1",
+                  statusFilter === null
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted/60 hover:text-text",
+                )}
+              >
+                <I.Tag size={9} /> Mọi cờ
+              </button>
+              {filterFlags.map((f) => {
+                const fdef = resolveFlag(f.value, pageFlags);
+                if (!fdef) return null;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setStatusFilter(f.value)}
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[10px] transition-colors inline-flex items-center gap-1",
+                      statusFilter === f.value
+                        ? "bg-accent/15 text-accent"
+                        : "text-muted/60 hover:text-text",
+                    )}
+                  >
+                    <FlagDot color={fdef.color} /> {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <ul>
             {filtered.length === 0 ? (
               <li className="px-4 py-1 text-[11px] text-muted/50">Không có trang khớp.</li>
@@ -1013,7 +1078,12 @@ function PagesListSection({
                 const active = pathname === p.to || activePageId === p.id;
                 const IconC = I[p.icon] ?? I.Layout;
                 const hasMenu = linkedPageIds.has(p.id);
-                const actN = (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
+                const flagDef = resolveFlag(p.status, pageFlags);
+                // staticPages có id là route (bắt đầu "/") — không phải trang DB,
+                // không gắn cờ được. Chỉ trang thật mới cho picker.
+                const isRealPage = !p.id.startsWith("/");
+                const showPicker = canSetStatus && isRealPage;
+                const actN = (showPicker ? 1 : 0) + (onAssignPage ? 1 : 0) + (onDeletePage ? 1 : 0);
                 return (
                   <li key={p.id} className="relative group/pg">
                     <button
@@ -1024,7 +1094,7 @@ function PagesListSection({
                       }}
                       className={cn(
                         "w-full text-left pl-4 py-1.5 text-sm flex items-center gap-2 transition-colors",
-                        actN >= 2 ? "pr-12" : "pr-7",
+                        actN >= 3 ? "pr-[72px]" : actN === 2 ? "pr-12" : "pr-7",
                         active
                           ? "bg-accent/10 text-accent font-medium"
                           : "text-text hover:bg-hover/40",
@@ -1032,6 +1102,12 @@ function PagesListSection({
                     >
                       <IconC size={13} className="shrink-0 text-muted" />
                       <span className="truncate">{p.name}</span>
+                      {/* Cờ trạng thái — chấm màu (luôn hiện), tooltip = nhãn cờ. */}
+                      {flagDef && (
+                        <span title={`Cờ: ${flagDef.label}`} className="shrink-0">
+                          <FlagDot color={flagDef.color} />
+                        </span>
+                      )}
                       {hasMenu && (
                         <span title="Đã có trong menu" className="shrink-0 text-accent/70">
                           <I.GitBranch size={10} />
@@ -1039,6 +1115,14 @@ function PagesListSection({
                       )}
                     </button>
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/pg:opacity-100 transition-opacity">
+                      {showPicker && (
+                        <PageStatusPicker
+                          pageId={p.id}
+                          status={p.status}
+                          align="right"
+                          iconTrigger
+                        />
+                      )}
                       {onAssignPage && (
                         <button
                           type="button"
@@ -1626,18 +1710,20 @@ export function Sidebar() {
             const useTree = navNodes.some((n) => n.pageId) && !collapsed && !search.trim();
             if (useTree) {
               // Toàn bộ trang (đã/chưa gắn menu) cho nhóm "Trang".
-              const allPages = [
+              const allPages: PageListItem[] = [
                 ...staticPages.map((s) => ({
                   id: s.id,
                   name: s.name,
                   icon: s.iconName,
                   to: s.to,
+                  status: null,
                 })),
                 ...pagesBase.map((p) => ({
                   id: p.id,
                   name: p.name,
                   icon: p.icon,
                   to: `/pages/${p.id}`,
+                  status: p.status ?? null,
                 })),
               ];
               return (
@@ -1681,6 +1767,7 @@ export function Sidebar() {
                     onNavigate={collapseOpsSettings}
                     onDeletePage={can("delete", "page") ? handleDeletePage : undefined}
                     onAssignPage={can("edit", "settings") ? setAssignMenuPage : undefined}
+                    canSetStatus={can("edit", "page")}
                     open={effectiveSectionsOpen.pagesList}
                     onToggle={toggle("pagesList")}
                   />

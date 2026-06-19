@@ -542,6 +542,10 @@ export const pages = pgTable(
     content: jsonb("content").notNull().default(sql`'{}'::jsonb`),
     published: boolean("published").notNull().default(false),
     publishMode: text("publish_mode").notNull().default("private"),
+    // Cờ trạng thái (lifecycle) gắn cho trang — độc lập với published.
+    // Giá trị = key built-in (new/in_progress/review/done/published/archived)
+    // hoặc id (uuid) của cờ tùy chỉnh trong page_flags. null = chưa gắn cờ.
+    status: text("status"),
     // Xoá mềm: null = active, ts = đã xoá (còn khôi phục từ thùng rác).
     deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -553,6 +557,30 @@ export const pages = pgTable(
       .on(t.companyId, t.name)
       .where(sql`${t.deletedAt} IS NULL`),
     deletedAtIdx: index("pages_deleted_at_idx").on(t.deletedAt),
+  }),
+);
+
+/* page_flags — co (flag) trang thai TUY CHINH per-company ("co cua toi").
+   Nguoi dung tu them ngoai bo co built-in (new/in_progress/.../archived).
+   pages.status luu key built-in HOAC id (uuid) cua 1 dong o day.
+   color = ten token semantic (accent/accent-2/success/warning/danger/neutral)
+   de doi theo theme sang/toi, KHONG hardcode hex. */
+export const pageFlags = pgTable(
+  "page_flags",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    color: text("color").notNull().default("accent"),
+    icon: text("icon"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyIdx: index("page_flags_company_idx").on(t.companyId),
   }),
 );
 

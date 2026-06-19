@@ -7,6 +7,7 @@ import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldB
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import { FieldDisplayToggle, fieldBoth, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
+import { PageStatusPicker } from "@/components/PageStatusFlag";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import type { ColumnGroupNode } from "@/components/renderer/DataGrid";
 import { ROW_ACTION_OPTIONS } from "@/components/renderer/RowActionsCell";
@@ -756,6 +757,8 @@ export function PageDesigner({ pageId }: Props) {
             <I.Check size={11} /> {t("designer.saved")}
           </span>
         )}
+        {/* Cờ trạng thái — gắn/đổi/gỡ + quản lý cờ tùy chỉnh */}
+        <PageStatusPicker pageId={pageId} status={page?.status} align="right" />
         {/* Publish dropdown */}
         <div ref={publishRef} className="relative">
           {isPublished ? (
