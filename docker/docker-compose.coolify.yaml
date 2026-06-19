@@ -230,8 +230,10 @@ services:
     # check port 1883 listening, không full MQTT handshake. Đủ cho mục
     # đích Coolify nhận biết broker up. Tránh edge case với mosquitto_sub
     # subscribe wildcard topic system ($SYS) trên một số deploy.
+    # Dùng 127.0.0.1 thay localhost: Alpine resolve localhost -> ::1 (IPv6)
+    # nhưng mosquitto chỉ listen 0.0.0.0 (IPv4) -> nc fail dù broker up.
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "1883"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "1883"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -4089,6 +4089,12 @@ type SplitPanelCfg = {
   linkConditions?: Array<{ fromPanel?: string; fromField?: string; toField: string }>;
   /** Panel nguồn để lọc/hiển thị detail: "a"|"b"|"c"|"d". Mặc định "a" (Panel A). */
   filterFromPanel?: string;
+  chartKind?: string; // bar|line|area|pie|doughnut — loại biểu đồ
+  groupBy?: string; // chart / kanban: field nhóm
+  valueField?: string; // chart: field tổng hợp giá trị
+  selectable?: boolean; // list: hiện checkbox chọn dòng
+  addRowAtEnd?: boolean; // list+batchEdit: dòng thêm mới
+  addRowPos?: string; // top | bottom
   // Các trường được copy từ list/form/detail khi kéo thả vào panel
   fields?: string[];
   columnLabels?: Record<string, string>;
@@ -4241,6 +4247,13 @@ function buildSubCfg(
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
+    selectable: panel.selectable,
+    addRowAtEnd: panel.addRowAtEnd,
+    addRowPos: panel.addRowPos,
+    groupBy: panel.groupBy,
+    valueField: panel.valueField,
+    // chart kind maps to cfg.kind (ChartWidget reads cfg.kind for bar/line/pie…)
+    ...(kind === "chart" ? { kind: panel.chartKind ?? "bar" } : {}),
     ...(kind === "list"
       ? {
           selectionStateKey: ownStateKey,
@@ -4256,8 +4269,12 @@ function buildSubCfg(
         }
       : {}),
     ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
-    // linkField đơn (backwards compat) → filterFromState như cũ
-    ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkField
+    // linkField đơn (backwards compat) → filterFromState như cũ.
+    // Bỏ qua khi linkConditions đã khai báo: linkConditions ưu tiên + filterFromState
+    // sẽ dùng row-id (uuid) làm stateKey → không bao giờ khớp field nghiệp vụ → ẩn hết.
+    ...((kind === "list" || kind === "chart" || kind === "kanban") &&
+    panel.linkField &&
+    !panel.linkConditions?.length
       ? { filterFromState: { field: panel.linkField, stateKey: srcStateKey } }
       : {}),
     // linkConditions: mảng điều kiện AND — fromField → key phụ; bỏ fromField → key chính
