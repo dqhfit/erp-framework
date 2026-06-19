@@ -2600,6 +2600,32 @@ export function PageDesigner({ pageId }: Props) {
                                 </Select>
                               </FormField>
                             )}
+                            {/* Trường lọc đơn — nhanh cho master-detail 1 field */}
+                            {availableSources.length > 0 &&
+                              (panel.kind === "list" ||
+                                panel.kind === "chart" ||
+                                panel.kind === "kanban" ||
+                                panel.kind === "form" ||
+                                (!panel.kind &&
+                                  (defaultKind === "list" ||
+                                    defaultKind === "chart" ||
+                                    defaultKind === "kanban"))) && (
+                                <FormField label="Trường lọc">
+                                  <Select
+                                    value={panel.linkField ?? ""}
+                                    onChange={(e) =>
+                                      onUpdate({ ...panel, linkField: e.target.value || undefined })
+                                    }
+                                  >
+                                    <option value="">— không dùng —</option>
+                                    {(linkedEnt?.fields ?? []).map((f) => (
+                                      <option key={f.name} value={f.name}>
+                                        {fieldBoth(f)}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </FormField>
+                              )}
                             {/* ── Cột phát (nhiều) — list panel phát nhiều field vào state ── */}
                             {(panel.kind === "list" || (!panel.kind && defaultKind === "list")) && (
                               <div className="flex flex-col gap-1">

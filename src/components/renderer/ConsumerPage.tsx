@@ -4316,7 +4316,12 @@ function RenderSubWidget({
         columnGroups={cfg.columnGroups as ColumnGroupNode[] | undefined}
         defaultGrouping={cfg.defaultGrouping as string[] | undefined}
         selectionStateKey={cfg.selectionStateKey as string | undefined}
+        selectionField={cfg.selectionField as string | undefined}
+        selectionEmits={cfg.selectionEmits as Record<string, string> | undefined}
         filterFromState={cfg.filterFromState as { field: string; stateKey: string } | undefined}
+        filterConditions={
+          cfg.filterConditions as Array<{ field: string; stateKey: string }> | undefined
+        }
         searchFromState={cfg.searchFromState as string | undefined}
         title={cfg.title as string | undefined}
         multiSelect={cfg.multiSelect === true}
