@@ -44,7 +44,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   const [lookupOpts, setLookupOpts] = useState<
     Record<string, Array<{ value: string; label: string }>>
   >({});
-  const [detailRow] = useState<Record<string, unknown> | null>(null);
+  const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
   const [formSeed, setFormSeed] = useState<Record<string, unknown> | null>(null);
@@ -62,16 +62,26 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
       setLoading(true);
       api
         .getRecords(step.entity, { limit: 300 })
-        .then((res) => setRows(res.rows.map((r) => r.data)))
+        .then((res) => setRows(res.rows.map((r) => ({ ...r.data, id: r.id }))))
         .catch(() => setRows([]))
         .finally(() => setLoading(false));
       return;
     } else if ((step.popupMode === "detail" || step.popupMode === "form") && recordId != null) {
       // Sửa: nạp record hiện tại → seed form (effect init bên dưới đổ vào input).
+      setLoading(true);
+      setDetailRow(null);
+      setFormSeed(null);
       api
         .getRecord(String(recordId))
-        .then((rec) => setFormSeed(rec ? (rec.data as Record<string, unknown>) : null))
-        .catch(() => setFormSeed(null))
+        .then((rec) => {
+          const row = rec ? { ...(rec.data as Record<string, unknown>), id: rec.id } : null;
+          if (step.popupMode === "detail") setDetailRow(row);
+          else setFormSeed(row);
+        })
+        .catch(() => {
+          setDetailRow(null);
+          setFormSeed(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

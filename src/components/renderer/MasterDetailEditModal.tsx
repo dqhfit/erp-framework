@@ -21,6 +21,7 @@ import {
   type FieldLookup,
   sumField,
 } from "./MasterDetailCreateModal";
+import { MultiLookupPicker } from "./MultiLookupPicker";
 
 const api = createApiDataSource("");
 
@@ -35,7 +36,7 @@ interface Props {
 }
 
 /** Dòng chi tiết kèm _rid = id record con (undefined = dòng mới). */
-type DetailRow = Record<string, string> & { _rid?: string };
+type DetailRow = Record<string, string> & { _key: string; _rid?: string };
 
 function pickFields(all: EntityField[], names?: string[]): EntityField[] {
   const usable = all.filter((f) => f.type !== "formula" && f.type !== "collection");
@@ -119,6 +120,8 @@ export function MasterDetailEditModal({
   const [deleted, setDeleted] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [masterErrors, setMasterErrors] = useState<Record<string, string>>({});
+  const [detailErrors, setDetailErrors] = useState<Record<number, Record<string, string>>>({});
 
   /* ── Nạp dữ liệu lookup (master + detail) cho combobox ── */
   const masterLookups = config.master.fieldLookups;
@@ -176,7 +179,7 @@ export function MasterDetailEditModal({
           if (alive) {
             const drows: DetailRow[] = res.rows.map((r) => {
               const d = (r.data ?? {}) as Record<string, unknown>;
-              const row: DetailRow = { _rid: r.id };
+              const row: DetailRow = { _key: r.id, _rid: r.id };
               for (const f of detailFields) row[f.name] = toStr(d[f.name], f.type);
               return row;
             });
@@ -213,6 +216,25 @@ export function MasterDetailEditModal({
     compact = false,
     lookup?: FieldLookup,
   ) => {
+    if (readOnly) {
+      const displayValue =
+        f.type === "boolean" || f.type === "bool"
+          ? value === "true"
+            ? "Có"
+            : "Không"
+          : value || "—";
+      return (
+        <div
+          className={
+            compact
+              ? "min-h-8 px-2 py-1.5 text-sm"
+              : "min-h-9 rounded-md border border-border bg-bg-soft px-3 py-2 text-sm whitespace-pre-wrap"
+          }
+        >
+          {displayValue}
+        </div>
+      );
+    }
     if (lookup) {
       const srcRows = lookupData[lookup.entity] ?? [];
       const labelFields = lookup.labelFields ?? [lookup.valueField];
@@ -224,13 +246,30 @@ export function MasterDetailEditModal({
           .join(" — ");
         return { value: val, label: lbl || val };
       });
+      const richOpts = opts.map((option, index) => {
+        const cells = labelFields.map((field) => String(srcRows[index]?.[field] ?? ""));
+        return { ...option, cells, searchText: cells.join(" ") };
+      });
       const srcLabel = entities.find((e) => e.id === lookup.entity)?.name ?? "mục";
+      if (lookup.multiple) {
+        return (
+          <MultiLookupPicker
+            value={value ?? ""}
+            onChange={onChange}
+            options={richOpts}
+            title={srcLabel}
+            separator={lookup.separator}
+            disabled={readOnly}
+          />
+        );
+      }
       return (
         <SearchableSelect
           className="w-full"
           value={value ?? ""}
           onChange={onChange}
-          options={opts}
+          options={richOpts}
+          columnHeaders={lookup.columnHeaders}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
           disabled={readOnly}
@@ -284,7 +323,18 @@ export function MasterDetailEditModal({
 
   const onSave = async () => {
     if (saving) return;
-    const missing = masterFields.filter((f) => f.required && !(master[f.name] ?? "").trim());
+    const requiredMaster = new Set(config.master.requiredFields ?? []);
+    const missing = masterFields.filter(
+      (f) => (f.required || requiredMaster.has(f.name)) && !(master[f.name] ?? "").trim(),
+    );
+    setMasterErrors(
+      Object.fromEntries(
+        missing.map((field) => [
+          field.name,
+          `${config.master.fieldLabels?.[field.name] ?? field.label} là bắt buộc`,
+        ]),
+      ),
+    );
     if (missing.length > 0) {
       setTab("master");
       toast.error(`Thiếu thông tin bắt buộc: ${missing.map((f) => f.label).join(", ")}`);
@@ -292,15 +342,39 @@ export function MasterDetailEditModal({
     }
     setSaving(true);
     try {
+      const requiredDetail = config.detail.requiredFields ?? [];
+      const nextDetailErrors: Record<number, Record<string, string>> = {};
+      rows.forEach((row, rowIndex) => {
+        for (const field of requiredDetail) {
+          if (!(row[field] ?? "").trim()) {
+            nextDetailErrors[rowIndex] ??= {};
+            nextDetailErrors[rowIndex][field] =
+              `${config.detail.fieldLabels?.[field] ?? field} là bắt buộc`;
+          }
+        }
+      });
+      setDetailErrors(nextDetailErrors);
+      const invalidRow = Object.keys(nextDetailErrors).length
+        ? Number(Object.keys(nextDetailErrors)[0])
+        : -1;
+      if (invalidRow >= 0) {
+        setTab("detail");
+        throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
+      }
       await api.updateRecord(recordId, buildData(master, masterFields));
       const keyVal = (master[config.detail.parentKeyField] ?? "").trim();
       const computed = config.detail.computed;
       // Xóa các dòng bị bỏ trước.
       for (const rid of deleted) await api.deleteRecord(rid);
       // Upsert dòng chi tiết.
-      for (const r of rows) {
-        const hasData = Object.entries(r).some(([k, v]) => k !== "_rid" && (v ?? "").trim() !== "");
+      for (const [rowIndex, r] of rows.entries()) {
+        const hasData = Object.entries(r).some(
+          ([key, value]) => key !== "_rid" && key !== "_key" && value.trim() !== "",
+        );
         const data = buildData(r, detailFields);
+        if (config.detail.autoSequenceField) {
+          data[config.detail.autoSequenceField] = rowIndex + 1;
+        }
         if (keyVal) data[config.detail.linkField] = keyVal;
         // Field tự tính (vd amount = order_qty × price) — ghi đè khi lưu.
         if (computed)
@@ -312,11 +386,11 @@ export function MasterDetailEditModal({
           await api.createRecord(config.detail.entity, data);
         }
       }
-      toast.success("Đã cập nhật đơn hàng");
+      toast.success(`Đã cập nhật ${config.subjectLabel ?? "bản ghi"}`);
       onSaved();
       onClose();
     } catch (e) {
-      toast.error((e as Error).message || "Lỗi khi cập nhật đơn hàng");
+      toast.error((e as Error).message || `Lỗi khi cập nhật ${config.subjectLabel ?? "bản ghi"}`);
     } finally {
       setSaving(false);
     }
@@ -328,14 +402,11 @@ export function MasterDetailEditModal({
       onClose={onClose}
       title={
         readOnly
-          ? config.title
-            ? config.title.replace(/^Thêm/i, "Xem")
-            : "Xem đơn hàng"
-          : config.title
-            ? config.title.replace(/^Thêm/i, "Sửa")
-            : "Sửa đơn hàng"
+          ? (config.viewTitle ?? `Thông tin ${config.subjectLabel ?? "bản ghi"}`)
+          : (config.editTitle ??
+            (config.title ? config.title.replace(/^Thêm/i, "Sửa") : "Sửa bản ghi"))
       }
-      width={1000}
+      width={config.width ?? 1000}
       footer={
         readOnly ? (
           <Button variant="ghost" onClick={onClose}>
@@ -360,35 +431,72 @@ export function MasterDetailEditModal({
         </div>
       ) : (
         <>
-          <Tabs
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "master", label: "Thông tin đơn hàng" },
-              { value: "detail", label: `Chi tiết đơn hàng (${rows.length})` },
-            ]}
-          />
+          {!readOnly &&
+            (Object.keys(masterErrors).length > 0 || Object.keys(detailErrors).length > 0) && (
+              <div className="mb-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                Vui lòng điền đầy đủ các trường bắt buộc được đánh dấu bên dưới.
+              </div>
+            )}
+          {config.layout !== "single" && (
+            <Tabs
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "master", label: config.masterLabel ?? "Thông tin" },
+                {
+                  value: "detail",
+                  label: `${config.detailLabel ?? "Chi tiết"} (${rows.length})`,
+                },
+              ]}
+            />
+          )}
 
-          {tab === "master" ? (
+          {(config.layout === "single" || tab === "master") && (
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
               {masterFields.map((f) => (
-                <div key={f.id} className="space-y-1">
+                <div
+                  key={f.id}
+                  className={
+                    config.master.fullWidthFields?.includes(f.name)
+                      ? "space-y-1 col-span-2"
+                      : "space-y-1"
+                  }
+                >
                   <label className="text-xs font-medium">
-                    {f.label}
-                    {f.required && <span className="text-danger ml-0.5">*</span>}
+                    {config.master.fieldLabels?.[f.name] ?? f.label}
+                    {(f.required || config.master.requiredFields?.includes(f.name)) && (
+                      <span className="text-danger ml-0.5">*</span>
+                    )}
                   </label>
-                  {renderInput(
-                    f,
-                    master[f.name] ?? "",
-                    (v) => setMaster((s) => ({ ...s, [f.name]: v })),
-                    false,
-                    masterLookups?.[f.name],
+                  <div
+                    className={masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined}
+                  >
+                    {renderInput(
+                      f,
+                      master[f.name] ?? "",
+                      (v) => {
+                        setMaster((s) => ({ ...s, [f.name]: v }));
+                        if (v.trim()) {
+                          setMasterErrors((current) => {
+                            const next = { ...current };
+                            delete next[f.name];
+                            return next;
+                          });
+                        }
+                      },
+                      false,
+                      masterLookups?.[f.name],
+                    )}
+                  </div>
+                  {masterErrors[f.name] && (
+                    <p className="text-xs text-danger">{masterErrors[f.name]}</p>
                   )}
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="mt-3 space-y-2">
+          )}
+          {(config.layout === "single" || tab === "detail") && (
+            <div className={config.layout === "single" ? "mt-4 space-y-2" : "mt-3 space-y-2"}>
               <div className="overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto">
                 <table className="text-sm w-full">
                   <thead className="bg-panel-2 sticky top-0">
@@ -398,16 +506,25 @@ export function MasterDetailEditModal({
                           key={f.id}
                           className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
                         >
-                          {f.label}
+                          {config.detail.fieldLabels?.[f.name] ?? f.label}
+                          {config.detail.requiredFields?.includes(f.name) && (
+                            <span className="text-danger ml-0.5">*</span>
+                          )}
                         </th>
                       ))}
-                      <th className="w-8" />
+                      {!readOnly && <th className="w-8" />}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: dòng nhập theo chỉ số trong phiên; _rid có thể trùng undefined với dòng mới
-                      <tr key={i} className="border-t border-border">
+                      <tr
+                        key={r._key}
+                        className={
+                          detailErrors[i]
+                            ? "border-t border-danger bg-danger/5"
+                            : "border-t border-border"
+                        }
+                      >
                         {detailFields.map((f) => {
                           const factors = config.detail.computed?.[f.name];
                           return (
@@ -427,16 +544,33 @@ export function MasterDetailEditModal({
                                 renderInput(
                                   f,
                                   r[f.name] ?? "",
-                                  (v) => setRow(i, f.name, v),
+                                  (v) => {
+                                    setRow(i, f.name, v);
+                                    if (v.trim()) {
+                                      setDetailErrors((current) => {
+                                        const next = { ...current };
+                                        const rowErrors = { ...(next[i] ?? {}) };
+                                        delete rowErrors[f.name];
+                                        if (Object.keys(rowErrors).length) next[i] = rowErrors;
+                                        else delete next[i];
+                                        return next;
+                                      });
+                                    }
+                                  },
                                   true,
                                   detailLookups?.[f.name],
                                 )
                               )}
+                              {detailErrors[i]?.[f.name] && (
+                                <p className="px-1 pt-0.5 text-[11px] text-danger">
+                                  {detailErrors[i][f.name]}
+                                </p>
+                              )}
                             </td>
                           );
                         })}
-                        <td className="text-center">
-                          {!readOnly && (
+                        {!readOnly && (
+                          <td className="text-center">
                             <button
                               type="button"
                               title="Xoá dòng"
@@ -445,8 +579,8 @@ export function MasterDetailEditModal({
                             >
                               <I.Trash size={13} />
                             </button>
-                          )}
-                        </td>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -474,7 +608,7 @@ export function MasterDetailEditModal({
                             </td>
                           );
                         })}
-                        <td />
+                        {!readOnly && <td />}
                       </tr>
                     </tfoot>
                   )}
@@ -484,15 +618,27 @@ export function MasterDetailEditModal({
                 <>
                   <Button
                     variant="ghost"
-                    onClick={() => setRows((rs) => [...rs, {}])}
+                    onClick={() =>
+                      setRows((rs) => [
+                        ...rs,
+                        {
+                          _key: crypto.randomUUID(),
+                          ...(config.detail.autoSequenceField
+                            ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
+                            : {}),
+                        },
+                      ])
+                    }
                     icon={<I.Plus size={13} />}
                   >
                     Thêm dòng
                   </Button>
-                  <p className="text-xs text-muted">
-                    Dòng mới sẽ tự gán {config.detail.linkField} = giá trị{" "}
-                    {config.detail.parentKeyField} ở tab Thông tin đơn hàng.
-                  </p>
+                  {config.layout !== "single" && (
+                    <p className="text-xs text-muted">
+                      Dòng mới sẽ tự gán {config.detail.linkField} = giá trị{" "}
+                      {config.detail.parentKeyField} ở phần thông tin.
+                    </p>
+                  )}
                 </>
               )}
             </div>

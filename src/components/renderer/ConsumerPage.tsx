@@ -2555,20 +2555,28 @@ function ListWidget({
       ? [
           {
             id: "__editform__",
-            header: () => "Sửa",
-            size: 56,
+            header: "Hành động",
+            size: 84,
             enableSorting: false,
             cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
               const rid = row.original.id ?? row.original.ID ?? row.original._id;
               if (rid == null) return null;
               return (
                 <div
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     type="button"
-                    title="Sửa đơn hàng"
+                    title="Xem thông tin"
+                    className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
+                    onClick={() => setEditModal({ id: String(rid), readOnly: true })}
+                  >
+                    <I.Eye size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    title="Sửa thông tin"
                     className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
                     onClick={() => setEditModal({ id: String(rid), readOnly: false })}
                   >
@@ -4112,6 +4120,15 @@ type SplitPanelCfg = {
   rowLimit?: number;
   pageSize?: number;
   defaultSort?: { field: string; dir: "asc" | "desc" };
+  /** Thanh hành động nhúng của widget con, giống list/form/detail độc lập. */
+  embeddedActions?: ActionBarItem[];
+  /** Cột hành động dựng sẵn Xem/Sửa/Xóa cho list trong panel. */
+  rowActionsBuiltin?: boolean;
+  rowActionsHidden?: string[];
+  rowActionsStyle?: "inline" | "popover";
+  rowActions?: ActionConfig[];
+  createForm?: CreateFormCfg;
+  editForm?: CreateFormCfg;
 };
 
 type SplitGridCell = SplitPanelCfg & {
@@ -4251,6 +4268,13 @@ function buildSubCfg(
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
+    embeddedActions: panel.embeddedActions,
+    rowActionsBuiltin: panel.rowActionsBuiltin,
+    rowActionsHidden: panel.rowActionsHidden,
+    rowActionsStyle: panel.rowActionsStyle,
+    rowActions: panel.rowActions,
+    createForm: panel.createForm,
+    editForm: panel.editForm,
     selectable: panel.selectable,
     addRowAtEnd: panel.addRowAtEnd,
     addRowPos: panel.addRowPos,
@@ -4310,10 +4334,13 @@ function RenderSubWidget({
   cfg: Record<string, unknown>;
   stateKey: string;
 }) {
+  const pageState = usePageState();
+  const embeddedActions = (cfg.embeddedActions ?? []) as ActionBarItem[];
+
   if (kind === "list") {
     // Bảng lớn: serverPaging → phân trang/sắp/lọc server-side (hỗ trợ cả sửa ô).
     if (cfg.serverPaging === true && cfg.excelMode !== true)
-      return (
+      return withEmbeddedActions(
         <ServerPagedListWidget
           entityId={cfg.entity as string | undefined}
           dataSourceId={cfg.dataSourceId as string | undefined}
@@ -4330,9 +4357,11 @@ function RenderSubWidget({
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
           selectable={cfg.selectable === true}
-        />
+        />,
+        embeddedActions,
+        pageState,
       );
-    return (
+    return withEmbeddedActions(
       <ListWidget
         entityId={cfg.entity as string | undefined}
         dataSourceId={cfg.dataSourceId as string | undefined}
@@ -4370,11 +4399,15 @@ function RenderSubWidget({
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
-      />
+      />,
+      embeddedActions,
+      pageState,
     );
   }
-  if (kind === "detail") return <DetailWidget cfg={cfg} />;
-  if (kind === "form") return <FormWidget cfg={cfg} />;
+  if (kind === "detail")
+    return withEmbeddedActions(<DetailWidget cfg={cfg} />, embeddedActions, pageState);
+  if (kind === "form")
+    return withEmbeddedActions(<FormWidget cfg={cfg} />, embeddedActions, pageState);
   if (kind === "chart") return <ChartWidget cfg={cfg} />;
   if (kind === "kanban") return <KanbanWidget cfg={cfg} />;
   return null;

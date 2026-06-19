@@ -15,6 +15,7 @@ import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
+import { MultiLookupPicker } from "./MultiLookupPicker";
 
 const api = createApiDataSource("");
 
@@ -27,13 +28,30 @@ export type FieldLookup = {
   valueField: string;
   /** Field nguồn hiển thị trong dropdown (mặc định = valueField). */
   labelFields?: string[];
+  multiple?: boolean;
+  separator?: string;
+  columnHeaders?: string[];
 };
 
 export type CreateFormCfg = {
   title?: string;
+  viewTitle?: string;
+  editTitle?: string;
+  subjectLabel?: string;
+  layout?: "tabs" | "single";
+  width?: number;
+  masterLabel?: string;
+  detailLabel?: string;
   /** Entity cha + cột nhập. fieldLookups: map fieldName → picker entity
    *  (vd customer → tr_khachhang) để field cha hiện combobox chọn. */
-  master: { entity: string; fields?: string[]; fieldLookups?: Record<string, FieldLookup> };
+  master: {
+    entity: string;
+    fields?: string[];
+    fieldLookups?: Record<string, FieldLookup>;
+    fieldLabels?: Record<string, string>;
+    requiredFields?: string[];
+    fullWidthFields?: string[];
+  };
   /** Entity con + cách nối với cha. */
   detail: {
     entity: string;
@@ -49,6 +67,9 @@ export type CreateFormCfg = {
     computed?: Record<string, string[]>;
     /** Field hiển thị TỔNG ở footer bảng (vd order_qty, amount). */
     footerSums?: string[];
+    fieldLabels?: Record<string, string>;
+    requiredFields?: string[];
+    autoSequenceField?: string;
   };
 };
 
@@ -76,6 +97,8 @@ interface Props {
   onClose: () => void;
   onCreated: () => void;
 }
+
+type DetailInputRow = Record<string, string> & { _key: string };
 
 /** Lọc field nhập được (bỏ formula/collection); theo danh sách cấu hình nếu có. */
 function pickFields(all: EntityField[], names?: string[]): EntityField[] {
@@ -136,8 +159,15 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
 
   const [tab, setTab] = useState<"master" | "detail">("master");
   const [master, setMaster] = useState<Record<string, string>>({});
-  const [rows, setRows] = useState<Record<string, string>[]>([{}]);
+  const [rows, setRows] = useState<DetailInputRow[]>([
+    {
+      _key: crypto.randomUUID(),
+      ...(config.detail.autoSequenceField ? { [config.detail.autoSequenceField]: "1" } : {}),
+    },
+  ]);
   const [saving, setSaving] = useState(false);
+  const [masterErrors, setMasterErrors] = useState<Record<string, string>>({});
+  const [detailErrors, setDetailErrors] = useState<Record<number, Record<string, string>>>({});
 
   // Nạp record của các entity nguồn dùng cho field-lookup (vd tr_sanpham) để
   // đổ vào dropdown; key theo danh sách entity để effect chạy lại khi đổi cấu hình.
@@ -191,15 +221,31 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
           .join(" — ");
         return { value: val, label: lbl || val };
       });
+      const richOpts = opts.map((option, index) => {
+        const cells = labelFields.map((field) => String(srcRows[index]?.[field] ?? ""));
+        return { ...option, cells, searchText: cells.join(" ") };
+      });
       // Placeholder suy từ nhãn entity nguồn → dùng chung cho mọi lookup
       // (khách hàng, sản phẩm, …) thay vì cố định "sản phẩm".
       const srcLabel = entities.find((e) => e.id === lookup.entity)?.name ?? "mục";
+      if (lookup.multiple) {
+        return (
+          <MultiLookupPicker
+            value={value ?? ""}
+            onChange={onChange}
+            options={richOpts}
+            title={srcLabel}
+            separator={lookup.separator}
+          />
+        );
+      }
       return (
         <SearchableSelect
           className="w-full"
           value={value ?? ""}
           onChange={onChange}
-          options={opts}
+          options={richOpts}
+          columnHeaders={lookup.columnHeaders}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
         />
@@ -248,7 +294,17 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
 
   const onSave = async () => {
     if (saving) return;
-    const missing = masterFields.filter((f) => f.required && !(master[f.name] ?? "").trim());
+    const requiredMaster = new Set(config.master.requiredFields ?? []);
+    const missing = masterFields.filter(
+      (f) => (f.required || requiredMaster.has(f.name)) && !(master[f.name] ?? "").trim(),
+    );
+    const nextMasterErrors = Object.fromEntries(
+      missing.map((field) => [
+        field.name,
+        `${config.master.fieldLabels?.[field.name] ?? field.label} là bắt buộc`,
+      ]),
+    );
+    setMasterErrors(nextMasterErrors);
     if (missing.length > 0) {
       setTab("master");
       toast.error(`Thiếu thông tin bắt buộc: ${missing.map((f) => f.label).join(", ")}`);
@@ -256,12 +312,36 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     }
     setSaving(true);
     try {
+      const validRows = rows.filter((row) =>
+        Object.entries(row).some(([field, value]) => field !== "_key" && value.trim() !== ""),
+      );
+      const requiredDetail = config.detail.requiredFields ?? [];
+      const nextDetailErrors: Record<number, Record<string, string>> = {};
+      validRows.forEach((row, rowIndex) => {
+        for (const field of requiredDetail) {
+          if (!(row[field] ?? "").trim()) {
+            nextDetailErrors[rowIndex] ??= {};
+            nextDetailErrors[rowIndex][field] =
+              `${config.detail.fieldLabels?.[field] ?? field} là bắt buộc`;
+          }
+        }
+      });
+      setDetailErrors(nextDetailErrors);
+      const invalidRow = Object.keys(nextDetailErrors).length
+        ? Number(Object.keys(nextDetailErrors)[0])
+        : -1;
+      if (invalidRow >= 0) {
+        setTab("detail");
+        throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
+      }
       await api.createRecord(config.master.entity, buildData(master, masterFields));
       const keyVal = (master[config.detail.parentKeyField] ?? "").trim();
       const computed = config.detail.computed;
-      const validRows = rows.filter((r) => Object.values(r).some((v) => (v ?? "").trim() !== ""));
-      for (const r of validRows) {
+      for (const [rowIndex, r] of validRows.entries()) {
         const data = buildData(r, detailFields);
+        if (config.detail.autoSequenceField) {
+          data[config.detail.autoSequenceField] = rowIndex + 1;
+        }
         if (keyVal) data[config.detail.linkField] = keyVal;
         // Field tự tính (vd amount = order_qty × price) — ghi đè khi lưu.
         if (computed)
@@ -270,12 +350,14 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         await api.createRecord(config.detail.entity, data);
       }
       toast.success(
-        `Đã tạo đơn hàng${validRows.length > 0 ? ` + ${validRows.length} dòng chi tiết` : ""}`,
+        `Đã tạo ${config.subjectLabel ?? "bản ghi"}${
+          validRows.length > 0 ? ` cùng ${validRows.length} dòng chi tiết` : ""
+        }`,
       );
       onCreated();
       onClose();
     } catch (e) {
-      toast.error((e as Error).message || "Lỗi khi tạo đơn hàng");
+      toast.error((e as Error).message || `Lỗi khi tạo ${config.subjectLabel ?? "bản ghi"}`);
     } finally {
       setSaving(false);
     }
@@ -286,7 +368,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       open
       onClose={onClose}
       title={config.title ?? "Thêm mới đơn hàng"}
-      width={1000}
+      width={config.width ?? 1000}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -298,35 +380,66 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         </>
       }
     >
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: "master", label: "Thông tin đơn hàng" },
-          { value: "detail", label: "Chi tiết đơn hàng" },
-        ]}
-      />
+      {(Object.keys(masterErrors).length > 0 || Object.keys(detailErrors).length > 0) && (
+        <div className="mb-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+          Vui lòng điền đầy đủ các trường bắt buộc được đánh dấu bên dưới.
+        </div>
+      )}
+      {config.layout !== "single" && (
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "master", label: config.masterLabel ?? "Thông tin" },
+            { value: "detail", label: config.detailLabel ?? "Chi tiết" },
+          ]}
+        />
+      )}
 
-      {tab === "master" ? (
+      {(config.layout === "single" || tab === "master") && (
         <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
           {masterFields.map((f) => (
-            <div key={f.id} className="space-y-1">
+            <div
+              key={f.id}
+              className={
+                config.master.fullWidthFields?.includes(f.name)
+                  ? "space-y-1 col-span-2"
+                  : "space-y-1"
+              }
+            >
               <label className="text-xs font-medium">
-                {f.label}
-                {f.required && <span className="text-danger ml-0.5">*</span>}
+                {config.master.fieldLabels?.[f.name] ?? f.label}
+                {(f.required || config.master.requiredFields?.includes(f.name)) && (
+                  <span className="text-danger ml-0.5">*</span>
+                )}
               </label>
-              {renderInput(
-                f,
-                master[f.name] ?? "",
-                (v) => setMaster((s) => ({ ...s, [f.name]: v })),
-                false,
-                masterLookups?.[f.name],
+              <div className={masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined}>
+                {renderInput(
+                  f,
+                  master[f.name] ?? "",
+                  (v) => {
+                    setMaster((s) => ({ ...s, [f.name]: v }));
+                    if (v.trim()) {
+                      setMasterErrors((current) => {
+                        const next = { ...current };
+                        delete next[f.name];
+                        return next;
+                      });
+                    }
+                  },
+                  false,
+                  masterLookups?.[f.name],
+                )}
+              </div>
+              {masterErrors[f.name] && (
+                <p className="text-xs text-danger">{masterErrors[f.name]}</p>
               )}
             </div>
           ))}
         </div>
-      ) : (
-        <div className="mt-3 space-y-2">
+      )}
+      {(config.layout === "single" || tab === "detail") && (
+        <div className={config.layout === "single" ? "mt-4 space-y-2" : "mt-3 space-y-2"}>
           <div className="overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto">
             <table className="text-sm w-full">
               <thead className="bg-panel-2 sticky top-0">
@@ -336,7 +449,10 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                       key={f.id}
                       className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
                     >
-                      {f.label}
+                      {config.detail.fieldLabels?.[f.name] ?? f.label}
+                      {config.detail.requiredFields?.includes(f.name) && (
+                        <span className="text-danger ml-0.5">*</span>
+                      )}
                     </th>
                   ))}
                   <th className="w-8" />
@@ -344,8 +460,14 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: dòng nhập tạm chưa có id ổn định; chỉ số là danh tính trong phiên nhập
-                  <tr key={i} className="border-t border-border">
+                  <tr
+                    key={r._key}
+                    className={
+                      detailErrors[i]
+                        ? "border-t border-danger bg-danger/5"
+                        : "border-t border-border"
+                    }
+                  >
                     {detailFields.map((f) => {
                       const factors = config.detail.computed?.[f.name];
                       return (
@@ -366,10 +488,27 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                             renderInput(
                               f,
                               r[f.name] ?? "",
-                              (v) => setRow(i, f.name, v),
+                              (v) => {
+                                setRow(i, f.name, v);
+                                if (v.trim()) {
+                                  setDetailErrors((current) => {
+                                    const next = { ...current };
+                                    const rowErrors = { ...(next[i] ?? {}) };
+                                    delete rowErrors[f.name];
+                                    if (Object.keys(rowErrors).length) next[i] = rowErrors;
+                                    else delete next[i];
+                                    return next;
+                                  });
+                                }
+                              },
                               true,
                               detailLookups?.[f.name],
                             )
+                          )}
+                          {detailErrors[i]?.[f.name] && (
+                            <p className="px-1 pt-0.5 text-[11px] text-danger">
+                              {detailErrors[i][f.name]}
+                            </p>
                           )}
                         </td>
                       );
@@ -417,15 +556,27 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
           </div>
           <Button
             variant="ghost"
-            onClick={() => setRows((rs) => [...rs, {}])}
+            onClick={() =>
+              setRows((rs) => [
+                ...rs,
+                {
+                  _key: crypto.randomUUID(),
+                  ...(config.detail.autoSequenceField
+                    ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
+                    : {}),
+                },
+              ])
+            }
             icon={<I.Plus size={13} />}
           >
             Thêm dòng
           </Button>
-          <p className="text-xs text-muted">
-            Mỗi dòng chi tiết sẽ tự gán {config.detail.linkField} = giá trị{" "}
-            {config.detail.parentKeyField} ở tab Thông tin đơn hàng.
-          </p>
+          {config.layout !== "single" && (
+            <p className="text-xs text-muted">
+              Mỗi dòng chi tiết sẽ tự gán {config.detail.linkField} = giá trị{" "}
+              {config.detail.parentKeyField} ở phần thông tin.
+            </p>
+          )}
         </div>
       )}
     </Modal>

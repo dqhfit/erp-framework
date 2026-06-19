@@ -1268,10 +1268,9 @@ export function PageDesigner({ pageId }: Props) {
                             config: {
                               ...c.config,
                               [pKey]: {
+                                ...src.config,
                                 linkField: existing.linkField,
                                 kind: src.kind,
-                                entity: src.config.entity,
-                                title: src.config.title,
                               },
                             },
                           });
@@ -1305,6 +1304,19 @@ export function PageDesigner({ pageId }: Props) {
                                     pageSize: src.config.pageSize as number | undefined,
                                     defaultSort: src.config.defaultSort as
                                       | { field: string; dir: "asc" | "desc" }
+                                      | undefined,
+                                    embeddedActions: src.config.embeddedActions as
+                                      | ActionBarItem[]
+                                      | undefined,
+                                    rowActionsBuiltin: src.config.rowActionsBuiltin as
+                                      | boolean
+                                      | undefined,
+                                    rowActionsHidden: src.config.rowActionsHidden as
+                                      | string[]
+                                      | undefined,
+                                    rowActionsStyle: src.config.rowActionsStyle as
+                                      | "inline"
+                                      | "popover"
                                       | undefined,
                                   }
                                 : cell,
@@ -2539,6 +2551,10 @@ export function PageDesigner({ pageId }: Props) {
                         rowLimit?: number;
                         addRowAtEnd?: boolean;
                         addRowPos?: string;
+                        embeddedActions?: ActionBarItem[];
+                        rowActionsBuiltin?: boolean;
+                        rowActionsHidden?: string[];
+                        rowActionsStyle?: "inline" | "popover";
                         // chart
                         chartKind?: string;
                         groupBy?: string;
@@ -2987,6 +3003,82 @@ export function PageDesigner({ pageId }: Props) {
                                     }
                                   />
                                 </FormField>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs">Cột hành động</span>
+                                  <Switch
+                                    checked={panel.rowActionsBuiltin === true}
+                                    onChange={(v) => onUpdate({ ...panel, rowActionsBuiltin: v })}
+                                  />
+                                </div>
+                                {panel.rowActionsBuiltin === true && (
+                                  <>
+                                    <FormField label="Kiểu hiển thị">
+                                      <Select
+                                        value={panel.rowActionsStyle ?? "inline"}
+                                        onChange={(e) =>
+                                          onUpdate({
+                                            ...panel,
+                                            rowActionsStyle: e.target.value as "inline" | "popover",
+                                          })
+                                        }
+                                      >
+                                        <option value="inline">Inline (nút Xem · Sửa · Xoá)</option>
+                                        <option value="popover">Popover (nút ⋯ gọn)</option>
+                                      </Select>
+                                    </FormField>
+                                    {(panel.rowActionsStyle ?? "inline") === "popover" && (
+                                      <div className="p-2.5 rounded-md border border-border bg-bg-soft">
+                                        <div className="text-sm mb-0.5">Nút hiện trên popover</div>
+                                        <div className="text-[11px] text-muted mb-2">
+                                          Bỏ tích để ẩn nút khỏi popover ⋯
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                          {ROW_ACTION_OPTIONS.map((opt) => {
+                                            const hidden = panel.rowActionsHidden ?? [];
+                                            return (
+                                              <label
+                                                key={opt.key}
+                                                className="flex items-center gap-1.5 text-[12px] cursor-pointer"
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  className="accent-accent shrink-0"
+                                                  checked={!hidden.includes(opt.key)}
+                                                  onChange={(e) => {
+                                                    const next = e.target.checked
+                                                      ? hidden.filter((key) => key !== opt.key)
+                                                      : [...hidden, opt.key];
+                                                    onUpdate({
+                                                      ...panel,
+                                                      rowActionsHidden: next,
+                                                    });
+                                                  }}
+                                                />
+                                                <span className="truncate">{opt.label}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+
+                            {(panel.kind === "list" ||
+                              panel.kind === "form" ||
+                              panel.kind === "detail" ||
+                              (!panel.kind && defaultKind === "list")) && (
+                              <div className="pt-2 border-t border-border/40">
+                                <ActionBarInspector
+                                  items={panel.embeddedActions ?? []}
+                                  align="left"
+                                  embedded
+                                  onChange={(items) =>
+                                    onUpdate({ ...panel, embeddedActions: items })
+                                  }
+                                />
                               </div>
                             )}
 
@@ -4367,6 +4459,10 @@ export type SplitGridCell = {
   rowLimit?: number;
   pageSize?: number;
   defaultSort?: { field: string; dir: "asc" | "desc" };
+  embeddedActions?: ActionBarItem[];
+  rowActionsBuiltin?: boolean;
+  rowActionsHidden?: string[];
+  rowActionsStyle?: "inline" | "popover";
   chartKind?: string;
   groupBy?: string;
   valueField?: string;
