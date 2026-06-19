@@ -4343,6 +4343,20 @@ function RenderSubWidget({
   const pageState = usePageState();
   const embeddedActions = (cfg.embeddedActions ?? []) as ActionBarItem[];
 
+  // Split widget lồng nhau bên trong tab panel — dùng stateKey làm id để namespace state
+  if (kind === "split") {
+    const fakeComp: PageComponent = {
+      id: stateKey.replace(/[^a-zA-Z0-9_]/g, "_"),
+      kind: "split",
+      x: 0,
+      y: 0,
+      w: 12,
+      h: 12,
+      config: cfg,
+    };
+    return <SplitWidget comp={fakeComp} />;
+  }
+
   if (kind === "list") {
     // Bảng lớn: serverPaging → phân trang/sắp/lọc server-side (hỗ trợ cả sửa ô).
     if (cfg.serverPaging === true && cfg.excelMode !== true)
@@ -4576,11 +4590,24 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
 
   // ── Tabs ──────────────────────────────────────────────────────────────
   if (isTabs) {
-    const tabDefs = [
-      { key: "A", cfg: cfgA, kind: kindA, label: panelA.title || "A" },
-      { key: "B", cfg: cfgB, kind: kindB, label: panelB.title || "B" },
-      ...(count >= 3 ? [{ key: "C", cfg: cfgC, kind: kindC, label: panelC.title || "C" }] : []),
-    ];
+    // tabPanels array → N tabs (không giới hạn A/B/C); fallback về fixed A/B/C cũ
+    const rawTabPanels = cfg.tabPanels as Array<SplitPanelCfg & { title?: string }> | undefined;
+    const tabDefs = rawTabPanels?.length
+      ? rawTabPanels.map((p, i) => {
+          const kind = (p.kind as string) ?? "list";
+          // kind="split" → pass-through raw config (panelA/panelB/orientation phải giữ nguyên)
+          // Các kind khác → buildSubCfg chuẩn hóa (thêm selectionStateKey, linkField…)
+          const tabCfg =
+            kind === "split"
+              ? (p as unknown as Record<string, unknown>)
+              : buildSubCfg({ ...p, linkField: undefined }, splitKey, String(i));
+          return { key: String(i), cfg: tabCfg, kind, label: p.title ?? `Tab ${i + 1}` };
+        })
+      : [
+          { key: "A", cfg: cfgA, kind: kindA, label: panelA.title || "A" },
+          { key: "B", cfg: cfgB, kind: kindB, label: panelB.title || "B" },
+          ...(count >= 3 ? [{ key: "C", cfg: cfgC, kind: kindC, label: panelC.title || "C" }] : []),
+        ];
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex border-b border-border shrink-0">
