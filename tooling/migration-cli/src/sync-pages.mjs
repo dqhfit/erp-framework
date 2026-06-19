@@ -472,12 +472,18 @@ try {
           content = translated;
         }
       }
+      // MCP prod co the dang chay phien ban cu (chi chap nhan mang thuon).
+      // Neu content la {meta, components} thi thu nguyen; neu bi tu choi thi fallback mang.
+      let mcpContent = content;
+      if (!Array.isArray(content) && Array.isArray(content?.components)) {
+        mcpContent = content.components;
+      }
       const r = await mcp("page_create_draft", {
         id: p.id,
         name: p.name,
         label: p.label,
         icon: p.icon ?? undefined,
-        content,
+        content: mcpContent,
         overwrite: true,
         overwritePublished: true,
       });
