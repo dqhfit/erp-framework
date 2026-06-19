@@ -182,23 +182,36 @@ function BindingSourceConfig({
         </button>
       </div>
       {isDs && (
-        <Select
-          value={dsId ?? ""}
-          // Chọn nguồn KHÁC = thay đổi THẬT → reset fields (schema khác). Chọn lại
-          // đúng nguồn hiện tại = no-op (giữ nguyên cấu hình cột).
-          onChange={(e) => {
-            if (e.target.value === dsId) return;
-            setLastDsId(e.target.value);
-            onChange({ dataSourceId: e.target.value, fields: null });
-          }}
-        >
-          <option value="">— chọn nguồn dữ liệu —</option>
-          {dataSources.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </Select>
+        <div className="flex gap-1 items-center">
+          <div className="flex-1 min-w-0">
+            <Select
+              value={dsId ?? ""}
+              // Chọn nguồn KHÁC = thay đổi THẬT → reset fields (schema khác). Chọn lại
+              // đúng nguồn hiện tại = no-op (giữ nguyên cấu hình cột).
+              onChange={(e) => {
+                if (e.target.value === dsId) return;
+                setLastDsId(e.target.value);
+                onChange({ dataSourceId: e.target.value, fields: null });
+              }}
+            >
+              <option value="">— chọn nguồn dữ liệu —</option>
+              {dataSources.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <button
+            type="button"
+            title="Mở nguồn dữ liệu"
+            disabled={!dsId}
+            onClick={() => window.open(`/datasources/${dsId}`, "_blank", "noopener,noreferrer")}
+            className="shrink-0 w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40 text-muted"
+          >
+            <I.ExternalLink size={12} />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -1491,24 +1504,43 @@ export function PageDesigner({ pageId }: Props) {
                             <div className="text-xs font-semibold text-muted">
                               Nguồn tuỳ chọn (datasource)
                             </div>
-                            <Select
-                              value={fcfg.dataSourceId ?? ""}
-                              onChange={(e) =>
-                                upd({
-                                  dataSourceId: e.target.value,
-                                  labelField: undefined,
-                                  valueField: undefined,
-                                  familyField: undefined,
-                                })
-                              }
-                            >
-                              <option value="">— chọn nguồn dữ liệu —</option>
-                              {dataSources.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                  {d.name}
-                                </option>
-                              ))}
-                            </Select>
+                            <div className="flex gap-1 items-center">
+                              <div className="flex-1 min-w-0">
+                                <Select
+                                  value={fcfg.dataSourceId ?? ""}
+                                  onChange={(e) =>
+                                    upd({
+                                      dataSourceId: e.target.value,
+                                      labelField: undefined,
+                                      valueField: undefined,
+                                      familyField: undefined,
+                                    })
+                                  }
+                                >
+                                  <option value="">— chọn nguồn dữ liệu —</option>
+                                  {dataSources.map((d) => (
+                                    <option key={d.id} value={d.id}>
+                                      {d.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
+                              <button
+                                type="button"
+                                title="Mở nguồn dữ liệu"
+                                disabled={!fcfg.dataSourceId}
+                                onClick={() =>
+                                  window.open(
+                                    `/datasources/${fcfg.dataSourceId}`,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
+                                className="shrink-0 w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40 text-muted"
+                              >
+                                <I.ExternalLink size={12} />
+                              </button>
+                            </div>
                           </div>
                           {dsc ? (
                             <>
@@ -1625,27 +1657,46 @@ export function PageDesigner({ pageId }: Props) {
                           {sel.config.dataSourceId === undefined && (
                             <>
                               <FormField label="Entity">
-                                <Select
-                                  value={(sel.config.entity as string) ?? ""}
-                                  onChange={(e) =>
-                                    update(sel.id, {
-                                      config: {
-                                        ...sel.config,
-                                        entity: e.target.value,
-                                        fields: null,
-                                        groupBy: "",
-                                        valueField: "",
-                                      },
-                                    })
-                                  }
-                                >
-                                  <option value="">{t("field.choose")}</option>
-                                  {entities.map((en) => (
-                                    <option key={en.id} value={en.id}>
-                                      {en.name}
-                                    </option>
-                                  ))}
-                                </Select>
+                                <div className="flex gap-1 items-center">
+                                  <div className="flex-1 min-w-0">
+                                    <Select
+                                      value={(sel.config.entity as string) ?? ""}
+                                      onChange={(e) =>
+                                        update(sel.id, {
+                                          config: {
+                                            ...sel.config,
+                                            entity: e.target.value,
+                                            fields: null,
+                                            groupBy: "",
+                                            valueField: "",
+                                          },
+                                        })
+                                      }
+                                    >
+                                      <option value="">{t("field.choose")}</option>
+                                      {entities.map((en) => (
+                                        <option key={en.id} value={en.id}>
+                                          {en.name}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    title="Mở entity"
+                                    disabled={!(sel.config.entity as string | undefined)}
+                                    onClick={() =>
+                                      window.open(
+                                        `/entities/${sel.config.entity}`,
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                      )
+                                    }
+                                    className="shrink-0 w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40 text-muted"
+                                  >
+                                    <I.ExternalLink size={12} />
+                                  </button>
+                                </div>
                               </FormField>
 
                               {/* Field checklist — list / form / detail khi đã bind entity */}
@@ -2581,15 +2632,32 @@ export function PageDesigner({ pageId }: Props) {
                               </Select>
                             </FormField>
                             <FormField label="Entity">
-                              <SearchableSelect
-                                value={panel.entity ?? ""}
-                                onChange={(v) => onUpdate({ ...panel, entity: v })}
-                                emptyOption="— chọn entity —"
-                                options={[...entities]
-                                  .sort((a, b) => a.name.localeCompare(b.name, "vi"))
-                                  .map((e) => ({ value: e.id, label: e.name }))}
-                                className="w-full"
-                              />
+                              <div className="flex gap-1 items-center">
+                                <SearchableSelect
+                                  value={panel.entity ?? ""}
+                                  onChange={(v) => onUpdate({ ...panel, entity: v })}
+                                  emptyOption="— chọn entity —"
+                                  options={[...entities]
+                                    .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+                                    .map((e) => ({ value: e.id, label: e.name }))}
+                                  className="flex-1 min-w-0"
+                                />
+                                <button
+                                  type="button"
+                                  title="Mở entity"
+                                  disabled={!panel.entity}
+                                  onClick={() =>
+                                    window.open(
+                                      `/entities/${panel.entity}`,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    )
+                                  }
+                                  className="shrink-0 w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40 text-muted"
+                                >
+                                  <I.ExternalLink size={12} />
+                                </button>
+                              </div>
                             </FormField>
                             <FormField label="Tiêu đề">
                               <Input
@@ -3420,15 +3488,32 @@ export function PageDesigner({ pageId }: Props) {
                                 </Select>
                               </FormField>
                               <FormField label="Entity">
-                                <SearchableSelect
-                                  value={selCell.entity ?? ""}
-                                  onChange={(v) => updateCell({ entity: v || undefined })}
-                                  emptyOption="— chọn entity —"
-                                  options={[...entities]
-                                    .sort((a, b) => a.name.localeCompare(b.name, "vi"))
-                                    .map((e) => ({ value: e.id, label: e.name }))}
-                                  className="w-full"
-                                />
+                                <div className="flex gap-1 items-center">
+                                  <SearchableSelect
+                                    value={selCell.entity ?? ""}
+                                    onChange={(v) => updateCell({ entity: v || undefined })}
+                                    emptyOption="— chọn entity —"
+                                    options={[...entities]
+                                      .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+                                      .map((e) => ({ value: e.id, label: e.name }))}
+                                    className="flex-1 min-w-0"
+                                  />
+                                  <button
+                                    type="button"
+                                    title="Mở entity"
+                                    disabled={!selCell.entity}
+                                    onClick={() =>
+                                      window.open(
+                                        `/entities/${selCell.entity}`,
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                      )
+                                    }
+                                    className="shrink-0 w-7 h-7 rounded border border-border flex items-center justify-center hover:bg-hover disabled:opacity-40 text-muted"
+                                  >
+                                    <I.ExternalLink size={12} />
+                                  </button>
+                                </div>
                               </FormField>
                               <FormField label="Tiêu đề">
                                 <Input
