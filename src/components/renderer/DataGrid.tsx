@@ -1029,9 +1029,9 @@ export function DataGrid<T>({
     >
       {toolbar && (
         <div className="border-b border-border bg-panel-2/40 shrink-0">
-          {/* Hàng 1: tiêu đề + tìm kiếm + filter + chọn dòng */}
-          <div className="flex items-center gap-1 px-2 py-1">
-            {/* Tên list + đếm dòng xếp dọc — gom vào 1 cột nhỏ bên trái */}
+          {/* Toolbar: flex-wrap — sm+ = 1 hàng (label+search+nút); xs = tự wrap 2 hàng */}
+          <div className="relative z-20 flex flex-wrap items-center gap-1 px-2 py-1">
+            {/* Tên list + đếm dòng xếp dọc */}
             {label && (
               <div className="flex flex-col shrink-0 mr-0.5 leading-none">
                 <span className="text-xs font-semibold text-muted">{label}</span>
@@ -1043,45 +1043,59 @@ export function DataGrid<T>({
               </div>
             )}
 
-            <div className="relative flex-1 min-w-[140px] max-w-full sm:max-w-[260px]">
+            {/* Ô tìm kiếm — cố định chiều rộng, không dãn ra */}
+            <div className="relative flex-none w-44 min-w-[120px]">
               <I.Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
               <Input
                 placeholder={t("datagrid.search_placeholder")}
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-7! pr-7! h-7 text-xs"
+                className="pl-7! pr-2! h-7 text-xs"
               />
-              {globalFilter && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSelectCol((v) => {
-                      if (v) clearSelection();
-                      return !v;
-                    })
-                  }
-                  title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
-                  className={cn(
-                    "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
-                    selecting
-                      ? "border-accent/60 text-accent bg-accent/10"
-                      : "border-border text-muted hover:text-text hover:border-border",
-                  )}
-                >
-                  <I.Check size={12} />
-                  {someSelected && <span>{selectedCount}</span>}
-                </button>
-              )}
-
-              {serverMode && server?.loading && (
-                <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
-              )}
             </div>
-          </div>
 
-          {/* Hàng 2: outer z-20 → dropdown không bị clip overflow; inner scroll → button strip */}
-          <div className="relative z-20">
-            <div className="flex items-center gap-1 px-2 pb-1 overflow-x-auto">
+            {/* Nút bật/tắt chọn dòng — hiện khi đang lọc */}
+            {globalFilter && (
+              <button
+                type="button"
+                onClick={() =>
+                  setShowSelectCol((v) => {
+                    if (v) clearSelection();
+                    return !v;
+                  })
+                }
+                title={showSelectCol ? "Tắt chọn dòng" : "Bật chọn dòng"}
+                className={cn(
+                  "inline-flex items-center gap-1 px-1.5 h-6 rounded text-xs border transition-colors shrink-0",
+                  selecting
+                    ? "border-accent/60 text-accent bg-accent/10"
+                    : "border-border text-muted hover:text-text hover:border-border",
+                )}
+              >
+                <I.Check size={12} />
+                {someSelected && <span>{selectedCount}</span>}
+              </button>
+            )}
+
+            {serverMode && server?.loading && (
+              <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
+            )}
+
+            {/* Đếm dòng inline — chỉ hiện khi không có label (label đã hiện ở trên) */}
+            {!label && (
+              <span className="text-[10px] text-muted/70 shrink-0 px-0.5">
+                {serverMode
+                  ? t("datagrid.row_count_server", { total: totalCount })
+                  : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
+              </span>
+            )}
+
+            {/* xs: ép nút xuống hàng mới; sm+: khoảng trống đẩy nút sang phải */}
+            <div className="w-full sm:hidden" aria-hidden />
+            <div className="hidden sm:block flex-1" aria-hidden />
+
+            {/* Dải nút — cuộn ngang khi không đủ chỗ */}
+            <div className="flex items-center gap-1 pb-0.5 sm:pb-0 overflow-x-auto shrink-0">
               {/* Column filter toggle */}
               <button
                 type="button"
@@ -1540,15 +1554,6 @@ export function DataGrid<T>({
               </div>
             )}
           </div>
-
-          {serverMode && server?.loading && (
-            <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
-          )}
-          <Chip className="shrink-0 text-xs">
-            {serverMode
-              ? t("datagrid.row_count_server", { total: totalCount })
-              : t("datagrid.row_count", { filtered: filteredCount, total: data.length })}
-          </Chip>
         </div>
       )}
 
