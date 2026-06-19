@@ -1541,38 +1541,6 @@ export function DataGrid<T>({
             )}
           </div>
 
-          {/* Xuất Excel .xlsx (workbook thật) — cột đang hiện + dòng đã lọc/sắp */}
-          <button
-            type="button"
-            onClick={() => {
-              void exportRowsXlsx(
-                exportCols,
-                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
-                label || "export",
-              );
-            }}
-            title={t("datagrid.export_xlsx")}
-            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-          >
-            <I.Table size={11} />
-          </button>
-
-          {/* Xuất CSV — cột đang hiện + dòng đã lọc/sắp */}
-          <button
-            type="button"
-            onClick={() =>
-              exportRowsCsv(
-                exportCols,
-                table.getSortedRowModel().rows.filter((r) => !r.getIsGrouped()),
-                label || "export",
-              )
-            }
-            title={t("datagrid.export")}
-            className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs border border-border text-muted hover:text-text hover:border-border transition-colors"
-          >
-            <I.Download size={11} />
-          </button>
-
           {serverMode && server?.loading && (
             <I.Loader size={12} className="shrink-0 animate-spin text-muted" />
           )}
