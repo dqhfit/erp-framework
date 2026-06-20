@@ -26,6 +26,7 @@ export function PagesTreeSection({
   onUnassignPage,
   onChangeNodePage,
   onManageMenu,
+  loading,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -44,6 +45,7 @@ export function PagesTreeSection({
   onChangeNodePage?: (node: NavNode) => void;
   /** Mở trang Quản lý menu (icon trên header). */
   onManageMenu?: () => void;
+  loading?: boolean;
 }) {
   const t = useT();
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
@@ -215,6 +217,7 @@ export function PagesTreeSection({
             }}
             storageKey="sidebar"
             compact
+            loading={loading}
             onUnassign={onUnassignPage}
             onChangePage={onChangeNodePage}
           />

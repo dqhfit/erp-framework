@@ -64,7 +64,7 @@ function PortalRoute() {
 
   // Cây điều hướng theo MENU DQHF (legacy_menu_map) — node + pageId trang
   // published. Rỗng (chưa link/publish) → fallback danh sách phẳng.
-  const { data: navNodes = [] } = useNavTree();
+  const { data: navNodes = [], isLoading: navLoading } = useNavTree();
 
   const { prefs, loaded: prefsLoaded, save: savePrefs, load: loadPrefs } = usePreferences();
 
@@ -504,7 +504,7 @@ function PortalRoute() {
                 })}
               </ul>
             )
-          ) : navNodes.some((n) => n.pageId) ? (
+          ) : navLoading || navNodes.some((n) => n.pageId) ? (
             // Điều hướng THEO MENU DQHF (cây) khi có node link trang published.
             // Portal: mở hết cây lần đầu + NHỚ trạng thái mở/thu gọn qua reload.
             <MenuTree
@@ -517,6 +517,7 @@ function PortalRoute() {
               cleanLabels
               compact
               isolatable
+              loading={navLoading}
               isFav={(id) => favs.isFav(id)}
               onToggleFav={(node) => {
                 if (!node.pageId) return;

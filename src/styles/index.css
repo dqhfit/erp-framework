@@ -499,6 +499,19 @@ textarea.input {
   overflow: hidden;
 }
 
+/* MenuTree — smooth expand/collapse via grid-template-rows transition */
+.menu-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.15s ease;
+}
+.menu-collapse.open {
+  grid-template-rows: 1fr;
+}
+.menu-collapse > ul {
+  overflow: hidden;
+}
+
 /* Drag-to-scroll: cursor gợi ý có thể kéo ngang trên cell dữ liệu */
 .datagrid-scroll td { cursor: grab; }
 .datagrid-scroll input,

@@ -165,7 +165,7 @@ export function Sidebar() {
 
   // Cây điều hướng TRANG theo MENU DQHF (legacy_menu_map.navTree). Admin/editor
   // thấy cả trang draft; rỗng (chưa link menu) → fallback danh sách phẳng.
-  const { data: navNodesData } = useNavTree();
+  const { data: navNodesData, isLoading: navLoading } = useNavTree();
   const navNodes = navNodesData ?? [];
   const invalidateNavTree = useInvalidateNavTree();
   // Trang đang gán vào menu (mở modal).
@@ -519,7 +519,8 @@ export function Sidebar() {
             // CÂY MENU DQHF: khi có node link trang + không thu nhỏ + không tìm
             // kiếm → 2 nhóm: "Menu" (cây điều hướng) + "Trang" (mọi trang, badge
             // "có menu"). Ngược lại: danh sách phẳng (fallback hoặc search/thu nhỏ).
-            const useTree = navNodes.some((n) => n.pageId) && !collapsed && !search.trim();
+            const useTree =
+              (navLoading || navNodes.some((n) => n.pageId)) && !collapsed && !search.trim();
             if (useTree) {
               // Toàn bộ trang (đã/chưa gắn menu) cho nhóm "Trang".
               const allPages: PageListItem[] = [
@@ -552,6 +553,7 @@ export function Sidebar() {
                     navNodes={navNodes}
                     allPages={allPages}
                     onOpen={(to) => navigate({ to })}
+                    loading={navLoading}
                     onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
                     onChangeNodePage={
                       can("edit", "settings")
