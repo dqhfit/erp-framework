@@ -2642,12 +2642,16 @@ export function PageDesigner({ pageId }: Props) {
                               />
                             </FormField>
                           )}
-                          {sel.kind === "listbox" && (
+                          {(sel.kind === "combobox" || sel.kind === "listbox") && (
                             <FormField label="Chọn nhiều">
                               <label className="flex items-center gap-2 text-sm cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={cfg2.multiSelect !== false}
+                                  checked={
+                                    sel.kind === "listbox"
+                                      ? cfg2.multiSelect !== false
+                                      : !!cfg2.multiSelect
+                                  }
                                   onChange={(e) => upd({ multiSelect: e.target.checked })}
                                   className="accent-accent"
                                 />
