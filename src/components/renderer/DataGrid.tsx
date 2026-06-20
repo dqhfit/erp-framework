@@ -36,7 +36,6 @@ import {
   isNumericColumn,
   PAGE_SIZE_OPTIONS,
   pinnedStyle,
-  type SavedGridState,
   SUMMARY_LABEL,
   type SummaryType,
   sizedWidth,
@@ -47,12 +46,12 @@ import type {
   ServerPagingController,
 } from "@/components/renderer/datagrid/types";
 import { useColumnAutofit } from "@/components/renderer/datagrid/use-column-autofit";
+import { useGridPersistence } from "@/components/renderer/datagrid/use-grid-persistence";
 import { PasteGridModal } from "@/components/renderer/PasteGridModal";
 import { Chip, Input } from "@/components/ui";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
-import { idbGet, idbSet } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
 
 // Re-export type công khai để BandEditor/PageDesigner/ConsumerPage giữ nguyên import.
@@ -209,62 +208,31 @@ export function DataGrid<T>({
     return () => ro.disconnect();
   });
 
-  // Restore state from IDB once on mount
-  const restoredRef = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ restore 1 lần khi mount theo stateKey, các setter ổn định không cần liệt kê
-  useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-    if (!stateKey) {
-      setRestoreSettled(true); // không lưu state → coi như đã nạp xong (cho autofit-on-load).
-      return;
-    }
-    idbGet<SavedGridState>(stateKey)
-      .then((saved) => {
-        if (!saved) return;
-        if (saved.sorting?.length) setSorting(saved.sorting);
-        if (saved.globalFilter) setGlobalFilter(saved.globalFilter);
-        if (saved.grouping?.length) setGrouping(saved.grouping);
-        if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
-        if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
-        if (saved.columnSizing) setColumnSizing(saved.columnSizing);
-        if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
-        if (saved.columnPinning) setColumnPinning(saved.columnPinning);
-      })
-      .finally(() => setRestoreSettled(true));
-  }, [stateKey]);
-
-  // Debounce save to IDB on state change
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!stateKey) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      void idbSet(stateKey, {
-        sorting,
-        globalFilter,
-        grouping,
-        columnFilters,
-        columnVisibility,
-        columnSizing,
-        columnOrder,
-        columnPinning,
-      });
-    }, 400);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [
+  // Restore (mount) + debounce-save trạng thái lưới xuống IDB theo stateKey.
+  useGridPersistence({
     stateKey,
-    sorting,
-    globalFilter,
-    grouping,
-    columnFilters,
-    columnVisibility,
-    columnSizing,
-    columnOrder,
-    columnPinning,
-  ]);
+    state: {
+      sorting,
+      globalFilter,
+      grouping,
+      columnFilters,
+      columnVisibility,
+      columnSizing,
+      columnOrder,
+      columnPinning,
+    },
+    apply: {
+      setSorting,
+      setGlobalFilter,
+      setGrouping,
+      setColumnFilters,
+      setColumnVisibility,
+      setColumnSizing,
+      setColumnOrder,
+      setColumnPinning,
+      setRestoreSettled,
+    },
+  });
 
   // Close group picker on outside click
   useEffect(() => {
