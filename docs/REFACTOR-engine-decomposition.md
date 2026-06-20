@@ -1,9 +1,17 @@
 # Kế hoạch decomposition 2 file engine: ConsumerPage + PageDesigner
 
-> Trạng thái: **2 file đã trích hết pure-helper an toàn** (date-cell-utils,
-> consumer-utils, grid-layout). Phần còn lại là decomposition KIẾN TRÚC
-> (widget/inspector + foundation), **cần test render thủ công** — không phải
-> "move pure code". Tài liệu này là kế hoạch để làm trong (các) phiên RIÊNG.
+> Trạng thái (cập nhật 2026-06-20): **ĐÃ XONG A1→A7 + B1→B3** (mỗi stage 1
+> commit, di chuyển verbatim/byte-identical, typecheck + biome 0 error, 530
+> unit test xanh). ConsumerPage 6538 → **801 dòng**; PageDesigner 6167 →
+> **3935 dòng**. File mới: renderer/{page-types.ts, page-data.tsx,
+> widgets/{viz-widgets,input-widgets,FilterWidget,FormDetailWidget,list-widgets,
+> layout-widgets}.tsx}; designer/{page-designer-constants.ts (thêm PageComponent+
+> ActionBarItem), canvas/canvas-preview.tsx, inspectors/inspector-helpers.tsx}.
+>
+> **CÒN LẠI: B4** (tách inspector inline trong main PageDesigner) — KHÔNG phải
+> pure-move: phải nâng ~19 useState vào hook + prop-thread, **bắt buộc QA render
+> thủ công theo từng tab** (lỗi closure/re-render KHÔNG lộ qua typecheck). Để làm
+> trong phiên RIÊNG có chạy app (designer mode) để kiểm từng tab.
 
 ## Vì sao tách riêng, cẩn thận
 
