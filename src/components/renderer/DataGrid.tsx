@@ -20,21 +20,11 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { FacetFilterInput } from "@/components/renderer/datagrid/FacetFilterInput";
 import {
-  COMPACT_CLAMP,
   cellFormatClass,
-  clampColW,
   computeSummary,
   DEFAULT_PAGE_SIZE,
   exportRowsCsv,
@@ -56,6 +46,7 @@ import type {
   ServerGridQuery,
   ServerPagingController,
 } from "@/components/renderer/datagrid/types";
+import { useColumnAutofit } from "@/components/renderer/datagrid/use-column-autofit";
 import { PasteGridModal } from "@/components/renderer/PasteGridModal";
 import { Chip, Input } from "@/components/ui";
 import { useDragScroll } from "@/hooks/useDragScroll";
@@ -179,7 +170,6 @@ export function DataGrid<T>({
   // (chặn autofit-on-load đè kích thước cột người dùng đã lưu).
   const scrollRef = useRef<HTMLDivElement>(null);
   const [restoreSettled, setRestoreSettled] = useState(false);
-  const autofitDoneRef = useRef(false);
   useDragScroll(scrollRef);
 
   // Tiêu đề lồng nhiều cấp: gói cột phẳng thành cây nhóm khi có cấu hình.
@@ -451,63 +441,14 @@ export function DataGrid<T>({
   // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
   // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,
   // kể cả cột hẹp hơn mặc định). +đệm padding ngang ô. ──
-  const measureCol = useCallback((colId: string): number | null => {
-    const root = scrollRef.current;
-    if (!root) return null;
-    const cells = root.querySelectorAll<HTMLElement>(`[data-col="${CSS.escape(colId)}"]`);
-    if (!cells.length) return null;
-    const range = document.createRange();
-    let max = 0;
-    cells.forEach((el) => {
-      // Header: đo RIÊNG span nội dung (data-col-content), BỎ nút resize ghim
-      // `absolute right-0` — nếu trùm cả nút thì Range kéo tới mép phải ô → đo ra
-      // đúng bề rộng HIỆN TẠI của cột (không co theo nội dung) → nhắp đúp chỉ nhích
-      // thêm chút mỗi lần thay vì fit. Ô dữ liệu không có marker → đo cả ô như cũ.
-      const target = el.querySelector<HTMLElement>("[data-col-content]") ?? el;
-      range.selectNodeContents(target);
-      // bề rộng nội dung (Range không tính padding ô) + đệm padding ngang ô.
-      const pad = Number.parseFloat(getComputedStyle(el).paddingLeft) * 2 || 0;
-      const w = range.getBoundingClientRect().width + pad;
-      if (w > max) max = w;
-    });
-    return max > 0 ? max : null;
-  }, []);
-  /** Autofit 1 cột → ghi columnSizing (persist). Double-click viền cột gọi cái này. */
-  const autofitColumn = useCallback(
-    (colId: string) => {
-      const w = measureCol(colId);
-      if (w == null) return;
-      const compact = (table.getColumn(colId)?.columnDef.meta as GridColMeta | undefined)?.compact;
-      setColumnSizing((s) => ({
-        ...s,
-        [colId]: clampColW(w, compact ? COMPACT_CLAMP : undefined),
-      }));
-    },
-    [measureCol, table],
-  );
-  /** Autofit TẤT CẢ cột đang hiện. */
-  const autofitAll = useCallback(() => {
-    if (!scrollRef.current) return;
-    const next: ColumnSizingState = {};
-    for (const col of table.getVisibleLeafColumns()) {
-      const w = measureCol(col.id);
-      if (w == null) continue;
-      const compact = (col.columnDef.meta as GridColMeta | undefined)?.compact;
-      next[col.id] = clampColW(w, compact ? COMPACT_CLAMP : undefined);
-    }
-    if (Object.keys(next).length) setColumnSizing((s) => ({ ...s, ...next }));
-  }, [measureCol, table]);
-
-  // Autofit-on-load: lần đầu có dữ liệu + đã nạp xong state lưu, mà CHƯA có size
-  // lưu → tự co cột theo nội dung (1 lần). Có size đã lưu → tôn trọng, không đè.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy 1 lần (guard ref), không phụ thuộc columnSizing
-  useEffect(() => {
-    if (autofitDoneRef.current || !restoreSettled || data.length === 0) return;
-    autofitDoneRef.current = true;
-    if (Object.keys(columnSizing).length > 0) return; // đã có size → tôn trọng
-    const id = requestAnimationFrame(() => autofitAll());
-    return () => cancelAnimationFrame(id);
-  }, [restoreSettled, data.length, autofitAll]);
+  const { autofitColumn, autofitAll } = useColumnAutofit({
+    table,
+    scrollRef,
+    setColumnSizing,
+    restoreSettled,
+    data,
+    columnSizing,
+  });
 
   // Server mode: phát query ra caller khi phân trang/sắp/lọc đổi (debounce 250ms
   // để gõ search/lọc không bắn mỗi ký tự). Dùng serverMode (boolean ổn định) +
