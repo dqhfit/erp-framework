@@ -42,7 +42,7 @@ import {
 import { MasterDetailEditModal } from "@/components/renderer/MasterDetailEditModal";
 import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
-import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
+import { Button, Chip, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -232,6 +232,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
       })
       .catch((e) => {
         if (alive) {
+          console.error("[useRecords] entity:", entityId, "filters:", filtersKey, "err:", e);
           setErr((e as Error).message);
           setLoading(false);
         }
@@ -4257,7 +4258,9 @@ function buildSubCfg(
   const kind = panel.kind ?? "list";
   // Với split widget: mỗi panel dùng key riêng; grid widget dùng splitKey chung.
   const ownStateKey = panelKey ? `${splitKey}:${panelKey}` : splitKey;
-  const srcStateKey = panelKey ? `${splitKey}:${panel.filterFromPanel ?? "a"}` : splitKey;
+  const srcStateKey = panelKey
+    ? `${splitKey}:${(panel.filterFromPanel ?? "a").toUpperCase()}`
+    : splitKey;
   return {
     entity: panel.entity,
     dataSourceId: panel.dataSourceId,
@@ -4316,7 +4319,7 @@ function buildSubCfg(
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkConditions?.length
       ? {
           filterConditions: panel.linkConditions.map((c) => {
-            const fp = c.fromPanel ?? panel.filterFromPanel ?? "a";
+            const fp = (c.fromPanel ?? panel.filterFromPanel ?? "a").toUpperCase();
             const fromStateKey = panelKey
               ? c.fromField
                 ? `${splitKey}:${fp}:${c.fromField}`
@@ -5088,7 +5091,7 @@ type FItemCfg = {
 };
 
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
-function FilterItem({ item }: { item: FItemCfg }) {
+function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: boolean }) {
   const pageState = usePageState();
   const { rows, loading } = useWidgetData(item as Record<string, unknown>);
   const stateKey = item.stateKey || "";
@@ -5120,12 +5123,13 @@ function FilterItem({ item }: { item: FItemCfg }) {
 
   if (!stateKey) return <div className="text-xs text-muted/60 italic px-1">Chưa có state key</div>;
 
-  const floatLabel = label ? (
-    <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
-      {label}
-      {loading ? " …" : ""}
-    </span>
-  ) : null;
+  const floatLabel =
+    showLabel && label ? (
+      <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
+        {label}
+        {loading ? " …" : ""}
+      </span>
+    ) : null;
 
   if (item.kind === "combobox") {
     const val = (pageState.get(stateKey) as string) ?? "";
@@ -5176,25 +5180,55 @@ function FilterItem({ item }: { item: FItemCfg }) {
   );
 }
 
-/** FilterWidget khi dùng items[] (format mới): render từng FilterItem trong 1 hàng. */
+/** FilterWidget khi dùng items[] (format mới): tab khi ≥2 items, flat khi 1. */
 function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: FItemCfg[] }) {
   const pageState = usePageState();
   const refreshDsId = cfg.refreshDataSourceId as string | undefined;
+  const [activeId, setActiveId] = useState<string>(items[0]?.id ?? "");
+
+  if (items.length === 0) return null;
+
+  const refreshBtn = refreshDsId ? (
+    <button
+      type="button"
+      onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
+      className="shrink-0 w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
+      title="Nạp lại"
+    >
+      <I.RefreshCw size={13} />
+    </button>
+  ) : null;
+
+  // 1 item — không cần tab
+  if (items.length === 1) {
+    return (
+      <div className="px-2 pt-4 pb-1.5 flex items-start gap-2">
+        <FilterItem item={items[0]} />
+        {refreshBtn}
+      </div>
+    );
+  }
+
+  // ≥2 items — dùng tab
+  const tabOptions = items.map((it) => ({
+    value: it.id,
+    label: it.label || it.kind || it.id,
+  }));
+  const active = items.find((it) => it.id === activeId) ?? items[0];
   return (
-    <div className="px-2 pt-4 pb-1.5 flex items-start gap-2 flex-wrap">
-      {items.map((item) => (
-        <FilterItem key={item.id} item={item} />
-      ))}
-      {refreshDsId && (
-        <button
-          type="button"
-          onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
-          className="shrink-0 self-center w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors mt-1"
-          title="Nạp lại"
-        >
-          <I.RefreshCw size={13} />
-        </button>
-      )}
+    <div className="flex flex-col h-full">
+      <div className="flex items-center border-b border-border">
+        <Tabs
+          value={activeId}
+          onChange={setActiveId}
+          options={tabOptions}
+          className="flex-1 border-b-0"
+        />
+        {refreshBtn && <div className="px-1">{refreshBtn}</div>}
+      </div>
+      <div className="px-2 pt-3 pb-1.5">
+        <FilterItem key={active.id} item={active} showLabel={false} />
+      </div>
     </div>
   );
 }
