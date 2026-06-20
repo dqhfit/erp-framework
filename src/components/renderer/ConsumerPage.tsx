@@ -49,6 +49,26 @@ import {
   MasterDetailCreateModal,
 } from "@/components/renderer/MasterDetailCreateModal";
 import { MasterDetailEditModal } from "@/components/renderer/MasterDetailEditModal";
+import type {
+  ActionBarItem,
+  AggSpec,
+  ChartKind,
+  EmbeddedFilter,
+  FItemCfg,
+  LoadFilterOp,
+  LoadFilters,
+  PageComponent,
+  PageStateCtx,
+  PageStateValue,
+  RefFillResult,
+  RowDetailCfg,
+  ServerPagedResult,
+  SplitGridCell,
+  SplitPanelCfg,
+  UseRecordsOpts,
+  VisibleRule,
+  WidgetData,
+} from "@/components/renderer/page-types";
 import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
@@ -71,29 +91,6 @@ import type { ActionConfig, FilterNode } from "@/types/page";
 
 const api = createApiDataSource("");
 
-type ChartKind = "bar" | "line" | "area" | "pie" | "doughnut";
-
-interface PageComponent {
-  id: string;
-  kind: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  config: Record<string, unknown>;
-}
-
-/* ── Phase V — Page state cho master-detail cross-widget cross-talk ─
- *
- * Mỗi page có 1 kv store; widget read/write qua usePageState. List set
- * recordId khi click row → detail/child widget khác đọc state để load
- * record cụ thể hoặc filter theo state. */
-type PageStateValue = unknown;
-interface PageStateCtx {
-  get: (key: string) => PageStateValue;
-  set: (key: string, value: PageStateValue) => void;
-  values: Record<string, PageStateValue>;
-}
 const PageStateContext = createContext<PageStateCtx | null>(null);
 
 function PageStateProvider({ children }: { children: React.ReactNode }) {
@@ -125,23 +122,10 @@ function usePageState(): PageStateCtx {
 
 /* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
 
-type LoadFilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in" | "is-not-true";
-/** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
-type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
-
 /** Số dòng mặc định khi widget không cấu hình rowLimit. */
 const DEFAULT_ROW_LIMIT = 500;
 /** Trần cứng — khớp queryParams.limit.max(10_000) ở server (tránh lỗi validate). */
 const MAX_ROW_LIMIT = 10_000;
-
-interface UseRecordsOpts {
-  /** Số dòng tối đa tải (server-side LIMIT). Mặc định 500. */
-  limit?: number;
-  /** Điều kiện lọc áp ở DB TRƯỚC khi cắt limit. */
-  filters?: LoadFilters;
-  /** Cổng: false → không tải gì (vd chờ chọn bộ lọc). Mặc định true. */
-  enabled?: boolean;
-}
 
 /** Suy ra UseRecordsOpts từ config widget + page-state.
  *  - rowLimit  : số dòng (number > 0).
@@ -377,21 +361,6 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
    nhận sort+offset, trả {rows,total}). Khác useRecords: KHÔNG kéo cả cửa sổ về
    client; mỗi thao tác = 1 round-trip. baseFilters (loadFilters) áp server-side
    luôn, gộp với lọc-cột (op contains). ── */
-interface ServerPagedResult {
-  rows: Record<string, unknown>[];
-  fields: EntityField[];
-  total: number;
-  loading: boolean;
-  err: string;
-  onQueryChange: (q: ServerGridQuery) => void;
-  /** Nạp lại trang hiện tại (sau khi ghi 1 ô — phản ánh giá trị đã lưu /
-   *  field server-side suy ra). */
-  refresh: () => void;
-  /** Tổng hợp cột (server-side, toàn bảng) — field→giá trị. Rỗng nếu không yêu
-   *  cầu aggregates hoặc bind datasource (chưa hỗ trợ). */
-  summary: Record<string, number>;
-}
-type AggSpec = { field: string; fn: "sum" | "avg" | "count" | "min" | "max" };
 function useServerPagedRecords(opts: {
   entityId?: string;
   dataSourceId?: string;
@@ -552,28 +521,6 @@ function useServerPagedRecords(opts: {
     refresh: () => setRefreshTag((x) => x + 1),
     summary,
   };
-}
-
-/** Kết quả refFill: `overlay` = cột projection (hiển thị-only, đổi theo ref về
- *  sau); `snapshot` = cột base có snapshotFrom (GHI vào pending để đóng băng). */
-export interface RefFillResult {
-  overlay: Record<string, unknown>;
-  snapshot: Record<string, string>;
-}
-
-export interface WidgetData {
-  rows: Record<string, unknown>[];
-  /** Field meta để render cột/label (entity fields HOẶC datasource flat fields). */
-  fields: EntityField[];
-  loading: boolean;
-  err: string;
-  /** true nếu widget bind tới nguồn dữ liệu (datasource) thay entity. */
-  isDataSource: boolean;
-  create: (data: Record<string, unknown>) => Promise<void>;
-  update: (id: string, data: Record<string, unknown>) => Promise<void>;
-  remove: (id: string) => Promise<void>;
-  /** Datasource: đổi field ref → overlay cột projection (Tên VT…) + snapshot. */
-  refFill?: (fieldName: string, value: string) => Promise<RefFillResult>;
 }
 
 /* ── Hook hợp nhất — widget bind ENTITY (cfg.entity) hoặc DATASOURCE
@@ -1896,21 +1843,6 @@ function ServerPagedListWidget({
 }
 
 /** Cấu hình cột "Hành động" (Xem/Sửa) mở dialog record con master-detail. */
-type RowDetailCfg = {
-  /** entityId của bảng con (vd tr_order_detail). */
-  entity: string;
-  /** Field trên dòng cha lấy giá trị khoá (vd order_number). */
-  parentField: string;
-  /** Field trên bảng con để lọc theo khoá cha (vd order_number). */
-  childField: string;
-  /** Tiêu đề dialog. */
-  title?: string;
-  /** Cột con hiển thị (mặc định: theo entity con). */
-  fields?: string[];
-  /** Override nhãn cột con. */
-  columnLabels?: Record<string, string>;
-};
-
 /** Gắn id của dòng vào action per-row: mọi step có recordIdBinding
  *  (open-popup/delete-record/open-wizard) → trỏ tới recordId của đúng dòng bấm.
  *  recordId = row[action.recordIdField] nếu cấu hình (khoá nghiệp vụ, vd
@@ -1933,13 +1865,6 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
 }
 
 /** Widget "list" — bảng record thật, cột suy từ field của entity. */
-type EmbeddedFilter = {
-  label?: string;
-  stateKey: string;
-  options?: string;
-  optionLabels?: Record<string, string>;
-};
-
 function ListWidget({
   entityId,
   dataSourceId,
@@ -4032,66 +3957,6 @@ function PivotWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
-/** Split Panel — hai sub-widget chia sẻ selection state nội bộ qua PageStateContext. */
-type SplitPanelCfg = {
-  kind?: string;
-  entity?: string;
-  dataSourceId?: string;
-  title?: string;
-  linkField?: string;
-  /** Cột phát khi chọn dòng — giá trị của cột này được lưu vào state thay vì row.id.
-   *  Dùng khi panel nguồn liên kết với panel đích qua business-key (vd masp, code)
-   *  thay vì UUID. Panel đích đặt linkField = cột có cùng giá trị đó. */
-  sourceField?: string;
-  /** Nhiều cột phát cùng lúc. Mỗi cột fieldX được lưu vào state key
-   *  `${splitKey}:${panelKey}:${fieldX}`. Panel đích dùng linkConditions
-   *  để khai báo điều kiện lọc theo cột phát tương ứng. */
-  sourceFields?: string[];
-  /** Nhiều điều kiện lọc (AND). Mỗi điều kiện chỉ định: panel nguồn phát
-   *  (fromPanel), cột phát từ panel đó (fromField, bỏ trống = dùng main key),
-   *  và cột trong panel này để so sánh (toField). */
-  linkConditions?: Array<{ fromPanel?: string; fromField?: string; toField: string }>;
-  /** Panel nguồn để lọc/hiển thị detail: "a"|"b"|"c"|"d". Mặc định "a" (Panel A). */
-  filterFromPanel?: string;
-  chartKind?: string; // bar|line|area|pie|doughnut — loại biểu đồ
-  groupBy?: string; // chart / kanban: field nhóm
-  valueField?: string; // chart: field tổng hợp giá trị
-  selectable?: boolean; // list: hiện checkbox chọn dòng
-  addRowAtEnd?: boolean; // list+batchEdit: dòng thêm mới
-  addRowPos?: string; // top | bottom
-  // Các trường được copy từ list/form/detail khi kéo thả vào panel
-  fields?: string[];
-  columnLabels?: Record<string, string>;
-  columnGroups?: ColumnGroupNode[];
-  serverPaging?: boolean;
-  editable?: boolean;
-  batchEdit?: boolean;
-  excelMode?: boolean;
-  multiSelect?: boolean;
-  loadGate?: string;
-  loadFilters?: LoadFilters;
-  rowLimit?: number;
-  pageSize?: number;
-  defaultSort?: { field: string; dir: "asc" | "desc" };
-  /** Thanh hành động nhúng của widget con, giống list/form/detail độc lập. */
-  embeddedActions?: ActionBarItem[];
-  /** Cột hành động dựng sẵn Xem/Sửa/Xóa cho list trong panel. */
-  rowActionsBuiltin?: boolean;
-  rowActionsHidden?: string[];
-  rowActionsStyle?: "inline" | "popover";
-  rowActions?: ActionConfig[];
-  createForm?: CreateFormCfg;
-  editForm?: CreateFormCfg;
-};
-
-type SplitGridCell = SplitPanelCfg & {
-  id: string;
-  col: number;
-  row: number;
-  colSpan: number;
-  rowSpan: number;
-};
-
 /** Drag-resize cho N panel: mảng ratios + onHandleDrag(index, e) cho từng thanh ngăn */
 function useSplitRatios(
   initRatios: number[],
@@ -5036,25 +4901,6 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
-type FItemCfg = {
-  id: string;
-  kind: "combobox" | "tagbox" | "search";
-  label?: string;
-  entity?: string;
-  dataSourceId?: string;
-  field?: string;
-  labelField?: string;
-  stateKey?: string;
-  placeholder?: string;
-  pageSize?: number;
-  options?: string;
-  width?: number;
-  /** Lọc options theo field này khi filterFromState có giá trị (cascade). */
-  filterField?: string;
-  /** State key của control cha — khi có giá trị thì filter rows theo filterField. */
-  filterFromState?: string;
-};
-
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
 function FilterItem({ item }: { item: FItemCfg }) {
   const pageState = usePageState();
@@ -5562,8 +5408,6 @@ function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
-type ActionBarItem = ActionConfig & { id: string };
-
 /** Strip hành động nhúng bên trong widget (list/form/detail). */
 /** Thanh hành động tràn → popover, dùng chung cho EmbeddedActionStrip + ActionBarWidget. */
 function ActionOverflowBar({
@@ -5937,11 +5781,6 @@ const GAP = 12; // gap-3
    Anonymous  : key = erp_layout_{pageId}
    ─────────────────────────────────────────────────────────── */
 /** Quy tắc ẩn/hiện widget theo 1 state key (vd selKetcau). Đặt ở cfg.visibleWhen. */
-type VisibleRule = {
-  stateKey: string;
-  op: "eq" | "neq" | "in" | "nin" | "set" | "notset";
-  value?: string | string[];
-};
 function evalVisible(rule: VisibleRule, pageState: ReturnType<typeof usePageState>): boolean {
   const raw = pageState.get(rule.stateKey);
   const sv = raw == null ? "" : String(raw);
