@@ -731,19 +731,16 @@ export function PageDesigner({ pageId }: Props) {
           size="sm"
           icon={<I.Sparkles size={13} />}
           onClick={() => setAiOpen(true)}
-        >
-          AI Assist
-        </Button>
+          title="AI Assist"
+        />
         <Button
           variant="ghost"
           size="sm"
           icon={<I.Undo size={13} />}
           onClick={undo}
           disabled={!canUndo}
-          title="Ctrl+Z"
-        >
-          {t("designer.undo")}
-        </Button>
+          title={`${t("designer.undo")} (Ctrl+Z)`}
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -760,12 +757,15 @@ export function PageDesigner({ pageId }: Props) {
             if (!previewMode) setPageContent(pageId, { meta: pageMeta, components });
             setPreviewMode((v) => !v);
           }}
-        >
-          {previewMode ? t("designer.exit_preview") : t("designer.preview")}
-        </Button>
-        <Button variant="primary" size="sm" icon={<I.Save size={13} />} onClick={save}>
-          {t("designer.save_with_shortcut")}
-        </Button>
+          title={previewMode ? t("designer.exit_preview") : t("designer.preview")}
+        />
+        <Button
+          variant="primary"
+          size="sm"
+          icon={<I.Save size={13} />}
+          onClick={save}
+          title={t("designer.save_with_shortcut")}
+        />
         {saved && (
           <span className="text-xs text-success flex items-center gap-1">
             <I.Check size={11} /> {t("designer.saved")}
@@ -981,7 +981,7 @@ export function PageDesigner({ pageId }: Props) {
           )}
         </div>
         <div className="w-px h-5 bg-border mx-1" />
-        <FieldDisplayToggle label="" />
+        <FieldDisplayToggle />
         <div className="w-px h-5 bg-border mx-1" />
         <button
           type="button"
@@ -1344,16 +1344,16 @@ export function PageDesigner({ pageId }: Props) {
         {/* Inspector */}
         {inspectorVisible && (
           <aside className="w-[280px] shrink-0 border-l border-border bg-panel flex flex-col">
-            <div className="h-11 shrink-0 px-3 flex items-center justify-between border-b border-border text-sm font-semibold">
+            <div className="h-8 shrink-0 px-2 flex items-center justify-between border-b border-border text-xs font-semibold text-muted">
               {t("designer.inspector")}
               {sel && (
                 <button
                   type="button"
                   onClick={() => remove(sel.id)}
                   title={t("designer.delete_component")}
-                  className="w-7 h-7 rounded-md flex items-center justify-center text-muted hover:bg-danger/15 hover:text-danger transition-colors"
+                  className="w-6 h-6 rounded flex items-center justify-center hover:bg-danger/15 hover:text-danger transition-colors"
                 >
-                  <I.Trash size={13} />
+                  <I.Trash size={12} />
                 </button>
               )}
             </div>
@@ -1465,7 +1465,7 @@ export function PageDesigner({ pageId }: Props) {
                           onClick={() => setInspTab("dieukien")}
                           className="w-full text-left text-[11px] px-2 py-1.5 rounded-md border border-accent/30 bg-accent/5 text-accent hover:bg-accent/10"
                         >
-                          → Gắn nguồn dữ liệu (Entity + Field) ở tab “Nguồn &amp; Điều khiển”
+                          → Gắn nguồn dữ liệu (Entity + Field) ở tab "Nguồn &amp; Điều khiển"
                         </button>
                       )}
                     </>
@@ -1480,12 +1480,22 @@ export function PageDesigner({ pageId }: Props) {
                       onChange={(patch) => update(sel.id, { config: { ...sel.config, ...patch } })}
                     />
                   )}
-                  {/* Filter — cấu hình bộ lọc cascade (nguồn + nhãn/giá trị/nhóm
-                     + state phát ra + nạp lại nguồn). */}
+                  {/* Filter — items[] (mới) hoặc cascade legacy. */}
                   {inspTab === "dulieu" &&
                     sel.kind === "filter" &&
                     (() => {
+                      type FItemInsp = {
+                        id: string;
+                        kind: "combobox" | "tagbox" | "search";
+                        label?: string;
+                        entity?: string;
+                        field?: string;
+                        labelField?: string;
+                        stateKey?: string;
+                        placeholder?: string;
+                      };
                       const fcfg = sel.config as {
+                        items?: FItemInsp[];
                         title?: string;
                         dataSourceId?: string;
                         labelField?: string;
@@ -1496,6 +1506,169 @@ export function PageDesigner({ pageId }: Props) {
                       };
                       const upd = (patch: Record<string, unknown>) =>
                         update(sel.id, { config: { ...sel.config, ...patch } });
+
+                      // ── FORMAT MỚI: items[] ──────────────────────────────
+                      if (Array.isArray(fcfg.items)) {
+                        const items = fcfg.items;
+                        const updItems = (next: FItemInsp[]) => upd({ items: next });
+                        const addItem = () => {
+                          const id = `fi_${Math.random().toString(36).slice(2, 8)}`;
+                          updItems([...items, { id, kind: "combobox", label: "", stateKey: "" }]);
+                        };
+                        return (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                                Thành phần lọc
+                              </div>
+                              <button
+                                type="button"
+                                onClick={addItem}
+                                className="flex items-center gap-0.5 text-[11px] text-accent hover:underline"
+                              >
+                                <I.Plus size={11} /> Thêm
+                              </button>
+                            </div>
+                            {items.length === 0 && (
+                              <div className="text-[11px] text-muted/60 italic px-0.5">
+                                Chưa có thành phần nào. Bấm "Thêm" để thêm.
+                              </div>
+                            )}
+                            {items.map((item, idx) => {
+                              const itEnt = entities.find((e) => e.id === item.entity);
+                              const updIt = (patch: Partial<FItemInsp>) =>
+                                updItems(
+                                  items.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+                                );
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="rounded border border-border p-2 space-y-1.5 bg-bg-soft/30"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={item.kind}
+                                      onChange={(e) =>
+                                        updIt({
+                                          kind: e.target.value as FItemInsp["kind"],
+                                        })
+                                      }
+                                      className="flex-1 text-xs h-7"
+                                    >
+                                      <option value="combobox">Combobox</option>
+                                      <option value="tagbox">Tagbox</option>
+                                      <option value="search">Tìm kiếm</option>
+                                    </Select>
+                                    <button
+                                      type="button"
+                                      title="Xoá thành phần"
+                                      onClick={() => updItems(items.filter((_, i) => i !== idx))}
+                                      className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                                    >
+                                      <I.X size={12} />
+                                    </button>
+                                  </div>
+                                  <FormField label="Nhãn">
+                                    <Input
+                                      placeholder="vd: Sản phẩm"
+                                      value={item.label ?? ""}
+                                      onChange={(e) => updIt({ label: e.target.value })}
+                                    />
+                                  </FormField>
+                                  <FormField label="State key">
+                                    <Input
+                                      placeholder="vd: selMasp"
+                                      value={item.stateKey ?? ""}
+                                      onChange={(e) => updIt({ stateKey: e.target.value })}
+                                    />
+                                  </FormField>
+                                  {item.kind !== "search" && (
+                                    <>
+                                      <FormField label="Entity">
+                                        <Select
+                                          value={item.entity ?? ""}
+                                          onChange={(e) =>
+                                            updIt({ entity: e.target.value, field: "" })
+                                          }
+                                        >
+                                          <option value="">— tĩnh (options) —</option>
+                                          {entities.map((e) => (
+                                            <option key={e.id} value={e.id}>
+                                              {e.name}
+                                            </option>
+                                          ))}
+                                        </Select>
+                                      </FormField>
+                                      {itEnt && (
+                                        <>
+                                          <FormField label="Field giá trị">
+                                            <Select
+                                              value={item.field ?? ""}
+                                              onChange={(e) => updIt({ field: e.target.value })}
+                                            >
+                                              <option value="">— chọn —</option>
+                                              {(itEnt.fields ?? []).map((f) => (
+                                                <option key={f.name} value={f.name}>
+                                                  {fieldBoth(f)}
+                                                </option>
+                                              ))}
+                                            </Select>
+                                          </FormField>
+                                          {item.kind === "combobox" && (
+                                            <FormField label="Field nhãn (vd: tên)">
+                                              <Select
+                                                value={item.labelField ?? ""}
+                                                onChange={(e) =>
+                                                  updIt({ labelField: e.target.value || undefined })
+                                                }
+                                              >
+                                                <option value="">— không —</option>
+                                                {(itEnt.fields ?? []).map((f) => (
+                                                  <option key={f.name} value={f.name}>
+                                                    {fieldBoth(f)}
+                                                  </option>
+                                                ))}
+                                              </Select>
+                                            </FormField>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                  {(item.kind === "search" || item.kind === "tagbox") && (
+                                    <FormField label="Placeholder">
+                                      <Input
+                                        placeholder="Gợi ý nhập…"
+                                        value={item.placeholder ?? ""}
+                                        onChange={(e) =>
+                                          updIt({ placeholder: e.target.value || undefined })
+                                        }
+                                      />
+                                    </FormField>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            <FormField label="Nạp lại nguồn (tuỳ chọn)">
+                              <Select
+                                value={fcfg.refreshDataSourceId ?? ""}
+                                onChange={(e) =>
+                                  upd({ refreshDataSourceId: e.target.value || undefined })
+                                }
+                              >
+                                <option value="">— không —</option>
+                                {dataSources.map((d) => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.name}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormField>
+                          </>
+                        );
+                      }
+
+                      // ── FORMAT CŨ: cascade legacy ────────────────────────
                       const dsc = fcfg.dataSourceId
                         ? dataSourceContent[fcfg.dataSourceId]
                         : undefined;
@@ -1505,6 +1678,13 @@ export function PageDesigner({ pageId }: Props) {
                       }));
                       return (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => upd({ items: [] })}
+                            className="w-full text-left text-[11px] text-accent border border-accent/30 rounded px-2 py-1 hover:bg-accent/5 transition-colors"
+                          >
+                            Nâng cấp sang format items[] →
+                          </button>
                           <FormField label="Tiêu đề">
                             <Input
                               placeholder="vd: Lọc theo sản phẩm"
@@ -1610,7 +1790,7 @@ export function PageDesigner({ pageId }: Props) {
                               onChange={(e) => upd({ emitStateKey: e.target.value })}
                             />
                             <div className="text-[10px] text-muted/70 mt-0.5 px-0.5">
-                              Widget khác (vd List) đặt “Chỉ tải khi state có giá trị” = key này để
+                              Widget khác (vd List) đặt "Chỉ tải khi state có giá trị" = key này để
                               cascade.
                             </div>
                           </FormField>
@@ -1982,7 +2162,7 @@ export function PageDesigner({ pageId }: Props) {
                                   <div className="flex flex-col leading-tight">
                                     <span className="text-sm">Dòng thêm mới trong lưới</span>
                                     <span className="text-[11px] text-muted">
-                                      Hiện dòng “＋ Thêm dòng mới”; bấm để thêm dòng nháp
+                                      Hiện dòng "＋ Thêm dòng mới"; bấm để thêm dòng nháp
                                     </span>
                                   </div>
                                   <Switch
@@ -4314,7 +4494,7 @@ function ComponentCard({
           <span className="font-mono uppercase">{comp.kind}</span>
           {unbound && (
             <span
-              title="Widget chưa gắn nguồn dữ liệu. Mở tab “Nguồn & Điều khiển” (chọn widget → inspector) để chọn Entity + Field hoặc nhập tuỳ chọn tĩnh."
+              title="Widget chưa gắn nguồn dữ liệu. Mở tab &quot;Nguồn &amp; Điều khiển&quot; (chọn widget → inspector) để chọn Entity + Field hoặc nhập tuỳ chọn tĩnh."
               className="px-1 rounded-sm bg-warning/15 text-warning text-[9px] normal-case font-normal"
             >
               chưa gắn nguồn

@@ -148,55 +148,58 @@ export function TagBox({
       {/* biome-ignore lint/a11y/useSemanticElements: container chip tổng hợp nhiều phần tử con, không thể thay bằng <button> */}
       <div
         className={cn(
-          "flex flex-wrap items-center gap-1 min-h-[34px] px-2 py-1 border rounded bg-bg",
+          "flex items-stretch min-h-[34px] border rounded bg-bg",
           error ? "border-danger" : "border-border",
           disabled && "opacity-60 pointer-events-none",
         )}
+        role="button"
+        tabIndex={-1}
         onClick={() => inputRef.current?.focus()}
         onKeyDown={(e) => {
-          // Cho click bằng bàn phím — Space/Enter focus input.
           if (e.key === " " || e.key === "Enter") {
             e.preventDefault();
             inputRef.current?.focus();
           }
         }}
-        role="button"
-        tabIndex={-1}
       >
-        {value.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 px-2 h-6 rounded bg-accent/10 text-accent text-xs"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeTag(tag);
-              }}
-              className="hover:text-danger leading-none"
-              aria-label={t("tagbox.remove_tag", { tag })}
+        {/* chips + input — wrap + scroll khi nhiều tag */}
+        <div className="flex flex-wrap items-center gap-1 flex-1 px-2 py-1 min-w-0 max-h-24 overflow-y-auto">
+          {value.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 px-2 h-6 rounded bg-accent/10 text-accent text-xs"
             >
-              ×
-            </button>
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKey}
-          placeholder={value.length === 0 ? resolvedPh : ""}
-          disabled={disabled}
-          className="flex-1 min-w-[120px] bg-transparent outline-none text-sm h-7"
-        />
+              {tag}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeTag(tag);
+                }}
+                className="hover:text-danger leading-none"
+                aria-label={t("tagbox.remove_tag", { tag })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            ref={inputRef}
+            id={id}
+            type="text"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKey}
+            placeholder={value.length === 0 ? resolvedPh : ""}
+            disabled={disabled}
+            className="flex-1 min-w-[80px] bg-transparent outline-none text-sm h-7"
+          />
+        </div>
+        {/* nút xổ — cố định bên phải, không bị đẩy khi nhiều chip */}
         {showPicker && (
           <button
             type="button"
@@ -204,7 +207,7 @@ export function TagBox({
               e.stopPropagation();
               setPickerOpen(true);
             }}
-            className="text-muted hover:text-text px-1 leading-none"
+            className="shrink-0 px-2 border-l border-border flex items-center text-muted hover:text-text hover:bg-hover/50 transition-colors rounded-r"
             title={t("tagbox.open_picker_title")}
             aria-label={t("tagbox.open_picker")}
           >

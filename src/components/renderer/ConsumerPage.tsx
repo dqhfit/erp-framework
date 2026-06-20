@@ -44,6 +44,7 @@ import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
 import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
@@ -4892,24 +4893,159 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
 
   return (
-    <div className="p-2 h-full flex flex-col gap-1">
-      {label && <div className="text-xs font-medium text-muted">{label}</div>}
-      <SearchableSelect
-        className="w-full"
-        value={val}
-        onChange={(v) => pageState.set(stateKey, v)}
-        options={options}
-        emptyOption="— tất cả —"
+    <div className="px-2 pt-4 pb-1.5 flex items-center">
+      <div className="relative w-full">
+        {label && (
+          <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
+            {label}
+          </span>
+        )}
+        <SearchableSelect
+          className="w-full"
+          value={val}
+          onChange={(v) => pageState.set(stateKey, v)}
+          options={options}
+          emptyOption="— tất cả —"
+        />
+      </div>
+    </div>
+  );
+}
+
+type FItemCfg = {
+  id: string;
+  kind: "combobox" | "tagbox" | "search";
+  label?: string;
+  entity?: string;
+  dataSourceId?: string;
+  field?: string;
+  labelField?: string;
+  stateKey?: string;
+  placeholder?: string;
+  pageSize?: number;
+  options?: string;
+};
+
+/** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
+function FilterItem({ item }: { item: FItemCfg }) {
+  const pageState = usePageState();
+  const { rows, loading } = useWidgetData(item as Record<string, unknown>);
+  const stateKey = item.stateKey || "";
+  const label = item.label || "";
+
+  const labelOptions = useMemo(() => {
+    if (item.options) {
+      return item.options
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((o) => ({ value: o, label: o }));
+    }
+    if (!item.field || !rows.length) return [];
+    const seen = new Set<string>();
+    const out: { value: string; label: string }[] = [];
+    for (const r of rows) {
+      const v = String(r[item.field] ?? "");
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      const extra = item.labelField ? String(r[item.labelField] ?? "") : "";
+      out.push({ value: v, label: extra ? `${v} — ${extra}` : v });
+    }
+    out.sort((a, b) => a.value.localeCompare(b.value));
+    return out;
+  }, [rows, item.field, item.labelField, item.options]);
+
+  const suggestions = labelOptions.map((o) => o.value);
+
+  if (!stateKey) return <div className="text-xs text-muted/60 italic px-1">Chưa có state key</div>;
+
+  const floatLabel = label ? (
+    <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
+      {label}
+      {loading ? " …" : ""}
+    </span>
+  ) : null;
+
+  if (item.kind === "combobox") {
+    const val = (pageState.get(stateKey) as string) ?? "";
+    return (
+      <div className="relative min-w-[120px] flex-1">
+        {floatLabel}
+        <SearchableSelect
+          className="w-full"
+          value={val}
+          onChange={(v) => pageState.set(stateKey, v)}
+          options={labelOptions}
+          emptyOption="— tất cả —"
+        />
+      </div>
+    );
+  }
+
+  if (item.kind === "tagbox") {
+    const raw = pageState.get(stateKey);
+    const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
+    return (
+      <div className="relative min-w-[140px] flex-1">
+        {floatLabel}
+        <TagBox
+          value={selected}
+          onChange={(next) => pageState.set(stateKey, next)}
+          suggestions={suggestions}
+          strict={suggestions.length > 0}
+          placeholder={item.placeholder}
+        />
+      </div>
+    );
+  }
+
+  // search
+  const valS = (pageState.get(stateKey) as string) ?? "";
+  return (
+    <div className="relative min-w-[120px] flex-1">
+      {floatLabel}
+      <input
+        type="text"
+        value={valS}
+        onChange={(e) => pageState.set(stateKey, e.target.value)}
+        placeholder={item.placeholder || "Tìm…"}
+        className="input w-full h-8 text-sm"
       />
     </div>
   );
 }
 
-/** Widget "filter" — bộ lọc header: Hệ hàng → Sản phẩm (cascade) + "Nạp lại".
- *  Chọn sản phẩm → set pageState[emitStateKey] = mã SP → list (loadGate +
- *  loadFilters fromState) MỚI tải định mức của SP đó (server-side, đúng tập).
- *  Dữ liệu SP lấy từ datasource gọn (cfg.dataSourceId = ds_sanpham_filter). */
+/** FilterWidget khi dùng items[] (format mới): render từng FilterItem trong 1 hàng. */
+function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: FItemCfg[] }) {
+  const pageState = usePageState();
+  const refreshDsId = cfg.refreshDataSourceId as string | undefined;
+  return (
+    <div className="px-2 pt-4 pb-1.5 flex items-start gap-2 flex-wrap">
+      {items.map((item) => (
+        <FilterItem key={item.id} item={item} />
+      ))}
+      {refreshDsId && (
+        <button
+          type="button"
+          onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
+          className="shrink-0 self-center w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors mt-1"
+          title="Nạp lại"
+        >
+          <I.RefreshCw size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Widget "filter" — dispatcher: items[] (mới) hoặc cascade legacy. */
 function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
+  const items = cfg.items as FItemCfg[] | undefined;
+  return items ? <MultiItemFilter cfg={cfg} items={items} /> : <LegacyCascadeFilter cfg={cfg} />;
+}
+
+/** Legacy cascade filter: Hệ hàng → Sản phẩm + Nạp lại. */
+function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
   const pageState = usePageState();
   const { rows, loading } = useWidgetData(cfg);
   const familyField = (cfg.familyField as string) || "hehang";
@@ -4919,7 +5055,6 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const refreshDsId = cfg.refreshDataSourceId as string | undefined;
   const [hehang, setHehang] = useState("");
   const masp = (pageState.get(emitStateKey) as string) ?? "";
-  const isMobile = useIsMobile();
 
   const families = useMemo(() => {
     const s = new Set<string>();
@@ -4967,64 +5102,177 @@ function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
     } catch {}
   }, [hehang, masp, persistKey]);
 
-  const reloadBtn = (
-    <button
-      type="button"
-      onClick={() => {
-        if (refreshDsId) pageState.set(`__refresh:ds:${refreshDsId}`, Date.now());
-      }}
-      className="btn btn-sm btn-default shrink-0"
-      title="Tải lại định mức của sản phẩm đang chọn"
-    >
-      <I.RefreshCw size={13} /> Nạp lại
-    </button>
-  );
+  const [dropOpen, setDropOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dropPos = useDropdownPosition(triggerRef, dropOpen);
+
+  // Đóng dropdown khi click ngoài.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ gắn/gỡ listener khi dropOpen đổi
+  useEffect(() => {
+    if (!dropOpen) return;
+    const handler = (e: MouseEvent) => {
+      const tgt = e.target as Node;
+      if (!triggerRef.current?.contains(tgt) && !panelRef.current?.contains(tgt))
+        setDropOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropOpen]);
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQ.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
+    return productOptions.filter((o) => {
+      if (!q) return true;
+      const norm = (o.label + " " + (o.value ?? ""))
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/đ/g, "d");
+      return norm.includes(q);
+    });
+  }, [productOptions, searchQ]);
+
+  const selectedLabel = productOptions.find((o) => o.value === masp)?.label ?? masp;
+  const title = (cfg.title as string) || "Sản phẩm";
 
   return (
-    // Mobile: label TRÊN combobox (xếp dọc) + nút Nạp lại cùng dòng combobox Hệ
-    // hàng. ≥md: 1 hàng ngang, label inline. Select thu nhỏ 28px/12px.
-    <div className="px-2 py-0.5 h-full flex flex-col md:flex-row md:flex-wrap md:items-center gap-1 text-xs">
-      {/* Hệ hàng */}
-      <div className="flex flex-col md:flex-row md:items-center gap-1">
-        <span className="text-muted shrink-0">Hệ hàng</span>
-        <div className="flex items-center gap-1">
-          <div className="flex-1 md:flex-none md:w-40">
-            <SearchableSelect
-              className="w-full"
-              triggerClassName="h-7! text-xs!"
-              value={hehang}
-              onChange={(v) => {
-                setHehang(v);
-                // Đổi hệ hàng → reset sản phẩm → list ẩn (chờ chọn lại SP).
-                pageState.set(emitStateKey, "");
-              }}
-              options={families}
-              emptyOption="— Tất cả —"
-            />
-          </div>
-          {/* Mobile: Nạp lại cùng dòng combobox Hệ hàng */}
-          {isMobile && reloadBtn}
-        </div>
-      </div>
-      {/* Sản phẩm */}
-      <div className="flex flex-col md:flex-row md:items-center gap-1 md:flex-1 md:min-w-[200px]">
-        <span className="text-muted shrink-0">
-          Sản phẩm{loading ? " (đang tải…)" : ` (${productOptions.length})`}
+    <div className="px-2 pt-4 pb-1.5 flex items-center gap-1.5 text-xs">
+      {/* Combobox sản phẩm — tiêu đề nổi trên border top */}
+      <div className="flex-1 min-w-0 relative">
+        {/* Label nổi trên border */}
+        <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
+          {title}
+          {loading ? " …" : ` (${productOptions.length})`}
         </span>
-        <div className="md:flex-1 md:min-w-0">
-          <SearchableSelect
-            className="w-full"
-            triggerClassName="h-7! text-xs!"
-            wrapOptions
-            value={masp}
-            onChange={(v) => pageState.set(emitStateKey, v)}
-            options={productOptions}
-            emptyOption="— Chọn sản phẩm —"
-          />
-        </div>
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => {
+            setDropOpen((o) => !o);
+            setSearchQ("");
+          }}
+          className="input flex w-full items-center justify-between gap-2 text-left h-7 text-xs"
+        >
+          <span className={cn("truncate", !masp && "text-muted")}>
+            {masp ? selectedLabel : "— Chọn —"}
+          </span>
+          <I.ChevronDown size={12} className="shrink-0 text-muted" />
+        </button>
+
+        {dropOpen &&
+          dropPos &&
+          createPortal(
+            <div
+              ref={panelRef}
+              style={{
+                position: "fixed",
+                top: dropPos.top,
+                left: dropPos.left,
+                minWidth: Math.max(dropPos.width, 280),
+              }}
+              className="z-[1000] max-w-[min(460px,92vw)] rounded-md border border-border bg-panel shadow-lg flex flex-col"
+            >
+              {/* Family chips — cuộn ngang */}
+              {families.length > 0 && (
+                <div className="flex gap-1 px-2 py-1.5 border-b border-border overflow-x-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHehang("");
+                      pageState.set(emitStateKey, "");
+                    }}
+                    className={cn(
+                      "px-2 h-5 rounded-full text-[10px] border whitespace-nowrap transition-colors",
+                      !hehang
+                        ? "bg-accent text-white border-accent"
+                        : "border-border text-muted hover:border-accent hover:text-text",
+                    )}
+                  >
+                    Tất cả
+                  </button>
+                  {families.map((f) => (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onClick={() => {
+                        setHehang(f.value);
+                        pageState.set(emitStateKey, "");
+                      }}
+                      className={cn(
+                        "px-2 h-5 rounded-full text-[10px] border whitespace-nowrap transition-colors",
+                        hehang === f.value
+                          ? "bg-accent text-white border-accent"
+                          : "border-border text-muted hover:border-accent hover:text-text",
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Search */}
+              <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5 shrink-0">
+                <I.Search size={12} className="shrink-0 text-muted" />
+                <input
+                  // biome-ignore lint/a11y/noAutofocus: mở dropdown → focus ô search ngay
+                  autoFocus
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                  placeholder="Tìm…"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setDropOpen(false);
+                    if (e.key === "Enter" && filteredProducts[0]) {
+                      pageState.set(emitStateKey, filteredProducts[0].value);
+                      setDropOpen(false);
+                    }
+                  }}
+                />
+              </div>
+              {/* Product list */}
+              <ul className="max-h-60 overflow-y-auto py-1">
+                {filteredProducts.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
+                ) : (
+                  filteredProducts.map((o) => (
+                    <li key={o.value}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          pageState.set(emitStateKey, o.value);
+                          setDropOpen(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-1.5 text-left text-sm",
+                          o.value === masp
+                            ? "font-medium text-accent bg-accent/5"
+                            : "text-text/90 hover:bg-hover/40",
+                        )}
+                      >
+                        <span className="truncate block">{o.label}</span>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>,
+            document.body,
+          )}
       </div>
-      {/* ≥md: Nạp lại ở cuối hàng */}
-      {!isMobile && reloadBtn}
+
+      {/* Nạp lại */}
+      <button
+        type="button"
+        onClick={() => {
+          if (refreshDsId) pageState.set(`__refresh:ds:${refreshDsId}`, Date.now());
+        }}
+        className="shrink-0 w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
+        title="Nạp lại"
+      >
+        <I.RefreshCw size={13} />
+      </button>
     </div>
   );
 }
@@ -5138,15 +5386,21 @@ function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
 
   return (
-    <div className="p-2 flex flex-col gap-1">
-      {label && <div className="text-xs font-medium text-muted">{label}</div>}
-      <TagBox
-        value={selected}
-        onChange={(next) => pageState.set(stateKey, next)}
-        suggestions={suggestions}
-        placeholder={placeholder}
-        strict={suggestions.length > 0}
-      />
+    <div className="px-2 pt-4 pb-1.5 flex items-start">
+      <div className="relative w-full">
+        {label && (
+          <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
+            {label}
+          </span>
+        )}
+        <TagBox
+          value={selected}
+          onChange={(next) => pageState.set(stateKey, next)}
+          suggestions={suggestions}
+          placeholder={placeholder}
+          strict={suggestions.length > 0}
+        />
+      </div>
     </div>
   );
 }

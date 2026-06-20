@@ -192,10 +192,7 @@ export function PageStatusPicker({
               <span className="truncate max-w-[110px]">{def.label}</span>
             </>
           ) : (
-            <>
-              <I.Tag size={size === "xs" ? 10 : 12} className="shrink-0" />
-              <span>Gắn cờ</span>
-            </>
+            <I.Tag size={size === "xs" ? 10 : 12} className="shrink-0" />
           )}
           <I.ChevronDown size={9} className="shrink-0 opacity-60" />
         </button>

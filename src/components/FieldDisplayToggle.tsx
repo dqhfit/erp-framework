@@ -5,6 +5,7 @@
    useUI (persist) nên đổi ở đâu cũng đồng bộ mọi nơi.
    ========================================================== */
 
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 
@@ -27,42 +28,16 @@ export function fieldBoth(f: { name: string; label?: string }): string {
   return label && label !== f.name ? `${label} (${f.name})` : f.name;
 }
 
-/** Toggle segmented "Tên cột | Nhãn" — đặt ở toolbar/panel của designer. */
-export function FieldDisplayToggle({
-  className,
-  label = "Hiển thị trường:",
-}: {
-  className?: string;
-  /** Nhãn đứng trước; truyền "" để ẩn. */
-  label?: string;
-}) {
+/** Toggle "Tên cột ↔ Nhãn" dạng switch — đặt ở toolbar/panel của designer. */
+export function FieldDisplayToggle({ className }: { className?: string }) {
   const mode = useUI((s) => s.fieldDisplayMode);
   const setMode = useUI((s) => s.setFieldDisplayMode);
   return (
-    <div className={cn("flex items-center gap-2 text-[11px]", className)}>
-      {label && <span className="text-muted shrink-0">{label}</span>}
-      <div className="flex rounded-md border border-border overflow-hidden shrink-0">
-        <button
-          type="button"
-          onClick={() => setMode("name")}
-          className={cn(
-            "px-2 py-0.5 transition-colors",
-            mode === "name" ? "bg-accent text-white" : "text-muted hover:bg-hover/50",
-          )}
-        >
-          Tên cột
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("label")}
-          className={cn(
-            "px-2 py-0.5 border-l border-border transition-colors",
-            mode === "label" ? "bg-accent text-white" : "text-muted hover:bg-hover/50",
-          )}
-        >
-          Nhãn
-        </button>
-      </div>
-    </div>
+    <Switch
+      checked={mode === "label"}
+      onChange={(v) => setMode(v ? "label" : "name")}
+      label="Nhãn"
+      className={cn("text-[11px]", className)}
+    />
   );
 }

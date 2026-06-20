@@ -395,3 +395,10 @@ Bối cảnh chi tiết: memory `project_prod_deploy_vfmgroup`,
     <rule>: <lý do>` đúng vị trí (cấp-element a11y: dòng trên thẻ mở JSX).
     `useExhaustiveDependencies`: suppress, ĐỪNG thêm/bớt deps (loop re-render).
     `noNonNullAssertion` là warning — không chặn.
+
+22. **postgres-js + JSONB: KHÔNG dùng `${JSON.stringify(obj)}`** — truyền
+    chuỗi cho cột JSONB → driver gửi dạng TEXT, PG lưu thành JSON string
+    `"\"[...]\""` chứ không phải array `[...]`. Triệu chứng: `jsonb_typeof`
+    trả `string`, sync lên prod báo "content bắt buộc" dù content trông đúng.
+    Dùng `${sql.json(obj)}` hoặc truyền thẳng JS object/array (postgres-js
+    tự serialize). Kiểm tra nhanh: `jsonb_typeof(content)` phải là `array`.

@@ -1102,7 +1102,7 @@ function WorkflowInner({ workflowId }: Props) {
           </span>
         )}
         <div className="w-px h-5 bg-border mx-1" />
-        <FieldDisplayToggle label="" />
+        <FieldDisplayToggle />
         <div className="w-px h-5 bg-border mx-1" />
         <button
           type="button"
