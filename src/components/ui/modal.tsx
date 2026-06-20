@@ -42,7 +42,10 @@ export function Modal({
           aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
-          className="relative panel rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden w-full outline-hidden"
+          className={cn(
+            "relative panel rounded-lg shadow-2xl flex flex-col overflow-hidden w-full outline-hidden",
+            align === "top" ? "max-h-[calc(100vh-4.5rem)]" : "max-h-[calc(100vh-2rem)]",
+          )}
           style={{ maxWidth: width }}
           onMouseDown={(e) => e.stopPropagation()}
         >
