@@ -662,6 +662,9 @@ export function ConsumerPage({
                         draggable={layoutEditing && !isBeingResized && !isMobile}
                         className={cn(
                           "card overflow-hidden",
+                          // Bộ lọc khi XEM: cao bằng nội dung (không kéo giãn full ô
+                          // ROW_H / 1fr) → thanh lọc gọn. Khi sửa giữ giãn để resize.
+                          c.kind === "filter" && !layoutEditing && "self-start",
                           layoutEditing && !isMobile && "relative group/card",
                           layoutEditing &&
                             !isBeingResized &&
@@ -672,7 +675,9 @@ export function ConsumerPage({
                         )}
                         style={
                           isMobile
-                            ? { minHeight: h * ROW_H }
+                            ? c.kind === "filter"
+                              ? undefined
+                              : { minHeight: h * ROW_H }
                             : {
                                 gridColumn: `${colStart} / span ${w}`,
                                 // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
