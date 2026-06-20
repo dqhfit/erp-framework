@@ -12,6 +12,7 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import {
   exportRowsCsv,
@@ -20,6 +21,7 @@ import {
 } from "@/components/renderer/datagrid/grid-utils";
 import type { DataGridProps, ServerPagingController } from "@/components/renderer/datagrid/types";
 import { Input } from "@/components/ui";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +116,8 @@ export function DataGridToolbar<T>({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowBtnRef = useRef<HTMLDivElement>(null);
   const [toolbarNarrow, setToolbarNarrow] = useState(false);
+  // Toạ độ (fixed) bám đáy nút nhóm/sắp xếp để menu xổ ra ĐÚNG vị trí nút.
+  const groupPos = useDropdownPosition(groupPickerRef, groupPickerOpen);
 
   // Close group picker on outside click
   useEffect(() => {
@@ -582,205 +586,212 @@ export function DataGridToolbar<T>({
           </div>
         )}
 
-        {/* Group/sort/select dropdown — ngoài overflow-x-auto, không bị cắt */}
-        {groupPickerOpen && (
-          <div
-            ref={groupDropdownRef}
-            className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
-          >
-            {/* ── Sắp xếp ── */}
-            <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
-              Sắp xếp
-            </div>
-            {sorting.map((s) => {
-              const col = table.getColumn(s.id);
-              if (!col) return null;
-              return (
-                <div
-                  key={s.id}
-                  draggable
-                  onDragStart={() => setDragSortId(s.id)}
-                  onDragEnd={() => setDragSortId(null)}
-                  onDragOver={(e) => {
-                    if (dragSortId && dragSortId !== s.id) e.preventDefault();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (!dragSortId || dragSortId === s.id) return;
-                    const from = sorting.findIndex((x) => x.id === dragSortId);
-                    const to = sorting.findIndex((x) => x.id === s.id);
-                    if (from === -1 || to === -1) return;
-                    const next = [...sorting];
-                    next.splice(to, 0, ...next.splice(from, 1));
-                    setSorting(next);
-                    setDragSortId(null);
-                  }}
-                  className={cn(
-                    "flex items-center gap-1 px-2 text-xs",
-                    dragSortId === s.id && "opacity-40",
-                  )}
+        {/* Group/sort/select dropdown — portal + fixed bám đáy nút (tránh bị cắt
+            bởi overflow-x-auto của hàng nút + nằm đúng vị trí nút bấm). */}
+        {groupPickerOpen &&
+          groupPos &&
+          createPortal(
+            <div
+              ref={groupDropdownRef}
+              style={{ position: "fixed", top: groupPos.top, left: groupPos.left }}
+              className="z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
+            >
+              {/* ── Sắp xếp ── */}
+              <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                Sắp xếp
+              </div>
+              {sorting.map((s) => {
+                const col = table.getColumn(s.id);
+                if (!col) return null;
+                return (
+                  <div
+                    key={s.id}
+                    draggable
+                    onDragStart={() => setDragSortId(s.id)}
+                    onDragEnd={() => setDragSortId(null)}
+                    onDragOver={(e) => {
+                      if (dragSortId && dragSortId !== s.id) e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (!dragSortId || dragSortId === s.id) return;
+                      const from = sorting.findIndex((x) => x.id === dragSortId);
+                      const to = sorting.findIndex((x) => x.id === s.id);
+                      if (from === -1 || to === -1) return;
+                      const next = [...sorting];
+                      next.splice(to, 0, ...next.splice(from, 1));
+                      setSorting(next);
+                      setDragSortId(null);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 px-2 text-xs",
+                      dragSortId === s.id && "opacity-40",
+                    )}
+                  >
+                    <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSorting(
+                          sorting.map((x) => (x.id === s.id ? { ...x, desc: !x.desc } : x)),
+                        )
+                      }
+                      className="flex flex-1 items-center gap-1.5 py-1 text-left hover:text-text transition-colors"
+                    >
+                      {s.desc ? (
+                        <I.ChevronDown size={11} className="shrink-0 text-accent" />
+                      ) : (
+                        <I.ChevronUp size={11} className="shrink-0 text-accent" />
+                      )}
+                      <span className="text-text">
+                        {(col.columnDef.header as string | undefined) ?? s.id}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSorting(sorting.filter((x) => x.id !== s.id))}
+                      className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                    >
+                      <I.X size={10} />
+                    </button>
+                  </div>
+                );
+              })}
+              {allSortableCols
+                .filter((col) => !sorting.find((s) => s.id === col.id))
+                .map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => setSorting([...sorting, { id: col.id, desc: false }])}
+                    className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
+                  >
+                    <I.ChevronsUpDown size={11} className="shrink-0 text-muted/30" />
+                    {(col.columnDef.header as string | undefined) ?? col.id}
+                  </button>
+                ))}
+              {sorting.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setSorting([])}
+                  className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
                 >
-                  <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                  Bỏ tất cả sắp xếp
+                </button>
+              )}
+
+              {/* ── Nhóm theo ── */}
+              {!serverMode && (
+                <>
+                  <div className="border-t border-border my-1" />
+                  <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                    Nhóm theo
+                  </div>
+                  {/* Active groups — draggable để đổi thứ tự cấp nhóm */}
+                  {grouping.map((colId) => {
+                    const col = table.getColumn(colId);
+                    if (!col) return null;
+                    return (
+                      <div
+                        key={colId}
+                        draggable
+                        onDragStart={() => setDragGroupId(colId)}
+                        onDragEnd={() => setDragGroupId(null)}
+                        onDragOver={(e) => {
+                          if (dragGroupId && dragGroupId !== colId) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!dragGroupId || dragGroupId === colId) return;
+                          const from = grouping.indexOf(dragGroupId);
+                          const to = grouping.indexOf(colId);
+                          if (from === -1 || to === -1) return;
+                          const next = [...grouping];
+                          next.splice(to, 0, ...next.splice(from, 1));
+                          setGrouping(next);
+                          setDragGroupId(null);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1 px-2 text-xs",
+                          dragGroupId === colId && "opacity-40",
+                        )}
+                      >
+                        <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                        <span className="flex flex-1 items-center gap-1.5 py-1 text-text">
+                          <I.Layers size={11} className="shrink-0 text-accent" />
+                          {(col.columnDef.header as string | undefined) ?? colId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
+                          className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                        >
+                          <I.X size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {/* Inactive groups — click để thêm */}
+                  {sortableColumns
+                    .filter((col) => !grouping.includes(col.id))
+                    .map((col) => (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => {
+                          setGrouping((prev) => [...prev, col.id]);
+                          setExpanded(true);
+                        }}
+                        className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
+                      >
+                        <I.Layers size={11} className="shrink-0 text-muted/30" />
+                        {(col.columnDef.header as string | undefined) ?? col.id}
+                      </button>
+                    ))}
+                  {grouping.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGrouping([]);
+                        setGroupPickerOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                    >
+                      Bỏ tất cả nhóm
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* ── Tích chọn dòng ── */}
+              {enableSelection && (
+                <>
+                  <div className="border-t border-border my-1" />
                   <button
                     type="button"
                     onClick={() =>
-                      setSorting(sorting.map((x) => (x.id === s.id ? { ...x, desc: !x.desc } : x)))
+                      setShowSelectCol((v) => {
+                        if (v) clearSelection();
+                        return !v;
+                      })
                     }
-                    className="flex flex-1 items-center gap-1.5 py-1 text-left hover:text-text transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
                   >
-                    {s.desc ? (
-                      <I.ChevronDown size={11} className="shrink-0 text-accent" />
-                    ) : (
-                      <I.ChevronUp size={11} className="shrink-0 text-accent" />
-                    )}
-                    <span className="text-text">
-                      {(col.columnDef.header as string | undefined) ?? s.id}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSorting(sorting.filter((x) => x.id !== s.id))}
-                    className="shrink-0 text-muted/40 hover:text-danger transition-colors"
-                  >
-                    <I.X size={10} />
-                  </button>
-                </div>
-              );
-            })}
-            {allSortableCols
-              .filter((col) => !sorting.find((s) => s.id === col.id))
-              .map((col) => (
-                <button
-                  key={col.id}
-                  type="button"
-                  onClick={() => setSorting([...sorting, { id: col.id, desc: false }])}
-                  className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
-                >
-                  <I.ChevronsUpDown size={11} className="shrink-0 text-muted/30" />
-                  {(col.columnDef.header as string | undefined) ?? col.id}
-                </button>
-              ))}
-            {sorting.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setSorting([])}
-                className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
-              >
-                Bỏ tất cả sắp xếp
-              </button>
-            )}
-
-            {/* ── Nhóm theo ── */}
-            {!serverMode && (
-              <>
-                <div className="border-t border-border my-1" />
-                <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
-                  Nhóm theo
-                </div>
-                {/* Active groups — draggable để đổi thứ tự cấp nhóm */}
-                {grouping.map((colId) => {
-                  const col = table.getColumn(colId);
-                  if (!col) return null;
-                  return (
                     <div
-                      key={colId}
-                      draggable
-                      onDragStart={() => setDragGroupId(colId)}
-                      onDragEnd={() => setDragGroupId(null)}
-                      onDragOver={(e) => {
-                        if (dragGroupId && dragGroupId !== colId) e.preventDefault();
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (!dragGroupId || dragGroupId === colId) return;
-                        const from = grouping.indexOf(dragGroupId);
-                        const to = grouping.indexOf(colId);
-                        if (from === -1 || to === -1) return;
-                        const next = [...grouping];
-                        next.splice(to, 0, ...next.splice(from, 1));
-                        setGrouping(next);
-                        setDragGroupId(null);
-                      }}
                       className={cn(
-                        "flex items-center gap-1 px-2 text-xs",
-                        dragGroupId === colId && "opacity-40",
+                        "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                        showSelectCol ? "bg-accent border-accent" : "border-border",
                       )}
                     >
-                      <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
-                      <span className="flex flex-1 items-center gap-1.5 py-1 text-text">
-                        <I.Layers size={11} className="shrink-0 text-accent" />
-                        {(col.columnDef.header as string | undefined) ?? colId}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
-                        className="shrink-0 text-muted/40 hover:text-danger transition-colors"
-                      >
-                        <I.X size={10} />
-                      </button>
+                      {showSelectCol && <I.Check size={9} className="text-white" />}
                     </div>
-                  );
-                })}
-                {/* Inactive groups — click để thêm */}
-                {sortableColumns
-                  .filter((col) => !grouping.includes(col.id))
-                  .map((col) => (
-                    <button
-                      key={col.id}
-                      type="button"
-                      onClick={() => {
-                        setGrouping((prev) => [...prev, col.id]);
-                        setExpanded(true);
-                      }}
-                      className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
-                    >
-                      <I.Layers size={11} className="shrink-0 text-muted/30" />
-                      {(col.columnDef.header as string | undefined) ?? col.id}
-                    </button>
-                  ))}
-                {grouping.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGrouping([]);
-                      setGroupPickerOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
-                  >
-                    Bỏ tất cả nhóm
+                    <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
                   </button>
-                )}
-              </>
-            )}
-
-            {/* ── Tích chọn dòng ── */}
-            {enableSelection && (
-              <>
-                <div className="border-t border-border my-1" />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSelectCol((v) => {
-                      if (v) clearSelection();
-                      return !v;
-                    })
-                  }
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
-                >
-                  <div
-                    className={cn(
-                      "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
-                      showSelectCol ? "bg-accent border-accent" : "border-border",
-                    )}
-                  >
-                    {showSelectCol && <I.Check size={9} className="text-white" />}
-                  </div>
-                  <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
+                </>
+              )}
+            </div>,
+            document.body,
+          )}
 
         {/* Col chooser dropdown — ngoài overflow-x-auto */}
         {colChooserOpen && (
