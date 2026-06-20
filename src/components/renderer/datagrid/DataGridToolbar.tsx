@@ -125,6 +125,34 @@ export function DataGridToolbar<T>({
   // Toạ độ (fixed) bám đáy nút nhóm/sắp xếp để menu xổ ra ĐÚNG vị trí nút.
   const groupPos = useDropdownPosition(groupPickerRef, groupPickerOpen);
 
+  // Desktop (chuột): hover vào nút có menu → xổ menu luôn (touch giữ click).
+  // Đóng có grace 180ms để rê chuột từ nút sang menu (có khoảng hở) không bị đóng.
+  const canHover =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches;
+  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHoverClose = () => {
+    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+  };
+  const hoverOpen = (which: "group" | "col" | "export") => {
+    if (!canHover) return;
+    cancelHoverClose();
+    setGroupPickerOpen(which === "group");
+    setColChooserOpen(which === "col");
+    setExportMenuOpen(which === "export");
+  };
+  const hoverScheduleClose = () => {
+    if (!canHover) return;
+    cancelHoverClose();
+    hoverCloseTimer.current = setTimeout(() => {
+      setGroupPickerOpen(false);
+      setColChooserOpen(false);
+      setExportMenuOpen(false);
+    }, 180);
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ dọn timer khi unmount
+  useEffect(() => () => cancelHoverClose(), []);
+
   // Close group picker on outside click
   useEffect(() => {
     if (!groupPickerOpen) return;
@@ -484,7 +512,11 @@ export function DataGridToolbar<T>({
                 <I.Filter size={11} />
                 {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
               </button>
-              <div ref={groupPickerRef}>
+              <div
+                ref={groupPickerRef}
+                onMouseEnter={() => hoverOpen("group")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setGroupPickerOpen((v) => !v)}
@@ -561,7 +593,11 @@ export function DataGridToolbar<T>({
                   </button>
                 </div>
               )}
-              <div ref={colChooserRef}>
+              <div
+                ref={colChooserRef}
+                onMouseEnter={() => hoverOpen("col")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setColChooserOpen((v) => !v)}
@@ -572,7 +608,11 @@ export function DataGridToolbar<T>({
                   <I.ChevronDown size={10} />
                 </button>
               </div>
-              <div ref={exportBtnRef}>
+              <div
+                ref={exportBtnRef}
+                onMouseEnter={() => hoverOpen("export")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setExportMenuOpen((v) => !v)}
@@ -599,6 +639,8 @@ export function DataGridToolbar<T>({
           createPortal(
             <div
               ref={groupDropdownRef}
+              onMouseEnter={cancelHoverClose}
+              onMouseLeave={hoverScheduleClose}
               style={{ position: "fixed", top: groupPos.top, left: groupPos.left }}
               className="z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
             >
@@ -827,6 +869,8 @@ export function DataGridToolbar<T>({
         {colChooserOpen && (
           <div
             ref={colDropdownRef}
+            onMouseEnter={cancelHoverClose}
+            onMouseLeave={hoverScheduleClose}
             className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1"
           >
             <div className="w-max min-w-full">
@@ -917,6 +961,8 @@ export function DataGridToolbar<T>({
         {exportMenuOpen && (
           <div
             ref={exportDropdownRef}
+            onMouseEnter={cancelHoverClose}
+            onMouseLeave={hoverScheduleClose}
             className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[200px]"
           >
             <button
