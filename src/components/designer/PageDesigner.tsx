@@ -3,16 +3,15 @@ import { ActionInspector } from "@/components/designer/ActionInspector";
 import { AiAssistDrawer } from "@/components/designer/AiAssistDrawer";
 import { ComponentCard } from "@/components/designer/canvas/canvas-preview";
 import { migrateToGrid } from "@/components/designer/grid-layout";
+import { AdvancedFilterInspector } from "@/components/designer/inspectors/AdvancedFilterInspector";
 import { BandInspector } from "@/components/designer/inspectors/BandInspector";
 import { BocucInspector } from "@/components/designer/inspectors/BocucInspector";
+import { BuocInspector } from "@/components/designer/inspectors/BuocInspector";
 import { ChungInspector } from "@/components/designer/inspectors/ChungInspector";
 import { DieukienInspector } from "@/components/designer/inspectors/DieukienInspector";
 import { DulieuInspector } from "@/components/designer/inspectors/DulieuInspector";
-import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
-import {
-  ActionBarInspector,
-  tabsForKind,
-} from "@/components/designer/inspectors/inspector-helpers";
+import { HanhDongInspector } from "@/components/designer/inspectors/HanhDongInspector";
+import { tabsForKind } from "@/components/designer/inspectors/inspector-helpers";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
 import {
   type ActionBarItem,
@@ -20,12 +19,11 @@ import {
   PALETTE,
   type PageComponent,
 } from "@/components/designer/page-designer-constants";
-import { FieldDisplayToggle, fieldBoth } from "@/components/FieldDisplayToggle";
+import { FieldDisplayToggle } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { PageStatusPicker } from "@/components/PageStatusFlag";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
-import { ROW_ACTION_OPTIONS } from "@/components/renderer/RowActionsCell";
-import { Button, EmptyState, FormField, Input, Select, Switch } from "@/components/ui";
+import { Button, EmptyState, FormField, Switch } from "@/components/ui";
 import { useMcpClient } from "@/hooks/useMcpClient";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useShortcut } from "@/hooks/useShortcut";
@@ -37,7 +35,7 @@ import { collectStateSources, type StateSource } from "@/lib/page-state-sources"
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, FilterNode } from "@/types/page";
+import type { ActionConfig } from "@/types/page";
 
 interface Props {
   pageId: string;
@@ -1087,336 +1085,17 @@ export function PageDesigner({ pageId }: Props) {
                   )}
 
                   {/* ── Wizard / Step ── */}
-                  {inspTab === "buoc" &&
-                    sel.kind === "step" &&
-                    (() => {
-                      interface StepDef {
-                        id: string;
-                        title: string;
-                        description?: string;
-                        entity?: string;
-                        fields?: string[];
-                        saveOutputTo?: string;
-                        actions?: ActionBarItem[];
-                      }
-                      const steps = (sel.config.steps as StepDef[] | undefined) ?? [];
-                      const submitLabel = (sel.config.submitLabel as string | undefined) ?? "";
-
-                      const addStep = () => {
-                        const newStep: StepDef = {
-                          id: `s_${Math.random().toString(36).slice(2, 6)}`,
-                          title: `Bước ${steps.length + 1}`,
-                        };
-                        update(sel.id, {
-                          config: { ...sel.config, steps: [...steps, newStep] },
-                        });
-                        setExpandedStep(newStep.id);
-                      };
-                      const removeStep = (sid: string) => {
-                        update(sel.id, {
-                          config: { ...sel.config, steps: steps.filter((s) => s.id !== sid) },
-                        });
-                        if (expandedStep === sid) setExpandedStep(null);
-                      };
-                      const updateStep = (sid: string, patch: Partial<StepDef>) =>
-                        update(sel.id, {
-                          config: {
-                            ...sel.config,
-                            steps: steps.map((s) => (s.id === sid ? { ...s, ...patch } : s)),
-                          },
-                        });
-
-                      return (
-                        <>
-                          <FormField label="Nhãn nút hoàn tất">
-                            <Input
-                              placeholder="Hoàn tất"
-                              value={submitLabel}
-                              onChange={(e) =>
-                                update(sel.id, {
-                                  config: { ...sel.config, submitLabel: e.target.value },
-                                })
-                              }
-                            />
-                          </FormField>
-                          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
-                            Các bước ({steps.length})
-                          </div>
-                          <div className="space-y-2">
-                            {steps.map((s, i) => {
-                              const stepEnt = entities.find((e) => e.id === s.entity);
-                              const isOpen = expandedStep === s.id;
-                              const allSelected = s.fields == null;
-                              const selectedFieldNames = s.fields ?? [];
-                              const entFields = stepEnt?.fields ?? [];
-                              return (
-                                <div
-                                  key={s.id}
-                                  className="border border-border rounded-md overflow-hidden"
-                                >
-                                  <button
-                                    type="button"
-                                    className={cn(
-                                      "w-full flex items-center gap-2 px-2 py-1.5 text-left",
-                                      isOpen ? "bg-accent/10" : "hover:bg-hover/50",
-                                    )}
-                                    onClick={() => setExpandedStep(isOpen ? null : s.id)}
-                                  >
-                                    <div className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] font-semibold shrink-0">
-                                      {i + 1}
-                                    </div>
-                                    <span className="flex-1 text-xs font-medium truncate">
-                                      {s.title || `Bước ${i + 1}`}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeStep(s.id);
-                                      }}
-                                      className="w-5 h-5 flex items-center justify-center text-muted hover:text-danger"
-                                    >
-                                      <I.Trash size={11} />
-                                    </button>
-                                    <I.ChevronDown
-                                      size={11}
-                                      className={cn(
-                                        "text-muted transition-transform shrink-0",
-                                        isOpen && "rotate-180",
-                                      )}
-                                    />
-                                  </button>
-                                  {isOpen && (
-                                    <div className="p-2 space-y-2 border-t border-border bg-bg-soft">
-                                      <FormField label="Tên bước">
-                                        <Input
-                                          placeholder={`Bước ${i + 1}`}
-                                          value={s.title}
-                                          onChange={(e) =>
-                                            updateStep(s.id, { title: e.target.value })
-                                          }
-                                        />
-                                      </FormField>
-                                      <FormField label="Mô tả (tuỳ chọn)">
-                                        <Input
-                                          placeholder="Hướng dẫn người dùng..."
-                                          value={s.description ?? ""}
-                                          onChange={(e) =>
-                                            updateStep(s.id, {
-                                              description: e.target.value || undefined,
-                                            })
-                                          }
-                                        />
-                                      </FormField>
-                                      <FormField label="Entity (tạo bản ghi)">
-                                        <Select
-                                          value={s.entity ?? ""}
-                                          onChange={(e) =>
-                                            updateStep(s.id, {
-                                              entity: e.target.value || undefined,
-                                              fields: undefined,
-                                            })
-                                          }
-                                        >
-                                          <option value="">— chỉ hiển thị, không lưu —</option>
-                                          {entities.map((en) => (
-                                            <option key={en.id} value={en.id}>
-                                              {en.name}
-                                            </option>
-                                          ))}
-                                        </Select>
-                                      </FormField>
-                                      {stepEnt && entFields.length > 0 && (
-                                        <FormField label="Trường hiển thị">
-                                          <div className="border border-border rounded overflow-hidden max-h-36 overflow-y-auto">
-                                            {entFields.map((f) => {
-                                              const checked =
-                                                allSelected || selectedFieldNames.includes(f.name);
-                                              return (
-                                                <label
-                                                  key={f.name}
-                                                  className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-hover/40 border-b border-border/50 last:border-0"
-                                                >
-                                                  <input
-                                                    type="checkbox"
-                                                    className="accent-accent"
-                                                    checked={checked}
-                                                    onChange={(ev) => {
-                                                      const base = allSelected
-                                                        ? entFields.map((x) => x.name)
-                                                        : [...selectedFieldNames];
-                                                      const next = ev.target.checked
-                                                        ? base.includes(f.name)
-                                                          ? base
-                                                          : [...base, f.name]
-                                                        : base.filter((n) => n !== f.name);
-                                                      updateStep(s.id, {
-                                                        fields:
-                                                          next.length === entFields.length
-                                                            ? undefined
-                                                            : next,
-                                                      });
-                                                    }}
-                                                  />
-                                                  <span className="flex-1 truncate">
-                                                    {fieldBoth(f)}
-                                                  </span>
-                                                </label>
-                                              );
-                                            })}
-                                          </div>
-                                        </FormField>
-                                      )}
-                                      {s.entity && (
-                                        <FormField label="Lưu ID vào state key">
-                                          <Input
-                                            placeholder="vd: don_hang_id"
-                                            value={s.saveOutputTo ?? ""}
-                                            onChange={(e) =>
-                                              updateStep(s.id, {
-                                                saveOutputTo: e.target.value || undefined,
-                                              })
-                                            }
-                                          />
-                                          <div className="text-[10px] text-muted/70 mt-0.5 px-0.5">
-                                            Bước sau dùng state này để liên kết
-                                          </div>
-                                        </FormField>
-                                      )}
-                                      <div className="pt-1 border-t border-border/60">
-                                        <ActionBarInspector
-                                          items={s.actions ?? []}
-                                          align="left"
-                                          embedded
-                                          onChange={(items) =>
-                                            updateStep(s.id, {
-                                              actions: items.length ? items : undefined,
-                                            })
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <button
-                            type="button"
-                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-xs text-muted hover:border-accent hover:text-accent transition-colors"
-                            onClick={addStep}
-                          >
-                            <I.Plus size={12} /> Thêm bước
-                          </button>
-                        </>
-                      );
-                    })()}
-
-                  {/* ── Action Bar ── */}
-                  {inspTab === "hanhDong" && sel.kind === "actionbar" && (
-                    <ActionBarInspector
-                      items={(sel.config.items as ActionBarItem[] | undefined) ?? []}
-                      align={(sel.config.align as "left" | "right" | "between") ?? "left"}
-                      compact={sel.config.compact === true}
-                      onChange={(items, align) =>
-                        update(sel.id, { config: { ...sel.config, items, align } })
-                      }
-                      onCompactChange={(v) =>
-                        update(sel.id, { config: { ...sel.config, compact: v || undefined } })
-                      }
+                  {inspTab === "buoc" && sel.kind === "step" && (
+                    <BuocInspector
+                      sel={sel}
+                      update={update}
+                      expandedStep={expandedStep}
+                      setExpandedStep={setExpandedStep}
                     />
                   )}
 
-                  {/* ── Cột hành động theo dòng (Xem/Sửa/Xoá + sao chép/in…) ── */}
-                  {inspTab === "hanhDong" && sel.kind === "list" && (
-                    <div className="space-y-2 pb-2 border-b border-border/40">
-                      <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-bg-soft">
-                        <div className="flex flex-col leading-tight">
-                          <span className="text-sm">Cột hành động</span>
-                          <span className="text-[11px] text-muted">
-                            Thêm cột hành động cho từng dòng: Xem · Sửa · Xoá (+ sao chép / xuất /
-                            in…). Mặc định ẩn.
-                          </span>
-                        </div>
-                        <Switch
-                          checked={sel.config.rowActionsBuiltin === true}
-                          onChange={(v) =>
-                            update(sel.id, { config: { ...sel.config, rowActionsBuiltin: v } })
-                          }
-                        />
-                      </div>
-                      {sel.config.rowActionsBuiltin === true && (
-                        <>
-                          <FormField label="Kiểu hiển thị">
-                            <Select
-                              value={(sel.config.rowActionsStyle as string) ?? "inline"}
-                              onChange={(e) =>
-                                update(sel.id, {
-                                  config: { ...sel.config, rowActionsStyle: e.target.value },
-                                })
-                              }
-                            >
-                              <option value="inline">Inline (nút Xem · Sửa · Xoá)</option>
-                              <option value="popover">Popover (nút ⋯ gọn)</option>
-                            </Select>
-                          </FormField>
-                          {((sel.config.rowActionsStyle as string) ?? "inline") === "popover" && (
-                            <div className="p-2.5 rounded-md border border-border bg-bg-soft">
-                              <div className="text-sm mb-0.5">Nút hiện trên popover</div>
-                              <div className="text-[11px] text-muted mb-2">
-                                Bỏ tích để ẩn nút khỏi popover ⋯
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                {ROW_ACTION_OPTIONS.map((opt) => {
-                                  const hidden =
-                                    (sel.config.rowActionsHidden as string[] | undefined) ?? [];
-                                  return (
-                                    <label
-                                      key={opt.key}
-                                      className="flex items-center gap-1.5 text-[12px] cursor-pointer"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        className="accent-accent shrink-0"
-                                        checked={!hidden.includes(opt.key)}
-                                        onChange={(e) => {
-                                          const h =
-                                            (sel.config.rowActionsHidden as string[] | undefined) ??
-                                            [];
-                                          const next = e.target.checked
-                                            ? h.filter((k) => k !== opt.key)
-                                            : [...h, opt.key];
-                                          update(sel.id, {
-                                            config: { ...sel.config, rowActionsHidden: next },
-                                          });
-                                        }}
-                                      />
-                                      <span className="truncate">{opt.label}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── Thanh hành động nhúng — list / form / detail ── */}
-                  {inspTab === "hanhDong" &&
-                    (sel.kind === "list" || sel.kind === "form" || sel.kind === "detail") && (
-                      <div className="space-y-2 pt-1 border-t border-border/40">
-                        <ActionBarInspector
-                          items={(sel.config.embeddedActions as ActionBarItem[] | undefined) ?? []}
-                          align="left"
-                          embedded
-                          onChange={(items) =>
-                            update(sel.id, { config: { ...sel.config, embeddedActions: items } })
-                          }
-                        />
-                      </div>
-                    )}
+                  {/* ── Action Bar ── */}
+                  {inspTab === "hanhDong" && <HanhDongInspector sel={sel} update={update} />}
 
                   {/* ── Action — chuỗi step do người dùng cấu hình ── */}
                   {inspTab === "cauhinh" && sel.kind === "action" && (
@@ -1442,37 +1121,14 @@ export function PageDesigner({ pageId }: Props) {
                   {(sel.kind === "calendar" ||
                     sel.kind === "map" ||
                     sel.kind === "pivot" ||
-                    sel.kind === "kpi") &&
-                    (() => {
-                      const ent = entities.find(
-                        (e) => e.id === (sel.config.entity as string | undefined),
-                      );
-                      return (
-                        <details className="pt-2 border-t border-border">
-                          <summary className="text-xs font-semibold text-muted uppercase tracking-wide cursor-pointer hover:text-text">
-                            Bộ lọc nâng cao (AND / OR)
-                          </summary>
-                          <div className="mt-2">
-                            {!ent && (
-                              <div className="text-[11px] text-warning mb-2">
-                                Bind entity ở "Cấu hình" trước để chọn field filter.
-                              </div>
-                            )}
-                            <FilterBuilder
-                              value={sel.config.filters as FilterNode | null | undefined}
-                              onChange={(next) =>
-                                update(sel.id, {
-                                  config: { ...sel.config, filters: next },
-                                })
-                              }
-                              sources={stateSources}
-                              entityFields={ent?.fields ?? []}
-                              onPickSource={ensureMasterEmits}
-                            />
-                          </div>
-                        </details>
-                      );
-                    })()}
+                    sel.kind === "kpi") && (
+                    <AdvancedFilterInspector
+                      sel={sel}
+                      update={update}
+                      stateSources={stateSources}
+                      ensureMasterEmits={ensureMasterEmits}
+                    />
+                  )}
                 </div>
               </div>
             ) : (
