@@ -42,7 +42,7 @@ import {
 import { MasterDetailEditModal } from "@/components/renderer/MasterDetailEditModal";
 import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
-import { Button, Chip, Modal, SearchableSelect, Tabs } from "@/components/ui";
+import { Button, Chip, Modal, SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -5188,48 +5188,28 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
   );
 }
 
-/** FilterWidget khi dùng items[] (format mới): luôn dùng tab. */
+/** FilterWidget khi dùng items[] (format mới): hiện tất cả thành phần cùng lúc theo hàng. */
 function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: FItemCfg[] }) {
   const pageState = usePageState();
   const refreshDsId = cfg.refreshDataSourceId as string | undefined;
-  const [activeId, setActiveId] = useState<string>(items[0]?.id ?? "");
 
   if (items.length === 0) return null;
 
-  const active = items.find((it) => it.id === activeId) ?? items[0];
-  const tabOptions = items.map((it) => ({
-    value: it.id,
-    label: it.label || it.kind || it.id,
-  }));
-
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center border-b border-border">
-        <Tabs
-          value={active.id}
-          onChange={setActiveId}
-          options={tabOptions}
-          className="flex-1 border-b-0"
-        />
-        {refreshDsId && (
-          <div className="px-1">
-            <button
-              type="button"
-              onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
-              className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
-              title="Nạp lại"
-            >
-              <I.RefreshCw size={13} />
-            </button>
-          </div>
-        )}
-      </div>
-      <div
-        className="px-2 pt-3 pb-1.5"
-        style={active.width ? { maxWidth: active.width } : undefined}
-      >
-        <FilterItem key={active.id} item={active} showLabel={false} />
-      </div>
+    <div className="px-2 pt-4 pb-1.5 flex items-start gap-2 flex-wrap">
+      {items.map((item) => (
+        <FilterItem key={item.id} item={item} />
+      ))}
+      {refreshDsId && (
+        <button
+          type="button"
+          onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
+          className="shrink-0 self-center w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors mt-1"
+          title="Nạp lại"
+        >
+          <I.RefreshCw size={13} />
+        </button>
+      )}
     </div>
   );
 }
@@ -5646,15 +5626,22 @@ function ActionBarWidget({
   const t = useT();
   const items = (cfg.items ?? []) as (ActionConfig & { id: string })[];
   const align = cfg.align as string | undefined;
+  const compact = cfg.compact === true;
   const justify =
     align === "right" ? "justify-end" : align === "between" ? "justify-between" : "justify-start";
   return (
-    <div className={cn("h-full flex items-center gap-2 px-2.5 overflow-x-auto", justify)}>
+    <div className={cn("h-full flex items-center gap-1.5 px-2.5 overflow-x-auto", justify)}>
       {items.length === 0 ? (
         <span className="text-xs text-muted/50 italic">{t("widget.no_actions")}</span>
       ) : (
         items.map((item) => (
-          <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          <ActionWidget
+            key={item.id}
+            config={item}
+            pageState={pageState}
+            inline
+            compact={compact}
+          />
         ))
       )}
     </div>
