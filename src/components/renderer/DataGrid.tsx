@@ -528,18 +528,74 @@ export function DataGrid<T>({
   // Prune stale column IDs khỏi columnOrder sau khi IDB restore xong.
   // Xảy ra khi entity đổi schema (field xoá/đổi tên) → columnOrder cũ chứa id
   // không tồn tại → TanStack Table log [Table] Column with id 'X' does not exist.
+  // Đồng thời chèn cột MỚI (chưa có trong saved order) vào đúng vị trí tự nhiên
+  // — không để TanStack tự append vào cuối.
   const orderPrunedRef = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: tableRef stable — không cần trong deps
   useEffect(() => {
     if (!restoreSettled || orderPrunedRef.current) return;
     orderPrunedRef.current = true;
-    const validIds = new Set(tableRef.current.getAllLeafColumns().map((c) => c.id));
+    const allCols = tableRef.current.getAllLeafColumns().map((c) => c.id);
+    const validIds = new Set(allCols);
     setColumnOrder((prev) => {
       if (prev.length === 0) return prev;
       const pruned = prev.filter((id) => validIds.has(id));
-      return pruned.length === prev.length ? prev : pruned;
+      const prunedSet = new Set(pruned);
+      const missing = allCols.filter((id) => !prunedSet.has(id));
+      if (missing.length === 0) return pruned.length === prev.length ? prev : pruned;
+      // Chèn từng cột mới vào đúng vị trí: tìm neighbor gần nhất phía trước trong
+      // natural order rồi insert ngay sau nó trong merged array.
+      const merged = [...pruned];
+      for (const id of missing) {
+        const nat = allCols.indexOf(id);
+        let insertAt = 0;
+        for (let i = nat - 1; i >= 0; i--) {
+          const p = merged.indexOf(allCols[i]);
+          if (p !== -1) {
+            insertAt = p + 1;
+            break;
+          }
+        }
+        merged.splice(insertAt, 0, id);
+      }
+      return merged;
     });
   }, [restoreSettled]);
+
+  // Khi columns thay đổi runtime (vd bật/tắt cột hành động), đảm bảo các cột
+  // hệ thống (__xx__) luôn ở đúng vị trí tự nhiên — kể cả khi IDB đã lưu sai vị trí
+  // (vd __rowacts__ bị append cuối do bug cũ). Data cols giữ thứ tự user đã kéo.
+  const colIds = columns.map((c) => (c as { id?: string }).id ?? "").filter(Boolean);
+  const colIdsStr = colIds.join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: colIdsStr capture đủ thay đổi colIds
+  useEffect(() => {
+    if (!restoreSettled) return;
+    setColumnOrder((prev) => {
+      if (prev.length === 0) return prev;
+      // Data cols: giữ thứ tự user + lọc stale, bỏ sys cols
+      const dataCols = prev.filter((id) => !id.startsWith("__") && colIds.includes(id));
+      // New data cols chưa có trong prev → thêm ở cuối data cols
+      const dataSet = new Set(dataCols);
+      for (const id of colIds) {
+        if (!id.startsWith("__") && !dataSet.has(id)) dataCols.push(id);
+      }
+      // Chèn sys cols (__xx__) vào đúng vị trí tự nhiên (theo colIds)
+      const merged = [...dataCols];
+      for (const id of colIds.filter((x) => x.startsWith("__"))) {
+        const nat = colIds.indexOf(id);
+        let insertAt = 0;
+        for (let i = nat - 1; i >= 0; i--) {
+          const p = merged.indexOf(colIds[i]);
+          if (p !== -1) {
+            insertAt = p + 1;
+            break;
+          }
+        }
+        merged.splice(insertAt, 0, id);
+      }
+      return merged.join(",") === prev.join(",") ? prev : merged;
+    });
+  }, [colIdsStr, restoreSettled]);
 
   // ── Autofit cột theo nội dung. table-fixed clip ô nên scrollWidth chỉ đo được
   // khi nội dung TRÀN; dùng Range đo bề rộng NỘI DUNG THẬT (co được cả 2 chiều,

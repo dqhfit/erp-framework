@@ -1,3 +1,4 @@
+/// <reference path="./tokenshrink.d.ts" />
 /* ==========================================================
    llm-client.ts — Gọi LLM phía server cho node "agent".
    Đọc bảng llm_profiles; hỗ trợ Anthropic API và các endpoint
@@ -17,6 +18,7 @@ import type { DB } from "./db";
 import type { RunWorkflowOptions } from "@erp-framework/core";
 import { decryptSecret } from "./crypto";
 import { formatGuardrailPreamble, loadActiveGuardrails } from "./workflow-guardrails";
+import { compress } from "tokenshrink";
 
 type AgentResult = {
   text: string;
@@ -162,10 +164,11 @@ export function makeCallAgent(
     // Chèn guardrails (nếu có) lên đầu để agent đọc bài học trước khi làm.
     const preamble = await getPreamble();
     const system = preamble ? `${preamble}\n${baseSystem}` : baseSystem;
-    const prompt =
+    const rawPrompt =
       typeof cfg.prompt === "string"
         ? cfg.prompt
         : `Dữ liệu workflow hiện tại:\n${JSON.stringify(vars, null, 2)}`;
+    const { compressed: prompt } = compress(rawPrompt);
 
     const profileKey = p.apiKeyEnc ? decryptSecret(p.apiKeyEnc) : "";
     const allowEnvFallback = process.env.ERP_ALLOW_ENV_LLM_KEY === "1";
