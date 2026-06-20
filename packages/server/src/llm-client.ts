@@ -1,3 +1,4 @@
+/// <reference path="./tokenshrink.d.ts" />
 /* ==========================================================
    llm-client.ts — Gọi LLM phía server cho node "agent".
    Đọc bảng llm_profiles; hỗ trợ Anthropic API và các endpoint
