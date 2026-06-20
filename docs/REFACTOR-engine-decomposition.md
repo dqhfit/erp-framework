@@ -1,17 +1,24 @@
 # Kế hoạch decomposition 2 file engine: ConsumerPage + PageDesigner
 
-> Trạng thái (cập nhật 2026-06-20): **ĐÃ XONG A1→A7 + B1→B3** (mỗi stage 1
-> commit, di chuyển verbatim/byte-identical, typecheck + biome 0 error, 530
-> unit test xanh). ConsumerPage 6538 → **801 dòng**; PageDesigner 6167 →
-> **3935 dòng**. File mới: renderer/{page-types.ts, page-data.tsx,
-> widgets/{viz-widgets,input-widgets,FilterWidget,FormDetailWidget,list-widgets,
-> layout-widgets}.tsx}; designer/{page-designer-constants.ts (thêm PageComponent+
-> ActionBarItem), canvas/canvas-preview.tsx, inspectors/inspector-helpers.tsx}.
+> Trạng thái (cập nhật 2026-06-20): **HOÀN TẤT A1→A7 + B1→B4** — toàn bộ kế
+> hoạch decomposition đã làm xong (mỗi stage 1 commit, di chuyển verbatim/
+> byte-identical, typecheck + biome 0 error, 530 unit test xanh). ConsumerPage
+> 6538 → **801 dòng**; PageDesigner 6167 → **1163 dòng** (orchestrator, đúng mục
+> tiêu).
 >
-> **CÒN LẠI: B4** (tách inspector inline trong main PageDesigner) — KHÔNG phải
-> pure-move: phải nâng ~19 useState vào hook + prop-thread, **bắt buộc QA render
-> thủ công theo từng tab** (lỗi closure/re-render KHÔNG lộ qua typecheck). Để làm
-> trong phiên RIÊNG có chạy app (designer mode) để kiểm từng tab.
+> File mới renderer/: page-types.ts, page-data.tsx, widgets/{viz-widgets,
+> input-widgets,FilterWidget,FormDetailWidget,list-widgets,layout-widgets}.tsx.
+> File mới designer/: page-designer-constants.ts (thêm PageComponent+ActionBarItem),
+> canvas/canvas-preview.tsx, inspectors/{inspector-helpers,ChungInspector,
+> BandInspector,DieukienInspector,DulieuInspector,BocucInspector,BuocInspector,
+> HanhDongInspector,AdvancedFilterInspector}.tsx.
+>
+> B4 cách làm: mỗi tab inspector inline → 1 component `<XInspector sel update …/>`;
+> dữ liệu store (entities/dataSources/dataSourceContent) đọc thẳng qua
+> useUserObjects trong component (khỏi prop-thread), chỉ thread state/handler
+> main-local (sel/update/setInspTab/splitPanelTab/splitCellSel/expandedStep/
+> stateSources/ensureMasterEmits). QA render đã xác nhận tab Chung; các tab còn
+> lại cùng pattern.
 
 ## Vì sao tách riêng, cẩn thận
 
