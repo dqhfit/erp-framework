@@ -196,7 +196,15 @@ typecheck không bắt. KHÔNG gộp nhiều stage vào 1 commit (khó cô lập
 - QA (Playwright, session-injection): grid render + autofit + persistence-reload + 0
   console-error đã xác nhận trên trang ngũ kim (e69c332b).
 
-### CÒN LẠI — D3: tách `DataGridToolbar` (encapsulate dropdown state) — TURNKEY
+### ĐÃ XONG — D3: `DataGridToolbar` (encapsulate dropdown state)
+`datagrid/DataGridToolbar.tsx` (904 dòng): di chuyển verbatim khối toolbar (645–1333)
++ đóng gói 6 state/8 ref/5 effect/`doExport`/derived CHỈ-toolbar vào trong; nhận ~28
+prop dùng-chung (drag-reorder `dragSortId`/`dragGroupId` cũng là toolbar-only → state
+nội bộ). Luôn mount (return null khi !toolbar) để hook chạy y như cũ. DataGrid 2014 →
+**1255 dòng**. tsc + biome 0 error, 530 test xanh, toolbar JSX byte-identical (chỉ
+biome re-wrap), render-QA: toolbar render + 0 console-error (đã xác nhận live).
+
+### (lịch sử) D3 spec gốc — TURNKEY (đã thực hiện ở trên)
 Khối **toolbar = dòng 645–1333** (`{toolbar && (<div ref={toolbarBorderRef}>…</div>)}`).
 Selection-bar (1335–1386) + grid (`{viewMode === "card" ? … }` 1388+) là sibling RIÊNG,
 KHÔNG thuộc toolbar. Cách làm (verbatim block-move → behavior giữ nguyên, typecheck
