@@ -4936,12 +4936,25 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
           (optionLabels[o.value] ?? o.label).toLowerCase().includes(query.toLowerCase()),
         )
       : options;
+    const getCur = (): string[] =>
+      Array.isArray(pageState.get(stateKey)) ? (pageState.get(stateKey) as string[]) : [];
     const toggle = (v: string) => {
-      const cur = Array.isArray(pageState.get(stateKey))
-        ? (pageState.get(stateKey) as string[])
-        : [];
+      const cur = getCur();
       pageState.set(stateKey, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
     };
+    const selectFiltered = () => {
+      const cur = new Set(getCur());
+      for (const o of filtered) cur.add(o.value);
+      pageState.set(stateKey, [...cur]);
+    };
+    const deselectFiltered = () => {
+      const remove = new Set(filtered.map((o) => o.value));
+      pageState.set(
+        stateKey,
+        getCur().filter((v) => !remove.has(v)),
+      );
+    };
+    const allFilteredChecked = filtered.length > 0 && filtered.every((o) => vals.includes(o.value));
     const triggerLabel = vals.length === 0 ? "Tất cả" : `${vals.length} đã chọn`;
     return (
       <div className="p-2 h-full flex flex-col gap-1">
@@ -4987,6 +5000,20 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
                   </button>
                 )}
               </div>
+              {filtered.length > 0 && (
+                <div className="flex items-center gap-1 border-b border-border px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={allFilteredChecked ? deselectFiltered : selectFiltered}
+                    className="px-1.5 h-5 rounded text-[11px] border border-border hover:bg-hover/40 text-muted hover:text-text"
+                  >
+                    {allFilteredChecked ? "Bỏ hết" : "Chọn hết"}
+                  </button>
+                  <span className="ml-auto text-[11px] text-muted/70">
+                    {filtered.length}/{options.length}
+                  </span>
+                </div>
+              )}
               <ul className="max-h-60 overflow-y-auto py-1">
                 {filtered.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
