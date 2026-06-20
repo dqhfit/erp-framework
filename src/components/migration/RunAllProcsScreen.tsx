@@ -14,101 +14,27 @@ import {
 } from "@erp-framework/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import {
+  type ClassifyMode,
+  CONN_LS_KEY,
+  type ListData,
+  loadLS,
+  type PersistedFilters,
+  type ProcRow,
+  procTextMatch,
+  RESULT_BADGE,
+  RESULT_COLORS,
+  RUNLOGS_CAP,
+  type RunLogEntry,
+  saveLS,
+  TIER_COLORS,
+} from "@/components/migration/run-procs-utils";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
 
 const migration = createMigrationClient("");
 const connectionsApi = createMssqlConnectionsClient("");
-/** Key localStorage nhớ connection đã chọn ở màn Migrate proc (giống QuickMigrate). */
-const CONN_LS_KEY = "migrate-proc-conn-id";
-
-type ListData = Awaited<ReturnType<typeof migration.listAllProcsToMigrate>>;
-type ProcRow = ListData["rowsByModule"][string][number];
-type ClassifyMode = "skip-existing" | "if-stale" | "force";
-
-/** Nhật ký 1 dòng — append vào runLogs trong suốt session. */
-interface RunLogEntry {
-  id: string;
-  at: string;
-  /** Bước trong flow runMigrateAll. "info" cho header/footer phụ. */
-  step: "1/3" | "2/3" | "2b/3" | "3/3" | "info";
-  /** Hành động: classify proc, codegen workflow/B/D, apply FK, hoặc info. */
-  action: "classify" | "workflow" | "codegen" | "fk" | "info";
-  /** Target text: tên module, tên proc, hoặc entity.field. */
-  target: string;
-  /** Kết quả: started/success/skipped/cached/noop/failed. */
-  result: "started" | "success" | "skipped" | "cached" | "noop" | "failed";
-  /** Mô tả thêm — vd error message hay counts. */
-  detail?: string;
-}
-
-const RESULT_COLORS: Record<RunLogEntry["result"], string> = {
-  started: "text-accent",
-  success: "text-success",
-  skipped: "text-muted",
-  cached: "text-muted italic",
-  noop: "text-muted italic",
-  failed: "text-danger",
-};
-
-const RESULT_BADGE: Record<RunLogEntry["result"], string> = {
-  started: "▶",
-  success: "✓",
-  skipped: "↷",
-  cached: "⟲",
-  noop: "≡",
-  failed: "✗",
-};
-
-const TIER_COLORS: Record<string, string> = {
-  B: "bg-accent/15 text-accent border-accent/30",
-  C: "bg-warning/15 text-warning border-warning/30",
-  D: "bg-danger/15 text-danger border-danger/30",
-};
-
-/* ── Persist trạng thái UI vào localStorage ─────────────────────────────
-   Kết quả migrate thật lưu server-side (manifest/procedures/decisions); ở
-   đây chỉ persist working-set của màn (bộ lọc, proc đã tick, nhật ký) để
-   mở lại / F5 không reset. */
-const LS_KEY = "migrate-proc-screen:v1";
-const RUNLOGS_CAP = 500; // giữ N dòng nhật ký mới nhất, tránh phình localStorage.
-
-interface PersistedFilters {
-  filterMode: "all" | "reads-only";
-  activeDays: number;
-  sortBy: "complexity-asc" | "complexity-desc" | "name";
-  moduleFilter: string;
-  procNameFilter: string;
-  codegenFilter: "all" | "done" | "pending";
-  classifyMode: ClassifyMode;
-}
-
-function loadLS<T>(sub: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(`${LS_KEY}:${sub}`);
-    return raw == null ? fallback : (JSON.parse(raw) as T);
-  } catch {
-    return fallback;
-  }
-}
-function saveLS(sub: string, val: unknown): void {
-  try {
-    localStorage.setItem(`${LS_KEY}:${sub}`, JSON.stringify(val));
-  } catch {
-    /* quota đầy / localStorage tắt — bỏ qua, không vỡ UI */
-  }
-}
-
-/** Khớp từ khoá với proc theo TÊN máy + NHÃN + NGHIỆP VỤ (client-side). */
-function procTextMatch(row: ProcRow, term: string): boolean {
-  return (
-    row.name.toLowerCase().includes(term) ||
-    (row.label?.toLowerCase().includes(term) ?? false) ||
-    (row.businessCategory?.toLowerCase().includes(term) ?? false)
-  );
-}
-
 interface Props {
   onClose: () => void;
 }
