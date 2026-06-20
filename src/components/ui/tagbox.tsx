@@ -39,6 +39,8 @@ export interface TagBoxProps {
   enablePicker?: boolean;
   /** Title của Picker Modal. */
   pickerTitle?: string;
+  /** Chiều cao cố định h-8 — dùng khi cần đồng bộ với input/select khác. */
+  compact?: boolean;
 }
 
 export function TagBox({
@@ -53,6 +55,7 @@ export function TagBox({
   error,
   enablePicker,
   pickerTitle,
+  compact = false,
 }: TagBoxProps) {
   const t = useT();
   const showPicker = (enablePicker ?? suggestions.length > 0) && !disabled;
@@ -148,7 +151,8 @@ export function TagBox({
       {/* biome-ignore lint/a11y/useSemanticElements: container chip tổng hợp nhiều phần tử con, không thể thay bằng <button> */}
       <div
         className={cn(
-          "flex items-stretch min-h-[34px] border rounded bg-bg",
+          "flex items-stretch border rounded bg-bg",
+          compact ? "h-[30px]" : "min-h-[34px]",
           error ? "border-danger" : "border-border",
           disabled && "opacity-60 pointer-events-none",
         )}
@@ -163,7 +167,12 @@ export function TagBox({
         }}
       >
         {/* chips + input — wrap + scroll khi nhiều tag */}
-        <div className="flex flex-wrap items-center gap-1 flex-1 px-2 py-1 min-w-0 max-h-24 overflow-y-auto">
+        <div
+          className={cn(
+            "flex items-center gap-1 flex-1 px-2 min-w-0 overflow-hidden",
+            compact ? "flex-nowrap py-0" : "flex-wrap py-1 max-h-24 overflow-y-auto",
+          )}
+        >
           {value.map((tag) => (
             <span
               key={tag}
@@ -196,7 +205,10 @@ export function TagBox({
             onKeyDown={onKey}
             placeholder={value.length === 0 ? resolvedPh : ""}
             disabled={disabled}
-            className="flex-1 min-w-[80px] bg-transparent outline-none text-sm h-7"
+            className={cn(
+              "flex-1 min-w-[80px] bg-transparent outline-none text-sm",
+              compact ? "h-full" : "h-7",
+            )}
           />
         </div>
         {/* nút xổ — cố định bên phải, không bị đẩy khi nhiều chip */}

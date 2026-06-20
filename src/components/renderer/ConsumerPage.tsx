@@ -12,6 +12,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -140,7 +141,7 @@ interface UseRecordsOpts {
  *  - loadGate  : stateKey — chỉ tải khi state này có giá trị. */
 function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
   const pageState = usePageState();
-  const rawLimit = cfg.rowLimit;
+  const rawLimit = cfg.rowLimit ?? cfg.pageSize;
   const limit =
     typeof rawLimit === "number" && rawLimit > 0
       ? Math.min(Math.floor(rawLimit), MAX_ROW_LIMIT)
@@ -5089,14 +5090,27 @@ type FItemCfg = {
   pageSize?: number;
   options?: string;
   width?: number;
+  /** Lọc options theo field này khi filterFromState có giá trị (cascade). */
+  filterField?: string;
+  /** State key của control cha — khi có giá trị thì filter rows theo filterField. */
+  filterFromState?: string;
 };
 
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
-function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: boolean }) {
+function FilterItem({ item }: { item: FItemCfg }) {
   const pageState = usePageState();
-  const { rows, loading } = useWidgetData(item as Record<string, unknown>);
+  const { rows } = useWidgetData(item as Record<string, unknown>);
   const stateKey = item.stateKey || "";
   const label = item.label || "";
+
+  // Cascade: lọc rows theo filterField = state[filterFromState] nếu có.
+  const parentVal = item.filterFromState
+    ? ((pageState.get(item.filterFromState) as string) ?? "")
+    : "";
+  const filteredRows = useMemo(() => {
+    if (!item.filterField || !parentVal) return rows;
+    return rows.filter((r) => String(r[item.filterField!] ?? "") === parentVal);
+  }, [rows, item.filterField, parentVal]);
 
   const labelOptions = useMemo(() => {
     if (item.options) {
@@ -5106,10 +5120,10 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
         .filter(Boolean)
         .map((o) => ({ value: o, label: o }));
     }
-    if (!item.field || !rows.length) return [];
+    if (!item.field || !filteredRows.length) return [];
     const seen = new Set<string>();
     const out: { value: string; label: string }[] = [];
-    for (const r of rows) {
+    for (const r of filteredRows) {
       const v = String(r[item.field] ?? "");
       if (!v || seen.has(v)) continue;
       seen.add(v);
@@ -5118,35 +5132,38 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
     }
     out.sort((a, b) => a.value.localeCompare(b.value));
     return out;
-  }, [rows, item.field, item.labelField, item.options]);
+  }, [filteredRows, item.field, item.labelField, item.options]);
 
   const suggestions = labelOptions.map((o) => o.value);
 
+  // Reset child khi parent thay đổi (cascade: đổi hệ hàng → xóa sản phẩm cũ).
+  const prevParentVal = useRef(parentVal);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ react theo parentVal
+  useEffect(() => {
+    if (item.filterFromState && prevParentVal.current !== parentVal && stateKey) {
+      pageState.set(stateKey, "");
+    }
+    prevParentVal.current = parentVal;
+  }, [parentVal]);
+
   if (!stateKey) return <div className="text-xs text-muted/60 italic px-1">Chưa có state key</div>;
 
-  const floatLabel =
-    showLabel && label ? (
-      <span className="absolute -top-[9px] left-2 z-10 px-0.5 text-[10px] leading-none text-muted bg-bg pointer-events-none select-none">
-        {label}
-        {loading ? " …" : ""}
-      </span>
-    ) : null;
-
-  // width cố định khi có, ngược lại co giãn.
-  const wrapCls = item.width ? "relative shrink-0" : "relative min-w-[120px] flex-1";
+  // width cố định khi có; mặc định shrink-0 (không flex-1 để không giãn fill row).
   const wrapStyle = item.width ? { width: item.width } : undefined;
 
   if (item.kind === "combobox") {
     const val = (pageState.get(stateKey) as string) ?? "";
+    const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
     return (
       <div className={wrapCls} style={wrapStyle}>
-        {floatLabel}
         <SearchableSelect
           className="w-full"
           value={val}
           onChange={(v) => pageState.set(stateKey, v)}
           options={labelOptions}
-          emptyOption="— tất cả —"
+          placeholder={label || "Chọn…"}
+          emptyOption={label ? `${label}: tất cả` : "— tất cả —"}
+          wrapOptions
         />
       </div>
     );
@@ -5155,18 +5172,16 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
   if (item.kind === "tagbox") {
     const raw = pageState.get(stateKey);
     const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
+    const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[180px] max-w-[320px]";
     return (
-      <div
-        className={item.width ? "relative shrink-0" : "relative min-w-[140px] flex-1"}
-        style={wrapStyle}
-      >
-        {floatLabel}
+      <div className={wrapCls} style={wrapStyle}>
         <TagBox
           value={selected}
           onChange={(next) => pageState.set(stateKey, next)}
           suggestions={suggestions}
           strict={suggestions.length > 0}
-          placeholder={item.placeholder}
+          placeholder={item.placeholder || label || "Gõ để thêm…"}
+          compact
         />
       </div>
     );
@@ -5174,15 +5189,15 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
 
   // search
   const valS = (pageState.get(stateKey) as string) ?? "";
+  const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[280px]";
   return (
     <div className={wrapCls} style={wrapStyle}>
-      {floatLabel}
       <input
         type="text"
         value={valS}
         onChange={(e) => pageState.set(stateKey, e.target.value)}
-        placeholder={item.placeholder || "Tìm…"}
-        className="input w-full h-8 text-sm"
+        placeholder={item.placeholder || label || "Tìm…"}
+        className="input w-full"
       />
     </div>
   );
@@ -5196,7 +5211,7 @@ function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: 
   if (items.length === 0) return null;
 
   return (
-    <div className="px-2 pt-4 pb-1.5 flex items-start gap-2 flex-wrap">
+    <div className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
       {items.map((item) => (
         <FilterItem key={item.id} item={item} />
       ))}
@@ -5584,6 +5599,166 @@ function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 type ActionBarItem = ActionConfig & { id: string };
 
 /** Strip hành động nhúng bên trong widget (list/form/detail). */
+/** Thanh hành động tràn → popover, dùng chung cho EmbeddedActionStrip + ActionBarWidget. */
+function ActionOverflowBar({
+  items,
+  compact,
+  justify = "justify-start",
+  pageState,
+  wrapClass,
+}: {
+  items: ActionBarItem[];
+  compact: boolean;
+  justify?: string;
+  pageState: ReturnType<typeof usePageState>;
+  wrapClass?: string;
+}) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(items.length);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<{ top: number; right: number } | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items.length + compact đủ
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const ghost = ghostRef.current;
+    if (!outer || !ghost) return;
+
+    const measure = () => {
+      const avail = outer.clientWidth;
+      const children = Array.from(ghost.children) as HTMLElement[];
+      const moreEl = children[children.length - 1];
+      const moreW = (moreEl?.offsetWidth ?? 24) + 6;
+      const itemEls = children.slice(0, -1);
+      if (!itemEls.length) {
+        setVisibleCount(0);
+        return;
+      }
+
+      const last = itemEls[itemEls.length - 1];
+      if (last && last.offsetLeft + last.offsetWidth <= avail) {
+        setVisibleCount(itemEls.length);
+        return;
+      }
+      let count = 0;
+      for (let i = 0; i < itemEls.length; i++) {
+        const el = itemEls[i]!;
+        if (el.offsetLeft + el.offsetWidth + moreW <= avail) count = i + 1;
+        else break;
+      }
+      setVisibleCount(Math.max(1, count));
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(outer);
+    measure();
+    return () => ro.disconnect();
+  }, [items.length, compact]);
+
+  // Đóng popover khi click ngoài (check cả btn lẫn popover body)
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!moreBtnRef.current?.contains(t) && !popoverRef.current?.contains(t)) setMoreOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [moreOpen]);
+
+  const toggleMore = () => {
+    if (!moreOpen) {
+      const rect = moreBtnRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPopoverStyle({
+          top: rect.bottom + 4,
+          right: window.innerWidth - rect.right,
+        });
+      }
+    }
+    setMoreOpen((v) => !v);
+  };
+
+  const visibleItems = items.slice(0, visibleCount);
+  const hiddenItems = items.slice(visibleCount);
+
+  return (
+    <div ref={outerRef} className={cn("relative", wrapClass)}>
+      {/* Ghost invisible để đo width thực — nằm trong outer (không overflow-hidden) */}
+      <div
+        ref={ghostRef}
+        aria-hidden="true"
+        className="absolute inset-0 flex items-center gap-1 px-2 invisible pointer-events-none"
+      >
+        {items.map((item) => (
+          <ActionWidget
+            key={item.id}
+            config={item}
+            pageState={pageState}
+            inline
+            compact={compact}
+          />
+        ))}
+        <button type="button" className="h-6 w-6 shrink-0 rounded flex items-center justify-center">
+          <I.MoreHorizontal size={13} />
+        </button>
+      </div>
+
+      {/* Nội dung thật — overflow-hidden giữ 1 dòng */}
+      <div className={cn("flex items-center gap-1 px-2 overflow-hidden h-full", justify)}>
+        {visibleItems.map((item) => (
+          <ActionWidget
+            key={item.id}
+            config={item}
+            pageState={pageState}
+            inline
+            compact={compact}
+          />
+        ))}
+        {hiddenItems.length > 0 && (
+          <button
+            ref={moreBtnRef}
+            type="button"
+            onClick={toggleMore}
+            className={cn(
+              "ml-auto shrink-0 h-6 w-6 rounded border border-border/60 text-muted hover:bg-hover flex items-center justify-center",
+              moreOpen && "bg-hover border-accent/40 text-accent",
+            )}
+            title={`${hiddenItems.length} hành động khác`}
+          >
+            <I.MoreHorizontal size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Popover qua portal → không bị clip bởi overflow-hidden của ancestors */}
+      {moreOpen &&
+        hiddenItems.length > 0 &&
+        popoverStyle &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: "fixed",
+              top: popoverStyle.top,
+              right: popoverStyle.right,
+              zIndex: 9999,
+            }}
+            className="bg-panel border border-border rounded-lg shadow-lg p-1 flex flex-col gap-0.5 min-w-[140px]"
+          >
+            {hiddenItems.map((item) => (
+              <ActionWidget key={item.id} config={item} pageState={pageState} menuItem />
+            ))}
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 function EmbeddedActionStrip({
   items,
   pageState,
@@ -5592,11 +5767,12 @@ function EmbeddedActionStrip({
   pageState: ReturnType<typeof usePageState>;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/40 bg-panel-2/30 shrink-0 flex-wrap">
-      {items.map((item) => (
-        <ActionWidget key={item.id} config={item} pageState={pageState} inline />
-      ))}
-    </div>
+    <ActionOverflowBar
+      items={items}
+      compact
+      pageState={pageState}
+      wrapClass="border-b border-border/40 bg-panel-2/30 shrink-0 h-8"
+    />
   );
 }
 
@@ -5624,27 +5800,28 @@ function ActionBarWidget({
   pageState: ReturnType<typeof usePageState>;
 }) {
   const t = useT();
-  const items = (cfg.items ?? []) as (ActionConfig & { id: string })[];
+  const items = (cfg.items ?? []) as ActionBarItem[];
   const align = cfg.align as string | undefined;
   const compact = cfg.compact === true;
   const justify =
     align === "right" ? "justify-end" : align === "between" ? "justify-between" : "justify-start";
-  return (
-    <div className={cn("h-full flex items-center gap-1.5 px-2.5 overflow-x-auto", justify)}>
-      {items.length === 0 ? (
+
+  if (items.length === 0) {
+    return (
+      <div className="h-full flex items-center px-2.5">
         <span className="text-xs text-muted/50 italic">{t("widget.no_actions")}</span>
-      ) : (
-        items.map((item) => (
-          <ActionWidget
-            key={item.id}
-            config={item}
-            pageState={pageState}
-            inline
-            compact={compact}
-          />
-        ))
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  return (
+    <ActionOverflowBar
+      items={items}
+      compact={compact}
+      justify={justify}
+      pageState={pageState}
+      wrapClass="h-full"
+    />
   );
 }
 
@@ -6216,7 +6393,13 @@ export function ConsumerPage({
                       : `${ROW_H}px`,
                   // screenFit: ghim chiều cao = availH để fr hoạt động.
                   ...(!isMobile && !layoutEditing && screenFit && availH > 0
-                    ? { height: availH }
+                    ? {
+                        height: availH,
+                        // meta.gridTemplateRows cho phép override từng hàng (vd "48px minmax(0,1fr)")
+                        ...(pageMeta.gridTemplateRows
+                          ? { gridTemplateRows: pageMeta.gridTemplateRows as string }
+                          : {}),
+                      }
                     : // fillId: 1 widget đáy lấp hết chiều cao còn lại (hành vi cũ).
                       !isMobile && fillId && availH > 0 && fillRowStart > 0
                       ? {

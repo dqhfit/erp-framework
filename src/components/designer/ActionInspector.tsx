@@ -185,6 +185,14 @@ export function ActionInspector({ config, onChange }: Props) {
               placeholder="vd: Play"
             />
           </FormField>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={config.iconOnly === true}
+              onChange={(e) => update({ iconOnly: e.target.checked || undefined })}
+            />
+            <span className="font-medium">Chỉ hiện icon (ẩn nhãn, label thành tooltip)</span>
+          </label>
           <FormField label="Tooltip">
             <Input
               value={config.hint ?? ""}

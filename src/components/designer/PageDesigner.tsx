@@ -4253,8 +4253,12 @@ export function PageDesigner({ pageId }: Props) {
                     <ActionBarInspector
                       items={(sel.config.items as ActionBarItem[] | undefined) ?? []}
                       align={(sel.config.align as "left" | "right" | "between") ?? "left"}
+                      compact={sel.config.compact === true}
                       onChange={(items, align) =>
                         update(sel.id, { config: { ...sel.config, items, align } })
+                      }
+                      onCompactChange={(v) =>
+                        update(sel.id, { config: { ...sel.config, compact: v || undefined } })
                       }
                     />
                   )}
@@ -6236,10 +6240,19 @@ function EmbeddedActionStrip({ items }: { items: ActionBarItem[] }) {
 interface ActionBarInspectorProps {
   items: ActionBarItem[];
   align: "left" | "right" | "between";
+  compact?: boolean;
   embedded?: boolean;
   onChange: (items: ActionBarItem[], align: "left" | "right" | "between") => void;
+  onCompactChange?: (v: boolean) => void;
 }
-function ActionBarInspector({ items, align, embedded = false, onChange }: ActionBarInspectorProps) {
+function ActionBarInspector({
+  items,
+  align,
+  compact = false,
+  embedded = false,
+  onChange,
+  onCompactChange,
+}: ActionBarInspectorProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const setItems = (next: ActionBarItem[]) => onChange(next, align);
@@ -6287,16 +6300,26 @@ function ActionBarInspector({ items, align, embedded = false, onChange }: Action
   return (
     <div className="space-y-2">
       {!embedded && (
-        <FormField label="Căn chỉnh">
-          <Select
-            value={align}
-            onChange={(e) => setAlign(e.target.value as "left" | "right" | "between")}
-          >
-            <option value="left">Trái</option>
-            <option value="right">Phải</option>
-            <option value="between">Dàn đều</option>
-          </Select>
-        </FormField>
+        <>
+          <FormField label="Căn chỉnh">
+            <Select
+              value={align}
+              onChange={(e) => setAlign(e.target.value as "left" | "right" | "between")}
+            >
+              <option value="left">Trái</option>
+              <option value="right">Phải</option>
+              <option value="between">Dàn đều</option>
+            </Select>
+          </FormField>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={compact}
+              onChange={(e) => onCompactChange?.(e.target.checked)}
+            />
+            <span className="font-medium">Nút nhỏ gọn (size sm)</span>
+          </label>
+        </>
       )}
 
       <div className="flex items-center justify-between">

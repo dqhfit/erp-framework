@@ -247,6 +247,12 @@ select option {
   font-size: 12px;
   border-radius: 5px;
 }
+.btn-xs {
+  height: 24px;
+  padding: 0 6px;
+  font-size: 13px;
+  border-radius: 4px;
+}
 .btn-lg {
   height: 36px;
   padding: 0 14px;

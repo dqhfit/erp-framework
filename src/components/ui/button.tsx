@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "primary" | "ghost" | "danger";
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   icon?: ReactNode;
   children?: ReactNode;
 }
@@ -23,6 +23,7 @@ export function Button({
       className={cn(
         "btn",
         `btn-${variant}`,
+        size === "xs" && "btn-xs",
         size === "sm" && "btn-sm",
         size === "lg" && "btn-lg",
         isIconOnly && "btn-icon",

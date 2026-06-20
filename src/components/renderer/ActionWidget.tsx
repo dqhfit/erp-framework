@@ -14,6 +14,7 @@ import { dialog } from "@/lib/dialog";
 import { type Role, roleCan } from "@/lib/permissions";
 import { type PageStateLike, resolveBinding, runActionSteps } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/types/page";
 
@@ -26,11 +27,19 @@ interface Props {
   /** Chế độ inline: render button trực tiếp không có wrapper h-full.
    *  Dùng bởi ActionBarWidget để xếp nhiều button trong một thanh. */
   inline?: boolean;
-  /** Nút nhỏ gọn (size sm) — cho cột hành động theo dòng. */
+  /** Nút nhỏ gọn (size xs) — cho cột hành động theo dòng. */
   compact?: boolean;
+  /** Render dạng menu item (không có border/bg riêng) — cho overflow popover. */
+  menuItem?: boolean;
 }
 
-export function ActionWidget({ config, pageState, inline = false, compact = false }: Props) {
+export function ActionWidget({
+  config,
+  pageState,
+  inline = false,
+  compact = false,
+  menuItem = false,
+}: Props) {
   const user = useAuth((s) => s.user);
   const role = user?.role;
   const navigate = useNavigate();
@@ -143,10 +152,38 @@ export function ActionWidget({ config, pageState, inline = false, compact = fals
     ? "Bạn không có quyền chạy procedure"
     : config.hint || (config.iconOnly ? config.label : undefined);
 
+  // Menu item style cho overflow popover
+  if (menuItem) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={busy || !canRun}
+          title={title}
+          className={cn(
+            "w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors",
+            variant === "danger" ? "text-danger hover:bg-danger/10" : "text-text hover:bg-hover",
+            (!canRun || busy) && "opacity-50 cursor-not-allowed",
+          )}
+        >
+          {icon}
+          <span>{config.label || "Action"}</span>
+        </button>
+        {popupStep && (
+          <PopupPickerModal step={popupStep} recordId={popupRecordId} onClose={closePopup} />
+        )}
+        {wizardStep && (
+          <WizardModal step={wizardStep} recordId={wizardRecordId} onClose={closeWizard} />
+        )}
+      </>
+    );
+  }
+
   const btn = (
     <Button
       variant={variant}
-      size={compact ? "sm" : "md"}
+      size={compact ? "xs" : "md"}
       onClick={onClick}
       disabled={busy || !canRun}
       icon={icon}
