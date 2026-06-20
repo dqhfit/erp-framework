@@ -21,6 +21,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { DataGridToolbar } from "@/components/renderer/datagrid/DataGridToolbar";
 import { FacetFilterInput } from "@/components/renderer/datagrid/FacetFilterInput";
@@ -545,6 +546,20 @@ export function DataGrid<T>({
         className,
       )}
     >
+      {/* Nút thoát phóng to — portal ra body + fixed nên không bị toolbar cắt /
+          ancestor transform che; luôn thấy ở góc trên-phải khi đang phóng to. */}
+      {maximized &&
+        createPortal(
+          <button
+            type="button"
+            onClick={() => setMaximized(false)}
+            title="Thoát phóng to (Esc)"
+            className="fixed right-3 top-3 z-[810] inline-flex h-8 items-center gap-1 rounded-md border border-border bg-panel px-2.5 text-xs font-medium text-text shadow-lg hover:bg-hover"
+          >
+            <I.X size={14} /> Thoát phóng to
+          </button>,
+          document.body,
+        )}
       <DataGridToolbar
         toolbar={toolbar}
         table={table}
