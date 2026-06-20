@@ -1,8 +1,10 @@
 /* Hằng số dùng chung cho PageDesigner: bảng palette component, tập loại widget
    theo nhóm (record-data / binding / input), toán tử load filter và bảng class
    màu cho action strip nhúng. Thuần (không React/UI). Tách từ PageDesigner.tsx
-   (Phase B1). */
+   (Phase B1). Bổ sung type lõi PageComponent + ActionBarItem (B2) để các module
+   canvas/inspector tách ra dùng chung — KHÁC @/types/page (đừng gộp). */
 import type { IconName } from "@/lib/object-types";
+import type { ActionConfig } from "@/types/page";
 
 export type ComponentKind =
   | "list"
@@ -25,6 +27,18 @@ export type ComponentKind =
   | "action"
   | "actionbar"
   | "step";
+
+export type ActionBarItem = { id: string } & ActionConfig;
+
+export interface PageComponent {
+  id: string;
+  kind: ComponentKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number; // grid units
+  config: Record<string, unknown>;
+}
 
 export const PALETTE: Array<{
   kind: ComponentKind;
