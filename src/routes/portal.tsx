@@ -20,6 +20,13 @@ import { usePreferences } from "@/stores/preferences";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 
+function stripAccents(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function PortalRoute() {
   const t = useT();
   const navigate = useNavigate();
@@ -53,15 +60,22 @@ function PortalRoute() {
   );
 
   const { data: navNodes = [] } = useNavTree();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [focusCategory, setFocusCategory] = useState<string | null>(null);
+  const [drawerQ, setDrawerQ] = useState("");
+  const drawerSearchRef = useRef<HTMLInputElement>(null);
+  const menuTreeRef = useRef<MenuTreeHandle>(null);
+  const filteredNavNodes = useMemo(() => {
+    if (!drawerQ) return navNodes;
+    const q = stripAccents(drawerQ);
+    return navNodes.filter((n) => n.name && stripAccents(n.name).includes(q));
+  }, [navNodes, drawerQ]);
   const { prefs, loaded: prefsLoaded, save: savePrefs, load: loadPrefs } = usePreferences();
 
   const [activeId, setActiveIdRaw] = useState<string | null>(null);
   const [mountedIds, setMountedIds] = useState<Set<string>>(new Set());
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [focusCategory, setFocusCategory] = useState<string | null>(null);
-  const menuTreeRef = useRef<MenuTreeHandle>(null);
 
   const isMobile = useIsMobile();
 
@@ -72,6 +86,13 @@ function PortalRoute() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    if (drawerOpen) {
+      setDrawerQ("");
+      drawerSearchRef.current?.focus();
+    }
   }, [drawerOpen]);
 
   useEffect(() => {
@@ -430,13 +451,42 @@ function PortalRoute() {
               <I.X size={14} />
             </button>
           </div>
+          <div className="shrink-0 flex items-center gap-1.5 px-3 h-9 border-b border-border">
+            <I.Search size={12} className="shrink-0 text-muted/50" />
+            <input
+              ref={drawerSearchRef}
+              type="text"
+              value={drawerQ}
+              onChange={(e) => setDrawerQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setDrawerQ("");
+                  drawerSearchRef.current?.blur();
+                }
+              }}
+              placeholder="Tìm kiếm..."
+              className="flex-1 bg-transparent outline-none text-xs text-text placeholder:text-muted/40"
+            />
+            {drawerQ && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerQ("");
+                  drawerSearchRef.current?.focus();
+                }}
+                className="shrink-0 w-5 h-5 rounded flex items-center justify-center text-muted/50 hover:text-text hover:bg-hover/60"
+              >
+                <I.X size={12} />
+              </button>
+            )}
+          </div>
           <div className="flex-1 overflow-y-auto">
             <MenuTree
               ref={menuTreeRef}
-              nodes={navNodes}
+              nodes={filteredNavNodes}
               activePageId={activeId}
               onSelect={onSelectPage}
-              expandAll
+              expandAll={!!drawerQ}
               storageKey="portal"
               cleanLabels
               compact
