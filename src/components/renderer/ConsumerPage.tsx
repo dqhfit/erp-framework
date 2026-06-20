@@ -4831,7 +4831,13 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
+  const optionLabels = (cfg.optionLabels as Record<string, string> | undefined) ?? {};
+  const multiSelect = !!(cfg.multiSelect as boolean);
+
+  // single-select value
   const val = (pageState.get(stateKey) as string) ?? "";
+  // multi-select values — đọc trực tiếp từ pageState (reactive)
+  const vals = (multiSelect ? (pageState.get(stateKey) as string[]) : null) ?? [];
 
   const dynamicOpts = useMemo(() => {
     if (!field || !rows.length) return [];
@@ -4839,13 +4845,122 @@ function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   }, [rows, field]);
 
   const options = staticOpts
-    ? staticOpts
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
+    ? staticOpts.split(",").map((s) => s.trim()).filter(Boolean)
     : dynamicOpts;
 
+  // multi-select dropdown state (gọi hook unconditional)
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open change tính pos
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 200) });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) { setQuery(""); requestAnimationFrame(() => inputRef.current?.focus()); }
+  }, [open]);
+
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
+
+  if (multiSelect) {
+    const filtered = query
+      ? options.filter((o) => (optionLabels[o] ?? o).toLowerCase().includes(query.toLowerCase()))
+      : options;
+    const toggle = (v: string) => {
+      const cur = Array.isArray(pageState.get(stateKey)) ? (pageState.get(stateKey) as string[]) : [];
+      pageState.set(stateKey, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
+    };
+    const triggerLabel = vals.length === 0 ? "Tất cả" : `${vals.length} đã chọn`;
+    return (
+      <div className="p-2 h-full flex flex-col gap-1">
+        {label && <div className="text-xs font-medium text-muted">{label}</div>}
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="input flex w-full items-center justify-between gap-2 text-left"
+        >
+          <span className={cn("truncate", vals.length === 0 && "text-muted")}>{triggerLabel}</span>
+          <I.ChevronDown size={14} className="shrink-0 text-muted" />
+        </button>
+        {open && dropPos && createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: "fixed", top: dropPos.top, left: dropPos.left, minWidth: dropPos.width }}
+            className="z-[1000] w-max max-w-[300px] rounded-md border border-border bg-panel shadow-lg"
+          >
+            <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+              <I.Search size={13} className="shrink-0 text-muted" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tìm…"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+              />
+              {vals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => pageState.set(stateKey, [])}
+                  className="shrink-0 text-xs text-muted hover:text-danger"
+                >
+                  <I.X size={12} />
+                </button>
+              )}
+            </div>
+            <ul className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
+              ) : (
+                filtered.map((o) => {
+                  const lbl = optionLabels[o] ?? o;
+                  const checked = vals.includes(o);
+                  return (
+                    <li key={o}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(o)}
+                        className={cn(
+                          "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover/40",
+                          checked && "font-medium text-accent",
+                        )}
+                      >
+                        <span className={cn(
+                          "flex size-3.5 shrink-0 items-center justify-center rounded border",
+                          checked ? "border-accent bg-accent" : "border-border",
+                        )}>
+                          {checked && <I.Check size={10} className="text-white" />}
+                        </span>
+                        <span className="truncate">{lbl}</span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-2 h-full flex flex-col gap-1">
