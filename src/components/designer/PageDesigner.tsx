@@ -20,6 +20,15 @@ import { BandEditor } from "@/components/designer/inspectors/BandEditor";
 import { FilterBuilder } from "@/components/designer/inspectors/FilterBuilder";
 import { MasterFieldBinder } from "@/components/designer/inspectors/MasterFieldBinder";
 import { MobileDesignerNotice } from "@/components/designer/MobileDesignerNotice";
+import {
+  BINDING_KINDS,
+  type ComponentKind,
+  EMBED_PALETTE,
+  INPUT_WIDGET_KINDS,
+  LOAD_OPS,
+  PALETTE,
+  RECORD_DATA_KINDS,
+} from "@/components/designer/page-designer-constants";
 import { FieldDisplayToggle, fieldBoth, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { PageStatusPicker } from "@/components/PageStatusFlag";
@@ -52,28 +61,6 @@ import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, ActionVariant, FilterNode } from "@/types/page";
 
-type ComponentKind =
-  | "list"
-  | "detail"
-  | "form"
-  | "chart"
-  | "kpi"
-  | "kanban"
-  | "split"
-  | "grid"
-  | "search"
-  | "combobox"
-  | "listbox"
-  | "tagbox"
-  | "filter"
-  | "calendar"
-  | "map"
-  | "pivot"
-  | "html"
-  | "action"
-  | "actionbar"
-  | "step";
-
 type ActionBarItem = { id: string } & ActionConfig;
 
 interface PageComponent {
@@ -86,31 +73,6 @@ interface PageComponent {
   config: Record<string, unknown>;
 }
 
-const PALETTE: Array<{
-  kind: ComponentKind;
-  label: string;
-  icon: IconName;
-  defaultSize: { w: number; h: number };
-}> = [
-  { kind: "list", label: "List / Table", icon: "Table", defaultSize: { w: 12, h: 4 } },
-  { kind: "detail", label: "Detail", icon: "PanelRight", defaultSize: { w: 6, h: 5 } },
-  { kind: "form", label: "Form", icon: "Edit", defaultSize: { w: 6, h: 5 } },
-  { kind: "chart", label: "Chart", icon: "BarChart", defaultSize: { w: 6, h: 3 } },
-  { kind: "kpi", label: "KPI", icon: "TrendUp", defaultSize: { w: 3, h: 2 } },
-  { kind: "kanban", label: "Kanban", icon: "Kanban", defaultSize: { w: 12, h: 4 } },
-  { kind: "split", label: "Split Panel", icon: "Columns2", defaultSize: { w: 12, h: 5 } },
-  { kind: "grid", label: "Grid Layout", icon: "LayoutGrid", defaultSize: { w: 12, h: 5 } },
-  { kind: "filter", label: "Filter", icon: "Filter", defaultSize: { w: 12, h: 2 } },
-  { kind: "search", label: "Search", icon: "Search", defaultSize: { w: 4, h: 2 } },
-  { kind: "combobox", label: "Combobox", icon: "ChevronDown", defaultSize: { w: 3, h: 2 } },
-  { kind: "listbox", label: "Listbox", icon: "List", defaultSize: { w: 3, h: 4 } },
-  { kind: "tagbox", label: "Tagbox", icon: "Tag", defaultSize: { w: 4, h: 2 } },
-  { kind: "html", label: "HTML / Note", icon: "Type", defaultSize: { w: 6, h: 2 } },
-  { kind: "action", label: "Action", icon: "Play", defaultSize: { w: 3, h: 1 } },
-  { kind: "actionbar", label: "Thanh hành động", icon: "Toolbar", defaultSize: { w: 12, h: 1 } },
-  { kind: "step", label: "Wizard / Theo bước", icon: "Workflow", defaultSize: { w: 12, h: 6 } },
-];
-
 interface Props {
   pageId: string;
 }
@@ -120,28 +82,7 @@ interface Props {
    (trần tải server-side), pageSize (số dòng/trang khi render), loadFilters
    (map field→{op,value}), loadGate (stateKey). Renderer đọc các key này qua
    useDataOpts + DataGrid (ConsumerPage). */
-const RECORD_DATA_KINDS = new Set([
-  "list",
-  "chart",
-  "kanban",
-  "calendar",
-  "map",
-  "pivot",
-  "kpi",
-  "combobox",
-  "listbox",
-  "tagbox",
-]);
-const LOAD_OPS = ["=", "!=", ">", ">=", "<", "<=", "contains", "in"] as const;
 type LoadCond = { op: string; value: unknown };
-
-/* Widget hỗ trợ chọn nguồn = entity HOẶC datasource (gồm cả detail/form). */
-const BINDING_KINDS = new Set([...RECORD_DATA_KINDS, "detail", "form"]);
-
-/* Widget NHẬP (search/combobox/listbox/tagbox) — gắn nguồn + state ở tab
-   "Nguồn & Điều khiển". Dùng để nhắc discoverability (badge canvas + nút
-   chuyển tab trong inspector). */
-const INPUT_WIDGET_KINDS = new Set(["search", "combobox", "listbox", "tagbox"]);
 
 /* Bộ chọn nguồn dữ liệu: Entity ↔ Nguồn dữ liệu (datasource). Ghi cfg.entity
    hoặc cfg.dataSourceId. dataSourceId === undefined = mode entity; định nghĩa
@@ -5972,12 +5913,6 @@ function ComponentBody({
 
 // ── EmbeddedActionStrip ─────────────────────────────────────────────────────
 // Thanh hành động nhỏ hiển thị trong header của list / form / detail preview.
-const EMBED_PALETTE: Record<string, string> = {
-  primary: "bg-accent/20 text-accent border-accent/40",
-  danger: "bg-danger/10 text-danger border-danger/30",
-  ghost: "bg-transparent text-muted border-transparent",
-  default: "bg-panel-2 text-text border-border/60",
-};
 function EmbeddedActionStrip({ items }: { items: ActionBarItem[] }) {
   const visible = items.slice(0, 5);
   const rest = items.length - 5;
