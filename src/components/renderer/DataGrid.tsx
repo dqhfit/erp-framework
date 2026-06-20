@@ -149,6 +149,8 @@ export function DataGrid<T>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showSelectCol, setShowSelectCol] = useState(false);
   const [allMatching, setAllMatching] = useState(false);
+  // Hiện dòng thống kê theo nhóm (subtotal) trên dòng tiêu đề nhóm khi đang gom.
+  const [showGroupSummary, setShowGroupSummary] = useState(true);
   // Container cuộn (để đo nội dung ô khi autofit) + cờ "đã nạp xong state lưu"
   // (chặn autofit-on-load đè kích thước cột người dùng đã lưu).
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -518,6 +520,13 @@ export function DataGrid<T>({
   const showSummary = serverMode
     ? summaryByCol.size > 0
     : filteredCount > 0 && summaryByCol.size > 0;
+  // Cột có thống kê (để render subtotal trên dòng nhóm) — cùng tập với footer,
+  // kèm tên cột để hiện inline cạnh nhãn nhóm ("<Cột> Σ <giá trị>").
+  const groupSummaryCols = [...summaryByCol].map(([colId, s]) => {
+    const cm = table.getColumn(colId)?.columnDef.meta as GridColMeta | undefined;
+    const hdr = table.getColumn(colId)?.columnDef.header;
+    return { colId, type: s.type, name: cm?.label ?? (typeof hdr === "string" ? hdr : colId) };
+  });
 
   // Phân trang. Server mode: total + range tính theo server.total (data = 1 trang).
   const totalCount = serverMode && server ? server.total : filteredCount;
@@ -572,6 +581,9 @@ export function DataGrid<T>({
         setDragColId={setDragColId}
         setExpanded={setExpanded}
         server={server}
+        showGroupSummary={showGroupSummary}
+        setShowGroupSummary={setShowGroupSummary}
+        hasSummaryCols={groupSummaryCols.length > 0}
       />
       {selecting && someSelected && (
         <div className="flex items-center gap-2 px-2 py-1 border-b border-border bg-accent/5 text-xs shrink-0 flex-wrap">
@@ -1030,7 +1042,11 @@ export function DataGrid<T>({
                         onClick={row.getToggleExpandedHandler()}
                       >
                         <td colSpan={columns.length + leadCols} className="px-3 py-1.5">
-                          <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+                          {/* sticky-left: nhãn + thống kê nhóm luôn hiện khi cuộn ngang */}
+                          <span
+                            style={{ position: "sticky", left: 8 }}
+                            className="inline-flex items-center gap-2 text-xs font-semibold text-muted"
+                          >
                             {row.getIsExpanded() ? (
                               <I.ChevronDown size={12} />
                             ) : (
@@ -1039,6 +1055,19 @@ export function DataGrid<T>({
                             <span className="text-text/70">{colHeader}:</span>
                             <span className="text-text">{String(row.groupingValue ?? "—")}</span>
                             <Chip className="ml-1 text-[10px] py-0">{row.subRows.length}</Chip>
+                            {showGroupSummary &&
+                              groupSummaryCols.map((sc) => (
+                                <span
+                                  key={sc.colId}
+                                  className="ml-1 inline-flex items-center gap-1 font-normal"
+                                >
+                                  <span className="text-muted/70">{sc.name}</span>
+                                  <span className="font-semibold text-accent">
+                                    {SUMMARY_LABEL[sc.type]}{" "}
+                                    {fmtNum(computeSummary(row.getLeafRows(), sc.colId, sc.type))}
+                                  </span>
+                                </span>
+                              ))}
                           </span>
                         </td>
                       </tr>

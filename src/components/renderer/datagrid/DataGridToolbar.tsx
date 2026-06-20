@@ -58,6 +58,9 @@ type ToolbarProps<T> = Pick<
   setDragColId: Dispatch<SetStateAction<string | null>>;
   setExpanded: Dispatch<SetStateAction<ExpandedState>>;
   server?: ServerPagingController;
+  showGroupSummary: boolean;
+  setShowGroupSummary: Dispatch<SetStateAction<boolean>>;
+  hasSummaryCols: boolean;
 };
 
 export function DataGridToolbar<T>({
@@ -96,6 +99,9 @@ export function DataGridToolbar<T>({
   setDragColId,
   setExpanded,
   server,
+  showGroupSummary,
+  setShowGroupSummary,
+  hasSummaryCols,
 }: ToolbarProps<T>) {
   const t = useT();
   const selecting = !!enableSelection && showSelectCol;
@@ -786,6 +792,30 @@ export function DataGridToolbar<T>({
                       {showSelectCol && <I.Check size={9} className="text-white" />}
                     </div>
                     <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
+                  </button>
+                </>
+              )}
+
+              {/* ── Thống kê theo nhóm (subtotal trên dòng nhóm) ── */}
+              {hasSummaryCols && (
+                <>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    type="button"
+                    onClick={() => setShowGroupSummary((v) => !v)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
+                  >
+                    <div
+                      className={cn(
+                        "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                        showGroupSummary ? "bg-accent border-accent" : "border-border",
+                      )}
+                    >
+                      {showGroupSummary && <I.Check size={9} className="text-white" />}
+                    </div>
+                    <span className={showGroupSummary ? "text-text" : "text-muted"}>
+                      Thống kê nhóm (tổng theo cột)
+                    </span>
                   </button>
                 </>
               )}
