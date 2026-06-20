@@ -9,6 +9,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
+import { compress } from "tokenshrink";
 
 export interface CallLlmJsonOpts {
   /** System prompt — mô tả task + định dạng JSON kỳ vọng. */
@@ -65,7 +66,8 @@ export async function callLlmJson<T = unknown>(
   const p = await resolveChatProfile(db, companyId, opts);
   if (!p) return null;
 
-  const user = opts.user.slice(0, 8000);
+  const { compressed: compressedUser } = compress(opts.user);
+  const user = compressedUser.slice(0, 8000);
   const maxTokens = opts.maxTokens ?? 1024;
   const temperature = opts.temperature ?? 0.2;
   // Bridge (claude-cli) chạy CLI subprocess — ~2k token đã ~38s, sinh nhiều
