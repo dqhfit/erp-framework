@@ -503,6 +503,11 @@ function PortalRoute() {
                   iconName: "Layout",
                 });
               }}
+              onGroupClick={(code) => {
+                setFocusCategory(code);
+                setDrawerOpen(false);
+                void navigate({ to: "/portal", search: { page: undefined }, replace: true });
+              }}
             />
           </div>
         </div>
@@ -545,12 +550,6 @@ function PortalRoute() {
                     pageId={p.id}
                     chromeless
                     active={p.id === activeId}
-                    onGroupClick={(code) => {
-                      setActiveIdRaw(null);
-                      setFocusCategory(code);
-                      setDrawerOpen(false);
-                      void navigate({ to: "/portal", search: { page: undefined }, replace: true });
-                    }}
                   />
                 </div>
               ) : null,
