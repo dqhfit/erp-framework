@@ -238,7 +238,8 @@ function PortalRoute() {
   }, [userMenuOpen]);
 
   const pageListForDashboard = useMemo(
-    () => publishedPages.map((p) => ({ id: p.id, name: p.name, icon: p.icon })),
+    () =>
+      publishedPages.map((p) => ({ id: p.id, name: p.name, icon: p.icon, techName: p.techName })),
     [publishedPages],
   );
 

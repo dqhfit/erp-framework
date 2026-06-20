@@ -8,6 +8,7 @@ interface PageInfo {
   id: string;
   name: string;
   icon: string;
+  techName?: string;
 }
 
 interface PortalDashboardProps {
@@ -26,6 +27,13 @@ function labelOf(n: NavNode): string {
   const nm = n.name ?? "";
   const suffix = ` - ${n.code}`;
   return nm.endsWith(suffix) ? nm.slice(0, -suffix.length) : nm;
+}
+
+function stripAccents(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 export function PortalDashboard({
@@ -68,18 +76,28 @@ export function PortalDashboard({
     [recentPageIds, pages],
   );
 
-  const ql = q.trim().toLowerCase();
-  const filteredPages = ql ? pages.filter((p) => p.name.toLowerCase().includes(ql)) : null;
+  const ql = q.trim();
+  const qlNorm = stripAccents(ql);
+  const filteredPages = qlNorm
+    ? pages.filter(
+        (p) =>
+          stripAccents(p.name).includes(qlNorm) ||
+          (p.techName && stripAccents(p.techName).includes(qlNorm)),
+      )
+    : null;
 
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (!ql) return;
-      // Điều hướng tới kết quả đầu tiên
-      const found = pages.find((p) => p.name.toLowerCase().includes(ql));
+      if (!qlNorm) return;
+      const found = pages.find(
+        (p) =>
+          stripAccents(p.name).includes(qlNorm) ||
+          (p.techName && stripAccents(p.techName).includes(qlNorm)),
+      );
       if (found) onSelectPage(found.id);
     },
-    [ql, pages, onSelectPage],
+    [qlNorm, pages, onSelectPage],
   );
 
   return (
