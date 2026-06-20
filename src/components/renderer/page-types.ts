@@ -179,10 +179,14 @@ export type FItemCfg = {
   pageSize?: number;
   options?: string;
   width?: number;
-  /** Lọc options theo field này khi filterFromState có giá trị (cascade). */
+  /** Lọc options theo field này khi filterFromState có giá trị (cascade 1 cha — legacy). */
   filterField?: string;
-  /** State key của control cha — khi có giá trị thì filter rows theo filterField. */
+  /** State key của control cha — khi có giá trị thì filter rows theo filterField (legacy). */
   filterFromState?: string;
+  /** Lọc liên kết NHIỀU cha: options của item này thu hẹp theo MỌI phụ thuộc đang
+   *  có giá trị (vd Sản phẩm lọc theo Đơn hàng + Khách hàng). `fromState` = state key
+   *  của filter cha; `field` = field trong nguồn của item này khớp giá trị cha. */
+  dependsOn?: { fromState: string; field: string }[];
   /** Ẩn/hiện filter theo state: oneOf = chỉ hiện khi state nằm trong list; notOneOf = ẩn khi state nằm trong list. */
   visibleWhen?: { stateKey: string; oneOf?: string[]; notOneOf?: string[] };
 };

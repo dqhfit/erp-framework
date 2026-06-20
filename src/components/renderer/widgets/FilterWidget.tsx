@@ -19,14 +19,31 @@ function FilterItem({ item }: { item: FItemCfg }) {
   const stateKey = item.stateKey || "";
   const label = item.label || "";
 
-  // Cascade: lọc rows theo filterField = state[filterFromState] nếu có.
-  const parentVal = item.filterFromState
-    ? ((pageState.get(item.filterFromState) as string) ?? "")
-    : "";
+  // Lọc liên kết (cross-filter): gộp phụ thuộc legacy (filterFromState/filterField)
+  // + dependsOn[]. Options của item thu hẹp theo MỌI cha đang có giá trị (AND).
+  const deps = useMemo(() => {
+    const out: { fromState: string; field: string }[] = [];
+    if (item.filterFromState && item.filterField)
+      out.push({ fromState: item.filterFromState, field: item.filterField });
+    for (const d of item.dependsOn ?? [])
+      if (d.fromState && d.field) out.push({ fromState: d.fromState, field: d.field });
+    return out;
+  }, [item.filterFromState, item.filterField, item.dependsOn]);
+  // Giá trị cha hiện tại (đọc pageState mỗi render) + chữ ký để memo + so sánh đổi.
+  const depState = deps.map((d) => ({
+    field: d.field,
+    val: (pageState.get(d.fromState) as string) ?? "",
+  }));
+  const depSig = depState.map((d) => `${d.field}=${d.val}`).join("&");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: depSig đã gói depState (giá trị cha)
   const filteredRows = useMemo(() => {
-    if (!item.filterField || !parentVal) return rows;
-    return rows.filter((r) => String(r[item.filterField!] ?? "") === parentVal);
-  }, [rows, item.filterField, parentVal]);
+    if (!deps.length) return rows;
+    let out = rows;
+    for (const { field, val } of depState) {
+      if (field && val) out = out.filter((r) => String(r[field] ?? "") === val);
+    }
+    return out;
+  }, [rows, depSig, deps.length]);
 
   const labelOptions = useMemo(() => {
     if (item.options) {
@@ -52,15 +69,15 @@ function FilterItem({ item }: { item: FItemCfg }) {
 
   const suggestions = labelOptions.map((o) => o.value);
 
-  // Reset child khi parent thay đổi (cascade: đổi hệ hàng → xóa sản phẩm cũ).
-  const prevParentVal = useRef(parentVal);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ react theo parentVal
+  // Reset giá trị item khi BẤT KỲ filter cha nào đổi (đổi đơn hàng → xoá SP cũ).
+  const prevDepSig = useRef(depSig);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý chỉ react theo depSig
   useEffect(() => {
-    if (item.filterFromState && prevParentVal.current !== parentVal && stateKey) {
+    if (deps.length && prevDepSig.current !== depSig && stateKey) {
       pageState.set(stateKey, "");
     }
-    prevParentVal.current = parentVal;
-  }, [parentVal]);
+    prevDepSig.current = depSig;
+  }, [depSig]);
 
   if (!stateKey) return <div className="text-xs text-muted/60 italic px-1">Chưa có state key</div>;
 

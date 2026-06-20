@@ -274,6 +274,8 @@ export type FItemInspType = {
   stateKey?: string;
   placeholder?: string;
   width?: number;
+  /** Lọc liên kết: options của item này thu hẹp theo các filter cha (cross-filter). */
+  dependsOn?: { fromState: string; field: string }[];
 };
 
 export function FilterItemsInspector({
@@ -314,6 +316,12 @@ export function FilterItemsInspector({
   };
 
   const itEnt = entities.find((e) => e.id === active?.entity);
+
+  // Lọc liên kết (cross-filter): các filter KHÁC (có state key) để item này lọc theo.
+  const otherItems = items.filter((it) => it.id !== active?.id && it.stateKey);
+  const deps = active?.dependsOn ?? [];
+  const setDeps = (next: { fromState: string; field: string }[]) =>
+    updIt({ dependsOn: next.length ? next : undefined });
 
   return (
     <>
@@ -452,6 +460,73 @@ export function FilterItemsInspector({
                 onChange={(e) => updIt({ placeholder: e.target.value || undefined })}
               />
             </FormField>
+          )}
+          {active.entity && (
+            <div className="pt-1">
+              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                Lọc liên kết (cascade)
+              </div>
+              <p className="text-[10px] text-muted/70 px-0.5 mb-1">
+                Thu hẹp lựa chọn theo filter khác. Vd: Sản phẩm lọc theo Đơn hàng.
+              </p>
+              {deps.map((dep, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: hàng phụ thuộc không có id riêng
+                <div key={i} className="flex items-center gap-1 mb-1">
+                  <Select
+                    value={dep.fromState}
+                    onChange={(e) =>
+                      setDeps(
+                        deps.map((d, j) => (j === i ? { ...d, fromState: e.target.value } : d)),
+                      )
+                    }
+                    className="flex-1 text-xs h-7"
+                  >
+                    <option value="">— Lọc theo —</option>
+                    {otherItems.map((o) => (
+                      <option key={o.id} value={o.stateKey}>
+                        {o.label || o.stateKey}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="shrink-0 text-[10px] text-muted">↦</span>
+                  <Select
+                    value={dep.field}
+                    onChange={(e) =>
+                      setDeps(deps.map((d, j) => (j === i ? { ...d, field: e.target.value } : d)))
+                    }
+                    className="flex-1 text-xs h-7"
+                  >
+                    <option value="">— field khớp —</option>
+                    {(itEnt?.fields ?? []).map((f) => (
+                      <option key={f.name} value={f.name}>
+                        {fieldBoth(f)}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    title="Bỏ liên kết"
+                    onClick={() => setDeps(deps.filter((_, j) => j !== i))}
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-muted hover:text-danger hover:bg-danger/10"
+                  >
+                    <I.X size={11} />
+                  </button>
+                </div>
+              ))}
+              {otherItems.length === 0 ? (
+                <p className="text-[10px] text-muted/60 italic px-0.5">
+                  Cần ≥2 thành phần (có state key) để liên kết.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDeps([...deps, { fromState: "", field: "" }])}
+                  className="flex items-center gap-0.5 text-[11px] text-accent hover:underline"
+                >
+                  <I.Plus size={10} /> Thêm liên kết
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
