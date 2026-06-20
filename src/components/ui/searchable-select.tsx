@@ -200,7 +200,10 @@ export function SearchableSelect({
           triggerClassName,
         )}
       >
-        <span className={cn("truncate", !selected && "text-muted")}>
+        <span
+          className={cn("truncate", !selected && "text-muted")}
+          title={selected ? selected.label : undefined}
+        >
           {selected ? selected.label : placeholder}
         </span>
         <I.ChevronDown size={14} className="shrink-0 text-muted" />
