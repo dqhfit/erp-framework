@@ -5088,6 +5088,7 @@ type FItemCfg = {
   placeholder?: string;
   pageSize?: number;
   options?: string;
+  width?: number;
 };
 
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
@@ -5131,10 +5132,14 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
       </span>
     ) : null;
 
+  // width cố định khi có, ngược lại co giãn.
+  const wrapCls = item.width ? "relative shrink-0" : "relative min-w-[120px] flex-1";
+  const wrapStyle = item.width ? { width: item.width } : undefined;
+
   if (item.kind === "combobox") {
     const val = (pageState.get(stateKey) as string) ?? "";
     return (
-      <div className="relative min-w-[120px] flex-1">
+      <div className={wrapCls} style={wrapStyle}>
         {floatLabel}
         <SearchableSelect
           className="w-full"
@@ -5151,7 +5156,10 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
     const raw = pageState.get(stateKey);
     const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
     return (
-      <div className="relative min-w-[140px] flex-1">
+      <div
+        className={item.width ? "relative shrink-0" : "relative min-w-[140px] flex-1"}
+        style={wrapStyle}
+      >
         {floatLabel}
         <TagBox
           value={selected}
@@ -5167,7 +5175,7 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
   // search
   const valS = (pageState.get(stateKey) as string) ?? "";
   return (
-    <div className="relative min-w-[120px] flex-1">
+    <div className={wrapCls} style={wrapStyle}>
       {floatLabel}
       <input
         type="text"
@@ -5226,7 +5234,10 @@ function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: 
         />
         {refreshBtn && <div className="px-1">{refreshBtn}</div>}
       </div>
-      <div className="px-2 pt-3 pb-1.5">
+      <div
+        className="px-2 pt-3 pb-1.5"
+        style={active.width ? { maxWidth: active.width } : undefined}
+      >
         <FilterItem key={active.id} item={active} showLabel={false} />
       </div>
     </div>

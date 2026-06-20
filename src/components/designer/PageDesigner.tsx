@@ -50,8 +50,6 @@ type ComponentKind =
   | "combobox"
   | "listbox"
   | "tagbox"
-  // "filter": bộ lọc cascade (do migration sinh) — bind datasource, phát state
-  // cho widget khác (loadGate). Không nằm trong palette nhưng sửa được ở inspector.
   | "filter"
   | "calendar"
   | "map"
@@ -87,6 +85,7 @@ const PALETTE: Array<{
   { kind: "kanban", label: "Kanban", icon: "Kanban", defaultSize: { w: 12, h: 4 } },
   { kind: "split", label: "Split Panel", icon: "Columns2", defaultSize: { w: 12, h: 5 } },
   { kind: "grid", label: "Grid Layout", icon: "LayoutGrid", defaultSize: { w: 12, h: 5 } },
+  { kind: "filter", label: "Filter", icon: "Filter", defaultSize: { w: 12, h: 2 } },
   { kind: "search", label: "Search", icon: "Search", defaultSize: { w: 4, h: 2 } },
   { kind: "combobox", label: "Combobox", icon: "ChevronDown", defaultSize: { w: 3, h: 2 } },
   { kind: "listbox", label: "Listbox", icon: "List", defaultSize: { w: 3, h: 4 } },
@@ -1493,6 +1492,7 @@ export function PageDesigner({ pageId }: Props) {
                         labelField?: string;
                         stateKey?: string;
                         placeholder?: string;
+                        width?: number;
                       };
                       const fcfg = sel.config as {
                         items?: FItemInsp[];
@@ -1519,7 +1519,7 @@ export function PageDesigner({ pageId }: Props) {
                           <>
                             <div className="flex items-center justify-between">
                               <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
-                                Thành phần lọc
+                                {t("page.comp.filter.items_title")}
                               </div>
                               <button
                                 type="button"
@@ -1573,6 +1573,20 @@ export function PageDesigner({ pageId }: Props) {
                                       placeholder="vd: Sản phẩm"
                                       value={item.label ?? ""}
                                       onChange={(e) => updIt({ label: e.target.value })}
+                                    />
+                                  </FormField>
+                                  <FormField label="Độ rộng (px)">
+                                    <Input
+                                      type="number"
+                                      placeholder="để trống = tự co giãn"
+                                      value={item.width ?? ""}
+                                      onChange={(e) =>
+                                        updIt({
+                                          width: e.target.value
+                                            ? Number(e.target.value)
+                                            : undefined,
+                                        })
+                                      }
                                     />
                                   </FormField>
                                   <FormField label="State key">
