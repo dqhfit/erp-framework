@@ -2182,7 +2182,8 @@ function ListWidget({
   // confirm → delete-record (recordIdBinding gắn id dòng qua bindRowIdToAction).
   const effectiveRowActions = useMemo<ActionConfig[]>(() => {
     const base = rowActions ?? [];
-    if (!rowActionsBuiltin || !entityId) return base;
+    if (!rowActionsBuiltin) return []; // master switch OFF → ẩn cột hành động hoàn toàn
+    if (!entityId) return base;
     const builtin = [
       {
         id: "__ra_view",
@@ -2240,10 +2241,23 @@ function ListWidget({
         ],
       },
     ] as unknown as ActionConfig[];
-    // Dedup: nếu rowActions cấu hình ĐÃ có hành động trùng nhãn (Xem/Sửa/Xoá)
-    // thì bỏ builtin tương ứng → popover KHÔNG nhân đôi nút.
+    // Dedup: bỏ builtin nếu custom đã có hành động tương đương.
+    // Xử lý 3 trường hợp hay gặp:
+    //  1. Trùng nhãn chính xác (Sửa=Sửa).
+    //  2. Spelling variant: "Xóa" (ó) ↔ "Xoá" (á) — cùng nghĩa xóa bản ghi.
+    //  3. Builtin "Xem" bị che bởi bất kỳ hành động "Xem…" (vd "Xem chi tiết").
     const baseLabels = new Set(base.map((a) => a.label));
-    return [...base, ...builtin.filter((b) => !baseLabels.has(b.label))];
+    const hasViewVariant = [...baseLabels].some((l) => l.startsWith("Xem"));
+    return [
+      ...base,
+      ...builtin.filter((b) => {
+        if (baseLabels.has(b.label)) return false;
+        if (b.label === "Xoá" && baseLabels.has("Xóa")) return false;
+        if (b.label === "Xóa" && baseLabels.has("Xoá")) return false;
+        if (b.label === "Xem" && hasViewVariant) return false;
+        return true;
+      }),
+    ];
   }, [rowActions, rowActionsBuiltin, entityId, fields, editFields]);
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
