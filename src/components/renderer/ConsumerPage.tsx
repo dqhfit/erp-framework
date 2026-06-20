@@ -27,6 +27,13 @@ import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Chart } from "@/components/renderer/Chart";
 import {
+  clearPersonalLayoutLS,
+  exportCsvContentAsXlsx,
+  layoutStorageKey,
+  loadPersonalLayout,
+  savePersonalLayoutLS,
+} from "@/components/renderer/consumer-utils";
+import {
   type ColumnGroupNode,
   DataGrid,
   type ServerGridQuery,
@@ -34,6 +41,7 @@ import {
 } from "@/components/renderer/DataGrid";
 import { DocumentWidget } from "@/components/renderer/DocumentWidget";
 import { DrawingPageCell } from "@/components/renderer/DrawingPageCell";
+import { fmtDateCell, fromDateInput, toDateInput } from "@/components/renderer/date-cell-utils";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import {
@@ -672,33 +680,6 @@ function useWidgetMeta(cfg: Record<string, unknown>): {
    (date). Hiển thị gọn dd/MM/yyyy [HH:mm] theo giờ địa phương; sửa bằng input
    date / datetime-local; lưu lại ISO (datetime) / YYYY-MM-DD (date) để
    validate-on-write chuẩn hoá. Chuỗi KHÔNG parse được → giữ nguyên (không vỡ). */
-const pad2 = (n: number) => String(n).padStart(2, "0");
-/** Parse an toàn: chuỗi date-only "YYYY-MM-DD" dựng LOCAL (new Date(str) parse
- *  UTC → lệch ±1 ngày ở tz≠0 — bài học #9). Có giờ → parse bình thường. */
-function parseDateSafe(v: string): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(v);
-}
-function fmtDateCell(v: string, withTime: boolean): string {
-  if (!v) return "";
-  const d = parseDateSafe(v);
-  if (Number.isNaN(d.getTime())) return v;
-  const s = `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-  return withTime ? `${s} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` : s;
-}
-function toDateInput(v: string, withTime: boolean): string {
-  if (!v) return "";
-  const d = parseDateSafe(v);
-  if (Number.isNaN(d.getTime())) return "";
-  const ymd = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  return withTime ? `${ymd}T${pad2(d.getHours())}:${pad2(d.getMinutes())}` : ymd;
-}
-function fromDateInput(v: string, withTime: boolean): string {
-  if (!v) return "";
-  if (!withTime) return v; // date: input đã là YYYY-MM-DD (validate slice 0..10)
-  const d = new Date(v); // datetime-local (giờ địa phương) → ISO UTC
-  return Number.isNaN(d.getTime()) ? v : d.toISOString();
-}
 
 /** Ô sửa inline trong DataGrid: ảnh → <img>; date/datetime → format + picker;
  *  ref → lookup; còn lại text. Double-click ô có quyền ghi để sửa (Enter/blur
@@ -1952,62 +1933,12 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
 }
 
 /** Widget "list" — bảng record thật, cột suy từ field của entity. */
-function parseCsvRows(csv: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-
-  for (let i = 0; i < csv.length; i++) {
-    const ch = csv[i];
-    if (ch === '"') {
-      if (quoted && csv[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (ch === "," && !quoted) {
-      row.push(cell);
-      cell = "";
-    } else if ((ch === "\n" || ch === "\r") && !quoted) {
-      if (ch === "\r" && csv[i + 1] === "\n") i++;
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += ch;
-    }
-  }
-
-  if (cell || row.length) {
-    row.push(cell);
-    rows.push(row);
-  }
-  return rows;
-}
-
 type EmbeddedFilter = {
   label?: string;
   stateKey: string;
   options?: string;
   optionLabels?: Record<string, string>;
 };
-
-async function exportCsvContentAsXlsx(csv: string, filename: string) {
-  const { default: writeXlsxFile } = await import("write-excel-file/browser");
-  const rows = parseCsvRows(csv.replace(/^\uFEFF/, ""));
-  const workbookRows = rows.map((row, rowIndex) =>
-    row.map((value) => ({
-      type: String,
-      value,
-      ...(rowIndex === 0 ? { fontWeight: "bold" as const } : {}),
-    })),
-  );
-  // biome-ignore lint/suspicious/noExplicitAny: cell-shape của write-excel-file không có kiểu tiện dụng để tái sử dụng.
-  await writeXlsxFile(workbookRows as any).toFile(`${filename || "export"}.xlsx`);
-}
 
 function ListWidget({
   entityId,
@@ -5984,32 +5915,6 @@ const GAP = 12; // gap-3
    Logged-in  : key = erp_layout_{userId}_{pageId}
    Anonymous  : key = erp_layout_{pageId}
    ─────────────────────────────────────────────────────────── */
-function layoutStorageKey(pageId: string, userId: string | null): string {
-  return userId ? `erp_layout_${userId}_${pageId}` : `erp_layout_${pageId}`;
-}
-function loadPersonalLayout(key: string): PageComponent[] | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as PageComponent[]) : null;
-  } catch {
-    return null;
-  }
-}
-function savePersonalLayoutLS(key: string, comps: PageComponent[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(comps));
-  } catch {
-    /* quota */
-  }
-}
-function clearPersonalLayoutLS(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Quy tắc ẩn/hiện widget theo 1 state key (vd selKetcau). Đặt ở cfg.visibleWhen. */
 type VisibleRule = {
   stateKey: string;
@@ -6095,7 +6000,7 @@ export function ConsumerPage({
 
   // Nạp khi userId / pageId thay đổi (auth xong mới biết userId)
   useEffect(() => {
-    setPersonalLayout(loadPersonalLayout(storageKey));
+    setPersonalLayout(loadPersonalLayout<PageComponent>(storageKey));
   }, [storageKey]);
 
   const saveLayout = useCallback(
