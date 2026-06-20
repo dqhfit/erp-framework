@@ -10,20 +10,20 @@
    Auto-redirect từ AppShell khi role === "viewer".
    ========================================================== */
 
-import { createLegacyMenuClient } from "@erp-framework/client";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
+import { MenuTree, type MenuTreeHandle } from "@/components/MenuTree";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useFavs } from "@/components/Sidebar";
 import { Button } from "@/components/ui";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useNavTree } from "@/hooks/useNavTree";
 import { useT } from "@/hooks/useT";
 import { idbDeletePrefix } from "@/lib/page-state-idb";
 import { cn } from "@/lib/utils";
@@ -64,19 +64,7 @@ function PortalRoute() {
 
   // Cây điều hướng theo MENU DQHF (legacy_menu_map) — node + pageId trang
   // published. Rỗng (chưa link/publish) → fallback danh sách phẳng.
-  const [navNodes, setNavNodes] = useState<NavNode[]>([]);
-  useEffect(() => {
-    let alive = true;
-    createLegacyMenuClient("")
-      .navTree()
-      .then((rows) => {
-        if (alive) setNavNodes(rows);
-      })
-      .catch(() => undefined); // fail-safe: thiếu menu → dùng danh sách phẳng
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { data: navNodes = [] } = useNavTree();
 
   const { prefs, loaded: prefsLoaded, save: savePrefs, load: loadPrefs } = usePreferences();
 

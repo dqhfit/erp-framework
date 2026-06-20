@@ -14,6 +14,7 @@ import { PagesTreeSection } from "@/components/sidebar/PagesTreeSection";
 import { SidebarItem } from "@/components/sidebar/SidebarItem";
 import { type SectionItem, SidebarSection } from "@/components/sidebar/SidebarSection";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useInvalidateNavTree, useNavTree } from "@/hooks/useNavTree";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { type ObjectType, roleCan } from "@/lib/permissions";
@@ -164,8 +165,10 @@ export function Sidebar() {
 
   // Cây điều hướng TRANG theo MENU DQHF (legacy_menu_map.navTree). Admin/editor
   // thấy cả trang draft; rỗng (chưa link menu) → fallback danh sách phẳng.
-  const [navNodes, setNavNodes] = useState<NavNode[]>([]);
-  // Trang đang gán vào menu (mở modal) + key refetch cây sau khi gán xong.
+  const { data: navNodesData } = useNavTree();
+  const navNodes = navNodesData ?? [];
+  const invalidateNavTree = useInvalidateNavTree();
+  // Trang đang gán vào menu (mở modal).
   const [assignMenuPage, setAssignMenuPage] = useState<{ id: string; name: string } | null>(null);
   // Mục menu đang đổi trang liên kết (mở ChangeMenuNodePageModal).
   const [changeNodePage, setChangeNodePage] = useState<{
@@ -174,20 +177,6 @@ export function Sidebar() {
     pageId: string | null;
   } | null>(null);
   const [newPageOpen, setNewPageOpen] = useState(false);
-  const [navReloadKey, setNavReloadKey] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: navReloadKey là trigger refetch chủ động (không đọc trong effect)
-  useEffect(() => {
-    let alive = true;
-    createLegacyMenuClient("")
-      .navTree()
-      .then((rows) => {
-        if (alive) setNavNodes(rows);
-      })
-      .catch(() => undefined); // fail-safe: thiếu menu → danh sách phẳng
-    return () => {
-      alive = false;
-    };
-  }, [navReloadKey]);
   /** Gỡ 1 trang khỏi mục menu (đặt pageId của node = null) rồi refetch cây. */
   const handleUnassignFromMenu = async (node: NavNode) => {
     if (!node.pageId || !node.code) return;
@@ -198,7 +187,7 @@ export function Sidebar() {
     if (!ok) return;
     try {
       await createLegacyMenuClient("").setNodePage(node.code, null);
-      setNavReloadKey((k) => k + 1);
+      invalidateNavTree();
     } catch (e) {
       await dialog.alert(`Lỗi gỡ khỏi menu: ${(e as Error)?.message ?? e}`);
     }
