@@ -369,6 +369,215 @@ function DataLoadConfig({
   );
 }
 
+type FItemInspType = {
+  id: string;
+  kind: "combobox" | "tagbox" | "search";
+  label?: string;
+  entity?: string;
+  field?: string;
+  labelField?: string;
+  stateKey?: string;
+  placeholder?: string;
+  width?: number;
+};
+
+function FilterItemsInspector({
+  items,
+  updItems,
+  entities,
+  dataSources,
+  refreshDataSourceId,
+  onRefreshDsChange,
+}: {
+  items: FItemInspType[];
+  updItems: (next: FItemInspType[]) => void;
+  entities: { id: string; name: string; fields?: { name: string; label?: string }[] }[];
+  dataSources: { id: string; name: string }[];
+  refreshDataSourceId?: string;
+  onRefreshDsChange: (v: string | undefined) => void;
+}) {
+  const [activeId, setActiveId] = useState<string>(items[0]?.id ?? "");
+  const activeIdx = items.findIndex((it) => it.id === activeId);
+  const active = activeIdx >= 0 ? items[activeIdx] : items[0];
+
+  const addItem = () => {
+    const id = `fi_${Math.random().toString(36).slice(2, 8)}`;
+    const next = [...items, { id, kind: "combobox" as const, label: "", stateKey: "" }];
+    updItems(next);
+    setActiveId(id);
+  };
+
+  const updIt = (patch: Partial<FItemInspType>) => {
+    if (!active) return;
+    updItems(items.map((it) => (it.id === active.id ? { ...it, ...patch } : it)));
+  };
+
+  const deleteActive = () => {
+    const remaining = items.filter((it) => it.id !== active?.id);
+    updItems(remaining);
+    setActiveId(remaining[0]?.id ?? "");
+  };
+
+  const itEnt = entities.find((e) => e.id === active?.entity);
+
+  return (
+    <>
+      {/* Tab bar */}
+      <div className="flex items-center gap-0.5 border-b border-border -mx-3 px-3 pb-0 overflow-x-auto">
+        {items.map((it) => (
+          <button
+            key={it.id}
+            type="button"
+            onClick={() => setActiveId(it.id)}
+            className={cn(
+              "shrink-0 px-2.5 h-7 text-xs border-b-2 -mb-px whitespace-nowrap transition-colors",
+              it.id === (active?.id ?? "")
+                ? "border-accent text-text"
+                : "border-transparent text-muted hover:text-text",
+            )}
+          >
+            {it.label || it.kind || it.id}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={addItem}
+          className="shrink-0 ml-auto flex items-center gap-0.5 px-1.5 h-7 text-[11px] text-accent hover:underline"
+        >
+          <I.Plus size={11} /> Thêm
+        </button>
+      </div>
+
+      {items.length === 0 && (
+        <div className="text-[11px] text-muted/60 italic px-0.5 pt-1">
+          Chưa có thành phần. Bấm "Thêm" để thêm.
+        </div>
+      )}
+
+      {/* Panel item đang chọn */}
+      {active && (
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center gap-1">
+            <Select
+              value={active.kind}
+              onChange={(e) => updIt({ kind: e.target.value as FItemInspType["kind"] })}
+              className="flex-1 text-xs h-7"
+            >
+              <option value="combobox">Combobox</option>
+              <option value="tagbox">Tagbox</option>
+              <option value="search">Tìm kiếm</option>
+            </Select>
+            <button
+              type="button"
+              title="Xoá thành phần này"
+              onClick={deleteActive}
+              className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+            >
+              <I.X size={12} />
+            </button>
+          </div>
+          <FormField label="Nhãn">
+            <Input
+              placeholder="vd: Sản phẩm"
+              value={active.label ?? ""}
+              onChange={(e) => updIt({ label: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Độ rộng (px)">
+            <Input
+              type="number"
+              placeholder="để trống = tự co giãn"
+              value={active.width ?? ""}
+              onChange={(e) =>
+                updIt({ width: e.target.value ? Number(e.target.value) : undefined })
+              }
+            />
+          </FormField>
+          <FormField label="State key">
+            <Input
+              placeholder="vd: selMasp"
+              value={active.stateKey ?? ""}
+              onChange={(e) => updIt({ stateKey: e.target.value })}
+            />
+          </FormField>
+          {active.kind !== "search" && (
+            <>
+              <FormField label="Entity">
+                <Select
+                  value={active.entity ?? ""}
+                  onChange={(e) => updIt({ entity: e.target.value, field: "" })}
+                >
+                  <option value="">— tĩnh (options) —</option>
+                  {entities.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              {itEnt && (
+                <>
+                  <FormField label="Field giá trị">
+                    <Select
+                      value={active.field ?? ""}
+                      onChange={(e) => updIt({ field: e.target.value })}
+                    >
+                      <option value="">— chọn —</option>
+                      {(itEnt.fields ?? []).map((f) => (
+                        <option key={f.name} value={f.name}>
+                          {fieldBoth(f)}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
+                  {active.kind === "combobox" && (
+                    <FormField label="Field nhãn (vd: tên)">
+                      <Select
+                        value={active.labelField ?? ""}
+                        onChange={(e) => updIt({ labelField: e.target.value || undefined })}
+                      >
+                        <option value="">— không —</option>
+                        {(itEnt.fields ?? []).map((f) => (
+                          <option key={f.name} value={f.name}>
+                            {fieldBoth(f)}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                  )}
+                </>
+              )}
+            </>
+          )}
+          {(active.kind === "search" || active.kind === "tagbox") && (
+            <FormField label="Placeholder">
+              <Input
+                placeholder="Gợi ý nhập…"
+                value={active.placeholder ?? ""}
+                onChange={(e) => updIt({ placeholder: e.target.value || undefined })}
+              />
+            </FormField>
+          )}
+        </div>
+      )}
+
+      <FormField label="Nạp lại nguồn (tuỳ chọn)">
+        <Select
+          value={refreshDataSourceId ?? ""}
+          onChange={(e) => onRefreshDsChange(e.target.value || undefined)}
+        >
+          <option value="">— không —</option>
+          {dataSources.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+    </>
+  );
+}
+
 export function PageDesigner({ pageId }: Props) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -1483,17 +1692,7 @@ export function PageDesigner({ pageId }: Props) {
                   {inspTab === "dulieu" &&
                     sel.kind === "filter" &&
                     (() => {
-                      type FItemInsp = {
-                        id: string;
-                        kind: "combobox" | "tagbox" | "search";
-                        label?: string;
-                        entity?: string;
-                        field?: string;
-                        labelField?: string;
-                        stateKey?: string;
-                        placeholder?: string;
-                        width?: number;
-                      };
+                      type FItemInsp = FItemInspType;
                       const fcfg = sel.config as {
                         items?: FItemInsp[];
                         title?: string;
@@ -1509,176 +1708,15 @@ export function PageDesigner({ pageId }: Props) {
 
                       // ── FORMAT MỚI: items[] ──────────────────────────────
                       if (Array.isArray(fcfg.items)) {
-                        const items = fcfg.items;
-                        const updItems = (next: FItemInsp[]) => upd({ items: next });
-                        const addItem = () => {
-                          const id = `fi_${Math.random().toString(36).slice(2, 8)}`;
-                          updItems([...items, { id, kind: "combobox", label: "", stateKey: "" }]);
-                        };
                         return (
-                          <>
-                            <div className="flex items-center justify-between">
-                              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
-                                {t("page.comp.filter.items_title")}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={addItem}
-                                className="flex items-center gap-0.5 text-[11px] text-accent hover:underline"
-                              >
-                                <I.Plus size={11} /> Thêm
-                              </button>
-                            </div>
-                            {items.length === 0 && (
-                              <div className="text-[11px] text-muted/60 italic px-0.5">
-                                Chưa có thành phần nào. Bấm "Thêm" để thêm.
-                              </div>
-                            )}
-                            {items.map((item, idx) => {
-                              const itEnt = entities.find((e) => e.id === item.entity);
-                              const updIt = (patch: Partial<FItemInsp>) =>
-                                updItems(
-                                  items.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
-                                );
-                              return (
-                                <div
-                                  key={item.id}
-                                  className="rounded border border-border p-2 space-y-1.5 bg-bg-soft/30"
-                                >
-                                  <div className="flex items-center gap-1">
-                                    <Select
-                                      value={item.kind}
-                                      onChange={(e) =>
-                                        updIt({
-                                          kind: e.target.value as FItemInsp["kind"],
-                                        })
-                                      }
-                                      className="flex-1 text-xs h-7"
-                                    >
-                                      <option value="combobox">Combobox</option>
-                                      <option value="tagbox">Tagbox</option>
-                                      <option value="search">Tìm kiếm</option>
-                                    </Select>
-                                    <button
-                                      type="button"
-                                      title="Xoá thành phần"
-                                      onClick={() => updItems(items.filter((_, i) => i !== idx))}
-                                      className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                                    >
-                                      <I.X size={12} />
-                                    </button>
-                                  </div>
-                                  <FormField label="Nhãn">
-                                    <Input
-                                      placeholder="vd: Sản phẩm"
-                                      value={item.label ?? ""}
-                                      onChange={(e) => updIt({ label: e.target.value })}
-                                    />
-                                  </FormField>
-                                  <FormField label="Độ rộng (px)">
-                                    <Input
-                                      type="number"
-                                      placeholder="để trống = tự co giãn"
-                                      value={item.width ?? ""}
-                                      onChange={(e) =>
-                                        updIt({
-                                          width: e.target.value
-                                            ? Number(e.target.value)
-                                            : undefined,
-                                        })
-                                      }
-                                    />
-                                  </FormField>
-                                  <FormField label="State key">
-                                    <Input
-                                      placeholder="vd: selMasp"
-                                      value={item.stateKey ?? ""}
-                                      onChange={(e) => updIt({ stateKey: e.target.value })}
-                                    />
-                                  </FormField>
-                                  {item.kind !== "search" && (
-                                    <>
-                                      <FormField label="Entity">
-                                        <Select
-                                          value={item.entity ?? ""}
-                                          onChange={(e) =>
-                                            updIt({ entity: e.target.value, field: "" })
-                                          }
-                                        >
-                                          <option value="">— tĩnh (options) —</option>
-                                          {entities.map((e) => (
-                                            <option key={e.id} value={e.id}>
-                                              {e.name}
-                                            </option>
-                                          ))}
-                                        </Select>
-                                      </FormField>
-                                      {itEnt && (
-                                        <>
-                                          <FormField label="Field giá trị">
-                                            <Select
-                                              value={item.field ?? ""}
-                                              onChange={(e) => updIt({ field: e.target.value })}
-                                            >
-                                              <option value="">— chọn —</option>
-                                              {(itEnt.fields ?? []).map((f) => (
-                                                <option key={f.name} value={f.name}>
-                                                  {fieldBoth(f)}
-                                                </option>
-                                              ))}
-                                            </Select>
-                                          </FormField>
-                                          {item.kind === "combobox" && (
-                                            <FormField label="Field nhãn (vd: tên)">
-                                              <Select
-                                                value={item.labelField ?? ""}
-                                                onChange={(e) =>
-                                                  updIt({ labelField: e.target.value || undefined })
-                                                }
-                                              >
-                                                <option value="">— không —</option>
-                                                {(itEnt.fields ?? []).map((f) => (
-                                                  <option key={f.name} value={f.name}>
-                                                    {fieldBoth(f)}
-                                                  </option>
-                                                ))}
-                                              </Select>
-                                            </FormField>
-                                          )}
-                                        </>
-                                      )}
-                                    </>
-                                  )}
-                                  {(item.kind === "search" || item.kind === "tagbox") && (
-                                    <FormField label="Placeholder">
-                                      <Input
-                                        placeholder="Gợi ý nhập…"
-                                        value={item.placeholder ?? ""}
-                                        onChange={(e) =>
-                                          updIt({ placeholder: e.target.value || undefined })
-                                        }
-                                      />
-                                    </FormField>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            <FormField label="Nạp lại nguồn (tuỳ chọn)">
-                              <Select
-                                value={fcfg.refreshDataSourceId ?? ""}
-                                onChange={(e) =>
-                                  upd({ refreshDataSourceId: e.target.value || undefined })
-                                }
-                              >
-                                <option value="">— không —</option>
-                                {dataSources.map((d) => (
-                                  <option key={d.id} value={d.id}>
-                                    {d.name}
-                                  </option>
-                                ))}
-                              </Select>
-                            </FormField>
-                          </>
+                          <FilterItemsInspector
+                            items={fcfg.items as FItemInsp[]}
+                            updItems={(next) => upd({ items: next })}
+                            entities={entities}
+                            dataSources={dataSources}
+                            refreshDataSourceId={fcfg.refreshDataSourceId}
+                            onRefreshDsChange={(v) => upd({ refreshDataSourceId: v })}
+                          />
                         );
                       }
 
