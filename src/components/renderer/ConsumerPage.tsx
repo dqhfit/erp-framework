@@ -5188,7 +5188,7 @@ function FilterItem({ item, showLabel = true }: { item: FItemCfg; showLabel?: bo
   );
 }
 
-/** FilterWidget khi dùng items[] (format mới): tab khi ≥2 items, flat khi 1. */
+/** FilterWidget khi dùng items[] (format mới): luôn dùng tab. */
 function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: FItemCfg[] }) {
   const pageState = usePageState();
   const refreshDsId = cfg.refreshDataSourceId as string | undefined;
@@ -5196,43 +5196,33 @@ function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: 
 
   if (items.length === 0) return null;
 
-  const refreshBtn = refreshDsId ? (
-    <button
-      type="button"
-      onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
-      className="shrink-0 w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
-      title="Nạp lại"
-    >
-      <I.RefreshCw size={13} />
-    </button>
-  ) : null;
-
-  // 1 item — không cần tab
-  if (items.length === 1) {
-    return (
-      <div className="px-2 pt-4 pb-1.5 flex items-start gap-2">
-        <FilterItem item={items[0]} />
-        {refreshBtn}
-      </div>
-    );
-  }
-
-  // ≥2 items — dùng tab
+  const active = items.find((it) => it.id === activeId) ?? items[0];
   const tabOptions = items.map((it) => ({
     value: it.id,
     label: it.label || it.kind || it.id,
   }));
-  const active = items.find((it) => it.id === activeId) ?? items[0];
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       <div className="flex items-center border-b border-border">
         <Tabs
-          value={activeId}
+          value={active.id}
           onChange={setActiveId}
           options={tabOptions}
           className="flex-1 border-b-0"
         />
-        {refreshBtn && <div className="px-1">{refreshBtn}</div>}
+        {refreshDsId && (
+          <div className="px-1">
+            <button
+              type="button"
+              onClick={() => pageState.set(`__refresh:ds:${refreshDsId}`, Date.now())}
+              className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
+              title="Nạp lại"
+            >
+              <I.RefreshCw size={13} />
+            </button>
+          </div>
+        )}
       </div>
       <div
         className="px-2 pt-3 pb-1.5"
