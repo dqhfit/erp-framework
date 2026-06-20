@@ -4477,6 +4477,8 @@ function GridWidget({ comp }: { comp: PageComponent }) {
 function SplitWidget({ comp }: { comp: PageComponent }) {
   const cfg = comp.config ?? {};
   const splitKey = `split_${comp.id}_sel`;
+  const pageState = usePageState();
+  const tabStateKey = cfg.tabStateKey as string | undefined;
 
   const orientation = (cfg.orientation as string) ?? "h";
   const count = Math.max(2, Math.min(3, (cfg.count as number) ?? 2));
@@ -4535,6 +4537,15 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
   const { ratios: bothHR2, onHandleDrag: onBothHDrag2 } = useSplitRatios(initBothV, bhRef2, "h");
   const [activeTab, setActiveTab] = useState("A");
 
+  // Emit tab title vào pageState khi isTabs + tabStateKey được cấu hình
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ cần chạy khi mount để set giá trị ban đầu
+  useEffect(() => {
+    if (!tabStateKey) return;
+    const rawTabPanels = cfg.tabPanels as Array<{ title?: string }> | undefined;
+    const firstLabel = rawTabPanels?.[0]?.title ?? "A";
+    pageState.set(tabStateKey, firstLabel);
+  }, [tabStateKey]);
+
   const handleCls = (ax: "h" | "v") =>
     `shrink-0 ${ax === "h" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize"} bg-border hover:bg-accent/50 transition-colors active:bg-accent`;
 
@@ -4565,7 +4576,10 @@ function SplitWidget({ comp }: { comp: PageComponent }) {
             <button
               key={p.key}
               type="button"
-              onClick={() => setActiveTab(p.key)}
+              onClick={() => {
+                setActiveTab(p.key);
+                if (tabStateKey) pageState.set(tabStateKey, p.label);
+              }}
               className={cn(
                 "px-4 py-2 text-sm -mb-px border-b-2 transition-colors whitespace-nowrap",
                 activeTab === p.key
@@ -5157,9 +5171,16 @@ function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: 
 
   return (
     <div className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
-      {items.map((item) => (
-        <FilterItem key={item.id} item={item} />
-      ))}
+      {items.map((item) => {
+        // visibleWhen: kiểm tra ở đây để tránh vi phạm hook-at-top-level trong FilterItem
+        const vw = item.visibleWhen;
+        if (vw) {
+          const tabVal = (pageState.get(vw.stateKey) as string) ?? "";
+          if (vw.oneOf && !vw.oneOf.includes(tabVal)) return null;
+          if (vw.notOneOf && vw.notOneOf.includes(tabVal)) return null;
+        }
+        return <FilterItem key={item.id} item={item} />;
+      })}
       {refreshDsId && (
         <button
           type="button"
