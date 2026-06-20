@@ -54,3 +54,39 @@ export interface ManifestEdge {
   kind: "read" | "write";
   suggestedContract?: string;
 }
+
+/** Trạng thái review module — dùng chung GenerateTab + ReviewTab. */
+export interface ReviewStatus {
+  module: string;
+  phase: string;
+  tables: Array<{
+    name: string;
+    entityName?: string;
+    kind: "entity" | "enum";
+    label?: string;
+    enriched: boolean;
+    enumMaterialized: boolean;
+    enumId: string | null;
+  }>;
+  procs: Array<{
+    name: string;
+    targetProcName?: string;
+    targetFile?: string;
+    tier: string;
+    label?: string;
+    enriched: boolean;
+    codegenApplied: boolean;
+    codegenTarget: string | null;
+    goldenCaptured: boolean;
+  }>;
+  stats: {
+    tables: { total: number; enriched: number; enumTotal: number; enumMaterialized: number };
+    procs: {
+      total: number;
+      enriched: number;
+      codegenApplied: number;
+      goldenCaptured: number;
+      tierC: number;
+    };
+  };
+}
