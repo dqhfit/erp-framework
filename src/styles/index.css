@@ -178,6 +178,14 @@ select option {
   border: 2px solid transparent;
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
 /* Canvas backgrounds */
 .canvas-grid {
   background-color: hsl(var(--bg));

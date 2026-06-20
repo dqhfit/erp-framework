@@ -1,6 +1,6 @@
 import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { ChangeMenuNodePageModal } from "@/components/ChangeMenuNodePageModal";
 import { I } from "@/components/Icons";
@@ -94,6 +94,24 @@ export function Sidebar() {
       localStorage.setItem("sidebar-sections-open", JSON.stringify(sectionsOpen));
     } catch {}
   }, [sectionsOpen]);
+
+  // Cho phép ẩn cây menu legacy để sidebar gọn hơn, giữ lựa chọn qua reload.
+  const [showMenuTree, setShowMenuTree] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar-show-menu-tree") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const toggleMenuTree = useCallback(() => {
+    setShowMenuTree((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem("sidebar-show-menu-tree", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -547,6 +565,8 @@ export function Sidebar() {
                     pathname={pathname}
                     open={effectiveSectionsOpen.pages}
                     onToggle={toggle("pages")}
+                    showMenuTree={showMenuTree}
+                    onToggleMenuTree={toggleMenuTree}
                     onAdd={can("create", "page") ? handleAddPage : undefined}
                     onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
                     onNavigate={collapseOpsSettings}

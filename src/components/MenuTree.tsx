@@ -1,4 +1,12 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { I } from "@/components/Icons";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +18,9 @@ export interface NavNode {
   sort: number;
   pageId: string | null;
 }
+
+const INDENT = 2;
+const GUTTER = 12;
 
 function displayLabel(node: NavNode, clean?: boolean): string {
   const n = node.name ?? "";
@@ -99,6 +110,86 @@ function useTreeExpand(storageKey?: string) {
   return { map, toggle, setAll };
 }
 
+function useTreeKeyboardNav(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  enabled: boolean,
+) {
+  useEffect(() => {
+    if (!enabled) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    function getVisibleItems(): HTMLElement[] {
+      const all = el.querySelectorAll<HTMLElement>("button[data-tree-item]:not([disabled])");
+      return Array.from(all).filter((btn) => {
+        const li = btn.closest("li");
+        return li && li.offsetParent !== null;
+      });
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const items = getVisibleItems();
+      const currentIdx = items.findIndex(
+        (item) => item === e.target || item.contains(e.target as Node),
+      );
+      if (currentIdx === -1) return;
+
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault();
+          const next = items[currentIdx + 1];
+          next?.focus();
+          break;
+        }
+        case "ArrowUp": {
+          e.preventDefault();
+          const prev = items[currentIdx - 1];
+          prev?.focus();
+          break;
+        }
+        case "ArrowRight": {
+          const code = e.target?.getAttribute?.("data-tree-item");
+          if (code) {
+            const groupBtn = el.querySelector<HTMLButtonElement>(
+              `button[data-tree-group="${code}"]`,
+            );
+            if (groupBtn) {
+              e.preventDefault();
+              groupBtn.click();
+            }
+          }
+          break;
+        }
+        case "ArrowLeft": {
+          const code = e.target?.getAttribute?.("data-tree-item");
+          if (code) {
+            const groupBtn = el.querySelector<HTMLButtonElement>(
+              `button[data-tree-group="${code}"]`,
+            );
+            if (groupBtn) {
+              e.preventDefault();
+              groupBtn.click();
+            } else {
+              const parent = e.target?.closest("li")?.parentElement?.closest("li");
+              const parentBtn = parent?.querySelector<HTMLButtonElement>("button[data-tree-group]");
+              if (parentBtn) {
+                e.preventDefault();
+                parentBtn.focus();
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    el.addEventListener("keydown", onKeyDown);
+    return () => el.removeEventListener("keydown", onKeyDown);
+  }, [containerRef, enabled]);
+}
+
 export interface MenuTreeHandle {
   expandAll: () => void;
   collapseAll: () => void;
@@ -145,6 +236,7 @@ export const MenuTree = forwardRef<
     onToggleFav?: (node: NavNode) => void;
     onUnassign?: (node: NavNode) => void;
     onChangePage?: (node: NavNode) => void;
+    onGroupClick?: (code: string) => void;
   }
 >(function MenuTree(
   {
@@ -161,9 +253,11 @@ export const MenuTree = forwardRef<
     onToggleFav,
     onUnassign,
     onChangePage,
+    onGroupClick,
   },
   ref,
 ) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const effNodes = useMemo(
     () => (compact ? collapseSameNameGroups(nodes) : nodes),
     [compact, nodes],
@@ -196,6 +290,7 @@ export const MenuTree = forwardRef<
     [isolateCode, effNodes],
   );
   const shownRoots = isolated ? [isolated] : roots;
+  useTreeKeyboardNav(containerRef, !loading && effNodes.length > 0);
   useImperativeHandle(
     ref,
     () => ({
@@ -223,7 +318,7 @@ export const MenuTree = forwardRef<
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div ref={containerRef} className="overflow-x-auto scrollbar-thin">
       {isolated && (
         <button
           type="button"
@@ -241,8 +336,9 @@ export const MenuTree = forwardRef<
           </span>
         </button>
       )}
-      <ul className="py-1 w-max min-w-full">
-        {shownRoots.map((r) => (
+      {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: valid ARIA tree pattern */}
+      <ul className="py-1 w-max min-w-full" role="tree">
+        {shownRoots.map((r, i) => (
           <MenuBranch
             key={r.code}
             node={r}
@@ -250,6 +346,7 @@ export const MenuTree = forwardRef<
             activePageId={activePageId}
             onSelect={onSelect}
             depth={0}
+            isLast={i === shownRoots.length - 1}
             parentPath={[]}
             expandAll={expandAll}
             expandState={map}
@@ -261,6 +358,7 @@ export const MenuTree = forwardRef<
             onToggleFav={onToggleFav}
             onUnassign={onUnassign}
             onChangePage={onChangePage}
+            onGroupClick={onGroupClick}
           />
         ))}
       </ul>
@@ -268,12 +366,37 @@ export const MenuTree = forwardRef<
   );
 });
 
+/** Ô dẫn hướng thụt cấp — đường kẻ dọc nối nhánh. */
+function IndentGuides({ depth, isLast }: { depth: number; isLast: boolean }) {
+  if (depth === 0) return null;
+  return (
+    <>
+      {Array.from({ length: depth - 1 }, (_, level) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: indent guide slots are static, never reorder
+        <div key={level} className="w-[2px] shrink-0 relative">
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/20" />
+        </div>
+      ))}
+      <div className="w-[2px] shrink-0 relative">
+        <div
+          className={cn(
+            "absolute left-1/2 top-0 w-px bg-border/20",
+            isLast ? "bottom-1/2" : "bottom-0",
+          )}
+        />
+        <div className="absolute left-1/2 top-1/2 w-1 h-px bg-border/20 -translate-y-1/2" />
+      </div>
+    </>
+  );
+}
+
 function MenuBranch({
   node,
   childrenOf,
   activePageId,
   onSelect,
   depth,
+  isLast,
   parentPath,
   expandAll,
   expandState,
@@ -285,12 +408,14 @@ function MenuBranch({
   onToggleFav,
   onUnassign,
   onChangePage,
+  onGroupClick,
 }: {
   node: NavNode;
   childrenOf: Map<string, NavNode[]>;
   activePageId: string | null;
   onSelect: (pageId: string) => void;
   depth: number;
+  isLast: boolean;
   parentPath: string[];
   expandAll?: boolean;
   expandState: Record<string, boolean>;
@@ -302,6 +427,7 @@ function MenuBranch({
   onToggleFav?: (node: NavNode) => void;
   onUnassign?: (node: NavNode) => void;
   onChangePage?: (node: NavNode) => void;
+  onGroupClick?: (code: string) => void;
 }) {
   const kids = childrenOf.get(node.code) ?? [];
   const myLabel = displayLabel(node, cleanLabels);
@@ -318,7 +444,6 @@ function MenuBranch({
   const isLeaf = kids.length === 0 && node.pageId;
   const active = node.pageId != null && node.pageId === activePageId;
   const open = expandState[node.code] ?? (expandAll || depth === 0 || hasActiveDesc);
-  // Trì hoãn unmount để animate thu gọn
   const [showKids, setShowKids] = useState(open);
   useEffect(() => {
     if (open) setShowKids(true);
@@ -332,26 +457,32 @@ function MenuBranch({
     const tooltip = [...parentPath, myLabel].join(" › ");
     const favored = !!(node.pageId && isFav?.(node.pageId));
     return (
-      <li
-        className={cn(
-          "group/leaf flex items-center transition-colors",
-          active
-            ? "bg-accent/10 text-accent font-medium border-l-2 border-accent -ml-px"
-            : "text-text hover:bg-hover/40",
-        )}
-      >
+      <li role="none" className={cn("flex", depth > 0 && "relative")}>
         <button
           type="button"
+          role="treeitem"
+          data-tree-item={node.code}
           title={tooltip}
           onClick={() => node.pageId && onSelect(node.pageId)}
-          style={{ paddingLeft: 12 + depth * 12 }}
-          className="flex-1 min-w-0 text-left px-3 py-1.5 text-sm flex items-center gap-2"
+          className={cn(
+            "flex-1 min-w-0 text-left flex items-center gap-1.5 transition-colors outline-none",
+            "focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:ring-inset",
+            active
+              ? "bg-accent/10 text-accent font-medium border-l-2 border-accent"
+              : "text-text hover:bg-hover/40",
+          )}
+          style={{ paddingLeft: GUTTER + depth * INDENT }}
         >
-          <I.Layout size={13} className="shrink-0 text-muted" />
-          <span className="whitespace-nowrap lowercase first-letter:uppercase">{myLabel}</span>
+          <IndentGuides depth={depth} isLast={isLast} />
+          <span className="w-3.5 h-3.5 shrink-0 flex items-center justify-center">
+            <I.Layout size={13} className="text-muted" />
+          </span>
+          <span className="truncate py-1.5 text-sm lowercase first-letter:uppercase">
+            {myLabel}
+          </span>
         </button>
         {node.pageId && (onToggleFav || onChangePage || onUnassign) && (
-          <div className="sticky right-1 shrink-0 mr-1 flex items-center gap-0.5">
+          <div className="sticky right-1 shrink-0 flex items-center gap-0.5 pr-1">
             {onToggleFav && (
               <button
                 type="button"
@@ -400,23 +531,37 @@ function MenuBranch({
     );
   }
   if (kids.length === 0) return null;
+  const leafCount = kids.filter((k) => k.pageId != null).length;
   return (
-    <li>
-      <div className="group/grp flex items-center text-muted hover:bg-hover/40">
-        <button
-          type="button"
-          onClick={() => onToggle(node.code, open)}
-          style={{ paddingLeft: 12 + depth * 12 }}
-          className="flex-1 min-w-0 text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5"
-        >
-          <I.ChevronRight
-            size={12}
-            className={cn("shrink-0 transition-transform", open && "rotate-90")}
-          />
-          <span className="whitespace-nowrap lowercase first-letter:uppercase">
-            {displayLabel(node, cleanLabels)}
-          </span>
-        </button>
+    <li role="none">
+      <button
+        type="button"
+        role="treeitem"
+        aria-expanded={open}
+        data-tree-item={node.code}
+        data-tree-group={node.code}
+        onClick={() => {
+          onToggle(node.code, open);
+          onGroupClick?.(node.code);
+        }}
+        className={cn(
+          "flex w-full items-center gap-1.5 transition-colors outline-none text-xs font-semibold uppercase tracking-wide",
+          "hover:bg-accent/5 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:ring-inset",
+          "text-muted",
+        )}
+        style={{ paddingLeft: GUTTER + depth * INDENT }}
+      >
+        <IndentGuides depth={depth} isLast={false} />
+        <I.ChevronRight
+          size={12}
+          className={cn("shrink-0 transition-transform", open && "rotate-90")}
+        />
+        <span className="truncate py-1.5 lowercase first-letter:uppercase">
+          {displayLabel(node, cleanLabels)}
+        </span>
+        {leafCount > 0 && (
+          <span className="text-[10px] text-muted/50 font-normal ml-auto mr-1">{leafCount}</span>
+        )}
         {isolatable && onIsolate && (
           <button
             type="button"
@@ -430,7 +575,7 @@ function MenuBranch({
             <I.Focus size={12} className="text-muted" />
           </button>
         )}
-      </div>
+      </button>
       <div
         className={cn(
           "menu-collapse overflow-hidden transition-[grid-template-rows] duration-150",
@@ -438,8 +583,9 @@ function MenuBranch({
         )}
       >
         {showKids && (
-          <ul>
-            {kids.map((k) => (
+          // biome-ignore lint/a11y/useSemanticElements: ul[role="group"] is valid ARIA tree pattern
+          <ul role="group">
+            {kids.map((k, i) => (
               <MenuBranch
                 key={k.code}
                 node={k}
@@ -447,6 +593,7 @@ function MenuBranch({
                 activePageId={activePageId}
                 onSelect={onSelect}
                 depth={depth + 1}
+                isLast={i === kids.length - 1}
                 parentPath={[...parentPath, myLabel]}
                 expandAll={expandAll}
                 expandState={expandState}
@@ -458,6 +605,7 @@ function MenuBranch({
                 onToggleFav={onToggleFav}
                 onUnassign={onUnassign}
                 onChangePage={onChangePage}
+                onGroupClick={onGroupClick}
               />
             ))}
           </ul>
