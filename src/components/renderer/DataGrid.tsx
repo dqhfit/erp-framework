@@ -550,7 +550,7 @@ export function DataGrid<T>({
         const nat = allCols.indexOf(id);
         let insertAt = 0;
         for (let i = nat - 1; i >= 0; i--) {
-          const p = merged.indexOf(allCols[i]);
+          const p = merged.indexOf(allCols[i]!);
           if (p !== -1) {
             insertAt = p + 1;
             break;
@@ -585,7 +585,7 @@ export function DataGrid<T>({
         const nat = colIds.indexOf(id);
         let insertAt = 0;
         for (let i = nat - 1; i >= 0; i--) {
-          const p = merged.indexOf(colIds[i]);
+          const p = merged.indexOf(colIds[i]!);
           if (p !== -1) {
             insertAt = p + 1;
             break;
