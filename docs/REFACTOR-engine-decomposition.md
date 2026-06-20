@@ -177,3 +177,52 @@ Sau mỗi stage, mở app (`pnpm dev`) và kiểm thủ công phần liên quan:
 ## Rollback
 Mỗi stage 1 commit độc lập → `git revert <sha>` nếu QA phát hiện lỗi render mà
 typecheck không bắt. KHÔNG gộp nhiều stage vào 1 commit (khó cô lập lỗi engine).
+
+---
+
+## C. DataGrid.tsx — decomposition riêng (file engine thứ 3)
+
+> DataGrid 2254 → **2014 dòng** sau D1+D2 (đã push). Pure-util đã tách sẵn
+> `renderer/datagrid/grid-utils.ts` từ trước.
+
+### ĐÃ XONG
+- **D1**: `DataGridProps/ServerGridQuery/ServerPagingController` → `datagrid/types.ts`
+  (DataGrid re-export, public surface không đổi); `FacetFilterInput` + `FACET_MAX_DISTINCT`
+  → `datagrid/FacetFilterInput.tsx`.
+- **D2a**: `useColumnAutofit` (measureCol/autofitColumn/autofitAll + effect autofit-on-load
+  + autofitDoneRef) → `datagrid/use-column-autofit.ts`.
+- **D2b**: `useGridPersistence` (restore mount + debounce-save IDB theo stateKey)
+  → `datagrid/use-grid-persistence.ts`.
+- QA (Playwright, session-injection): grid render + autofit + persistence-reload + 0
+  console-error đã xác nhận trên trang ngũ kim (e69c332b).
+
+### CÒN LẠI — D3: tách `DataGridToolbar` (encapsulate dropdown state) — TURNKEY
+Khối **toolbar = dòng 645–1333** (`{toolbar && (<div ref={toolbarBorderRef}>…</div>)}`).
+Selection-bar (1335–1386) + grid (`{viewMode === "card" ? … }` 1388+) là sibling RIÊNG,
+KHÔNG thuộc toolbar. Cách làm (verbatim block-move → behavior giữ nguyên, typecheck
+bắt sai prop, biome bắt sai cú pháp JSX → an toàn, revert được):
+
+1. Tạo `datagrid/DataGridToolbar.tsx`. **CHUYỂN VÀO** (toolbar-only, đã verify không
+   dùng ngoài 645–1333 + effect của chúng):
+   - state (6): `groupPickerOpen, colChooserOpen, exportMenuOpen, exporting, overflowOpen, toolbarNarrow`
+   - ref (8): `groupPickerRef, colChooserRef, exportBtnRef, groupDropdownRef, colDropdownRef, exportDropdownRef, overflowBtnRef, toolbarBorderRef`
+   - effect (5): close-group (≈237–248), close-col (≈250–261), close-export (≈541–552),
+     overflow-measure ResizeObserver→setToolbarNarrow (≈554–565), close-overflow (≈567–573)
+   - handler: `doExport` (≈612–635)
+   - derived TÍNH LẠI TỪ `table` bên trong: `sortableColumns, allSortableCols,
+     activeFilterCount (= table.getState().columnFilters.length), leafCols, exportCols`
+2. **PROP (≈22, shared)**: `table` + `filterRowOpen/setFilterRowOpen,
+   showSelectCol/setShowSelectCol, maximized/setMaximized, globalFilter/setGlobalFilter,
+   setPasteOpen, autofitAll, selectedCount, someSelected, clearSelection, viewMode/setViewMode,
+   label, serverMode, totalCount, filteredCount, data, enableSelection, onPasteApply,
+   onAddRow, onExportAll`. (Nhóm thành object cho gọn signature.)
+   `grouping/columnFilters` KHÔNG cần prop — đọc `table.getState()`.
+3. Thay 645–1333 bằng `<DataGridToolbar … />`; gỡ các decl đã move khỏi DataGrid.
+4. Verify: `tsc` (lặp tới sạch) + `biome` + render-QA (mở từng dropdown group/cột/export/
+   overflow, export, đổi viewMode, maximize) + `vitest`. ⚠ Làm phiên RIÊNG có app chạy
+   để QA tương tác từng nút (render-QA tự động chỉ bắt crash, không bắt lỗi tương tác tinh vi).
+   QA nhanh: chèn session tạm `INSERT INTO sessions(id,user_id,active_company_id,expires_at,
+   created_at)` (cookie `sid`=id) → Playwright addCookies → /pages/e69c332b → "Xem trước".
+
+### (tuỳ chọn) D3b: `DataGridPagination` (footer phân trang + summary <tfoot>) — sạch hơn,
+ít prop hơn toolbar; có thể làm trước D3 nếu muốn win nhỏ an toàn.
