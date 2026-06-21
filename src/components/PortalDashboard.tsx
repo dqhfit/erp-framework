@@ -330,7 +330,7 @@ function MenuBrowser({
     };
     const path = findPath(focusCategory);
     if (path) {
-      setSelectedRoot(path[0]);
+      setSelectedRoot(path[0] ?? null);
       setDrillPath(path.slice(1));
     }
     onFocusCategoryUsed?.();

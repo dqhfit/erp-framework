@@ -117,7 +117,9 @@ function AppShell() {
       pathname.startsWith("/portal") ||
       pathname.startsWith("/view") ||
       STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
-    if (role === "viewer" && !allowed) void navigate({ to: "/portal" });
+    if (role === "viewer" && !allowed) {
+      void navigate({ to: "/portal", search: { page: undefined } });
+    }
   }, [role, pathname, navigate]);
 
   // /view/*, /portal + trang xưởng standalone tự render full-screen layout —

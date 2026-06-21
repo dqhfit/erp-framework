@@ -118,9 +118,10 @@ function useTreeKeyboardNav(
     if (!enabled) return;
     const el = containerRef.current;
     if (!el) return;
+    const root = el;
 
     function getVisibleItems(): HTMLElement[] {
-      const all = el.querySelectorAll<HTMLElement>("button[data-tree-item]:not([disabled])");
+      const all = root.querySelectorAll<HTMLElement>("button[data-tree-item]:not([disabled])");
       return Array.from(all).filter((btn) => {
         const li = btn.closest("li");
         return li && li.offsetParent !== null;
@@ -129,11 +130,11 @@ function useTreeKeyboardNav(
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!(e.target instanceof HTMLElement)) return;
+      const target = e.target;
 
       const items = getVisibleItems();
-      const currentIdx = items.findIndex(
-        (item) => item === e.target || item.contains(e.target as Node),
-      );
+      const currentIdx = items.findIndex((item) => item === target || item.contains(target));
       if (currentIdx === -1) return;
 
       switch (e.key) {
@@ -150,9 +151,9 @@ function useTreeKeyboardNav(
           break;
         }
         case "ArrowRight": {
-          const code = e.target?.getAttribute?.("data-tree-item");
+          const code = target.getAttribute("data-tree-item");
           if (code) {
-            const groupBtn = el.querySelector<HTMLButtonElement>(
+            const groupBtn = root.querySelector<HTMLButtonElement>(
               `button[data-tree-group="${code}"]`,
             );
             if (groupBtn) {
@@ -163,16 +164,16 @@ function useTreeKeyboardNav(
           break;
         }
         case "ArrowLeft": {
-          const code = e.target?.getAttribute?.("data-tree-item");
+          const code = target.getAttribute("data-tree-item");
           if (code) {
-            const groupBtn = el.querySelector<HTMLButtonElement>(
+            const groupBtn = root.querySelector<HTMLButtonElement>(
               `button[data-tree-group="${code}"]`,
             );
             if (groupBtn) {
               e.preventDefault();
               groupBtn.click();
             } else {
-              const parent = e.target?.closest("li")?.parentElement?.closest("li");
+              const parent = target.closest("li")?.parentElement?.closest("li");
               const parentBtn = parent?.querySelector<HTMLButtonElement>("button[data-tree-group]");
               if (parentBtn) {
                 e.preventDefault();
@@ -185,8 +186,8 @@ function useTreeKeyboardNav(
       }
     }
 
-    el.addEventListener("keydown", onKeyDown);
-    return () => el.removeEventListener("keydown", onKeyDown);
+    root.addEventListener("keydown", onKeyDown);
+    return () => root.removeEventListener("keydown", onKeyDown);
   }, [containerRef, enabled]);
 }
 

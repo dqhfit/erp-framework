@@ -1340,18 +1340,18 @@ export function Sidebar() {
       <AssignPageToMenuModal
         page={assignMenuPage}
         onClose={() => setAssignMenuPage(null)}
-        onDone={() => setNavReloadKey((k) => k + 1)}
+        onDone={() => void invalidateNavTree()}
       />
       <ChangeMenuNodePageModal
         node={changeNodePage}
         onClose={() => setChangeNodePage(null)}
-        onDone={() => setNavReloadKey((k) => k + 1)}
+        onDone={() => void invalidateNavTree()}
       />
       <NewPageModal
         open={newPageOpen}
         onClose={() => {
           setNewPageOpen(false);
-          setNavReloadKey((k) => k + 1); // trang gán menu mới → refresh cây nav
+          void invalidateNavTree(); // trang gán menu mới → refresh cây nav
         }}
         canAssignMenu={can("edit", "settings")}
       />

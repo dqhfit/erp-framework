@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
-import { MenuTree, type MenuTreeHandle } from "@/components/MenuTree";
+import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
 import { PortalDashboard } from "@/components/PortalDashboard";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useFavs } from "@/components/Sidebar";
