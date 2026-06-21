@@ -15,7 +15,7 @@ import type { PageStateLike } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
+import type { ActionConfig, ActionStepOpenWizard, WizardRelatedImage } from "@/types/page";
 
 const api = createApiDataSource("");
 
@@ -96,6 +96,68 @@ interface Props {
 
 /** Khoá form dùng chung cho mọi bước ở chế độ 1-entity (tránh field cùng tên
  *  ở 2 bước ghi đè nhau khi gộp). */
+function RelatedImagePanel({
+  config,
+  parentValue,
+}: {
+  config: WizardRelatedImage;
+  parentValue: string;
+}) {
+  const entities = useUserObjects((s) => s.entities);
+  const [image, setImage] = useState("");
+
+  useEffect(() => {
+    if (!parentValue) {
+      setImage("");
+      return;
+    }
+    const sourceEntity = entities.find(
+      (e) =>
+        (config.entity && e.id === config.entity) ||
+        (config.entityName && e.name.toLowerCase() === config.entityName.toLowerCase()),
+    );
+    if (!sourceEntity) {
+      setImage("");
+      return;
+    }
+    let alive = true;
+    api
+      .getRecords(sourceEntity.id, {
+        filters: { [config.linkField]: { op: "=", value: parentValue } },
+        limit: 1,
+      })
+      .then((res) => {
+        if (!alive) return;
+        const data = res.rows[0]?.data as Record<string, unknown> | undefined;
+        setImage(String(data?.[config.imageField] ?? ""));
+      })
+      .catch(() => {
+        if (alive) setImage("");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [config, entities, parentValue]);
+
+  const src = image.startsWith("wwwroot/") ? `/${image.slice(8)}` : image;
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1">{config.label ?? "Hình ảnh"}</label>
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          className="w-full h-48 object-contain rounded border border-border bg-panel-2"
+        />
+      ) : (
+        <div className="w-full h-48 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
+          Chưa có ảnh
+        </div>
+      )}
+    </div>
+  );
+}
+
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
@@ -146,7 +208,6 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       ]),
     ),
   ].join(",");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: bám lookupKey (chuỗi id) thay mảng object
   useEffect(() => {
     if (!lookupKey) return;
     let alive = true;
@@ -297,6 +358,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const setField = (k: string, v: string) =>
     setForms((prev) => ({ ...prev, [formKey]: { ...(prev[formKey] ?? {}), [k]: v } }));
   const isLast = activeIdx === wizardSteps.length - 1;
+  const relatedImageCfg = current.relatedImage;
+  const relatedParentValue = relatedImageCfg
+    ? String(form[relatedImageCfg.parentField] ?? "").trim()
+    : "";
 
   // ── Bước lưới chi tiết (master-detail) ──
   const detailCfg = current.detail;
@@ -327,16 +392,24 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     const lk = detailCfg?.fieldLookups?.[f.name];
     if (lk) {
       const src = detailLookupData[lk.entity] ?? [];
+      const refEnt = entities.find((e) => e.id === lk.entity);
       const labels = lk.labelFields ?? [lk.valueField];
+      const multiCol = labels.length >= 2;
       const opts = src.map((r) => {
         const val = String(r[lk.valueField] ?? "");
         const lbl = labels
           .map((x) => r[x])
           .filter((x) => x != null && String(x) !== "")
           .join(" — ");
-        return { value: val, label: lbl || val };
+        const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
+        return cells
+          ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
+          : { value: val, label: lbl || val };
       });
-      const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+      const headers = multiCol
+        ? labels.map((x) => refEnt?.fields.find((field) => field.name === x)?.label ?? x)
+        : undefined;
+      const srcLabel = refEnt?.name ?? "mục";
       return (
         <SearchableSelect
           className="w-full"
@@ -345,6 +418,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           options={opts}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
+          columnHeaders={headers}
         />
       );
     }
@@ -452,8 +526,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           fieldOv,
         );
         const typeOf = (k: string) => mFields.find((f) => f.name === k)?.type;
+        const editableFieldNames = new Set(
+          wizardSteps.flatMap((wizardStep) =>
+            wizardStep.sections?.length
+              ? wizardStep.sections.flatMap((section) => section.fields)
+              : (wizardStep.fields ?? []),
+          ),
+        );
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(shared)) {
+          if (!editableFieldNames.has(k)) continue;
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
@@ -587,16 +669,24 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const lk = current.fieldLookups?.[f.name];
         if (!lk) return null;
         const src = detailLookupData[lk.entity] ?? [];
+        const refEnt = entities.find((e) => e.id === lk.entity);
         const labels = lk.labelFields ?? [lk.valueField];
+        const multiCol = labels.length >= 2;
         const opts = src.map((r) => {
           const val = String(r[lk.valueField] ?? "");
           const lbl = labels
             .map((x) => r[x])
             .filter((x) => x != null && String(x) !== "")
             .join(" — ");
-          return { value: val, label: lbl || val };
+          const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
+          return cells
+            ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
+            : { value: val, label: lbl || val };
         });
-        const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+        const headers = multiCol
+          ? labels.map((x) => refEnt?.fields.find((field) => field.name === x)?.label ?? x)
+          : undefined;
+        const srcLabel = refEnt?.name ?? "mục";
         return (
           <SearchableSelect
             className="w-full"
@@ -614,13 +704,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             options={opts}
             emptyOption={`— chọn ${srcLabel} —`}
             searchPlaceholder={`Tìm ${srcLabel}…`}
+            columnHeaders={headers}
           />
         );
       })()
-    ) : (f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+    ) : (f.type === "lookup" || f.type === "multi-lookup") &&
+      (f.ref || (f as { relationEntityId?: string }).relationEntityId) ? (
       <LookupPicker
-        refEntityId={f.ref}
+        refEntityId={f.ref || (f as { relationEntityId?: string }).relationEntityId || ""}
         value={form[f.name] ?? ""}
+        valueField={f.refValueField}
         onChange={(v) => setField(f.name, v)}
         multi={f.type === "multi-lookup"}
       />
@@ -732,8 +825,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     );
 
   // Field ảnh tách sang cột phải (khung lớn); field khác ở cột trái.
-  const imgFields = visibleFields.filter((f) => f.type === "image");
-  const leftFields = visibleFields.filter((f) => f.type !== "image");
+  const imgFields = visibleFields.filter((f) => f.type === "image" || f.name === "hinhanh");
+  const leftFields = visibleFields.filter((f) => f.type !== "image" && f.name !== "hinhanh");
+  const hasImagePanel = imgFields.length > 0 || !!relatedImageCfg;
 
   return (
     <Modal
@@ -743,7 +837,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       width={
         wizardSteps.some((s) => s.detail)
           ? 920
-          : imgFields.length > 0 || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
+          : hasImagePanel || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
             ? 720
             : 540
       }
@@ -889,7 +983,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             visibleFields.length > 0 ? (
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
-                <div className={cn("min-w-0 w-full", imgFields.length > 0 ? "sm:flex-1" : "")}>
+                <div className={cn("min-w-0 w-full", hasImagePanel ? "sm:flex-1" : "")}>
                   {current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
@@ -962,8 +1056,14 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                   )}
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
-                {imgFields.length > 0 && (
+                {hasImagePanel && (
                   <div className="w-full sm:w-56 sm:shrink-0 space-y-3">
+                    {relatedImageCfg && (
+                      <RelatedImagePanel
+                        config={relatedImageCfg}
+                        parentValue={relatedParentValue}
+                      />
+                    )}
                     {imgFields.map((f) => (
                       <div key={f.id}>
                         <label className="block text-xs font-medium mb-1 flex items-center gap-1">
@@ -973,9 +1073,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                           )}
                         </label>
                         {form[f.name] ? (
-                          // biome-ignore lint/performance/noImgElement: preview ảnh URL/base64 trong modal
                           <img
-                            src={form[f.name]}
+                            src={
+                              String(form[f.name]).startsWith("wwwroot/")
+                                ? `/${String(form[f.name]).slice(8)}`
+                                : form[f.name]
+                            }
                             alt=""
                             className={cn(
                               "w-full h-48 object-contain rounded border border-border bg-panel-2",
@@ -991,7 +1094,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             )}
                           </div>
                         )}
-                        {!readOnly && (
+                        {!readOnly && f.name !== "hinhanh" && (
                           <div className="flex items-center gap-2 mt-1.5">
                             <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                               <span

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 // masp → URL PDF kỹ thuật (cache).
 const urlCache = new Map<string, Promise<string | null>>();
-function resolveProductPdfUrl(masp: string): Promise<string | null> {
+export function resolveProductPdfUrl(masp: string): Promise<string | null> {
   let p = urlCache.get(masp);
   if (!p) {
     p = (async () => {
@@ -48,7 +48,7 @@ function resolveProductPdfUrl(masp: string): Promise<string | null> {
 
 // masp → {url, texts} PDF (cache; lưới nhiều dòng chung 1 PDF → load + trích text 1 lần).
 const dataCache = new Map<string, Promise<{ url: string; texts: string[] } | null>>();
-function getProductPdf(masp: string): Promise<{ url: string; texts: string[] } | null> {
+export function getProductPdf(masp: string): Promise<{ url: string; texts: string[] } | null> {
   let p = dataCache.get(masp);
   if (!p) {
     p = (async () => {

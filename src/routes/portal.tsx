@@ -105,17 +105,12 @@ function PortalRoute() {
   useEffect(() => {
     if (!prefsLoaded || initDone.current) return;
     initDone.current = true;
-    const lastId = prefs.portal?.lastPageId;
-    const initial =
-      (urlPage && publishedPages.find((p) => p.id === urlPage)?.id) ||
-      publishedPages.find((p) => p.id === lastId)?.id ||
-      publishedPages[0]?.id ||
-      null;
+    const initial = urlPage && publishedPages.some((p) => p.id === urlPage) ? urlPage : null;
     if (initial) {
       setActiveIdRaw(initial);
       setMountedIds(new Set([initial]));
     }
-  }, [prefsLoaded, prefs, publishedPages, urlPage]);
+  }, [prefsLoaded, publishedPages, urlPage]);
 
   const setActiveId = useCallback(
     (id: string) => {
@@ -138,13 +133,13 @@ function PortalRoute() {
   // vòng lặp (setActiveId gọi savePrefs → prefs thay đổi → callback mới → effect chạy lại)
   useEffect(() => {
     if (!initDone.current) return;
-    if (urlPage) {
+    if (urlPage && publishedPages.some((p) => p.id === urlPage)) {
       setActiveIdRaw(urlPage);
       setMountedIds((prev) => new Set([...prev, urlPage]));
     } else {
       setActiveIdRaw(null);
     }
-  }, [urlPage]);
+  }, [urlPage, publishedPages]);
 
   const onSelectPage = useCallback(
     (id: string) => {

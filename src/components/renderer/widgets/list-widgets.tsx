@@ -631,7 +631,9 @@ function EditableListWidget({
             canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
             onCommit={(v) => saveRef.current(row.id, f.name, v)}
             fieldType={f.type}
-            refEntityId={(f as { ref?: string }).ref}
+            refEntityId={
+              (f as { ref?: string }).ref || (f as { relationEntityId?: string }).relationEntityId
+            }
             refValueField={(f as { refValueField?: string }).refValueField}
             getLookupOptions={() =>
               Array.from(ctx.column.getFacetedUniqueValues().keys())
@@ -1106,7 +1108,10 @@ export function ServerPagedListWidget({
                   saveRef.current((ctx.row.original as { id?: unknown }).id, f.name, v)
                 }
                 fieldType={f.type}
-                refEntityId={(f as { ref?: string }).ref}
+                refEntityId={
+                  (f as { ref?: string }).ref ||
+                  (f as { relationEntityId?: string }).relationEntityId
+                }
                 refValueField={(f as { refValueField?: string }).refValueField}
                 getLookupOptions={() =>
                   Array.from(ctx.column.getFacetedUniqueValues().keys())

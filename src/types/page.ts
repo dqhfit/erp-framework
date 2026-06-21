@@ -255,6 +255,16 @@ export interface WizardStepDetail {
   footerSums?: string[];
 }
 
+/** Ảnh chỉ đọc lấy từ entity liên quan, không tham gia payload lưu entity chính. */
+export interface WizardRelatedImage {
+  entity?: string;
+  entityName?: string;
+  linkField: string;
+  parentField: string;
+  imageField: string;
+  label?: string;
+}
+
 /** Một bước trong wizard — có thể tạo bản ghi entity hoặc chỉ hiển thị form. */
 export interface WizardStepDef {
   id: string;
@@ -286,6 +296,8 @@ export interface WizardStepDef {
    *  = giá trị parentKeyField của bản ghi chính. Có → render bảng nhập thay vì
    *  form field (chỉ dùng ở wizard 1-entity). */
   detail?: WizardStepDetail;
+  /** Ảnh tham chiếu chỉ đọc từ entity liên quan. */
+  relatedImage?: WizardRelatedImage;
 }
 
 export interface ActionStepOpenWizard {
