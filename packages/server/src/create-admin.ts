@@ -30,7 +30,9 @@ function loadEnv() {
         const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
         if (m) {
           const k = m[1];
-          const v = m[2].trim().replace(/^["']|["']$/g, "");
+          const rawValue = m[2];
+          if (!k || rawValue === undefined) continue;
+          const v = rawValue.trim().replace(/^["']|["']$/g, "");
           if (!process.env[k]) {
             process.env[k] = v;
           }
@@ -77,6 +79,7 @@ async function main() {
         VALUES (${email}, ${name}, ${passwordHash}, 'admin')
         RETURNING id
       `;
+      if (!user) throw new Error("Không nhận được ID tài khoản vừa tạo");
       userId = user.id;
       console.log("Tạo tài khoản admin thành công!");
     }
@@ -94,12 +97,13 @@ async function main() {
         VALUES ('Công ty mặc định', 'default')
         RETURNING id
       `;
+      if (!co) throw new Error("Không nhận được ID công ty vừa tạo");
       companyId = co.id;
     }
 
     // 3) Add user to company as admin
     const [existingMember] = await sql`
-      SELECT id FROM company_members 
+      SELECT id FROM company_members
       WHERE company_id = ${companyId} AND user_id = ${userId}
     `;
     if (!existingMember) {
@@ -112,7 +116,7 @@ async function main() {
     } else {
       console.log("Tài khoản đã là thành viên công ty.");
       await sql`
-        UPDATE company_members 
+        UPDATE company_members
         SET role = 'admin', approved = true, disabled = false
         WHERE id = ${existingMember.id}
       `;
