@@ -187,6 +187,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset lỗi mỗi khi đổi bước, chỉ cần activeIdx
   useEffect(() => {
     setFieldErrors({});
   }, [activeIdx]);
