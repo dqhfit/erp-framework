@@ -25,14 +25,56 @@ import type {
   WidgetData,
 } from "@/components/renderer/page-types";
 import type { EntityField, MockEntity } from "@/lib/object-types";
+import { idbGet, idbSet } from "@/lib/page-state-idb";
 import { useUserObjects } from "@/stores/userObjects";
 
 export const api = createApiDataSource("");
 
 const PageStateContext = createContext<PageStateCtx | null>(null);
 
-export function PageStateProvider({ children }: { children: React.ReactNode }) {
+export function PageStateProvider({
+  children,
+  pageId,
+}: {
+  children: React.ReactNode;
+  pageId?: string;
+}) {
   const [values, setValues] = useState<Record<string, PageStateValue>>({});
+  const idbKey = pageId ? `pageState:${pageId}` : null;
+
+  // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !idbKey) return;
+    restoredRef.current = true;
+    idbGet<Record<string, PageStateValue>>(idbKey).then((saved) => {
+      if (!saved) return;
+      // Bỏ qua __refresh:* — tín hiệu 1 lần, không có nghĩa sau reload.
+      const clean: Record<string, PageStateValue> = {};
+      for (const [k, v] of Object.entries(saved)) {
+        if (!k.startsWith("__refresh:")) clean[k] = v;
+      }
+      if (Object.keys(clean).length > 0) setValues(clean);
+    });
+  }, [idbKey]);
+
+  // Debounce save — bỏ __refresh:* để không lưu tín hiệu tạm thời.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!idbKey) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const clean: Record<string, PageStateValue> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (!k.startsWith("__refresh:")) clean[k] = v;
+      }
+      void idbSet(idbKey, clean);
+    }, 400);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [idbKey, values]);
+
   const ctx = useMemo<PageStateCtx>(
     () => ({
       values,
