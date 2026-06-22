@@ -11,9 +11,9 @@
 
    MAPPING (theo proc gốc):
      NKI/BEFORE → tr_dinhmuc_ngukim HWforWW=1 ; NKI/AFTER → HWforPacking=1 ;
-     NKI/AI → HWforAI=1 ; SON/SONTRONG → tr_dinhmuc_son sontrongsanpham=1 ;
-     SON/SONNGOAI → sontrongsanpham=0 ; SON/UV → tr_sanpham×tr_quytrinh_lanuv ;
-     DGO → tr_dinhmuc_donggoi.
+     NKI/AI → HWforAI=1 ; SON/SONNGOAI → tr_dinhmuc_son sontrongsanpham=0 ("Sơn ngoài") ;
+     SON/UV → tr_sanpham×tr_quytrinh_lanuv ; DGO → tr_dinhmuc_donggoi.
+     (Bỏ SONTRONG "Sơn trong" — không nằm trong spec UI Sơn ngoài+UV.)
 
    trLenhcapphatCreate = ĐƠN SẢN XUẤT (order_number ∈ tr_order).
    trLenhcapphatCreateHtr (cuối file) = ĐƠN ĐẶT HÀNG TRẮNG (port LENHCAPPHAT_HANGTRANG). */
@@ -26,7 +26,7 @@ const COMBOS: Combo[] = [
   { dinhmuc: "NKI", loai: "BEFORE" },
   { dinhmuc: "NKI", loai: "AFTER" },
   { dinhmuc: "NKI", loai: "AI" },
-  { dinhmuc: "SON", loai: "SONTRONG" },
+  // Sơn: chỉ Sơn ngoài (SONNGOAI) + UV theo spec (bỏ SONTRONG — không có tab).
   { dinhmuc: "SON", loai: "SONNGOAI" },
   { dinhmuc: "SON", loai: "UV" },
   { dinhmuc: "DGO", loai: "" },
