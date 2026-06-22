@@ -3,10 +3,39 @@
  "label": "Xuất kho theo lệnh cấp phát",
  "content": [
   {
+   "id": "w_toolbar",
+   "kind": "filter",
+   "x": 0,
+   "y": 0,
+   "w": 12,
+   "h": 2,
+   "config": {
+    "items": [
+     {
+      "id": "f_kho",
+      "kind": "combobox",
+      "label": "Kho",
+      "entity": "78ed9556-13b5-45b7-abf3-2d766f74cb1e",
+      "field": "name",
+      "stateKey": "makho",
+      "width": 220
+     },
+     {
+      "id": "f_qty",
+      "kind": "search",
+      "label": "Số lượng cấp phát",
+      "placeholder": "Trống = trọn số còn lại",
+      "stateKey": "capphat_qty",
+      "width": 200
+     }
+    ]
+   }
+  },
+  {
    "id": "w_list",
    "kind": "list",
    "x": 0,
-   "y": 0,
+   "y": 2,
    "w": 12,
    "h": 10,
    "config": {
@@ -35,30 +64,28 @@
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
+      "id": "act_capphat",
+      "label": "Cấp phát",
+      "icon": "Check",
+      "variant": "primary",
       "steps": [
        {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
+        "id": "c",
+        "kind": "confirm",
+        "title": "Cấp phát xuất kho",
+        "message": "Cấp phát (xuất kho) dòng đang chọn? Hệ thống sẽ tạo phiếu xuất và trừ tồn kho theo số lượng đã nhập (trống = trọn số còn lại)."
+       },
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "invoke-module-proc",
+        "procName": "trXuatkhoCapphat",
+        "args": {
+         "line_uuid": { "source": "state", "key": "sel" },
+         "makho": { "source": "state", "key": "makho" },
+         "soluong": { "source": "state", "key": "capphat_qty" },
+         "nguoitao": "$currentUser"
+        },
+        "invalidateEntities": ["0f32009d-1702-4404-9db9-da65395490d4"]
        }
       ]
      },
@@ -66,7 +93,7 @@
       "id": "act_add",
       "label": "Thêm một dòng",
       "icon": "Plus",
-      "variant": "primary",
+      "variant": "default",
       "steps": [
        {
         "id": "s",
@@ -80,7 +107,7 @@
      },
      {
       "id": "act_view",
-      "label": "Nhập chi tiết đang chọn",
+      "label": "Xem chi tiết đang chọn",
       "icon": "Eye",
       "variant": "default",
       "steps": [
@@ -98,16 +125,15 @@
       ]
      },
      {
-      "id": "act_approve",
-      "label": "Xác nhận",
-      "icon": "Check",
+      "id": "act_reload",
+      "label": "Nạp lại",
+      "icon": "RefreshCw",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "confirm",
-        "title": "Xác nhận",
-        "message": "Xác nhận?"
+        "kind": "refresh",
+        "entities": ["0f32009d-1702-4404-9db9-da65395490d4"]
        }
       ]
      }
