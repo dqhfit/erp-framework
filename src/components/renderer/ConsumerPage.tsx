@@ -586,7 +586,7 @@ export function ConsumerPage({
   );
 
   return (
-    <PageStateProvider pageId={pageId}>
+    <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
