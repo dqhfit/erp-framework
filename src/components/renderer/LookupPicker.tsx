@@ -33,6 +33,7 @@ interface Props {
   /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu"/"mavt") thay vì record.id —
    *  value lưu/khớp theo field đó (giữ tương thích data lưu tên/mã). */
   valueField?: string;
+  readOnly?: boolean;
 }
 
 export function LookupPicker({
@@ -44,6 +45,7 @@ export function LookupPicker({
   autoOpen,
   onClose,
   valueField,
+  readOnly = false,
 }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -86,6 +88,21 @@ export function LookupPicker({
     return out;
   })();
   const multiCol = cellFields.length >= 2;
+
+  // Nhãn 1 dòng: ghép "mã — tên" nếu có field mã, ngược lại chỉ tên.
+  const rowLabel = (row: Record<string, unknown>) => {
+    const name = dispName ? String(row[dispName] ?? "") : "";
+    const base = name || String(row.id ?? "");
+    if (codeField) {
+      const code = String(row[codeField] ?? "");
+      if (code) return name ? `${code} — ${name}` : code;
+    }
+    return base;
+  };
+  // Giá trị lưu xuống: theo field chỉ định (lookup-theo-tên/mã) hoặc record.id.
+  const optValue = (row: Record<string, unknown>) =>
+    valueField ? String(row[valueField] ?? "") : String(row.id ?? "");
+
   const seq = useRef(0);
   const debRef = useRef<number | null>(null);
 
@@ -180,6 +197,52 @@ export function LookupPicker({
 
   const cls = className ?? "input w-full";
 
+  if (readOnly) {
+    if (loading) {
+      return (
+        <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-muted/40 text-sm animate-pulse">
+          Đang tải dữ liệu…
+        </div>
+      );
+    }
+    if (err) {
+      return (
+        <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-danger text-sm">
+          Lỗi tải: {value || "—"}
+        </div>
+      );
+    }
+    if (multi) {
+      let selected: string[] = [];
+      try {
+        const parsed = value ? JSON.parse(value) : [];
+        selected = Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {
+        selected = value ? [value] : [];
+      }
+      const selectedRows = rows.filter((r) => selected.includes(optValue(r)));
+      const labels = selectedRows.map(rowLabel);
+
+      return (
+        <div className="flex flex-wrap gap-1.5 p-1 border border-border/40 rounded bg-panel-2/30 min-h-[30px] items-center">
+          {labels.map((lbl) => (
+            <span key={lbl} className="chip chip-accent text-xs">
+              {lbl}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    const selectedRow = rows.find((r) => optValue(r) === value);
+    const displayVal = selectedRow ? rowLabel(selectedRow) : value;
+    return (
+      <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+        {displayVal || ""}
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <select className={cls} disabled>
@@ -197,20 +260,6 @@ export function LookupPicker({
       />
     );
   }
-
-  // Nhãn 1 dòng: ghép "mã — tên" nếu có field mã, ngược lại chỉ tên.
-  const rowLabel = (row: Record<string, unknown>) => {
-    const name = dispName ? String(row[dispName] ?? "") : "";
-    const base = name || String(row.id ?? "");
-    if (codeField) {
-      const code = String(row[codeField] ?? "");
-      if (code) return name ? `${code} — ${name}` : code;
-    }
-    return base;
-  };
-  // Giá trị lưu xuống: theo field chỉ định (lookup-theo-tên/mã) hoặc record.id.
-  const optValue = (row: Record<string, unknown>) =>
-    valueField ? String(row[valueField] ?? "") : String(row.id ?? "");
 
   if (multi) {
     // Giá trị lưu dạng JSON array string: '["id1","id2"]'

@@ -1452,6 +1452,13 @@ export function ListWidget({
     null,
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const pageState = usePageState();
+  const effectiveSearchStateKey = searchStateKey || (stateKey ? `__search:${stateKey}` : undefined);
+  const effectiveSearchFromState = searchFromState || effectiveSearchStateKey;
+  const searchVal = effectiveSearchFromState
+    ? (pageState.get(effectiveSearchFromState) as string)
+    : undefined;
+
   const {
     rows,
     loading,
@@ -1461,8 +1468,15 @@ export function ListWidget({
     update: dataUpdate,
     create: dataCreate,
     refFill,
-  } = useWidgetData({ entity: entityId, dataSourceId, rowLimit, loadFilters, loadGate });
-  const pageState = usePageState();
+  } = useWidgetData({
+    entity: entityId,
+    dataSourceId,
+    rowLimit,
+    loadFilters,
+    loadGate,
+    q: searchVal,
+    sort: defaultSort,
+  });
   // Các ref cho cell functions trong useMemo — đọc giá trị mới nhất mà không cần
   // đưa vào deps (pageState thay identity mỗi khi set gọi; visibleFields/columnLabels
   // /title ít đổi). Khai báo sớm (trước conditional return) để tuân thủ rules of hooks.
@@ -1704,8 +1718,8 @@ export function ListWidget({
   }
 
   // Phase V: text search từ Search widget.
-  if (searchFromState) {
-    const q = ((pageState.get(searchFromState) as string) ?? "").toLowerCase().trim();
+  if (effectiveSearchFromState) {
+    const q = ((pageState.get(effectiveSearchFromState) as string) ?? "").toLowerCase().trim();
     if (q) {
       filteredRows = filteredRows.filter((row) =>
         visibleFields.some((f) =>
@@ -2026,10 +2040,14 @@ export function ListWidget({
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
             globalFilter={
-              searchStateKey ? ((pageState.get(searchStateKey) as string) ?? "") : undefined
+              effectiveSearchStateKey
+                ? ((pageState.get(effectiveSearchStateKey) as string) ?? "")
+                : undefined
             }
             onGlobalFilterChange={
-              searchStateKey ? (v: string) => pageState.set(searchStateKey, v) : undefined
+              effectiveSearchStateKey
+                ? (v: string) => pageState.set(effectiveSearchStateKey, v)
+                : undefined
             }
             pageSize={pageSize}
             defaultSort={defaultSort}

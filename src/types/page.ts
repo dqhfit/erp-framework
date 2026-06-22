@@ -225,6 +225,8 @@ export interface FieldOverride {
   options?: string[];
   /** Bắt buộc nhập. */
   required?: boolean;
+  /** Số cột mà field này chiếm dụng (1 | 2 | 3 | 4). */
+  colSpan?: number;
 }
 
 /** Liên kết 1 field tới entity nguồn (picker) — lưu giá trị valueField. */
@@ -271,7 +273,7 @@ export interface WizardStepDef {
   title: string;
   description?: string;
   /** Số cột hiển thị của form trong bước này. */
-  cols?: 1 | 2;
+  cols?: 1 | 2 | 4;
   /** Entity để tạo bản ghi trong bước này (không bắt buộc). */
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */

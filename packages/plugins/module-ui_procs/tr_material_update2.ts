@@ -2,9 +2,7 @@
    - @idxuong nhận nhưng KHÔNG nằm trong SET (không ghi).
    - dongia_ban / xacnhan / nguoixacnhan / ngayxacnhan bị comment-out
      ở nguồn → không ghi.
-   - mavt_ncc có ở MSSQL nhưng CHƯA có field trên entity tr_material
-     (manifest thiếu) → tạm bỏ; TODO: thêm field mavt_ncc vào entity
-     rồi bổ sung vào patch.
+   - mavt_ncc đã được bổ sung vào entity và được ghi nhận khi cập nhật.
    Nguồn: proc-bodies/tr_material_update2.sql */
 import type { DB } from "@erp-framework/server/db";
 import { sql } from "drizzle-orm";
@@ -57,7 +55,7 @@ export async function trMaterialUpdate2(
     heren?: string | null;
     duongkinh?: string | null;
     id_xuatxu?: string | null;
-    mavt_ncc?: string | null; // chưa ghi — entity thiếu field (TODO)
+    mavt_ncc?: string | null;
   },
 ): Promise<Array<{ updated: number }>> {
   if (!args.mavt) throw new Error("Thiếu mavt");
@@ -105,6 +103,7 @@ export async function trMaterialUpdate2(
       heren: args.heren ?? null,
       duongkinh: args.duongkinh ?? null,
       id_xuatxu: args.id_xuatxu ?? null,
+      mavt_ncc: args.mavt_ncc ?? null,
     },
     sql`${t.text("mavt")} = ${args.mavt}`,
   );

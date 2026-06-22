@@ -186,6 +186,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setFieldErrors({});
+  }, [activeIdx]);
   const [collected, setCollected] = useState<Record<string, unknown>>({});
   // Dòng nhập của các bước lưới chi tiết (theo step.id).
   const [detailRows, setDetailRows] = useState<Record<string, Record<string, string>[]>>({});
@@ -355,8 +359,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
-  const setField = (k: string, v: string) =>
+  const setField = (k: string, v: string) => {
     setForms((prev) => ({ ...prev, [formKey]: { ...(prev[formKey] ?? {}), [k]: v } }));
+    if (fieldErrors[k]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
   const isLast = activeIdx === wizardSteps.length - 1;
   const relatedImageCfg = current.relatedImage;
   const relatedParentValue = relatedImageCfg
@@ -390,6 +402,37 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
   const renderDetailCell = (f: EntityField, value: string, onChange: (v: string) => void) => {
     const lk = detailCfg?.fieldLookups?.[f.name];
+    if (readOnly) {
+      if (lk) {
+        const src = detailLookupData[lk.entity] ?? [];
+        const labels = lk.labelFields ?? [lk.valueField];
+        const selectedRec = src.find((r) => String(r[lk.valueField] ?? "") === String(value));
+        const displayVal = selectedRec
+          ? labels
+              .map((x) => selectedRec[x])
+              .filter((x) => x != null && String(x) !== "")
+              .join(" — ")
+          : String(value);
+        return (
+          <div className="px-2 py-1 text-sm text-fg truncate select-text">{displayVal || ""}</div>
+        );
+      }
+      if (f.type === "boolean" || f.type === "bool") {
+        return (
+          <input
+            type="checkbox"
+            className="accent-accent pointer-events-none"
+            checked={value === "true"}
+            readOnly
+          />
+        );
+      }
+      if (f.options && f.options.length > 0) {
+        return <div className="px-2 py-1 text-sm text-fg truncate select-text">{value || ""}</div>;
+      }
+      return <div className="px-2 py-1 text-sm text-fg truncate select-text">{value || ""}</div>;
+    }
+
     if (lk) {
       const src = detailLookupData[lk.entity] ?? [];
       const refEnt = entities.find((e) => e.id === lk.entity);
@@ -468,6 +511,23 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setBusy(true);
     setErr("");
     try {
+      // Ràng buộc bắt buộc (required) ở cấp độ step hiện tại
+      if (ent && !current.detail) {
+        const errors: Record<string, string> = {};
+        for (const f of visibleFields) {
+          if (f.required) {
+            const val = form[f.name];
+            if (val == null || String(val).trim() === "") {
+              errors[f.name] = `Trường "${f.label || f.name}" là bắt buộc nhập.`;
+            }
+          }
+        }
+        if (Object.keys(errors).length > 0) {
+          setFieldErrors(errors);
+          throw new Error("Vui lòng điền đầy đủ các trường bắt buộc.");
+        }
+      }
+
       // ── Chế độ DETAIL-ONLY: không entity cha; tạo/sửa NHIỀU dòng con (vd các
       //    bước quy trình) link tới recordId (vd màu đang chọn) qua linkField. ──
       const detailOnlySteps = !wizardEntityId ? wizardSteps.filter((s) => s.detail) : [];
@@ -692,8 +752,121 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   };
 
   // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
-  const renderControl = (f: EntityField) =>
-    current.fieldLookups?.[f.name] ? (
+  const renderControl = (f: EntityField) => {
+    if (readOnly) {
+      if (current.fieldLookups?.[f.name]) {
+        const lk = current.fieldLookups[f.name];
+        if (!lk) return null;
+        const src = detailLookupData[lk.entity] ?? [];
+        const labels = lk.labelFields ?? [lk.valueField];
+        const selectedRec = src.find(
+          (r) => String(r[lk.valueField] ?? "") === String(form[f.name] ?? ""),
+        );
+        const displayVal = selectedRec
+          ? labels
+              .map((x) => selectedRec[x])
+              .filter((x) => x != null && String(x) !== "")
+              .join(" — ")
+          : String(form[f.name] ?? "");
+        return (
+          <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+            {displayVal || ""}
+          </div>
+        );
+      }
+      if (
+        (f.type === "lookup" || f.type === "multi-lookup") &&
+        (f.ref || (f as { relationEntityId?: string }).relationEntityId)
+      ) {
+        return (
+          <LookupPicker
+            refEntityId={f.ref || (f as { relationEntityId?: string }).relationEntityId || ""}
+            value={form[f.name] ?? ""}
+            valueField={f.refValueField}
+            onChange={(v) => setField(f.name, v)}
+            multi={f.type === "multi-lookup"}
+            readOnly={readOnly}
+          />
+        );
+      }
+      if (f.type === "multiselect" && f.options?.length) {
+        const arr = (form[f.name] ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return (
+          <div className="flex flex-wrap gap-1.5 p-1 border border-border/40 rounded bg-panel-2/30 min-h-[30px] items-center">
+            {arr.map((opt) => (
+              <span key={opt} className="chip chip-accent text-xs">
+                {opt}
+              </span>
+            ))}
+          </div>
+        );
+      }
+      if (f.type === "select" && f.options?.length) {
+        const displayVal = String(form[f.name] ?? "");
+        return (
+          <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+            {displayVal || ""}
+          </div>
+        );
+      }
+      if (f.type === "boolean") {
+        return (
+          <label className="flex items-center gap-2 text-sm mt-0.5 pointer-events-none select-none">
+            <input
+              type="checkbox"
+              className="accent-accent"
+              checked={form[f.name] === "true"}
+              readOnly
+            />
+            <span>{f.label}</span>
+          </label>
+        );
+      }
+      if (f.type === "longtext") {
+        return (
+          <div className="w-full min-h-[72px] bg-panel-2/30 border border-border/40 rounded px-3 py-2 text-fg text-sm whitespace-pre-wrap select-text leading-relaxed">
+            {form[f.name] ? String(form[f.name]) : ""}
+          </div>
+        );
+      }
+      if (f.type === "file") {
+        const v = form[f.name] ? String(form[f.name]) : "";
+        if (!v) {
+          return (
+            <div className="w-full min-h-[30px] bg-panel-2/30 border border-border/40 rounded" />
+          );
+        }
+        const last = v.split("/").pop() ?? v;
+        const displayName = last.includes("__") ? last.slice(last.indexOf("__") + 2) : last;
+        return (
+          <div className="w-full min-h-[30px] flex items-center gap-2 px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-sm">
+            <span className="text-fg truncate min-w-0 flex-1">{displayName}</span>
+            {!String(v).startsWith("data:") && (
+              <a
+                href={v}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted hover:text-accent shrink-0 p-1 hover:bg-hover rounded"
+                title="Tải / mở file"
+              >
+                <I.Download size={14} />
+              </a>
+            )}
+          </div>
+        );
+      }
+      const displayVal = String(form[f.name] ?? "");
+      return (
+        <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+          {displayVal || ""}
+        </div>
+      );
+    }
+
+    return current.fieldLookups?.[f.name] ? (
       (() => {
         const lk = current.fieldLookups?.[f.name];
         if (!lk) return null;
@@ -860,6 +1033,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         placeholder={f.label}
       />
     );
+  };
 
   // Field ảnh tách sang cột phải (khung lớn); field khác ở cột trái.
   const imgFields = visibleFields.filter((f) => f.type === "image" || f.name === "hinhanh");
@@ -872,7 +1046,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       onClose={_onCancel}
       title={step.title || "Wizard"}
       width={
-        wizardSteps.some((s) => s.detail)
+        wizardSteps.some((s) => s.detail) || wizardSteps.some((s) => s.cols === 4)
           ? 920
           : hasImagePanel || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
             ? 720
@@ -911,7 +1085,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
         {/* Nội dung bước */}
         <div
-          className={cn("space-y-3 min-h-[140px]", readOnly && "pointer-events-none opacity-95")}
+          className={cn(
+            "space-y-3",
+            current.cols === 4 ? "min-h-[490px]" : "min-h-[140px]",
+            readOnly && "opacity-95",
+          )}
         >
           {current.description && <p className="text-xs text-muted">{current.description}</p>}
           {loading ? (
@@ -1036,27 +1214,44 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             </div>
                             <div
                               className={cn(
-                                (current.cols ?? 1) >= 2
-                                  ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
-                                  : "space-y-2.5",
+                                current.cols === 4
+                                  ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2.5"
+                                  : (current.cols ?? 1) >= 2
+                                    ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
+                                    : "space-y-2.5",
                               )}
                             >
                               {secFields.map((f) => (
                                 <div
                                   key={f.id}
-                                  className={
-                                    (current.cols ?? 1) >= 2 && f.type === "longtext"
+                                  className={(() => {
+                                    if (current.cols === 4) {
+                                      const span =
+                                        (f as any).colSpan ?? (f.type === "longtext" ? 4 : 2);
+                                      if (span === 4)
+                                        return "col-span-1 sm:col-span-2 md:col-span-4";
+                                      if (span === 3)
+                                        return "col-span-1 sm:col-span-2 md:col-span-3";
+                                      if (span === 2) return "col-span-1 sm:col-span-2";
+                                      return "col-span-1";
+                                    }
+                                    return (current.cols ?? 1) >= 2 && f.type === "longtext"
                                       ? "col-span-2"
-                                      : undefined
-                                  }
+                                      : undefined;
+                                  })()}
                                 >
                                   <label className="block text-xs font-medium mb-0.5">
                                     {f.label}
-                                    {f.required ? (
+                                    {!readOnly && f.required ? (
                                       <span className="text-danger ml-0.5">*</span>
                                     ) : null}
                                   </label>
                                   {renderControl(f)}
+                                  {!readOnly && fieldErrors[f.name] && (
+                                    <span className="text-[10px] font-medium text-danger mt-1 block">
+                                      {fieldErrors[f.name]}
+                                    </span>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1068,25 +1263,41 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     // Chế độ flat (mặc định)
                     <div
                       className={cn(
-                        (current.cols ?? 1) >= 2
-                          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
-                          : "space-y-2.5",
+                        current.cols === 4
+                          ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2.5"
+                          : (current.cols ?? 1) >= 2
+                            ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
+                            : "space-y-2.5",
                       )}
                     >
                       {leftFields.map((f) => (
                         <div
                           key={f.id}
-                          className={
-                            (current.cols ?? 1) >= 2 && f.type === "longtext"
+                          className={(() => {
+                            if (current.cols === 4) {
+                              const span = (f as any).colSpan ?? (f.type === "longtext" ? 4 : 2);
+                              if (span === 4) return "col-span-1 sm:col-span-2 md:col-span-4";
+                              if (span === 3) return "col-span-1 sm:col-span-2 md:col-span-3";
+                              if (span === 2) return "col-span-1 sm:col-span-2";
+                              return "col-span-1";
+                            }
+                            return (current.cols ?? 1) >= 2 && f.type === "longtext"
                               ? "col-span-2"
-                              : undefined
-                          }
+                              : undefined;
+                          })()}
                         >
                           <label className="block text-xs font-medium mb-0.5">
                             {f.label}
-                            {f.required ? <span className="text-danger ml-0.5">*</span> : null}
+                            {!readOnly && f.required ? (
+                              <span className="text-danger ml-0.5">*</span>
+                            ) : null}
                           </label>
                           {renderControl(f)}
+                          {!readOnly && fieldErrors[f.name] && (
+                            <span className="text-[10px] font-medium text-danger mt-1 block">
+                              {fieldErrors[f.name]}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
