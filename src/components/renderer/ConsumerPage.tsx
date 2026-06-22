@@ -121,6 +121,11 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         title={cfg.title as string | undefined}
         multiSelect={cfg.multiSelect === true}
         editable={cfg.editable === true}
+        editableFields={cfg.editableFields as string[] | undefined}
+        highlightEmptyFields={cfg.highlightEmptyFields as string[] | undefined}
+        computedColumns={
+          cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
+        }
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
@@ -581,7 +586,7 @@ export function ConsumerPage({
   );
 
   return (
-    <PageStateProvider pageId={pageId}>
+    <PageStateProvider>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}

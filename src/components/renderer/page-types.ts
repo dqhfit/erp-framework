@@ -38,6 +38,9 @@ export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 export interface UseRecordsOpts {
   /** Số dòng tối đa tải (server-side LIMIT). Mặc định 500. */
   limit?: number;
+  /** Sắp xếp SERVER-SIDE (trước khi cắt limit) → tải đúng dòng cần (vd mới nhất
+   *  trước cho bảng lớn). Suy từ cfg.defaultSort. */
+  sort?: { field: string; dir: "asc" | "desc" };
   /** Điều kiện lọc áp ở DB TRƯỚC khi cắt limit. */
   filters?: LoadFilters;
   /** Cổng: false → không tải gì (vd chờ chọn bộ lọc). Mặc định true. */

@@ -93,6 +93,7 @@ export function DataGrid<T>({
   onSelectionChange,
   bulkActions,
   changedRowIds,
+  rowClassName,
   onExportAll,
 }: DataGridProps<T>) {
   const t = useT();
@@ -703,6 +704,7 @@ export function DataGrid<T>({
                     selected
                       ? "bg-accent/10 border-accent ring-1 ring-accent"
                       : "border-border bg-panel hover:bg-hover/20",
+                    rowClassName?.(row.original),
                   )}
                 >
                   {selecting && (
@@ -1105,6 +1107,7 @@ export function DataGrid<T>({
                             : selected
                               ? "bg-accent/10 ring-1 ring-accent"
                               : "hover:bg-hover/30",
+                          rowClassName?.(row.original) ?? "",
                         ].join(" ")}
                         style={isChanged ? { backgroundColor: "var(--changed-row-bg)" } : undefined}
                         onClick={clickable ? () => onRowClick(row.original) : undefined}

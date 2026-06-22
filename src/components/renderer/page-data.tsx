@@ -162,7 +162,13 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
     const v = pageState.get(gateKey);
     enabled = !(v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0));
   }
-  return { limit, filters, enabled };
+  // Sắp xếp server-side theo defaultSort → tải đúng dòng (vd mới nhất trước) khi
+  // tổng > limit, để dòng mới không bị rớt ngoài tập tải.
+  const ds = cfg.defaultSort as { field?: string; dir?: "asc" | "desc" } | undefined;
+  const sort = ds?.field
+    ? { field: ds.field, dir: ds.dir === "asc" ? ("asc" as const) : ("desc" as const) }
+    : undefined;
+  return { limit, sort, filters, enabled };
 }
 
 /** Hook nhỏ — nạp record thật của một entity (số dòng + điều kiện cấu hình được).
@@ -172,8 +178,10 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const limit = opts?.limit ?? DEFAULT_ROW_LIMIT;
   const enabled = opts?.enabled !== false;
   const filters = opts?.filters;
+  const sort = opts?.sort;
   // Khóa ổn định cho deps — tránh re-fetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
+  const sortKey = sort ? JSON.stringify(sort) : "";
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState<boolean>(!!entityId && enabled);
@@ -193,7 +201,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
     setLoading(true);
     setErr("");
     api
-      .getRecords(entityId, { limit, filters })
+      .getRecords(entityId, { limit, filters, sort })
       .then((res) => {
         if (alive) {
           // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
@@ -213,8 +221,8 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
     return () => {
       alive = false;
     };
-    // filtersKey thay cho filters object để deps ổn định.
-  }, [entityId, refreshTag, limit, enabled, filtersKey]);
+    // filtersKey/sortKey thay cho object để deps ổn định.
+  }, [entityId, refreshTag, limit, enabled, filtersKey, sortKey]);
   return { rows, loading, err };
 }
 

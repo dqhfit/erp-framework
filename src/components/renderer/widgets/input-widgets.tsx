@@ -85,7 +85,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-        .map((o) => ({ value: o, label: o }))
+        .map((o) => ({ value: o, label: optionLabels[o] ?? o }))
     : dynamicOpts;
 
   // multi-select dropdown state (gọi hook unconditional)

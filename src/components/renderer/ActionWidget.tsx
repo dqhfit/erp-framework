@@ -171,10 +171,24 @@ export function ActionWidget({
           <span>{config.label || "Action"}</span>
         </button>
         {popupStep && (
-          <PopupPickerModal step={popupStep} recordId={popupRecordId} onClose={closePopup} />
+          <PopupPickerModal
+            step={popupStep}
+            recordId={popupRecordId}
+            onSelect={(value) => closePopup(value)}
+            onCancel={() => closePopup(null)}
+          />
         )}
         {wizardStep && (
-          <WizardModal step={wizardStep} recordId={wizardRecordId} onClose={closeWizard} />
+          <WizardModal
+            step={wizardStep}
+            recordId={wizardRecordId}
+            pageState={pageState}
+            onDone={(value) => closeWizard(value)}
+            onCancel={() => closeWizard(null)}
+            renderAction={(a, key) => (
+              <ActionWidget key={key} config={a} pageState={pageState} inline />
+            )}
+          />
         )}
       </>
     );
