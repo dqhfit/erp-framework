@@ -328,7 +328,19 @@ export async function runActionSteps(
         ctx.toast.error("Gọi proc nghiệp vụ không khả dụng trong ngữ cảnh này");
         return { completed: false, procedureRuns };
       }
-      const args = resolveArgs(step.args, rs.get);
+      // Token $currentUser/$now như update-fields — nút nghiệp vụ DQHF (Duyệt
+      // LCP) cần nguoiduyet = người đăng nhập + ngayduyet = giờ hiện tại.
+      const args: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(step.args)) {
+        if (val === "$currentUser") {
+          args[k] = ctx.currentUser?.name ?? ctx.currentUser?.email ?? "";
+        } else if (val === "$now") {
+          args[k] = new Date().toISOString();
+        } else {
+          const v = resolveBinding(val as BindingValue, rs.get);
+          if (v !== undefined) args[k] = v;
+        }
+      }
       try {
         const r = await ctx.invokeModule(step.procName, args);
         procedureRuns++;

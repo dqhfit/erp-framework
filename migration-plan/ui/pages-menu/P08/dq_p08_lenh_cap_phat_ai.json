@@ -30,46 +30,15 @@
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "b84aebbd-3f2f-4735-8409-202b679a8044",
-        "title": "Thêm — Lệnh cấp phát AI",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
+      "id": "act_reload",
+      "label": "Nạp lại",
+      "icon": "RefreshCw",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
+        "kind": "refresh",
+        "entities": ["b84aebbd-3f2f-4735-8409-202b679a8044"]
        }
       ]
      }

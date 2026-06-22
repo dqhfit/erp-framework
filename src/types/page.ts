@@ -104,7 +104,10 @@ export interface ActionStepInvokeModule {
   kind: "invoke-module-proc";
   /** Tên export proc (vd trDanhsachDexuatDuyetBgd). */
   procName: string;
-  args: Record<string, BindingValue>;
+  /** Args binding. Hỗ trợ token đặc biệt như update-fields: "$currentUser"
+   *  (tên người đăng nhập — vd nguoiduyet khi Duyệt) và "$now" (ISO hiện
+   *  tại — vd ngayduyet), ngoài BindingValue thường. */
+  args: Record<string, "$currentUser" | "$now" | BindingValue>;
   saveOutputTo?: string;
   invalidateEntities?: string[];
 }

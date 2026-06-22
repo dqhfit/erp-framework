@@ -47,6 +47,19 @@
         "saveOutputTo": "newRec"
        }
       ]
+     },
+     {
+      "id": "act_reload",
+      "label": "Nạp lại",
+      "icon": "RefreshCw",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "refresh",
+        "entities": ["0f32009d-1702-4404-9db9-da65395490d4"]
+       }
+      ]
      }
     ]
    }

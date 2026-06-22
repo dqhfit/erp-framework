@@ -31,83 +31,95 @@
      "quycach"
     ],
     "selectionStateKey": "sel",
+    "selectionEmits": {
+     "selLcpId": "lenhcapphatid"
+    },
     "pageSize": 25,
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_add",
-      "label": "Tạo lệnh cấp phát",
-      "icon": "Plus",
+      "id": "act_duyet",
+      "label": "Duyệt lệnh cấp phát",
+      "icon": "Check",
       "variant": "primary",
       "steps": [
        {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
-        "title": "Tạo lệnh cấp phát — Lệnh cấp phát chi tiết hàng trắng",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_approve",
-      "label": "Duyệt lệnh cấp phát",
-      "icon": "Check",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
+        "id": "c",
         "kind": "confirm",
         "title": "Duyệt lệnh cấp phát",
-        "message": "Duyệt lệnh cấp phát?"
+        "message": "Duyệt lệnh cấp phát đang chọn?"
+       },
+       {
+        "id": "s",
+        "kind": "invoke-module-proc",
+        "procName": "trLenhcapphatHeadUpdate",
+        "args": {
+         "lenh_cap_phat_id": { "source": "state", "key": "selLcpId" },
+         "nguoiduyet": "$currentUser",
+         "ngayduyet": "$now"
+        },
+        "invalidateEntities": ["0f32009d-1702-4404-9db9-da65395490d4"]
        }
       ]
      },
      {
-      "id": "act_view",
-      "label": "Tổng theo chi tiết",
-      "icon": "Eye",
+      "id": "act_huy",
+      "label": "Hủy lệnh cấp phát",
+      "icon": "Ban",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "c",
+        "kind": "confirm",
+        "title": "Hủy lệnh cấp phát",
+        "message": "Hủy (tắt active) lệnh cấp phát đang chọn? Toàn bộ dòng chi tiết cũng bị hủy.",
+        "danger": true
+       },
+       {
+        "id": "s",
+        "kind": "invoke-module-proc",
+        "procName": "trLenhcapphatHeadDelete",
+        "args": {
+         "lenh_cap_phat_id": { "source": "state", "key": "selLcpId" }
+        },
+        "invalidateEntities": ["0f32009d-1702-4404-9db9-da65395490d4"]
+       }
+      ]
+     },
+     {
+      "id": "act_hoanthanh",
+      "label": "Đánh dấu hoàn thành",
+      "icon": "CheckCircle",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "c",
+        "kind": "confirm",
+        "title": "Đánh dấu hoàn thành",
+        "message": "Đánh dấu lệnh cấp phát đang chọn là hoàn thành?"
+       },
+       {
+        "id": "s",
+        "kind": "invoke-module-proc",
+        "procName": "trLenhcapphatHeadSetfinish",
+        "args": {
+         "lenh_cap_phat_id": { "source": "state", "key": "selLcpId" },
+         "hoanthanh": { "source": "const", "value": true }
+        },
+        "invalidateEntities": ["0f32009d-1702-4404-9db9-da65395490d4"]
+       }
+      ]
+     },
+     {
+      "id": "act_reload",
+      "label": "Nạp lại",
+      "icon": "RefreshCw",
       "variant": "default",
       "steps": [
        {
         "id": "s",
-        "kind": "open-popup",
-        "popupMode": "detail",
-        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
-        "title": "Lệnh cấp phát chi tiết hàng trắng",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
-        }
+        "kind": "refresh",
+        "entities": ["0f32009d-1702-4404-9db9-da65395490d4"]
        }
       ]
      }
