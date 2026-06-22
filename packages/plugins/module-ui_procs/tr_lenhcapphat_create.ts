@@ -338,3 +338,212 @@ export async function trLenhcapphatCreate(
     return results;
   });
 }
+
+/* HÀNG TRẮNG (HTR) — port LENHCAPPHAT_HANGTRANG. Theo 1 ĐƠN ĐẶT HÀNG TRẮNG
+   (maddh ∈ tr_dondathang, loaiddh HTR/OTHER, pheduyet). Mỗi chi tiết
+   (tr_dondathang_chitiet: masp + chitiet=mã hàng trắng Wxxx + soluong) → ngũ kim
+   TRƯỚC SƠN của masp (tr_dinhmuc_ngukim HWforWW=1, hoanthanh=1) × soluong_dathang.
+   LCP HTR: loaidonhang='HTR', master_code=masp(sản phẩm), masp=chitiet(mã HT),
+   mavt=mã ngũ kim, madondathang=maddh. 1 head/đơn. idempotent, giữ soluong_daphat. */
+export async function trLenhcapphatCreateHtr(
+  db: DB,
+  companyId: string,
+  args: { maddh: string; mode?: "sync" | "create"; nguoitao?: string | null },
+): Promise<LcpCreateResult[]> {
+  const maddh = String(args.maddh ?? "").trim();
+  if (!maddh) throw new Error("Chưa chọn đơn đặt hàng trắng");
+  const mode = args.mode === "create" ? "create" : "sync";
+  const nguoi = args.nguoitao ?? null;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const datePart = ddMMyy(now);
+
+  return db.transaction(async (txRaw) => {
+    const tx = txRaw as unknown as ProcDb;
+    const dondat = await procTable(tx, companyId, "tr_dondathang");
+    const ord = await dondat.listWhere(
+      sql`${dondat.text("maddh")} = ${maddh} AND ${dondat.bool("pheduyet")} = true AND coalesce(${dondat.text("trangthai")}, '') <> '3'`,
+      { limit: 1 },
+    );
+    if (!ord[0]) {
+      return [
+        {
+          loaidonhang: "HTR",
+          loaicapphat: "",
+          created: 0,
+          updated: 0,
+          skipped: true,
+          message: `Đơn "${maddh}" không phải đơn đặt hàng trắng đã duyệt`,
+        },
+      ];
+    }
+    const donhang = String(ord[0].donhang ?? "");
+
+    // Gộp chi tiết theo (masp, chitiet).
+    const ct = await procTable(tx, companyId, "tr_dondathang_chitiet");
+    const ctRows = await ct.listWhere(
+      sql`${ct.text("maddh")} = ${maddh} AND ${ct.bool("active")} = true`,
+    );
+    const groups = new Map<string, { masp: string; chitiet: string; sl: number }>();
+    for (const r of ctRows) {
+      const masp = String(r.masp ?? "").trim();
+      const chitiet = String(r.chitiet ?? "").trim();
+      if (!masp || !chitiet) continue;
+      const k = `${masp}|${chitiet}`;
+      const g = groups.get(k) ?? { masp, chitiet, sl: 0 };
+      g.sl += Number(r.soluong) || 0;
+      groups.set(k, g);
+    }
+    if (groups.size === 0) {
+      return [
+        {
+          loaidonhang: "HTR",
+          loaicapphat: "",
+          created: 0,
+          updated: 0,
+          skipped: true,
+          message: `Đơn ${maddh} không có chi tiết hàng trắng`,
+        },
+      ];
+    }
+
+    const head = await procTable(tx, companyId, "tr_lenhcapphat_head");
+    const detail = await procTable(tx, companyId, "tr_lenhcapphat");
+    const ngukim = await procTable(tx, companyId, "tr_dinhmuc_ngukim");
+
+    if (mode === "create") {
+      const existing = await detail.listWhere(
+        sql`${detail.text("loaidonhang")} = 'HTR' AND ${detail.text("madondathang")} = ${maddh} AND ${detail.bool("active")} = true`,
+        { limit: 1 },
+      );
+      if (existing.length > 0) {
+        return [
+          {
+            loaidonhang: "HTR",
+            loaicapphat: "BEFORE",
+            created: 0,
+            updated: 0,
+            skipped: true,
+            message: `Đơn ${maddh}: đã có LCP hàng trắng — dùng 'Cập nhật LCP HT'`,
+          },
+        ];
+      }
+    }
+
+    // Head HTR: 1 head/đơn (loaidonhang='HTR', loaicapphat='BEFORE', madondathang=maddh).
+    const headRows = await head.listWhere(
+      sql`${head.text("loaidonhang")} = 'HTR' AND ${head.text("madondathang")} = ${maddh} AND ${head.text("loaicapphat")} = 'BEFORE'`,
+      { limit: 1 },
+    );
+    let headId = headRows[0] ? String(headRows[0].lenhcapphatid ?? "") : "";
+    if (!headId) {
+      const todayIds = new Set(
+        (await head.listWhere(sql`${head.text("lenhcapphatid")} LIKE ${`LCP${datePart}%`}`)).map(
+          (r) => String(r.lenhcapphatid ?? ""),
+        ),
+      );
+      let seq = todayIds.size;
+      do {
+        seq += 1;
+        headId = `LCP${datePart}${pad2(seq)}`;
+      } while (todayIds.has(headId));
+      await head.insertRow({
+        lenhcapphatid: headId,
+        loaidonhang: "HTR",
+        loaicapphat: "BEFORE",
+        madondathang: maddh,
+        hoanthanh: false,
+        vuotdinhmuc: false,
+        active: true,
+        nguoitao: nguoi,
+        ngaytao: nowIso,
+        nguoisua: nguoi,
+        ngaysua: nowIso,
+      });
+    } else {
+      await head.updateWhere(
+        { ngaysua: nowIso, nguoisua: nguoi },
+        sql`${head.text("lenhcapphatid")} = ${headId}`,
+      );
+    }
+
+    // Vô hiệu toàn bộ dòng cũ của head trước khi đồng bộ.
+    await detail.updateWhere({ active: false }, sql`${detail.text("lenhcapphatid")} = ${headId}`);
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    for (const g of groups.values()) {
+      if (g.sl <= 0) {
+        skipped += 1;
+        continue;
+      }
+      const dmRows = await ngukim.listWhere(
+        sql`${ngukim.text("masp")} = ${g.masp} AND ${ngukim.bool("hwforww")} = true AND ${ngukim.bool("hoanthanh")} = true`,
+      );
+      const dm = groupSum(dmRows, "mavt", "soluong");
+      if (dm.length === 0) {
+        skipped += 1;
+        continue;
+      }
+      for (const line of dm) {
+        const slCan = line.sl * g.sl;
+        const old = await detail.listWhere(
+          sql`${detail.text("lenhcapphatid")} = ${headId} AND ${detail.text("master_code")} = ${g.masp} AND ${detail.text("masp")} = ${g.chitiet} AND ${detail.text("mavt")} = ${line.mact}`,
+          { limit: 1 },
+        );
+        const daPhat = old[0] ? Number(old[0].soluong_daphat) || 0 : 0;
+        const conLai = slCan - daPhat;
+        if (old[0]) {
+          await detail.updateWhere(
+            {
+              soluong_donhang: g.sl,
+              soluong: slCan,
+              soluong_daphat: daPhat,
+              soluong_conlai: conLai,
+              active: true,
+              nguoisua: nguoi,
+              ngaysua: nowIso,
+            },
+            sql`id = ${old[0]._id}::uuid`,
+          );
+          updated += 1;
+        } else {
+          await detail.insertRow({
+            lenhcapphatid: headId,
+            loaidonhang: "HTR",
+            loaicapphat: "BEFORE",
+            madondathang: maddh,
+            madonhang: donhang,
+            master_code: g.masp,
+            masp: g.chitiet,
+            mavt: line.mact,
+            soluong_donhang: g.sl,
+            soluong: slCan,
+            soluong_daphat: daPhat,
+            soluong_conlai: conLai,
+            nguoitao: nguoi,
+            ngaytao: nowIso,
+            nguoisua: nguoi,
+            ngaysua: nowIso,
+            active: true,
+          });
+          created += 1;
+        }
+      }
+    }
+    return [
+      {
+        loaidonhang: "HTR",
+        loaicapphat: "BEFORE",
+        lenhcapphatid: headId,
+        created,
+        updated,
+        skipped: created === 0 && updated === 0,
+        message: `Đơn ${maddh}${donhang ? ` (${donhang})` : ""}: ${created} mới, ${updated} cập nhật${
+          skipped ? `, ${skipped} chi tiết bỏ qua (không có ĐM ngũ kim trước sơn)` : ""
+        }`,
+      },
+    ];
+  });
+}
