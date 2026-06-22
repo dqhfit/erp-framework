@@ -1151,6 +1151,22 @@ export function Sidebar() {
                 }
               />
               <SidebarItem
+                to="/settings/web-search"
+                active={pathname === "/settings/web-search"}
+                icon={<I.Search size={14} />}
+                collapsed={collapsed}
+                label="Tìm kiếm web"
+                isFavorited={favs.isFav("/settings/web-search")}
+                onToggleFavorite={() =>
+                  favs.toggle({
+                    id: "/settings/web-search",
+                    to: "/settings/web-search",
+                    label: "Tìm kiếm web",
+                    iconName: "Search",
+                  })
+                }
+              />
+              <SidebarItem
                 to="/settings/migration"
                 active={pathname === "/settings/migration" || pathname === "/settings/cockpit"}
                 icon={<I.Database size={14} />}

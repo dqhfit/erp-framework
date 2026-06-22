@@ -1,9 +1,9 @@
 /* index.ts — Bootstrap Fastify + tRPC + scheduler pg-boss.
    Cổng 8910 (tránh đụng bridge 8909). */
 import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
+import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
 import { extname, join } from "node:path";
 import { roleCan } from "@erp-framework/core";
 import { agents, apiKeys, entities, knowledgeSources, sessions } from "@erp-framework/db";
@@ -29,6 +29,7 @@ import { assertWithinBudget } from "./budget";
 import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
 import { createContext, resolveActiveCompany } from "./context";
 import { db } from "./db";
+import { verifyOoJwt } from "./documents-router";
 import { registerDrawingRoutes } from "./drawing-routes";
 import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
@@ -39,9 +40,9 @@ import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
 import { makeCallTool } from "./mcp-client";
-import { registerMenuMcp } from "./mcp-menu";
 import { registerErrorsMcp } from "./mcp-errors";
 import { registerFeedbackMcp } from "./mcp-feedback";
+import { registerMenuMcp } from "./mcp-menu";
 import { registerMigrationMcp } from "./mcp-migration";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
@@ -54,9 +55,9 @@ import {
   queryParams,
   stripUnreadableFields,
 } from "./router-helpers";
+import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
-import { verifyOoJwt } from "./documents-router";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 import { bootstrapTools, shutdownTools } from "./tools";
@@ -158,6 +159,31 @@ const RECORDS_SEARCH_TOOL: ToolDef = {
       limit: { type: "integer", minimum: 1, maximum: 50, description: "Số bản ghi (mặc định 10)." },
     },
     required: ["entity"],
+  },
+};
+
+const WEB_SEARCH_TOOL: ToolDef = {
+  name: "web_search",
+  description:
+    "Tìm kiếm thông tin CÔNG KHAI trên web (qua SearXNG). Dùng khi câu hỏi " +
+    "cần dữ liệu BÊN NGOÀI công ty (tin tức, kiến thức chung, tài liệu công " +
+    "khai) mà Knowledge Base nội bộ KHÔNG có. Trả danh sách kết quả kèm tiêu " +
+    "đề, URL, trích đoạn. Khi dùng thông tin, TRÍCH NGUỒN bằng URL.",
+  schema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "Từ khoá tìm kiếm (cụ thể, 1 ý mỗi lần).",
+      },
+      k: {
+        type: "integer",
+        minimum: 1,
+        maximum: 10,
+        description: "Số kết quả trả về (mặc định 5).",
+      },
+    },
+    required: ["query"],
   },
 };
 
@@ -398,6 +424,9 @@ async function main(): Promise<void> {
       // "Tìm sâu" (deep search): bật query-rewrite + CRAG grading trong
       // auto-RAG orchestrated. Mặc định false (Fast — rẻ). Xem design §1.5.
       deepSearch?: boolean;
+      // Bật web fallback (SearXNG) khi KB không đủ kết quả. Chỉ có hiệu lực
+      // khi SearXNG đã cấu hình (webSearchCfg?.configured === true).
+      webSearch?: boolean;
     };
     reply.hijack();
     const raw = reply.raw;
@@ -418,6 +447,10 @@ async function main(): Promise<void> {
       // (FREECAD_MCP_URL). Vắng 1 trong 2 → tool không xuất hiện (fail-closed).
       const canGenerateCad =
         roleCan(active.role, "create", "entity") && !!process.env.FREECAD_MCP_URL;
+
+      // web_search: chỉ xuất hiện khi đã cấu hình SearXNG (per-company hoặc env).
+      // Fail-safe: lỗi phân giải cấu hình không được vỡ phiên chat.
+      const webSearchCfg = await resolveSearchConfig(db, active.companyId).catch(() => null);
 
       // Nếu request gắn với một agent cụ thể (cùng công ty): nạp 7 file
       // memory thành preamble + cấp tool memory_remember + dùng model
@@ -500,6 +533,8 @@ async function main(): Promise<void> {
             // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
             expand: body.deepSearch === true,
             rerank: body.deepSearch === true,
+            compress: body.deepSearch === true,
+            webFallback: body.webSearch === true && webSearchCfg?.configured === true,
             sourceIds: agentSourceIds,
           });
           if (hits.length && !gradedOut) {
@@ -532,6 +567,7 @@ async function main(): Promise<void> {
         ...(canViewRecords ? [RECORDS_SEARCH_TOOL] : []),
         ...(canAddKb ? [KB_ADD_TOOL] : []),
         ...(canGenerateCad ? [CAD_GENERATE_TOOL] : []),
+        ...(webSearchCfg?.configured ? [WEB_SEARCH_TOOL] : []),
         ...(boundAgentId ? [MEMORY_REMEMBER_TOOL] : []),
       ];
       const callTool = async (name: string, args: Record<string, unknown>) => {
@@ -670,6 +706,18 @@ async function main(): Promise<void> {
                 : undefined,
             createdBy: s.userId,
           });
+        }
+        if (name === "web_search") {
+          // Allowlist per-agent (mirror cad_generate): tự kiểm vì handler này
+          // return sớm, không rơi xuống allowlist chung bên dưới.
+          if (agentToolAllow && !agentToolAllow.includes("web_search")) {
+            throw new Error('Agent không được phép gọi công cụ "web_search".');
+          }
+          const k = Number(args.k);
+          const hits = await webSearch(db, active.companyId, String(args.query ?? ""), {
+            limit: Number.isFinite(k) ? Math.min(10, Math.max(1, k)) : 5,
+          });
+          return hits.map((h) => ({ title: h.title, url: h.url, snippet: h.content }));
         }
         // #3b: fail-closed enforce allowlist công cụ của agent (chỉ khi đã
         // cấu hình — agentToolAllow != null). Tool built-in (memory/knowledge/

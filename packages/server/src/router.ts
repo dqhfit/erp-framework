@@ -59,6 +59,7 @@ import { embedRouter } from "./embed-router";
 import { knowledgeRouter } from "./knowledge-router";
 import { iotRouter } from "./iot-router";
 import { backupRouter } from "./backup-router";
+import { integrationsRouter } from "./integrations-router";
 import { migrationRouter } from "./migration-router";
 import { migrationSyncRouter } from "./migration-sync-router";
 import { legacyMenuRouter } from "./legacy-menu-router";
@@ -675,6 +676,9 @@ export const appRouter = router({
 
   /* ── Backup — sao lưu DB + sync uploads lên Google Drive ── */
   backup: backupRouter,
+
+  /* ── Tích hợp bên thứ ba per-company (SearXNG, ...) ─────── */
+  integrations: integrationsRouter,
 
   /* ── Migration MSSQL → framework (admin tooling) ── */
   migration: migrationRouter,

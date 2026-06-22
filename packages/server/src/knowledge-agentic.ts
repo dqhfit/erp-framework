@@ -13,6 +13,7 @@ import { type SQL, sql } from "drizzle-orm";
 import type { DB } from "./db";
 import { type KnowledgeHit, type KnowledgeSearchOpts, knowledgeSearch } from "./knowledge-search";
 import { callLlmJson } from "./llm-json";
+import { webSearch } from "./web-search";
 
 const QUERY_REWRITE_SYSTEM =
   "Bạn là bộ viết lại truy vấn cho hệ thống tra cứu tài liệu nội bộ doanh " +
@@ -47,6 +48,13 @@ const RERANK_SYSTEM =
   "Bạn là bộ xếp hạng lại (re-rank) cho RAG. Cho CÂU HỎI và danh sách ĐOẠN " +
   "(mỗi đoạn có id). Sắp xếp id theo độ liên quan GIẢM DẦN với câu hỏi; loại " +
   'bỏ id lạc đề. Chỉ căn cứ nội dung đoạn. Trả JSON: {"order": ["id1", ...]}.';
+
+const COMPRESS_SYSTEM =
+  "Bạn là bộ nén ngữ cảnh cho hệ thống RAG. Cho CÂU HỎI và danh sách ĐOẠN " +
+  "(mỗi đoạn có chỉ số i). Với mỗi đoạn, TRÍCH các câu liên quan TRỰC TIẾP tới " +
+  "câu hỏi, loại bỏ phần thừa. Nếu một đoạn hoàn toàn không liên quan, BỎ QUA " +
+  "(không đưa vào kết quả). Giữ nguyên số liệu, tên riêng, thuật ngữ; KHÔNG bịa " +
+  'thêm. Trả JSON: {"kept":[{"i":<chỉ số đoạn>,"text":"<nội dung đã nén>"}]}.';
 
 interface QueryPlan {
   queries?: string[];
@@ -276,6 +284,45 @@ async function gradeHits(
   });
 }
 
+interface CompressResult {
+  kept?: Array<{ i: number; text: string }>;
+}
+
+/** Nén ngữ cảnh: gọi LLM trích phần liên quan của từng hit. Fail-safe:
+ *  lỗi / rỗng → trả nguyên hits. Hit không được giữ → loại khỏi kết quả. */
+async function compressHits(
+  db: DB,
+  companyId: string,
+  query: string,
+  hits: KnowledgeHit[],
+  userId?: string,
+): Promise<KnowledgeHit[]> {
+  if (!hits.length) return hits;
+  const payload =
+    `CÂU HỎI: ${query}\n\nĐOẠN:\n` +
+    hits.map((h, i) => `[${i}] ${h.content.slice(0, GRADE_CHUNK_CHARS)}`).join("\n\n");
+  const r = await callLlmJson<CompressResult>(db, companyId, {
+    system: COMPRESS_SYSTEM,
+    user: payload,
+    maxTokens: 1024,
+    userId,
+  });
+  if (!r?.kept?.length) return hits; // fail-safe: giữ nguyên
+  const byIdx = new Map<number, string>();
+  for (const k of r.kept) {
+    if (typeof k.i === "number" && typeof k.text === "string" && k.text.trim()) {
+      byIdx.set(k.i, k.text.trim());
+    }
+  }
+  if (!byIdx.size) return hits;
+  const out: KnowledgeHit[] = [];
+  hits.forEach((h, i) => {
+    const t = byIdx.get(i);
+    if (t) out.push({ ...h, content: t });
+  });
+  return out.length ? out : hits;
+}
+
 export interface AgenticRetrieveOpts extends KnowledgeSearchOpts {
   /** Bật query-rewrite (chế độ Deep). false (mặc định, Fast) = tìm thẳng
    *  bằng câu hỏi gốc, KHÔNG tốn lời gọi LLM thêm. */
@@ -290,6 +337,13 @@ export interface AgenticRetrieveOpts extends KnowledgeSearchOpts {
   rerank?: boolean;
   /** User hiện tại — ưu tiên profile LLM cá nhân khi rewrite/grade/rerank. */
   userId?: string;
+  /** Bật fallback web search (SearXNG) khi KB không có kết quả phù hợp
+   *  (gradedOut hoặc rỗng). Kết quả web thêm vào hits dạng sourceKind="web".
+   *  Fail-safe: lỗi web không vỡ RAG. */
+  webFallback?: boolean;
+  /** Bật nén ngữ cảnh bằng LLM — cô đọng nội dung mỗi hit chỉ còn phần liên
+   *  quan, giữ số liệu + nguồn. Tốn 1 lời gọi LLM (chế độ Deep). */
+  compress?: boolean;
 }
 
 export interface AgenticRetrieveResult {
@@ -364,6 +418,33 @@ export async function agenticRetrieve(
       }
     }
     // g === null → fail-safe: giữ nguyên hits.
+  }
+
+  // Web fallback: KB lạc đề/rỗng + bật webFallback → tra web (SearXNG),
+  // thêm kết quả dạng nguồn "web". Fail-safe: lỗi web giữ nguyên trạng thái.
+  if (opts.webFallback && (gradedOut || hits.length === 0)) {
+    try {
+      const web = await webSearch(db, companyId, q, { limit });
+      if (web.length) {
+        hits = web.map((r, i) => ({
+          chunkId: `web:${i}`,
+          sourceId: `web:${i}`,
+          sourceTitle: r.title || r.url,
+          sourceKind: "web",
+          seq: i,
+          content: `${r.content}\n(Nguồn: ${r.url})`,
+          score: r.score,
+        }));
+        gradedOut = false;
+      }
+    } catch (e) {
+      console.warn("[agentic] web fallback lỗi:", (e as Error).message);
+    }
+  }
+
+  // Nén ngữ cảnh (Deep) — cô đọng hits cuối về phần liên quan. Fail-safe.
+  if (opts.compress && hits.length) {
+    hits = await compressHits(db, companyId, q, hits, opts.userId);
   }
 
   return { hits, queries, gradedOut };

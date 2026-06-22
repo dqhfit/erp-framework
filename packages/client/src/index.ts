@@ -95,6 +95,11 @@ export {
   type HeartbeatsClient,
 } from "./heartbeats";
 export {
+  createIntegrationsClient,
+  type IntegrationsClient,
+  type WebSearchConfigView,
+} from "./integrations";
+export {
   createIotClient,
   type IotClient,
   type IotCommandRow,

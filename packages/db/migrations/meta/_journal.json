@@ -610,6 +610,13 @@
       "when": 1783703805000,
       "tag": "0086_lcp_custom_menu",
       "breakpoints": false
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1783800000000,
+      "tag": "0087_company_integration_secrets",
+      "breakpoints": false
     }
   ]
 }

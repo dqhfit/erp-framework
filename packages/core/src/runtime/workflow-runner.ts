@@ -136,6 +136,11 @@ export interface RunWorkflowOptions {
     query: string,
     opts: { limit?: number; sourceKind?: string },
   ) => Promise<Array<{ content: string; sourceTitle: string; score: number }>>;
+  /** Tìm kiếm web (SearXNG) cho node "websearch". Vắng = server không cấu hình. */
+  searchWeb?: (
+    query: string,
+    opts: { limit?: number },
+  ) => Promise<Array<{ title: string; url: string; content: string; score: number }>>;
   /**
    * Kiểm tra ngân sách TRƯỚC mỗi node tốn LLM (agent/llm/agent_chain). Throw
    * → dừng hẳn workflow (không vào nhánh "error"). Server cài bằng
@@ -466,6 +471,35 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
               vars[`knowledge_${node.id}_hits`] = hits;
               rawOutput = { hits, context };
               step = mkStep(node, "ok", `Tra KB: ${hits.length} đoạn khớp`, t0, hits);
+              break;
+            }
+            case "websearch": {
+              // Tìm kiếm web (SearXNG). Cổng input "query" ghi đè config.query.
+              // Output: vars.websearch_<id> = context ghép kết quả (cho node LLM/
+              // agent sau dùng), vars.websearch_<id>_results = danh sách thô.
+              if (!opt.searchWeb) {
+                step = mkStep(node, "skipped", "Server không cấu hình searchWeb", t0);
+                break;
+              }
+              const q =
+                typeof inputs.query === "string" && inputs.query.trim()
+                  ? inputs.query
+                  : typeof cfg.query === "string"
+                    ? cfg.query
+                    : "";
+              if (!q.trim()) {
+                step = mkStep(node, "skipped", "Chưa có truy vấn — bỏ qua", t0);
+                break;
+              }
+              const topK = Math.max(1, Math.min(10, Number(cfg.topK ?? 5)));
+              const results = await opt.searchWeb(q, { limit: topK });
+              const context = results
+                .map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.content}`)
+                .join("\n\n");
+              vars[`websearch_${node.id}`] = context;
+              vars[`websearch_${node.id}_results`] = results;
+              rawOutput = { results, context };
+              step = mkStep(node, "ok", `Tìm web: ${results.length} kết quả`, t0, results);
               break;
             }
             case "agent_chain": {
@@ -808,7 +842,7 @@ export async function runWorkflow(opt: RunWorkflowOptions): Promise<RunResult> {
                   break;
                 }
                 const cond = evaluate(expr, { ...vars, ...inputs });
-                if (cond.ok && !!cond.value) {
+                if (cond.ok && cond.value) {
                   success = true;
                   break;
                 }

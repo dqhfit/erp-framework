@@ -163,20 +163,46 @@ services:
       - "until ollama list >/dev/null 2>&1; do echo 'cho ollama...'; sleep 2; done; ollama pull nomic-embed-text"
     restart: "no"
 
-  # ── Caddy reverse-proxy: BASIC-AUTH cho tika/ollama (allow all IP) ──
-  # tika/ollama khong co auth -> Caddy dat truoc, them basic-auth roi
+  # ── SearXNG (TUY CHON — web search cho agent + workflow) ───────
+  # Metasearch engine tu host, khong can API key. KHONG co auth native
+  # -> chi expose NOI BO; ra Internet qua service `proxy` (Caddy basic-auth).
+  # QUAN TRONG: phai bat JSON format trong settings.yml cua SearXNG:
+  #   search:
+  #     formats:
+  #       - html
+  #       - json    # them dong nay
+  # Neu bo service nay, cong cu web_search / node workflow "Web Search"
+  # / web-fallback Deep RAG khong hoat dong (app van chay binh thuong).
+  # Dev nhet user:pass vao SEARXNG_URL:
+  #   SEARXNG_URL=http://dev:<SERVICE_PASSWORD_64_PROXY>@searxng.vfmgroup.vn:58080
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/search?q=test&format=json"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Caddy reverse-proxy: BASIC-AUTH cho tika/ollama/searxng (allow all IP) ──
+  # tika/ollama/searxng khong co auth -> Caddy dat truoc, them basic-auth roi
   # publish port ra Internet. Sinh bcrypt hash tu mat khau Coolify luc
   # khoi dong. Dev nhet user:pass vao URL; server tu chuyen thanh header
   # Authorization (fetch nem loi neu URL co credentials — xem
   # packages/server/src/url-auth.ts):
   #   TIKA_URL=http://dev:<SERVICE_PASSWORD_64_PROXY>@tika.vfmgroup.vn:59998
   #   OLLAMA_EMBED_URL=http://dev:<SERVICE_PASSWORD_64_PROXY>@ollama.vfmgroup.vn:51434
+  #   SEARXNG_URL=http://dev:<SERVICE_PASSWORD_64_PROXY>@searxng.vfmgroup.vn:58080
   proxy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - tika
       - ollama
+      - searxng
     environment:
       PROXY_USER: dev
       PROXY_PASSWORD: ${SERVICE_PASSWORD_64_PROXY}
@@ -204,11 +230,18 @@ services:
           }
           reverse_proxy ollama:11434
         }
+        :8080 {
+          basic_auth {
+            $$PROXY_USER $$HASH
+          }
+          reverse_proxy searxng:8080
+        }
         CADDY
         exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     ports:
       - "59998:9998"
       - "51434:11434"
+      - "58080:8080"
 
   # ── MQTT broker (TUY CHON — chi khi test IoT) — co mat khau ─
   # allow_anonymous=false + password_file sinh tu SERVICE_PASSWORD_64_MQTT.
