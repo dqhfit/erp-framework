@@ -499,11 +499,6 @@ function PortalRoute() {
                   iconName: "Layout",
                 });
               }}
-              onGroupClick={(code) => {
-                setFocusCategory(code);
-                setDrawerOpen(false);
-                void navigate({ to: "/portal", search: { page: undefined }, replace: true });
-              }}
             />
           </div>
         </div>
@@ -519,37 +514,44 @@ function PortalRoute() {
             <div className="absolute inset-0 flex items-center justify-center text-muted text-sm">
               {t("portal.empty_hint")}
             </div>
-          ) : !activeId ? (
-            <PortalDashboard
-              userName={user?.name ?? user?.email ?? ""}
-              pages={pageListForDashboard}
-              favs={{ ids: new Set(favs.favs.map((f) => f.id)), isFav: favs.isFav }}
-              onSelectPage={onSelectPage}
-              navRoots={navRoots}
-              navChildrenOf={navChildrenOf}
-              focusCategory={focusCategory}
-              onFocusCategoryUsed={() => setFocusCategory(null)}
-              onOpenAllPages={() => setDrawerOpen(true)}
-            />
           ) : (
-            publishedPages.map((p) =>
-              mountedIds.has(p.id) ? (
-                <div
-                  key={p.id}
-                  className={cn(
-                    "absolute inset-0 overflow-hidden",
-                    p.id === activeId ? "block" : "hidden",
-                  )}
-                >
-                  <ConsumerPage
-                    key={`${p.id}-${refreshKeys[p.id] ?? 0}`}
-                    pageId={p.id}
-                    chromeless
-                    active={p.id === activeId}
-                  />
-                </div>
-              ) : null,
-            )
+            <>
+              {/* Dashboard luôn mount để giữ state MenuBrowser (selectedRoot/drillPath)
+                  khi user navigate đi rồi quay lại — chỉ ẩn khi đang xem trang. */}
+              <div
+                className={cn("absolute inset-0 overflow-hidden", activeId ? "hidden" : "block")}
+              >
+                <PortalDashboard
+                  userName={user?.name ?? user?.email ?? ""}
+                  pages={pageListForDashboard}
+                  favs={{ ids: new Set(favs.favs.map((f) => f.id)), isFav: favs.isFav }}
+                  onSelectPage={onSelectPage}
+                  navRoots={navRoots}
+                  navChildrenOf={navChildrenOf}
+                  focusCategory={focusCategory}
+                  onFocusCategoryUsed={() => setFocusCategory(null)}
+                  onOpenAllPages={() => setDrawerOpen(true)}
+                />
+              </div>
+              {publishedPages.map((p) =>
+                mountedIds.has(p.id) ? (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "absolute inset-0 overflow-hidden",
+                      p.id === activeId ? "block" : "hidden",
+                    )}
+                  >
+                    <ConsumerPage
+                      key={`${p.id}-${refreshKeys[p.id] ?? 0}`}
+                      pageId={p.id}
+                      chromeless
+                      active={p.id === activeId}
+                    />
+                  </div>
+                ) : null,
+              )}
+            </>
           )}
         </main>
       </div>
