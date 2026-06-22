@@ -111,8 +111,8 @@ export async function createDonDatHang(
   for (const [ncc, items] of groups) {
     seq += 1;
     const maddh = `${ncc}-${macongty}${String(seq).padStart(2, "0")}${monthSuffix}`;
-    const loai = String(items[0].f_loai_don_hang ?? "");
-    const loaitien = String(items[0].f_loai_tien ?? "");
+    const loai = String(items[0]?.f_loai_don_hang ?? "");
+    const loaitien = String(items[0]?.f_loai_tien ?? "");
     // Mã loại đơn hàng (f_loaiddh): Ngũ kim→NKI, Đóng gói→DGO, Sơn→SON.
     const loaiLow = loai.toLowerCase();
     const loaiddh = loaiLow.includes("kim")
