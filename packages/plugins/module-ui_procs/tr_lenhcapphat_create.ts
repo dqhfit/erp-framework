@@ -15,8 +15,8 @@
      SON/SONNGOAI → sontrongsanpham=0 ; SON/UV → tr_sanpham×tr_quytrinh_lanuv ;
      DGO → tr_dinhmuc_donggoi.
 
-   PHẠM VI bản này: chỉ ĐƠN SẢN XUẤT (order_number ∈ tr_order). Hàng trắng
-   (đơn đặt hàng trắng, master_code/maHTR) port sau. */
+   trLenhcapphatCreate = ĐƠN SẢN XUẤT (order_number ∈ tr_order).
+   trLenhcapphatCreateHtr (cuối file) = ĐƠN ĐẶT HÀNG TRẮNG (port LENHCAPPHAT_HANGTRANG). */
 import type { DB } from "@erp-framework/server/db";
 import { sql } from "drizzle-orm";
 import { type ProcDb, procTable } from "../src/proc-table";
