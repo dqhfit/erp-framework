@@ -285,6 +285,11 @@ function RenderSubWidget({
         title={cfg.title as string | undefined}
         multiSelect={cfg.multiSelect === true}
         editable={cfg.editable === true}
+        editableFields={cfg.editableFields as string[] | undefined}
+        highlightEmptyFields={cfg.highlightEmptyFields as string[] | undefined}
+        computedColumns={
+          cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
+        }
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}

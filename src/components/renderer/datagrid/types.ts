@@ -71,6 +71,9 @@ export interface DataGridProps<T> {
   /** Tập id dòng có giá trị thay đổi chưa lưu (pending). Grid tô nền
    *  `var(--changed-row-bg)` cho các dòng này. */
   changedRowIds?: Set<string>;
+  /** Class CSS phụ theo dòng (vd tô nổi bật dòng thiếu dữ liệu). Trả undefined
+   *  = không thêm class. Áp ở cả lưới bảng lẫn thẻ card. */
+  rowClassName?: (row: T) => string | undefined;
   /** Báo caller khi tập chọn đổi. allMatching=true (server mode) = đã chọn TẤT
    *  CẢ dòng khớp filter (vượt trang đang tải) — caller xử lý theo query. */
   onSelectionChange?: (info: { rows: T[]; allMatching: boolean; count: number }) => void;
