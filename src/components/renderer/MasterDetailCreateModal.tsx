@@ -31,6 +31,9 @@ export type FieldLookup = {
   multiple?: boolean;
   separator?: string;
   columnHeaders?: string[];
+  /** Tìm SERVER-SIDE (bảng lớn, vd tr_material 36k): dùng LookupPicker
+   *  (preload + ILIKE server khi gõ) thay vì nạp sẵn toàn bộ. Chỉ single. */
+  serverSearch?: boolean;
 };
 
 export type CreateFormCfg = {
@@ -70,6 +73,9 @@ export type CreateFormCfg = {
     fieldLabels?: Record<string, string>;
     requiredFields?: string[];
     autoSequenceField?: string;
+    /** Dòng ĐÃ CÓ (đang sửa) chỉ cho sửa các field này; field khác → read-only.
+     *  Dòng MỚI thêm vẫn nhập được mọi field. (vd ["soluong","dongia"]). */
+    editableOnExisting?: string[];
   };
 };
 

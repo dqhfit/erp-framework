@@ -73,11 +73,13 @@ export function LookupPicker({
         !/(mota|ghichu|note|description)/.test(f.name),
     );
     const out: typeof usable = [];
-    const add = (name?: string) => {
-      const f = name ? usable.find((x) => x.name === name) : undefined;
+    const add = (name?: string, pool = usable) => {
+      const f = name ? pool.find((x) => x.name === name) : undefined;
       if (f && !out.some((x) => x.name === f.name)) out.push(f);
     };
-    add(valueField);
+    // valueField (cột MÃ) luôn hiện — kể cả khi field đó type "lookup" (vd
+    // tr_material.mavt) → tìm trong TOÀN BỘ field, không chỉ usable đã lọc.
+    add(valueField, refEnt?.fields ?? []);
     add(dispName);
     for (const f of usable) {
       if (out.length >= 4) break;

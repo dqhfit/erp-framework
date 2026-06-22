@@ -113,6 +113,18 @@ export async function createDonDatHang(
     const maddh = `${ncc}-${macongty}${String(seq).padStart(2, "0")}${monthSuffix}`;
     const loai = String(items[0].f_loai_don_hang ?? "");
     const loaitien = String(items[0].f_loai_tien ?? "");
+    // Mã loại đơn hàng (f_loaiddh): Ngũ kim→NKI, Đóng gói→DGO, Sơn→SON.
+    const loaiLow = loai.toLowerCase();
+    const loaiddh = loaiLow.includes("kim")
+      ? "NKI"
+      : loaiLow.includes("gói") ||
+          loaiLow.includes("goi") ||
+          loaiLow.includes("đóng") ||
+          loaiLow.includes("dong")
+        ? "DGO"
+        : loaiLow.includes("sơn") || loaiLow.includes("son")
+          ? "SON"
+          : "";
 
     // Tên nhà cung cấp
     const nrRows = (await db.execute(sql`
@@ -126,10 +138,10 @@ export async function createDonDatHang(
     await db.execute(sql`
       INSERT INTO tr_dondathang
         (company_id, f_maddh, f_tenddh, f_mancc, f_tenncc, f_macongty,
-         f_loaidonhang, f_ngaydat, f_trangthai, f_active, f_create_date, ext)
+         f_loaidonhang, f_loaiddh, f_ngaydat, f_trangthai, f_active, f_create_date, ext)
       VALUES
         (${companyId}::uuid, ${maddh}, ${`Đơn đặt hàng ${tenncc || ncc}`}, ${ncc}, ${tenncc},
-         ${macongty}, ${loai}, ${ngaydat}, ${"Mới"}, true, ${createDate},
+         ${macongty}, ${loai}, ${loaiddh}, ${ngaydat}, ${"0"}, true, ${createDate},
          ${JSON.stringify({ loaitien, nguon: "tr_yc_mua_hang" })}::jsonb)
     `);
 
@@ -151,6 +163,21 @@ export async function createDonDatHang(
     }
     created += 1;
   }
+
+  // record_locator cho header + chi tiết → records.update/delete định tuyến được
+  // theo id (proc INSERT thẳng nên phải tự ghi locator, khác API insert tự ghi).
+  await db.execute(sql`
+    INSERT INTO record_locator (id, company_id, entity_id)
+    SELECT id, company_id, '7739eee9-fb60-45b6-9f79-8567c7e21e12'::uuid
+    FROM tr_dondathang WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL
+    ON CONFLICT (id) DO NOTHING
+  `);
+  await db.execute(sql`
+    INSERT INTO record_locator (id, company_id, entity_id)
+    SELECT id, company_id, 'bbebb6f3-0208-4f10-af62-557491c42f49'::uuid
+    FROM tr_dondathang_chitiet WHERE company_id = ${companyId}::uuid AND deleted_at IS NULL
+    ON CONFLICT (id) DO NOTHING
+  `);
 
   const msg =
     `Đã tạo ${created} đơn hàng (mỗi NCC 1 đơn).` +
