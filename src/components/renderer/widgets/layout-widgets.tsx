@@ -138,8 +138,10 @@ function buildSubCfg(
   const kind = panel.kind ?? "list";
   // Với split widget: mỗi panel dùng key riêng; grid widget dùng splitKey chung.
   const ownStateKey = panelKey ? `${splitKey}:${panelKey}` : splitKey;
+  // panelKey phát ra dạng thường ("a".."d"); đọc CŨNG phải thường để khớp
+  // (trước đây toUpperCase → ghi ":a:" đọc ":A:" → master-detail không bao giờ khớp).
   const srcStateKey = panelKey
-    ? `${splitKey}:${(panel.filterFromPanel ?? "a").toUpperCase()}`
+    ? `${splitKey}:${(panel.filterFromPanel ?? "a").toLowerCase()}`
     : splitKey;
   return {
     entity: panel.entity,
@@ -199,7 +201,7 @@ function buildSubCfg(
     ...((kind === "list" || kind === "chart" || kind === "kanban") && panel.linkConditions?.length
       ? {
           filterConditions: panel.linkConditions.map((c) => {
-            const fp = (c.fromPanel ?? panel.filterFromPanel ?? "a").toUpperCase();
+            const fp = (c.fromPanel ?? panel.filterFromPanel ?? "a").toLowerCase();
             const fromStateKey = panelKey
               ? c.fromField
                 ? `${splitKey}:${fp}:${c.fromField}`

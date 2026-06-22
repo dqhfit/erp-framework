@@ -396,7 +396,8 @@ export function ConsumerPage({
     let hasAuto = false;
     for (let r = 0; r < maxRow; r++) {
       const occ = renderComps.filter((c) => (c.y ?? 0) <= r && r < (c.y ?? 0) + (c.h ?? 1));
-      const isAuto = occ.length > 0 && occ.every((c) => c.kind === "filter");
+      const isAuto =
+        occ.length > 0 && occ.every((c) => c.kind === "filter" || c.kind === "actionbar");
       if (isAuto) hasAuto = true;
       tokens.push(isAuto ? "auto" : flexUnit);
     }
@@ -585,7 +586,7 @@ export function ConsumerPage({
   );
 
   return (
-    <PageStateProvider>
+    <PageStateProvider pageId={pageId}>
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
@@ -693,7 +694,9 @@ export function ConsumerPage({
                           "card overflow-hidden",
                           // Bộ lọc khi XEM: cao bằng nội dung (không kéo giãn full ô
                           // ROW_H / 1fr) → thanh lọc gọn. Khi sửa giữ giãn để resize.
-                          c.kind === "filter" && !layoutEditing && "self-start",
+                          (c.kind === "filter" || c.kind === "actionbar") &&
+                            !layoutEditing &&
+                            "self-start",
                           layoutEditing && !isMobile && "relative group/card",
                           layoutEditing &&
                             !isBeingResized &&
@@ -704,7 +707,7 @@ export function ConsumerPage({
                         )}
                         style={
                           isMobile
-                            ? c.kind === "filter"
+                            ? c.kind === "filter" || c.kind === "actionbar"
                               ? undefined
                               : { minHeight: h * ROW_H }
                             : {

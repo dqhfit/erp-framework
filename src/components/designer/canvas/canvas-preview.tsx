@@ -793,6 +793,7 @@ function ComponentBody({
       panelB,
       panelC,
       panelD,
+      tabPanels,
     } = comp.config as {
       orientation?: string;
       count?: number;
@@ -802,6 +803,12 @@ function ComponentBody({
       panelB?: { kind?: string; entity?: string; title?: string };
       panelC?: { kind?: string; entity?: string; title?: string };
       panelD?: { kind?: string; entity?: string; title?: string };
+      // Định dạng N-tab: mỗi tab là 1 split panelA|panelB.
+      tabPanels?: Array<{
+        title?: string;
+        panelA?: { kind?: string; entity?: string; title?: string };
+        panelB?: { kind?: string; entity?: string; title?: string };
+      }>;
     };
     const entA = entities.find((e) => e.id === panelA?.entity);
     const entB = entities.find((e) => e.id === panelB?.entity);
@@ -853,6 +860,52 @@ function ComponentBody({
 
     // Tabs preview
     if (isTabs) {
+      // Định dạng N-tab (tabPanels[]) — hiện đủ dải tab + xem trước tab đầu (A|B).
+      if (Array.isArray(tabPanels) && tabPanels.length > 0) {
+        const active = tabPanels[0];
+        const aEnt = entities.find((e) => e.id === active?.panelA?.entity);
+        const bEnt = entities.find((e) => e.id === active?.panelB?.entity);
+        return (
+          <div className="h-full flex flex-col overflow-hidden text-[10px]">
+            <div className="flex border-b border-border/40 shrink-0 bg-bg-soft overflow-x-auto">
+              {tabPanels.map((tp, i) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: dải tab xem trước tĩnh
+                  key={i}
+                  className={cn(
+                    "px-2 py-0.5 text-[8px] border-b-2 whitespace-nowrap shrink-0 transition-colors",
+                    i === 0
+                      ? "border-accent text-accent font-semibold"
+                      : "border-transparent text-muted",
+                  )}
+                >
+                  {tp.title ?? `Tab ${i + 1}`}
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 flex flex-row overflow-hidden">
+              <div className="flex-1 overflow-hidden border-r border-border/40">
+                <PanelPreview
+                  label="A"
+                  ent={aEnt}
+                  title={active?.panelA?.title}
+                  kind={active?.panelA?.kind}
+                  bg="bg-accent/5"
+                />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <PanelPreview
+                  label="B"
+                  ent={bEnt}
+                  title={active?.panelB?.title}
+                  kind={active?.panelB?.kind}
+                  bg="bg-panel-2/30"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      }
       const tabPanelDefs = [
         { key: "A", panel: panelA, ent: entA, bg: "bg-accent/5" },
         { key: "B", panel: panelB, ent: entB, bg: "bg-panel-2/30" },

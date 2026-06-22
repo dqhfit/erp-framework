@@ -17,10 +17,7 @@ import {
   splitCell,
 } from "@/components/designer/grid-layout";
 import { ActionBarInspector } from "@/components/designer/inspectors/inspector-helpers";
-import {
-  type ActionBarItem,
-  type PageComponent,
-} from "@/components/designer/page-designer-constants";
+import type { ActionBarItem, PageComponent } from "@/components/designer/page-designer-constants";
 import { fieldBoth } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { ROW_ACTION_OPTIONS } from "@/components/renderer/RowActionsCell";
@@ -92,6 +89,15 @@ export function BocucInspector({
             panelB?: PanelCfg;
             panelC?: PanelCfg;
             panelD?: PanelCfg;
+            // Định dạng N-tab: mỗi tab là 1 split panelA|panelB.
+            tabPanels?: Array<{
+              title?: string;
+              kind?: string;
+              orientation?: string;
+              ratio?: number;
+              panelA?: PanelCfg;
+              panelB?: PanelCfg;
+            }>;
           };
           const panelA = splitCfg.panelA ?? {};
           const panelB = splitCfg.panelB ?? {};
@@ -658,6 +664,170 @@ export function BocucInspector({
 
           const panelLabel = (key: string) =>
             orientation === "tabs" ? `Tab ${key}` : `Panel ${key}`;
+
+          // ── Editor cho định dạng N-tab (tabPanels[]) — mỗi tab là split A|B ──
+          type TabPanelCfg = NonNullable<typeof splitCfg.tabPanels>[number];
+          const tabPanels = splitCfg.tabPanels;
+          if (Array.isArray(tabPanels) && tabPanels.length > 0) {
+            const tIdx = Math.min(
+              Math.max(0, Number.parseInt(splitPanelTab, 10) || 0),
+              tabPanels.length - 1,
+            );
+            const sub = splitPanelTab.endsWith(":b") ? "b" : "a";
+            const tab = tabPanels[tIdx] ?? {};
+            const tabA = tab.panelA ?? {};
+            const tabB = tab.panelB ?? {};
+            const setTabs = (next: TabPanelCfg[]) => updateSplit({ tabPanels: next });
+            const updTab = (patch: Partial<TabPanelCfg>) =>
+              setTabs(tabPanels.map((t, i) => (i === tIdx ? { ...t, ...patch } : t)));
+            const moveTab = (dir: -1 | 1) => {
+              const j = tIdx + dir;
+              if (j < 0 || j >= tabPanels.length) return;
+              const next = [...tabPanels];
+              const a = next[tIdx];
+              const c = next[j];
+              if (!a || !c) return;
+              next[tIdx] = c;
+              next[j] = a;
+              setTabs(next);
+              setSplitPanelTab(String(j));
+            };
+            return (
+              <>
+                <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mt-1">
+                  Tab ({tabPanels.length})
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {tabPanels.map((t, i) => (
+                    <button
+                      // biome-ignore lint/suspicious/noArrayIndexKey: tab theo vị trí trong mảng
+                      key={i}
+                      type="button"
+                      onClick={() => setSplitPanelTab(String(i))}
+                      className={cn(
+                        "px-2 py-1 text-xs rounded border transition-colors",
+                        i === tIdx
+                          ? "bg-accent text-white border-accent"
+                          : "border-border text-muted hover:bg-hover/60",
+                      )}
+                    >
+                      {t.title || `Tab ${i + 1}`}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ni = tabPanels.length;
+                      setTabs([
+                        ...tabPanels,
+                        {
+                          kind: "split",
+                          orientation: "h",
+                          ratio: 40,
+                          title: `Tab ${ni + 1}`,
+                          panelA: { kind: "list" },
+                          panelB: { kind: "detail" },
+                        },
+                      ]);
+                      setSplitPanelTab(String(ni));
+                    }}
+                    className="px-2 py-1 text-xs rounded border border-dashed border-border text-accent hover:bg-hover/60 inline-flex items-center gap-0.5"
+                  >
+                    <I.Plus size={11} /> Tab
+                  </button>
+                </div>
+                <FormField label="Tiêu đề tab">
+                  <Input
+                    value={tab.title ?? ""}
+                    placeholder={`Tab ${tIdx + 1}`}
+                    onChange={(e) => updTab({ title: e.target.value })}
+                  />
+                </FormField>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveTab(-1)}
+                    disabled={tIdx === 0}
+                    className="flex-1 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40 inline-flex items-center justify-center gap-0.5"
+                  >
+                    <I.ChevronLeft size={11} /> Trái
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveTab(1)}
+                    disabled={tIdx === tabPanels.length - 1}
+                    className="flex-1 py-1 text-xs border border-border rounded hover:bg-hover disabled:opacity-40 inline-flex items-center justify-center gap-0.5"
+                  >
+                    Phải <I.ChevronRight size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={tabPanels.length <= 1}
+                    onClick={() => {
+                      setTabs(tabPanels.filter((_, i) => i !== tIdx));
+                      setSplitPanelTab(String(Math.max(0, tIdx - 1)));
+                    }}
+                    className="flex-1 py-1 text-xs border border-danger/40 text-danger rounded hover:bg-danger/10 disabled:opacity-40 inline-flex items-center justify-center gap-0.5"
+                  >
+                    <I.X size={11} /> Xoá
+                  </button>
+                </div>
+                <FormField label="Hướng panel trong tab">
+                  <Select
+                    value={tab.orientation ?? "h"}
+                    onChange={(e) => updTab({ orientation: e.target.value })}
+                  >
+                    <option value="h">Ngang (A | B)</option>
+                    <option value="v">Dọc (A / B)</option>
+                  </Select>
+                </FormField>
+                <FormField label={`Tỉ lệ A: ${tab.ratio ?? 40}%`}>
+                  <input
+                    type="range"
+                    min={20}
+                    max={80}
+                    value={tab.ratio ?? 40}
+                    onChange={(e) => updTab({ ratio: Number(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                </FormField>
+                <div className="flex border border-border rounded-md overflow-hidden mt-1">
+                  {(["a", "b"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSplitPanelTab(k === "b" ? `${tIdx}:b` : String(tIdx))}
+                      className={cn(
+                        "flex-1 py-1 text-xs font-medium border-r border-border last:border-r-0",
+                        sub === k ? "bg-accent text-white" : "text-muted hover:bg-hover/60",
+                      )}
+                    >
+                      Panel {k.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                {sub === "a" ? (
+                  <PanelFields
+                    panel={tabA}
+                    availableSources={[]}
+                    linkedEnt={entities.find((e) => e.id === tabA.entity)}
+                    defaultKind="list"
+                    onUpdate={(panel) => updTab({ panelA: panel })}
+                  />
+                ) : (
+                  <PanelFields
+                    panel={tabB}
+                    availableSources={[
+                      { key: "a", label: "Panel A (trong tab)", entityId: tabA.entity },
+                    ]}
+                    linkedEnt={entities.find((e) => e.id === tabB.entity)}
+                    defaultKind="detail"
+                    onUpdate={(panel) => updTab({ panelB: panel })}
+                  />
+                )}
+              </>
+            );
+          }
 
           return (
             <>
