@@ -878,6 +878,86 @@ async function main(): Promise<void> {
     reply.send({ url: `/files/img/${active.companyId}/${filename}` });
   });
 
+  /* Upload file đính kèm cho field type="file" — lưu UPLOAD_DIR/doc/<companyId>/,
+     trả { url, name }. Khác /upload/image: whitelist rộng hơn (tài liệu) và
+     serve LUÔN attachment trừ ảnh/pdf an toàn (chống XSS inline). */
+  app.post("/upload/file", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) {
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
+    }
+    const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+    if (!active) {
+      reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+      return;
+    }
+
+    // Whitelist phần mở rộng — chặn loại thực thi/script (.html .svg .js .exe…).
+    const ALLOWED_EXT = new Set([
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".odt",
+      ".ods",
+      ".odp",
+      ".rtf",
+      ".txt",
+      ".csv",
+      ".md",
+      ".json",
+      ".xml",
+      ".zip",
+      ".rar",
+      ".7z",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".webp",
+    ]);
+
+    const file = await req.file();
+    if (!file) {
+      reply.code(400).send({ error: "Thiếu file" });
+      return;
+    }
+    const ext = extname(file.filename || "").toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) {
+      reply.code(400).send({ error: "Định dạng file không được phép" });
+      return;
+    }
+    let buf: Buffer;
+    try {
+      buf = await file.toBuffer();
+    } catch (e) {
+      reply.code(413).send({ error: `File quá lớn: ${(e as Error).message}` });
+      return;
+    }
+    if (buf.length > 25 * 1024 * 1024) {
+      reply.code(413).send({ error: "File không được vượt quá 25MB" });
+      return;
+    }
+
+    // Giữ tên gốc (đã làm sạch) sau "__" để tải về có tên thân thiện.
+    const safeName = (file.filename || `file${ext}`).replace(/[^\w.-]+/g, "_");
+    const filename = `${randomUUID()}__${safeName}`;
+    const dir = join(UPLOAD_DIR, "doc", active.companyId);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, filename), buf);
+
+    reply.send({ url: `/files/doc/${active.companyId}/${filename}`, name: safeName });
+  });
+
   /* Serve ảnh entity — /files/img/:companyId/:file.
      Kiểm tra session + xác nhận user thuộc companyId (chống cross-tenant). */
   app.get("/files/img/:companyId/:file", async (req, reply) => {
@@ -928,6 +1008,67 @@ async function main(): Promise<void> {
     }
     reply.header("Content-Type", mime);
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
+    reply.send(createReadStream(filePath));
+  });
+
+  /* Serve file đính kèm — /files/doc/:companyId/:file.
+     Session + xác nhận user thuộc companyId (chống cross-tenant). Chỉ ảnh/pdf
+     serve inline; loại khác tải về (attachment) + octet-stream để browser
+     không chạy nội dung (chống XSS). */
+  app.get("/files/doc/:companyId/:file", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) {
+      reply.code(401).send({ error: "Chưa đăng nhập" });
+      return;
+    }
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) {
+      reply.code(401).send({ error: "Phiên hết hạn" });
+      return;
+    }
+
+    const { companyId, file } = req.params as { companyId: string; file: string };
+    if (!/^[0-9a-f-]+$/.test(companyId) || !/^[\w.-]+$/.test(file)) {
+      reply.code(400).send({ error: "Path không hợp lệ" });
+      return;
+    }
+
+    // Xác nhận user thuộc companyId trong URL — chặn cross-tenant.
+    const membership = await resolveActiveCompany(db, s.userId, companyId);
+    if (!membership || membership.companyId !== companyId) {
+      reply.code(403).send({ error: "Không có quyền truy cập" });
+      return;
+    }
+
+    const filePath = join(UPLOAD_DIR, "doc", companyId, file);
+    try {
+      await stat(filePath);
+    } catch {
+      reply.code(404).send({ error: "Không tìm thấy file" });
+      return;
+    }
+
+    // Chỉ ảnh/pdf cho inline; còn lại attachment + octet-stream (an toàn).
+    const INLINE_MIME: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+    const ext = extname(file).toLowerCase();
+    const inlineMime = INLINE_MIME[ext];
+    // Tên tải về = phần sau "__" (tên gốc), fallback toàn bộ.
+    const downloadName = file.includes("__") ? file.slice(file.indexOf("__") + 2) : file;
+    reply.header("Content-Type", inlineMime ?? "application/octet-stream");
+    reply.header(
+      "Content-Disposition",
+      `${inlineMime ? "inline" : "attachment"}; filename="${encodeURIComponent(downloadName)}"`,
+    );
+    reply.header("Cache-Control", "private, max-age=31536000, immutable");
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
     reply.send(createReadStream(filePath));

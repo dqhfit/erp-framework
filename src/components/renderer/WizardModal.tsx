@@ -662,6 +662,35 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       );
   };
 
+  // Upload file đính kèm lên server → lưu URL vào form (thay base64).
+  const onPickFile = (name: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("File không được vượt quá 25MB");
+      return;
+    }
+    setImgUploading((u) => ({ ...u, [name]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    fetch("/upload/file", { method: "POST", body: fd })
+      .then(async (res) => {
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
+          throw new Error((e as { error?: string }).error ?? "Upload thất bại");
+        }
+        return res.json() as Promise<{ url: string }>;
+      })
+      .then(({ url }) => setField(name, url))
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() =>
+        setImgUploading((u) => {
+          const n = { ...u };
+          delete n[name];
+          return n;
+        }),
+      );
+  };
+
   // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
   const renderControl = (f: EntityField) =>
     current.fieldLookups?.[f.name] ? (
@@ -775,28 +804,36 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
           <span className="btn btn-default text-xs px-3 py-1.5 shrink-0 whitespace-nowrap">
-            Chọn file
+            {imgUploading[f.name] ? "Đang tải…" : "Chọn file"}
           </span>
           <span className="text-xs text-muted truncate min-w-0">
-            {form[f.name]
-              ? String(form[f.name]).startsWith("data:")
-                ? "File đã chọn"
-                : (String(form[f.name]).split("/").pop() ?? form[f.name])
-              : "Chưa chọn file"}
+            {(() => {
+              const v = form[f.name] ? String(form[f.name]) : "";
+              if (!v) return "Chưa chọn file";
+              if (v.startsWith("data:")) return "File đã chọn";
+              const last = v.split("/").pop() ?? v;
+              return last.includes("__") ? last.slice(last.indexOf("__") + 2) : last;
+            })()}
           </span>
           <input
             type="file"
             className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => setField(f.name, String(reader.result));
-              reader.readAsDataURL(file);
-            }}
+            disabled={!!imgUploading[f.name]}
+            onChange={(e) => onPickFile(f.name, e.target.files?.[0])}
           />
         </label>
-        {form[f.name] && (
+        {form[f.name] && !imgUploading[f.name] && !String(form[f.name]).startsWith("data:") && (
+          <a
+            href={String(form[f.name])}
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted hover:text-accent shrink-0"
+            title="Tải / mở file"
+          >
+            <I.Download size={14} />
+          </a>
+        )}
+        {form[f.name] && !imgUploading[f.name] && (
           <button
             type="button"
             className="text-muted hover:text-danger shrink-0"
