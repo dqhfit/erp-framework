@@ -75,12 +75,31 @@ interface SearXNGResponse {
   results?: SearXNGResult[];
 }
 
+/** Kiểm tra URL SearXNG ở mức tối thiểu: chỉ cho phép http/https (chặn
+ *  file:/gopher:/... ). CỐ Ý KHÔNG chặn IP nội bộ/loopback: SearXNG là
+ *  sidecar nội bộ tin cậy (vd searxng:8080, 127.0.0.1:8080) — cùng trust
+ *  model với Ollama/Tika; endpoint do admin cấu hình (rbac edit settings),
+ *  không phải input người dùng thường. Chặn private IP sẽ phá chính tính năng,
+ *  nên KHÔNG route qua defaultRunHttp (hàm đó chặn IP nội bộ). */
+function assertHttpUrl(baseUrl: string): void {
+  let u: URL;
+  try {
+    u = new URL(baseUrl);
+  } catch {
+    throw new Error("URL SearXNG không hợp lệ");
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(`Scheme không hỗ trợ (chỉ http/https): ${u.protocol}`);
+  }
+}
+
 /** Gọi SearXNG với baseUrl đã biết (không tra DB). Dùng cho test trực tiếp. */
 export async function webSearchRaw(
   baseUrl: string,
   query: string,
   opts?: { limit?: number; categories?: string },
 ): Promise<WebSearchResult[]> {
+  assertHttpUrl(baseUrl);
   const { url: base, headers: auth } = splitUrlAuth(baseUrl);
 
   const params = new URLSearchParams({
@@ -95,16 +114,23 @@ export async function webSearchRaw(
 
   let res: Response;
   try {
+    // redirect:"manual" — KHÔNG tự theo Location (giảm bề mặt SSRF: endpoint
+    // bị chiếm/độc không pivot server sang host nội bộ khác qua redirect).
     res = await fetch(`${base}/search?${params.toString()}`, {
       headers: { ...auth },
+      redirect: "manual",
     });
   } catch (err) {
     throw new Error(`Không gọi được SearXNG (${base}): ${(err as Error).message}`);
   }
 
+  // 3xx → coi là lỗi cấu hình, không theo redirect.
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error(`SearXNG trả redirect ${res.status} — kiểm tra lại URL`);
+  }
   if (!res.ok) {
-    const body = (await res.text()).slice(0, 300);
-    throw new Error(`SearXNG trả lỗi ${res.status}: ${body}`);
+    // KHÔNG echo body upstream (tránh lộ nội dung nội bộ qua blind SSRF).
+    throw new Error(`SearXNG trả lỗi ${res.status}`);
   }
 
   const json = (await res.json()) as SearXNGResponse;

@@ -61,7 +61,7 @@ describe("webSearchRaw", () => {
 
     await webSearchRaw("http://127.0.0.1:8080", "q");
 
-    const calledUrl: string = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(calledUrl).toContain("/search?");
     expect(calledUrl).toContain("q=q");
     expect(calledUrl).toContain("format=json");
@@ -92,8 +92,8 @@ describe("webSearchRaw", () => {
     await webSearchRaw("http://user:pass@host:8080", "q");
 
     const mockFn = globalThis.fetch as ReturnType<typeof vi.fn>;
-    const calledUrl: string = mockFn.mock.calls[0][0];
-    const calledInit = mockFn.mock.calls[0][1] as RequestInit & {
+    const calledUrl = mockFn.mock.calls[0]?.[0] as string;
+    const calledInit = mockFn.mock.calls[0]?.[1] as RequestInit & {
       headers: Record<string, string>;
     };
 
@@ -122,5 +122,30 @@ describe("webSearchRaw", () => {
 
     const results = await webSearchRaw("http://127.0.0.1:8080", "q");
     expect(results).toEqual([]);
+  });
+
+  it("8. scheme không phải http/https → ném lỗi, KHÔNG gọi fetch (chống SSRF scheme lạ)", async () => {
+    await expect(webSearchRaw("file:///etc/passwd", "q")).rejects.toThrow(/scheme/i);
+    expect(globalThis.fetch as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+  });
+
+  it("9. 3xx redirect → ném lỗi, không tự theo Location (chống SSRF pivot)", async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 302,
+      text: async () => "",
+    } as unknown as Response);
+
+    await expect(webSearchRaw("http://127.0.0.1:8080", "q")).rejects.toThrow(/redirect/i);
+  });
+
+  it("10. lỗi HTTP KHÔNG rò body upstream (chỉ status)", async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      mockErrorResponse(500, "SECRET_INTERNAL_DATA"),
+    );
+
+    await expect(webSearchRaw("http://127.0.0.1:8080", "q")).rejects.toThrow(
+      /^SearXNG trả lỗi 500$/,
+    );
   });
 });
