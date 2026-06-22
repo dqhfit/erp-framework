@@ -94,6 +94,7 @@ async function getDinhMuc(
 }
 
 export interface LcpCreateResult {
+  masp?: string;
   loaidonhang: string;
   loaicapphat: string;
   lenhcapphatid?: string;
@@ -107,19 +108,19 @@ export async function trLenhcapphatCreate(
   db: DB,
   companyId: string,
   args: {
-    masp: string;
+    /** 1 hoặc nhiều mã sản phẩm (selMasp tagbox = mảng). */
+    masp: string | string[];
     madonhang: string;
-    ma_htr?: string | null;
     mode?: "sync" | "create";
     nguoitao?: string | null;
   },
 ): Promise<LcpCreateResult[]> {
-  const masp = String(args.masp ?? "").trim();
+  const masps = (Array.isArray(args.masp) ? args.masp : [args.masp])
+    .map((s) => String(s ?? "").trim())
+    .filter(Boolean);
   const madonhang = String(args.madonhang ?? "").trim();
-  if (!masp || !madonhang) throw new Error("Thiếu masp / madonhang");
+  if (masps.length === 0 || !madonhang) throw new Error("Chưa chọn sản phẩm hoặc đơn hàng");
   const mode = args.mode === "create" ? "create" : "sync";
-  // SX: detail.masp = detail.master_code = masp (maHTR mặc định = masp).
-  const maHTR = String(args.ma_htr ?? "").trim() || masp;
   const nguoi = args.nguoitao ?? null;
   const now = new Date();
   const nowIso = now.toISOString();
@@ -144,13 +145,7 @@ export async function trLenhcapphatCreate(
       ];
     }
 
-    // SL sản phẩm trong đơn (item_number = masp; bỏ dòng huỷ).
     const od = await procTable(tx, companyId, "tr_order_detail");
-    const odRows = await od.listWhere(
-      sql`${od.text("order_number")} = ${madonhang} AND ${od.text("item_number")} = ${masp} AND coalesce(${od.text("f_cancelled")}, 'N') <> 'Y'`,
-    );
-    const slDonHang = odRows.reduce((s, r) => s + (Number(r.order_qty) || 0), 0);
-
     const head = await procTable(tx, companyId, "tr_lenhcapphat_head");
     const detail = await procTable(tx, companyId, "tr_lenhcapphat");
 
@@ -180,42 +175,13 @@ export async function trLenhcapphatCreate(
         ? sql`${head.text("loaicapphat")} = ${loai}`
         : sql`(${head.raw("loaicapphat")} IS NULL OR ${head.text("loaicapphat")} = '')`;
 
-    const results: LcpCreateResult[] = [];
-
-    for (const c of COMBOS) {
-      const dm = await getDinhMuc(tx, companyId, c, masp);
-      if (dm.length === 0) continue; // không có định mức combo này → không tạo head rỗng
-      if (slDonHang <= 0) {
-        results.push({
-          loaidonhang: c.dinhmuc,
-          loaicapphat: c.loai,
-          created: 0,
-          updated: 0,
-          skipped: true,
-          message: "Thiếu số lượng đơn hàng (=0)",
-        });
-        continue;
-      }
-
-      if (mode === "create") {
-        const existing = await detail.listWhere(
-          sql`${detail.text("loaidonhang")} = ${c.dinhmuc} AND ${loaicapCond(c.loai)} AND ${detail.text("madonhang")} = ${madonhang} AND ${detail.text("masp")} = ${masp} AND ${detail.bool("active")} = true`,
-          { limit: 1 },
-        );
-        if (existing.length > 0) {
-          results.push({
-            loaidonhang: c.dinhmuc,
-            loaicapphat: c.loai,
-            created: 0,
-            updated: 0,
-            skipped: true,
-            message: "Đã có LCP — dùng 'Cập nhật LCP'",
-          });
-          continue;
-        }
-      }
-
-      // Head: tìm theo (loaidonhang, madondathang=đơn, loaicapphat).
+    // Head dùng chung theo combo: nhiều SP cùng đơn + loại → chung 1 head
+    // (các dòng SP khác mavt nằm dưới cùng head). Cache trong 1 lần gọi.
+    const headCache = new Map<string, string>();
+    const ensureHead = async (c: Combo): Promise<string> => {
+      const key = `${c.dinhmuc}|${c.loai}`;
+      const cached = headCache.get(key);
+      if (cached) return cached;
       const headRows = await head.listWhere(
         sql`${head.text("loaidonhang")} = ${c.dinhmuc} AND ${head.text("madondathang")} = ${madonhang} AND ${loaicapCondHead(c.loai)}`,
         { limit: 1 },
@@ -242,69 +208,121 @@ export async function trLenhcapphatCreate(
           sql`${head.text("lenhcapphatid")} = ${headId}`,
         );
       }
+      headCache.set(key, headId);
+      return headId;
+    };
 
-      // Vô hiệu dòng cũ (head, masp) — dòng không còn trong định mức sẽ ở active=0.
-      await detail.updateWhere(
-        { active: false },
-        sql`${detail.text("lenhcapphatid")} = ${headId} AND ${detail.text("masp")} = ${masp}`,
+    const results: LcpCreateResult[] = [];
+
+    for (const masp of masps) {
+      const maHTR = masp; // SX: detail.masp = master_code = masp
+      // SL sản phẩm trong đơn (item_number = masp; bỏ dòng huỷ).
+      const odRows = await od.listWhere(
+        sql`${od.text("order_number")} = ${madonhang} AND ${od.text("item_number")} = ${masp} AND coalesce(${od.text("f_cancelled")}, 'N') <> 'Y'`,
       );
+      const slDonHang = odRows.reduce((s, r) => s + (Number(r.order_qty) || 0), 0);
 
-      let created = 0;
-      let updated = 0;
-      for (const line of dm) {
-        const slCan = line.sl * slDonHang;
-        const old = await detail.listWhere(
-          sql`${detail.text("lenhcapphatid")} = ${headId} AND ${detail.text("madonhang")} = ${madonhang} AND ${detail.text("masp")} = ${masp} AND ${detail.text("mavt")} = ${line.mact}`,
-          { limit: 1 },
+      for (const c of COMBOS) {
+        const dm = await getDinhMuc(tx, companyId, c, masp);
+        if (dm.length === 0) continue; // SP không có định mức combo này → bỏ qua
+        if (slDonHang <= 0) {
+          results.push({
+            masp,
+            loaidonhang: c.dinhmuc,
+            loaicapphat: c.loai,
+            created: 0,
+            updated: 0,
+            skipped: true,
+            message: `${masp}: thiếu số lượng đơn (=0)`,
+          });
+          continue;
+        }
+
+        if (mode === "create") {
+          const existing = await detail.listWhere(
+            sql`${detail.text("loaidonhang")} = ${c.dinhmuc} AND ${loaicapCond(c.loai)} AND ${detail.text("madonhang")} = ${madonhang} AND ${detail.text("masp")} = ${masp} AND ${detail.bool("active")} = true`,
+            { limit: 1 },
+          );
+          if (existing.length > 0) {
+            results.push({
+              masp,
+              loaidonhang: c.dinhmuc,
+              loaicapphat: c.loai,
+              created: 0,
+              updated: 0,
+              skipped: true,
+              message: `${masp}: đã có LCP — dùng 'Cập nhật LCP'`,
+            });
+            continue;
+          }
+        }
+
+        const headId = await ensureHead(c);
+
+        // Vô hiệu dòng cũ (head, masp) — dòng không còn trong định mức ở active=0.
+        await detail.updateWhere(
+          { active: false },
+          sql`${detail.text("lenhcapphatid")} = ${headId} AND ${detail.text("masp")} = ${masp}`,
         );
-        const daPhat = old[0] ? Number(old[0].soluong_daphat) || 0 : 0;
-        const conLai = slCan - daPhat;
-        if (old[0]) {
-          await detail.updateWhere(
-            {
+
+        let created = 0;
+        let updated = 0;
+        for (const line of dm) {
+          const slCan = line.sl * slDonHang;
+          const old = await detail.listWhere(
+            sql`${detail.text("lenhcapphatid")} = ${headId} AND ${detail.text("madonhang")} = ${madonhang} AND ${detail.text("masp")} = ${masp} AND ${detail.text("mavt")} = ${line.mact}`,
+            { limit: 1 },
+          );
+          const daPhat = old[0] ? Number(old[0].soluong_daphat) || 0 : 0;
+          const conLai = slCan - daPhat;
+          if (old[0]) {
+            await detail.updateWhere(
+              {
+                soluong_donhang: slDonHang,
+                soluong: slCan,
+                soluong_daphat: daPhat,
+                soluong_conlai: conLai,
+                active: true,
+                nguoisua: nguoi,
+                ngaysua: nowIso,
+              },
+              sql`id = ${old[0]._id}::uuid`,
+            );
+            updated += 1;
+          } else {
+            await detail.insertRow({
+              lenhcapphatid: headId,
+              loaidonhang: c.dinhmuc,
+              loaicapphat: c.loai || undefined,
+              madondathang: null,
+              madonhang,
+              master_code: masp,
+              masp: maHTR,
+              mavt: line.mact,
               soluong_donhang: slDonHang,
               soluong: slCan,
               soluong_daphat: daPhat,
               soluong_conlai: conLai,
-              active: true,
+              nguoitao: nguoi,
+              ngaytao: nowIso,
               nguoisua: nguoi,
               ngaysua: nowIso,
-            },
-            sql`id = ${old[0]._id}::uuid`,
-          );
-          updated += 1;
-        } else {
-          await detail.insertRow({
-            lenhcapphatid: headId,
-            loaidonhang: c.dinhmuc,
-            loaicapphat: c.loai || undefined,
-            madondathang: null,
-            madonhang,
-            master_code: masp,
-            masp: maHTR,
-            mavt: line.mact,
-            soluong_donhang: slDonHang,
-            soluong: slCan,
-            soluong_daphat: daPhat,
-            soluong_conlai: conLai,
-            nguoitao: nguoi,
-            ngaytao: nowIso,
-            nguoisua: nguoi,
-            ngaysua: nowIso,
-            active: true,
-          });
-          created += 1;
+              active: true,
+            });
+            created += 1;
+          }
         }
+        results.push({
+          masp,
+          loaidonhang: c.dinhmuc,
+          loaicapphat: c.loai,
+          lenhcapphatid: headId,
+          created,
+          updated,
+          skipped: false,
+          message: `${masp} ${c.dinhmuc}/${c.loai || "-"}: ${created} mới, ${updated} cập nhật`,
+        });
       }
-      results.push({
-        loaidonhang: c.dinhmuc,
-        loaicapphat: c.loai,
-        lenhcapphatid: headId,
-        created,
-        updated,
-        skipped: false,
-        message: `OK (${created} mới, ${updated} cập nhật)`,
-      });
     }
 
     if (results.length === 0) {
