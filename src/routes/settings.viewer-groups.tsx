@@ -1,7 +1,7 @@
 /* ==========================================================
    settings.viewer-groups.tsx — Quản lý nhóm người xem.
    Layout master-detail: cột trái = danh sách nhóm,
-   cột phải = chỉnh sửa nhóm đang chọn (thành viên + trang).
+   cột phải = tab (Thành viên | Trang được phép | Cài đặt).
    ========================================================== */
 
 import { createCompaniesClient, createObjectsClient } from "@erp-framework/client";
@@ -204,6 +204,9 @@ function GroupDetail({
 }) {
   const hydrate = useUserObjects((s) => s.hydrate);
 
+  /* ── Tab ── */
+  const [tab, setTab] = useState<"members" | "pages" | "meta">("members");
+
   /* ── Rename / color ── */
   const [editName, setEditName] = useState(group.name);
   const [editColor, setEditColor] = useState(group.color);
@@ -215,6 +218,7 @@ function GroupDetail({
   useEffect(() => {
     setEditName(group.name);
     setEditColor(group.color);
+    setTab("members");
   }, [group.id]);
 
   const handleSaveMeta = async () => {
@@ -282,7 +286,7 @@ function GroupDetail({
     for (const g of allGroups) {
       for (const pid of g.pageIds) {
         if (!m.has(pid)) m.set(pid, new Set());
-        m.get(pid)!.add(g.id);
+        m.get(pid)?.add(g.id);
       }
     }
     return m;
@@ -319,61 +323,57 @@ function GroupDetail({
   /* ── Render ── */
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header group */}
-      <div className="px-6 py-3 border-b border-border shrink-0 flex items-center gap-3">
-        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: editColor }} />
+      {/* Header: tên nhóm + nút xóa */}
+      <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center gap-2.5">
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: group.color }}
+        />
         <span className="flex-1 text-sm font-semibold truncate">{group.name}</span>
         <button
           type="button"
           onClick={() => void handleDelete()}
-          className="flex items-center gap-1 text-xs text-muted hover:text-danger transition-colors"
+          className="flex items-center gap-1 text-xs text-muted hover:text-danger transition-colors shrink-0"
         >
-          <I.Trash size={12} />
-          Xóa nhóm
+          <I.Trash size={11} />
+          Xóa
         </button>
       </div>
 
-      {/* Scrollable body — 2 cột */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-2 divide-x divide-border min-h-full">
-          {/* ── Cột trái: Thành viên ── */}
-          <div className="flex flex-col">
-            {/* Tên + màu */}
-            <div className="px-4 py-3 border-b border-border bg-bg-soft/40">
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="block text-[10px] text-muted mb-1">Tên nhóm</label>
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="text-sm"
-                  />
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleSaveMeta()}
-                  disabled={savingMeta || !metaDirty || !editName.trim()}
-                >
-                  Lưu
-                </Button>
-              </div>
-              <div className="mt-2">
-                <label className="block text-[10px] text-muted mb-1.5">Màu</label>
-                <ColorPicker value={editColor} onChange={setEditColor} />
-              </div>
-            </div>
+      {/* Tab bar */}
+      <div className="flex items-center border-b border-border shrink-0 px-1">
+        {(
+          [
+            { key: "members", label: "Thành viên", count: group.memberIds.length },
+            { key: "pages", label: "Trang được phép", count: group.pageIds.length },
+            { key: "meta", label: "Cài đặt", count: null },
+          ] as const
+        ).map(({ key, label, count }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={cn(
+              "px-3 py-2 text-xs transition-colors border-b-2 -mb-px flex items-center gap-1",
+              tab === key
+                ? "border-accent text-accent font-medium"
+                : "border-transparent text-muted hover:text-text",
+            )}
+          >
+            {label}
+            {count !== null && (
+              <span className="text-[10px] opacity-70 tabular-nums">({count})</span>
+            )}
+          </button>
+        ))}
+      </div>
 
-            {/* Thanh tìm + filter thành viên */}
-            <div className="px-3 pt-3 pb-2 space-y-2 border-b border-border">
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-semibold text-muted/70 uppercase tracking-wide flex-1">
-                  Thành viên
-                </span>
-                <span className="text-[11px] text-muted">
-                  {group.memberIds.length} / {allMembers.length}
-                </span>
-              </div>
+      {/* Tab content — full width */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {/* ── Tab: Thành viên ── */}
+        {tab === "members" && (
+          <>
+            <div className="px-4 pt-3 pb-2 space-y-2 border-b border-border shrink-0">
               <Input
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
@@ -387,22 +387,24 @@ function GroupDetail({
                     type="button"
                     onClick={() => setMemberFilter(f)}
                     className={cn(
-                      "px-2 py-0.5 rounded text-[11px] transition-colors",
+                      "px-2.5 py-0.5 rounded text-[11px] transition-colors",
                       memberFilter === f
                         ? "bg-accent text-white"
                         : "bg-bg-soft hover:bg-hover text-muted",
                     )}
                   >
-                    {f === "all" ? "Tất cả" : f === "in" ? "Trong nhóm" : "Ngoài nhóm"}
+                    {f === "all"
+                      ? `Tất cả (${allMembers.length})`
+                      : f === "in"
+                        ? `Trong nhóm (${group.memberIds.length})`
+                        : "Ngoài nhóm"}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Danh sách members */}
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
               {filteredMembers.length === 0 ? (
-                <div className="text-xs text-muted/60 text-center py-4">Không tìm thấy.</div>
+                <div className="text-xs text-muted/60 text-center py-6">Không tìm thấy.</div>
               ) : (
                 filteredMembers.map((m) => {
                   const inGroup = memberSet.has(m.userId);
@@ -435,19 +437,13 @@ function GroupDetail({
                 })
               )}
             </div>
-          </div>
+          </>
+        )}
 
-          {/* ── Cột phải: Trang ── */}
-          <div className="flex flex-col">
-            <div className="px-4 py-3 border-b border-border bg-bg-soft/40 space-y-2">
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-semibold text-muted/70 uppercase tracking-wide flex-1">
-                  Trang được phép
-                </span>
-                <span className="text-[11px] text-muted">
-                  {group.pageIds.length} / {allPages.length}
-                </span>
-              </div>
+        {/* ── Tab: Trang được phép ── */}
+        {tab === "pages" && (
+          <>
+            <div className="px-4 pt-3 pb-2 border-b border-border shrink-0">
               <Input
                 value={pageSearch}
                 onChange={(e) => setPageSearch(e.target.value)}
@@ -455,9 +451,7 @@ function GroupDetail({
                 className="text-xs"
               />
             </div>
-
             <div className="flex-1 overflow-y-auto px-3 py-2">
-              {/* Đã gán */}
               {assignedPages.length > 0 && (
                 <div className="mb-3">
                   <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide mb-1 px-1">
@@ -485,12 +479,11 @@ function GroupDetail({
                   </div>
                 </div>
               )}
-
-              {/* Chưa gán */}
               {unassignedPages.length > 0 && (
                 <div>
                   <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide mb-1 px-1">
-                    Chưa gán {pageSearch ? `(${unassignedPages.length})` : ""}
+                    Chưa gán (
+                    {pageSearch ? unassignedPages.length : allPages.length - group.pageIds.length})
                   </div>
                   <div className="space-y-0.5">
                     {unassignedPages.map((p) => (
@@ -514,13 +507,41 @@ function GroupDetail({
                   </div>
                 </div>
               )}
-
               {assignedPages.length === 0 && unassignedPages.length === 0 && (
-                <div className="text-xs text-muted/60 text-center py-4">Không tìm thấy trang.</div>
+                <div className="text-xs text-muted/60 text-center py-6">Không tìm thấy trang.</div>
               )}
             </div>
+          </>
+        )}
+
+        {/* ── Tab: Cài đặt ── */}
+        {tab === "meta" && (
+          <div className="px-5 py-4 flex flex-col gap-4 max-w-sm">
+            <div>
+              <label className="block text-xs text-muted mb-1.5">Tên nhóm</label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSaveMeta();
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-muted mb-1.5">Màu nhận diện</label>
+              <ColorPicker value={editColor} onChange={setEditColor} />
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void handleSaveMeta()}
+              disabled={savingMeta || !metaDirty || !editName.trim()}
+            >
+              {savingMeta ? "Đang lưu…" : "Lưu thay đổi"}
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -556,10 +577,8 @@ function ViewerGroupsSettings() {
 
   const selectedGroup = viewerGroupsList.find((g) => g.id === selectedId) ?? null;
 
-  const publishedPages = useMemo(
-    () => pages.filter((p) => p.published).map((p) => ({ id: p.id, name: p.name })),
-    [pages],
-  );
+  // Hiển thị tất cả pages (admin gán group cho cả draft lẫn published)
+  const allPagesFlat = useMemo(() => pages.map((p) => ({ id: p.id, name: p.name })), [pages]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -595,7 +614,6 @@ function ViewerGroupsSettings() {
             <NewGroupPanel
               onDone={() => {
                 setCreatingNew(false);
-                // Chọn group mới nhất sau khi tạo
                 if (viewerGroupsList.length > 0)
                   setSelectedId(viewerGroupsList[viewerGroupsList.length - 1].id);
               }}
@@ -604,7 +622,7 @@ function ViewerGroupsSettings() {
             <GroupDetail
               group={selectedGroup}
               allMembers={members}
-              allPages={publishedPages}
+              allPages={allPagesFlat}
               allGroups={viewerGroupsList}
               onDeleted={() => {
                 setSelectedId(viewerGroupsList.find((g) => g.id !== selectedGroup.id)?.id ?? null);
