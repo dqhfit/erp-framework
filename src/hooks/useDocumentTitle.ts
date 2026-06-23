@@ -5,6 +5,10 @@ const DEFAULT = "ERP Framework";
 const EDIT_PREFIX = "[EDIT] ";
 const PORTAL_PREFIX = "[PORTAL] ";
 
+type FaviconWindow = Window & {
+  updateFavicon?: (mode: "default" | "edit" | "portal") => void;
+};
+
 export function useDocumentTitle(name: string | undefined) {
   const location = useLocation();
   const isEditPage = location.pathname.startsWith("/pages/") && location.pathname !== "/pages";
@@ -23,20 +27,21 @@ export function useDocumentTitle(name: string | undefined) {
     document.title = title;
 
     // Update favicon based on page type
-    if (typeof window !== "undefined" && window.updateFavicon) {
+    const faviconWindow = window as FaviconWindow;
+    if (faviconWindow.updateFavicon) {
       if (isEditPage) {
-        window.updateFavicon("edit");
+        faviconWindow.updateFavicon("edit");
       } else if (isPortalPage) {
-        window.updateFavicon("portal");
+        faviconWindow.updateFavicon("portal");
       } else {
-        window.updateFavicon("default");
+        faviconWindow.updateFavicon("default");
       }
     }
 
     return () => {
       document.title = DEFAULT;
-      if (typeof window !== "undefined" && window.updateFavicon) {
-        window.updateFavicon("default");
+      if (faviconWindow.updateFavicon) {
+        faviconWindow.updateFavicon("default");
       }
     };
   }, [name, isEditPage, isPortalPage]);

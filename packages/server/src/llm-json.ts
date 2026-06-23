@@ -10,6 +10,7 @@ import { llmProfiles } from "@erp-framework/db";
 import type { DB } from "./db";
 import { decryptSecret } from "./crypto";
 import { compress } from "tokenshrink";
+import { compressPrompt } from "./prompt-compress";
 
 export interface CallLlmJsonOpts {
   /** System prompt — mô tả task + định dạng JSON kỳ vọng. */
@@ -70,6 +71,12 @@ export async function callLlmJson<T = unknown>(
   const user = compressedUser.slice(0, 8000);
   const maxTokens = opts.maxTokens ?? 1024;
   const temperature = opts.temperature ?? 0.2;
+
+  // Nén system prompt qua LLMLingua sidecar trước khi gửi (giảm token input).
+  // Fail-safe: sidecar down → trả nguyên, không vỡ flow.
+  const compressed = await compressPrompt(opts.system, { question: user });
+  const systemPrompt = compressed.compressed;
+
   // Bridge (claude-cli) chạy CLI subprocess — ~2k token đã ~38s, sinh nhiều
   // token dễ vượt 45s. Cho claude-cli timeout rộng (mặc định 540s, chỉnh qua
   // BRIDGE_TIMEOUT_MS); adapter API trực tiếp giữ 45s. opts.timeoutMs ưu tiên.
@@ -118,7 +125,7 @@ export async function callLlmJson<T = unknown>(
           model: p.model,
           max_tokens: maxTokens,
           temperature,
-          system: opts.system,
+          system: systemPrompt,
           messages: [{ role: "user", content: user }],
         }),
         signal: AbortSignal.timeout(timeoutMs),
@@ -138,7 +145,7 @@ export async function callLlmJson<T = unknown>(
           max_tokens: maxTokens,
           temperature,
           messages: [
-            { role: "system", content: opts.system },
+            { role: "system", content: systemPrompt },
             { role: "user", content: user },
           ],
           response_format: { type: "json_object" },

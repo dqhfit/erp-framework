@@ -23,6 +23,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -83,7 +84,7 @@ function Download($path, $outFile, $minBytes) {
   # File rong/qua nho: uploads (minBytes<=20) coi nhu 204 khong co file -> OK;
   # db (minBytes=100) rong = pg_dump loi -> that bai.
   Remove-Item $tmp -ErrorAction SilentlyContinue
-  if ($minBytes -le 20) { Log "uploads: khong co file (rong) — bo qua."; return $true }
+  if ($minBytes -le 20) { Log "uploads: khong co file (rong) - bo qua."; return $true }
   Log "ERROR: $path tra ve $sz byte (<= $minBytes)."
   return $false
 }

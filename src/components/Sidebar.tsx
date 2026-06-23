@@ -1,6 +1,6 @@
 import { createLegacyMenuClient } from "@erp-framework/client";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { ChangeMenuNodePageModal } from "@/components/ChangeMenuNodePageModal";
 import { I } from "@/components/Icons";
@@ -14,6 +14,7 @@ import { PagesTreeSection } from "@/components/sidebar/PagesTreeSection";
 import { SidebarItem } from "@/components/sidebar/SidebarItem";
 import { type SectionItem, SidebarSection } from "@/components/sidebar/SidebarSection";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useInvalidateNavTree, useNavTree } from "@/hooks/useNavTree";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { type ObjectType, roleCan } from "@/lib/permissions";
@@ -38,11 +39,6 @@ export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const favs = useFavs();
-  // "Xem Portal": nếu đang mở Trình dựng 1 trang (/pages/<id>) → mở portal kèm
-  // trang đó chọn sẵn (?page=<id>) ở tab mới; ngược lại mở portal thường.
-  const editingPageId = pathname.match(/^\/pages\/([^/]+)/)?.[1];
-  const portalHref = editingPageId ? `/portal?page=${editingPageId}` : "/portal";
-
   // Trạng thái mở/đóng các section — NHỚ qua reload (localStorage). Merge với
   // defaults để key mới (thêm section sau này) vẫn có giá trị mặc định.
   const [sectionsOpen, setSectionsOpen] = useState(() => {
@@ -93,6 +89,24 @@ export function Sidebar() {
       localStorage.setItem("sidebar-sections-open", JSON.stringify(sectionsOpen));
     } catch {}
   }, [sectionsOpen]);
+
+  // Cho phép ẩn cây menu legacy để sidebar gọn hơn, giữ lựa chọn qua reload.
+  const [showMenuTree, setShowMenuTree] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar-show-menu-tree") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const toggleMenuTree = useCallback(() => {
+    setShowMenuTree((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem("sidebar-show-menu-tree", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -164,8 +178,10 @@ export function Sidebar() {
 
   // Cây điều hướng TRANG theo MENU DQHF (legacy_menu_map.navTree). Admin/editor
   // thấy cả trang draft; rỗng (chưa link menu) → fallback danh sách phẳng.
-  const [navNodes, setNavNodes] = useState<NavNode[]>([]);
-  // Trang đang gán vào menu (mở modal) + key refetch cây sau khi gán xong.
+  const { data: navNodesData, isLoading: navLoading } = useNavTree();
+  const navNodes = navNodesData ?? [];
+  const invalidateNavTree = useInvalidateNavTree();
+  // Trang đang gán vào menu (mở modal).
   const [assignMenuPage, setAssignMenuPage] = useState<{ id: string; name: string } | null>(null);
   // Mục menu đang đổi trang liên kết (mở ChangeMenuNodePageModal).
   const [changeNodePage, setChangeNodePage] = useState<{
@@ -174,20 +190,6 @@ export function Sidebar() {
     pageId: string | null;
   } | null>(null);
   const [newPageOpen, setNewPageOpen] = useState(false);
-  const [navReloadKey, setNavReloadKey] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: navReloadKey là trigger refetch chủ động (không đọc trong effect)
-  useEffect(() => {
-    let alive = true;
-    createLegacyMenuClient("")
-      .navTree()
-      .then((rows) => {
-        if (alive) setNavNodes(rows);
-      })
-      .catch(() => undefined); // fail-safe: thiếu menu → danh sách phẳng
-    return () => {
-      alive = false;
-    };
-  }, [navReloadKey]);
   /** Gỡ 1 trang khỏi mục menu (đặt pageId của node = null) rồi refetch cây. */
   const handleUnassignFromMenu = async (node: NavNode) => {
     if (!node.pageId || !node.code) return;
@@ -198,7 +200,7 @@ export function Sidebar() {
     if (!ok) return;
     try {
       await createLegacyMenuClient("").setNodePage(node.code, null);
-      setNavReloadKey((k) => k + 1);
+      invalidateNavTree();
     } catch (e) {
       await dialog.alert(`Lỗi gỡ khỏi menu: ${(e as Error)?.message ?? e}`);
     }
@@ -530,7 +532,8 @@ export function Sidebar() {
             // CÂY MENU DQHF: khi có node link trang + không thu nhỏ + không tìm
             // kiếm → 2 nhóm: "Menu" (cây điều hướng) + "Trang" (mọi trang, badge
             // "có menu"). Ngược lại: danh sách phẳng (fallback hoặc search/thu nhỏ).
-            const useTree = navNodes.some((n) => n.pageId) && !collapsed && !search.trim();
+            const useTree =
+              (navLoading || navNodes.some((n) => n.pageId)) && !collapsed && !search.trim();
             if (useTree) {
               // Toàn bộ trang (đã/chưa gắn menu) cho nhóm "Trang".
               const allPages: PageListItem[] = [
@@ -557,12 +560,15 @@ export function Sidebar() {
                     pathname={pathname}
                     open={effectiveSectionsOpen.pages}
                     onToggle={toggle("pages")}
+                    showMenuTree={showMenuTree}
+                    onToggleMenuTree={toggleMenuTree}
                     onAdd={can("create", "page") ? handleAddPage : undefined}
                     onAiAdd={can("create", "page") ? () => setAiCreateTarget("page") : undefined}
                     onNavigate={collapseOpsSettings}
                     navNodes={navNodes}
                     allPages={allPages}
                     onOpen={(to) => navigate({ to })}
+                    loading={navLoading}
                     onUnassignPage={can("edit", "settings") ? handleUnassignFromMenu : undefined}
                     onChangeNodePage={
                       can("edit", "settings")
@@ -1300,17 +1306,14 @@ export function Sidebar() {
 
         {/* === User info + Đăng xuất === */}
         <div className="shrink-0 border-t border-border px-2 py-2 space-y-1.5">
-          {/* Xem Portal (admin) — mở giao diện người dùng cuối ở TAB MỚI.
-             Dùng <a target="_blank"> để mở cửa sổ/tab mới, không rời SPA hiện tại.
-             Đang sửa 1 trang → mở kèm trang đó được chọn sẵn (?page=<id>). */}
+          {/* Xem Portal (admin) — mở trang chủ người dùng cuối ở TAB MỚI.
+             Dùng <a target="_blank"> để mở cửa sổ/tab mới, không rời SPA hiện tại. */}
           {role === "admin" && (
             <a
-              href={portalHref}
+              href="/portal"
               target="_blank"
               rel="noopener noreferrer"
-              title={
-                editingPageId ? "Xem trang này trong Portal (tab mới)" : "Xem Portal (mở tab mới)"
-              }
+              title="Xem Portal (mở tab mới)"
               className={cn(
                 "flex items-center rounded-md text-muted hover:bg-hover/60 hover:text-text transition-colors",
                 collapsed ? "w-full h-9 justify-center" : "gap-2 px-2 py-1.5 text-[13px]",
@@ -1353,18 +1356,18 @@ export function Sidebar() {
       <AssignPageToMenuModal
         page={assignMenuPage}
         onClose={() => setAssignMenuPage(null)}
-        onDone={() => setNavReloadKey((k) => k + 1)}
+        onDone={() => void invalidateNavTree()}
       />
       <ChangeMenuNodePageModal
         node={changeNodePage}
         onClose={() => setChangeNodePage(null)}
-        onDone={() => setNavReloadKey((k) => k + 1)}
+        onDone={() => void invalidateNavTree()}
       />
       <NewPageModal
         open={newPageOpen}
         onClose={() => {
           setNewPageOpen(false);
-          setNavReloadKey((k) => k + 1); // trang gán menu mới → refresh cây nav
+          void invalidateNavTree(); // trang gán menu mới → refresh cây nav
         }}
         canAssignMenu={can("edit", "settings")}
       />

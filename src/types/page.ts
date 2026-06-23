@@ -228,6 +228,8 @@ export interface FieldOverride {
   options?: string[];
   /** Bắt buộc nhập. */
   required?: boolean;
+  /** Số cột mà field này chiếm dụng (1 | 2 | 3 | 4). */
+  colSpan?: number;
 }
 
 /** Liên kết 1 field tới entity nguồn (picker) — lưu giá trị valueField. */
@@ -258,13 +260,23 @@ export interface WizardStepDetail {
   footerSums?: string[];
 }
 
+/** Ảnh chỉ đọc lấy từ entity liên quan, không tham gia payload lưu entity chính. */
+export interface WizardRelatedImage {
+  entity?: string;
+  entityName?: string;
+  linkField: string;
+  parentField: string;
+  imageField: string;
+  label?: string;
+}
+
 /** Một bước trong wizard — có thể tạo bản ghi entity hoặc chỉ hiển thị form. */
 export interface WizardStepDef {
   id: string;
   title: string;
   description?: string;
   /** Số cột hiển thị của form trong bước này. */
-  cols?: 1 | 2;
+  cols?: 1 | 2 | 4;
   /** Entity để tạo bản ghi trong bước này (không bắt buộc). */
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
@@ -289,6 +301,8 @@ export interface WizardStepDef {
    *  = giá trị parentKeyField của bản ghi chính. Có → render bảng nhập thay vì
    *  form field (chỉ dùng ở wizard 1-entity). */
   detail?: WizardStepDetail;
+  /** Ảnh tham chiếu chỉ đọc từ entity liên quan. */
+  relatedImage?: WizardRelatedImage;
 }
 
 export interface ActionStepOpenWizard {

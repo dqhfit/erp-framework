@@ -172,7 +172,7 @@ export function AssignPageToMenuModal({ page, onClose, onDone }: Props) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Lọc nhanh theo tên mục…"
-            className="input pl-8"
+            className="input !pl-8"
             // biome-ignore lint/a11y/noAutofocus: ô lọc là hành động chính của modal
             autoFocus
           />

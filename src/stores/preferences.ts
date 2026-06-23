@@ -15,6 +15,8 @@ export interface SidebarFavItem {
 export interface UserPreferences {
   portal?: {
     lastPageId?: string;
+    /** Lịch sử 12 trang gần đây nhất, trang mới nhất ở đầu */
+    recentPages?: string[];
   };
   /** Danh sách yêu thích sidebar — sync across browsers qua server. */
   sidebarFavorites?: SidebarFavItem[];

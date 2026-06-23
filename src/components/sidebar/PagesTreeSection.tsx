@@ -17,6 +17,8 @@ export function PagesTreeSection({
   pathname,
   open,
   onToggle,
+  showMenuTree,
+  onToggleMenuTree,
   onAdd,
   onAiAdd,
   onNavigate,
@@ -26,11 +28,14 @@ export function PagesTreeSection({
   onUnassignPage,
   onChangeNodePage,
   onManageMenu,
+  loading,
 }: {
   collapsed: boolean;
   pathname: string;
   open: boolean;
   onToggle: () => void;
+  showMenuTree: boolean;
+  onToggleMenuTree: () => void;
   onAdd?: () => void;
   onAiAdd?: () => void;
   onNavigate?: () => void;
@@ -44,6 +49,7 @@ export function PagesTreeSection({
   onChangeNodePage?: (node: NavNode) => void;
   /** Mở trang Quản lý menu (icon trên header). */
   onManageMenu?: () => void;
+  loading?: boolean;
 }) {
   const t = useT();
   // Trang đang xem suy ra từ route /pages/<id> hoặc /view/<id>.
@@ -108,6 +114,22 @@ export function PagesTreeSection({
             </button>
             {open && (
               <div className="flex items-center gap-0.5 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleMenuTree();
+                  }}
+                  className={cn(
+                    "w-5 h-5 rounded-sm flex items-center justify-center transition-colors",
+                    showMenuTree
+                      ? "text-muted hover:text-text hover:bg-hover/60"
+                      : "text-muted/30 hover:text-muted hover:bg-hover/40",
+                  )}
+                  title={showMenuTree ? "Ẩn cây menu" : "Hiện cây menu"}
+                >
+                  <I.Eye size={11} />
+                </button>
                 {navNodes.length > 0 && (
                   <>
                     <button
@@ -203,7 +225,8 @@ export function PagesTreeSection({
           )}
         </ul>
       ) : (
-        open && (
+        open &&
+        showMenuTree && (
           <MenuTree
             ref={menuTreeRef}
             nodes={navNodes}
@@ -215,6 +238,7 @@ export function PagesTreeSection({
             }}
             storageKey="sidebar"
             compact
+            loading={loading}
             onUnassign={onUnassignPage}
             onChangePage={onChangeNodePage}
           />

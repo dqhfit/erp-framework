@@ -54,4 +54,10 @@ describe("applyFieldFormat theo ngôn ngữ (useLocale)", () => {
     expect(applyFieldFormat(f, "2026-05-01")).toBe("01/05/2026");
     useLocale.setState({ lang: "vi" });
   });
+
+  it("trả về chuỗi rỗng khi giá trị là null, undefined hoặc rỗng", () => {
+    expect(applyFieldFormat(dateField, null)).toBe("");
+    expect(applyFieldFormat(dateField, undefined)).toBe("");
+    expect(applyFieldFormat(dateField, "")).toBe("");
+  });
 });

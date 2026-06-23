@@ -206,6 +206,14 @@ export const recordsRouter = router({
           data[f.name] = await nextSequence(ctx.db, ctx.user.companyId, entName, f);
         }
       }
+      const hasField = (name: string) => fields.some((f) => f.name === name);
+      const nowStr = new Date().toISOString();
+      if (hasField("create_by") && !data.create_by) {
+        data.create_by = ctx.user.name;
+      }
+      if (hasField("create_date") && !data.create_date) {
+        data.create_date = nowStr;
+      }
       const store = getRecordStore(ctx.db);
       await assertUnique(store, ctx.user.companyId, input.entityId, fields, data);
       const encrypted = encryptDataIn(fields, data);
@@ -293,6 +301,14 @@ export const recordsRouter = router({
       // Sequence không cho update — bỏ key sequence ra khỏi data.
       for (const f of fields) {
         if (f.type === "sequence") delete data[f.name];
+      }
+      const hasField = (name: string) => fields.some((f) => f.name === name);
+      const nowStr = new Date().toISOString();
+      if (hasField("update_by")) {
+        data.update_by = ctx.user.name;
+      }
+      if (hasField("update_date")) {
+        data.update_date = nowStr;
       }
       await assertUnique(store, ctx.user.companyId, rec.entityId, fields, data, input.recordId);
 

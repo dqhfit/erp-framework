@@ -25,7 +25,7 @@
    bake sẵn vào mọi WHERE (chống cross-tenant — bài học #17).
    ========================================================== */
 
-import { sql, type SQL } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 
 /** DB tối thiểu proc cần — khớp cấu trúc drizzle DB của server
  *  (postgres-js trả mảng row; node-postgres trả {rows}). */
@@ -98,10 +98,10 @@ export interface ProcTable {
   raw(field: string): SQL;
   /** SELECT các row khớp `where` (đã nằm trong scope), trả object keyed
    *  theo TÊN FIELD (cột typed map ngược + ext spread) + `_id` (uuid row).
-   *  orderBy/limit tuỳ chọn — orderBy compose từ t.text/num/ts ở caller. */
+   *  orderBy/limit/offset tuỳ chọn — orderBy compose từ t.text/num/ts ở caller. */
   listWhere(
     where: SQL,
-    opts?: { orderBy?: SQL; limit?: number },
+    opts?: { orderBy?: SQL; limit?: number; offset?: number },
   ): Promise<Array<Record<string, unknown>>>;
   /** INSERT 1 row — tách data theo mapping; trả id uuid của row mới. */
   insertRow(data: Record<string, unknown>, createdBy?: string | null): Promise<string>;
@@ -255,8 +255,9 @@ export async function procTable(
     async listWhere(where, opts = {}) {
       const orderSql = opts.orderBy ? sql` ORDER BY ${opts.orderBy}` : sql``;
       const limitSql = opts.limit ? sql` LIMIT ${opts.limit}` : sql``;
+      const offsetSql = opts.offset ? sql` OFFSET ${opts.offset}` : sql``;
       const res = await db.execute(
-        sql`SELECT * FROM ${tbl} WHERE ${scope} AND (${where})${orderSql}${limitSql}`,
+        sql`SELECT * FROM ${tbl} WHERE ${scope} AND (${where})${orderSql}${limitSql}${offsetSql}`,
       );
       return rows<Record<string, unknown>>(res).map((row) => {
         const data: Record<string, unknown> = {

@@ -67,7 +67,7 @@ function parseDateValue(value: unknown): Date {
  * Mặc định ngày/giờ/boolean đổi theo ngôn ngữ người dùng (useLocale).
  */
 export function applyFieldFormat(field: EntityField, value: unknown): string {
-  if (value == null) return "—";
+  if (value == null || value === "") return "";
   const fmt: FieldFormat = field.format ?? {};
   const type = field.type;
 

@@ -15,7 +15,7 @@ import type { PageStateLike } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
+import type { ActionConfig, ActionStepOpenWizard, WizardRelatedImage } from "@/types/page";
 
 const api = createApiDataSource("");
 
@@ -96,6 +96,68 @@ interface Props {
 
 /** Khoá form dùng chung cho mọi bước ở chế độ 1-entity (tránh field cùng tên
  *  ở 2 bước ghi đè nhau khi gộp). */
+function RelatedImagePanel({
+  config,
+  parentValue,
+}: {
+  config: WizardRelatedImage;
+  parentValue: string;
+}) {
+  const entities = useUserObjects((s) => s.entities);
+  const [image, setImage] = useState("");
+
+  useEffect(() => {
+    if (!parentValue) {
+      setImage("");
+      return;
+    }
+    const sourceEntity = entities.find(
+      (e) =>
+        (config.entity && e.id === config.entity) ||
+        (config.entityName && e.name.toLowerCase() === config.entityName.toLowerCase()),
+    );
+    if (!sourceEntity) {
+      setImage("");
+      return;
+    }
+    let alive = true;
+    api
+      .getRecords(sourceEntity.id, {
+        filters: { [config.linkField]: { op: "=", value: parentValue } },
+        limit: 1,
+      })
+      .then((res) => {
+        if (!alive) return;
+        const data = res.rows[0]?.data as Record<string, unknown> | undefined;
+        setImage(String(data?.[config.imageField] ?? ""));
+      })
+      .catch(() => {
+        if (alive) setImage("");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [config, entities, parentValue]);
+
+  const src = image.startsWith("wwwroot/") ? `/${image.slice(8)}` : image;
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1">{config.label ?? "Hình ảnh"}</label>
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          className="w-full h-48 object-contain rounded border border-border bg-panel-2"
+        />
+      ) : (
+        <div className="w-full h-48 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
+          Chưa có ảnh
+        </div>
+      )}
+    </div>
+  );
+}
+
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
@@ -124,6 +186,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset lỗi mỗi khi đổi bước, chỉ cần activeIdx
+  useEffect(() => {
+    setFieldErrors({});
+  }, [activeIdx]);
   const [collected, setCollected] = useState<Record<string, unknown>>({});
   // Dòng nhập của các bước lưới chi tiết (theo step.id).
   const [detailRows, setDetailRows] = useState<Record<string, Record<string, string>[]>>({});
@@ -146,7 +213,6 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       ]),
     ),
   ].join(",");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: bám lookupKey (chuỗi id) thay mảng object
   useEffect(() => {
     if (!lookupKey) return;
     let alive = true;
@@ -294,9 +360,21 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
-  const setField = (k: string, v: string) =>
+  const setField = (k: string, v: string) => {
     setForms((prev) => ({ ...prev, [formKey]: { ...(prev[formKey] ?? {}), [k]: v } }));
+    if (fieldErrors[k]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
+  };
   const isLast = activeIdx === wizardSteps.length - 1;
+  const relatedImageCfg = current.relatedImage;
+  const relatedParentValue = relatedImageCfg
+    ? String(form[relatedImageCfg.parentField] ?? "").trim()
+    : "";
 
   // ── Bước lưới chi tiết (master-detail) ──
   const detailCfg = current.detail;
@@ -325,18 +403,57 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
   const renderDetailCell = (f: EntityField, value: string, onChange: (v: string) => void) => {
     const lk = detailCfg?.fieldLookups?.[f.name];
+    if (readOnly) {
+      if (lk) {
+        const src = detailLookupData[lk.entity] ?? [];
+        const labels = lk.labelFields ?? [lk.valueField];
+        const selectedRec = src.find((r) => String(r[lk.valueField] ?? "") === String(value));
+        const displayVal = selectedRec
+          ? labels
+              .map((x) => selectedRec[x])
+              .filter((x) => x != null && String(x) !== "")
+              .join(" — ")
+          : String(value);
+        return (
+          <div className="px-2 py-1 text-sm text-fg truncate select-text">{displayVal || ""}</div>
+        );
+      }
+      if (f.type === "boolean" || f.type === "bool") {
+        return (
+          <input
+            type="checkbox"
+            className="accent-accent pointer-events-none"
+            checked={value === "true"}
+            readOnly
+          />
+        );
+      }
+      if (f.options && f.options.length > 0) {
+        return <div className="px-2 py-1 text-sm text-fg truncate select-text">{value || ""}</div>;
+      }
+      return <div className="px-2 py-1 text-sm text-fg truncate select-text">{value || ""}</div>;
+    }
+
     if (lk) {
       const src = detailLookupData[lk.entity] ?? [];
+      const refEnt = entities.find((e) => e.id === lk.entity);
       const labels = lk.labelFields ?? [lk.valueField];
+      const multiCol = labels.length >= 2;
       const opts = src.map((r) => {
         const val = String(r[lk.valueField] ?? "");
         const lbl = labels
           .map((x) => r[x])
           .filter((x) => x != null && String(x) !== "")
           .join(" — ");
-        return { value: val, label: lbl || val };
+        const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
+        return cells
+          ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
+          : { value: val, label: lbl || val };
       });
-      const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+      const headers = multiCol
+        ? labels.map((x) => refEnt?.fields.find((field) => field.name === x)?.label ?? x)
+        : undefined;
+      const srcLabel = refEnt?.name ?? "mục";
       return (
         <SearchableSelect
           className="w-full"
@@ -345,6 +462,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           options={opts}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
+          columnHeaders={headers}
         />
       );
     }
@@ -394,6 +512,23 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setBusy(true);
     setErr("");
     try {
+      // Ràng buộc bắt buộc (required) ở cấp độ step hiện tại
+      if (ent && !current.detail) {
+        const errors: Record<string, string> = {};
+        for (const f of visibleFields) {
+          if (f.required) {
+            const val = form[f.name];
+            if (val == null || String(val).trim() === "") {
+              errors[f.name] = `Trường "${f.label || f.name}" là bắt buộc nhập.`;
+            }
+          }
+        }
+        if (Object.keys(errors).length > 0) {
+          setFieldErrors(errors);
+          throw new Error("Vui lòng điền đầy đủ các trường bắt buộc.");
+        }
+      }
+
       // ── Chế độ DETAIL-ONLY: không entity cha; tạo/sửa NHIỀU dòng con (vd các
       //    bước quy trình) link tới recordId (vd màu đang chọn) qua linkField. ──
       const detailOnlySteps = !wizardEntityId ? wizardSteps.filter((s) => s.detail) : [];
@@ -452,8 +587,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           fieldOv,
         );
         const typeOf = (k: string) => mFields.find((f) => f.name === k)?.type;
+        const editableFieldNames = new Set(
+          wizardSteps.flatMap((wizardStep) =>
+            wizardStep.sections?.length
+              ? wizardStep.sections.flatMap((section) => section.fields)
+              : (wizardStep.fields ?? []),
+          ),
+        );
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(shared)) {
+          if (!editableFieldNames.has(k)) continue;
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
@@ -580,23 +723,173 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       );
   };
 
+  // Upload file đính kèm lên server → lưu URL vào form (thay base64).
+  const onPickFile = (name: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("File không được vượt quá 25MB");
+      return;
+    }
+    setImgUploading((u) => ({ ...u, [name]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    fetch("/upload/file", { method: "POST", body: fd })
+      .then(async (res) => {
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
+          throw new Error((e as { error?: string }).error ?? "Upload thất bại");
+        }
+        return res.json() as Promise<{ url: string }>;
+      })
+      .then(({ url }) => setField(name, url))
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() =>
+        setImgUploading((u) => {
+          const n = { ...u };
+          delete n[name];
+          return n;
+        }),
+      );
+  };
+
   // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
-  const renderControl = (f: EntityField) =>
-    current.fieldLookups?.[f.name] ? (
+  const renderControl = (f: EntityField) => {
+    if (readOnly) {
+      if (current.fieldLookups?.[f.name]) {
+        const lk = current.fieldLookups[f.name];
+        if (!lk) return null;
+        const src = detailLookupData[lk.entity] ?? [];
+        const labels = lk.labelFields ?? [lk.valueField];
+        const selectedRec = src.find(
+          (r) => String(r[lk.valueField] ?? "") === String(form[f.name] ?? ""),
+        );
+        const displayVal = selectedRec
+          ? labels
+              .map((x) => selectedRec[x])
+              .filter((x) => x != null && String(x) !== "")
+              .join(" — ")
+          : String(form[f.name] ?? "");
+        return (
+          <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+            {displayVal || ""}
+          </div>
+        );
+      }
+      if (
+        (f.type === "lookup" || f.type === "multi-lookup") &&
+        (f.ref || (f as { relationEntityId?: string }).relationEntityId)
+      ) {
+        return (
+          <LookupPicker
+            refEntityId={f.ref || (f as { relationEntityId?: string }).relationEntityId || ""}
+            value={form[f.name] ?? ""}
+            valueField={f.refValueField}
+            onChange={(v) => setField(f.name, v)}
+            multi={f.type === "multi-lookup"}
+            readOnly={readOnly}
+          />
+        );
+      }
+      if (f.type === "multiselect" && f.options?.length) {
+        const arr = (form[f.name] ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return (
+          <div className="flex flex-wrap gap-1.5 p-1 border border-border/40 rounded bg-panel-2/30 min-h-[30px] items-center">
+            {arr.map((opt) => (
+              <span key={opt} className="chip chip-accent text-xs">
+                {opt}
+              </span>
+            ))}
+          </div>
+        );
+      }
+      if (f.type === "select" && f.options?.length) {
+        const displayVal = String(form[f.name] ?? "");
+        return (
+          <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+            {displayVal || ""}
+          </div>
+        );
+      }
+      if (f.type === "boolean") {
+        return (
+          <label className="flex items-center gap-2 text-sm mt-0.5 pointer-events-none select-none">
+            <input
+              type="checkbox"
+              className="accent-accent"
+              checked={form[f.name] === "true"}
+              readOnly
+            />
+            <span>{f.label}</span>
+          </label>
+        );
+      }
+      if (f.type === "longtext") {
+        return (
+          <div className="w-full min-h-[72px] bg-panel-2/30 border border-border/40 rounded px-3 py-2 text-fg text-sm whitespace-pre-wrap select-text leading-relaxed">
+            {form[f.name] ? String(form[f.name]) : ""}
+          </div>
+        );
+      }
+      if (f.type === "file") {
+        const v = form[f.name] ? String(form[f.name]) : "";
+        if (!v) {
+          return (
+            <div className="w-full min-h-[30px] bg-panel-2/30 border border-border/40 rounded" />
+          );
+        }
+        const last = v.split("/").pop() ?? v;
+        const displayName = last.includes("__") ? last.slice(last.indexOf("__") + 2) : last;
+        return (
+          <div className="w-full min-h-[30px] flex items-center gap-2 px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-sm">
+            <span className="text-fg truncate min-w-0 flex-1">{displayName}</span>
+            {!String(v).startsWith("data:") && (
+              <a
+                href={v}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted hover:text-accent shrink-0 p-1 hover:bg-hover rounded"
+                title="Tải / mở file"
+              >
+                <I.Download size={14} />
+              </a>
+            )}
+          </div>
+        );
+      }
+      const displayVal = String(form[f.name] ?? "");
+      return (
+        <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
+          {displayVal || ""}
+        </div>
+      );
+    }
+
+    return current.fieldLookups?.[f.name] ? (
       (() => {
         const lk = current.fieldLookups?.[f.name];
         if (!lk) return null;
         const src = detailLookupData[lk.entity] ?? [];
+        const refEnt = entities.find((e) => e.id === lk.entity);
         const labels = lk.labelFields ?? [lk.valueField];
+        const multiCol = labels.length >= 2;
         const opts = src.map((r) => {
           const val = String(r[lk.valueField] ?? "");
           const lbl = labels
             .map((x) => r[x])
             .filter((x) => x != null && String(x) !== "")
             .join(" — ");
-          return { value: val, label: lbl || val };
+          const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
+          return cells
+            ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
+            : { value: val, label: lbl || val };
         });
-        const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+        const headers = multiCol
+          ? labels.map((x) => refEnt?.fields.find((field) => field.name === x)?.label ?? x)
+          : undefined;
+        const srcLabel = refEnt?.name ?? "mục";
         return (
           <SearchableSelect
             className="w-full"
@@ -614,13 +907,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             options={opts}
             emptyOption={`— chọn ${srcLabel} —`}
             searchPlaceholder={`Tìm ${srcLabel}…`}
+            columnHeaders={headers}
           />
         );
       })()
-    ) : (f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+    ) : (f.type === "lookup" || f.type === "multi-lookup") &&
+      (f.ref || (f as { relationEntityId?: string }).relationEntityId) ? (
       <LookupPicker
-        refEntityId={f.ref}
+        refEntityId={f.ref || (f as { relationEntityId?: string }).relationEntityId || ""}
         value={form[f.name] ?? ""}
+        valueField={f.refValueField}
         onChange={(v) => setField(f.name, v)}
         multi={f.type === "multi-lookup"}
       />
@@ -682,28 +978,36 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
           <span className="btn btn-default text-xs px-3 py-1.5 shrink-0 whitespace-nowrap">
-            Chọn file
+            {imgUploading[f.name] ? "Đang tải…" : "Chọn file"}
           </span>
           <span className="text-xs text-muted truncate min-w-0">
-            {form[f.name]
-              ? String(form[f.name]).startsWith("data:")
-                ? "File đã chọn"
-                : (String(form[f.name]).split("/").pop() ?? form[f.name])
-              : "Chưa chọn file"}
+            {(() => {
+              const v = form[f.name] ? String(form[f.name]) : "";
+              if (!v) return "Chưa chọn file";
+              if (v.startsWith("data:")) return "File đã chọn";
+              const last = v.split("/").pop() ?? v;
+              return last.includes("__") ? last.slice(last.indexOf("__") + 2) : last;
+            })()}
           </span>
           <input
             type="file"
             className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => setField(f.name, String(reader.result));
-              reader.readAsDataURL(file);
-            }}
+            disabled={!!imgUploading[f.name]}
+            onChange={(e) => onPickFile(f.name, e.target.files?.[0])}
           />
         </label>
-        {form[f.name] && (
+        {form[f.name] && !imgUploading[f.name] && !String(form[f.name]).startsWith("data:") && (
+          <a
+            href={String(form[f.name])}
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted hover:text-accent shrink-0"
+            title="Tải / mở file"
+          >
+            <I.Download size={14} />
+          </a>
+        )}
+        {form[f.name] && !imgUploading[f.name] && (
           <button
             type="button"
             className="text-muted hover:text-danger shrink-0"
@@ -730,10 +1034,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         placeholder={f.label}
       />
     );
+  };
 
   // Field ảnh tách sang cột phải (khung lớn); field khác ở cột trái.
-  const imgFields = visibleFields.filter((f) => f.type === "image");
-  const leftFields = visibleFields.filter((f) => f.type !== "image");
+  const imgFields = visibleFields.filter((f) => f.type === "image" || f.name === "hinhanh");
+  const leftFields = visibleFields.filter((f) => f.type !== "image" && f.name !== "hinhanh");
+  const hasImagePanel = imgFields.length > 0 || !!relatedImageCfg;
 
   return (
     <Modal
@@ -741,9 +1047,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       onClose={_onCancel}
       title={step.title || "Wizard"}
       width={
-        wizardSteps.some((s) => s.detail)
+        wizardSteps.some((s) => s.detail) || wizardSteps.some((s) => s.cols === 4)
           ? 920
-          : imgFields.length > 0 || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
+          : hasImagePanel || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
             ? 720
             : 540
       }
@@ -780,7 +1086,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
 
         {/* Nội dung bước */}
         <div
-          className={cn("space-y-3 min-h-[140px]", readOnly && "pointer-events-none opacity-95")}
+          className={cn(
+            "space-y-3",
+            current.cols === 4 ? "min-h-[490px]" : "min-h-[140px]",
+            readOnly && "opacity-95",
+          )}
         >
           {current.description && <p className="text-xs text-muted">{current.description}</p>}
           {loading ? (
@@ -889,7 +1199,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             visibleFields.length > 0 ? (
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
-                <div className={cn("min-w-0 w-full", imgFields.length > 0 ? "sm:flex-1" : "")}>
+                <div className={cn("min-w-0 w-full", hasImagePanel ? "sm:flex-1" : "")}>
                   {current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
@@ -905,27 +1215,44 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             </div>
                             <div
                               className={cn(
-                                (current.cols ?? 1) >= 2
-                                  ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
-                                  : "space-y-2.5",
+                                current.cols === 4
+                                  ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2.5"
+                                  : (current.cols ?? 1) >= 2
+                                    ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
+                                    : "space-y-2.5",
                               )}
                             >
                               {secFields.map((f) => (
                                 <div
                                   key={f.id}
-                                  className={
-                                    (current.cols ?? 1) >= 2 && f.type === "longtext"
+                                  className={(() => {
+                                    if (current.cols === 4) {
+                                      const span =
+                                        (f as any).colSpan ?? (f.type === "longtext" ? 4 : 2);
+                                      if (span === 4)
+                                        return "col-span-1 sm:col-span-2 md:col-span-4";
+                                      if (span === 3)
+                                        return "col-span-1 sm:col-span-2 md:col-span-3";
+                                      if (span === 2) return "col-span-1 sm:col-span-2";
+                                      return "col-span-1";
+                                    }
+                                    return (current.cols ?? 1) >= 2 && f.type === "longtext"
                                       ? "col-span-2"
-                                      : undefined
-                                  }
+                                      : undefined;
+                                  })()}
                                 >
                                   <label className="block text-xs font-medium mb-0.5">
                                     {f.label}
-                                    {f.required ? (
+                                    {!readOnly && f.required ? (
                                       <span className="text-danger ml-0.5">*</span>
                                     ) : null}
                                   </label>
                                   {renderControl(f)}
+                                  {!readOnly && fieldErrors[f.name] && (
+                                    <span className="text-[10px] font-medium text-danger mt-1 block">
+                                      {fieldErrors[f.name]}
+                                    </span>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -937,33 +1264,55 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     // Chế độ flat (mặc định)
                     <div
                       className={cn(
-                        (current.cols ?? 1) >= 2
-                          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
-                          : "space-y-2.5",
+                        current.cols === 4
+                          ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2.5"
+                          : (current.cols ?? 1) >= 2
+                            ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5"
+                            : "space-y-2.5",
                       )}
                     >
                       {leftFields.map((f) => (
                         <div
                           key={f.id}
-                          className={
-                            (current.cols ?? 1) >= 2 && f.type === "longtext"
+                          className={(() => {
+                            if (current.cols === 4) {
+                              const span = (f as any).colSpan ?? (f.type === "longtext" ? 4 : 2);
+                              if (span === 4) return "col-span-1 sm:col-span-2 md:col-span-4";
+                              if (span === 3) return "col-span-1 sm:col-span-2 md:col-span-3";
+                              if (span === 2) return "col-span-1 sm:col-span-2";
+                              return "col-span-1";
+                            }
+                            return (current.cols ?? 1) >= 2 && f.type === "longtext"
                               ? "col-span-2"
-                              : undefined
-                          }
+                              : undefined;
+                          })()}
                         >
                           <label className="block text-xs font-medium mb-0.5">
                             {f.label}
-                            {f.required ? <span className="text-danger ml-0.5">*</span> : null}
+                            {!readOnly && f.required ? (
+                              <span className="text-danger ml-0.5">*</span>
+                            ) : null}
                           </label>
                           {renderControl(f)}
+                          {!readOnly && fieldErrors[f.name] && (
+                            <span className="text-[10px] font-medium text-danger mt-1 block">
+                              {fieldErrors[f.name]}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 {/* Cột phải: khung ảnh + upload */}
-                {imgFields.length > 0 && (
+                {hasImagePanel && (
                   <div className="w-full sm:w-56 sm:shrink-0 space-y-3">
+                    {relatedImageCfg && (
+                      <RelatedImagePanel
+                        config={relatedImageCfg}
+                        parentValue={relatedParentValue}
+                      />
+                    )}
                     {imgFields.map((f) => (
                       <div key={f.id}>
                         <label className="block text-xs font-medium mb-1 flex items-center gap-1">
@@ -973,9 +1322,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                           )}
                         </label>
                         {form[f.name] ? (
-                          // biome-ignore lint/performance/noImgElement: preview ảnh URL/base64 trong modal
                           <img
-                            src={form[f.name]}
+                            src={
+                              String(form[f.name]).startsWith("wwwroot/")
+                                ? `/${String(form[f.name]).slice(8)}`
+                                : form[f.name]
+                            }
                             alt=""
                             className={cn(
                               "w-full h-48 object-contain rounded border border-border bg-panel-2",
@@ -991,7 +1343,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             )}
                           </div>
                         )}
-                        {!readOnly && (
+                        {!readOnly && f.name !== "hinhanh" && (
                           <div className="flex items-center gap-2 mt-1.5">
                             <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                               <span

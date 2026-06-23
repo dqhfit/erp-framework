@@ -14,9 +14,17 @@ BEGIN
 END;
 $$;
 
-DO $$ BEGIN
-  CREATE TRIGGER tg_nganhang_isdefault_unique
-    AFTER INSERT OR UPDATE ON tr_nganhang
-    FOR EACH ROW EXECUTE FUNCTION fn_nganhang_isdefault_unique();
-EXCEPTION WHEN duplicate_object THEN NULL;
+DO $$
+BEGIN
+  -- tr_nganhang là bảng HYBRID được materialize theo cấu hình tenant,
+  -- nên DB mới (CI/dev sạch) có thể chưa có bảng tại thời điểm migrate.
+  IF to_regclass('public.tr_nganhang') IS NOT NULL THEN
+    BEGIN
+      CREATE TRIGGER tg_nganhang_isdefault_unique
+        AFTER INSERT OR UPDATE ON tr_nganhang
+        FOR EACH ROW EXECUTE FUNCTION fn_nganhang_isdefault_unique();
+    EXCEPTION WHEN duplicate_object THEN
+      NULL;
+    END;
+  END IF;
 END $$;

@@ -162,13 +162,15 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
     const v = pageState.get(gateKey);
     enabled = !(v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0));
   }
-  // Sắp xếp server-side theo defaultSort → tải đúng dòng (vd mới nhất trước) khi
-  // tổng > limit, để dòng mới không bị rớt ngoài tập tải.
-  const ds = cfg.defaultSort as { field?: string; dir?: "asc" | "desc" } | undefined;
-  const sort = ds?.field
-    ? { field: ds.field, dir: ds.dir === "asc" ? ("asc" as const) : ("desc" as const) }
+  const q = cfg.q as string | undefined;
+  // Sắp xếp server-side: cfg.sort (tường minh) → cfg.defaultSort (mặc định thiết kế).
+  const rawSort = (cfg.sort ?? cfg.defaultSort) as
+    | { field?: string; dir?: "asc" | "desc" }
+    | undefined;
+  const sort = rawSort?.field
+    ? { field: rawSort.field, dir: rawSort.dir === "asc" ? ("asc" as const) : ("desc" as const) }
     : undefined;
-  return { limit, sort, filters, enabled };
+  return { limit, filters, enabled, q, sort };
 }
 
 /** Hook nhỏ — nạp record thật của một entity (số dòng + điều kiện cấu hình được).
@@ -178,6 +180,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const limit = opts?.limit ?? DEFAULT_ROW_LIMIT;
   const enabled = opts?.enabled !== false;
   const filters = opts?.filters;
+  const q = opts?.q;
   const sort = opts?.sort;
   // Khóa ổn định cho deps — tránh re-fetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
@@ -190,7 +193,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const refreshTag = entityId
     ? (pageState.get(`__refresh:${entityId}`) as number | undefined)
     : undefined;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey (chuỗi ổn định) thay cho object filters; refreshTag là tín hiệu reload thủ công
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
   useEffect(() => {
     if (!entityId || !enabled) {
       setRows([]);
@@ -201,7 +204,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
     setLoading(true);
     setErr("");
     api
-      .getRecords(entityId, { limit, filters, sort })
+      .getRecords(entityId, { limit, filters, q, sort })
       .then((res) => {
         if (alive) {
           // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
@@ -221,8 +224,8 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
     return () => {
       alive = false;
     };
-    // filtersKey/sortKey thay cho object để deps ổn định.
-  }, [entityId, refreshTag, limit, enabled, filtersKey, sortKey]);
+    // filtersKey/sortKey thay cho filters/sort object để deps ổn định.
+  }, [entityId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
   return { rows, loading, err };
 }
 
@@ -238,7 +241,10 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const limit = opts.limit ?? DEFAULT_ROW_LIMIT;
   const enabled = opts.enabled !== false;
   const filters = opts.filters;
+  const q = opts.q;
+  const sort = opts.sort;
   const filtersKey = filters ? JSON.stringify(filters) : "";
+  const sortKey = sort ? JSON.stringify(sort) : "";
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [fields, setFields] = useState<EntityField[]>([]);
   const [loading, setLoading] = useState<boolean>(!!dataSourceId && enabled);
@@ -250,7 +256,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const refreshTag = dataSourceId
     ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
     : undefined;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey (chuỗi ổn định) thay cho object filters; refreshTag là tín hiệu reload thủ công
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
   useEffect(() => {
     if (!dataSourceId || !enabled) {
       setRows([]);
@@ -261,7 +267,12 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     setLoading(true);
     setErr("");
     Promise.all([
-      api.getDataSourceRecords(dataSourceId, { limit, filters }),
+      api.getDataSourceRecords(dataSourceId, {
+        limit,
+        filters,
+        q,
+        sort: sort ? { key: sort.field, dir: sort.dir } : undefined,
+      }),
       api.getDataSourceMeta(dataSourceId),
     ])
       .then(([res, meta]) => {
@@ -290,7 +301,7 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     return () => {
       alive = false;
     };
-  }, [dataSourceId, refreshTag, limit, enabled, filtersKey]);
+  }, [dataSourceId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
 
   // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
   // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị

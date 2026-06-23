@@ -178,6 +178,14 @@ select option {
   border: 2px solid transparent;
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
 /* Canvas backgrounds */
 .canvas-grid {
   background-color: hsl(var(--bg));
@@ -496,6 +504,19 @@ textarea.input {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* MenuTree — smooth expand/collapse via grid-template-rows transition */
+.menu-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.15s ease;
+}
+.menu-collapse.open {
+  grid-template-rows: 1fr;
+}
+.menu-collapse > ul {
   overflow: hidden;
 }
 

@@ -28,7 +28,11 @@
     "e2e:full": "node tooling/e2e-full.mjs",
     "backup": "node tooling/backup.mjs",
     "restore": "node tooling/restore.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "codegraph": "codegraph sync",
+    "codegraph:init": "codegraph init",
+    "codegraph:status": "codegraph status",
+    "codegraph:query": "codegraph query"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -66,6 +70,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
+    "@colbymchenry/codegraph": "^1.0.1",
     "@playwright/test": "^1.48.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/router-vite-plugin": "^1.95.0",
