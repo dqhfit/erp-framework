@@ -95,7 +95,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
           onChange={(v) => pageState.set(stateKey, v)}
           options={labelOptions}
           placeholder={label || "Chọn…"}
-          emptyOption={label ? `${label}: tất cả` : "— tất cả —"}
+          emptyOption={item.emptyLabel ?? (label ? `${label}: tất cả` : "— tất cả —")}
           wrapOptions
         />
       </div>

@@ -165,7 +165,18 @@ export const scheduleInput = z.object({
   enabled: z.boolean().optional(),
 });
 
-export const filterOp = z.enum(["=", "!=", ">", ">=", "<", "<=", "contains", "in", "is-not-true"]);
+export const filterOp = z.enum([
+  "=",
+  "!=",
+  ">",
+  ">=",
+  "<",
+  "<=",
+  "contains",
+  "in",
+  "is-not-true",
+  "is-true",
+]);
 
 export const queryParams = z
   .object({
@@ -236,6 +247,9 @@ export function buildRecordWhere(
       case "is-not-true":
         // NULL-safe: NULL và 'false' đều khớp (khác với '!=' bỏ qua NULL)
         conds.push(sql`COALESCE(${txt}, 'false') <> 'true'`);
+        break;
+      case "is-true":
+        conds.push(sql`COALESCE(${txt}, 'false') = 'true'`);
         break;
     }
   }

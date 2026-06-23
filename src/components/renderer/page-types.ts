@@ -31,7 +31,17 @@ export interface PageStateCtx {
 }
 
 /* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
-export type LoadFilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in" | "is-not-true";
+export type LoadFilterOp =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "contains"
+  | "in"
+  | "is-not-true"
+  | "is-true";
 /** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
 export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 
@@ -194,6 +204,8 @@ export type FItemCfg = {
   dependsOn?: { fromState: string; field: string }[];
   /** Ẩn/hiện filter theo state: oneOf = chỉ hiện khi state nằm trong list; notOneOf = ẩn khi state nằm trong list. */
   visibleWhen?: { stateKey: string; oneOf?: string[]; notOneOf?: string[] };
+  /** Nhãn tùy chỉnh cho option "xoá chọn" (emptyOption) trong combobox. Mặc định "{label}: tất cả". */
+  emptyLabel?: string;
 };
 
 export type VisibleRule = {

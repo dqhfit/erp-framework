@@ -131,6 +131,18 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
       // chọn ở bộ lọc header). Rỗng → BỎ điều kiện này (kết hợp loadGate để
       // không tải gì cho tới khi chọn). Server-side filter → chỉ tải đúng tập.
       let value = cond.value;
+      let op = cond.op;
+      // Op ĐỘNG: opFromState + opMap → đổi op hoặc skip filter tùy giá trị state.
+      // Vd: selHoanthanh="" → is-not-true (default); "Đã HT" → is-true; "Tất cả" → skip.
+      const condEx = cond as Record<string, unknown>;
+      const opFromState = condEx.opFromState as string | undefined;
+      const opMap = condEx.opMap as Record<string, string> | undefined;
+      if (opFromState && opMap) {
+        const sv = (pageState.get(opFromState) as string) ?? "";
+        const mapped = opMap[sv];
+        if (mapped === "__skip__") continue;
+        if (mapped) op = mapped as LoadFilterOp;
+      }
       if (cond.fromState) {
         value = pageState.get(cond.fromState);
         if (
@@ -142,7 +154,7 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
           continue;
         }
       }
-      if (cond.op === "in" && typeof value === "string") {
+      if (op === "in" && typeof value === "string") {
         filters[field] = {
           op: "in",
           value: value
@@ -151,7 +163,7 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
             .filter(Boolean),
         };
       } else {
-        filters[field] = { op: cond.op, value };
+        filters[field] = { op, value };
       }
     }
     if (Object.keys(filters).length === 0) filters = undefined;

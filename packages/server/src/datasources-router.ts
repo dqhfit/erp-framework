@@ -17,7 +17,18 @@ import { createCallerFactory, rbacProcedure, router } from "./trpc";
 
 /* ─── Zod ─────────────────────────────────────────────────── */
 
-const filterOp = z.enum(["=", "!=", ">", ">=", "<", "<=", "contains", "in", "is-not-true"]);
+const filterOp = z.enum([
+  "=",
+  "!=",
+  ">",
+  ">=",
+  "<",
+  "<=",
+  "contains",
+  "in",
+  "is-not-true",
+  "is-true",
+]);
 
 const dsRelation = z.object({
   id: z.string().min(1),

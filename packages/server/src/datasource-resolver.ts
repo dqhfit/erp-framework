@@ -120,6 +120,8 @@ function matchOp(val: unknown, op: FilterOp, target: unknown): boolean {
     case "is-not-true":
       // NULL-safe: null/undefined/'false'/false đều khớp
       return val !== true && val !== "true";
+    case "is-true":
+      return val === true || val === "true";
     default:
       return true;
   }
