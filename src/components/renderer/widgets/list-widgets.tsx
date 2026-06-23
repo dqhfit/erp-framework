@@ -1353,15 +1353,25 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
     action.recordIdField != null ? row[action.recordIdField] : (row.id ?? row.ID ?? row._id);
   return {
     ...action,
-    steps: action.steps.map((s) =>
-      s.kind === "open-popup" ||
-      s.kind === "delete-record" ||
-      s.kind === "open-wizard" ||
-      s.kind === "update-fields" ||
-      s.kind === "update-record"
-        ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
-        : s,
-    ),
+    steps: action.steps.map((s) => {
+      if (
+        s.kind === "open-popup" ||
+        s.kind === "delete-record" ||
+        s.kind === "open-wizard" ||
+        s.kind === "update-fields" ||
+        s.kind === "update-record"
+      ) {
+        return { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      }
+      // invoke-module-proc: inject _id (UUID dòng) vào args để proc nhận biết record.
+      if (s.kind === "invoke-module-proc") {
+        return {
+          ...s,
+          args: { ...(s.args ?? {}), _id: { source: "const" as const, value: rowId } },
+        };
+      }
+      return s;
+    }),
   };
 }
 

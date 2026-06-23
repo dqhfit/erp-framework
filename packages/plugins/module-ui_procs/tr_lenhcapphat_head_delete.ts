@@ -3,11 +3,9 @@
      UPDATE tr_lenhcapphat      SET active = 0 WHERE LenhCapPhatID = @id
      UPDATE tr_lenhcapphat_head SET active = 0 WHERE LenhCapPhatID = @id
 
-   "Hủy lệnh cấp phát" KHÔNG xoá row — chỉ tắt cờ active trên CẢ dòng chi
-   tiết (tr_lenhcapphat) lẫn header (tr_lenhcapphat_head). Mọi nơi đọc LCP
-   live đều lọc active=1 (xem TR_LENHCAPPHAT_HEAD_GETBYACTIVE) nên row tắt
-   active biến mất khỏi danh sách. active là bit nguồn → field bool → set
-   false. Ghi qua procTable (guard mirror, đúng cột vật lý). */
+   "Hủy lệnh cấp phát" KHÔNG xoá row — soft-delete (deleted_at) cả dòng chi
+   tiết (tr_lenhcapphat) lẫn header (tr_lenhcapphat_head). Trước khi xoá kiểm
+   tra 3 điều kiện chặn: đã hoàn thành, đã duyệt, đã cấp phát vật tư. */
 import type { DB } from "@erp-framework/server/db";
 import { sql } from "drizzle-orm";
 import { procTable } from "../src/proc-table";
@@ -15,25 +13,52 @@ import { procTable } from "../src/proc-table";
 export async function trLenhcapphatHeadDelete(
   db: DB,
   companyId: string,
-  args: { lenh_cap_phat_id: string },
+  args: { lenh_cap_phat_id?: string; _id?: string },
 ): Promise<Array<{ updated: number; message: string }>> {
-  if (!args.lenh_cap_phat_id) throw new Error("Thiếu lenh_cap_phat_id");
+  if (!args.lenh_cap_phat_id && !args._id) throw new Error("Thiếu lenh_cap_phat_id hoặc _id");
 
-  // Bọc transaction: set active=false cho lines + head phải nguyên tử — lỗi
-  // giữa chừng (vd mirror-guard, mạng) → rollback, tránh head live nhưng lines
-  // đã tắt (trạng thái lệch). Pattern giống tr_xuatkho_capphat.
   return db.transaction(async (tx) => {
     const lines = await procTable(tx, companyId, "tr_lenhcapphat");
     const head = await procTable(tx, companyId, "tr_lenhcapphat_head");
 
-    const nLines = await lines.updateWhere(
-      { active: false },
-      sql`${lines.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
+    // Tìm header theo UUID (_id) hoặc business key (lenh_cap_phat_id).
+    const headRows = args._id
+      ? await head.listWhere(sql`id = ${args._id}::uuid`)
+      : await head.listWhere(sql`${head.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`);
+
+    if (headRows.length === 0) throw new Error("Không tìm thấy lệnh cấp phát.");
+
+    const h = headRows[0];
+    const lenhCapPhatId = h.lenhcapphatid as string;
+
+    // Guard 1: Đã hoàn thành — không cho xoá.
+    const hoanthanh = h.hoanthanh;
+    if (hoanthanh === true || hoanthanh === "true") {
+      throw new Error("LCP đã hoàn thành, không thể xoá.");
+    }
+
+    // Guard 2: Đã duyệt → đang trong luồng cấp phát — không cho xoá.
+    if (h.nguoiduyet) {
+      throw new Error("LCP đã được duyệt (đang cấp phát vật tư), không thể xoá.");
+    }
+
+    // Guard 3: Đã cấp phát vật tư thực tế (soluong_daphat > 0).
+    const detailRows = await lines.listWhere(
+      sql`${lines.text("lenhcapphatid")} = ${lenhCapPhatId}`,
     );
-    const nHead = await head.updateWhere(
-      { active: false },
-      sql`${head.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
+    const hasDispensed = detailRows.some((r) => {
+      const v = r.soluong_daphat;
+      return v != null && Number(v) > 0;
+    });
+    if (hasDispensed) {
+      throw new Error("Đã cấp phát vật tư, không thể xoá lệnh cấp phát.");
+    }
+
+    // Soft-delete cả lines lẫn head (deleted_at = now()).
+    const nLines = await lines.softDeleteWhere(
+      sql`${lines.text("lenhcapphatid")} = ${lenhCapPhatId}`,
     );
+    const nHead = await head.softDeleteWhere(sql`${head.text("lenhcapphatid")} = ${lenhCapPhatId}`);
 
     const updated = nLines + nHead;
     return [
