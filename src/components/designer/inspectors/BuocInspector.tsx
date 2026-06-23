@@ -3,10 +3,7 @@
    (Phase B4) — chỉ di chuyển code, KHÔNG đổi hành vi. */
 import type { Dispatch, SetStateAction } from "react";
 import { ActionBarInspector } from "@/components/designer/inspectors/inspector-helpers";
-import {
-  type ActionBarItem,
-  type PageComponent,
-} from "@/components/designer/page-designer-constants";
+import type { ActionBarItem, PageComponent } from "@/components/designer/page-designer-constants";
 import { fieldBoth } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { FormField, Input, Select } from "@/components/ui";

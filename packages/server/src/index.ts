@@ -2,8 +2,7 @@
    Cổng 8910 (tránh đụng bridge 8909). */
 import "./load-env"; // PHẢI đứng đầu — nạp .env trước khi db.ts đọc env
 import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { roleCan } from "@erp-framework/core";
 import { agents, apiKeys, entities, knowledgeSources, sessions } from "@erp-framework/db";
@@ -14,7 +13,7 @@ import multipart from "@fastify/multipart";
 import websocketPlugin from "@fastify/websocket";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { and, eq, sql } from "drizzle-orm";
-import Fastify from "fastify";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { canActOnAgentLite } from "./agent-acl";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import {
@@ -59,6 +58,7 @@ import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
+import { signFileUrl, verifyFileToken } from "./file-token";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 import { bootstrapTools, shutdownTools } from "./tools";
 
@@ -923,7 +923,7 @@ async function main(): Promise<void> {
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, filename), buf);
 
-    reply.send({ url: `/files/img/${active.companyId}/${filename}` });
+    reply.send({ url: signFileUrl(active.companyId, "img", filename) });
   });
 
   /* Upload file đính kèm cho field type="file" — lưu UPLOAD_DIR/doc/<companyId>/,
@@ -1003,8 +1003,71 @@ async function main(): Promise<void> {
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, filename), buf);
 
-    reply.send({ url: `/files/doc/${active.companyId}/${filename}`, name: safeName });
+    reply.send({ url: signFileUrl(active.companyId, "doc", filename), name: safeName });
   });
+
+  /* ── Signed file URL — /f/:token[/:displayname]
+     - /f/:token           → backward compat (URL cũ, ?name= hoặc không)
+     - /f/:token/:name     → URL mới, Chrome PDF viewer dùng :name làm tiêu đề
+     Token = base64url(JSON{c,t,f}) + "." + hmac-sha256.
+     Auth: HMAC-only — giống S3 presigned URL. */
+  const handleSignedFile = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { token } = req.params as { token: string };
+    const parsed = verifyFileToken(token);
+    if (!parsed) return reply.code(400).send({ error: "Token không hợp lệ" });
+
+    const { companyId, type, filename } = parsed;
+
+    const filePath = join(UPLOAD_DIR, type, companyId, filename);
+    try {
+      await stat(filePath);
+    } catch {
+      return reply.code(404).send({ error: "Không tìm thấy file" });
+    }
+
+    const ext = extname(filename).toLowerCase();
+    const INLINE_MIME: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+    const inlineMime = INLINE_MIME[ext];
+    const downloadName = filename.includes("__")
+      ? filename.slice(filename.indexOf("__") + 2)
+      : filename;
+    // CORS cho phép PDF.js viewer (view.dongquochung.com) fetch file trực tiếp từ browser.
+    // An toàn vì HMAC đã đảm bảo URL là server-generated — CORS không mở thêm lỗ hổng.
+    const pdfJsOrigin = (() => {
+      const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
+      try {
+        return new URL(base).origin;
+      } catch {
+        return base;
+      }
+    })();
+    reply.header("Access-Control-Allow-Origin", pdfJsOrigin);
+    reply.header("Access-Control-Allow-Methods", "GET");
+    reply.header(
+      "Access-Control-Expose-Headers",
+      "Content-Length, Content-Type, Content-Disposition",
+    );
+    reply.header("Content-Type", inlineMime ?? "application/octet-stream");
+    reply.header(
+      "Content-Disposition",
+      `${inlineMime ? "inline" : "attachment"}; filename="${encodeURIComponent(downloadName)}"`,
+    );
+    reply.header("Cache-Control", "private, max-age=300");
+    reply.header("X-Content-Type-Options", "nosniff");
+    if (!inlineMime) reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
+    const buf = await readFile(filePath);
+    reply.header("Content-Length", String(buf.length));
+    return reply.send(buf);
+  };
+  app.get("/f/:token", handleSignedFile);
+  app.get("/f/:token/:displayname", handleSignedFile);
 
   /* Serve ảnh entity — /files/img/:companyId/:file.
      Kiểm tra session + xác nhận user thuộc companyId (chống cross-tenant). */
@@ -1055,10 +1118,15 @@ async function main(): Promise<void> {
       return;
     }
     reply.header("Content-Type", mime);
-    reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    // Cache ngắn + revalidate (KHÔNG immutable) → tránh nhiễm cache 1 năm.
+    reply.header("Cache-Control", "private, max-age=300");
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
-    reply.send(createReadStream(filePath));
+    // Fastify 5 không stream Node.js Readable đúng cách → đọc vào Buffer.
+    // File upload giới hạn 25MB nên buffer trong memory là chấp nhận được.
+    const buf = await readFile(filePath);
+    reply.header("Content-Length", String(buf.length));
+    reply.send(buf);
   });
 
   /* Serve file đính kèm — /files/doc/:companyId/:file.
@@ -1116,10 +1184,21 @@ async function main(): Promise<void> {
       "Content-Disposition",
       `${inlineMime ? "inline" : "attachment"}; filename="${encodeURIComponent(downloadName)}"`,
     );
-    reply.header("Cache-Control", "private, max-age=31536000, immutable");
+    // Cache NGẮN + revalidate (KHÔNG immutable): tránh "nhiễm cache" 1 năm khi
+    // header đổi (vd CSP cũ). Giống route bản vẽ /banvesvc/file đang chạy tốt.
+    reply.header("Cache-Control", "private, max-age=300");
     reply.header("X-Content-Type-Options", "nosniff");
-    reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
-    reply.send(createReadStream(filePath));
+    // CSP: chỉ áp cho file TẢI-VỀ (octet-stream attachment, không render). PDF/ảnh
+    // serve INLINE phải KHÔNG có CSP — `sandbox`/`default-src 'none'` chặn Chrome
+    // PDF viewer khi nhúng iframe ("Failed to load PDF"). Inline đã an toàn nhờ
+    // whitelist type + nosniff + Content-Disposition (PDF script chạy trong sandbox
+    // viewer, không vào origin trang).
+    if (!inlineMime) reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
+    // Fastify 5 không stream Node.js Readable đúng cách → đọc vào Buffer.
+    // File upload giới hạn 25MB nên buffer trong memory là chấp nhận được.
+    const buf = await readFile(filePath);
+    reply.header("Content-Length", String(buf.length));
+    reply.send(buf);
   });
 
   /* ── Public share file endpoint (không cần login) ─────────────────────
@@ -1173,7 +1252,11 @@ async function main(): Promise<void> {
     reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self' blob:;");
     reply.header("X-File-Title", encodeURIComponent(source.title));
     reply.header("X-File-Kind", source.kind ?? "file");
-    reply.send(createReadStream(filePath));
+    // Fastify 5 không stream Node.js Readable đúng cách → đọc vào Buffer.
+    // File upload giới hạn 25MB nên buffer trong memory là chấp nhận được.
+    const buf = await readFile(filePath);
+    reply.header("Content-Length", String(buf.length));
+    reply.send(buf);
   });
 
   /* Endpoint JSON metadata (không cần login) cho trang share SPA. */
@@ -1261,7 +1344,11 @@ async function main(): Promise<void> {
       "Content-Disposition",
       `attachment; filename="${encodeURIComponent(source.title)}"`,
     );
-    reply.send(createReadStream(filePath));
+    // Fastify 5 không stream Node.js Readable đúng cách → đọc vào Buffer.
+    // File upload giới hạn 25MB nên buffer trong memory là chấp nhận được.
+    const buf = await readFile(filePath);
+    reply.header("Content-Length", String(buf.length));
+    reply.send(buf);
   });
 
   /* Callback từ OnlyOffice khi user save/đóng document.

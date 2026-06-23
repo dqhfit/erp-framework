@@ -17,6 +17,7 @@ import {
 import { DrawingPageCell } from "@/components/renderer/DrawingPageCell";
 import { fmtDateCell, fromDateInput, toDateInput } from "@/components/renderer/date-cell-utils";
 import { ExcelGrid } from "@/components/renderer/ExcelGrid";
+import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import {
   type CreateFormCfg,
@@ -57,6 +58,50 @@ import type { ActionConfig, FilterNode } from "@/types/page";
    date / datetime-local; lưu lại ISO (datetime) / YYYY-MM-DD (date) để
    validate-on-write chuẩn hoá. Chuỗi KHÔNG parse được → giữ nguyên (không vỡ). */
 
+/** Checkbox toggle ngay trên bảng — tự quản state cục bộ để flip tức thì
+ *  không cần reload cả danh sách. Sync lại khi initialChecked đổi (server refetch). */
+function BooleanCell({
+  initialChecked,
+  canWrite,
+  onSave,
+}: {
+  initialChecked: boolean;
+  canWrite: boolean;
+  onSave: (val: boolean) => Promise<void>;
+}) {
+  const [checked, setChecked] = useState(initialChecked);
+  const [saving, setSaving] = useState(false);
+  // Sync khi server refetch trả về giá trị mới.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cố ý chỉ sync theo initialChecked
+  useEffect(() => {
+    setChecked(initialChecked);
+  }, [initialChecked]);
+  return (
+    <span className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={!canWrite || saving}
+        onChange={async () => {
+          const next = !checked;
+          setChecked(next);
+          setSaving(true);
+          try {
+            await onSave(next);
+          } catch (err) {
+            setChecked(!next);
+            dialog.alert(String(err));
+          } finally {
+            setSaving(false);
+          }
+        }}
+        aria-label="Bật/tắt"
+        className="accent-accent w-3.5 h-3.5 cursor-pointer disabled:cursor-default disabled:opacity-60"
+      />
+    </span>
+  );
+}
+
 /** Ô sửa inline trong DataGrid: ảnh → <img>; date/datetime → format + picker;
  *  ref → lookup; còn lại text. Double-click ô có quyền ghi để sửa (Enter/blur
  *  lưu, Esc huỷ). Tự quản trạng thái edit cục bộ. */
@@ -91,20 +136,19 @@ function EditableCell({
   const isBoolean = fieldType === "boolean" || fieldType === "bool";
   const isNumber = fieldType === "number" || fieldType === "integer";
   const isLookup = fieldType === "lookup" || fieldType === "multi-lookup";
-  if (isImage && str.startsWith("data:image/")) {
-    return (
-      <img
-        src={str}
-        alt=""
-        className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
-        loading="lazy"
-      />
-    );
+  if (
+    isImage &&
+    (str.startsWith("data:image/") ||
+      str.startsWith("/files/img/") ||
+      str.startsWith("/f/") ||
+      /^https?:\/\//.test(str))
+  ) {
+    return <ImageCell url={str} className="h-6 max-w-[120px] object-contain mx-auto py-0.5" />;
   }
   // Bool: checkbox bấm thẳng (không cần double-click). stopPropagation để khỏi
   // chọn dòng. Chỉ ghi khi có quyền.
   if (isBoolean) {
-    const checked = value === true || str === "true" || str === "1";
+    const checked = value === true || str === "true" || str === "1" || str.toLowerCase() === "có";
     return (
       <span className="flex justify-center" onClick={(e) => e.stopPropagation()}>
         <input
@@ -649,15 +693,33 @@ function EditableListWidget({
         if (editableFields && !editableFields.includes(f.name)) {
           const rv = ctx.getValue();
           const rs = rv == null ? "" : String(rv);
-          if (f.type === "image" && rs.startsWith("data:image/"))
+          if (
+            f.type === "image" &&
+            (rs.startsWith("data:image/") ||
+              rs.startsWith("/files/img/") ||
+              rs.startsWith("/f/") ||
+              /^https?:\/\//.test(rs))
+          )
             return (
-              <img
-                src={rs}
-                alt=""
-                className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
-                loading="lazy"
-              />
+              <ImageCell url={rs} className="h-6 max-w-[120px] object-contain mx-auto py-0.5" />
             );
+          if (f.type === "file" && (rs.startsWith("/files/doc/") || rs.startsWith("/f/"))) {
+            return <FileCell url={rs} />;
+          }
+          if (f.type === "boolean" || f.type === "bool") {
+            const checked = rv === true || rs === "true" || rs === "1" || rs.toLowerCase() === "có";
+            return (
+              <span className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  readOnly
+                  aria-label="Trạng thái"
+                  className="accent-accent w-3.5 h-3.5 cursor-default opacity-80"
+                />
+              </span>
+            );
+          }
           const disp =
             f.type === "date" || f.type === "datetime"
               ? fmtDateCell(rs, f.type === "datetime")
@@ -1192,15 +1254,41 @@ export function ServerPagedListWidget({
           : (ctx) => {
               const v = ctx.getValue();
               const s = v == null ? "" : String(v);
-              if (f.type === "image" && s.startsWith("data:image/"))
+              if (
+                f.type === "image" &&
+                (s.startsWith("data:image/") ||
+                  s.startsWith("/files/img/") ||
+                  s.startsWith("/f/") ||
+                  /^https?:\/\//.test(s))
+              )
                 return (
-                  <img
-                    src={s}
-                    alt=""
-                    className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
-                    loading="lazy"
-                  />
+                  <ImageCell url={s} className="h-6 max-w-[120px] object-contain mx-auto py-0.5" />
                 );
+              if (f.type === "file" && (s.startsWith("/files/doc/") || s.startsWith("/f/"))) {
+                return <FileCell url={s} />;
+              }
+              if (f.type === "boolean" || f.type === "bool") {
+                const checked = v === true || s === "true" || s === "1" || s.toLowerCase() === "có";
+                const canWrite = fieldCan(rbacRole, "write", f, myGroupIds);
+                return (
+                  <span className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!canWrite}
+                      onChange={(e) =>
+                        saveRef.current(
+                          (ctx.row.original as { id?: unknown }).id,
+                          f.name,
+                          e.target.checked ? "true" : "false",
+                        )
+                      }
+                      aria-label="Bật/tắt"
+                      className="accent-accent w-3.5 h-3.5 cursor-pointer disabled:cursor-default disabled:opacity-60"
+                    />
+                  </span>
+                );
+              }
               const disp =
                 f.type === "date" || f.type === "datetime"
                   ? fmtDateCell(s, f.type === "datetime")
@@ -1525,6 +1613,8 @@ export function ListWidget({
 }) {
   const t = useT();
   const ent = useEntity(entityId);
+  const rbacRole = useRbac((s) => s.role);
+  const myGroupIds = useUserObjects((s) => s.myGroupIds);
   const [editModal, setEditModal] = useState<{ id: string; readOnly: boolean } | null>(null);
   const [detailModal, setDetailModal] = useState<{ value: unknown; editable: boolean } | null>(
     null,
@@ -1532,9 +1622,13 @@ export function ListWidget({
   const [createOpen, setCreateOpen] = useState(false);
   const pageState = usePageState();
   const effectiveSearchStateKey = searchStateKey || (stateKey ? `__search:${stateKey}` : undefined);
+  // searchFromState (explicit SearchWidget config) → server-side q refetch.
+  // effectiveSearchStateKey (DataGrid inline) → client-side globalFilter only,
+  // không feed vào q tránh search_tsv rỗng trả về 0 row.
   const effectiveSearchFromState = searchFromState || effectiveSearchStateKey;
-  const searchVal = effectiveSearchFromState
-    ? (pageState.get(effectiveSearchFromState) as string)
+  const serverSearchVal = searchFromState ? (pageState.get(searchFromState) as string) : undefined;
+  const clientSearchVal = effectiveSearchStateKey
+    ? ((pageState.get(effectiveSearchStateKey) as string) ?? "")
     : undefined;
 
   const {
@@ -1552,7 +1646,7 @@ export function ListWidget({
     rowLimit,
     loadFilters,
     loadGate,
-    q: searchVal,
+    q: serverSearchVal,
     sort: defaultSort,
   });
   // Các ref cho cell functions trong useMemo — đọc giá trị mới nhất mà không cần
@@ -1854,27 +1948,44 @@ export function ListWidget({
 
   const fieldColumns = visibleFields.map((f) => ({
     accessorKey: f.name,
-    // Header DQHF per-page (columnLabels) ưu tiên hơn label DataSource global.
     header: columnLabels?.[f.name] ?? f.label,
-    // Tên cột kỹ thuật hiện mono dưới nhãn ở header (DataGrid đọc meta.techName).
-    // Tổng (Σ) chỉ cho cột SỐ theo kiểu field — cột chữ (vd Hiệu ứng) lỡ chứa
-    // số cũng KHÔNG bị auto cộng (noSummary).
     meta: {
       techName: f.name,
       ...(f.type === "number" || f.type === "integer" || f.type === "currency"
         ? { summary: "sum" as const }
         : { noSummary: true }),
     },
-    cell: (c: { getValue: () => unknown }) => {
+    cell: (c: { getValue: () => unknown; row: { original: Record<string, unknown> } }) => {
       const raw = c.getValue();
-      // Map value→label per-page (vd Phân loại: TRONG → "Màu trong").
       const vmap = valueLabels?.[f.name];
       if (vmap && raw != null && vmap[String(raw)] != null) return vmap[String(raw)];
-      // Field ảnh: render thumbnail nếu là data:image hoặc URL http(s).
       const s = raw == null ? "" : String(raw);
-      if (f.type === "image" && (s.startsWith("data:image/") || /^https?:\/\//.test(s))) {
+      if (
+        f.type === "image" &&
+        (s.startsWith("data:image/") ||
+          s.startsWith("/files/img/") ||
+          s.startsWith("/f/") ||
+          /^https?:\/\//.test(s))
+      ) {
+        return <ImageCell url={s} className="h-7 max-w-[90px] object-contain mx-auto" />;
+      }
+      if (f.type === "file" && (s.startsWith("/files/doc/") || s.startsWith("/f/"))) {
+        return <FileCell url={s} />;
+      }
+      if (f.type === "boolean" || f.type === "bool") {
+        const initialChecked =
+          raw === true || s === "true" || s === "1" || s.toLowerCase() === "có";
+        const rowId = c.row.original.id;
         return (
-          <img src={s} alt="" className="h-7 max-w-[90px] object-contain mx-auto" loading="lazy" />
+          <BooleanCell
+            initialChecked={initialChecked}
+            canWrite={fieldCan(rbacRole, "write", f, myGroupIds)}
+            onSave={async (val) => {
+              if (!rowId) return;
+              if (isDataSource) await dataUpdate(String(rowId), { [f.name]: String(val) });
+              else await api.updateRecord(String(rowId), { [f.name]: String(val) });
+            }}
+          />
         );
       }
       return applyFieldFormat(f, raw);
@@ -1994,7 +2105,34 @@ export function ListWidget({
         ]
       : [];
 
-  const columns = [...editFormCol, ...rowActionCol, ...actionCol, ...checkboxCol, ...fieldColumns];
+  // Cột ẩn cho sort hệ thống (không hiện ra UI) — cho phép defaultSort theo created_at/updated_at.
+  const systemHiddenCols: ColumnDef<Record<string, unknown>>[] = [
+    {
+      id: "created_at",
+      accessorKey: "created_at",
+      enableHiding: false,
+      size: 0,
+      header: () => null,
+      cell: () => null,
+    },
+    {
+      id: "updated_at",
+      accessorKey: "updated_at",
+      enableHiding: false,
+      size: 0,
+      header: () => null,
+      cell: () => null,
+    },
+  ];
+
+  const columns = [
+    ...editFormCol,
+    ...rowActionCol,
+    ...actionCol,
+    ...checkboxCol,
+    ...fieldColumns,
+    ...systemHiddenCols,
+  ];
 
   // Hàm lưu 1 record (dùng cho editable và excelMode). Datasource → ghi qua
   // resolver (base field về record gốc), entity → records.update trực tiếp.
@@ -2084,8 +2222,10 @@ export function ListWidget({
   // ── Chế độ mặc định (read-only) ─────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
-      {(createForm || (embeddedActions && embeddedActions.length > 0)) && (
-        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
+      {(createForm ||
+        (embeddedActions && embeddedActions.length > 0) ||
+        (_embeddedFilters && _embeddedFilters.length > 0)) && (
+        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 shrink-0 overflow-x-auto">
           {createForm && (
             <Button
               variant="primary"
@@ -2098,13 +2238,30 @@ export function ListWidget({
           {embeddedActions?.map((item) => (
             <ActionWidget key={item.id} config={item} pageState={pageState} inline />
           ))}
-        </div>
-      )}
-      {loading && (
-        <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
-          <I.Table size={11} />
-          {title ?? ent?.name ?? "List"}
-          <span className="ml-auto">{t("widget.loading")}</span>
+          {_embeddedFilters?.map((ef) => {
+            const opts = (ef.options ?? "")
+              .split(",")
+              .map((o) => o.trim())
+              .filter(Boolean);
+            const cur = (pageState.get(ef.stateKey) as string) ?? "";
+            return (
+              <label key={ef.stateKey} className="flex items-center gap-1 text-xs text-muted">
+                {ef.label && <span className="shrink-0">{ef.label}:</span>}
+                <select
+                  value={cur}
+                  onChange={(e) => pageState.set(ef.stateKey, e.target.value)}
+                  className="input text-xs py-0.5 px-1.5 h-auto min-w-[100px]"
+                >
+                  <option value="">Tất cả</option>
+                  {opts.map((o) => (
+                    <option key={o} value={o}>
+                      {ef.optionLabels?.[o] ?? o}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
         </div>
       )}
       <div className="flex-1 min-h-0 overflow-auto">
@@ -2112,7 +2269,7 @@ export function ListWidget({
           <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
         ) : (
           <DataGrid
-            toolbar={!loading}
+            toolbar
             label={title ?? ent?.name ?? "List"}
             data={filteredRows}
             columns={columns}
@@ -2122,11 +2279,7 @@ export function ListWidget({
             stateKey={stateKey}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
-            globalFilter={
-              effectiveSearchStateKey
-                ? ((pageState.get(effectiveSearchStateKey) as string) ?? "")
-                : undefined
-            }
+            globalFilter={clientSearchVal}
             onGlobalFilterChange={
               effectiveSearchStateKey
                 ? (v: string) => pageState.set(effectiveSearchStateKey, v)

@@ -210,7 +210,7 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
           // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
           // cũ kiểu integer ở entity mirror) đè lên → recordId sai (Invalid
           // UUID) khi select/sửa/xóa. Khớp đường datasource (useDataSourceRecords).
-          setRows(res.rows.map((r) => ({ ...r.data, id: r.id })));
+          setRows(res.rows.map((r) => ({ ...r.data, id: r.id, created_at: r.createdAt })));
           setLoading(false);
         }
       })

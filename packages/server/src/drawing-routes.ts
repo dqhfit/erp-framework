@@ -798,4 +798,78 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       .header("x-content-type-options", "nosniff");
     return reply.send(createReadStream(real));
   });
+
+  // ── Danh sách chi tiết đóng gói theo masp (tr_dinhmuc_donggoi) ──
+  //    Dùng cho trang desktop "Bản vẽ đóng gói": cột trái hiển thị chi tiết SP.
+  //    Trả thêm mausac (từ tr_sanpham) và thông tin sản phẩm.
+  app.get("/banvesvc/donggoi-chitiet", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const masp = ((req.query ?? {}) as { masp?: string }).masp?.trim() ?? "";
+    if (!masp) return reply.send({ masp, mausac: null, tensp: null, rows: [] });
+
+    const cid = auth.companyId;
+    const [dgId, spId] = await Promise.all([
+      entityIdByName(db, cid, "tr_dinhmuc_donggoi"),
+      entityIdByName(db, cid, "tr_sanpham"),
+    ]);
+
+    // Lấy mausac + tensp từ tr_sanpham
+    let mausac: string | null = null;
+    let tensp: string | null = null;
+    if (spId) {
+      const sp = await listByMasp(db, cid, spId, masp, 1);
+      mausac = (sp[0]?.data.mausac as string | null) ?? null;
+      tensp = (sp[0]?.data.tensp as string | null) ?? null;
+    }
+
+    if (!dgId) return reply.send({ masp, mausac, tensp, rows: [] });
+
+    const out = await listByMasp(db, cid, dgId, masp, 500);
+    const rows = out.map((r) => ({
+      stt: r.data.stt ?? null,
+      ccode: r.data.ccode ?? null,
+      chitiet: r.data.chitiet ?? null,
+      quycach: r.data.quycach ?? null,
+      soluong: r.data.soluong ?? null,
+      dvt: r.data.dvt ?? null,
+      ghichu: r.data.ghichu ?? null,
+      nhom: r.data.nhom ?? null,
+    }));
+    return reply.send({ masp, mausac, tensp, rows });
+  });
+
+  // ── Danh sách sản phẩm có bản vẽ đóng gói theo hệ hàng ──
+  //    Dùng cho trang desktop: filter hệ hàng → chọn SP → xem chi tiết + PDF tr2.
+  app.get("/banvesvc/donggoi-sanpham", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const hehang = ((req.query ?? {}) as { hehang?: string }).hehang?.trim() ?? "";
+    const cid = auth.companyId;
+
+    // Lấy danh sách masp có bản vẽ đóng gói (phanloai = 'Bản vẽ đóng gói', active)
+    // JOIN với tr_sanpham lấy tensp + hehang.
+    const rows = (await db.execute(
+      sql`SELECT DISTINCT b.f_masp AS masp, max(b.f_tensp) AS tensp,
+                 max(b.f_hehang) AS hehang, max(b.id::text) AS banve_id,
+                 max(b.f_filepath) AS filepath
+          FROM tr_banve b
+          WHERE b.company_id = ${cid}::uuid AND b.deleted_at IS NULL
+            AND b.f_phanloai = 'Bản vẽ đóng gói'
+            AND (b.f_active IS DISTINCT FROM FALSE)
+            AND (${hehang} = '' OR b.f_hehang = ${hehang})
+          GROUP BY b.f_masp
+          ORDER BY b.f_masp LIMIT 500`,
+    )) as unknown as Array<Record<string, unknown>>;
+
+    return reply.send({
+      rows: rows.map((r) => ({
+        masp: String(r.masp ?? ""),
+        tensp: r.tensp ?? null,
+        hehang: r.hehang ?? null,
+        banve_id: r.banve_id ?? null,
+        filepath: r.filepath ?? null,
+      })),
+    });
+  });
 }

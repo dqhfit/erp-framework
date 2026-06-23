@@ -139,7 +139,10 @@ export function DataGrid<T>({
   const [grouping, setGrouping] = useState<GroupingState>(defaultGrouping ?? []);
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [filterRowOpen, setFilterRowOpen] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    created_at: false,
+    updated_at: false,
+  });
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   const [dragColId, setDragColId] = useState<string | null>(null);
@@ -199,6 +202,7 @@ export function DataGrid<T>({
   // Restore (mount) + debounce-save trạng thái lưới xuống IDB theo stateKey.
   useGridPersistence({
     stateKey,
+    defaultSort,
     state: {
       sorting,
       globalFilter,
