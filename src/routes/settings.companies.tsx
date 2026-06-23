@@ -1,16 +1,15 @@
 import { type CompanyRole, createCompaniesClient } from "@erp-framework/client";
 /* ==========================================================
-   settings.companies — Quản lý đa công ty:
-   - Công ty đang làm việc + đổi tên (admin)
-   - Danh sách công ty của bạn + chuyển công ty + tạo mới
-   - Thành viên công ty: thêm / đổi vai trò / gỡ (admin)
+   settings.companies — Quản lý đa công ty.
+   Layout: compact header + 3 tabs (Tổng quan / Thành viên / Link mời).
    ========================================================== */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Card, Chip, Input, Select } from "@/components/ui";
+import { Button, Chip, Input, Select } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
+import { cn } from "@/lib/utils";
 
 const companies = createCompaniesClient("");
 
@@ -27,11 +26,8 @@ interface Member {
   name: string;
   role: string;
   joinedAt: string | Date;
-  /** true = user được tạo nhưng chưa accept invite (password trống). */
   pending?: boolean;
-  /** false = đăng ký qua invite link, chờ admin phê duyệt. */
   approved?: boolean;
-  /** true = admin đã vô hiệu hoá tài khoản này. */
   disabled?: boolean;
 }
 interface GenericLink {
@@ -45,6 +41,30 @@ interface GenericLink {
 
 const ROLES: CompanyRole[] = ["admin", "editor", "viewer"];
 
+/* ── Helpers ─────────────────────────────────────────────── */
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const cls =
+    role === "admin"
+      ? "bg-accent/15 text-accent"
+      : role === "editor"
+        ? "bg-warning/15 text-warning"
+        : "bg-bg-soft text-muted";
+  return (
+    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", cls)}>
+      {role}
+    </span>
+  );
+}
+
+/* ── Main component ───────────────────────────────────────── */
 function CompaniesSettings() {
   const [list, setList] = useState<CompanyItem[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -54,31 +74,30 @@ function CompaniesSettings() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
+  const [tab, setTab] = useState<"overview" | "members" | "links">("overview");
+
   // form tạo công ty
   const [newName, setNewName] = useState("");
   // form thêm thành viên
   const [mEmail, setMEmail] = useState("");
   const [mName, setMName] = useState("");
   const [mRole, setMRole] = useState<CompanyRole>("viewer");
-  /** Link invite vừa sinh — hiện modal "Copy link" sau khi addMember. */
-  const [inviteLink, setInviteLink] = useState<string>("");
-  const [inviteEmail, setInviteEmail] = useState<string>("");
-  /** Generic invite links */
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  // generic links
   const [genericLinks, setGenericLinks] = useState<GenericLink[]>([]);
   const [genericRole, setGenericRole] = useState<CompanyRole>("viewer");
-  const [newGenericLink, setNewGenericLink] = useState<string>("");
-  /** Reset password: user đang được đặt lại mật khẩu. */
+  const [newGenericLink, setNewGenericLink] = useState("");
+  // reset password
   const [resetTarget, setResetTarget] = useState<{ userId: string; email: string } | null>(null);
   const [resetPwd, setResetPwd] = useState("");
 
   const t = useT();
-
   const ROLE_LABEL: Record<string, string> = {
     admin: t("settings.companies.role_admin"),
     editor: t("settings.companies.role_editor"),
     viewer: t("settings.companies.role_viewer"),
   };
-
   const isAdmin = myRole === "admin";
 
   const reload = async () => {
@@ -91,7 +110,7 @@ function CompaniesSettings() {
       try {
         setMembers((await companies.members()) as Member[]);
       } catch {
-        setMembers([]); // viewer có thể không xem được — bỏ qua
+        setMembers([]);
       }
       try {
         setGenericLinks((await companies.listInviteLinks()) as GenericLink[]);
@@ -103,7 +122,7 @@ function CompaniesSettings() {
     }
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: closure ổn định mount-only
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
   useEffect(() => {
     void reload();
   }, []);
@@ -134,366 +153,503 @@ function CompaniesSettings() {
     }
   };
 
+  const active = list.find((c) => c.isActive);
+
+  /* ── Render ── */
   return (
-    <div className="overflow-y-auto h-full">
-      <div className="max-w-[820px] mx-auto p-3 sm:p-5">
-        <h1 className="text-sm font-semibold mb-1">{t("settings.companies.title")}</h1>
-        <div className="text-sm text-muted mb-3">{t("settings.companies.subtitle")}</div>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* ── Compact header + tabs ── */}
+      <div className="border-b border-border shrink-0">
+        <div className="px-4 py-2 flex items-center gap-2">
+          <span className="text-xs font-semibold">{t("settings.companies.title")}</span>
+          {active && (
+            <>
+              <span className="text-muted/40">·</span>
+              <span className="text-xs text-muted truncate">{active.name}</span>
+            </>
+          )}
+          <RoleBadge role={myRole} />
+        </div>
+        <div className="flex px-2">
+          {(
+            [
+              { key: "overview", label: "Tổng quan" },
+              { key: "members", label: `Thành viên (${members.length})` },
+              { key: "links", label: "Link mời" },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "px-3 py-1.5 text-[11px] border-b-2 -mb-px transition-colors",
+                tab === key
+                  ? "border-accent text-accent font-medium"
+                  : "border-transparent text-muted hover:text-text",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* === Công ty hiện tại === */}
-        <Card className="mb-4 space-y-3">
-          <div className="font-semibold">{t("settings.companies.current_company")}</div>
-          <div className="flex items-center gap-2">
-            <Input
-              value={currentName}
-              disabled={!isAdmin || busy}
-              onChange={(e) => setCurrentName(e.target.value)}
-              className="flex-1"
-            />
-            {isAdmin && (
-              <Button
-                variant="primary"
-                icon={<I.Save size={14} />}
-                disabled={busy || !currentName.trim()}
-                onClick={() =>
-                  void run(
-                    () => companies.rename(currentName.trim()).then(() => {}),
-                    t("settings.companies.renamed_ok"),
-                  )
-                }
-              >
-                {t("settings.companies.rename_btn")}
-              </Button>
-            )}
-          </div>
-          <div className="text-xs text-muted">
-            {t("settings.companies.your_role")} <Chip>{ROLE_LABEL[myRole] ?? myRole}</Chip>
-          </div>
-        </Card>
-
-        {/* === Danh sách công ty === */}
-        <Card className="mb-4 space-y-3">
-          <div className="font-semibold">{t("settings.companies.my_companies")}</div>
-          <div className="space-y-1.5">
-            {list.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 p-2 rounded-md border border-border"
-              >
-                <I.Briefcase size={15} className="text-muted shrink-0" />
-                <span className="flex-1 truncate">{c.name}</span>
-                <Chip>{ROLE_LABEL[c.role] ?? c.role}</Chip>
-                {c.isActive ? (
-                  <Chip variant="success">{t("settings.companies.active_chip")}</Chip>
-                ) : (
-                  <Button size="sm" disabled={busy} onClick={() => void doSwitch(c.id)}>
-                    {t("settings.companies.switch_btn")}
+      {/* ── Tab content ── */}
+      <div className="flex-1 overflow-y-auto">
+        {/* ════ Tab: Tổng quan ════ */}
+        {tab === "overview" && (
+          <div className="max-w-lg px-5 py-4 space-y-5">
+            {/* Công ty hiện tại */}
+            <section>
+              <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider mb-2">
+                Công ty đang làm việc
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={currentName}
+                  disabled={!isAdmin || busy}
+                  onChange={(e) => setCurrentName(e.target.value)}
+                  className="flex-1 text-sm"
+                />
+                {isAdmin && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<I.Save size={13} />}
+                    disabled={busy || !currentName.trim()}
+                    onClick={() =>
+                      void run(
+                        () => companies.rename(currentName.trim()).then(() => {}),
+                        t("settings.companies.renamed_ok"),
+                      )
+                    }
+                  >
+                    {t("settings.companies.rename_btn")}
                   </Button>
                 )}
               </div>
-            ))}
-            {list.length === 0 && (
-              <div className="text-sm text-muted">{t("settings.companies.no_company")}</div>
-            )}
-          </div>
-          <div className="border-t border-border pt-3 flex items-center gap-2">
-            <Input
-              placeholder={t("settings.companies.new_company_placeholder")}
-              value={newName}
-              disabled={busy}
-              onChange={(e) => setNewName(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              variant="primary"
-              icon={<I.Plus size={14} />}
-              disabled={busy || !newName.trim()}
-              onClick={() =>
-                void run(async () => {
-                  await companies.create(newName.trim());
-                  setNewName("");
-                }, t("settings.companies.create_ok"))
-              }
-            >
-              {t("settings.companies.create_btn")}
-            </Button>
-          </div>
-          <div className="text-xs text-muted">{t("settings.companies.admin_hint")}</div>
-        </Card>
+            </section>
 
-        {/* === Thành viên === */}
-        <Card className="space-y-3">
-          <div className="font-semibold">{t("settings.companies.members_title")}</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-muted text-xs uppercase tracking-wide">
-                  <th className="text-left py-2 pr-3 font-semibold">
-                    {t("settings.companies.col_user")}
-                  </th>
-                  <th className="text-left py-2 px-2 font-semibold">
-                    {t("settings.companies.col_role")}
-                  </th>
-                  <th className="py-2 pl-2 font-semibold text-right">
-                    {t("settings.companies.col_actions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((m) => (
-                  <tr key={m.userId} className="border-t border-border">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium flex items-center gap-1.5">
-                        {m.name}
-                        {m.pending && (
-                          <Chip variant="warning" className="h-[16px]! text-[10px]!">
-                            {t("settings.companies.pending_chip")}
-                          </Chip>
-                        )}
-                        {!m.pending && m.approved === false && (
-                          <Chip variant="danger" className="h-[16px]! text-[10px]!">
-                            {t("settings.companies.pending_approval_chip")}
-                          </Chip>
-                        )}
-                        {m.disabled && (
-                          <Chip variant="danger" className="h-[16px]! text-[10px]!">
-                            {t("settings.companies.disabled_chip")}
-                          </Chip>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted">{m.email}</div>
-                    </td>
-                    <td className="py-2 px-2">
-                      {isAdmin ? (
-                        <Select
-                          value={m.role}
+            {/* Danh sách công ty */}
+            <section>
+              <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider mb-2">
+                Công ty của bạn
+              </div>
+              <div className="rounded-md border border-border divide-y divide-border overflow-hidden">
+                {list.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2.5 px-3 py-2">
+                    <div className="w-6 h-6 rounded bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold shrink-0">
+                      {c.name[0]?.toUpperCase()}
+                    </div>
+                    <span className="flex-1 text-sm truncate">{c.name}</span>
+                    <RoleBadge role={c.role} />
+                    {c.isActive ? (
+                      <span className="text-[10px] text-success font-medium shrink-0">
+                        ● Đang dùng
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void doSwitch(c.id)}
+                        className="text-[11px] text-accent hover:underline shrink-0 disabled:opacity-50"
+                      >
+                        Chuyển
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {list.length === 0 && (
+                  <div className="px-3 py-3 text-xs text-muted/60">
+                    {t("settings.companies.no_company")}
+                  </div>
+                )}
+              </div>
+
+              {/* Tạo công ty mới */}
+              <div className="mt-2 flex gap-2">
+                <Input
+                  placeholder={t("settings.companies.new_company_placeholder")}
+                  value={newName}
+                  disabled={busy}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="flex-1 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newName.trim())
+                      void run(async () => {
+                        await companies.create(newName.trim());
+                        setNewName("");
+                      }, t("settings.companies.create_ok"));
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<I.Plus size={13} />}
+                  disabled={busy || !newName.trim()}
+                  onClick={() =>
+                    void run(async () => {
+                      await companies.create(newName.trim());
+                      setNewName("");
+                    }, t("settings.companies.create_ok"))
+                  }
+                >
+                  {t("settings.companies.create_btn")}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted/60 mt-1">{t("settings.companies.admin_hint")}</p>
+            </section>
+          </div>
+        )}
+
+        {/* ════ Tab: Thành viên ════ */}
+        {tab === "members" && (
+          <div className="flex flex-col">
+            {/* Member rows */}
+            <div className="divide-y divide-border">
+              {members.map((m) => (
+                <div
+                  key={m.userId}
+                  className="group flex items-center gap-3 px-4 py-2 hover:bg-hover/30 transition-colors"
+                >
+                  {/* Avatar */}
+                  <div className="w-7 h-7 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[11px] font-semibold shrink-0">
+                    {initials(m.name || m.email)}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium truncate">{m.name || m.email}</span>
+                      {m.pending && (
+                        <span className="text-[10px] px-1 rounded bg-warning/15 text-warning">
+                          chờ kích hoạt
+                        </span>
+                      )}
+                      {!m.pending && m.approved === false && (
+                        <span className="text-[10px] px-1 rounded bg-danger/15 text-danger">
+                          chờ duyệt
+                        </span>
+                      )}
+                      {m.disabled && (
+                        <span className="text-[10px] px-1 rounded bg-danger/15 text-danger">
+                          đã vô hiệu
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted truncate">{m.email}</div>
+                  </div>
+
+                  {/* Role */}
+                  <div className="shrink-0">
+                    {isAdmin ? (
+                      <Select
+                        value={m.role}
+                        disabled={busy}
+                        onChange={(e) =>
+                          void run(
+                            () =>
+                              companies
+                                .setMemberRole(m.userId, e.target.value as CompanyRole)
+                                .then(() => {}),
+                            t("settings.companies.role_changed_ok"),
+                          )
+                        }
+                        className="text-xs py-0.5 h-auto"
+                      >
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <RoleBadge role={m.role} />
+                    )}
+                  </div>
+
+                  {/* Actions — hover */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {isAdmin && m.pending && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title="Gửi lại link kích hoạt"
+                        onClick={() =>
+                          void run(async () => {
+                            const r = await companies.resendInvite(m.userId);
+                            const full = window.location.origin + r.inviteLink;
+                            setInviteLink(full);
+                            setInviteEmail(m.email);
+                            await navigator.clipboard?.writeText(full).catch(() => {});
+                          }, t("settings.companies.resend_ok"))
+                        }
+                        className="p-1 rounded hover:bg-accent/10 text-muted hover:text-accent transition-colors"
+                      >
+                        <I.Send size={12} />
+                      </button>
+                    )}
+                    {isAdmin && !m.pending && m.approved === false && (
+                      <>
+                        <button
+                          type="button"
                           disabled={busy}
-                          onChange={(e) =>
+                          title={t("settings.companies.approve_btn")}
+                          onClick={() =>
                             void run(
-                              () =>
-                                companies
-                                  .setMemberRole(m.userId, e.target.value as CompanyRole)
-                                  .then(() => {}),
-                              t("settings.companies.role_changed_ok"),
+                              () => companies.approveMember(m.userId).then(() => {}),
+                              t("settings.companies.approve_ok"),
                             )
                           }
+                          className="p-1 rounded hover:bg-success/10 text-muted hover:text-success transition-colors"
                         >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {ROLE_LABEL[r]}
-                            </option>
-                          ))}
-                        </Select>
+                          <I.Check size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          title={t("settings.companies.reject_btn")}
+                          onClick={() =>
+                            void run(
+                              () => companies.rejectMember(m.userId).then(() => {}),
+                              t("settings.companies.reject_ok"),
+                            )
+                          }
+                          className="p-1 rounded hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+                        >
+                          <I.X size={12} />
+                        </button>
+                      </>
+                    )}
+                    {isAdmin && !m.pending && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title="Đặt lại mật khẩu"
+                        onClick={() => {
+                          setResetTarget({ userId: m.userId, email: m.email });
+                          setResetPwd("");
+                        }}
+                        className="p-1 rounded hover:bg-warning/10 text-muted hover:text-warning transition-colors"
+                      >
+                        <I.Lock size={12} />
+                      </button>
+                    )}
+                    {isAdmin &&
+                      !m.pending &&
+                      (m.disabled ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          title={t("settings.companies.enable_btn")}
+                          onClick={() =>
+                            void run(
+                              () => companies.enableMember(m.userId).then(() => {}),
+                              t("settings.companies.enable_ok"),
+                            )
+                          }
+                          className="p-1 rounded hover:bg-success/10 text-muted hover:text-success transition-colors"
+                        >
+                          <I.Check size={12} />
+                        </button>
                       ) : (
-                        <Chip>{ROLE_LABEL[m.role] ?? m.role}</Chip>
-                      )}
-                    </td>
-                    <td className="py-2 pl-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {isAdmin && m.pending && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            icon={<I.Send size={13} />}
-                            disabled={busy}
-                            title="Sinh lại link đăng ký + copy"
-                            onClick={() =>
-                              void run(async () => {
-                                const r = await companies.resendInvite(m.userId);
-                                const full = window.location.origin + r.inviteLink;
-                                setInviteLink(full);
-                                setInviteEmail(m.email);
-                                await navigator.clipboard?.writeText(full).catch(() => {});
-                              }, t("settings.companies.resend_ok"))
-                            }
-                          >
-                            {t("settings.companies.resend_btn")}
-                          </Button>
-                        )}
-                        {isAdmin && !m.pending && m.approved === false && (
-                          <>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              icon={<I.Check size={13} />}
-                              disabled={busy}
-                              title={t("settings.companies.approve_btn")}
-                              onClick={() =>
-                                void run(
-                                  () => companies.approveMember(m.userId).then(() => {}),
-                                  t("settings.companies.approve_ok"),
-                                )
-                              }
-                            >
-                              {t("settings.companies.approve_btn")}
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              icon={<I.X size={13} />}
-                              disabled={busy}
-                              title={t("settings.companies.reject_btn")}
-                              onClick={() =>
-                                void run(
-                                  () => companies.rejectMember(m.userId).then(() => {}),
-                                  t("settings.companies.reject_ok"),
-                                )
-                              }
-                            />
-                          </>
-                        )}
-                        {isAdmin && !m.pending && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            icon={<I.Lock size={13} />}
-                            disabled={busy}
-                            title="Đặt lại mật khẩu cho user này"
-                            onClick={() => {
-                              setResetTarget({ userId: m.userId, email: m.email });
-                              setResetPwd("");
-                            }}
-                          >
-                            {t("settings.companies.reset_pass_btn")}
-                          </Button>
-                        )}
-                        {isAdmin &&
-                          !m.pending &&
-                          (m.disabled ? (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              icon={<I.Check size={13} />}
-                              disabled={busy}
-                              title={t("settings.companies.enable_btn")}
-                              onClick={() =>
-                                void run(
-                                  () => companies.enableMember(m.userId).then(() => {}),
-                                  t("settings.companies.enable_ok"),
-                                )
-                              }
-                            >
-                              {t("settings.companies.enable_btn")}
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              icon={<I.Ban size={13} />}
-                              disabled={busy}
-                              title={t("settings.companies.disable_btn")}
-                              onClick={() =>
-                                void run(
-                                  () => companies.disableMember(m.userId).then(() => {}),
-                                  t("settings.companies.disable_ok"),
-                                )
-                              }
-                            >
-                              {t("settings.companies.disable_btn")}
-                            </Button>
-                          ))}
-                        {isAdmin && (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            icon={<I.Trash size={13} />}
-                            disabled={busy}
-                            onClick={async () => {
-                              const ok = await dialog.confirm(
-                                t("settings.companies.remove_confirm", { email: m.email }),
-                                {
-                                  title: t("settings.companies.remove_title"),
-                                  confirmText: t("settings.companies.remove_confirm_btn"),
-                                },
-                              );
-                              if (ok)
-                                void run(
-                                  () => companies.removeMember(m.userId).then(() => {}),
-                                  t("settings.companies.removed_ok"),
-                                );
-                            }}
-                          />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {members.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-3 text-muted text-sm">
-                      {t("settings.companies.no_members")}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {isAdmin && (
-            <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-sm font-medium">{t("settings.companies.invite_title")}</div>
-              <div className="grid grid-cols-3 gap-2">
-                <Input
-                  placeholder={t("settings.companies.invite_email_ph")}
-                  value={mEmail}
-                  disabled={busy}
-                  onChange={(e) => setMEmail(e.target.value)}
-                />
-                <Input
-                  placeholder={t("settings.companies.invite_name_ph")}
-                  value={mName}
-                  disabled={busy}
-                  onChange={(e) => setMName(e.target.value)}
-                />
-                <Select
-                  value={mRole}
-                  disabled={busy}
-                  onChange={(e) => setMRole(e.target.value as CompanyRole)}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABEL[r]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <Button
-                variant="primary"
-                icon={<I.Send size={14} />}
-                disabled={busy || !mEmail.trim()}
-                onClick={() =>
-                  void run(async () => {
-                    const r = (await companies.addMember({
-                      email: mEmail.trim(),
-                      name: mName.trim() || undefined,
-                      role: mRole,
-                    })) as { inviteLink?: string; pending?: boolean };
-                    if (r.inviteLink) {
-                      const full = window.location.origin + r.inviteLink;
-                      setInviteLink(full);
-                      setInviteEmail(mEmail.trim());
-                      await navigator.clipboard?.writeText(full).catch(() => {});
-                    }
-                    setMEmail("");
-                    setMName("");
-                  }, t("settings.companies.invite_ok"))
-                }
-              >
-                {t("settings.companies.invite_btn")}
-              </Button>
-              <div className="text-xs text-muted">{t("settings.companies.invite_hint")}</div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          title={t("settings.companies.disable_btn")}
+                          onClick={() =>
+                            void run(
+                              () => companies.disableMember(m.userId).then(() => {}),
+                              t("settings.companies.disable_ok"),
+                            )
+                          }
+                          className="p-1 rounded hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+                        >
+                          <I.Ban size={12} />
+                        </button>
+                      ))}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        title={t("settings.companies.remove_title")}
+                        onClick={async () => {
+                          const ok = await dialog.confirm(
+                            t("settings.companies.remove_confirm", { email: m.email }),
+                            {
+                              title: t("settings.companies.remove_title"),
+                              confirmText: t("settings.companies.remove_confirm_btn"),
+                            },
+                          );
+                          if (ok)
+                            void run(
+                              () => companies.removeMember(m.userId).then(() => {}),
+                              t("settings.companies.removed_ok"),
+                            );
+                        }}
+                        className="p-1 rounded hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+                      >
+                        <I.Trash size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {members.length === 0 && (
+                <div className="px-4 py-6 text-xs text-muted/60 text-center">
+                  {t("settings.companies.no_members")}
+                </div>
+              )}
             </div>
-          )}
-        </Card>
 
-        {/* === Link mời chung (không cần biết email trước) === */}
-        {isAdmin && (
-          <Card className="mt-4 space-y-3">
-            <div className="font-semibold flex items-center gap-2">
-              <I.Link size={15} className="text-accent" />
+            {/* Form mời thành viên */}
+            {isAdmin && (
+              <div className="border-t border-border px-4 py-3 space-y-2 bg-bg-soft/30">
+                <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider">
+                  {t("settings.companies.invite_title")}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t("settings.companies.invite_email_ph")}
+                    value={mEmail}
+                    disabled={busy}
+                    onChange={(e) => setMEmail(e.target.value)}
+                    className="flex-1 text-xs"
+                  />
+                  <Input
+                    placeholder={t("settings.companies.invite_name_ph")}
+                    value={mName}
+                    disabled={busy}
+                    onChange={(e) => setMName(e.target.value)}
+                    className="w-36 text-xs"
+                  />
+                  <Select
+                    value={mRole}
+                    disabled={busy}
+                    onChange={(e) => setMRole(e.target.value as CompanyRole)}
+                    className="w-28 text-xs"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABEL[r]}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<I.Send size={13} />}
+                    disabled={busy || !mEmail.trim()}
+                    onClick={() =>
+                      void run(async () => {
+                        const r = (await companies.addMember({
+                          email: mEmail.trim(),
+                          name: mName.trim() || undefined,
+                          role: mRole,
+                        })) as { inviteLink?: string };
+                        if (r.inviteLink) {
+                          const full = window.location.origin + r.inviteLink;
+                          setInviteLink(full);
+                          setInviteEmail(mEmail.trim());
+                          await navigator.clipboard?.writeText(full).catch(() => {});
+                        }
+                        setMEmail("");
+                        setMName("");
+                      }, t("settings.companies.invite_ok"))
+                    }
+                  >
+                    {t("settings.companies.invite_btn")}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted/60">{t("settings.companies.invite_hint")}</p>
+              </div>
+            )}
+
+            {/* Invite link banner */}
+            {inviteLink && (
+              <div className="mx-4 mt-3 flex items-center gap-2 px-3 py-2 rounded-md border border-accent/30 bg-accent/5">
+                <I.Send size={12} className="text-accent shrink-0" />
+                <span className="text-xs text-muted truncate flex-1">
+                  {t("settings.companies.link_label")}{" "}
+                  <span className="font-mono">{inviteEmail}</span>
+                </span>
+                <Input
+                  value={inviteLink}
+                  readOnly
+                  className="w-56 font-mono text-[11px]"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  variant="default"
+                  size="sm"
+                  icon={<I.Copy size={12} />}
+                  onClick={() => void navigator.clipboard?.writeText(inviteLink)}
+                >
+                  Copy
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setInviteLink("")}
+                  className="text-muted hover:text-text p-1"
+                >
+                  <I.X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* Reset password panel */}
+            {resetTarget && (
+              <div className="mx-4 mt-3 flex items-center gap-2 px-3 py-2 rounded-md border border-warning/30 bg-warning/5">
+                <I.Lock size={12} className="text-warning shrink-0" />
+                <span className="text-xs text-muted truncate">
+                  {t("settings.companies.reset_panel_title")}{" "}
+                  <span className="font-mono">{resetTarget.email}</span>
+                </span>
+                <Input
+                  type="password"
+                  placeholder={t("settings.companies.reset_pwd_ph")}
+                  value={resetPwd}
+                  disabled={busy}
+                  onChange={(e) => setResetPwd(e.target.value)}
+                  className="w-48 text-xs"
+                />
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={busy || resetPwd.length < 8}
+                  onClick={() =>
+                    void run(
+                      async () => {
+                        await companies.resetMemberPassword(resetTarget.userId, resetPwd);
+                        setResetTarget(null);
+                        setResetPwd("");
+                      },
+                      t("settings.companies.reset_ok", { email: resetTarget.email }),
+                    )
+                  }
+                >
+                  {t("settings.companies.reset_confirm_btn")}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  className="text-muted hover:text-text p-1"
+                >
+                  <I.X size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════ Tab: Link mời ════ */}
+        {tab === "links" && isAdmin && (
+          <div className="max-w-lg px-5 py-4 space-y-4">
+            <div className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider">
               {t("settings.companies.generic_link_title")}
             </div>
-            <div className="text-xs text-muted">{t("settings.companies.generic_link_hint")}</div>
+            <p className="text-xs text-muted/80">{t("settings.companies.generic_link_hint")}</p>
 
             {/* Tạo link mới */}
             <div className="flex items-center gap-2">
@@ -501,7 +657,7 @@ function CompaniesSettings() {
                 value={genericRole}
                 disabled={busy}
                 onChange={(e) => setGenericRole(e.target.value as CompanyRole)}
-                className="w-36"
+                className="w-32 text-xs"
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -511,7 +667,8 @@ function CompaniesSettings() {
               </Select>
               <Button
                 variant="primary"
-                icon={<I.Plus size={14} />}
+                size="sm"
+                icon={<I.Plus size={13} />}
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
@@ -530,7 +687,6 @@ function CompaniesSettings() {
               </Button>
             </div>
 
-            {/* Link mới vừa tạo — banner copy */}
             {newGenericLink && (
               <div className="flex gap-2 p-2 rounded-md border border-accent/30 bg-accent/5">
                 <Input
@@ -542,7 +698,7 @@ function CompaniesSettings() {
                 <Button
                   variant="default"
                   size="sm"
-                  icon={<I.Copy size={13} />}
+                  icon={<I.Copy size={12} />}
                   onClick={() => void navigator.clipboard?.writeText(newGenericLink)}
                 >
                   Copy
@@ -558,42 +714,44 @@ function CompaniesSettings() {
 
             {/* Danh sách links */}
             {genericLinks.length > 0 && (
-              <div className="space-y-1 border-t border-border pt-2">
+              <div className="rounded-md border border-border divide-y divide-border overflow-hidden">
                 {genericLinks.map((lk) => {
                   const used = !!lk.usedAt;
                   const expired = !used && new Date(lk.expiresAt) < new Date();
                   const active = !used && !expired;
                   return (
-                    <div
-                      key={lk.id}
-                      className="flex items-center gap-2 text-sm py-1.5 border-b border-border/40 last:border-0"
-                    >
+                    <div key={lk.id} className="flex items-center gap-2 px-3 py-2">
+                      <I.Link size={11} className="text-muted shrink-0" />
                       <span className="font-mono text-xs text-muted truncate flex-1">
-                        {window.location.origin}/join?token={lk.token.slice(0, 8)}…
+                        …/join?token={lk.token.slice(0, 8)}…
                       </span>
-                      <Chip>{ROLE_LABEL[lk.role] ?? lk.role}</Chip>
-                      {used && <Chip variant="success">{t("settings.companies.link_used")}</Chip>}
+                      <RoleBadge role={lk.role} />
+                      {used && (
+                        <Chip variant="success" className="text-[10px]!">
+                          {t("settings.companies.link_used")}
+                        </Chip>
+                      )}
                       {expired && (
-                        <Chip variant="warning">{t("settings.companies.link_expired")}</Chip>
+                        <Chip variant="warning" className="text-[10px]!">
+                          {t("settings.companies.link_expired")}
+                        </Chip>
                       )}
                       {active && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={<I.Copy size={12} />}
-                          title="Copy link"
+                        <button
+                          type="button"
                           onClick={() =>
                             void navigator.clipboard?.writeText(
                               `${window.location.origin}/join?token=${lk.token}`,
                             )
                           }
-                        />
+                          className="p-1 rounded hover:bg-accent/10 text-muted hover:text-accent transition-colors"
+                          title="Copy link"
+                        >
+                          <I.Copy size={12} />
+                        </button>
                       )}
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        icon={<I.Trash size={12} />}
-                        title={t("settings.companies.generic_link_revoke")}
+                      <button
+                        type="button"
                         disabled={busy}
                         onClick={() =>
                           void run(
@@ -601,109 +759,33 @@ function CompaniesSettings() {
                             t("settings.companies.generic_link_revoked"),
                           )
                         }
-                      />
+                        className="p-1 rounded hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+                        title={t("settings.companies.generic_link_revoke")}
+                      >
+                        <I.Trash size={12} />
+                      </button>
                     </div>
                   );
                 })}
               </div>
             )}
-          </Card>
-        )}
-
-        {/* === Modal hiển thị invite link vừa sinh === */}
-        {inviteLink && (
-          <Card className="mt-4 border-accent/40 bg-accent/5 space-y-2">
-            <div className="flex items-center gap-2">
-              <I.Send size={14} className="text-accent" />
-              <div className="font-medium text-sm">
-                {t("settings.companies.link_label")}{" "}
-                <span className="font-mono">{inviteEmail}</span>
-              </div>
-              <div className="flex-1" />
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<I.X size={12} />}
-                onClick={() => setInviteLink("")}
-                title="Đóng"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Input
-                value={inviteLink}
-                readOnly
-                className="flex-1 font-mono text-xs"
-                onFocus={(e) => e.currentTarget.select()}
-              />
-              <Button
-                variant="default"
-                size="sm"
-                icon={<I.Copy size={13} />}
-                onClick={() => void navigator.clipboard?.writeText(inviteLink)}
-              >
-                Copy
-              </Button>
-            </div>
-            <div className="text-xs text-muted">{t("settings.companies.link_expires")}</div>
-          </Card>
-        )}
-
-        {/* === Panel đặt lại mật khẩu === */}
-        {resetTarget && (
-          <Card className="mt-4 border-warning/40 bg-warning/5 space-y-3">
-            <div className="flex items-center gap-2">
-              <I.Lock size={14} className="text-warning" />
-              <div className="font-medium text-sm">
-                {t("settings.companies.reset_panel_title")}{" "}
-                <span className="font-mono">{resetTarget.email}</span>
-              </div>
-              <div className="flex-1" />
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<I.X size={12} />}
-                onClick={() => setResetTarget(null)}
-                title="Đóng"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder={t("settings.companies.reset_pwd_ph")}
-                value={resetPwd}
-                disabled={busy}
-                onChange={(e) => setResetPwd(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="danger"
-                disabled={busy || resetPwd.length < 8}
-                onClick={() =>
-                  void run(
-                    async () => {
-                      await companies.resetMemberPassword(resetTarget.userId, resetPwd);
-                      setResetTarget(null);
-                      setResetPwd("");
-                    },
-                    t("settings.companies.reset_ok", { email: resetTarget.email }),
-                  )
-                }
-              >
-                {t("settings.companies.reset_confirm_btn")}
-              </Button>
-            </div>
-            <div className="text-xs text-muted">{t("settings.companies.reset_hint")}</div>
-          </Card>
-        )}
-
-        {msg && (
-          <div className="mt-4">
-            <Chip variant="success">{msg}</Chip>
+            {genericLinks.length === 0 && !newGenericLink && (
+              <div className="text-xs text-muted/60 text-center py-4">Chưa có link mời nào.</div>
+            )}
           </div>
         )}
-        {err && (
-          <div className="mt-4">
-            <Chip variant="danger">{err}</Chip>
+
+        {tab === "links" && !isAdmin && (
+          <div className="px-5 py-6 text-xs text-muted/60 text-center">
+            Chỉ admin mới quản lý link mời.
+          </div>
+        )}
+
+        {/* Feedback */}
+        {(msg || err) && (
+          <div className="px-4 py-2 flex gap-2">
+            {msg && <Chip variant="success">{msg}</Chip>}
+            {err && <Chip variant="danger">{err}</Chip>}
           </div>
         )}
       </div>

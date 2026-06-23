@@ -1460,7 +1460,11 @@ async function callMigrationTool(
         name: r.name,
         label: r.label,
         published: r.published,
-        widgets: Array.isArray(r.content) ? r.content.length : 0,
+        widgets: Array.isArray(r.content)
+          ? r.content.length
+          : Array.isArray((r.content as Record<string, unknown> | null)?.components)
+            ? ((r.content as Record<string, unknown>).components as unknown[]).length
+            : 0,
         updatedAt: r.updatedAt,
       }));
     }

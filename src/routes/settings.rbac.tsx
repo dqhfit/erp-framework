@@ -36,6 +36,9 @@ function RbacSettings() {
     edit: t("settings.rbac.action_edit"),
     delete: t("settings.rbac.action_delete"),
     run: t("settings.rbac.action_run"),
+    manage_members: t("settings.rbac.action_manage_members"),
+    publish: t("settings.rbac.action_publish"),
+    approve: t("settings.rbac.action_approve"),
   };
 
   return (

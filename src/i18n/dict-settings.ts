@@ -105,6 +105,9 @@ export const settingsVi: Dict = {
   "settings.rbac.action_edit": "Sửa",
   "settings.rbac.action_delete": "Xoá",
   "settings.rbac.action_run": "Chạy",
+  "settings.rbac.action_manage_members": "Quản lý TV",
+  "settings.rbac.action_publish": "Xuất bản",
+  "settings.rbac.action_approve": "Duyệt",
 
   // --- agents ---
   "settings.agents.title": "Agent của tôi",
@@ -311,6 +314,9 @@ export const settingsEn: Dict = {
   "settings.rbac.action_edit": "Edit",
   "settings.rbac.action_delete": "Delete",
   "settings.rbac.action_run": "Run",
+  "settings.rbac.action_manage_members": "Members",
+  "settings.rbac.action_publish": "Publish",
+  "settings.rbac.action_approve": "Approve",
 
   // --- agents ---
   "settings.agents.title": "My Agents",
