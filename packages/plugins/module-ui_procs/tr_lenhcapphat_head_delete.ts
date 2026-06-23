@@ -26,9 +26,9 @@ export async function trLenhcapphatHeadDelete(
       ? await head.listWhere(sql`id = ${args._id}::uuid`)
       : await head.listWhere(sql`${head.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`);
 
-    if (headRows.length === 0) throw new Error("Không tìm thấy lệnh cấp phát.");
-
     const h = headRows[0];
+    if (!h) throw new Error("Không tìm thấy lệnh cấp phát.");
+
     const lenhCapPhatId = h.lenhcapphatid as string;
 
     // Guard 1: Đã hoàn thành — không cho xoá.
