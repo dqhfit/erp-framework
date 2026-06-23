@@ -75,14 +75,16 @@ function GroupList({
   return (
     <div className="flex flex-col h-full border-r border-border">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted/70">Nhóm</span>
+      <div className="px-3 py-1.5 border-b border-border shrink-0 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">
+          Nhóm
+        </span>
         <button
           type="button"
           onClick={onNew}
-          className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+          className="flex items-center gap-0.5 text-[11px] text-accent hover:text-accent/80 transition-colors"
         >
-          <I.Plus size={12} />
+          <I.Plus size={11} />
           Tạo nhóm
         </button>
       </div>
@@ -150,8 +152,8 @@ function NewGroupPanel({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="px-6 py-4 border-b border-border shrink-0">
-        <h2 className="text-sm font-semibold">Tạo nhóm mới</h2>
+      <div className="px-4 py-2 border-b border-border shrink-0">
+        <h2 className="text-xs font-semibold text-muted/80">Tạo nhóm mới</h2>
       </div>
       <div className="px-6 py-5 flex flex-col gap-4 max-w-sm">
         <div>
@@ -323,25 +325,13 @@ function GroupDetail({
   /* ── Render ── */
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header: tên nhóm + nút xóa */}
-      <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center gap-2.5">
+      {/* Header + Tab bar — 1 dòng compact */}
+      <div className="border-b border-border shrink-0 flex items-center px-2 gap-1">
         <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
+          className="w-2 h-2 rounded-full shrink-0 ml-1"
           style={{ backgroundColor: group.color }}
         />
-        <span className="flex-1 text-sm font-semibold truncate">{group.name}</span>
-        <button
-          type="button"
-          onClick={() => void handleDelete()}
-          className="flex items-center gap-1 text-xs text-muted hover:text-danger transition-colors shrink-0"
-        >
-          <I.Trash size={11} />
-          Xóa
-        </button>
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex items-center border-b border-border shrink-0 px-1">
+        <span className="text-xs font-semibold truncate text-text/80 mr-1">{group.name}</span>
         {(
           [
             { key: "members", label: "Thành viên", count: group.memberIds.length },
@@ -354,7 +344,7 @@ function GroupDetail({
             type="button"
             onClick={() => setTab(key)}
             className={cn(
-              "px-3 py-2 text-xs transition-colors border-b-2 -mb-px flex items-center gap-1",
+              "px-2.5 py-1.5 text-[11px] transition-colors border-b-2 -mb-px flex items-center gap-0.5",
               tab === key
                 ? "border-accent text-accent font-medium"
                 : "border-transparent text-muted hover:text-text",
@@ -362,10 +352,17 @@ function GroupDetail({
           >
             {label}
             {count !== null && (
-              <span className="text-[10px] opacity-70 tabular-nums">({count})</span>
+              <span className="text-[10px] opacity-60 tabular-nums">({count})</span>
             )}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => void handleDelete()}
+          className="ml-auto flex items-center gap-0.5 text-[11px] text-muted/50 hover:text-danger transition-colors shrink-0 py-1.5 px-1"
+        >
+          <I.Trash size={10} />
+        </button>
       </div>
 
       {/* Tab content — full width */}
@@ -583,11 +580,11 @@ function ViewerGroupsSettings() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Page header */}
-      <div className="px-6 py-4 border-b border-border shrink-0">
-        <h1 className="text-base font-semibold">Nhóm người xem</h1>
-        <p className="text-xs text-muted mt-0.5">
-          Phân quyền trang portal theo nhóm. Viewer chỉ thấy trang được gán vào nhóm của họ.
-        </p>
+      <div className="px-4 py-2 border-b border-border shrink-0 flex items-center gap-2">
+        <h1 className="text-xs font-semibold">Nhóm người xem</h1>
+        <span className="text-[11px] text-muted/60">
+          — Viewer chỉ thấy trang được gán vào nhóm của họ
+        </span>
       </div>
 
       {/* Body: 2 cột */}
