@@ -50,6 +50,10 @@ export interface RollupConfig {
   agg: RollupAgg;
   /** Field giá trị (cần cho sum/avg/min/max). */
   valueField?: string;
+  /** Field trên entity CHA cung cấp giá trị khoá để khớp `fkField` của con —
+   *  dùng khi quan hệ nối bằng KHOÁ NGHIỆP VỤ (vd maddh) thay vì id (uuid).
+   *  Bỏ trống → khớp `fkField` = record.id (uuid) như mặc định. */
+  parentKeyField?: string;
 }
 
 /** Rule điều kiện cho requiredIf/visibleIf — DSL nhỏ, sync, pure.

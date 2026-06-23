@@ -194,7 +194,9 @@ class EavRecordStore implements RecordStore {
     let q = this.db.select().from(entityRecords).where(where).$dynamic();
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql`desc` : sql`asc`;
-      q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir}`);
+      // NULLS LAST: bản ghi thiếu giá trị luôn xuống cuối, bất kể chiều sort
+      // (vd sort theo create_date DESC — đơn thiếu ngày tạo không nổi lên đầu).
+      q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir} NULLS LAST`);
     }
     const rows = (await q.limit(params.limit ?? 100).offset(params.offset ?? 0)) as StoredRecord[];
     if (params.withTotal === false) return { rows, total: rows.length };
@@ -522,7 +524,8 @@ class TableRecordStore implements RecordStore {
     let orderSql = sql``;
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql.raw("DESC") : sql.raw("ASC");
-      orderSql = sql` ORDER BY ${this.textExpr(params.sort.field)} ${dir}`;
+      // NULLS LAST: bản ghi thiếu giá trị luôn xuống cuối, bất kể chiều sort.
+      orderSql = sql` ORDER BY ${this.textExpr(params.sort.field)} ${dir} NULLS LAST`;
     }
     const limit = params.limit ?? 100;
     const offset = params.offset ?? 0;

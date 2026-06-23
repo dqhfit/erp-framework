@@ -54,6 +54,9 @@ export interface ActionContext {
     step: ActionStepOpenWizard,
     getter: (key: string) => unknown,
   ) => Promise<Record<string, unknown> | null>;
+  /** Mở form Tạo mới master-detail của list (createForm). Do list widget cấp khi
+   *  render embeddedActions → cho nút "Tạo đơn hàng" nằm trong thanh hành động. */
+  openCreateForm?: () => void;
 }
 
 /** Lỗi có phải do thiếu quyền / chưa đăng nhập không. */
@@ -187,6 +190,10 @@ export async function runActionSteps(
         const stamp = Date.now();
         for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
       }
+      continue;
+    }
+    if (step.kind === "open-create-form") {
+      ctx.openCreateForm?.();
       continue;
     }
     if (step.kind === "open-wizard") {

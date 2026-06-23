@@ -1968,6 +1968,31 @@ export function ListWidget({
                   >
                     <I.Edit size={14} />
                   </button>
+                  {editForm.showDelete && entityId && (
+                    <button
+                      type="button"
+                      title="Xoá"
+                      className="p-1 rounded hover:bg-danger/10 text-muted hover:text-danger"
+                      onClick={async () => {
+                        const ok = await dialog.confirm("Xoá đơn hàng này?", {
+                          title: "Xác nhận xoá",
+                          danger: true,
+                        });
+                        if (!ok) return;
+                        try {
+                          await api.deleteRecord(String(rid));
+                          pageState.set(`__refresh:${entityId}`, Date.now());
+                        } catch (e) {
+                          await dialog.alert(
+                            `Không thể xoá.\n\nChi tiết: ${(e as Error).message}`,
+                            { title: "Thao tác thất bại" },
+                          );
+                        }
+                      }}
+                    >
+                      <I.Trash size={14} />
+                    </button>
+                  )}
                 </div>
               );
             },
@@ -2067,7 +2092,7 @@ export function ListWidget({
     <div className="h-full flex flex-col">
       {(createForm || (embeddedActions && embeddedActions.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
-          {createForm && (
+          {createForm && !createForm.embedded && (
             <Button
               variant="primary"
               icon={<I.Plus size={13} />}
@@ -2077,7 +2102,13 @@ export function ListWidget({
             </Button>
           )}
           {embeddedActions?.map((item) => (
-            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+            <ActionWidget
+              key={item.id}
+              config={item}
+              pageState={pageState}
+              inline
+              onOpenCreateForm={createForm ? () => setCreateOpen(true) : undefined}
+            />
           ))}
         </div>
       )}

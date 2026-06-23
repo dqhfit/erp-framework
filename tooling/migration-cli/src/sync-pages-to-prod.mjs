@@ -48,6 +48,8 @@ function localDbUrl() {
 const LOCAL = localDbUrl();
 
 function findKey() {
+  // Ưu tiên env var (truyền key in-session, không lưu vào file).
+  if (process.env.ERP_MCP_KEY) return process.env.ERP_MCP_KEY;
   const cfg = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf8"));
   const proj = cfg.projects?.["D:/code/cowok/Apps/erp-framework"];
   const servers = { ...(cfg.mcpServers ?? {}), ...(proj?.mcpServers ?? {}) };

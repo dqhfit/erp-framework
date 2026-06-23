@@ -31,6 +31,9 @@ interface Props {
   compact?: boolean;
   /** Render dạng menu item (không có border/bg riêng) — cho overflow popover. */
   menuItem?: boolean;
+  /** Mở form Tạo mới master-detail của list (createForm) — list widget cấp khi
+   *  render embeddedActions, cho step "open-create-form". */
+  onOpenCreateForm?: () => void;
 }
 
 export function ActionWidget({
@@ -39,6 +42,7 @@ export function ActionWidget({
   inline = false,
   compact = false,
   menuItem = false,
+  onOpenCreateForm,
 }: Props) {
   const user = useAuth((s) => s.user);
   const role = user?.role;
@@ -128,6 +132,7 @@ export function ActionWidget({
         openPopup,
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),
+        openCreateForm: onOpenCreateForm,
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
       // invoke-module-proc tự hiện toast.success có nội dung (run-action.ts) →

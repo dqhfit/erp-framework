@@ -201,7 +201,7 @@ export function SearchableSelect({
         )}
       >
         <span
-          className={cn("truncate", !selected && "text-muted")}
+          className={cn("min-w-0 truncate", !selected && "text-muted")}
           title={selected ? selected.label : undefined}
         >
           {selected ? selected.label : placeholder}
