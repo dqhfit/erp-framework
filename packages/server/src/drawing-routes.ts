@@ -839,6 +839,105 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ masp, mausac, tensp, rows });
   });
 
+  // ── Danh sách tất cả sản phẩm theo hệ hàng (cho trang bản vẽ kỹ thuật) ──
+  //    Dùng cùng cột typed như /banvesvc/search — KHÔNG dùng ext (tr_sanpham có thể
+  //    không có cột ext). Thêm f_khachhang nếu tồn tại, fallback NULL an toàn.
+  app.get("/banvesvc/sanpham-by-hehang", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const hehang = ((req.query ?? {}) as { hehang?: string }).hehang?.trim() ?? "";
+    if (!hehang) return reply.send({ rows: [] });
+    const cid = auth.companyId;
+    const rows = (await db.execute(
+      sql`SELECT f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang
+          FROM tr_sanpham
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+            AND f_hehang = ${hehang}
+          ORDER BY f_masp LIMIT 500`,
+    )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
+  // ── Danh sách bản vẽ đầy đủ theo masp + phanloai (cho trang desktop) ──
+  app.get("/banvesvc/banve-list", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const q = (req.query ?? {}) as { masp?: string; phanloai?: string };
+    const masp = q.masp?.trim() ?? "";
+    const phanloai = q.phanloai?.trim() ?? "";
+    if (!masp) return reply.send({ rows: [] });
+    const cid = auth.companyId;
+    const phanloaiCond = phanloai ? sql`AND f_phanloai = ${phanloai}` : sql``;
+    const rows = (await db.execute(
+      sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
+                 f_phanloai AS phanloai, f_filepath AS filepath,
+                 ext->>'seq1' AS seq1, ext->>'seq2' AS seq2,
+                 ext->>'khachhang' AS khachhang, f_active AS active,
+                 created_at::date::text AS create_date,
+                 updated_at::date::text AS update_date
+          FROM tr_banve
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+            AND f_masp = ${masp} ${phanloaiCond}
+            AND (f_active IS DISTINCT FROM FALSE)
+          ORDER BY created_at DESC LIMIT 200`,
+    )) as unknown as Array<Record<string, unknown>>;
+    return reply.send({ rows });
+  });
+
+  // ── Tạo mới bản vẽ (file đã upload qua /upload/file trước) ──
+  app.post("/banvesvc/banve-create", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const body = (req.body ?? {}) as {
+      masp?: string;
+      tensp?: string;
+      hehang?: string;
+      khachhang?: string;
+      phanloai?: string;
+      filepath?: string;
+      seq1?: string;
+      seq2?: string;
+    };
+    const {
+      masp,
+      tensp = "",
+      hehang = "",
+      khachhang = "",
+      phanloai = "Bản vẽ kỹ thuật",
+      filepath = "",
+      seq1 = "",
+      seq2 = "",
+    } = body;
+    if (!masp || !filepath) {
+      return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
+    }
+    const cid = auth.companyId;
+    const bvId = await entityIdByName(db, cid, "tr_banve");
+    if (!bvId) return reply.code(500).send({ error: "Không tìm thấy entity tr_banve" });
+    const row = await getRecordStore(db).insert(
+      cid,
+      bvId,
+      { masp, tensp, hehang, khachhang, phanloai, filepath, seq1, seq2, active: true },
+      auth.userId,
+    );
+    return reply.send({ id: row?.id ?? null, ok: true });
+  });
+
+  // ── Xóa mềm 1 bản vẽ ──
+  app.delete("/banvesvc/banve-delete", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const id = ((req.query ?? {}) as { id?: string }).id?.trim() ?? "";
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+      return reply.code(400).send({ error: "Thiếu hoặc sai id" });
+    }
+    await db.execute(
+      sql`UPDATE tr_banve SET deleted_at = now()
+          WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
+    );
+    return reply.send({ ok: true });
+  });
+
   // ── Danh sách sản phẩm có bản vẽ đóng gói theo hệ hàng ──
   //    Dùng cho trang desktop: filter hệ hàng → chọn SP → xem chi tiết + PDF tr2.
   app.get("/banvesvc/donggoi-sanpham", async (req, reply) => {
