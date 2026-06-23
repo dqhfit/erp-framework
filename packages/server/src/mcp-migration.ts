@@ -2940,7 +2940,7 @@ async function callMigrationTool(
         let uid = fwByUsername.get(usernameKey);
 
         if (!uid) {
-          const email = su.email_ext ?? `${su.f_username}@dqhf.local`;
+          const email = su.email_ext?.trim() || su.f_username;
           try {
             const [newU] = await db
               .insert(users)

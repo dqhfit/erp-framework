@@ -181,10 +181,8 @@ try {
 
     if (!existing) {
       // Tạo user
-      const emailReal = su.email_ext ?? null;
-      const emailFw = emailReal || `${su.f_username}@dqhf.local`;
-      // Thêm suffix nếu email trùng
-      const emailFinal = emailFw;
+      // Dùng email thật nếu có, không thì dùng thẳng username (không cần @dqhf.local)
+      const emailFinal = su.email_ext?.trim() || su.f_username;
       const [newUser] = await sql`
         INSERT INTO users (id, email, name, password_hash, role, legacy_username, legacy_company_id)
         VALUES (
