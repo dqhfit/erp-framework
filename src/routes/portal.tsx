@@ -151,11 +151,16 @@ function PortalRoute() {
   // Sync URL → activeId (browser back/forward)
   // Dùng setActiveIdRaw + setMountedIds thay setActiveId để tránh
   // vòng lặp (setActiveId gọi savePrefs → prefs thay đổi → callback mới → effect chạy lại)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cố ý KHÔNG đưa prefs/savePrefs vào deps — savePrefs đổi prefs sẽ gây vòng lặp; chỉ chạy theo urlPage/publishedPages.
   useEffect(() => {
     if (!initDone.current) return;
     if (urlPage && publishedPages.some((p) => p.id === urlPage)) {
       setActiveIdRaw(urlPage);
       setMountedIds((prev) => new Set([...prev, urlPage]));
+      // Back/forward cũng cập nhật "truy cập gần đây" (setActiveId không chạy ở đây).
+      const recent = prefs.portal?.recentPages ?? [];
+      const nextRecent = [urlPage, ...recent.filter((r) => r !== urlPage)].slice(0, 12);
+      savePrefs({ portal: { ...prefs.portal, lastPageId: urlPage, recentPages: nextRecent } });
     } else {
       setActiveIdRaw(null);
     }

@@ -399,6 +399,9 @@ export async function agenticRetrieve(
   // CRAG: chỉ chấm khi bật grade VÀ top-score mơ hồ (< STRONG). Đa số
   // truy vấn tốt vượt ngưỡng → bỏ qua, không tốn LLM.
   let gradedOut = false;
+  // Truy vấn đã được grader tinh chỉnh (nếu có) — web fallback dùng câu này
+  // thay vì câu gốc để tìm web sát hơn.
+  let correctedQuery: string | undefined;
   if (opts.grade && hits.length && (hits[0]?.score ?? 0) < STRONG_SCORE) {
     const g = await gradeHits(db, companyId, q, hits, opts.userId);
     if (g) {
@@ -408,6 +411,7 @@ export async function agenticRetrieve(
           // Tự sửa: tìm lại 1 LẦN bằng truy vấn grader đề xuất.
           hits = await knowledgeSearch(db, companyId, sq, searchOpts);
           queries.push(sq);
+          correctedQuery = sq;
           gradedOut = hits.length === 0;
         } else {
           gradedOut = true; // lạc đề, không có gợi ý sửa
@@ -424,7 +428,7 @@ export async function agenticRetrieve(
   // thêm kết quả dạng nguồn "web". Fail-safe: lỗi web giữ nguyên trạng thái.
   if (opts.webFallback && (gradedOut || hits.length === 0)) {
     try {
-      const web = await webSearch(db, companyId, q, { limit });
+      const web = await webSearch(db, companyId, correctedQuery ?? q, { limit });
       if (web.length) {
         hits = web.map((r, i) => ({
           chunkId: `web:${i}`,

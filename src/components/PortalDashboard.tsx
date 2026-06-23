@@ -536,8 +536,9 @@ function MenuBrowser({
                       <button
                         type="button"
                         onClick={() => {
-                          // Pop back to this level
-                          setDrillPath(drillPath.slice(0, ci - 1));
+                          // Pop về đúng cấp của crumb: breadcrumb[ci] = drillPath[ci-1]
+                          // → giữ drillPath[0..ci-1] = slice(0, ci). (ci=0 = root → []).
+                          setDrillPath(drillPath.slice(0, ci));
                         }}
                         className="hover:text-accent transition-colors"
                       >

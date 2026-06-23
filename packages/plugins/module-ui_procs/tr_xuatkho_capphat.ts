@@ -80,6 +80,12 @@ export async function trXuatkhoCapphat(
 
     // 1) sinh sopx — TR_PHIEUXUAT_NEWID: PX + ddMMyy + STT(2 chữ số), bảo đảm unique.
     const px = await procTable(tx, companyId, "tr_phieuxuat");
+    // Khóa tư vấn theo (company, ngày): tuần tự hoá việc sinh sopx trong cùng
+    // ngày/công ty → chống race 2 request đồng thời đọc cùng counter rồi sinh
+    // TRÙNG số phiếu (bảng HYBRID không có UNIQUE trên sopx). Lock tự nhả cuối tx.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${companyId} || ':px:' || ${nowIso.slice(0, 10)}))`,
+    );
     const todayRows = await px.listWhere(sql`(${px.ts("ngaytao")})::date = ${nowIso}::date`);
     let counter = todayRows.length;
     let sopx = "";
