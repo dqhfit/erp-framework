@@ -23,7 +23,9 @@ export async function ensureLoggedIn(page: Page): Promise<void> {
   // nhập, render ngay cùng shell). KHÔNG dùng link entity seed ("Khách hàng")
   // — vừa phụ thuộc dữ liệu seed, vừa render chậm (cold-start) gây timeout.
   const inApp = page.getByTitle("Đăng xuất");
-  const emailField = page.getByPlaceholder("ban@congty.com");
+  // Login mode dùng placeholder "email hoặc tên tài khoản" (auth.email_or_username_ph),
+  // không phải "ban@congty.com" (auth.email_ph — chỉ dùng trong form đăng ký).
+  const emailField = page.getByPlaceholder("email hoặc tên tài khoản");
 
   // Chờ MỘT trong hai trạng thái ổn định: form đăng nhập HOẶC app đã vào.
   // Timeout rộng vì lần chạy đầu dev server cold-start biên dịch route —
@@ -48,7 +50,8 @@ export async function ensureLoggedIn(page: Page): Promise<void> {
     // chưa có tài khoản → đăng ký admin đầu tiên
   }
   await page.getByRole("button", { name: /Tạo tài khoản quản trị/ }).click();
-  await emailField.fill(EMAIL);
+  // Sau khi chuyển mode register, email field đổi placeholder → "ban@congty.com".
+  await page.getByPlaceholder("ban@congty.com").fill(EMAIL);
   await page.getByPlaceholder("Nguyễn Văn A").fill("E2E Admin");
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
   await page.getByRole("button", { name: "Đăng ký & vào app" }).click();
