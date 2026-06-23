@@ -84,17 +84,36 @@ export const recordsRouter = router({
         offset: input.query?.offset,
         includeDeleted: input.includeDeleted ?? false,
       });
+      const listFields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      // Rollup fields (aggregate cross-row, vd tổng tiền đơn = sum dòng chi tiết)
+      // — tính per-row, có cache (rollup_cache + rollup_invalidated). Bỏ qua nếu
+      // entity không có field rollup nào (zero overhead cho list thường).
+      let outRows = result.rows;
+      if (listFields.some((f) => f.type === "rollup" && f.rollup)) {
+        outRows = await Promise.all(
+          outRows.map(async (r) => ({
+            ...r,
+            data: await applyRollups(
+              ctx.db,
+              ctx.user.companyId,
+              listFields,
+              r.id,
+              (r.data ?? {}) as Record<string, unknown>,
+              { rollupCache: r.rollupCache, rollupInvalidated: r.rollupInvalidated },
+            ),
+          })),
+        );
+      }
       // Field-level RBAC: strip cột không có quyền đọc khỏi TỪNG row.
       // (get/export đã strip từ trước — list bị sót, vá 2026-06-11.)
-      const listFields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       const needStrip = listFields.some(
         (f) => (f.readableBy?.length ?? 0) > 0 || (f.readableByGroups?.length ?? 0) > 0,
       );
-      if (!needStrip) return result;
+      if (!needStrip) return { ...result, rows: outRows };
       const gIdsList = await loadUserGroupIds(ctx.db, ctx.user.id);
       return {
         ...result,
-        rows: result.rows.map((r) => ({
+        rows: outRows.map((r) => ({
           ...r,
           data: stripUnreadableFields(
             listFields,

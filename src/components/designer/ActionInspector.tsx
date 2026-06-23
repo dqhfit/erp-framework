@@ -359,6 +359,7 @@ function StepRow({
     "set-state": "Đặt page state",
     refresh: "Nạp lại lưới",
     "open-popup": "Mở popup",
+    "open-create-form": "Mở form tạo mới (list)",
     "open-wizard": "Mở wizard",
   };
   return (

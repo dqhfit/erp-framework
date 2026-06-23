@@ -6,6 +6,7 @@
    ghi record thật vào backend. KHÔNG còn dữ liệu giả.
    ========================================================== */
 
+import { createProceduresClient } from "@erp-framework/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
@@ -86,6 +87,38 @@ function useActionFilter() {
   const user = useAuth((s) => s.user);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
   return (actions: ActionBarItem[]) => filterActions(actions, user?.role, user?.id, myGroupIds);
+}
+
+const procClient = createProceduresClient("");
+
+/** Xoá dữ liệu tạm khi RỜI trang (đổi tab / đóng tab / điều hướng đi).
+ *  Trang trong portal vẫn MOUNTED khi đổi tab → bắt theo `active` true→false
+ *  (cleanup của effect active=true) lẫn unmount thật. Sau khi xoá, báo list
+ *  re-query (trang còn mounted) để hiện rỗng khi quay lại. Đặt trong
+ *  PageStateProvider để dùng được usePageState. */
+function PageLeaveHandler({
+  active,
+  proc,
+  refreshEntities,
+}: {
+  active: boolean;
+  proc: string;
+  refreshEntities: string[];
+}) {
+  const pageState = usePageState();
+  const psRef = useRef(pageState);
+  psRef.current = pageState;
+  const refRef = useRef(refreshEntities);
+  refRef.current = refreshEntities;
+  useEffect(() => {
+    if (!active) return;
+    return () => {
+      procClient.invokeModule(proc, {}).catch(() => {});
+      const stamp = Date.now();
+      for (const eid of refRef.current) psRef.current.set(`__refresh:${eid}`, stamp);
+    };
+  }, [active, proc]);
+  return null;
 }
 
 /** Render một widget theo kind. */
@@ -311,6 +344,13 @@ export function ConsumerPage({
     ? {}
     : ((rawContent as { meta?: Record<string, unknown> }).meta ?? {});
   const screenFit = !!pageMeta.screenFit;
+  // Trang scratch (vd "Tạo y/c mua hàng"): xoá working set khi rời trang để
+  // danh sách không nhớ dữ liệu giữa các lần ghé. meta.onLeaveProc = tên proc
+  // xoá; meta.onLeaveRefresh = entityId cần re-query để hiện rỗng khi quay lại.
+  const onLeaveProc = typeof pageMeta.onLeaveProc === "string" ? pageMeta.onLeaveProc : null;
+  const onLeaveRefresh = Array.isArray(pageMeta.onLeaveRefresh)
+    ? (pageMeta.onLeaveRefresh as string[])
+    : [];
 
   /* ── Bố cục cá nhân (per-user, localStorage) ──────────── */
   const storageKey = layoutStorageKey(pageId, userId);
@@ -614,6 +654,9 @@ export function ConsumerPage({
 
   return (
     <PageStateProvider>
+      {onLeaveProc && (
+        <PageLeaveHandler active={active} proc={onLeaveProc} refreshEntities={onLeaveRefresh} />
+      )}
       <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}

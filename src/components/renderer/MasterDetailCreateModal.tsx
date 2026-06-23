@@ -34,6 +34,11 @@ export type FieldLookup = {
   /** Tìm SERVER-SIDE (bảng lớn, vd tr_material 36k): dùng LookupPicker
    *  (preload + ILIKE server khi gõ) thay vì nạp sẵn toàn bộ. Chỉ single. */
   serverSearch?: boolean;
+  /** Khi chọn 1 record, tự gán field nguồn → field đích trên CÙNG form
+   *  (master/row). Map: sourceField (entity nguồn) → targetField (form).
+   *  Vd { "mota": "tenchitiet" }: chọn Mã chi tiết (mavt) tự điền Tên chi tiết.
+   *  Chỉ áp cho lookup single. */
+  autofill?: Record<string, string>;
 };
 
 export type CreateFormCfg = {
@@ -43,6 +48,13 @@ export type CreateFormCfg = {
   subjectLabel?: string;
   layout?: "tabs" | "single";
   width?: number;
+  /** true → KHÔNG render nút mặc định của list; nút mở form do embeddedAction
+   *  (step "open-create-form") cung cấp → nút "Tạo đơn hàng" nằm trong thanh
+   *  hành động nhúng của danh sách. */
+  embedded?: boolean;
+  /** (editForm) true → thêm nút Xoá vào cột Hành động của list (cạnh Xem/Sửa).
+   *  Mặc định ẩn để trang chỉ-đọc/không cho xoá không bị lộ nút. */
+  showDelete?: boolean;
   masterLabel?: string;
   detailLabel?: string;
   /** Entity cha + cột nhập. fieldLookups: map fieldName → picker entity
@@ -51,6 +63,9 @@ export type CreateFormCfg = {
     entity: string;
     fields?: string[];
     fieldLookups?: Record<string, FieldLookup>;
+    /** Combobox TĨNH cho field (enum không thuộc entity nào, vd loaiddh GVA/HTR):
+     *  map fieldName → danh sách {value,label}. Render dropdown thay ô nhập tự do. */
+    fieldOptions?: Record<string, { value: string; label: string }[]>;
     fieldLabels?: Record<string, string>;
     requiredFields?: string[];
     fullWidthFields?: string[];
@@ -65,6 +80,8 @@ export type CreateFormCfg = {
     fields?: string[];
     /** Map fieldName → liên kết entity (picker). Vd item_number → tr_sanpham. */
     fieldLookups?: Record<string, FieldLookup>;
+    /** Combobox TĨNH cho field con (enum): map fieldName → {value,label}[]. */
+    fieldOptions?: Record<string, { value: string; label: string }[]>;
     /** Field tự tính = TÍCH các field nguồn (vd amount = order_qty × price).
      *  Ô hiển thị read-only (tính live), giá trị ghi khi lưu. */
     computed?: Record<string, string[]>;
@@ -215,9 +232,32 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     onChange: (v: string) => void,
     compact = false,
     lookup?: FieldLookup,
+    setField?: (name: string, value: string) => void,
+    optionsOverride?: { value: string; label: string }[],
   ) => {
+    if (!lookup && optionsOverride && optionsOverride.length > 0) {
+      return (
+        <SearchableSelect
+          className="w-full"
+          value={value ?? ""}
+          onChange={onChange}
+          options={optionsOverride}
+          emptyOption="— chọn —"
+        />
+      );
+    }
     if (lookup) {
       const srcRows = lookupData[lookup.entity] ?? [];
+      // Autofill: chọn 1 record → gán field nguồn sang field đích cùng form.
+      const handleChange = (val: string) => {
+        onChange(val);
+        if (lookup.autofill && setField) {
+          const src = srcRows.find((r) => String(r[lookup.valueField] ?? "") === val);
+          if (src)
+            for (const [srcF, tgtF] of Object.entries(lookup.autofill))
+              setField(tgtF, String(src[srcF] ?? ""));
+        }
+      };
       const labelFields = lookup.labelFields ?? [lookup.valueField];
       const opts = srcRows.map((r) => {
         const val = String(r[lookup.valueField] ?? "");
@@ -249,7 +289,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         <SearchableSelect
           className="w-full"
           value={value ?? ""}
-          onChange={onChange}
+          onChange={handleChange}
           options={richOpts}
           columnHeaders={lookup.columnHeaders}
           emptyOption={`— chọn ${srcLabel} —`}
@@ -435,6 +475,8 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                   },
                   false,
                   masterLookups?.[f.name],
+                  (name, val) => setMaster((s) => ({ ...s, [name]: val })),
+                  config.master.fieldOptions?.[f.name],
                 )}
               </div>
               {masterErrors[f.name] && (
@@ -447,12 +489,15 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       {(config.layout === "single" || tab === "detail") && (
         <div className={config.layout === "single" ? "mt-4 space-y-2" : "mt-3 space-y-2"}>
           <div className="overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto">
-            <table className="text-sm w-full">
+            <table className="text-sm w-full table-fixed">
               <thead className="bg-panel-2 sticky top-0">
                 <tr>
                   {detailFields.map((f) => (
                     <th
                       key={f.id}
+                      // Cột lookup (Mã SP/Mã chi tiết): width CỐ ĐỊNH, không giãn theo
+                      // nội dung; các cột khác chia đều phần còn lại (table-fixed).
+                      style={detailLookups?.[f.name] ? { width: 190 } : undefined}
                       className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
                     >
                       {config.detail.fieldLabels?.[f.name] ?? f.label}
@@ -477,14 +522,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                     {detailFields.map((f) => {
                       const factors = config.detail.computed?.[f.name];
                       return (
-                        <td
-                          key={f.id}
-                          className={
-                            detailLookups?.[f.name]
-                              ? "px-1.5 py-1 min-w-[220px]"
-                              : "px-1.5 py-1 min-w-[130px]"
-                          }
-                        >
+                        <td key={f.id} className="px-1.5 py-1 overflow-hidden">
                           {factors ? (
                             // Field tự tính (read-only) — hiển thị tích live.
                             <div className="px-2 py-1 text-right tabular-nums text-muted">
@@ -509,6 +547,8 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                               },
                               true,
                               detailLookups?.[f.name],
+                              (name, val) => setRow(i, name, val),
+                              config.detail.fieldOptions?.[f.name],
                             )
                           )}
                           {detailErrors[i]?.[f.name] && (

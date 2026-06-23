@@ -28,7 +28,9 @@ function tableFieldExpr(storage: EntityStorage, field: string) {
 async function computeRollup(
   db: DB,
   companyId: string,
-  recordId: string,
+  // Giá trị để khớp fkField của bản ghi con: mặc định = record.id (uuid), hoặc
+  // giá trị khoá nghiệp vụ (vd maddh) khi cfg.parentKeyField được đặt.
+  matchValue: string,
   cfg: RollupConfig,
 ): Promise<number | null> {
   // Lookup entity nguồn theo name (vd "order") — kèm meta để biết tier.
@@ -60,7 +62,7 @@ async function computeRollup(
       SELECT ${aggExpr} AS v FROM ${tbl}
       WHERE company_id = ${companyId}::uuid
         AND deleted_at IS NULL
-        AND (${tableFieldExpr(storage, cfg.fkField)})::text = ${recordId}
+        AND (${tableFieldExpr(storage, cfg.fkField)})::text = ${matchValue}
     `)) as unknown as Array<{ v: number | null }> | { rows?: Array<{ v: number | null }> };
     const list = Array.isArray(res) ? res : (res.rows ?? []);
     return (list[0]?.v as number | null) ?? 0;
@@ -90,7 +92,7 @@ async function computeRollup(
         eq(entityRecords.companyId, companyId),
         eq(entityRecords.entityId, from.id),
         sql`${entityRecords.deletedAt} IS NULL`,
-        sql`${entityRecords.data}->>${cfg.fkField} = ${recordId}`,
+        sql`${entityRecords.data}->>${cfg.fkField} = ${matchValue}`,
       ),
     );
   return (row?.v as number | null) ?? 0;
@@ -139,7 +141,12 @@ export async function applyRollups(
   const newCache: Record<string, { v: unknown; computedAt: string }> = {};
   await Promise.all(
     rollupFields.map(async (f) => {
-      const v = await computeRollup(db, companyId, recordId, f.rollup!);
+      // Khớp theo khoá nghiệp vụ (parentKeyField, vd maddh) nếu cấu hình; mặc
+      // định theo record.id (uuid).
+      const matchValue = f.rollup!.parentKeyField
+        ? String(data[f.rollup!.parentKeyField] ?? "")
+        : recordId;
+      const v = await computeRollup(db, companyId, matchValue, f.rollup!);
       out[f.name] = v;
       newCache[f.name] = { v, computedAt: new Date().toISOString() };
     }),

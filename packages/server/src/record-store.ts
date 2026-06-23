@@ -195,7 +195,8 @@ class EavRecordStore implements RecordStore {
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql`desc` : sql`asc`;
       // Cột hệ thống (id UUIDv7, created_at, updated_at) nằm ngoài data JSONB
-      // → phải sort theo cột thật; còn lại sort theo data->>'field'.
+      // → phải sort theo cột thật; còn lại sort theo data->>'field' + NULLS LAST
+      // (bản ghi thiếu giá trị luôn xuống cuối, bất kể chiều sort).
       if (params.sort.field === "id") {
         q = q.orderBy(sql`${entityRecords.id} ${dir}`);
       } else if (params.sort.field === "created_at") {
@@ -203,7 +204,7 @@ class EavRecordStore implements RecordStore {
       } else if (params.sort.field === "updated_at") {
         q = q.orderBy(sql`${entityRecords.updatedAt} ${dir}`);
       } else {
-        q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir}`);
+        q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir} NULLS LAST`);
       }
     }
     const rows = (await q.limit(params.limit ?? 100).offset(params.offset ?? 0)) as StoredRecord[];
@@ -535,7 +536,8 @@ class TableRecordStore implements RecordStore {
     let orderSql = sql``;
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql.raw("DESC") : sql.raw("ASC");
-      // Cột hệ thống trên bảng thật — không dùng textExpr (trả ext->>field = NULL)
+      // Cột hệ thống trên bảng thật — không dùng textExpr (trả ext->>field = NULL).
+      // NULLS LAST: bản ghi thiếu giá trị luôn xuống cuối, bất kể chiều sort.
       const systemCols: Record<string, string> = {
         id: "id",
         created_at: "created_at",
@@ -544,7 +546,7 @@ class TableRecordStore implements RecordStore {
       const sortExpr = systemCols[params.sort.field]
         ? sql.raw(`"${systemCols[params.sort.field]}"`)
         : this.textExpr(params.sort.field);
-      orderSql = sql` ORDER BY ${sortExpr} ${dir}`;
+      orderSql = sql` ORDER BY ${sortExpr} ${dir} NULLS LAST`;
     }
     const limit = params.limit ?? 100;
     const offset = params.offset ?? 0;

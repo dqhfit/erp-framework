@@ -307,6 +307,14 @@ export interface WizardStepDef {
   relatedImage?: WizardRelatedImage;
 }
 
+/** Mở form TẠO MỚI master-detail của list chứa nút (createForm của list widget).
+ *  Cho phép đặt nút "Tạo đơn hàng" như một embeddedAction TRONG danh sách thay vì
+ *  nút mặc định của createForm (đặt createForm.embedded = true để ẩn nút mặc định). */
+export interface ActionStepOpenCreateForm {
+  id: string;
+  kind: "open-create-form";
+}
+
 export interface ActionStepOpenWizard {
   id: string;
   kind: "open-wizard";
@@ -347,6 +355,7 @@ export type ActionStep =
   | ActionStepSetState
   | ActionStepRefresh
   | ActionStepOpenPopup
+  | ActionStepOpenCreateForm
   | ActionStepOpenWizard;
 
 export type ActionVariant = "primary" | "default" | "danger" | "ghost";

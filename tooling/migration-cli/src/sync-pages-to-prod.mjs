@@ -48,7 +48,9 @@ function localDbUrl() {
 const LOCAL = localDbUrl();
 
 function findKey() {
+  // Ưu tiên env var (truyền key in-session, không lưu vào file). Hỗ trợ cả 2 tên.
   if (process.env.X_API_KEY) return process.env.X_API_KEY;
+  if (process.env.ERP_MCP_KEY) return process.env.ERP_MCP_KEY;
   const cfg = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf8"));
   const proj = cfg.projects?.["D:/code/cowok/Apps/erp-framework"];
   const servers = { ...(cfg.mcpServers ?? {}), ...(proj?.mcpServers ?? {}) };
