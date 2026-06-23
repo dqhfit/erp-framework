@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /* Smoke test — không cần backend. Chưa có phiên → AuthGate hiện
    màn hình đăng nhập. Kiểm luồng UI cốt lõi (gate + toggle form). */
@@ -11,24 +11,22 @@ test("hiện màn hình đăng nhập khi chưa có phiên", async ({ page }) =>
 test("chuyển qua lại giữa đăng nhập và đăng ký", async ({ page }) => {
   // Smoke chạy app-only nên mock đúng response tRPC tối thiểu:
   // mở đăng ký nhưng vẫn trả UNAUTHORIZED cho auth.me.
-  await page.route("**/trpc/auth.registrationOpen,auth.me?**", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify([
-        { result: { data: { open: true } } },
-        {
-          error: {
-            message: "Cần đăng nhập",
-            code: -32001,
-            data: {
-              code: "UNAUTHORIZED",
-              httpStatus: 401,
-              path: "auth.me",
-            },
-          },
-        },
-      ]),
-    });
+  // Pattern rộng hơn vì app có thể batch nhiều lần gọi trong 1 request
+  // (vd: registrationOpen,auth.me,registrationOpen,auth.me?batch=1).
+  await page.route("**/trpc/**registrationOpen**", async (route) => {
+    const url = route.request().url();
+    const count = (url.match(/registrationOpen/g) ?? []).length;
+    const mockOpen = { result: { data: { open: true } } };
+    const mockUnauth = {
+      error: {
+        message: "Cần đăng nhập",
+        code: -32001,
+        data: { code: "UNAUTHORIZED", httpStatus: 401, path: "auth.me" },
+      },
+    };
+    const body = [];
+    for (let i = 0; i < count; i++) body.push(mockOpen, mockUnauth);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
   });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   // Sang form đăng ký.
