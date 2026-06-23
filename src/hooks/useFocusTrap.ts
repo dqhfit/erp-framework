@@ -24,9 +24,13 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
   // thêm nó vào deps — tránh effect re-run mỗi khi parent re-render.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  // Timestamp của lần cuối file input trong container fire change.
-  // Dùng để bỏ qua Escape do Chrome/Windows phát khi file picker đóng.
-  const lastFileChangeMs = useRef(0);
+  // Guard Escape giả do native file dialog: Chrome (đặc biệt trên Linux/GTK)
+  // phát Escape vào trang khi dialog đóng — kể cả sau khi đã CHỌN file. Bắt theo
+  // vòng đời dialog (không phụ thuộc timing mong manh):
+  //   - fileDialogActive = true khi click file input (dialog đang mở, có thể lâu).
+  //   - khi window focus lại (dialog đóng) HOẶC change fire → mở cửa sổ chặn 1200ms.
+  const fileDialogActive = useRef(false);
+  const fileGuardUntil = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -40,25 +44,44 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
       (first ?? container).focus();
     }
 
-    // Ghi nhận file change để guard Escape bên dưới.
-    const handleFileChange = (e: Event) => {
-      if ((e.target as HTMLInputElement | null)?.type === "file")
-        lastFileChangeMs.current = Date.now();
+    const isFileInput = (el: EventTarget | null) =>
+      (el as HTMLInputElement | null)?.tagName === "INPUT" &&
+      (el as HTMLInputElement).type === "file";
+
+    // Click vào file input → dialog sắp mở. Dùng capture + window để bắt mọi
+    // input kể cả trong portal lồng nhau.
+    const handleFileClick = (e: Event) => {
+      if (isFileInput(e.target)) fileDialogActive.current = true;
     };
-    container?.addEventListener("change", handleFileChange);
+    // change fire khi CHỌN file (không fire khi cancel).
+    const handleFileChange = (e: Event) => {
+      if (isFileInput(e.target)) {
+        fileDialogActive.current = false;
+        fileGuardUntil.current = Date.now() + 1200;
+      }
+    };
+    // window focus lại = native dialog vừa đóng (cả chọn lẫn cancel). Mở cửa sổ
+    // chặn để nuốt Escape giả phát ngay sau đó.
+    const handleWinFocus = () => {
+      if (fileDialogActive.current) {
+        fileDialogActive.current = false;
+        fileGuardUntil.current = Date.now() + 1200;
+      }
+    };
+    window.addEventListener("click", handleFileClick, true);
+    window.addEventListener("change", handleFileChange, true);
+    window.addEventListener("focus", handleWinFocus);
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Chrome/Windows fire Escape khi file picker đóng (cả sau khi chọn xong).
-        // Guard 1: e.target là file input (nếu Escape fire trước khi input bị disabled).
-        // Guard 2: activeElement là file input (nếu input chưa bị disabled/blur).
-        // Guard 3: Escape trong vòng 500ms sau file change (trường hợp input đã disabled).
+        // Nuốt Escape giả từ file dialog: đang mở, hoặc trong cửa sổ chặn sau khi đóng.
         const tgt = e.target as HTMLInputElement | null;
         const act = document.activeElement as HTMLInputElement | null;
         if (
+          fileDialogActive.current ||
+          Date.now() < fileGuardUntil.current ||
           tgt?.type === "file" ||
-          act?.type === "file" ||
-          Date.now() - lastFileChangeMs.current < 500
+          act?.type === "file"
         )
           return;
         e.stopPropagation();
@@ -89,7 +112,9 @@ export function useFocusTrap<T extends HTMLElement>(open: boolean, onClose: () =
     window.addEventListener("keydown", handleKey);
     return () => {
       window.removeEventListener("keydown", handleKey);
-      container?.removeEventListener("change", handleFileChange);
+      window.removeEventListener("click", handleFileClick, true);
+      window.removeEventListener("change", handleFileChange, true);
+      window.removeEventListener("focus", handleWinFocus);
       // Restore focus chỉ khi previous element còn trong DOM.
       const prev = previousFocusRef.current;
       if (prev && document.body.contains(prev)) prev.focus();

@@ -7,6 +7,7 @@
 import { createApiDataSource } from "@erp-framework/client";
 import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
+import { fileDisplayName } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { computeProduct, sumField } from "@/components/renderer/MasterDetailCreateModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
@@ -161,7 +162,6 @@ function RelatedImagePanel({
 const SINGLE_FORM_KEY = "__wizard_single__";
 
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
-  const _onCancel = onCancel;
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
   // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/
@@ -201,6 +201,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
   const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
+  // Tên file gốc lưu sau khi upload thành công — tránh phụ thuộc decode token client-side.
+  const [fileDisplayNames, setFileDisplayNames] = useState<Record<string, string>>({});
+  // Escape giả từ native file dialog được nuốt ở useFocusTrap (theo vòng đời dialog).
+  const _onCancel = onCancel;
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
   const lookupKey = [
@@ -594,9 +598,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               : (wizardStep.fields ?? []),
           ),
         );
+        // Khi KHÔNG có step nào khai báo fields tường minh (editableFieldNames rỗng),
+        // bỏ filter — lưu tất cả field có giá trị. Tránh payload rỗng khi wizard
+        // dùng fallback "hiện 7 field đầu" mà không liệt kê field.
+        const hasExplicitFields = editableFieldNames.size > 0;
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(shared)) {
-          if (!editableFieldNames.has(k)) continue;
+          if (hasExplicitFields && !editableFieldNames.has(k)) continue;
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
@@ -739,9 +747,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
           throw new Error((e as { error?: string }).error ?? "Upload thất bại");
         }
-        return res.json() as Promise<{ url: string }>;
+        return res.json() as Promise<{ url: string; name?: string }>;
       })
-      .then(({ url }) => setField(name, url))
+      .then(({ url, name: displayName }) => {
+        setField(name, url);
+        if (displayName) setFileDisplayNames((m) => ({ ...m, [name]: displayName }));
+      })
       .catch((e: Error) => toast.error(e.message))
       .finally(() =>
         setImgUploading((u) => {
@@ -985,8 +996,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               const v = form[f.name] ? String(form[f.name]) : "";
               if (!v) return "Chưa chọn file";
               if (v.startsWith("data:")) return "File đã chọn";
-              const last = v.split("/").pop() ?? v;
-              return last.includes("__") ? last.slice(last.indexOf("__") + 2) : last;
+              // Ưu tiên tên lưu từ upload response; fallback decode token
+              return fileDisplayNames[f.name] ?? fileDisplayName(v);
             })()}
           </span>
           <input
@@ -1343,7 +1354,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                             )}
                           </div>
                         )}
-                        {!readOnly && f.name !== "hinhanh" && (
+                        {!readOnly && (
                           <div className="flex items-center gap-2 mt-1.5">
                             <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                               <span

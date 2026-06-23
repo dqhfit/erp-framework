@@ -194,7 +194,17 @@ class EavRecordStore implements RecordStore {
     let q = this.db.select().from(entityRecords).where(where).$dynamic();
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql`desc` : sql`asc`;
-      q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir}`);
+      // Cột hệ thống (id UUIDv7, created_at, updated_at) nằm ngoài data JSONB
+      // → phải sort theo cột thật; còn lại sort theo data->>'field'.
+      if (params.sort.field === "id") {
+        q = q.orderBy(sql`${entityRecords.id} ${dir}`);
+      } else if (params.sort.field === "created_at") {
+        q = q.orderBy(sql`${entityRecords.createdAt} ${dir}`);
+      } else if (params.sort.field === "updated_at") {
+        q = q.orderBy(sql`${entityRecords.updatedAt} ${dir}`);
+      } else {
+        q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir}`);
+      }
     }
     const rows = (await q.limit(params.limit ?? 100).offset(params.offset ?? 0)) as StoredRecord[];
     if (params.withTotal === false) return { rows, total: rows.length };
@@ -525,7 +535,16 @@ class TableRecordStore implements RecordStore {
     let orderSql = sql``;
     if (params.sort) {
       const dir = params.sort.dir === "desc" ? sql.raw("DESC") : sql.raw("ASC");
-      orderSql = sql` ORDER BY ${this.textExpr(params.sort.field)} ${dir}`;
+      // Cột hệ thống trên bảng thật — không dùng textExpr (trả ext->>field = NULL)
+      const systemCols: Record<string, string> = {
+        id: "id",
+        created_at: "created_at",
+        updated_at: "updated_at",
+      };
+      const sortExpr = systemCols[params.sort.field]
+        ? sql.raw(`"${systemCols[params.sort.field]}"`)
+        : this.textExpr(params.sort.field);
+      orderSql = sql` ORDER BY ${sortExpr} ${dir}`;
     }
     const limit = params.limit ?? 100;
     const offset = params.offset ?? 0;

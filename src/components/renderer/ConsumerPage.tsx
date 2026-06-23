@@ -178,16 +178,14 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
-        // Có createForm → nút embeddedActions (vd Nạp lại) render CÙNG hàng với
-        // nút "Thêm mới" trong header ListWidget; khi đó strip trên để rỗng.
-        embeddedActions={cfg.createForm ? embActs : undefined}
-        embeddedFilters={
-          cfg.createForm ? (cfg.embeddedFilters as EmbeddedFilter[] | undefined) : undefined
-        }
+        // embeddedActions luôn đi vào toolbar của ListWidget (cùng hàng filter).
+        // withEmbeddedActions bên dưới nhận [] để không tạo strip tách riêng.
+        embeddedActions={embActs.length > 0 ? embActs : undefined}
+        embeddedFilters={cfg.embeddedFilters as EmbeddedFilter[] | undefined}
         refetchOnSave={cfg.refetchOnSave === true}
         valueLabels={cfg.valueLabels as Record<string, Record<string, string>> | undefined}
       />,
-      cfg.createForm ? [] : embActs,
+      [], // embActs đã chuyển vào ListWidget toolbar — không dùng strip ngoài nữa
       pageState,
     );
   }

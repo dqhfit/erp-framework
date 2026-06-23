@@ -16,12 +16,19 @@ import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 import type { SavedGridState } from "@/components/renderer/datagrid/grid-utils";
 import { idbGet, idbSet } from "@/lib/page-state-idb";
 
+// Cột hệ thống ẩn — luôn false kể cả sau IDB restore (dùng cho sort ẩn).
+const SYSTEM_HIDDEN: VisibilityState = { created_at: false, updated_at: false };
+
 export function useGridPersistence({
   stateKey,
+  defaultSort,
   state,
   apply,
 }: {
   stateKey: string | undefined;
+  /** Khi có defaultSort: IDB sort chỉ được restore nếu chứa defaultSort.field
+   *  (tức user đã tự sort cột đó). Nếu IDB sort không liên quan → dùng defaultSort. */
+  defaultSort?: { field: string; dir: "asc" | "desc" } | undefined;
   state: {
     sorting: SortingState;
     globalFilter: string;
@@ -79,11 +86,20 @@ export function useGridPersistence({
     idbGet<SavedGridState>(stateKey)
       .then((saved) => {
         if (!saved) return;
-        if (saved.sorting?.length) setSorting(saved.sorting);
+        // Chỉ restore IDB sort nếu không có defaultSort, hoặc IDB sort đã
+        // chứa defaultSort.field (user tự chọn cột đó) — tránh sort cũ override.
+        if (saved.sorting?.length) {
+          const hasDefaultField = defaultSort
+            ? saved.sorting.some((s) => s.id === defaultSort.field)
+            : true;
+          if (hasDefaultField) setSorting(saved.sorting);
+        }
         if (saved.globalFilter) setGlobalFilter(saved.globalFilter);
         if (saved.grouping?.length) setGrouping(saved.grouping);
         if (saved.columnFilters?.length) setColumnFilters(saved.columnFilters);
-        if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility);
+        // Merge: cột hệ thống ẩn luôn giữ false, user visibility chồng lên.
+        if (saved.columnVisibility)
+          setColumnVisibility({ ...SYSTEM_HIDDEN, ...saved.columnVisibility, ...SYSTEM_HIDDEN });
         if (saved.columnSizing) setColumnSizing(saved.columnSizing);
         if (saved.columnOrder?.length) setColumnOrder(saved.columnOrder);
         if (saved.columnPinning) setColumnPinning(saved.columnPinning);

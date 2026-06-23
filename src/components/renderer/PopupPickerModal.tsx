@@ -8,8 +8,9 @@
    - form   : Form trống, người dùng nhập, "Xác nhận" → trả về object
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
+import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
 
 import { useUserObjects } from "@/stores/userObjects";
@@ -32,12 +33,22 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     (f) => f.type !== "formula" && f.type !== "collection",
   );
   // step.fields → đúng tập + thứ tự đó; không có → tối đa 7 field đầu.
-  const visibleFields =
+  // step.fieldOverrides → ghi đè type/label (vd url→file, text→image).
+  const visibleFields = (
     step.fields && step.fields.length > 0
       ? (step.fields
           .map((n) => usableFields.find((f) => f.name === n))
           .filter(Boolean) as typeof usableFields)
-      : usableFields.slice(0, 7);
+      : usableFields.slice(0, 7)
+  ).map((f) => {
+    const ov = step.fieldOverrides?.[f.name];
+    if (!ov) return f;
+    return {
+      ...f,
+      ...(ov.type ? { type: ov.type } : {}),
+      ...(ov.label ? { label: ov.label } : {}),
+    };
+  });
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   // Options cho field-dropdown nguồn-entity (lookups): { fieldName → [{value,label}] }.
@@ -307,14 +318,36 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
             <div className="text-center py-12 text-muted text-sm">Không tìm thấy bản ghi</div>
           ) : (
             <div className="divide-y divide-border">
-              {visibleFields.map((f) => (
-                <div key={f.id} className="grid grid-cols-[160px_1fr] gap-3 py-2.5 text-sm">
-                  <span className="text-muted text-xs pt-0.5">{f.label}</span>
-                  <span className="font-medium break-words">
-                    {String(detailRow[f.name] ?? "—")}
-                  </span>
-                </div>
-              ))}
+              {visibleFields.map((f) => {
+                const raw = detailRow[f.name];
+                const s = raw == null ? "" : String(raw);
+                let cell: ReactNode;
+                if (
+                  f.type === "image" &&
+                  s &&
+                  (s.startsWith("data:image/") ||
+                    s.startsWith("/files/img/") ||
+                    s.startsWith("/f/") ||
+                    /^https?:\/\//.test(s))
+                ) {
+                  cell = (
+                    <ImageCell url={s} className="h-16 max-w-[160px] object-contain rounded" />
+                  );
+                } else if (
+                  f.type === "file" &&
+                  (s.startsWith("/files/doc/") || s.startsWith("/f/"))
+                ) {
+                  cell = <FileCell url={s} />;
+                } else {
+                  cell = <span className="font-medium break-words">{s || "—"}</span>;
+                }
+                return (
+                  <div key={f.id} className="grid grid-cols-[160px_1fr] gap-3 py-2.5 text-sm">
+                    <span className="text-muted text-xs pt-0.5">{f.label}</span>
+                    {cell}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

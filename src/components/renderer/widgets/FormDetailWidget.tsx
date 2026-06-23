@@ -4,6 +4,7 @@
    chuyển code, KHÔNG đổi hành vi. */
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
+import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import {
   api,
@@ -228,7 +229,26 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
                   </Chip>
                 )}
               </dt>
-              <dd className="font-mono break-all">{applyFieldFormat(f, v)}</dd>
+              <dd className="break-all">
+                {(() => {
+                  const s = v == null ? "" : String(v);
+                  if (
+                    f.type === "image" &&
+                    s &&
+                    (s.startsWith("data:image/") ||
+                      s.startsWith("/files/img/") ||
+                      s.startsWith("/f/") ||
+                      /^https?:\/\//.test(s))
+                  )
+                    return (
+                      <ImageCell url={s} className="h-14 max-w-[160px] object-contain rounded" />
+                    );
+                  if (f.type === "file" && (s.startsWith("/files/doc/") || s.startsWith("/f/"))) {
+                    return <FileCell url={s} />;
+                  }
+                  return <span className="font-mono">{applyFieldFormat(f, v)}</span>;
+                })()}
+              </dd>
             </div>
           );
         })}

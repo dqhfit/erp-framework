@@ -204,6 +204,8 @@ export interface ActionStepOpenPopup {
   invalidateEntities?: string[];
   /** Key page state để lưu kết quả (object đã chọn / nhập) */
   saveOutputTo: string;
+  /** Ghi đè type/label của field trong popup (vd url→file, text→image). */
+  fieldOverrides?: Record<string, FieldOverride>;
   /** Form: render field này thành dropdown — hoặc lấy options từ entity khác
    *  (hiện `labelField`, lưu `valueField`), hoặc dùng `options` tĩnh (value≠label,
    *  vd Phân loại: TRONG→"Màu trong"). */
