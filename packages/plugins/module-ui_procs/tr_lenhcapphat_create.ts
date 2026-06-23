@@ -467,8 +467,13 @@ export async function trLenhcapphatCreateHtr(
       );
     }
 
-    // Vô hiệu toàn bộ dòng cũ của head trước khi đồng bộ.
-    await detail.updateWhere({ active: false }, sql`${detail.text("lenhcapphatid")} = ${headId}`);
+    // Vô hiệu dòng cũ của head trước khi đồng bộ — NHƯNG GIỮ active cho dòng
+    // ĐÃ cấp phát dở (soluong_daphat > 0): nếu đơn bị hủy (sl<=0) hoặc mất định
+    // mức, dòng đó sẽ KHÔNG được loop dưới re-activate → tránh mất tracking đã xuất.
+    await detail.updateWhere(
+      { active: false },
+      sql`${detail.text("lenhcapphatid")} = ${headId} AND coalesce(${detail.num("soluong_daphat")}, 0) <= 0`,
+    );
 
     let created = 0;
     let updated = 0;
