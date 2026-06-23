@@ -39,6 +39,7 @@ function PortalRoute() {
   const pages = useUserObjects((s) => s.pages);
   const hydrate = useUserObjects((s) => s.hydrate);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
+  const myPageIds = useUserObjects((s) => s.myPageIds);
   const favs = useFavs();
   const canEdit = user?.role === "admin" || user?.role === "editor";
   const lang = useLocale((s) => s.lang);
@@ -57,10 +58,12 @@ function PortalRoute() {
           // Admin/editor thấy tất cả trang published bất kể viewerGroupIds —
           // portal vừa là cổng viewer vừa là xem trước cho người dựng trang.
           (canEdit ||
+            // Quyền cá nhân ưu tiên nhóm: user được cấp trực tiếp luôn thấy.
+            myPageIds.includes(p.id) ||
             !p.viewerGroupIds?.length ||
             p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
       ),
-    [pages, myGroupIds, canEdit],
+    [pages, myGroupIds, myPageIds, canEdit],
   );
 
   const { data: navNodes = [] } = useNavTree();

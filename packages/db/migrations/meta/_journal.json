@@ -617,6 +617,13 @@
       "when": 1783800000000,
       "tag": "0087_company_integration_secrets",
       "breakpoints": false
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1783800001000,
+      "tag": "0088_user_page_access",
+      "breakpoints": false
     }
   ]
 }

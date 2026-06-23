@@ -101,6 +101,7 @@ export const recordsRouter = router({
             (r.data ?? {}) as Record<string, unknown>,
             ctx.user.role,
             gIdsList,
+            ctx.user.id,
           ),
         })),
       };
@@ -136,7 +137,7 @@ export const recordsRouter = router({
         const f = byName.get(a.field);
         // count không lộ giá trị field; field lạ → bỏ. Field có → cần quyền đọc.
         if (a.fn === "count") return true;
-        return f ? fieldCan(ctx.user.role, "read", f, gIds) : false;
+        return f ? fieldCan(ctx.user.role, "read", f, gIds, ctx.user.id) : false;
       });
       if (allowed.length === 0) return {} as Record<string, number>;
       return getRecordStore(ctx.db).aggregate(ctx.user.companyId, input.entityId, {
@@ -178,6 +179,7 @@ export const recordsRouter = router({
           withRollups,
           ctx.user.role,
           await loadUserGroupIds(ctx.db, ctx.user.id),
+          ctx.user.id,
         ),
       };
     }),
@@ -193,6 +195,7 @@ export const recordsRouter = router({
         input.data,
         ctx.user.role,
         await loadUserGroupIds(ctx.db, ctx.user.id),
+        ctx.user.id,
       );
       const data = assertValid(fields, writable, false);
       // Sinh value cho field type "sequence" — server-side, atomic.
@@ -257,6 +260,7 @@ export const recordsRouter = router({
           decoded,
           ctx.user.role,
           await loadUserGroupIds(ctx.db, ctx.user.id),
+          ctx.user.id,
         ),
       };
     }),
@@ -296,6 +300,7 @@ export const recordsRouter = router({
         input.data,
         ctx.user.role,
         await loadUserGroupIds(ctx.db, ctx.user.id),
+        ctx.user.id,
       );
       const data = assertValid(fields, writable, true);
       // Sequence không cho update — bỏ key sequence ra khỏi data.
@@ -798,6 +803,7 @@ export const recordsRouter = router({
         input.patch,
         ctx.user.role,
         await loadUserGroupIds(ctx.db, ctx.user.id),
+        ctx.user.id,
       );
       const data = assertValid(fields, writable, true);
       const store = getRecordStore(ctx.db);
@@ -866,7 +872,13 @@ export const recordsRouter = router({
         try {
           const cur = await store.loadState(ctx.user.companyId, it.id, input.entityId);
           if (!cur || cur.deletedAt) throw new Error("Không tồn tại hoặc đã xoá");
-          const writable = stripUnwritableFields(fields, it.changes, ctx.user.role, gIds);
+          const writable = stripUnwritableFields(
+            fields,
+            it.changes,
+            ctx.user.role,
+            gIds,
+            ctx.user.id,
+          );
           const data = assertValid(fields, writable, true);
           for (const f of fields) if (f.type === "sequence") delete data[f.name];
           await assertUnique(store, ctx.user.companyId, input.entityId, fields, data, it.id);
@@ -920,7 +932,7 @@ export const recordsRouter = router({
         try {
           const r = input.rows[i]!;
           // Strip field user không có quyền write per row (field-level RBAC).
-          const writable = stripUnwritableFields(fields, r, ctx.user.role, gIds);
+          const writable = stripUnwritableFields(fields, r, ctx.user.role, gIds, ctx.user.id);
           const v = validateRecord(fields, writable, { registry: pluginRegistry });
           if (!v.ok) {
             errors.push({
@@ -967,7 +979,10 @@ export const recordsRouter = router({
       const gIdsExport = await loadUserGroupIds(ctx.db, ctx.user.id);
       const safeRows = rows.map((r) => {
         const decoded = decryptDataOut(fields, (r.data ?? {}) as Record<string, unknown>);
-        return { ...r, data: stripUnreadableFields(fields, decoded, ctx.user.role, gIdsExport) };
+        return {
+          ...r,
+          data: stripUnreadableFields(fields, decoded, ctx.user.role, gIdsExport, ctx.user.id),
+        };
       });
       if (input.format === "json") {
         return {

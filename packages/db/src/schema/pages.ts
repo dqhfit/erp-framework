@@ -134,3 +134,22 @@ export const pageViewerGroups = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.pageId, t.groupId] }) }),
 );
+
+/** Quyền truy cập trang per-user — ưu tiên hơn nhóm (user thấy trang dù không trong nhóm). */
+export const userPageAccess = pgTable(
+  "user_page_access",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.pageId] }) }),
+);

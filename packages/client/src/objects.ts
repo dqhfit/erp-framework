@@ -37,6 +37,12 @@ export interface EntityFieldInput {
   ref?: string;
   fkField?: string;
   defaultVisible?: boolean;
+  readableBy?: Array<"admin" | "editor" | "viewer">;
+  writableBy?: Array<"admin" | "editor" | "viewer">;
+  readableByGroups?: string[];
+  writableByGroups?: string[];
+  readableByUsers?: string[];
+  writableByUsers?: string[];
 }
 export interface EntitySaveInput {
   id?: string;
@@ -298,6 +304,13 @@ export function createObjectsClient(baseUrl: string) {
       setPageGroups: (pageId: string, groupIds: string[]) =>
         trpc.viewerGroups.setPageGroups.mutate({ pageId, groupIds }),
       getMyGroups: () => trpc.viewerGroups.getMyGroups.query(),
+      /** PageId ma user hien tai duoc cap quyen ca nhan */
+      getMyPageAccess: () => trpc.viewerGroups.getMyPageAccess.query(),
+      /** Liet ke quyen ca nhan cua tat ca user trong cong ty (admin) */
+      listUserPageAccess: () => trpc.viewerGroups.listUserPageAccess.query(),
+      /** Dat quyen trang ca nhan cho 1 user (thay the hoan toan) */
+      setUserPages: (userId: string, pageIds: string[]) =>
+        trpc.viewerGroups.setUserPages.mutate({ userId, pageIds }),
     },
   };
 }

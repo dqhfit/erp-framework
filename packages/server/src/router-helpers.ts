@@ -106,6 +106,10 @@ export const fieldDef = z.object({
   unique: z.boolean().optional(),
   readableBy: z.array(z.enum(["admin", "editor", "viewer"])).optional(),
   writableBy: z.array(z.enum(["admin", "editor", "viewer"])).optional(),
+  readableByGroups: z.array(z.string()).optional(),
+  writableByGroups: z.array(z.string()).optional(),
+  readableByUsers: z.array(z.string()).optional(),
+  writableByUsers: z.array(z.string()).optional(),
   sequencePrefix: z.string().optional(),
   sequencePadding: z.number().int().optional(),
   format: z.record(z.string(), z.unknown()).optional(),
@@ -500,12 +504,13 @@ export async function loadUserGroupIds(db: DB, userId: string): Promise<string[]
   return ids;
 }
 
-/** Loại bỏ key user không có quyền GHI (writableBy + writableByGroups). */
+/** Loại bỏ key user không có quyền GHI (writableBy + writableByGroups + writableByUsers). */
 export function stripUnwritableFields(
   fields: EntityFieldDef[],
   data: Record<string, unknown>,
   role: Role,
   groupIds: string[] = [],
+  userId?: string,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
@@ -514,17 +519,18 @@ export function stripUnwritableFields(
       out[k] = v;
       continue;
     }
-    if (fieldCan(role, "write", f, groupIds)) out[k] = v;
+    if (fieldCan(role, "write", f, groupIds, userId)) out[k] = v;
   }
   return out;
 }
 
-/** Loại bỏ key user không có quyền ĐỌC (readableBy + readableByGroups). */
+/** Loại bỏ key user không có quyền ĐỌC (readableBy + readableByGroups + readableByUsers). */
 export function stripUnreadableFields(
   fields: EntityFieldDef[],
   data: Record<string, unknown>,
   role: Role,
   groupIds: string[] = [],
+  userId?: string,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
@@ -533,7 +539,7 @@ export function stripUnreadableFields(
       out[k] = v;
       continue;
     }
-    if (fieldCan(role, "read", f, groupIds)) out[k] = v;
+    if (fieldCan(role, "read", f, groupIds, userId)) out[k] = v;
   }
   return out;
 }

@@ -168,6 +168,8 @@ interface UserObjectsState {
   agentContent: Record<string, unknown>;
   dataSourceContent: Record<string, DataSourceConfig>;
   myGroupIds: string[];
+  /** PageId được cấp quyền cá nhân (ưu tiên hơn nhóm). */
+  myPageIds: string[];
   viewerGroupsList: MockViewerGroup[];
   /** Cờ trạng thái TÙY CHỈNH ("cờ của tôi") per-company. */
   pageFlags: PageFlag[];
@@ -243,18 +245,20 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
   agentContent: {},
   dataSourceContent: {},
   myGroupIds: [],
+  myPageIds: [],
   viewerGroupsList: [],
   pageFlags: [],
 
   hydrate: async () => {
     try {
-      const [ents, pgs, wfs, ags, dss, myGroups, vGroups, pFlags] = await Promise.all([
+      const [ents, pgs, wfs, ags, dss, myGroups, myPages, vGroups, pFlags] = await Promise.all([
         api.entities.list(),
         api.pages.list(),
         api.workflows.list(),
         api.agents.list(),
         api.dataSources.list().catch(() => [] as Row[]),
         api.viewerGroups.getMyGroups().catch(() => [] as string[]),
+        api.viewerGroups.getMyPageAccess().catch(() => [] as string[]),
         api.viewerGroups
           .list()
           .catch(() => [] as Awaited<ReturnType<typeof api.viewerGroups.list>>),
@@ -281,6 +285,7 @@ export const useUserObjects = create<UserObjectsState>()((set, get) => ({
         agentContent,
         dataSourceContent,
         myGroupIds: myGroups,
+        myPageIds: myPages,
         viewerGroupsList: vGroups as MockViewerGroup[],
         pageFlags: pFlags,
       });

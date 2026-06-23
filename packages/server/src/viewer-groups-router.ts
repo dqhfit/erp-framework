@@ -7,6 +7,7 @@ import {
   companyMembers,
   pages,
   pageViewerGroups,
+  userPageAccess,
   userViewerGroups,
   viewerGroups,
 } from "@erp-framework/db";
@@ -146,4 +147,88 @@ export const viewerGroupsRouter = router({
       .where(eq(userViewerGroups.userId, ctx.user.id));
     return rows.map((r) => r.groupId);
   }),
+
+  /** Danh sach pageId ma nguoi dung hien tai duoc cap quyen ca nhan */
+  getMyPageAccess: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.companyId) return [];
+    const rows = await ctx.db
+      .select({ pageId: userPageAccess.pageId })
+      .from(userPageAccess)
+      .where(
+        and(
+          eq(userPageAccess.userId, ctx.user.id),
+          eq(userPageAccess.companyId, ctx.user.companyId),
+        ),
+      );
+    return rows.map((r) => r.pageId);
+  }),
+
+  /** Liet ke tat ca quyen ca nhan theo cong ty (cho admin quan ly) */
+  listUserPageAccess: rbacProcedure("edit", "page").query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        userId: userPageAccess.userId,
+        pageId: userPageAccess.pageId,
+        grantedBy: userPageAccess.grantedBy,
+        createdAt: userPageAccess.createdAt,
+      })
+      .from(userPageAccess)
+      .where(eq(userPageAccess.companyId, ctx.user.companyId));
+    // Gom theo userId -> pageIds
+    const map = new Map<string, string[]>();
+    for (const r of rows) {
+      const list = map.get(r.userId) ?? [];
+      list.push(r.pageId);
+      map.set(r.userId, list);
+    }
+    return Array.from(map.entries()).map(([userId, pageIds]) => ({ userId, pageIds }));
+  }),
+
+  /** Thay the toan bo quyen trang ca nhan cua 1 user trong cong ty */
+  setUserPages: rbacProcedure("edit", "page")
+    .input(z.object({ userId: z.string().uuid(), pageIds: z.array(z.string().uuid()) }))
+    .mutation(async ({ ctx, input }) => {
+      // Chi nhan user la thanh vien cong ty
+      if (input.userId !== ctx.user.id) {
+        const [member] = await ctx.db
+          .select({ userId: companyMembers.userId })
+          .from(companyMembers)
+          .where(
+            and(
+              eq(companyMembers.companyId, ctx.user.companyId),
+              eq(companyMembers.userId, input.userId),
+            ),
+          );
+        if (!member)
+          throw new TRPCError({ code: "NOT_FOUND", message: "Tài khoản không thuộc công ty" });
+      }
+      // Chi nhan page thuoc cong ty
+      const validPageIds = input.pageIds.length
+        ? (
+            await ctx.db
+              .select({ id: pages.id })
+              .from(pages)
+              .where(and(eq(pages.companyId, ctx.user.companyId), inArray(pages.id, input.pageIds)))
+          ).map((p) => p.id)
+        : [];
+      await ctx.db
+        .delete(userPageAccess)
+        .where(
+          and(
+            eq(userPageAccess.userId, input.userId),
+            eq(userPageAccess.companyId, ctx.user.companyId),
+          ),
+        );
+      if (validPageIds.length > 0) {
+        await ctx.db.insert(userPageAccess).values(
+          validPageIds.map((pageId) => ({
+            userId: input.userId,
+            pageId,
+            companyId: ctx.user.companyId,
+            grantedBy: ctx.user.id,
+          })),
+        );
+      }
+      return { ok: true };
+    }),
 });

@@ -109,6 +109,9 @@ export interface EntityFieldDef {
    *  sau role, admin bypass. Rỗng/vắng = mọi nhóm. */
   readableByGroups?: string[];
   writableByGroups?: string[];
+  /** Quyền trường cá nhân (user ids) — ưu tiên nhóm khi cùng field bị hạn chế nhóm. */
+  readableByUsers?: string[];
+  writableByUsers?: string[];
   /** Cho field type "sequence" — prefix + padding (vd "INV-", 4 → INV-0001). */
   sequencePrefix?: string;
   sequencePadding?: number;

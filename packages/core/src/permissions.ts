@@ -179,13 +179,13 @@ export function permissionsOf(role: Role): string[] {
   return out;
 }
 
-/** Field-level RBAC — kiểm tra role + NHÓM người dùng có được đọc/ghi field.
- *  2 tầng độc lập, phải qua CẢ HAI:
- *  - readableBy/writableBy (role): cờ vắng/rỗng = mọi role.
- *  - readableByGroups/writableByGroups (viewer-group ids): cờ vắng/rỗng =
- *    mọi nhóm; có cấu hình → user phải thuộc ÍT NHẤT 1 nhóm. ADMIN BYPASS
- *    tầng nhóm (chống tự khoá mình — admin thường không nằm trong nhóm).
- *  Caller không truyền groupIds + field có cấu hình nhóm → DENY (fail-closed). */
+/** Field-level RBAC — kiểm tra role + NHÓM + TÀI KHOẢN CÁ NHÂN có được đọc/ghi field.
+ *  Thứ tự ưu tiên:
+ *  1. readableBy/writableBy (role): cờ vắng/rỗng = mọi role.
+ *  2. readableByGroups/writableByGroups: cờ vắng/rỗng = mọi nhóm.
+ *     Có cấu hình nhóm → ADMIN bypass; viewer phải trong nhóm HOẶC
+ *     được cấp quyền cá nhân (readableByUsers/writableByUsers ưu tiên).
+ *  Caller không truyền groupIds/userId + field có cấu hình → DENY (fail-closed). */
 export function fieldCan(
   role: Role,
   action: "read" | "write",
@@ -194,13 +194,19 @@ export function fieldCan(
     writableBy?: Role[];
     readableByGroups?: string[];
     writableByGroups?: string[];
+    readableByUsers?: string[];
+    writableByUsers?: string[];
   },
   groupIds?: string[],
+  userId?: string,
 ): boolean {
   const roles = action === "read" ? field.readableBy : field.writableBy;
   if (roles && roles.length > 0 && !roles.includes(role)) return false;
   const groups = action === "read" ? field.readableByGroups : field.writableByGroups;
   if (groups && groups.length > 0 && role !== "admin") {
+    // Quyền cá nhân ưu tiên nhóm.
+    const users = action === "read" ? field.readableByUsers : field.writableByUsers;
+    if (userId && users && users.includes(userId)) return true;
     return (groupIds ?? []).some((g) => groups.includes(g));
   }
   return true;

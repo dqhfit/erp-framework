@@ -65,6 +65,9 @@ export interface EntityField {
   /** RBAC theo nhóm người dùng (viewer-group ids) — tầng 2 sau role. */
   readableByGroups?: string[];
   writableByGroups?: string[];
+  /** Quyền trường cá nhân (user ids) — ưu tiên nhóm. */
+  readableByUsers?: string[];
+  writableByUsers?: string[];
   /** Cho field type "sequence". */
   sequencePrefix?: string;
   sequencePadding?: number;

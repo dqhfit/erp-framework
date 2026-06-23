@@ -477,7 +477,7 @@ function MenuBrowser({
   // Tự chọn danh mục đầu tiên khi danh sách sẵn sàng
   useEffect(() => {
     if (!selectedRoot && visibleRoots.length > 0) {
-      setSelectedRoot(visibleRoots[0].code);
+      setSelectedRoot(visibleRoots[0]?.code ?? null);
     }
   }, [visibleRoots, selectedRoot]);
 
