@@ -1,7 +1,7 @@
 import { randomBytes, scrypt } from "node:crypto";
-import { promisify } from "node:util";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import postgres from "postgres";
 
 const scryptAsync = promisify(scrypt);
@@ -53,9 +53,24 @@ async function main() {
   const sql = postgres(dbUrl);
 
   try {
-    const email = "admin@local.test";
-    const name = "Admin Local";
-    const password = "12341234";
+    // Bảo mật: KHÔNG chạy ở production (tránh tạo admin trên DB thật).
+    if (process.env.NODE_ENV === "production") {
+      console.error("Từ chối chạy: NODE_ENV=production — script này chỉ để tạo admin DEV/local.");
+      process.exit(1);
+    }
+    const email = process.env.ADMIN_EMAIL || "admin@local.test";
+    const name = process.env.ADMIN_NAME || "Admin Local";
+    // Bảo mật: KHÔNG hardcode mật khẩu. Lấy từ ADMIN_PASSWORD (>= 8 ký tự);
+    // thiếu → sinh ngẫu nhiên CSPRNG rồi in ra MỘT LẦN ở cuối.
+    let password = process.env.ADMIN_PASSWORD || "";
+    if (password && password.length < 8) {
+      console.error("ADMIN_PASSWORD quá ngắn (cần >= 8 ký tự).");
+      process.exit(1);
+    }
+    if (!password) {
+      password = randomBytes(18).toString("base64url");
+      console.log("ADMIN_PASSWORD chưa đặt → đã sinh mật khẩu ngẫu nhiên (in ở cuối).");
+    }
 
     // 1) Check if user already exists
     const [existing] = await sql`SELECT id FROM users WHERE email = ${email}`;
