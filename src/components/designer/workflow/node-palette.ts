@@ -22,6 +22,7 @@ export type WorkflowNodeKind =
   | "loop-until"
   | "llm"
   | "knowledge"
+  | "websearch"
   | (string & {});
 
 export interface NodePaletteItem {
@@ -68,6 +69,13 @@ export const NODE_PALETTE: NodePaletteItem[] = [
     label: "Knowledge",
     desc: "Tra Knowledge Base (RAG)",
     icon: "BookOpen",
+    color: "var(--accent-2)",
+  },
+  {
+    kind: "websearch",
+    label: "Web Search",
+    desc: "Tìm kiếm web (SearXNG)",
+    icon: "Search",
     color: "var(--accent-2)",
   },
   {

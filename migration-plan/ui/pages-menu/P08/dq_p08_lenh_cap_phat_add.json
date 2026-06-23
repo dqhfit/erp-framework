@@ -31,24 +31,8 @@
     "editable": true,
     "embeddedActions": [
      {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "0f32009d-1702-4404-9db9-da65395490d4",
-        "title": "Thêm — Lệnh cấp phát",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
       "id": "act_view",
-      "label": "Xem trước",
+      "label": "Xem chi tiết",
       "icon": "Eye",
       "variant": "default",
       "steps": [
@@ -67,8 +51,8 @@
      },
      {
       "id": "act_edit",
-      "label": "Cập nhật LCP",
-      "icon": "Pencil",
+      "label": "Cập nhật",
+      "icon": "Edit",
       "variant": "default",
       "steps": [
        {
@@ -76,11 +60,24 @@
         "kind": "open-popup",
         "popupMode": "form",
         "entity": "0f32009d-1702-4404-9db9-da65395490d4",
-        "title": "Cập nhật LCP — Lệnh cấp phát",
+        "title": "Cập nhật — Lệnh cấp phát",
         "recordIdBinding": {
          "source": "state",
          "key": "sel"
         }
+       }
+      ]
+     },
+     {
+      "id": "act_reload",
+      "label": "Nạp lại",
+      "icon": "RefreshCw",
+      "variant": "default",
+      "steps": [
+       {
+        "id": "s",
+        "kind": "refresh",
+        "entities": ["0f32009d-1702-4404-9db9-da65395490d4"]
        }
       ]
      }

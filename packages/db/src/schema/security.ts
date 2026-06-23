@@ -13,6 +13,27 @@ import {
 import { users } from "./auth";
 import { companies } from "./tenant";
 
+/* Secret tich hop ben thu ba per-company (vi du SearXNG cho web search).
+   secretEnc = gia tri ma hoa AES-256-GCM (vi du base URL SearXNG, co the
+   kem user:pass@). provider phan biet loai tich hop. */
+export const companyIntegrationSecrets = pgTable(
+  "company_integration_secrets",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    secretEnc: text("secret_enc").notNull(),
+    meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyProviderUidx: uniqueIndex("cis_company_provider_uidx").on(t.companyId, t.provider),
+  }),
+);
+
 /* ─── Backup — sao lưu lên Google Drive (UI/cron) ───────── */
 /* Mỗi công ty 1 cấu hình. gdriveKeyEnc = JSON service account key đã
    mã hoá AES-256-GCM. scheduleCron NULL = chỉ chạy thủ công. */

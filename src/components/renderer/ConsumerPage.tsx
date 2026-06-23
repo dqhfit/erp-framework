@@ -121,6 +121,11 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         title={cfg.title as string | undefined}
         multiSelect={cfg.multiSelect === true}
         editable={cfg.editable === true}
+        editableFields={cfg.editableFields as string[] | undefined}
+        highlightEmptyFields={cfg.highlightEmptyFields as string[] | undefined}
+        computedColumns={
+          cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
+        }
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
@@ -379,6 +384,25 @@ export function ConsumerPage({
     const fc = renderComps.find((c) => c.id === fillId);
     return fc ? (fc.y ?? 0) + 1 : 0;
   }, [renderComps, fillId]);
+  // Hàng CHỈ chứa widget "cao bằng nội dung" (bộ lọc) → để `auto` thay vì kéo giãn
+  // theo 1fr (screenFit) / ROW_H (thường) → hết khoảng trống dưới thanh bộ lọc.
+  // Hàng còn lại giữ 1fr/ROW_H để list/chart vẫn lấp viewport. Chỉ áp khi XEM.
+  const autoRowTemplate = useMemo(() => {
+    if (isMobile || layoutEditing) return null;
+    const maxRow = renderComps.reduce((m, c) => Math.max(m, (c.y ?? 0) + (c.h ?? 1)), 0);
+    if (!maxRow) return null;
+    const flexUnit = screenFit && availH > 0 ? "minmax(0, 1fr)" : `${ROW_H}px`;
+    const tokens: string[] = [];
+    let hasAuto = false;
+    for (let r = 0; r < maxRow; r++) {
+      const occ = renderComps.filter((c) => (c.y ?? 0) <= r && r < (c.y ?? 0) + (c.h ?? 1));
+      const isAuto =
+        occ.length > 0 && occ.every((c) => c.kind === "filter" || c.kind === "actionbar");
+      if (isAuto) hasAuto = true;
+      tokens.push(isAuto ? "auto" : flexUnit);
+    }
+    return hasAuto ? tokens.join(" ") : null;
+  }, [renderComps, isMobile, layoutEditing, screenFit, availH]);
   const resizeRef = useRef<{
     compId: string;
     dir: "e" | "s" | "se";
@@ -600,10 +624,12 @@ export function ConsumerPage({
                   ...(!isMobile && !layoutEditing && screenFit && availH > 0
                     ? {
                         height: availH,
-                        // meta.gridTemplateRows cho phép override từng hàng (vd "48px minmax(0,1fr)")
-                        ...(pageMeta.gridTemplateRows
-                          ? { gridTemplateRows: pageMeta.gridTemplateRows as string }
-                          : {}),
+                        // meta.gridTemplateRows override > tự tính (hàng bộ lọc = auto)
+                        // > mặc định gridAutoRows 1fr.
+                        gridTemplateRows:
+                          (pageMeta.gridTemplateRows as string | undefined) ??
+                          autoRowTemplate ??
+                          undefined,
                       }
                     : // fillId: 1 widget đáy lấp hết chiều cao còn lại (hành vi cũ).
                       !isMobile && fillId && availH > 0 && fillRowStart > 0
@@ -616,7 +642,11 @@ export function ConsumerPage({
                               ? `repeat(${fillRowStart - 1}, auto) minmax(0, 1fr)`
                               : "minmax(0, 1fr)",
                         }
-                      : {}),
+                      : // Thường (không screenFit/fill): hàng bộ lọc = auto để hết
+                        // khoảng trống; hàng khác giữ ROW_H.
+                        !isMobile && autoRowTemplate
+                        ? { gridTemplateRows: autoRowTemplate }
+                        : {}),
                 }}
               >
                 {/* Ghost placeholder during drag */}
@@ -662,6 +692,11 @@ export function ConsumerPage({
                         draggable={layoutEditing && !isBeingResized && !isMobile}
                         className={cn(
                           "card overflow-hidden",
+                          // Bộ lọc khi XEM: cao bằng nội dung (không kéo giãn full ô
+                          // ROW_H / 1fr) → thanh lọc gọn. Khi sửa giữ giãn để resize.
+                          (c.kind === "filter" || c.kind === "actionbar") &&
+                            !layoutEditing &&
+                            "self-start",
                           layoutEditing && !isMobile && "relative group/card",
                           layoutEditing &&
                             !isBeingResized &&
@@ -672,7 +707,9 @@ export function ConsumerPage({
                         )}
                         style={
                           isMobile
-                            ? { minHeight: h * ROW_H }
+                            ? c.kind === "filter" || c.kind === "actionbar"
+                              ? undefined
+                              : { minHeight: h * ROW_H }
                             : {
                                 gridColumn: `${colStart} / span ${w}`,
                                 // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;

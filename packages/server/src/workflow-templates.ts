@@ -188,4 +188,38 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       edges: [e("t", "loop"), e("loop", "notify")],
     },
   },
+
+  /* ─── TÀI LIỆU / NGHIÊN CỨU SÂU ────────────────────────── */
+  {
+    id: "deep_research",
+    category: "Tài liệu",
+    categoryKey: "docs",
+    icon: "Search",
+    name: "Nghiên cứu sâu",
+    description:
+      "Tra Knowledge Base nội bộ + web rồi tự soạn báo cáo có trích dẫn. Sửa câu hỏi ở 2 node tra cứu.",
+    tags: ["nghien_cuu", "bao_cao", "web_search", "rag"],
+    triggerType: "manual",
+    graph: {
+      nodes: [
+        n("t", "trigger", "Bắt đầu", 80),
+        n("kb", "knowledge", "Tra Knowledge Base", 320, {
+          query: "Nhập câu hỏi nghiên cứu vào đây",
+          topK: 6,
+        }),
+        n("web", "websearch", "Tìm web", 560, {
+          query: "Nhập câu hỏi nghiên cứu vào đây",
+          topK: 6,
+        }),
+        n("report", "agent", "Soạn báo cáo", 800, {
+          system:
+            "Bạn nhận dữ liệu workflow ở dạng JSON, gồm tri thức nội bộ (các khoá knowledge_*) " +
+            "và kết quả tìm web (các khoá websearch_*). Tổng hợp thành BÁO CÁO Markdown: Tóm tắt " +
+            "nhanh → Nội dung chính theo mục → Kết luận. TRÍCH NGUỒN đầy đủ (nội bộ ghi [#tên nguồn], " +
+            "web ghi URL). KHÔNG bịa; nêu rõ phần thiếu dữ liệu.",
+        }),
+      ],
+      edges: [e("t", "kb"), e("kb", "web"), e("web", "report")],
+    },
+  },
 ];

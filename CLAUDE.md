@@ -28,8 +28,9 @@
 
 - **Chỉ Postgres 18 + pgvector là phụ thuộc cứng.** `pnpm dev` chạy
   server + app (vite) ngay trên host; Docker chỉ để dựng DB + sidecar.
-  Tika/Ollama/MQTT/bridge/nginx đều **tùy chọn** — thiếu chỉ tắt tính
-  năng tương ứng (KB trích file / embedding local / IoT / claude-cli).
+  Tika/Ollama/MQTT/bridge/nginx/SearXNG (web search) đều **tùy chọn** —
+  thiếu chỉ tắt tính năng tương ứng (KB trích file / embedding local /
+  IoT / claude-cli / web search).
 - **Đường ít ma sát nhất**: trỏ `DATABASE_URL` sang Postgres remote có
   sẵn pgvector (Neon/Supabase/server LAN). Template điền sẵn ở
   `packages/server/.env.no-docker.example` (mọi sidecar mặc định tắt).

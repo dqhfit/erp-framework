@@ -54,9 +54,13 @@ function PortalRoute() {
       pages.filter(
         (p) =>
           p.isPublished &&
-          (!p.viewerGroupIds?.length || p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
+          // Admin/editor thấy tất cả trang published bất kể viewerGroupIds —
+          // portal vừa là cổng viewer vừa là xem trước cho người dựng trang.
+          (canEdit ||
+            !p.viewerGroupIds?.length ||
+            p.viewerGroupIds.some((gid) => myGroupIds.includes(gid))),
       ),
-    [pages, myGroupIds],
+    [pages, myGroupIds, canEdit],
   );
 
   const { data: navNodes = [] } = useNavTree();
@@ -107,6 +111,13 @@ function PortalRoute() {
     initDone.current = true;
     const initial = urlPage && publishedPages.some((p) => p.id === urlPage) ? urlPage : null;
     if (initial) {
+      // Đồng bộ URL về đúng trang được chọn (dù đến từ ?page=, lastPageId,
+      // hay trang đầu). Nhờ đây reload luôn khôi phục đúng trang cuối xem.
+      if (typeof window !== "undefined") {
+        const u = new URL(window.location.href);
+        u.searchParams.set("page", initial);
+        window.history.replaceState(null, "", u.pathname + u.search);
+      }
       setActiveIdRaw(initial);
       setMountedIds(new Set([initial]));
     }
@@ -119,6 +130,12 @@ function PortalRoute() {
       const recent = prefs.portal?.recentPages ?? [];
       const nextRecent = [id, ...recent.filter((r) => r !== id)].slice(0, 12);
       savePrefs({ portal: { ...prefs.portal, lastPageId: id, recentPages: nextRecent } });
+      // Cập nhật ?page= trong URL → reload luôn trả về trang đang xem.
+      if (typeof window !== "undefined") {
+        const u = new URL(window.location.href);
+        u.searchParams.set("page", id);
+        window.history.replaceState(null, "", u.pathname + u.search);
+      }
     },
     [savePrefs, prefs],
   );
@@ -159,6 +176,7 @@ function PortalRoute() {
     setRefreshing(true);
     await hydrate();
     await idbDeletePrefix(`${activeId}:`);
+    await idbDeletePrefix(`pageState:${activeId}`);
     setRefreshKeys((prev) => ({ ...prev, [activeId]: (prev[activeId] ?? 0) + 1 }));
     setRefreshing(false);
   }, [hydrate, activeId]);

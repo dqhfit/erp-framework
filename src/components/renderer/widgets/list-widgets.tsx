@@ -339,6 +339,16 @@ interface EditableListWidgetProps {
   /** Override nhãn header theo cột (field name → nhãn). Ưu tiên hơn label entity. */
   columnLabels?: Record<string, string>;
   batchEdit: boolean;
+  /** Giới hạn cột được sửa inline (field name). Rỗng/không set = TẤT CẢ cột (theo
+   *  quyền field). Có set = CHỈ các field này thành ô sửa (vd combobox lookup),
+   *  còn lại read-only — dùng cho lưới "chỉ hiển thị, riêng vài cột cho chọn". */
+  editableFields?: string[];
+  /** Tô nổi bật dòng có BẤT KỲ field nào trong danh sách bị rỗng (vd ["ma_ncc"]
+   *  → dòng chưa chọn nhà cung cấp). */
+  highlightEmptyFields?: string[];
+  /** Cột tính client-side: field = tích các factor (vd thành tiền = sl_can × dongia).
+   *  Khi sửa 1 factor → cập nhật overlay NGAY (không cần refetch). */
+  computedColumns?: Array<{ field: string; product: string[] }>;
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
   /** Bulk + dry-run validate (entity-backed) — ListWidget truyền khi không phải
    *  datasource. Có thì "Lưu tất cả" dùng validate→confirm→bulk thay tuần tự. */
@@ -426,6 +436,9 @@ function EditableListWidget({
   visibleFields,
   columnLabels,
   batchEdit,
+  editableFields,
+  highlightEmptyFields,
+  computedColumns,
   onSave,
   batchOps,
   onRowClick,
@@ -490,7 +503,30 @@ function EditableListWidget({
     const rowIdStr = String(rowId);
     setPending((prev) => {
       const next = new Map(prev);
-      next.set(rowIdStr, { ...(next.get(rowIdStr) ?? {}), [field]: value });
+      const merged: Record<string, string> = { ...(next.get(rowIdStr) ?? {}), [field]: value };
+      // Cột tính (vd thành tiền = sl_can × dongia): factor vừa đổi → tính lại NGAY
+      // trên overlay (DB đã có cột generated tự đúng; đây chỉ để hiện tức thì).
+      if (computedColumns?.length) {
+        const row = filteredRows.find((r) => String(r.id) === rowIdStr) as
+          | Record<string, unknown>
+          | undefined;
+        for (const cc of computedColumns) {
+          if (!cc.product.includes(field)) continue;
+          let prod = 1;
+          let ok = true;
+          for (const fac of cc.product) {
+            const raw = fac in merged ? merged[fac] : row?.[fac];
+            const n = Number(raw);
+            if (raw == null || raw === "" || Number.isNaN(n)) {
+              ok = false;
+              break;
+            }
+            prod *= n;
+          }
+          if (ok) merged[cc.field] = String(prod);
+        }
+      }
+      next.set(rowIdStr, merged);
       return next;
     });
     // Đổi field REF (mã vật tư…) → auto điền cột projection (Tên VT, Quy cách…)
@@ -609,6 +645,25 @@ function EditableListWidget({
       },
       cell: (ctx) => {
         const row = ctx.row.original as Record<string, unknown> & { id?: unknown };
+        // editableFields giới hạn cột sửa được: ngoài danh sách → hiển thị read-only.
+        if (editableFields && !editableFields.includes(f.name)) {
+          const rv = ctx.getValue();
+          const rs = rv == null ? "" : String(rv);
+          if (f.type === "image" && rs.startsWith("data:image/"))
+            return (
+              <img
+                src={rs}
+                alt=""
+                className="h-6 max-w-[120px] object-contain mx-auto py-0.5"
+                loading="lazy"
+              />
+            );
+          const disp =
+            f.type === "date" || f.type === "datetime"
+              ? fmtDateCell(rs, f.type === "datetime")
+              : rs;
+          return <span className="block truncate">{disp}</span>;
+        }
         if (f.type === "drawing_page") {
           return (
             <DrawingPageCell
@@ -738,6 +793,7 @@ function EditableListWidget({
   }, [
     visibleFields,
     columnLabels,
+    editableFields,
     rbacRole,
     myGroupIds,
     newRows.length,
@@ -890,6 +946,17 @@ function EditableListWidget({
             pageJump={pageJump}
             enableSelection={selectable}
             changedRowIds={changedRowIdsEdit}
+            rowClassName={
+              highlightEmptyFields && highlightEmptyFields.length > 0
+                ? (r) =>
+                    highlightEmptyFields.some((fn) => {
+                      const v = (r as Record<string, unknown>)[fn];
+                      return v == null || String(v).trim() === "";
+                    })
+                      ? "bg-warning/20 hover:bg-warning/25"
+                      : undefined
+                : undefined
+            }
           />
         </div>
       )}
@@ -1316,6 +1383,9 @@ export function ListWidget({
   title,
   multiSelect,
   editable,
+  editableFields,
+  highlightEmptyFields,
+  computedColumns,
   batchEdit,
   excelMode,
   rowLimit,
@@ -1383,6 +1453,14 @@ export function ListWidget({
   multiSelect?: boolean;
   /** Cho phép sửa ô inline, lưu về datasource. */
   editable?: boolean;
+  /** Chỉ cho sửa inline các field này (vd ["ma_ncc"] → riêng cột NCC là combobox
+   *  chọn, còn lại read-only). Set giá trị này tự bật chế độ editable. */
+  editableFields?: string[];
+  /** Tô nổi bật dòng có field rỗng (vd ["ma_ncc"] → dòng chưa chọn NCC). */
+  highlightEmptyFields?: string[];
+  /** Cột tính client-side (vd thành tiền = sl_can × dongia) — cập nhật tức thì
+   *  khi sửa factor, không cần refetchOnSave. */
+  computedColumns?: Array<{ field: string; product: string[] }>;
   /** Tích lũy thay đổi, hiện nút "Lưu tất cả" thay vì auto-save. */
   batchEdit?: boolean;
   /** Chế độ bảng tính kiểu Excel với hỗ trợ công thức. */
@@ -1493,7 +1571,9 @@ export function ListWidget({
   // confirm → delete-record (recordIdBinding gắn id dòng qua bindRowIdToAction).
   const effectiveRowActions = useMemo<ActionConfig[]>(() => {
     const base = rowActions ?? [];
-    if (!rowActionsBuiltin) return []; // master switch OFF → ẩn cột hành động hoàn toàn
+    // Custom rowActions LUÔN hiện (nếu có). Builtin Xem/Sửa/Xoá chỉ thêm khi bật
+    // rowActionsBuiltin → cho phép cấu hình "chỉ nút Xóa" mà không kèm Xem/Sửa.
+    if (!rowActionsBuiltin) return base;
     if (!entityId) return base;
     const builtin = [
       {
@@ -1968,7 +2048,7 @@ export function ListWidget({
   }
 
   // ── Chế độ chỉnh sửa inline ─────────────────────────────────────────
-  if (editable) {
+  if (editable || (editableFields && editableFields.length > 0)) {
     return (
       <EditableListWidget
         ent={ent}
@@ -1979,6 +2059,9 @@ export function ListWidget({
         visibleFields={visibleFields}
         columnLabels={columnLabels}
         batchEdit={!!batchEdit}
+        editableFields={editableFields}
+        highlightEmptyFields={highlightEmptyFields}
+        computedColumns={computedColumns}
         onSave={saveRecord}
         batchOps={editBatchOps}
         onRowClick={onRowClick}

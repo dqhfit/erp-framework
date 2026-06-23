@@ -15,6 +15,7 @@ import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
+import { LookupPicker } from "./LookupPicker";
 import {
   type CreateFormCfg,
   computeProduct,
@@ -215,8 +216,9 @@ export function MasterDetailEditModal({
     onChange: (v: string) => void,
     compact = false,
     lookup?: FieldLookup,
+    cellReadOnly = false,
   ) => {
-    if (readOnly) {
+    if (readOnly || cellReadOnly) {
       const displayValue =
         f.type === "boolean" || f.type === "bool"
           ? value === "true"
@@ -260,6 +262,18 @@ export function MasterDetailEditModal({
             title={srcLabel}
             separator={lookup.separator}
             disabled={readOnly}
+          />
+        );
+      }
+      // serverSearch: bảng lớn → LookupPicker (preload + ILIKE server khi gõ).
+      if (lookup.serverSearch) {
+        return (
+          <LookupPicker
+            refEntityId={lookup.entity}
+            value={value ?? ""}
+            onChange={onChange}
+            valueField={lookup.valueField}
+            className="w-full"
           />
         );
       }
@@ -559,6 +573,11 @@ export function MasterDetailEditModal({
                                   },
                                   true,
                                   detailLookups?.[f.name],
+                                  // Dòng đã có (sửa) + có cấu hình editableOnExisting → khoá cột
+                                  // không thuộc danh sách (chỉ cho sửa vd số lượng, đơn giá).
+                                  !!r._rid &&
+                                    !!config.detail.editableOnExisting &&
+                                    !config.detail.editableOnExisting.includes(f.name),
                                 )
                               )}
                               {detailErrors[i]?.[f.name] && (

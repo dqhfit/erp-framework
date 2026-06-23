@@ -12,6 +12,7 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import {
   exportRowsCsv,
@@ -20,6 +21,7 @@ import {
 } from "@/components/renderer/datagrid/grid-utils";
 import type { DataGridProps, ServerPagingController } from "@/components/renderer/datagrid/types";
 import { Input } from "@/components/ui";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +58,9 @@ type ToolbarProps<T> = Pick<
   setDragColId: Dispatch<SetStateAction<string | null>>;
   setExpanded: Dispatch<SetStateAction<ExpandedState>>;
   server?: ServerPagingController;
+  showGroupSummary: boolean;
+  setShowGroupSummary: Dispatch<SetStateAction<boolean>>;
+  hasSummaryCols: boolean;
 };
 
 export function DataGridToolbar<T>({
@@ -94,6 +99,9 @@ export function DataGridToolbar<T>({
   setDragColId,
   setExpanded,
   server,
+  showGroupSummary,
+  setShowGroupSummary,
+  hasSummaryCols,
 }: ToolbarProps<T>) {
   const t = useT();
   const selecting = !!enableSelection && showSelectCol;
@@ -114,6 +122,49 @@ export function DataGridToolbar<T>({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowBtnRef = useRef<HTMLDivElement>(null);
   const [toolbarNarrow, setToolbarNarrow] = useState(false);
+  // Toạ độ (fixed) bám đáy nút nhóm/sắp xếp để menu xổ ra ĐÚNG vị trí nút.
+  const groupPos = useDropdownPosition(groupPickerRef, groupPickerOpen);
+
+  // Desktop (chuột): hover vào nút có menu → xổ menu luôn (touch giữ click).
+  // Đóng có grace 180ms để rê chuột từ nút sang menu (có khoảng hở) không bị đóng.
+  const canHover =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches;
+  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHoverClose = () => {
+    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+  };
+  const hoverOpen = (which: "group" | "col" | "export") => {
+    if (!canHover) return;
+    cancelHoverClose();
+    setGroupPickerOpen(which === "group");
+    setColChooserOpen(which === "col");
+    setExportMenuOpen(which === "export");
+  };
+  const hoverScheduleClose = () => {
+    if (!canHover) return;
+    cancelHoverClose();
+    hoverCloseTimer.current = setTimeout(() => {
+      setGroupPickerOpen(false);
+      setColChooserOpen(false);
+      setExportMenuOpen(false);
+    }, 180);
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ dọn timer khi unmount
+  useEffect(() => () => cancelHoverClose(), []);
+
+  // Tab cho menu Nhóm/Sắp xếp — mặc định "Nhóm theo".
+  const [groupTab, setGroupTab] = useState<"nhom" | "sapxep" | "chon">("nhom");
+  const groupTabs = (
+    [
+      serverMode ? null : { key: "nhom" as const, label: "Nhóm theo" },
+      { key: "sapxep" as const, label: "Sắp xếp" },
+      enableSelection ? { key: "chon" as const, label: "Chọn dòng" } : null,
+    ] as ({ key: "nhom" | "sapxep" | "chon"; label: string } | null)[]
+  ).filter((x): x is { key: "nhom" | "sapxep" | "chon"; label: string } => x !== null);
+  const activeGroupTab = groupTabs.some((tb) => tb.key === groupTab)
+    ? groupTab
+    : (groupTabs[0]?.key ?? "sapxep");
 
   // Close group picker on outside click
   useEffect(() => {
@@ -474,7 +525,11 @@ export function DataGridToolbar<T>({
                 <I.Filter size={11} />
                 {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
               </button>
-              <div ref={groupPickerRef}>
+              <div
+                ref={groupPickerRef}
+                onMouseEnter={() => hoverOpen("group")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setGroupPickerOpen((v) => !v)}
@@ -551,7 +606,11 @@ export function DataGridToolbar<T>({
                   </button>
                 </div>
               )}
-              <div ref={colChooserRef}>
+              <div
+                ref={colChooserRef}
+                onMouseEnter={() => hoverOpen("col")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setColChooserOpen((v) => !v)}
@@ -562,7 +621,11 @@ export function DataGridToolbar<T>({
                   <I.ChevronDown size={10} />
                 </button>
               </div>
-              <div ref={exportBtnRef}>
+              <div
+                ref={exportBtnRef}
+                onMouseEnter={() => hoverOpen("export")}
+                onMouseLeave={hoverScheduleClose}
+              >
                 <button
                   type="button"
                   onClick={() => setExportMenuOpen((v) => !v)}
@@ -582,210 +645,260 @@ export function DataGridToolbar<T>({
           </div>
         )}
 
-        {/* Group/sort/select dropdown — ngoài overflow-x-auto, không bị cắt */}
-        {groupPickerOpen && (
-          <div
-            ref={groupDropdownRef}
-            className="absolute top-full left-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
-          >
-            {/* ── Sắp xếp ── */}
-            <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
-              Sắp xếp
-            </div>
-            {sorting.map((s) => {
-              const col = table.getColumn(s.id);
-              if (!col) return null;
-              return (
-                <div
-                  key={s.id}
-                  draggable
-                  onDragStart={() => setDragSortId(s.id)}
-                  onDragEnd={() => setDragSortId(null)}
-                  onDragOver={(e) => {
-                    if (dragSortId && dragSortId !== s.id) e.preventDefault();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (!dragSortId || dragSortId === s.id) return;
-                    const from = sorting.findIndex((x) => x.id === dragSortId);
-                    const to = sorting.findIndex((x) => x.id === s.id);
-                    if (from === -1 || to === -1) return;
-                    const next = [...sorting];
-                    next.splice(to, 0, ...next.splice(from, 1));
-                    setSorting(next);
-                    setDragSortId(null);
-                  }}
-                  className={cn(
-                    "flex items-center gap-1 px-2 text-xs",
-                    dragSortId === s.id && "opacity-40",
+        {/* Group/sort/select dropdown — portal + fixed bám đáy nút (tránh bị cắt
+            bởi overflow-x-auto của hàng nút + nằm đúng vị trí nút bấm). */}
+        {groupPickerOpen &&
+          groupPos &&
+          createPortal(
+            <div
+              ref={groupDropdownRef}
+              onMouseEnter={cancelHoverClose}
+              onMouseLeave={hoverScheduleClose}
+              style={{ position: "fixed", top: groupPos.top, left: groupPos.left }}
+              className="z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
+            >
+              {/* Tab bar — mặc định "Nhóm theo" */}
+              <div className="flex border-b border-border mb-1">
+                {groupTabs.map((tb) => (
+                  <button
+                    key={tb.key}
+                    type="button"
+                    onClick={() => setGroupTab(tb.key)}
+                    className={cn(
+                      "flex-1 whitespace-nowrap border-b-2 -mb-px px-2 py-1.5 text-xs font-medium transition-colors",
+                      activeGroupTab === tb.key
+                        ? "border-accent text-accent"
+                        : "border-transparent text-muted hover:text-text",
+                    )}
+                  >
+                    {tb.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Tab: Sắp xếp ── */}
+              {activeGroupTab === "sapxep" && (
+                <>
+                  {sorting.map((s) => {
+                    const col = table.getColumn(s.id);
+                    if (!col) return null;
+                    return (
+                      <div
+                        key={s.id}
+                        draggable
+                        onDragStart={() => setDragSortId(s.id)}
+                        onDragEnd={() => setDragSortId(null)}
+                        onDragOver={(e) => {
+                          if (dragSortId && dragSortId !== s.id) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!dragSortId || dragSortId === s.id) return;
+                          const from = sorting.findIndex((x) => x.id === dragSortId);
+                          const to = sorting.findIndex((x) => x.id === s.id);
+                          if (from === -1 || to === -1) return;
+                          const next = [...sorting];
+                          next.splice(to, 0, ...next.splice(from, 1));
+                          setSorting(next);
+                          setDragSortId(null);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1 px-2 text-xs",
+                          dragSortId === s.id && "opacity-40",
+                        )}
+                      >
+                        <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSorting(
+                              sorting.map((x) => (x.id === s.id ? { ...x, desc: !x.desc } : x)),
+                            )
+                          }
+                          className="flex flex-1 items-center gap-1.5 py-1 text-left hover:text-text transition-colors"
+                        >
+                          {s.desc ? (
+                            <I.ChevronDown size={11} className="shrink-0 text-accent" />
+                          ) : (
+                            <I.ChevronUp size={11} className="shrink-0 text-accent" />
+                          )}
+                          <span className="text-text">
+                            {(col.columnDef.header as string | undefined) ?? s.id}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSorting(sorting.filter((x) => x.id !== s.id))}
+                          className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                        >
+                          <I.X size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {allSortableCols
+                    .filter((col) => !sorting.find((s) => s.id === col.id))
+                    .map((col) => (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => setSorting([...sorting, { id: col.id, desc: false }])}
+                        className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
+                      >
+                        <I.ChevronsUpDown size={11} className="shrink-0 text-muted/30" />
+                        {(col.columnDef.header as string | undefined) ?? col.id}
+                      </button>
+                    ))}
+                  {sorting.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSorting([])}
+                      className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                    >
+                      Bỏ tất cả sắp xếp
+                    </button>
                   )}
-                >
-                  <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                </>
+              )}
+
+              {/* ── Tab: Nhóm theo ── */}
+              {activeGroupTab === "nhom" && (
+                <>
+                  {/* Active groups — draggable để đổi thứ tự cấp nhóm */}
+                  {grouping.map((colId) => {
+                    const col = table.getColumn(colId);
+                    if (!col) return null;
+                    return (
+                      <div
+                        key={colId}
+                        draggable
+                        onDragStart={() => setDragGroupId(colId)}
+                        onDragEnd={() => setDragGroupId(null)}
+                        onDragOver={(e) => {
+                          if (dragGroupId && dragGroupId !== colId) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!dragGroupId || dragGroupId === colId) return;
+                          const from = grouping.indexOf(dragGroupId);
+                          const to = grouping.indexOf(colId);
+                          if (from === -1 || to === -1) return;
+                          const next = [...grouping];
+                          next.splice(to, 0, ...next.splice(from, 1));
+                          setGrouping(next);
+                          setDragGroupId(null);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1 px-2 text-xs",
+                          dragGroupId === colId && "opacity-40",
+                        )}
+                      >
+                        <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
+                        <span className="flex flex-1 items-center gap-1.5 py-1 text-text">
+                          <I.Layers size={11} className="shrink-0 text-accent" />
+                          {(col.columnDef.header as string | undefined) ?? colId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
+                          className="shrink-0 text-muted/40 hover:text-danger transition-colors"
+                        >
+                          <I.X size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {/* Inactive groups — click để thêm */}
+                  {sortableColumns
+                    .filter((col) => !grouping.includes(col.id))
+                    .map((col) => (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => {
+                          setGrouping((prev) => [...prev, col.id]);
+                          setExpanded(true);
+                        }}
+                        className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
+                      >
+                        <I.Layers size={11} className="shrink-0 text-muted/30" />
+                        {(col.columnDef.header as string | undefined) ?? col.id}
+                      </button>
+                    ))}
+                  {grouping.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGrouping([]);
+                        setGroupPickerOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                    >
+                      Bỏ tất cả nhóm
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* ── Tab: Chọn dòng ── */}
+              {activeGroupTab === "chon" && enableSelection && (
+                <>
                   <button
                     type="button"
                     onClick={() =>
-                      setSorting(sorting.map((x) => (x.id === s.id ? { ...x, desc: !x.desc } : x)))
+                      setShowSelectCol((v) => {
+                        if (v) clearSelection();
+                        return !v;
+                      })
                     }
-                    className="flex flex-1 items-center gap-1.5 py-1 text-left hover:text-text transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
                   >
-                    {s.desc ? (
-                      <I.ChevronDown size={11} className="shrink-0 text-accent" />
-                    ) : (
-                      <I.ChevronUp size={11} className="shrink-0 text-accent" />
-                    )}
-                    <span className="text-text">
-                      {(col.columnDef.header as string | undefined) ?? s.id}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSorting(sorting.filter((x) => x.id !== s.id))}
-                    className="shrink-0 text-muted/40 hover:text-danger transition-colors"
-                  >
-                    <I.X size={10} />
-                  </button>
-                </div>
-              );
-            })}
-            {allSortableCols
-              .filter((col) => !sorting.find((s) => s.id === col.id))
-              .map((col) => (
-                <button
-                  key={col.id}
-                  type="button"
-                  onClick={() => setSorting([...sorting, { id: col.id, desc: false }])}
-                  className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
-                >
-                  <I.ChevronsUpDown size={11} className="shrink-0 text-muted/30" />
-                  {(col.columnDef.header as string | undefined) ?? col.id}
-                </button>
-              ))}
-            {sorting.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setSorting([])}
-                className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
-              >
-                Bỏ tất cả sắp xếp
-              </button>
-            )}
-
-            {/* ── Nhóm theo ── */}
-            {!serverMode && (
-              <>
-                <div className="border-t border-border my-1" />
-                <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted/60">
-                  Nhóm theo
-                </div>
-                {/* Active groups — draggable để đổi thứ tự cấp nhóm */}
-                {grouping.map((colId) => {
-                  const col = table.getColumn(colId);
-                  if (!col) return null;
-                  return (
                     <div
-                      key={colId}
-                      draggable
-                      onDragStart={() => setDragGroupId(colId)}
-                      onDragEnd={() => setDragGroupId(null)}
-                      onDragOver={(e) => {
-                        if (dragGroupId && dragGroupId !== colId) e.preventDefault();
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (!dragGroupId || dragGroupId === colId) return;
-                        const from = grouping.indexOf(dragGroupId);
-                        const to = grouping.indexOf(colId);
-                        if (from === -1 || to === -1) return;
-                        const next = [...grouping];
-                        next.splice(to, 0, ...next.splice(from, 1));
-                        setGrouping(next);
-                        setDragGroupId(null);
-                      }}
                       className={cn(
-                        "flex items-center gap-1 px-2 text-xs",
-                        dragGroupId === colId && "opacity-40",
+                        "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                        showSelectCol ? "bg-accent border-accent" : "border-border",
                       )}
                     >
-                      <I.Grip size={10} className="shrink-0 text-muted/40 cursor-grab" />
-                      <span className="flex flex-1 items-center gap-1.5 py-1 text-text">
-                        <I.Layers size={11} className="shrink-0 text-accent" />
-                        {(col.columnDef.header as string | undefined) ?? colId}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setGrouping((prev) => prev.filter((g) => g !== colId))}
-                        className="shrink-0 text-muted/40 hover:text-danger transition-colors"
-                      >
-                        <I.X size={10} />
-                      </button>
+                      {showSelectCol && <I.Check size={9} className="text-white" />}
                     </div>
-                  );
-                })}
-                {/* Inactive groups — click để thêm */}
-                {sortableColumns
-                  .filter((col) => !grouping.includes(col.id))
-                  .map((col) => (
-                    <button
-                      key={col.id}
-                      type="button"
-                      onClick={() => {
-                        setGrouping((prev) => [...prev, col.id]);
-                        setExpanded(true);
-                      }}
-                      className="flex w-full items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-text hover:bg-hover/40 transition-colors"
-                    >
-                      <I.Layers size={11} className="shrink-0 text-muted/30" />
-                      {(col.columnDef.header as string | undefined) ?? col.id}
-                    </button>
-                  ))}
-                {grouping.length > 1 && (
+                    <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
+                  </button>
+                </>
+              )}
+
+              {/* ── Thống kê theo nhóm (nằm trong tab Nhóm theo) ── */}
+              {activeGroupTab === "nhom" && hasSummaryCols && (
+                <>
+                  <div className="border-t border-border my-1" />
                   <button
                     type="button"
-                    onClick={() => {
-                      setGrouping([]);
-                      setGroupPickerOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1 text-xs text-danger hover:bg-hover/40 transition-colors"
+                    onClick={() => setShowGroupSummary((v) => !v)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
                   >
-                    Bỏ tất cả nhóm
+                    <div
+                      className={cn(
+                        "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                        showGroupSummary ? "bg-accent border-accent" : "border-border",
+                      )}
+                    >
+                      {showGroupSummary && <I.Check size={9} className="text-white" />}
+                    </div>
+                    <span className={showGroupSummary ? "text-text" : "text-muted"}>
+                      Thống kê nhóm (tổng theo cột)
+                    </span>
                   </button>
-                )}
-              </>
-            )}
-
-            {/* ── Tích chọn dòng ── */}
-            {enableSelection && (
-              <>
-                <div className="border-t border-border my-1" />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSelectCol((v) => {
-                      if (v) clearSelection();
-                      return !v;
-                    })
-                  }
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover/40 transition-colors"
-                >
-                  <div
-                    className={cn(
-                      "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
-                      showSelectCol ? "bg-accent border-accent" : "border-border",
-                    )}
-                  >
-                    {showSelectCol && <I.Check size={9} className="text-white" />}
-                  </div>
-                  <span className={showSelectCol ? "text-text" : "text-muted"}>Chọn dòng</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
+                </>
+              )}
+            </div>,
+            document.body,
+          )}
 
         {/* Col chooser dropdown — ngoài overflow-x-auto */}
         {colChooserOpen && (
           <div
             ref={colDropdownRef}
+            onMouseEnter={cancelHoverClose}
+            onMouseLeave={hoverScheduleClose}
             className="absolute top-full right-0 mt-1 z-50 bg-panel border border-border rounded shadow-lg min-w-[180px] max-w-[360px] max-h-[320px] overflow-auto py-1"
           >
             <div className="w-max min-w-full">
@@ -876,6 +989,8 @@ export function DataGridToolbar<T>({
         {exportMenuOpen && (
           <div
             ref={exportDropdownRef}
+            onMouseEnter={cancelHoverClose}
+            onMouseLeave={hoverScheduleClose}
             className="absolute right-0 top-full mt-1 z-50 bg-panel border border-border rounded shadow-lg py-1 min-w-[200px]"
           >
             <button

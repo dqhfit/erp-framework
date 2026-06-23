@@ -38,6 +38,9 @@ export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 export interface UseRecordsOpts {
   /** Số dòng tối đa tải (server-side LIMIT). Mặc định 500. */
   limit?: number;
+  /** Sắp xếp SERVER-SIDE (trước khi cắt limit) → tải đúng dòng cần (vd mới nhất
+   *  trước cho bảng lớn). Suy từ cfg.defaultSort. */
+  sort?: { field: string; dir: "asc" | "desc" };
   /** Điều kiện lọc áp ở DB TRƯỚC khi cắt limit. */
   filters?: LoadFilters;
   /** Cổng: false → không tải gì (vd chờ chọn bộ lọc). Mặc định true. */
@@ -183,10 +186,14 @@ export type FItemCfg = {
   pageSize?: number;
   options?: string;
   width?: number;
-  /** Lọc options theo field này khi filterFromState có giá trị (cascade). */
+  /** Lọc options theo field này khi filterFromState có giá trị (cascade 1 cha — legacy). */
   filterField?: string;
-  /** State key của control cha — khi có giá trị thì filter rows theo filterField. */
+  /** State key của control cha — khi có giá trị thì filter rows theo filterField (legacy). */
   filterFromState?: string;
+  /** Lọc liên kết NHIỀU cha: options của item này thu hẹp theo MỌI phụ thuộc đang
+   *  có giá trị (vd Sản phẩm lọc theo Đơn hàng + Khách hàng). `fromState` = state key
+   *  của filter cha; `field` = field trong nguồn của item này khớp giá trị cha. */
+  dependsOn?: { fromState: string; field: string }[];
   /** Ẩn/hiện filter theo state: oneOf = chỉ hiện khi state nằm trong list; notOneOf = ẩn khi state nằm trong list. */
   visibleWhen?: { stateKey: string; oneOf?: string[]; notOneOf?: string[] };
 };

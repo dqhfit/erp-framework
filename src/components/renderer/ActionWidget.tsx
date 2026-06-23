@@ -185,8 +185,8 @@ export function ActionWidget({
             pageState={pageState}
             onDone={(value) => closeWizard(value)}
             onCancel={() => closeWizard(null)}
-            renderAction={(action, key) => (
-              <ActionWidget key={key} config={action} pageState={pageState} inline />
+            renderAction={(a, key) => (
+              <ActionWidget key={key} config={a} pageState={pageState} inline />
             )}
           />
         )}

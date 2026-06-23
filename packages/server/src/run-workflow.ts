@@ -33,6 +33,7 @@ import { makeCallAgent } from "./llm-client";
 import { makeCallTool } from "./mcp-client";
 import { notifyApprovers } from "./notifications-router";
 import { makeInvokeProcedure } from "./procedure-runner";
+import { webSearch } from "./web-search";
 import { recordNodeFailures } from "./workflow-guardrails";
 
 /** Shape graph do WorkflowDesigner lưu (node kiểu ReactFlow). */
@@ -305,6 +306,7 @@ type RunnerCallbacks = Pick<
   | "runSubWorkflow"
   | "runHttp"
   | "searchKnowledge"
+  | "searchWeb"
   | "assertBudget"
 >;
 
@@ -360,6 +362,9 @@ function makeRunnerCallbacks(
         sourceKind: sk,
       });
       return hits.map((h) => ({ content: h.content, sourceTitle: h.sourceTitle, score: h.score }));
+    },
+    searchWeb: async (query, wopt) => {
+      return webSearch(db, wf.companyId, query, { limit: wopt.limit });
     },
   };
 }
