@@ -78,3 +78,10 @@ check-page.mjs
 insert-ds.sql
 lcp-*.png
 e2e/smoke/lcp-debug.spec.ts
+# Script one-off/debug LCP + định mức (giữ local) — KHÔNG commit
+tooling/fix-lcp-columns.mts
+tooling/migration-cli/src/check-lcp-content.mjs
+tooling/migration-cli/src/check-session.mjs
+tooling/migration-cli/src/fix-lcp-columns.mjs
+tooling/pull-dinhmuc-from-prod.ps1
+tooling/sync-viewer-group-pages-to-prod.mjs
