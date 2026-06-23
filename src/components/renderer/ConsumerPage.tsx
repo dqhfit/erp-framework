@@ -61,21 +61,50 @@ import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, FilterNode } from "@/types/page";
 
+/** Lọc danh sách nút hành động theo quyền nhóm/tài khoản.
+ *  Admin/editor luôn thấy tất cả; viewer thấy nút không hạn chế hoặc
+ *  thuộc nhóm/tài khoản được phép. */
+function filterActions(
+  actions: ActionBarItem[],
+  role: string | undefined,
+  userId: string | undefined,
+  groupIds: string[],
+): ActionBarItem[] {
+  if (role === "admin" || role === "editor") return actions;
+  return actions.filter((a) => {
+    const hasGroupRestriction = a.visibleToGroups && a.visibleToGroups.length > 0;
+    const hasUserRestriction = a.visibleToUsers && a.visibleToUsers.length > 0;
+    if (!hasGroupRestriction && !hasUserRestriction) return true;
+    if (userId && a.visibleToUsers?.includes(userId)) return true;
+    if (hasGroupRestriction && groupIds.some((g) => a.visibleToGroups!.includes(g))) return true;
+    return false;
+  });
+}
+
+/** Hook trả về hàm filter đã bind sẵn thông tin user hiện tại. */
+function useActionFilter() {
+  const user = useAuth((s) => s.user);
+  const myGroupIds = useUserObjects((s) => s.myGroupIds);
+  return (actions: ActionBarItem[]) => filterActions(actions, user?.role, user?.id, myGroupIds);
+}
+
 /** Render một widget theo kind. */
 function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   const cfg = comp.config ?? {};
   const stateKey = `${pageId}:${comp.id}`;
   const pageState = usePageState();
+  const filterActs = useActionFilter();
   if (comp.kind === "action") {
     return <ActionWidget config={cfg as unknown as ActionConfig} pageState={pageState} />;
   }
   if (comp.kind === "actionbar") {
-    return <ActionBarWidget cfg={cfg} pageState={pageState} />;
+    const filteredItems = filterActs((cfg.items ?? []) as ActionBarItem[]);
+    return <ActionBarWidget cfg={{ ...cfg, items: filteredItems }} pageState={pageState} />;
   }
   if (comp.kind === "kpi") return <KpiWidget cfg={cfg} />;
   if (comp.kind === "chart") return <ChartWidget cfg={cfg} />;
   if (comp.kind === "list") {
-    const embActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
+    const embActs = filterActs((cfg.embeddedActions ?? []) as ActionBarItem[]);
     // Bảng lớn: serverPaging → phân trang/sắp/lọc server-side (hỗ trợ cả sửa ô).
     if (cfg.serverPaging === true && cfg.excelMode !== true)
       return withEmbeddedActions(
@@ -163,11 +192,11 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
     );
   }
   if (comp.kind === "form") {
-    const embActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
+    const embActs = filterActs((cfg.embeddedActions ?? []) as ActionBarItem[]);
     return withEmbeddedActions(<FormWidget cfg={cfg} compId={comp.id} />, embActs, pageState);
   }
   if (comp.kind === "detail") {
-    const embActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
+    const embActs = filterActs((cfg.embeddedActions ?? []) as ActionBarItem[]);
     return withEmbeddedActions(<DetailWidget cfg={cfg} compId={comp.id} />, embActs, pageState);
   }
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;

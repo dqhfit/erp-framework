@@ -369,4 +369,10 @@ export interface ActionConfig {
    *  thay vì id uuid — cho master-detail liên kết qua khoá nghiệp vụ (số/chuỗi).
    *  Không đặt → dùng row.id (uuid) như mặc định. */
   recordIdField?: string;
+  /** Giới hạn nút chỉ hiển thị với nhóm người xem cụ thể (viewer-group ids).
+   *  Rỗng/vắng = mọi người thấy. Admin/editor luôn thấy tất cả. */
+  visibleToGroups?: string[];
+  /** Giới hạn nút chỉ hiển thị với tài khoản cụ thể (user ids).
+   *  Ưu tiên nhóm: user có trong danh sách này thấy nút kể cả không thuộc nhóm. */
+  visibleToUsers?: string[];
 }

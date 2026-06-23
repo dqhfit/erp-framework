@@ -3,7 +3,9 @@
    kiện/cổng) + FilterItemsInspector (cấu hình item bộ lọc) + tabsForKind (tab theo
    kind) + ActionBarInspector (sửa thanh hành động). Tách từ PageDesigner.tsx
    (Phase B3) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useState } from "react";
+
+import { createCompaniesClient } from "@erp-framework/client";
+import { useEffect, useState } from "react";
 import { ActionInspector } from "@/components/designer/ActionInspector";
 import {
   type ActionBarItem,
@@ -14,7 +16,10 @@ import { fieldBoth, useFieldDisplay } from "@/components/FieldDisplayToggle";
 import { I } from "@/components/Icons";
 import { FormField, Input, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, ActionVariant } from "@/types/page";
+
+const companiesApi = createCompaniesClient("");
 
 /* ── Cấu hình tải dữ liệu (số dòng + điều kiện + cổng) ─────────────────────
    Dùng chung cho mọi widget đọc record-list. Ghi vào config keys: rowLimit
@@ -571,6 +576,116 @@ export function tabsForKind(kind: ComponentKind) {
   return base;
 }
 
+// ── ActionVisibilityInspector ───────────────────────────────────────────────
+// Thiết lập nhóm / tài khoản được phép thấy nút. Admin/editor luôn thấy tất cả.
+function ActionVisibilityInspector({
+  item,
+  onChange,
+}: {
+  item: ActionBarItem;
+  onChange: (next: ActionBarItem) => void;
+}) {
+  const viewerGroupsList = useUserObjects((s) => s.viewerGroupsList);
+  const [members, setMembers] = useState<{ userId: string; name: string; email: string }[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once
+  useEffect(() => {
+    companiesApi
+      .members()
+      .then((ms) =>
+        setMembers(
+          ms
+            .filter((m) => m.role === "viewer")
+            .map((m) => ({ userId: m.userId, name: m.name ?? "", email: m.email ?? "" })),
+        ),
+      )
+      .catch(() => {});
+  }, []);
+
+  const groups = item.visibleToGroups ?? [];
+  const users = item.visibleToUsers ?? [];
+
+  const toggleGroup = (gid: string) => {
+    const next = groups.includes(gid) ? groups.filter((x) => x !== gid) : [...groups, gid];
+    onChange({ ...item, visibleToGroups: next.length ? next : undefined });
+  };
+  const toggleUser = (uid: string) => {
+    const next = users.includes(uid) ? users.filter((x) => x !== uid) : [...users, uid];
+    onChange({ ...item, visibleToUsers: next.length ? next : undefined });
+  };
+
+  const hasRestriction = groups.length > 0 || users.length > 0;
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-border/40">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
+          Hiển thị với
+        </span>
+        {hasRestriction && (
+          <button
+            type="button"
+            onClick={() =>
+              onChange({ ...item, visibleToGroups: undefined, visibleToUsers: undefined })
+            }
+            className="text-[9px] text-danger hover:underline"
+          >
+            Xoá giới hạn
+          </button>
+        )}
+      </div>
+      {!hasRestriction && (
+        <p className="text-[10px] text-muted/60">
+          Chưa giới hạn — mọi người thấy. Tích nhóm / tài khoản để chỉ hiển thị với họ.
+        </p>
+      )}
+
+      {/* Nhóm */}
+      {viewerGroupsList.length > 0 && (
+        <div>
+          <div className="text-[10px] text-muted mb-1">Nhóm người xem</div>
+          <div className="space-y-0.5">
+            {viewerGroupsList.map((g) => (
+              <label key={g.id} className="flex items-center gap-1.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={groups.includes(g.id)}
+                  onChange={() => toggleGroup(g.id)}
+                  className="w-3 h-3 accent-[hsl(var(--accent))]"
+                />
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: g.color || "hsl(var(--muted))" }}
+                />
+                <span className="text-xs truncate">{g.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tài khoản */}
+      {members.length > 0 && (
+        <div>
+          <div className="text-[10px] text-muted mb-1">Tài khoản cụ thể (ưu tiên nhóm)</div>
+          <div className="space-y-0.5 max-h-28 overflow-y-auto">
+            {members.map((m) => (
+              <label key={m.userId} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={users.includes(m.userId)}
+                  onChange={() => toggleUser(m.userId)}
+                  className="w-3 h-3 accent-[hsl(var(--accent))]"
+                />
+                <span className="text-xs truncate">{m.name || m.email}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ActionBarInspector ──────────────────────────────────────────────────────
 // Inspector cho component "actionbar" và phần nhúng trong list / form / detail.
 interface ActionBarInspectorProps {
@@ -724,6 +839,12 @@ export function ActionBarInspector({
             {expandedId === item.id && (
               <div className="border-t border-border">
                 <ActionInspector config={item} onChange={(next) => updateItem(item.id, next)} />
+                <div className="px-2 pb-2">
+                  <ActionVisibilityInspector
+                    item={item}
+                    onChange={(next) => updateItem(item.id, next)}
+                  />
+                </div>
               </div>
             )}
           </div>
