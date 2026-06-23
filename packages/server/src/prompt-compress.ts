@@ -9,12 +9,6 @@
 
 import { splitUrlAuth } from "./url-auth";
 
-// LLMLingua sidecar endpoint. Có thể đứng sau reverse-proxy basic-auth
-// (giống Tika/Ollama pattern).
-const { url: LLMLINGUA_URL, headers: LLMLINGUA_AUTH } = splitUrlAuth(
-  process.env.LLMLINGUA_URL || "http://localhost:8908",
-);
-
 // Chỉ nén prompt dài hơn ngưỡng này (ký tự). Prompt ngắn → skip để
 // tránh overhead mạng + latency (sidecar cần load model + inference).
 const COMPRESS_THRESHOLD = Number(process.env.LLMLINGUA_COMPRESS_THRESHOLD) || 5000;
@@ -67,6 +61,12 @@ export async function compressPrompt(
   }
 
   try {
+    // Lazy resolve endpoint TRONG hàm (không ở module-level) — URL sai cú pháp
+    // chỉ làm 1 lần nén thất bại (fail-safe trả text gốc), KHÔNG crash boot server.
+    // LLMLingua sidecar có thể đứng sau reverse-proxy basic-auth (giống Tika/Ollama).
+    const { url: LLMLINGUA_URL, headers: LLMLINGUA_AUTH } = splitUrlAuth(
+      process.env.LLMLINGUA_URL || "http://localhost:8908",
+    );
     const body: Record<string, unknown> = { text, rate };
     if (opts?.question) body.question = opts.question;
 

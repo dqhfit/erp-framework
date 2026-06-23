@@ -69,3 +69,12 @@ erp-sample.sql*
 # Dữ liệu import (file nguồn để nạp vào DB) — KHÔNG commit
 data-import/
 **/data-import/
+
+# Script/dump debug tạm (audit 2026-06-23) — KHÔNG commit (có thể chứa data prod)
+scratch/
+query-prod*.json
+query-prod-page.sh
+check-page.mjs
+insert-ds.sql
+lcp-*.png
+e2e/smoke/lcp-debug.spec.ts

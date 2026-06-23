@@ -19,20 +19,25 @@ export async function trLenhcapphatHeadDelete(
 ): Promise<Array<{ updated: number; message: string }>> {
   if (!args.lenh_cap_phat_id) throw new Error("Thiếu lenh_cap_phat_id");
 
-  const lines = await procTable(db, companyId, "tr_lenhcapphat");
-  const head = await procTable(db, companyId, "tr_lenhcapphat_head");
+  // Bọc transaction: set active=false cho lines + head phải nguyên tử — lỗi
+  // giữa chừng (vd mirror-guard, mạng) → rollback, tránh head live nhưng lines
+  // đã tắt (trạng thái lệch). Pattern giống tr_xuatkho_capphat.
+  return db.transaction(async (tx) => {
+    const lines = await procTable(tx, companyId, "tr_lenhcapphat");
+    const head = await procTable(tx, companyId, "tr_lenhcapphat_head");
 
-  const nLines = await lines.updateWhere(
-    { active: false },
-    sql`${lines.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
-  );
-  const nHead = await head.updateWhere(
-    { active: false },
-    sql`${head.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
-  );
+    const nLines = await lines.updateWhere(
+      { active: false },
+      sql`${lines.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
+    );
+    const nHead = await head.updateWhere(
+      { active: false },
+      sql`${head.text("lenhcapphatid")} = ${args.lenh_cap_phat_id}`,
+    );
 
-  const updated = nLines + nHead;
-  return [
-    { updated, message: nHead > 0 ? "Đã huỷ lệnh cấp phát" : "Không tìm thấy lệnh cấp phát" },
-  ];
+    const updated = nLines + nHead;
+    return [
+      { updated, message: nHead > 0 ? "Đã huỷ lệnh cấp phát" : "Không tìm thấy lệnh cấp phát" },
+    ];
+  });
 }
