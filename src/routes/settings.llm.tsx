@@ -132,9 +132,9 @@ function LlmSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.llm.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.llm.subtitle")}</div>
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.llm.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.llm.subtitle")}</div>
 
         {/* === Mô hình cá nhân (mọi user approved tự cấu hình) === */}
         <div className="mb-6">

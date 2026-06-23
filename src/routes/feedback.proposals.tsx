@@ -180,7 +180,7 @@ function ProposalPanel() {
         ) : (
           <Card>
             <div className="flex items-start gap-2">
-              <h2 className="text-lg font-semibold flex-1">{sel.title}</h2>
+              <h2 className="text-sm font-semibold flex-1">{sel.title}</h2>
               <Chip variant={proposalStatusVariant(sel.status)}>{sel.status}</Chip>
             </div>
 
@@ -347,7 +347,7 @@ function ProposalsPage() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-5">
         <div className="flex items-center gap-2 mb-1">
           <Button
             variant="ghost"
@@ -356,7 +356,7 @@ function ProposalsPage() {
           >
             {t("proposals.back")}
           </Button>
-          <h1 className="text-xl font-semibold flex-1">{t("proposals.title")}</h1>
+          <h1 className="text-sm font-semibold flex-1">{t("proposals.title")}</h1>
         </div>
         <div className="text-sm text-muted mb-4">{t("proposals.subtitle")}</div>
 

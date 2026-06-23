@@ -68,7 +68,7 @@ export function Topbar() {
   const brandSub = brandSpace === -1 ? "" : brand.slice(brandSpace + 1);
 
   return (
-    <div className="h-12 shrink-0 flex items-center px-1 gap-0.5 sm:px-3 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
+    <div className="h-9 shrink-0 flex items-center px-1 gap-0.5 sm:px-3 sm:gap-2 border-b border-border bg-panel/70 backdrop-blur-sm sticky top-0 z-50 whitespace-nowrap">
       {/* Hamburger mở off-canvas nav — chỉ mobile, nằm bên trái logo */}
       {isMobile && (
         <Button
@@ -84,7 +84,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => navigate({ to: "/" })}
-        className="flex items-center gap-1 px-1 h-8 rounded-md hover:bg-hover/50 sm:gap-2 sm:px-1.5"
+        className="flex items-center gap-1 px-1 h-7 rounded-md hover:bg-hover/50 sm:gap-2 sm:px-1.5"
       >
         <span
           className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
@@ -122,7 +122,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setCmdOpen(true)}
-        className="flex items-center gap-2 h-8 px-2.5 rounded-md bg-bg-soft border border-border text-muted hover:text-text hover:border-hover transition-colors min-w-0 flex-1 max-w-[420px] mx-0.5 sm:mx-2 whitespace-nowrap overflow-hidden"
+        className="flex items-center gap-2 h-7 px-2.5 rounded-md bg-bg-soft border border-border text-muted hover:text-text hover:border-hover transition-colors min-w-0 flex-1 max-w-[420px] mx-0.5 sm:mx-2 whitespace-nowrap overflow-hidden"
       >
         <I.Search size={14} className="shrink-0" />
         <span className="text-sm truncate hidden sm:inline">{t("topbar.search_placeholder")}</span>
@@ -169,7 +169,7 @@ export function Topbar() {
         <Link
           to="/agents/$id"
           params={{ id: primaryAgent.id }}
-          className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0 border border-border bg-bg-soft/30"
+          className="hidden md:flex items-center gap-1.5 h-7 px-2 rounded-md hover:bg-hover/50 text-sm shrink-0 border border-border bg-bg-soft/30"
           title={`Agent chính: ${primaryAgent.name} (click để mở)`}
         >
           <span
@@ -187,7 +187,7 @@ export function Topbar() {
           <button
             type="button"
             onClick={() => setPrimaryPickOpen(true)}
-            className="hidden md:flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-hover/50 text-xs shrink-0 border border-dashed border-border text-muted hover:text-text"
+            className="hidden md:flex items-center gap-1.5 h-7 px-2 rounded-md hover:bg-hover/50 text-xs shrink-0 border border-dashed border-border text-muted hover:text-text"
             title="Chọn Agent chính của bạn"
           >
             <I.Bot size={12} />
@@ -221,7 +221,7 @@ export function Topbar() {
         <button
           type="button"
           onClick={() => setUserMenuOpen((o) => !o)}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent hover:ring-accent/40 transition-all"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent hover:ring-accent/40 transition-all"
           style={{
             background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
           }}
@@ -236,7 +236,7 @@ export function Topbar() {
             <div className="px-4 py-3 border-b border-border">
               <div className="flex items-center gap-3">
                 <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
                   style={{
                     background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)))",
                   }}

@@ -76,8 +76,8 @@ function ToolsAdmin() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-3 sm:p-6">
-        <h1 className="text-xl font-semibold mb-1">Quản lý Tools</h1>
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">Quản lý Tools</h1>
         <div className="text-sm text-muted mb-4">
           Tools = artifact ngoài monorepo (vd <code>D:\code\cowok\Tools\*</code>). Discover qua
           auto-scan thư mục local hoặc đăng ký URL manifest remote. Bật/tắt riêng cho từng công ty.

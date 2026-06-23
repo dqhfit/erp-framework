@@ -382,12 +382,12 @@ export function AgentPanel() {
   return (
     <aside
       className={cn(
-        "fixed right-0 top-12 bottom-0 bg-panel border-l border-border flex flex-col z-40 shadow-2xl",
+        "fixed right-0 top-9 bottom-0 bg-panel border-l border-border flex flex-col z-40 shadow-2xl",
         isMobile ? "left-0 w-full" : "w-[400px]",
       )}
     >
       {/* Header */}
-      <div className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-border">
+      <div className="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border">
         <span
           className="w-7 h-7 rounded-md flex items-center justify-center text-white"
           style={{

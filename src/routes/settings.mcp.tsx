@@ -102,9 +102,9 @@ function McpSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[720px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.mcp.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.mcp.subtitle")}</div>
+      <div className="max-w-[720px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.mcp.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.mcp.subtitle")}</div>
 
         {/* === MCP config === */}
         <Card className="space-y-4 mb-4">

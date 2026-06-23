@@ -62,9 +62,9 @@ function EmbeddingSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[760px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.embedding.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.embedding.subtitle")}</div>
+      <div className="max-w-[760px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.embedding.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.embedding.subtitle")}</div>
 
         <Card className="space-y-3">
           <FormField label={t("settings.embedding.provider_label")}>

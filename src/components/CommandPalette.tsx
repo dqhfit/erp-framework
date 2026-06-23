@@ -330,7 +330,7 @@ export function CommandPalette() {
         className="relative panel rounded-lg shadow-2xl w-[640px] max-w-full overflow-hidden flex flex-col max-h-[60vh]"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-3 h-12 border-b border-border shrink-0">
+        <div className="flex items-center gap-2 px-3 h-9 border-b border-border shrink-0">
           <I.Search size={16} className="text-muted shrink-0" />
           <input
             ref={inputRef}

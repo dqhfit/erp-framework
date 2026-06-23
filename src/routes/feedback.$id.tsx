@@ -118,7 +118,7 @@ function FeedbackDetailRoute() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-6">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
         <div className="flex items-center gap-2 mb-3">
           <Button
             size="sm"
@@ -143,7 +143,7 @@ function FeedbackDetailRoute() {
           </Button>
         </div>
 
-        <h1 className="text-2xl font-semibold mb-1">{fb.title}</h1>
+        <h1 className="text-base font-semibold mb-1">{fb.title}</h1>
         {fb.url && (
           <div className="text-xs text-muted mb-3">
             {t("feedback.source_page")} <code>{fb.url}</code>

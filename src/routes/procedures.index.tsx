@@ -449,9 +449,9 @@ function ProceduresList() {
       >
         <ProcedureGuide />
       </Drawer>
-      <div className="max-w-[820px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[820px] mx-auto p-3 sm:p-5">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Thủ tục</h1>
+          <h1 className="text-sm font-semibold">Thủ tục</h1>
           <button
             type="button"
             onClick={() => setHelpOpen(true)}
@@ -462,7 +462,7 @@ function ProceduresList() {
             Hướng dẫn
           </button>
         </div>
-        <div className="text-sm text-muted mb-6">
+        <div className="text-sm text-muted mb-3">
           Thủ tục (procedure) JS chạy server-side với truy cập DB. Thay stored proc MSSQL — invoke
           từ workflow, tRPC, hoặc entity binding.
         </div>

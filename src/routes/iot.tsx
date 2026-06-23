@@ -69,14 +69,14 @@ function IotPage() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
         <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-xl font-semibold flex-1">Thiết bị IoT</h1>
+          <h1 className="text-sm font-semibold flex-1">Thiết bị IoT</h1>
           <Button variant="primary" icon={<I.Plus size={14} />} onClick={() => setShowCreate(true)}>
             Thêm thiết bị
           </Button>
         </div>
-        <div className="text-sm text-muted mb-6">
+        <div className="text-sm text-muted mb-3">
           Đăng ký thiết bị, nhận telemetry qua REST{" "}
           <code className="text-accent">/iot/v1/telemetry</code> hoặc MQTT, gửi lệnh xuống. Xem{" "}
           <a href="/docs/IOT" className="text-accent hover:underline">

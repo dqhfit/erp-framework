@@ -102,9 +102,9 @@ function PluginsSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[760px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.plugins.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.plugins.subtitle")}</div>
+      <div className="max-w-[760px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.plugins.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.plugins.subtitle")}</div>
 
         <Card className="mb-4 space-y-2">
           <div className="font-semibold">{t("settings.plugins.registered_title")}</div>

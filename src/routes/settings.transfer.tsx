@@ -86,9 +86,9 @@ function TransferSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[720px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.transfer.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.transfer.subtitle")}</div>
+      <div className="max-w-[720px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.transfer.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.transfer.subtitle")}</div>
 
         <Card className="space-y-3 mb-4">
           <div className="font-semibold">{t("settings.transfer.export_title")}</div>

@@ -87,9 +87,9 @@ function EmbedSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[760px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">Nhúng builder (Embed)</h1>
-        <div className="text-sm text-muted mb-6">
+      <div className="max-w-[760px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">Nhúng builder (Embed)</h1>
+        <div className="text-sm text-muted mb-3">
           Tạo token để nhúng trang designer vào sản phẩm khác qua iframe. Thêm{" "}
           <code className="bg-bg-soft px-1 rounded-sm">?embed=1</code> vào URL để ẩn thanh điều
           hướng — chỉ hiện nội dung.

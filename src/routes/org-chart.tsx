@@ -212,15 +212,15 @@ function OrgChartRoute() {
 
   return (
     <div className="overflow-auto h-full">
-      <div className="max-w-[1100px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[1100px] mx-auto p-3 sm:p-5">
         <div className="flex items-start justify-between gap-4 mb-1">
-          <h1 className="text-xl font-semibold">Sơ đồ phân cấp agent</h1>
+          <h1 className="text-sm font-semibold">Sơ đồ phân cấp agent</h1>
           <div className="flex items-center gap-1.5 shrink-0">
             <ToggleBtn mode="chart" icon={<I.GitBranch size={13} />} label="Sơ đồ" />
             <ToggleBtn mode="list" icon={<I.List size={13} />} label="Danh sách" />
           </div>
         </div>
-        <div className="text-sm text-muted mb-6">
+        <div className="text-sm text-muted mb-3">
           Gán agent cấp trên để dựng cây tổ chức — agent quản lý có thể điều phối agent cấp dưới.
           Bấm vào hộp agent để đổi cấp trên (ở cả hai chế độ xem).
         </div>

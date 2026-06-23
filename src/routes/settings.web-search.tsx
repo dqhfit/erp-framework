@@ -73,9 +73,9 @@ function WebSearchPage() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[800px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">Tìm kiếm web (SearXNG)</h1>
-        <div className="text-sm text-muted mb-6">
+      <div className="max-w-[800px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">Tìm kiếm web (SearXNG)</h1>
+        <div className="text-sm text-muted mb-3">
           Cấu hình SearXNG để bật công cụ <code>web_search</code> cho agent, node workflow "Web
           Search", và web fallback của Tìm sâu (Deep RAG).
         </div>

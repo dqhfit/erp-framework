@@ -97,7 +97,7 @@ function PagesTrashPage() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-4 p-4">
         <header className="space-y-1">
-          <h1 className="flex items-center gap-2 text-lg font-semibold text-text">
+          <h1 className="flex items-center gap-2 text-sm font-semibold text-text">
             <I.Trash size={18} className="text-danger" />
             Thùng rác trang
           </h1>

@@ -326,7 +326,7 @@ function Home() {
         {/* Truy cập nhanh — ghim công việc thường xuyên (dùng chung ★ với sidebar) */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">{t("home.pinned_title")}</h2>
+            <h2 className="text-sm font-semibold">{t("home.pinned_title")}</h2>
             <Button
               variant="default"
               size="sm"
@@ -377,7 +377,7 @@ function Home() {
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
           <div>
             <div className="flex items-baseline justify-between mb-3">
-              <h2 className="text-lg font-semibold">{t("home.recent_title")}</h2>
+              <h2 className="text-sm font-semibold">{t("home.recent_title")}</h2>
               <button type="button" className="text-xs text-muted hover:text-text">
                 {t("home.recent_view_all")}
               </button>
@@ -414,8 +414,8 @@ function Home() {
             </div>
 
             {/* Bản ghi theo đối tượng — số record thực tế trong từng entity */}
-            <div className="flex items-baseline justify-between mt-8 mb-3">
-              <h2 className="text-lg font-semibold">{t("home.records_title")}</h2>
+            <div className="flex items-baseline justify-between mt-4 mb-2">
+              <h2 className="text-sm font-semibold">{t("home.records_title")}</h2>
               {recordCounts && entityCounts.length > 0 && (
                 <span className="text-xs text-muted">
                   {t("home.records_total", { n: totalRecords.toLocaleString("vi-VN") })}
@@ -454,7 +454,7 @@ function Home() {
               )}
             </div>
 
-            <h2 className="text-lg font-semibold mt-8 mb-3">{t("home.templates_title")}</h2>
+            <h2 className="text-sm font-semibold mt-4 mb-2">{t("home.templates_title")}</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               {templateDefs.map((tpl) => {
                 const IconC = I[tpl.icon];

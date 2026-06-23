@@ -136,9 +136,9 @@ function CompaniesSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[820px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.companies.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.companies.subtitle")}</div>
+      <div className="max-w-[820px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.companies.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.companies.subtitle")}</div>
 
         {/* === Công ty hiện tại === */}
         <Card className="mb-4 space-y-3">

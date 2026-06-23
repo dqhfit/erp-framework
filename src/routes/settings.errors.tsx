@@ -144,9 +144,9 @@ function ErrorsSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-xl font-semibold flex-1">Giám sát lỗi</h1>
+          <h1 className="text-sm font-semibold flex-1">Giám sát lỗi</h1>
           <Button size="sm" icon={<I.RefreshCw size={13} />} disabled={busy} onClick={load}>
             Tải lại
           </Button>

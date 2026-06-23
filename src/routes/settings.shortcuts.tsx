@@ -62,9 +62,9 @@ function ShortcutsSettings() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[760px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[760px] mx-auto p-3 sm:p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h1 className="text-xl font-semibold">Phím tắt</h1>
+          <h1 className="text-sm font-semibold">Phím tắt</h1>
           {anyOverride && (
             <Button
               variant="ghost"
@@ -76,7 +76,7 @@ function ShortcutsSettings() {
             </Button>
           )}
         </div>
-        <div className="text-sm text-muted mb-6">
+        <div className="text-sm text-muted mb-3">
           Xem và tự đặt phím tắt. Thiết lập được lưu theo tài khoản và đồng bộ giữa các thiết bị.
           Bấm <b>Đổi</b> rồi nhấn tổ hợp phím mong muốn (Esc để huỷ).
         </div>
@@ -141,8 +141,8 @@ function ShortcutsSettings() {
         })}
 
         {/* Tham khảo — phím tắt CỐ ĐỊNH theo từng màn hình (không đổi được). */}
-        <div className="mt-8 mb-3">
-          <h2 className="text-lg font-semibold">Phím tắt theo màn hình</h2>
+        <div className="mt-4 mb-2">
+          <h2 className="text-sm font-semibold">Phím tắt theo màn hình</h2>
           <div className="text-sm text-muted">
             Các phím gắn cứng trong từng màn hình chức năng (không tự đổi được). Phím Trình dựng
             trang ở mục trên có thể tuỳ chỉnh. <b>Ctrl/Cmd</b> = Ctrl (Windows/Linux) hoặc ⌘

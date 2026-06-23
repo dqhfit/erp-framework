@@ -155,7 +155,7 @@ export function AiAssistDrawer<T extends DesignObjectType>({
         )}
       >
         {/* Header */}
-        <div className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-border">
+        <div className="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border">
           <span
             className="w-7 h-7 rounded-md flex items-center justify-center text-white"
             style={{

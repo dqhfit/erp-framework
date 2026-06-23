@@ -95,7 +95,7 @@ function EnumDesigner() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-6">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
         <div className="flex items-center gap-2 mb-4">
           <Button
             size="sm"
@@ -105,7 +105,7 @@ function EnumDesigner() {
           >
             Quay lại
           </Button>
-          <h1 className="text-xl font-semibold">{orig.name}</h1>
+          <h1 className="text-sm font-semibold">{orig.name}</h1>
           <Chip variant={orig.enabled ? "success" : "default"}>{orig.enabled ? "Bật" : "Tắt"}</Chip>
           <div className="flex-1" />
           <Button

@@ -67,7 +67,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <Card className="flex-1">
       <div className="text-xs text-muted uppercase tracking-wide">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
+      <div className="text-base font-semibold mt-1">{value}</div>
       {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
     </Card>
   );
@@ -135,9 +135,9 @@ function ActivityDashboard() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1000px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[1000px] mx-auto p-3 sm:p-5">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">{t("activity.title")}</h1>
+          <h1 className="text-sm font-semibold">{t("activity.title")}</h1>
           {rows.length > 0 && (
             <Button variant="danger" icon={<I.Trash size={13} />} onClick={handleClear}>
               {t("activity.clear_btn")}

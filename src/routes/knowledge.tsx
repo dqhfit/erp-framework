@@ -301,9 +301,9 @@ function KnowledgePage() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-8">
-        <h1 className="text-xl font-semibold mb-1">Knowledge Base</h1>
-        <div className="text-sm text-muted mb-6">
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5">
+        <h1 className="text-sm font-semibold mb-1">Knowledge Base</h1>
+        <div className="text-sm text-muted mb-3">
           Nạp tài liệu, dữ liệu ERP và ghi chú thành tri thức có thể tra cứu — cho cả người dùng lẫn
           AI agent. Cần cấu hình{" "}
           <a href="/settings/embedding" className="text-accent hover:underline">

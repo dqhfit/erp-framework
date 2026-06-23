@@ -523,7 +523,7 @@ function AgentEditor({ id }: { id: string }) {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[1000px] mx-auto p-3 sm:p-8">
+      <div className="max-w-[1000px] mx-auto p-3 sm:p-5">
         {/* === Header === */}
         <div className="flex items-center gap-3 mb-4">
           <span
@@ -535,7 +535,7 @@ function AgentEditor({ id }: { id: string }) {
             <I.Bot size={22} />
           </span>
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold truncate">{state.name}</h1>
+            <h1 className="text-sm font-semibold truncate">{state.name}</h1>
             <div className="text-xs text-muted font-mono truncate">
               {state.model} · {state.tools.length} tools
               {editedCount > 0 && ` · ${editedCount}/7 memory đã sửa`}

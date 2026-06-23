@@ -88,7 +88,7 @@ function InviteRoute() {
             <I.User size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-semibold">Hoàn tất thiết lập tài khoản</h1>
+            <h1 className="text-sm font-semibold">Hoàn tất thiết lập tài khoản</h1>
             <div className="text-sm text-muted truncate">
               {preview?.valid
                 ? `${preview.email} · công ty ${preview.companyName}`

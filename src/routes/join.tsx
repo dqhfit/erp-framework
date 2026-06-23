@@ -100,7 +100,7 @@ function JoinRoute() {
             <I.Users size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-semibold">Tạo tài khoản</h1>
+            <h1 className="text-sm font-semibold">Tạo tài khoản</h1>
             <div className="text-sm text-muted truncate">
               {preview?.valid ? `Tham gia công ty ${preview.companyName}` : "Đang xác thực link…"}
             </div>

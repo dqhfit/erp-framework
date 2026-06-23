@@ -622,7 +622,7 @@ export function CockpitPage() {
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Migrate DQHF — Menu cũ</h1>
+          <h1 className="text-sm font-semibold">Migrate DQHF — Menu cũ</h1>
           <p className="text-sm text-muted">
             Cây menu DQHF (SYS_MENU_NEW). Bấm mục có form để xem proc/bảng và port.
           </p>

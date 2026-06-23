@@ -34,9 +34,9 @@ function SettingsAgents() {
 
   return (
     <div className="overflow-y-auto h-full">
-      <div className="max-w-[900px] mx-auto p-3 sm:p-8 space-y-4">
-        <h1 className="text-xl font-semibold mb-1">{t("settings.agents.title")}</h1>
-        <div className="text-sm text-muted mb-6">{t("settings.agents.subtitle")}</div>
+      <div className="max-w-[900px] mx-auto p-3 sm:p-5 space-y-4">
+        <h1 className="text-sm font-semibold mb-1">{t("settings.agents.title")}</h1>
+        <div className="text-sm text-muted mb-3">{t("settings.agents.subtitle")}</div>
 
         {/* === Card Agent chính === */}
         <Card>
