@@ -160,7 +160,17 @@ export interface EntityRecord {
   updatedAt: string;
 }
 
-export type FilterOp = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in" | "is-not-true";
+export type FilterOp =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "contains"
+  | "in"
+  | "is-not-true"
+  | "is-true";
 
 /** Tham số truy vấn record động. */
 export interface QueryParams {
