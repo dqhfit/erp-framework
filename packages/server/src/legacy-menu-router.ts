@@ -10,7 +10,13 @@
 
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { legacyMenuMap, legacyReports, pages } from "@erp-framework/db";
+import {
+  legacyMenuMap,
+  legacyReports,
+  pageViewerGroups,
+  pages,
+  userViewerGroups,
+} from "@erp-framework/db";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -101,7 +107,35 @@ export const legacyMenuRouter = router({
    *  (ẩn nhánh rỗng). Phân quyền: admin/editor thấy cả trang DRAFT (chưa
    *  publish) để vừa điều hướng vừa quản lý; viewer chỉ thấy trang ĐÃ PUBLISH. */
   navTree: approvedProcedure.query(async ({ ctx }) => {
-    const includeDrafts = ctx.user.role === "admin" || ctx.user.role === "editor";
+    const isPrivileged = ctx.user.role === "admin" || ctx.user.role === "editor";
+
+    // Admin/editor thấy hết (kể cả draft). Viewer cần kiểm tra group.
+    const includeDrafts = isPrivileged;
+
+    // Tải group của user + hạn chế group của page (song song, chỉ cần cho viewer).
+    let userGroupIds = new Set<string>();
+    // pageId → Set<groupId> — chỉ chứa page CÓ hạn chế (page không có entry = công khai).
+    let pageGroupRestrictions = new Map<string, Set<string>>();
+
+    if (!isPrivileged) {
+      const [ugRows, pgRows] = await Promise.all([
+        ctx.db
+          .select({ groupId: userViewerGroups.groupId })
+          .from(userViewerGroups)
+          .where(eq(userViewerGroups.userId, ctx.user.id)),
+        ctx.db
+          .select({ pageId: pageViewerGroups.pageId, groupId: pageViewerGroups.groupId })
+          .from(pageViewerGroups)
+          .innerJoin(pages, and(eq(pageViewerGroups.pageId, pages.id), isNull(pages.deletedAt)))
+          .where(eq(pages.companyId, ctx.user.companyId)),
+      ]);
+      userGroupIds = new Set(ugRows.map((r) => r.groupId));
+      for (const r of pgRows) {
+        if (!pageGroupRestrictions.has(r.pageId)) pageGroupRestrictions.set(r.pageId, new Set());
+        pageGroupRestrictions.get(r.pageId)!.add(r.groupId);
+      }
+    }
+
     const rows = await ctx.db
       .select({
         sourceCode: legacyMenuMap.sourceCode,
@@ -118,18 +152,31 @@ export const legacyMenuRouter = router({
       // Bỏ qua trang đã xoá mềm → pageName null → node không còn là lá hợp lệ.
       .leftJoin(pages, and(eq(legacyMenuMap.pageId, pages.id), isNull(pages.deletedAt)))
       .where(and(eq(legacyMenuMap.companyId, ctx.user.companyId), eq(legacyMenuMap.active, true)));
+
     // Route tĩnh (trang built-in id="/...") lưu ở overrides.staticRoute.
     const routeOf = (r: (typeof rows)[number]): string | null => {
       const ov = r.overrides as { staticRoute?: unknown } | null;
       return typeof ov?.staticRoute === "string" ? ov.staticRoute : null;
     };
-    // Đích điều hướng của node: trang DB hợp lệ (publish HOẶC admin/editor xem
-    // draft), nếu không thì route tĩnh. Trả về string đích hoặc null.
+
+    // Đích điều hướng: trang DB hợp lệ (publish HOẶC privileged xem draft)
+    // VÀ user có quyền group (nếu viewer). Nếu không có quyền → null → node ẩn.
     const targetOf = (r: (typeof rows)[number]): string | null => {
-      if (r.pageId != null && r.pageName != null && (r.published === true || includeDrafts))
+      if (r.pageId != null && r.pageName != null && (r.published === true || includeDrafts)) {
+        // Kiểm tra phân quyền group cho viewer
+        if (!isPrivileged) {
+          const restricted = pageGroupRestrictions.get(r.pageId);
+          // Có hạn chế group → user phải thuộc ít nhất 1 group được phép
+          if (restricted && restricted.size > 0) {
+            const allowed = [...restricted].some((gid) => userGroupIds.has(gid));
+            if (!allowed) return null;
+          }
+        }
         return r.pageId;
+      }
       return routeOf(r);
     };
+
     // Lá hợp lệ = có đích điều hướng (trang hợp lệ hoặc route tĩnh).
     const isVisibleLeaf = (r: (typeof rows)[number]) => targetOf(r) != null;
     // Chỉ giữ node lá hợp lệ HOẶC node nhóm có hậu duệ dẫn tới lá hợp lệ.

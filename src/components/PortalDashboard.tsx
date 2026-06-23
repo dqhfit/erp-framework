@@ -1,8 +1,13 @@
+import { createApprovalsClient, createObjectsClient } from "@erp-framework/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import type { NavNode } from "@/components/MenuTree";
+import { useFavs } from "@/components/sidebar/favs";
 import { cn } from "@/lib/utils";
 import { usePreferences } from "@/stores/preferences";
+
+const api = createObjectsClient("");
+const govApi = createApprovalsClient("");
 
 interface PageInfo {
   id: string;
@@ -36,6 +41,64 @@ function stripAccents(s: string): string {
     .toLowerCase();
 }
 
+function useUserStats() {
+  const [unread, setUnread] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.notifications
+      .unreadCount()
+      .then((r) => setUnread((r as { count: number }).count))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    govApi
+      .list("pending")
+      .then((list) => setPending((list as unknown[]).length))
+      .catch(() => {});
+  }, []);
+
+  return { unread, pending };
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: number | null;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 px-4 py-3 rounded-lg border border-border/60 bg-panel text-left transition-all",
+        onClick ? "hover:bg-accent/5 hover:border-accent/20 cursor-pointer" : "cursor-default",
+      )}
+    >
+      <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+        <Icon size={15} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-lg font-semibold text-text leading-none">
+          {value === null ? (
+            <span className="inline-block w-6 h-4 bg-border/40 rounded animate-pulse" />
+          ) : (
+            value
+          )}
+        </div>
+        <div className="text-xs text-muted mt-0.5 truncate">{label}</div>
+      </div>
+    </button>
+  );
+}
+
 export function PortalDashboard({
   userName,
   pages,
@@ -48,6 +111,8 @@ export function PortalDashboard({
   onOpenAllPages,
 }: PortalDashboardProps) {
   const { prefs } = usePreferences();
+  const { isFav, toggle: toggleFav } = useFavs();
+  const { unread, pending } = useUserStats();
   const searchRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
 
@@ -101,10 +166,11 @@ export function PortalDashboard({
   );
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-6 py-12 sm:py-16">
+    <div className="h-full flex overflow-hidden">
+      {/* Cột trái: scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-10 min-w-0">
         {/* Greeting + date */}
-        <div className="mb-8">
+        <div className="mb-5">
           <h1 className="text-2xl font-semibold text-text tracking-tight">
             Xin chào, <span className="text-accent">{userName}</span>
           </h1>
@@ -120,7 +186,7 @@ export function PortalDashboard({
         </div>
 
         {/* Search */}
-        <form onSubmit={onSubmit} className="relative mb-10">
+        <form onSubmit={onSubmit} className="relative mb-8">
           <I.Search
             size={16}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted/40 pointer-events-none"
@@ -178,9 +244,9 @@ export function PortalDashboard({
           </section>
         )}
 
+        {/* Yêu thích + Gần đây */}
         {!filteredPages && (
           <>
-            {/* Favorites grid */}
             {favPages.length > 0 && (
               <section className="mb-8">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted/60 mb-3 flex items-center gap-1.5">
@@ -215,14 +281,14 @@ export function PortalDashboard({
                 </div>
               </section>
             )}
-            {/* Recent pages — 12 gần đây nhất, 2 cột */}
+
             {recentPages.length > 0 && (
-              <section className="mb-8">
+              <section className="mb-6">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted/60 mb-3 flex items-center gap-1.5">
                   <I.Clock size={12} />
                   Gần đây
                 </h2>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {recentPages.map((p) => {
                     const IconC =
                       (
@@ -252,34 +318,62 @@ export function PortalDashboard({
               </section>
             )}
 
-            {/* Gợi ý xem tất cả — ở ngay dưới Gần đây */}
-            {onOpenAllPages && (
-              <div className="mb-8">
-                <button
-                  type="button"
-                  onClick={onOpenAllPages}
-                  className="flex items-center gap-1.5 text-xs text-accent/60 hover:text-accent transition-colors"
-                >
-                  <I.LayoutGrid size={11} className="shrink-0" />
-                  Xem tất cả danh sách
-                </button>
+            {/* Thống kê cá nhân */}
+            <section className="mb-6">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted/60 mb-3 flex items-center gap-1.5">
+                <I.BarChart2 size={12} />
+                Của tôi
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard
+                  icon={I.Bell}
+                  label="Thông báo chưa đọc"
+                  value={unread}
+                  onClick={() => {
+                    /* NotificationBell xử lý — click mở bell */
+                  }}
+                />
+                <StatCard icon={I.ClipboardList} label="Phê duyệt chờ" value={pending} />
+                <StatCard icon={I.Star} label="Trang yêu thích" value={favPages.length} />
+                <StatCard icon={I.Layout} label="Tổng số trang" value={pages.length} />
               </div>
-            )}
+            </section>
 
-            {/* All pages — two-column browser */}
-            {navRoots.length > 0 && (
-              <MenuBrowser
-                roots={navRoots}
-                childrenOf={navChildrenOf}
-                activePageId={null}
-                onSelectPage={onSelectPage}
-                focusCategory={focusCategory}
-                onFocusCategoryUsed={onFocusCategoryUsed}
-              />
+            {onOpenAllPages && (
+              <button
+                type="button"
+                onClick={onOpenAllPages}
+                className="flex items-center gap-1.5 text-xs text-accent/60 hover:text-accent transition-colors"
+              >
+                <I.LayoutGrid size={11} className="shrink-0" />
+                Xem tất cả danh sách
+              </button>
             )}
           </>
         )}
       </div>
+
+      {/* Cột phải: Danh mục cố định */}
+      {navRoots.length > 0 && (
+        <div className="w-[420px] shrink-0 border-l border-border flex flex-col overflow-hidden">
+          <div className="px-4 py-3 border-b border-border shrink-0">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted/60 flex items-center gap-1.5">
+              <I.Layout size={12} />
+              Danh mục
+            </h2>
+          </div>
+          <MenuBrowser
+            roots={navRoots}
+            childrenOf={navChildrenOf}
+            activePageId={null}
+            onSelectPage={onSelectPage}
+            focusCategory={focusCategory}
+            onFocusCategoryUsed={onFocusCategoryUsed}
+            isFav={isFav}
+            onToggleFav={toggleFav}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -305,6 +399,8 @@ function MenuBrowser({
   onSelectPage,
   focusCategory,
   onFocusCategoryUsed,
+  isFav,
+  onToggleFav,
 }: {
   roots: NavNode[];
   childrenOf: Map<string, NavNode[]>;
@@ -312,6 +408,8 @@ function MenuBrowser({
   onSelectPage: (id: string) => void;
   focusCategory?: string | null;
   onFocusCategoryUsed?: () => void;
+  isFav?: (id: string) => boolean;
+  onToggleFav?: (item: { id: string; to: string; label: string; iconName: string }) => void;
 }) {
   const [selectedRoot, setSelectedRoot] = useState<string | null>(null);
   const [drillPath, setDrillPath] = useState<string[]>([]);
@@ -376,124 +474,142 @@ function MenuBrowser({
     return parts;
   }, [selectedRoot, drillPath, roots, childrenOf]);
 
+  // Tự chọn danh mục đầu tiên khi danh sách sẵn sàng
+  useEffect(() => {
+    if (!selectedRoot && visibleRoots.length > 0) {
+      setSelectedRoot(visibleRoots[0].code);
+    }
+  }, [visibleRoots, selectedRoot]);
+
   if (visibleRoots.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted/60 mb-3 flex items-center gap-1.5">
-        <I.Layout size={12} />
-        Danh mục
-      </h2>
-      <div className="border border-border rounded-lg overflow-hidden">
-        <div className="flex">
-          {/* Left panel — root list */}
-          <div className="w-40 shrink-0 border-r border-border bg-panel-2/50 max-h-[50vh] overflow-y-auto">
-            {visibleRoots.map((r) => {
-              const active = r.code === selectedRoot;
-              const kids = childrenOf.get(r.code) ?? [];
+    <div className="flex flex-1 overflow-hidden">
+      {/* Left panel — root list */}
+      <div className="w-44 shrink-0 border-r border-border bg-panel-2/50 overflow-y-auto">
+        {visibleRoots.map((r) => {
+          const active = r.code === selectedRoot;
+          const kids = childrenOf.get(r.code) ?? [];
+          return (
+            <button
+              key={r.code}
+              type="button"
+              onClick={() => {
+                if (active) {
+                  setSelectedRoot(null);
+                  setDrillPath([]);
+                } else {
+                  selectRoot(r.code);
+                }
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
+                active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
+              )}
+            >
+              <I.ChevronRight
+                size={10}
+                className={cn("shrink-0 text-muted/40 transition-transform", active && "rotate-90")}
+              />
+              <span className="truncate lowercase first-letter:uppercase">{labelOf(r)}</span>
+              <span className="text-[10px] text-muted/30 ml-auto">{kids.length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Right panel — items */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
+        {!selectedRoot ? (
+          <div className="flex items-center justify-center h-24 text-xs text-muted/50">
+            Chọn danh mục bên trái
+          </div>
+        ) : (
+          <div className="py-1">
+            {/* Breadcrumb */}
+            {breadcrumb.length > 1 && (
+              <div className="flex items-center gap-1 px-3 pb-1.5 text-xs text-muted/60 border-b border-border mb-1">
+                {breadcrumb.map((crumb, ci) => (
+                  <span key={crumb.code} className="flex items-center gap-1">
+                    {ci > 0 && <I.ChevronRight size={9} className="text-muted/30" />}
+                    {ci < breadcrumb.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Pop back to this level
+                          setDrillPath(drillPath.slice(0, ci - 1));
+                        }}
+                        className="hover:text-accent transition-colors"
+                      >
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-text">{crumb.label}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+            {currentItems.map(({ node }) => {
+              const hasKids = (childrenOf.get(node.code)?.length ?? 0) > 0;
+              const isFolder = hasKids && !node.pageId;
+              const isPage = !!node.pageId;
+              const faved = isPage && isFav ? isFav(node.pageId as string) : false;
               return (
-                <button
-                  key={r.code}
-                  type="button"
-                  onClick={() => {
-                    if (active) {
-                      setSelectedRoot(null);
-                      setDrillPath([]);
-                    } else {
-                      selectRoot(r.code);
-                    }
-                  }}
+                <div
+                  key={node.code}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors",
-                    active ? "bg-accent/10 text-accent font-medium" : "text-text hover:bg-hover/40",
+                    "group flex items-center text-sm transition-colors",
+                    isPage ? "hover:bg-hover/40" : "hover:bg-accent/5",
                   )}
                 >
-                  <I.ChevronRight
-                    size={10}
-                    className={cn(
-                      "shrink-0 text-muted/40 transition-transform",
-                      active && "rotate-90",
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isPage) onSelectPage(node.pageId as string);
+                      else if (hasKids) drillIn(node.code);
+                    }}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 text-left min-w-0"
+                  >
+                    {isFolder ? (
+                      <I.FolderOpen size={13} className="shrink-0 text-warning/60" />
+                    ) : (
+                      <I.Layout size={13} className="shrink-0 text-muted" />
                     )}
-                  />
-                  <span className="truncate lowercase first-letter:uppercase">{labelOf(r)}</span>
-                  <span className="text-[10px] text-muted/30 ml-auto">{kids.length}</span>
-                </button>
+                    <span className="truncate lowercase first-letter:uppercase text-text">
+                      {labelOf(node)}
+                    </span>
+                    {hasKids && (
+                      <I.ChevronRight size={11} className="ml-auto shrink-0 text-muted/40" />
+                    )}
+                  </button>
+                  {isPage && onToggleFav && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFav({
+                          id: node.pageId as string,
+                          to: `/pages/${node.pageId}`,
+                          label: labelOf(node),
+                          iconName: "Layout",
+                        });
+                      }}
+                      className={cn(
+                        "px-2 py-2 shrink-0 transition-colors opacity-0 group-hover:opacity-100",
+                        faved ? "opacity-100 text-warning" : "text-muted/40 hover:text-warning",
+                      )}
+                      title={faved ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+                    >
+                      <I.Star size={13} className={faved ? "fill-current" : ""} />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
-
-          {/* Right panel — items */}
-          <div className="flex-1 min-w-0 max-h-[50vh] overflow-y-auto">
-            {!selectedRoot ? (
-              <div className="flex items-center justify-center h-24 text-xs text-muted/50">
-                Chọn danh mục bên trái
-              </div>
-            ) : (
-              <div className="py-1">
-                {/* Breadcrumb */}
-                {breadcrumb.length > 1 && (
-                  <div className="flex items-center gap-1 px-3 pb-1.5 text-xs text-muted/60 border-b border-border mb-1">
-                    {breadcrumb.map((crumb, ci) => (
-                      <span key={crumb.code} className="flex items-center gap-1">
-                        {ci > 0 && <I.ChevronRight size={9} className="text-muted/30" />}
-                        {ci < breadcrumb.length - 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Pop back to this level
-                              setDrillPath(drillPath.slice(0, ci - 1));
-                            }}
-                            className="hover:text-accent transition-colors"
-                          >
-                            {crumb.label}
-                          </button>
-                        ) : (
-                          <span className="font-medium text-text">{crumb.label}</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {currentItems.map(({ node }) => {
-                  const hasKids = (childrenOf.get(node.code)?.length ?? 0) > 0;
-                  const isFolder = hasKids && !node.pageId;
-                  const isPage = !!node.pageId;
-                  const IconC = I.Layout;
-                  return (
-                    <button
-                      key={node.code}
-                      type="button"
-                      onClick={() => {
-                        if (isPage) {
-                          onSelectPage(node.pageId as string);
-                        } else if (hasKids) {
-                          drillIn(node.code);
-                        }
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
-                        isPage ? "text-text hover:bg-hover/40" : "text-text hover:bg-accent/5",
-                      )}
-                    >
-                      {isFolder ? (
-                        <I.FolderOpen size={13} className="shrink-0 text-warning/60" />
-                      ) : (
-                        <IconC size={13} className="shrink-0 text-muted" />
-                      )}
-                      <span className="truncate lowercase first-letter:uppercase">
-                        {labelOf(node)}
-                      </span>
-                      {hasKids && (
-                        <I.ChevronRight size={11} className="ml-auto shrink-0 text-muted/40" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

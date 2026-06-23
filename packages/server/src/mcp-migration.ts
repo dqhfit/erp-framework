@@ -15,6 +15,7 @@
    Deny-by-default: scope rỗng = không gì.
    ========================================================== */
 import {
+  companyMembers,
   dataSources,
   entities,
   entityRecords,
@@ -25,7 +26,11 @@ import {
   migrationSyncRuns,
   migrationSyncTables,
   mssqlConnections,
+  pageViewerGroups,
   pages,
+  userViewerGroups,
+  users,
+  viewerGroups,
 } from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -547,6 +552,40 @@ const TOOLS: ToolDef[] = [
         sql: { type: "string", description: "Câu SELECT/WITH duy nhất" },
       },
       required: ["sql"],
+    },
+  },
+  {
+    name: "viewer_groups_seed",
+    description:
+      "Tạo viewer groups mặc định từ menu top-level (legacy_menu_map) và gán page tương ứng. " +
+      "Mỗi nhánh gốc có page → 1 viewer group (tên = tên menu). Idempotent: group đã có → " +
+      "chỉ gán thêm page chưa có. dryRun=true (mặc định) chỉ in kế hoạch, không ghi.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dryRun: {
+          type: "boolean",
+          description: "true = chỉ in kế hoạch, không ghi (mặc định true)",
+        },
+      },
+    },
+  },
+  {
+    name: "viewer_groups_sync_sys_users",
+    description:
+      "Tạo framework user account (password_hash='__legacy__') + company_member (role=viewer) " +
+      "cho mọi sys_user chưa có tài khoản, rồi gán vào viewer group theo f_group_id. " +
+      "Mapping: sanxuat→Quản lý sản xuất, kythuat→Kỹ thuật, kinhdoanh→Kinh doanh, " +
+      "qaqc→QA/QC, nhansu→Nhân sự, BAOTRI→Bảo trì, warehouse→Quản lý kho, " +
+      "admin→Hệ thống, thumua→Thu mua, kehoach→Kế hoạch sản xuất, ketoan→Kế toán. " +
+      "Idempotent (ON CONFLICT DO NOTHING). dryRun=true chỉ đếm.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dryRun: { type: "boolean", description: "true = chỉ đếm, không ghi (mặc định true)" },
+      },
     },
   },
   {
@@ -2655,6 +2694,315 @@ async function callMigrationTool(
         await mssqlClient.close();
       }
       return results;
+    }
+
+    /* ── viewer_groups_seed (apply) ─────────────────────────── */
+    case "viewer_groups_seed": {
+      const dryRun = args.dryRun !== false;
+      const COLORS = [
+        "#6366f1",
+        "#8b5cf6",
+        "#06b6d4",
+        "#f59e0b",
+        "#10b981",
+        "#3b82f6",
+        "#ec4899",
+        "#f97316",
+        "#84cc16",
+        "#0ea5e9",
+        "#d946ef",
+        "#64748b",
+        "#ef4444",
+      ];
+
+      // Tải cây menu
+      const nodes = await db
+        .select({
+          sourceCode: legacyMenuMap.sourceCode,
+          name: legacyMenuMap.name,
+          parentCode: legacyMenuMap.parentCode,
+          sort: legacyMenuMap.sort,
+          pageId: legacyMenuMap.pageId,
+        })
+        .from(legacyMenuMap)
+        .where(and(eq(legacyMenuMap.companyId, companyId), eq(legacyMenuMap.active, true)));
+
+      const byCode = new Map(nodes.map((n) => [n.sourceCode, n]));
+
+      function rootOf(code: string): string | null {
+        let cur = byCode.get(code);
+        while (cur?.parentCode && byCode.has(cur.parentCode)) cur = byCode.get(cur.parentCode);
+        return cur?.sourceCode ?? null;
+      }
+
+      const rootPageMap = new Map<string, Set<string>>();
+      for (const n of nodes) {
+        if (!n.pageId) continue;
+        const root = rootOf(n.sourceCode);
+        if (!root) continue;
+        if (!rootPageMap.has(root)) rootPageMap.set(root, new Set());
+        rootPageMap.get(root)!.add(n.pageId);
+      }
+
+      const topLevel = nodes.filter((n) => !n.parentCode || !byCode.has(n.parentCode));
+      const existing = await db
+        .select({ id: viewerGroups.id, name: viewerGroups.name })
+        .from(viewerGroups)
+        .where(eq(viewerGroups.companyId, companyId));
+      const existingByName = new Map(existing.map((g) => [g.name, g.id]));
+
+      const plan: Array<{
+        name: string;
+        color: string;
+        pages: string[];
+        existingId: string | null;
+      }> = [];
+      let colorIdx = 0;
+      for (const root of topLevel.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))) {
+        const pageSet = rootPageMap.get(root.sourceCode);
+        if (!pageSet?.size) continue;
+        const gname = (root.name ?? root.sourceCode).trim();
+        plan.push({
+          name: gname,
+          color: COLORS[colorIdx++ % COLORS.length] ?? "#6366f1",
+          pages: [...pageSet],
+          existingId: existingByName.get(gname) ?? null,
+        });
+      }
+
+      const totalPages = plan.reduce((s, i) => s + i.pages.length, 0);
+      if (dryRun) {
+        return {
+          dryRun: true,
+          groups: plan.map((p) => ({
+            name: p.name,
+            status: p.existingId ? "existing" : "new",
+            pageCount: p.pages.length,
+          })),
+          totalGroups: plan.length,
+          totalPageAssignments: totalPages,
+        };
+      }
+
+      const results: Array<{ name: string; status: string; groupId: string; pagesAdded: number }> =
+        [];
+      for (const item of plan) {
+        let groupId = item.existingId;
+        let status = "existing";
+        if (!groupId) {
+          const [row] = await db
+            .insert(viewerGroups)
+            .values({ companyId, name: item.name, color: item.color })
+            .onConflictDoNothing()
+            .returning({ id: viewerGroups.id });
+          groupId = row?.id ?? null;
+          if (!groupId) {
+            const [found] = await db
+              .select({ id: viewerGroups.id })
+              .from(viewerGroups)
+              .where(and(eq(viewerGroups.companyId, companyId), eq(viewerGroups.name, item.name)));
+            groupId = found?.id ?? null;
+          }
+          status = "created";
+        }
+        if (!groupId) {
+          results.push({ name: item.name, status: "error", groupId: "", pagesAdded: 0 });
+          continue;
+        }
+
+        await db
+          .insert(pageViewerGroups)
+          .values(item.pages.map((pid) => ({ pageId: pid, groupId: groupId! })))
+          .onConflictDoNothing();
+        results.push({ name: item.name, status, groupId, pagesAdded: item.pages.length });
+      }
+      return { dryRun: false, results, totalGroups: plan.length, totalPageAssignments: totalPages };
+    }
+
+    /* ── viewer_groups_sync_sys_users (apply) ───────────────── */
+    case "viewer_groups_sync_sys_users": {
+      const dryRun = args.dryRun !== false;
+
+      const GROUP_MAP: Record<string, string> = {
+        sanxuat: "Quản lý sản xuất",
+        kythuat: "Kỹ thuật",
+        kinhdoanh: "Kinh doanh",
+        qaqc: "QA/QC",
+        nhansu: "Nhân sự",
+        BAOTRI: "Bảo trì",
+        warehouse: "Quản lý kho",
+        admin: "Hệ thống",
+        thumua: "Thu mua",
+        kehoach: "Kế hoạch sản xuất",
+        ketoan: "Kế toán",
+      };
+      const EXTRA_COLORS: Record<string, string> = {
+        "QA/QC": "#10b981",
+        "Nhân sự": "#f43f5e",
+        "Bảo trì": "#78716c",
+      };
+
+      // Tải sys_user (raw — không có Drizzle schema)
+      type SysUserRow = {
+        f_username: string;
+        f_fullname: string | null;
+        email_ext: string | null;
+        f_group_id: string | null;
+      };
+      const suRes = (await db.execute(
+        sql`SELECT f_username, f_fullname, ext->>'email' AS email_ext, f_group_id
+            FROM sys_user
+            WHERE deleted_at IS NULL AND f_username IS NOT NULL AND f_username <> ''`,
+      )) as unknown as SysUserRow[] | { rows: SysUserRow[] };
+      const sysUsers: SysUserRow[] = Array.isArray(suRes)
+        ? suRes
+        : ((suRes as { rows: SysUserRow[] }).rows ?? []);
+
+      // Existing framework users (legacy)
+      const fwUsers = await db
+        .select({ id: users.id, legacyUsername: users.legacyUsername })
+        .from(users)
+        .where(eq(users.legacyCompanyId, companyId));
+      const fwByUsername = new Map(
+        fwUsers.filter((u) => u.legacyUsername).map((u) => [u.legacyUsername!.toLowerCase(), u.id]),
+      );
+
+      // Existing company_members
+      const membersRes = await db
+        .select({ userId: companyMembers.userId })
+        .from(companyMembers)
+        .where(eq(companyMembers.companyId, companyId));
+      const memberSet = new Set(membersRes.map((m) => m.userId));
+
+      // Existing viewer groups
+      const vgRows = await db
+        .select({ id: viewerGroups.id, name: viewerGroups.name })
+        .from(viewerGroups)
+        .where(eq(viewerGroups.companyId, companyId));
+      const vgByName = new Map(vgRows.map((g) => [g.name, g.id]));
+
+      // Existing user_viewer_groups
+      const uvgRes = await db
+        .select({ userId: userViewerGroups.userId, groupId: userViewerGroups.groupId })
+        .from(userViewerGroups)
+        .innerJoin(viewerGroups, eq(userViewerGroups.groupId, viewerGroups.id))
+        .where(eq(viewerGroups.companyId, companyId));
+      const uvgSet = new Set(uvgRes.map((r) => `${r.userId}:${r.groupId}`));
+
+      const toCreate = sysUsers.filter((su) => !fwByUsername.has(su.f_username.toLowerCase()));
+      const newGroupNames = new Set<string>();
+      for (const su of sysUsers) {
+        if (!su.f_group_id) continue;
+        const gname = GROUP_MAP[su.f_group_id];
+        if (gname && !vgByName.has(gname)) newGroupNames.add(gname);
+      }
+
+      if (dryRun) {
+        const distrib: Record<string, number> = {};
+        for (const su of sysUsers) {
+          const k = su.f_group_id ?? "(null)";
+          distrib[k] = (distrib[k] ?? 0) + 1;
+        }
+        return {
+          dryRun: true,
+          totalSysUsers: sysUsers.length,
+          usersToCreate: toCreate.length,
+          newViewerGroups: [...newGroupNames],
+          groupDistribution: distrib,
+        };
+      }
+
+      // Tạo viewer group mới nếu thiếu
+      for (const gname of newGroupNames) {
+        const color = EXTRA_COLORS[gname] ?? "#94a3b8";
+        const [row] = await db
+          .insert(viewerGroups)
+          .values({ companyId, name: gname, color })
+          .onConflictDoNothing()
+          .returning({ id: viewerGroups.id, name: viewerGroups.name });
+        if (row) vgByName.set(row.name, row.id);
+        else {
+          const [found] = await db
+            .select({ id: viewerGroups.id })
+            .from(viewerGroups)
+            .where(and(eq(viewerGroups.companyId, companyId), eq(viewerGroups.name, gname)));
+          if (found) vgByName.set(gname, found.id);
+        }
+      }
+
+      // Tạo users + members + gán groups
+      let createdUsers = 0;
+      let createdMembers = 0;
+      let assignedGroups = 0;
+
+      for (const su of sysUsers) {
+        const usernameKey = su.f_username.toLowerCase();
+        let uid = fwByUsername.get(usernameKey);
+
+        if (!uid) {
+          const email = su.email_ext ?? `${su.f_username}@dqhf.local`;
+          try {
+            const [newU] = await db
+              .insert(users)
+              .values({
+                email,
+                name: su.f_fullname ?? su.f_username,
+                passwordHash: "__legacy__",
+                role: "viewer",
+                legacyUsername: su.f_username,
+                legacyCompanyId: companyId,
+              })
+              .onConflictDoUpdate({
+                target: users.email,
+                set: {
+                  legacyUsername: sql`EXCLUDED.legacy_username`,
+                  legacyCompanyId: sql`EXCLUDED.legacy_company_id`,
+                },
+              })
+              .returning({ id: users.id });
+            uid = newU?.id;
+            if (uid) {
+              fwByUsername.set(usernameKey, uid);
+              createdUsers++;
+            }
+          } catch {
+            continue;
+          }
+        }
+        if (!uid) continue;
+
+        if (!memberSet.has(uid)) {
+          await db
+            .insert(companyMembers)
+            .values({ companyId, userId: uid, role: "viewer", approved: true, disabled: false })
+            .onConflictDoNothing();
+          memberSet.add(uid);
+          createdMembers++;
+        }
+
+        if (!su.f_group_id) continue;
+        const gname = GROUP_MAP[su.f_group_id];
+        if (!gname) continue;
+        const gid = vgByName.get(gname);
+        if (!gid) continue;
+        const key = `${uid}:${gid}`;
+        if (uvgSet.has(key)) continue;
+        await db
+          .insert(userViewerGroups)
+          .values({ userId: uid, groupId: gid })
+          .onConflictDoNothing();
+        uvgSet.add(key);
+        assignedGroups++;
+      }
+
+      return {
+        dryRun: false,
+        totalSysUsers: sysUsers.length,
+        createdUsers,
+        createdMembers,
+        assignedGroups,
+        newGroupsCreated: newGroupNames.size,
+      };
     }
 
     default:
