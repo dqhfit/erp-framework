@@ -47,8 +47,6 @@ export interface UseRecordsOpts {
   enabled?: boolean;
   /** Text search query gửi lên server. */
   q?: string;
-  /** Sắp xếp mặc định gửi lên server. */
-  sort?: { field: string; dir: "asc" | "desc" };
 }
 
 /* ── Server-side paging hook result (cho bảng LỚN). ── */
