@@ -426,6 +426,8 @@ interface EditableListWidgetProps {
   addRowPos?: "top" | "bottom";
   /** Nút hành động nhúng trong toolbar (cùng hàng, tương tự read-only mode). */
   embeddedActions?: ActionBarItem[];
+  /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
+  emptyText?: string;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -501,6 +503,7 @@ function EditableListWidget({
   addRowAtEnd,
   addRowPos,
   embeddedActions,
+  emptyText,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1005,7 +1008,7 @@ function EditableListWidget({
             columns={columns}
             columnGroups={columnGroups}
             data={displayData}
-            emptyText={t("widget.empty_records")}
+            emptyText={emptyText ?? t("widget.empty_records")}
             label={title}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
@@ -2230,6 +2233,17 @@ export function ListWidget({
     );
   }
 
+  // Khi loadGate chưa mở → hiện hint thay vì "Chưa có bản ghi nào."
+  const gateKey = loadGate?.trim();
+  const gateVal = gateKey ? pageState.get(gateKey) : undefined;
+  const gateClosed =
+    !!gateKey &&
+    (gateVal === undefined ||
+      gateVal === null ||
+      gateVal === "" ||
+      (Array.isArray(gateVal) && gateVal.length === 0));
+  const emptyTextResolved = gateClosed ? t("widget.gate_hint") : t("widget.empty_records");
+
   // ── Chế độ chỉnh sửa inline ─────────────────────────────────────────
   if (editable || (editableFields && editableFields.length > 0)) {
     return (
@@ -2261,6 +2275,7 @@ export function ListWidget({
         addRowAtEnd={addRowAtEnd}
         addRowPos={addRowPos}
         embeddedActions={embeddedActions}
+        emptyText={emptyTextResolved}
       />
     );
   }
@@ -2327,7 +2342,13 @@ export function ListWidget({
             columns={columns}
             columnGroups={columnGroups}
             defaultGrouping={defaultGrouping}
-            emptyText={filterFromState ? t("widget.select_master") : t("widget.empty_records")}
+            emptyText={
+              gateClosed
+                ? t("widget.gate_hint")
+                : filterFromState
+                  ? t("widget.select_master")
+                  : t("widget.empty_records")
+            }
             stateKey={stateKey}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
