@@ -181,6 +181,14 @@ export type FItemCfg = {
   placeholder?: string;
   pageSize?: number;
   options?: string;
+  /** Nhãn hiển thị cho từng giá trị trong `options` (value→label). Vd trạng thái:
+   *  options="0,1,2" + optionLabels={"0":"Đã tạo",...}. Không có → label = value. */
+  optionLabels?: Record<string, string>;
+  /** Combobox ĐA CHỌN: ghi string[] vào state (loadFilters op "in"). Mặc định single. */
+  multiSelect?: boolean;
+  /** Giá trị chọn sẵn khi mở trang (seed vào pageState 1 lần nếu state chưa có).
+   *  string cho single, string[] cho multiSelect. */
+  defaultValue?: string | string[];
   width?: number;
   /** Lọc options theo field này khi filterFromState có giá trị (cascade 1 cha — legacy). */
   filterField?: string;

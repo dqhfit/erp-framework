@@ -12,12 +12,157 @@ import { TagBox } from "@/components/ui/tagbox";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import { cn } from "@/lib/utils";
 
+/** Combobox ĐA CHỌN cho filter: dropdown checkbox + search, nhãn theo optionLabels,
+ *  ghi string[] vào pageState (list lọc op "in"). */
+function MultiCombo({
+  stateKey,
+  label,
+  options,
+  width,
+}: {
+  stateKey: string;
+  label: string;
+  options: { value: string; label: string }[];
+  width?: number;
+}) {
+  const pageState = usePageState();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const pos = useDropdownPosition(triggerRef, open);
+
+  const raw = pageState.get(stateKey);
+  const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const tgt = e.target as Node;
+      if (!triggerRef.current?.contains(tgt) && !panelRef.current?.contains(tgt)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const filtered = query
+    ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
+    : options;
+  const toggle = (v: string) =>
+    pageState.set(
+      stateKey,
+      selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
+    );
+
+  const triggerLabel =
+    selected.length === 0
+      ? label
+        ? `${label}: tất cả`
+        : "— tất cả —"
+      : `${label ? `${label}: ` : ""}${selected.length} đã chọn`;
+  const wrapCls = width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
+
+  return (
+    <div className={wrapCls} style={width ? { width } : undefined}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o);
+          setQuery("");
+        }}
+        className="input flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span className={cn("truncate", selected.length === 0 && "text-muted")}>
+          {triggerLabel}
+        </span>
+        <I.ChevronDown size={14} className="shrink-0 text-muted" />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              minWidth: Math.max(pos.width, 200),
+            }}
+            className="z-[1000] w-max max-w-[300px] rounded-md border border-border bg-panel shadow-lg"
+          >
+            <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+              <I.Search size={13} className="shrink-0 text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tìm…"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+              />
+              {selected.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => pageState.set(stateKey, [])}
+                  className="shrink-0 text-xs text-muted hover:text-danger"
+                  title="Bỏ chọn hết"
+                >
+                  <I.X size={12} />
+                </button>
+              )}
+            </div>
+            <ul className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
+              ) : (
+                filtered.map((o) => {
+                  const checked = selected.includes(o.value);
+                  return (
+                    <li key={o.value}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(o.value)}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover/40"
+                      >
+                        <span
+                          className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                            checked ? "bg-accent border-accent text-white" : "border-border",
+                          )}
+                        >
+                          {checked && <I.Check size={11} />}
+                        </span>
+                        <span className="truncate">{o.label}</span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
 function FilterItem({ item }: { item: FItemCfg }) {
   const pageState = usePageState();
   const { rows } = useWidgetData(item as Record<string, unknown>);
   const stateKey = item.stateKey || "";
   const label = item.label || "";
+
+  // Seed giá trị chọn sẵn (defaultValue) 1 lần khi mount — chỉ khi state CHƯA có
+  // (không ghi đè lựa chọn người dùng / giá trị đã khôi phục).
+  const seededRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý seed 1 lần khi mount
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    if (stateKey && item.defaultValue !== undefined && pageState.get(stateKey) === undefined) {
+      pageState.set(stateKey, item.defaultValue);
+    }
+  }, []);
 
   // Lọc liên kết (cross-filter): gộp phụ thuộc legacy (filterFromState/filterField)
   // + dependsOn[]. Options của item thu hẹp theo MỌI cha đang có giá trị (AND).
@@ -47,11 +192,12 @@ function FilterItem({ item }: { item: FItemCfg }) {
 
   const labelOptions = useMemo(() => {
     if (item.options) {
+      const labels = item.optionLabels ?? {};
       return item.options
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-        .map((o) => ({ value: o, label: o }));
+        .map((o) => ({ value: o, label: labels[o] ?? o }));
     }
     if (!item.field || !filteredRows.length) return [];
     const seen = new Set<string>();
@@ -65,7 +211,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
     }
     out.sort((a, b) => a.value.localeCompare(b.value));
     return out;
-  }, [filteredRows, item.field, item.labelField, item.options]);
+  }, [filteredRows, item.field, item.labelField, item.options, item.optionLabels]);
 
   const suggestions = labelOptions.map((o) => o.value);
 
@@ -85,6 +231,11 @@ function FilterItem({ item }: { item: FItemCfg }) {
   const wrapStyle = item.width ? { width: item.width } : undefined;
 
   if (item.kind === "combobox") {
+    if (item.multiSelect) {
+      return (
+        <MultiCombo stateKey={stateKey} label={label} options={labelOptions} width={item.width} />
+      );
+    }
     const val = (pageState.get(stateKey) as string) ?? "";
     const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
     return (

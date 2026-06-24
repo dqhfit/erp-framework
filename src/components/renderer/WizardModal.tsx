@@ -15,9 +15,161 @@ import type { PageStateLike } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, ActionStepOpenWizard } from "@/types/page";
+import type { ActionConfig, ActionStepOpenWizard, WizardLookupRef } from "@/types/page";
 
 const api = createApiDataSource("");
+
+/** Combobox lookup trong wizard + (tùy chọn) nút "+" tạo nhanh bản ghi mới vào
+ *  entity nguồn. Tạo xong → nạp lại danh sách (onCreated) + chọn luôn (onPick). */
+function WizardLookupField({
+  lk,
+  src,
+  value,
+  onPick,
+  onCreated,
+}: {
+  lk: WizardLookupRef;
+  src: Record<string, unknown>[];
+  value: string;
+  onPick: (v: string, rec?: Record<string, unknown>) => void;
+  onCreated: () => void;
+}) {
+  const entities = useUserObjects((s) => s.entities);
+  const [open, setOpen] = useState(false);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const labels = lk.labelFields ?? [lk.valueField];
+  const opts = src.map((r) => {
+    const val = String(r[lk.valueField] ?? "");
+    const lbl = labels
+      .map((x) => r[x])
+      .filter((x) => x != null && String(x) !== "")
+      .join(" — ");
+    return { value: val, label: lbl || val };
+  });
+  const ent = entities.find((e) => e.id === lk.entity);
+  const srcLabel = ent?.label ?? ent?.name ?? "mục";
+  const createNames = lk.createFields ?? [...new Set([lk.valueField, ...labels])];
+  const createDefs = createNames
+    .map((n) => ent?.fields.find((f) => f.name === n))
+    .filter(Boolean) as EntityField[];
+
+  const save = async () => {
+    if (saving) return;
+    const valKey = String(vals[lk.valueField] ?? "").trim();
+    if (!valKey) {
+      toast.error(`Vui lòng nhập ${lk.valueField}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const data: Record<string, unknown> = {};
+      for (const f of createDefs) {
+        const v = vals[f.name];
+        if (v == null || v === "") continue;
+        data[f.name] =
+          f.type === "number" || f.type === "integer"
+            ? Number(v)
+            : f.type === "boolean" || f.type === "bool"
+              ? v === "true"
+              : v;
+      }
+      // Field tự tăng (vd id_buocson): KHÔNG nhập tay — gán max(nguồn)+1.
+      const autoVals: Record<string, string> = {};
+      for (const fname of lk.createAutoInc ?? []) {
+        const maxV = src.reduce((m, r) => Math.max(m, Number(r[fname]) || 0), 0);
+        const next = maxV + 1;
+        data[fname] = next;
+        autoVals[fname] = String(next);
+      }
+      await api.createRecord(lk.entity, data);
+      toast.success("Đã thêm mới");
+      onCreated();
+      onPick(valKey, { ...vals, ...autoVals });
+      setOpen(false);
+      setVals({});
+    } catch (e) {
+      toast.error((e as Error).message || "Lỗi tạo mới");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex-1 min-w-0">
+        <SearchableSelect
+          className="w-full"
+          value={value}
+          onChange={(v) =>
+            onPick(
+              v,
+              src.find((r) => String(r[lk.valueField] ?? "") === v),
+            )
+          }
+          options={opts}
+          emptyOption={`— chọn ${srcLabel} —`}
+          searchPlaceholder={`Tìm ${srcLabel}…`}
+        />
+      </div>
+      {lk.allowCreate && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border text-muted hover:text-accent hover:border-accent transition-colors"
+          title={`Thêm ${srcLabel}`}
+        >
+          <I.Plus size={15} />
+        </button>
+      )}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Thêm ${srcLabel}`}
+        width={420}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" onClick={save} disabled={saving}>
+              Lưu
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {createDefs.length === 0 && (
+            <div className="text-sm text-muted italic">Không có field để nhập.</div>
+          )}
+          {createDefs.map((f) => (
+            <label key={f.name} className="block space-y-1">
+              <span className="text-xs font-medium text-muted">{f.label || f.name}</span>
+              {f.type === "boolean" || f.type === "bool" ? (
+                <select
+                  className="input w-full"
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals((p) => ({ ...p, [f.name]: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  <option value="true">Có</option>
+                  <option value="false">Không</option>
+                </select>
+              ) : (
+                <Input
+                  type={f.type === "number" || f.type === "integer" ? "number" : "text"}
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals((p) => ({ ...p, [f.name]: e.target.value }))}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      </Modal>
+    </div>
+  );
+}
 
 /** "YYYY-MM-DD" → ISO UTC (đồng nhất với data đã có; không lệch ±1 ngày). */
 function toIsoDate(s: string): string {
@@ -35,6 +187,25 @@ function toStr(v: unknown, type: string): string {
     return m ? m[0] : String(v);
   }
   return String(v);
+}
+
+/** Nội suy {{stateKey}} trong rowDefaults từ pageState → giá trị cho DÒNG MỚI
+ *  (vd is_active="true", donhot="{{selQTDonhot}}" lấy theo quy trình đang chọn). */
+function interpRowDefaults(
+  rowDefaults: Record<string, string> | undefined,
+  getState: (k: string) => unknown,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rowDefaults ?? {})) {
+    out[k] =
+      typeof v === "string"
+        ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key) => {
+            const g = getState(key);
+            return g == null ? "" : String(g);
+          })
+        : v;
+  }
+  return out;
 }
 
 /** Gom giá trị 1 dòng lưới → payload (bỏ rỗng, boolean→bool, date→ISO). */
@@ -118,7 +289,21 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // Tạo mới (không recordId) + có defaults → điền sẵn giá trị mặc định.
   const [forms, setForms] = useState<Record<string, Record<string, string>>>(() => {
     const init: Record<string, Record<string, string>> = {};
-    if (wizardEntityId && !editId && step.defaults) init[SINGLE_FORM_KEY] = { ...step.defaults };
+    if (wizardEntityId && !editId && step.defaults) {
+      // Nội suy {{stateKey}} trong defaults từ pageState — cho phép set khoá cha
+      // động khi tạo bản ghi con (vd id_phienban = {{selPhienBan}} của dòng đang chọn).
+      const resolved: Record<string, string> = {};
+      for (const [k, v] of Object.entries(step.defaults)) {
+        resolved[k] =
+          typeof v === "string"
+            ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key) => {
+                const got = pageState.get(key);
+                return got == null ? "" : String(got);
+              })
+            : v;
+      }
+      init[SINGLE_FORM_KEY] = resolved;
+    }
     return init;
   });
   const [busy, setBusy] = useState(false);
@@ -134,6 +319,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
   const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
+  // Tăng để buộc nạp lại danh sách lookup (vd sau khi tạo nhanh bản ghi mới qua nút +).
+  const [lookupTick, setLookupTick] = useState(0);
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
   const lookupKey = [
@@ -163,7 +350,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     return () => {
       alive = false;
     };
-  }, [lookupKey]);
+  }, [lookupKey, lookupTick]);
 
   // (1-entity, SỬA) Tải bản ghi → prefill form dùng chung.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ nạp lại khi đổi record/entity; KHÔNG bám wizardSteps để khỏi reset input
@@ -193,7 +380,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           for (const s of detailSteps) {
             const dc = s.detail;
             if (!dc) continue;
-            const keyVal = String(data[dc.parentKeyField] ?? "");
+            // parentKeyField="id" → khoá là ID master (không nằm trong rec.data) → dùng editId.
+            const keyVal =
+              dc.parentKeyField === "id" ? String(editId) : String(data[dc.parentKeyField] ?? "");
             if (!keyVal) {
               loaded[s.id] = [];
               continue;
@@ -253,8 +442,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           for (const f of dFields) row[f.name] = toStr(d[f.name], f.type);
           return row;
         });
-        // Chưa có dòng nào → để 1 dòng trống cho người dùng nhập mới.
-        loaded[s.id] = mapped.length > 0 ? mapped : [{}];
+        // Chưa có dòng nào → để 1 dòng trống (nạp rowDefaults) cho người dùng nhập mới.
+        loaded[s.id] =
+          mapped.length > 0 ? mapped : [interpRowDefaults(dc.rowDefaults, pageState.get)];
       }
       if (alive) setDetailRows(loaded);
     })()
@@ -306,16 +496,28 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       ? (detailEnt?.fields ?? []).filter((f) => detailCfg.fields?.includes(f.name))
       : (detailEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection")
     : [];
-  const rows = detailRows[current.id] ?? [{}];
+  // Dòng chi tiết MỚI: nạp sẵn rowDefaults (vd is_active="true", donhot lấy theo quy trình).
+  const emptyRow = (): Record<string, string> =>
+    interpRowDefaults(detailCfg?.rowDefaults, pageState.get);
+  const rows = detailRows[current.id] ?? [emptyRow()];
   const setRow = (i: number, name: string, v: string) =>
     setDetailRows((prev) => {
-      const cur = prev[current.id] ?? [{}];
+      const cur = prev[current.id] ?? [emptyRow()];
       return { ...prev, [current.id]: cur.map((r, idx) => (idx === i ? { ...r, [name]: v } : r)) };
     });
+  // Cập nhật NHIỀU field của 1 dòng (vd lookup + autofill id_buocson) trong 1 lần.
+  const setRowFields = (i: number, patch: Record<string, string>) =>
+    setDetailRows((prev) => {
+      const cur = prev[current.id] ?? [emptyRow()];
+      return { ...prev, [current.id]: cur.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) };
+    });
   const addRow = () =>
-    setDetailRows((prev) => ({ ...prev, [current.id]: [...(prev[current.id] ?? [{}]), {}] }));
+    setDetailRows((prev) => ({
+      ...prev,
+      [current.id]: [...(prev[current.id] ?? [emptyRow()]), emptyRow()],
+    }));
   const delRow = (i: number) => {
-    const rid = (detailRows[current.id] ?? [{}])[i]?._rid;
+    const rid = (detailRows[current.id] ?? [emptyRow()])[i]?._rid;
     if (rid) setDeletedDetail((d) => [...d, rid]);
     setDetailRows((prev) => ({
       ...prev,
@@ -323,28 +525,35 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     }));
   };
 
-  const renderDetailCell = (f: EntityField, value: string, onChange: (v: string) => void) => {
+  const renderDetailCell = (
+    f: EntityField,
+    value: string,
+    onChange: (v: string) => void,
+    onRowPatch?: (patch: Record<string, string>) => void,
+  ) => {
     const lk = detailCfg?.fieldLookups?.[f.name];
     if (lk) {
       const src = detailLookupData[lk.entity] ?? [];
-      const labels = lk.labelFields ?? [lk.valueField];
-      const opts = src.map((r) => {
-        const val = String(r[lk.valueField] ?? "");
-        const lbl = labels
-          .map((x) => r[x])
-          .filter((x) => x != null && String(x) !== "")
-          .join(" — ");
-        return { value: val, label: lbl || val };
-      });
-      const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+      // Combobox lookup trong lưới: hỗ trợ "+" tạo nhanh + autofill (vd id_buocson).
+      const pick = (v: string, rec?: Record<string, unknown>) => {
+        const patch: Record<string, string> = { [f.name]: v };
+        if (lk.autofill) {
+          const r = rec ?? src.find((x) => String(x[lk.valueField] ?? "") === v);
+          for (const [tgt, srcField] of Object.entries(lk.autofill)) {
+            const val = r ? r[srcField] : undefined;
+            patch[tgt] = val == null ? "" : String(val);
+          }
+        }
+        if (onRowPatch) onRowPatch(patch);
+        else onChange(v);
+      };
       return (
-        <SearchableSelect
-          className="w-full"
+        <WizardLookupField
+          lk={lk}
+          src={src}
           value={value}
-          onChange={onChange}
-          options={opts}
-          emptyOption={`— chọn ${srcLabel} —`}
-          searchPlaceholder={`Tìm ${srcLabel}…`}
+          onPick={pick}
+          onCreated={() => setLookupTick((t) => t + 1)}
         />
       );
     }
@@ -418,8 +627,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             ? (dEnt?.fields ?? []).filter((f) => dc.fields?.includes(f.name))
             : (dEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection");
           for (const r of detailRows[s.id] ?? []) {
+            // Dòng "có dữ liệu" = có field NGHIỆP VỤ (bỏ _rid + rowDefaults như is_active)
+            // → tránh lưu dòng trống chỉ chứa giá trị mặc định.
             const hasData = Object.entries(r).some(
-              ([k, v]) => k !== "_rid" && (v ?? "").trim() !== "",
+              ([k, v]) =>
+                k !== "_rid" && !(dc.rowDefaults && k in dc.rowDefaults) && (v ?? "").trim() !== "",
             );
             const data = buildRowData(r, dFields);
             if (dc.linkField)
@@ -478,8 +690,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           : await api.createRecord(wizardEntityId, payload);
 
         // Đồng bộ dòng chi tiết cho các bước có cấu hình detail (master-detail).
+        // parentKeyField="id" → linkField nhận ID master VỪA TẠO/SỬA (khoá hệ thống,
+        // không phải field form) → cho phép gộp tạo cha + con cùng lúc.
         const keyOf = (dc: NonNullable<typeof current.detail>) =>
-          (forms[SINGLE_FORM_KEY]?.[dc.parentKeyField] ?? "").trim();
+          dc.parentKeyField === "id"
+            ? String(saved.id ?? editId ?? "")
+            : (forms[SINGLE_FORM_KEY]?.[dc.parentKeyField] ?? "").trim();
         // (SỬA) xoá các dòng cũ bị bỏ trước.
         for (const rid of deletedDetail) await api.deleteRecord(rid);
         for (const s of wizardSteps) {
@@ -491,12 +707,27 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             : (dEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection");
           const keyVal = keyOf(dc);
           for (const r of detailRows[s.id] ?? []) {
+            // Dòng "có dữ liệu" = có field NGHIỆP VỤ (bỏ _rid + rowDefaults như is_active)
+            // → tránh lưu dòng trống chỉ chứa giá trị mặc định.
             const hasData = Object.entries(r).some(
-              ([k, v]) => k !== "_rid" && (v ?? "").trim() !== "",
+              ([k, v]) =>
+                k !== "_rid" && !(dc.rowDefaults && k in dc.rowDefaults) && (v ?? "").trim() !== "",
             );
             const data = buildRowData(r, dFields);
+            // Field được lookup AUTOFILL (vd id_buocson) — không nằm trong dc.fields
+            // hiển thị nên buildRowData bỏ qua → copy thủ công để lưu.
+            if (dc.fieldLookups)
+              for (const lkc of Object.values(dc.fieldLookups))
+                for (const tgt of Object.keys(lkc.autofill ?? {}))
+                  if (r[tgt] != null && String(r[tgt]) !== "") data[tgt] = r[tgt];
             if (keyVal)
               data[dc.linkField] = coerceLinkValue(keyVal, dEnt?.fields ?? [], dc.linkField);
+            // Kế thừa field từ master (vd màu sắc) cho dòng chi tiết.
+            if (dc.inherit)
+              for (const [tf, mf] of Object.entries(dc.inherit)) {
+                const mv = shared[mf];
+                if (mv != null && String(mv) !== "") data[tf] = mv;
+              }
             if (dc.computed)
               for (const [tf, factors] of Object.entries(dc.computed))
                 data[tf] = computeProduct(r, factors);
@@ -587,33 +818,24 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const lk = current.fieldLookups?.[f.name];
         if (!lk) return null;
         const src = detailLookupData[lk.entity] ?? [];
-        const labels = lk.labelFields ?? [lk.valueField];
-        const opts = src.map((r) => {
-          const val = String(r[lk.valueField] ?? "");
-          const lbl = labels
-            .map((x) => r[x])
-            .filter((x) => x != null && String(x) !== "")
-            .join(" — ");
-          return { value: val, label: lbl || val };
-        });
-        const srcLabel = entities.find((e) => e.id === lk.entity)?.name ?? "mục";
+        // Chọn (hoặc vừa tạo) → set field + autofill các field đích từ record nguồn.
+        const pick = (v: string, rec?: Record<string, unknown>) => {
+          setField(f.name, v);
+          if (lk.autofill) {
+            const r = rec ?? src.find((x) => String(x[lk.valueField] ?? "") === v);
+            for (const [tgt, srcField] of Object.entries(lk.autofill)) {
+              const val = r ? r[srcField] : undefined;
+              setField(tgt, val == null ? "" : String(val));
+            }
+          }
+        };
         return (
-          <SearchableSelect
-            className="w-full"
+          <WizardLookupField
+            lk={lk}
+            src={src}
             value={form[f.name] ?? ""}
-            onChange={(v) => {
-              setField(f.name, v);
-              if (lk.autofill) {
-                const rec = src.find((r) => String(r[lk.valueField] ?? "") === v);
-                for (const [tgt, srcField] of Object.entries(lk.autofill)) {
-                  const val = rec ? rec[srcField] : undefined;
-                  setField(tgt, val == null ? "" : String(val));
-                }
-              }
-            }}
-            options={opts}
-            emptyOption={`— chọn ${srcLabel} —`}
-            searchPlaceholder={`Tìm ${srcLabel}…`}
+            onPick={pick}
+            onCreated={() => setLookupTick((t) => t + 1)}
           />
         );
       })()
@@ -825,7 +1047,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                                   {computeProduct(r, factors).toLocaleString("vi-VN")}
                                 </div>
                               ) : (
-                                renderDetailCell(f, r[f.name] ?? "", (v) => setRow(i, f.name, v))
+                                renderDetailCell(
+                                  f,
+                                  r[f.name] ?? "",
+                                  (v) => setRow(i, f.name, v),
+                                  (patch) => setRowFields(i, patch),
+                                )
                               )}
                             </td>
                           );

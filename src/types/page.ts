@@ -238,6 +238,14 @@ export interface WizardLookupRef {
   /** Tự điền field khác từ record nguồn khi chọn: { fieldĐích: fieldNguồn }.
    *  Vd makhachhang lookup tr_khachhang → { tenkhachhang: "customer_name" }. */
   autofill?: Record<string, string>;
+  /** true → hiện nút "+" cạnh combobox để tạo nhanh bản ghi mới trong entity nguồn
+   *  (vd thêm bước sơn chưa có), sau đó tự chọn + autofill. */
+  allowCreate?: boolean;
+  /** Field hiển thị trong form tạo nhanh (mặc định valueField + labelFields). */
+  createFields?: string[];
+  /** Field TỰ TĂNG khi tạo nhanh (không nhập tay) = max(giá trị nguồn)+1.
+   *  Vd id_buocson. Giá trị mới cũng dùng cho autofill. */
+  createAutoInc?: string[];
 }
 
 /** Cấu hình bước nhập LƯỚI chi tiết (master-detail) trong wizard 1-entity. */
@@ -256,6 +264,12 @@ export interface WizardStepDetail {
   computed?: Record<string, string[]>;
   /** Field hiển thị TỔNG ở footer lưới. */
   footerSums?: string[];
+  /** Kế thừa giá trị từ bản ghi MASTER sang mỗi dòng chi tiết: { fieldChiTiết: fieldMaster }.
+   *  Vd quy trình kế thừa màu của phiên bản: { mausac: "mausac", id_mausac: "id_mausac" }.
+   *  Áp khi lưu (master-detail 1-entity). parentKeyField="id" → linkField nhận id master mới tạo. */
+  inherit?: Record<string, string>;
+  /** Giá trị mặc định cho DÒNG MỚI trong lưới (vd { is_active: "true" }). */
+  rowDefaults?: Record<string, string>;
 }
 
 /** Một bước trong wizard — có thể tạo bản ghi entity hoặc chỉ hiển thị form. */
