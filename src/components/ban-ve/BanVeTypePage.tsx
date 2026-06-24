@@ -331,7 +331,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2 shrink-0">
         <button
           type="button"
-          onClick={() => void navigate({ to: "/banve" })}
+          onClick={() => void navigate({ to: "/ban-ve" })}
           className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
           aria-label="Quay lại"
         >
