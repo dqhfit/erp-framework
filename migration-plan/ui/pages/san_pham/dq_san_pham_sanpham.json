@@ -177,55 +177,64 @@
            }
           ]
          },
-         {
-         "id": "step_physical",
-          "title": "Thông số vật lý",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "bemat_sanpham",
-             "ketcau",
-             "g_weight",
-             "n_weight"
-            ]
+          {
+          "id": "step_physical",
+           "title": "Thông số vật lý",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Thông tin sản phẩm",
+             "fields": [
+              "bemat_sanpham",
+              "ketcau",
+              "g_weight",
+              "n_weight"
+             ]
+            }
+           ],
+           "fieldOverrides": {
+            "bemat_sanpham": {
+             "type": "select",
+             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
+            },
+            "ketcau": {
+             "type": "select",
+             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+            }
            }
-          ]
-         },
-         {
-          "id": "step_pricing",
-          "title": "Định giá & Hình ảnh",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "dongia",
-             "loaitien"
-            ]
-           }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
           },
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+          {
+           "id": "step_pricing",
+           "title": "Định giá & Hình ảnh",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Giá mộc (chưa sơn)",
+             "fields": [
+              "dongia_moc",
+              "dongia_si_moc",
+              "dongia_le_moc"
+             ]
+            },
+            {
+             "title": "Giá thành phẩm (đã sơn)",
+             "fields": [
+              "dongia",
+              "dongia_si",
+              "dongia_le"
+             ]
+            }
+           ],
+           "relatedImage": {
+            "entityName": "tr_hinhanh",
+            "linkField": "masp",
+            "parentField": "masp",
+            "imageField": "hinhanh",
+            "label": "Hình ảnh"
            }
           }
-         }
         ]
        }
       ]
@@ -331,78 +340,67 @@
               "name": "TR_SANPHAM_COMMON_INSERT"
              }
             ]
-           }
-          ],
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": ["Ráp chết", "Semi KD", "Tháo rời"]
-           }
-          }
-         },
-         {
-          "id": "step_physical",
-          "title": "Thông số vật lý",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "bemat_sanpham",
-             "ketcau",
-             "g_weight",
-             "n_weight"
-            ]
-           }
-          ],
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": ["Ráp chết", "Semi KD", "Tháo rời"]
-           }
-          }
-         },
-         {
-          "id": "step_pricing",
-          "title": "Định giá & Hình ảnh",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "dongia",
-             "loaitien"
-            ]
-           }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
+            }
+           ]
           },
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+          {
+           "id": "step_physical",
+           "title": "Thông số vật lý",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Thông tin sản phẩm",
+             "fields": [
+              "bemat_sanpham",
+              "ketcau",
+              "g_weight",
+              "n_weight"
+             ]
+            }
+           ],
+           "fieldOverrides": {
+            "bemat_sanpham": {
+             "type": "select",
+             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
+            },
+            "ketcau": {
+             "type": "select",
+             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+            }
+           }
+          },
+          {
+           "id": "step_pricing",
+           "title": "Định giá & Hình ảnh",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Giá mộc (chưa sơn)",
+             "fields": [
+              "dongia_moc",
+              "dongia_si_moc",
+              "dongia_le_moc"
+             ]
+            },
+            {
+             "title": "Giá thành phẩm (đã sơn)",
+             "fields": [
+              "dongia",
+              "dongia_si",
+              "dongia_le"
+             ]
+            }
+           ],
+           "relatedImage": {
+            "entityName": "tr_hinhanh",
+            "linkField": "masp",
+            "parentField": "masp",
+            "imageField": "hinhanh",
+            "label": "Hình ảnh"
            }
           }
-         }
         ]
        }
       ]
@@ -497,55 +495,64 @@
            }
           }
          },
-         {
-          "id": "step_physical",
-          "title": "Thông số vật lý",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "bemat_sanpham",
-             "ketcau",
-             "g_weight",
-             "n_weight"
-            ]
+          {
+           "id": "step_physical",
+           "title": "Thông số vật lý",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Thông tin sản phẩm",
+             "fields": [
+              "bemat_sanpham",
+              "ketcau",
+              "g_weight",
+              "n_weight"
+             ]
+            }
+           ],
+           "fieldOverrides": {
+            "bemat_sanpham": {
+             "type": "select",
+             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
+            },
+            "ketcau": {
+             "type": "select",
+             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+            }
            }
-          ]
-         },
-         {
-          "id": "step_pricing",
-          "title": "Định giá & Hình ảnh",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "dongia",
-             "loaitien"
-            ]
-           }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
           },
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": ["Ráp chết", "Semi KD", "Tháo rời"]
+          {
+           "id": "step_pricing",
+           "title": "Định giá & Hình ảnh",
+           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+           "cols": 2,
+           "sections": [
+            {
+             "title": "Giá mộc (chưa sơn)",
+             "fields": [
+              "dongia_moc",
+              "dongia_si_moc",
+              "dongia_le_moc"
+             ]
+            },
+            {
+             "title": "Giá thành phẩm (đã sơn)",
+             "fields": [
+              "dongia",
+              "dongia_si",
+              "dongia_le"
+             ]
+            }
+           ],
+           "relatedImage": {
+            "entityName": "tr_hinhanh",
+            "linkField": "masp",
+            "parentField": "masp",
+            "imageField": "hinhanh",
+            "label": "Hình ảnh"
            }
           }
-         }
         ]
        }
       ]
