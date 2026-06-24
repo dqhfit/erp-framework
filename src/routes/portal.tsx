@@ -276,17 +276,11 @@ function PortalRoute() {
       <header className="h-12 shrink-0 flex items-center px-3 sm:px-4 gap-1 sm:gap-2 border-b border-border bg-panel z-30 relative">
         <button
           type="button"
-          onClick={goToDashboard}
-          className="w-7 h-7 rounded-lg bg-accent/20 text-accent flex items-center justify-center shrink-0 hover:bg-accent/30 transition-colors"
-          title={t("portal.title")}
-        >
-          <I.Layout size={14} />
-        </button>
-
-        <button
-          type="button"
           onClick={() => setDrawerOpen((s) => !s)}
-          className="w-7 h-7 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 shrink-0 transition-colors"
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-muted hover:text-text hover:bg-hover/80 shrink-0",
+            drawerOpen && "bg-hover/80 text-text",
+          )}
           title="Tất cả menu"
         >
           <I.Menu size={16} />
@@ -300,11 +294,12 @@ function PortalRoute() {
             type="button"
             onClick={goToDashboard}
             className={cn(
-              "shrink-0 transition-colors",
-              activeId ? "text-muted hover:text-text" : "font-semibold text-text",
+              "shrink-0 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-hover/40",
+              activeId ? "text-muted hover:text-text" : "font-semibold text-accent bg-accent/10",
             )}
           >
-            Trang chủ
+            <I.Layout size={14} className="shrink-0" />
+            <span>Trang chủ</span>
           </button>
           {activeBreadcrumb && activeBreadcrumb.length > 0 && (
             <>
