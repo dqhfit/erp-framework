@@ -156,6 +156,32 @@ function BanVePage() {
         )}
       </div>
 
+      {/* Quick links quản lý — chỉ hiện với non-viewer */}
+      {role !== "viewer" && (
+        <div className="shrink-0 border-b border-border bg-panel/60 px-3 py-1.5 flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-muted">Quản lý:</span>
+          {(
+            [
+              { label: "Kỹ thuật", to: "/ban-ve/ky-thuat" },
+              { label: "Đóng gói", to: "/ban-ve/dong-goi" },
+              { label: "Phát triển", to: "/ban-ve/phat-trien" },
+              { label: "AI", to: "/ban-ve/ai" },
+              { label: "Mẫu", to: "/ban-ve/mau" },
+              { label: "Dao", to: "/ban-ve/dao" },
+            ] as const
+          ).map(({ label, to }) => (
+            <button
+              key={to}
+              type="button"
+              onClick={() => void navigate({ to })}
+              className="chip chip-default text-xs"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
         {/* Tìm sản phẩm */}
         <Button variant="ghost" onClick={() => setSearching(true)} className="w-full justify-start">

@@ -3,6 +3,7 @@
    Layout: filter bar → file table → PDF viewer inline.
    Định mức ngũ kim / gỗ ván được tách ra trang riêng (/dinh-muc/...). */
 
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { Modal, SearchableSelect } from "@/components/ui";
@@ -241,6 +242,7 @@ function ThemModal({
 
 /* ── Main component ── */
 export function BanVeTypePage({ phanloai }: { phanloai: string }) {
+  const navigate = useNavigate();
   const [hehangs, setHehangs] = useState<Opt[]>([]);
   const [hehang, setHehang] = useState("");
   const [products, setProducts] = useState<SpRow[]>([]);
@@ -324,7 +326,21 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
 
   return (
-    <div className="h-full flex flex-col bg-bg text-text overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
+      {/* ── Header standalone ── */}
+      <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => void navigate({ to: "/banve" })}
+          className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
+          aria-label="Quay lại"
+        >
+          <I.ChevronLeft size={20} />
+        </button>
+        <I.FileText size={16} className="text-accent shrink-0" />
+        <h1 className="font-semibold text-sm flex-1 truncate">{phanloai}</h1>
+      </div>
+
       {/* ── Filter bar ── */}
       <div className="shrink-0 border-b border-border bg-panel px-4 py-3">
         <div className="flex flex-wrap gap-3 items-end max-w-5xl">
