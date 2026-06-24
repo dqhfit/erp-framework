@@ -339,7 +339,7 @@ function PortalRoute() {
             size="sm"
             icon={<I.Edit size={13} />}
             onClick={() =>
-              activeId && void navigate({ to: "/pages/$id", params: { id: activeId } })
+              activeId && void navigate({ to: "/pages/$id", params: { id: activeId }, search: {} })
             }
             title="Sửa trang này trong Trình dựng"
           >
