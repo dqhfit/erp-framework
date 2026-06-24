@@ -428,6 +428,9 @@ interface EditableListWidgetProps {
   embeddedActions?: ActionBarItem[];
   /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
   emptyText?: string;
+  /** loadGate chưa mở → bỏ qua DataGrid, render hint full-area (tránh text lạc trong
+   *  <td colSpan> bị overflow-x ẩn khi bảng nhiều cột). */
+  gateClosed?: boolean;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -504,6 +507,7 @@ function EditableListWidget({
   addRowPos,
   embeddedActions,
   emptyText,
+  gateClosed,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -1000,6 +1004,10 @@ function EditableListWidget({
       )}
       {err ? (
         <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
+      ) : gateClosed && filteredRows.length === 0 && !loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-sm text-muted">{emptyText ?? t("widget.gate_hint")}</span>
+        </div>
       ) : (
         <div className="flex-1 min-h-0">
           {/* Lưới đầy đủ chức năng (sort/filter/group/summary/export/resize/
@@ -2276,6 +2284,7 @@ export function ListWidget({
         addRowPos={addRowPos}
         embeddedActions={embeddedActions}
         emptyText={emptyTextResolved}
+        gateClosed={gateClosed}
       />
     );
   }
@@ -2334,6 +2343,10 @@ export function ListWidget({
       <div className="flex-1 min-h-0 overflow-auto">
         {err ? (
           <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
+        ) : gateClosed && filteredRows.length === 0 && !loading ? (
+          <div className="h-full flex items-center justify-center">
+            <span className="text-sm text-muted">{t("widget.gate_hint")}</span>
+          </div>
         ) : (
           <DataGrid
             toolbar
@@ -2342,13 +2355,7 @@ export function ListWidget({
             columns={columns}
             columnGroups={columnGroups}
             defaultGrouping={defaultGrouping}
-            emptyText={
-              gateClosed
-                ? t("widget.gate_hint")
-                : filterFromState
-                  ? t("widget.select_master")
-                  : t("widget.empty_records")
-            }
+            emptyText={filterFromState ? t("widget.select_master") : t("widget.empty_records")}
             stateKey={stateKey}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
