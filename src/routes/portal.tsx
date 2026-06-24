@@ -396,7 +396,7 @@ function PortalRoute() {
               <button
                 type="button"
                 onClick={() => {
-                  void navigate({ to: "/banve" });
+                  void navigate({ to: "/ban-ve" });
                   setUserMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-text hover:bg-hover/60 transition-colors"
