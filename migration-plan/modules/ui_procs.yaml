@@ -173,7 +173,37 @@ tables:
     mapTo:
       field: dongia
       entityType: number
-      label: Đơn giá
+      label: Giá vốn (thành phẩm)
+  - name: dongia_si
+    type: number
+    mapTo:
+      field: dongia_si
+      entityType: number
+      label: Giá bán sỉ (thành phẩm)
+  - name: dongia_le
+    type: number
+    mapTo:
+      field: dongia_le
+      entityType: number
+      label: Giá bán lẻ (thành phẩm)
+  - name: dongia_moc
+    type: number
+    mapTo:
+      field: dongia_moc
+      entityType: number
+      label: Giá vốn (mộc)
+  - name: dongia_si_moc
+    type: number
+    mapTo:
+      field: dongia_si_moc
+      entityType: number
+      label: Giá bán sỉ (mộc)
+  - name: dongia_le_moc
+    type: number
+    mapTo:
+      field: dongia_le_moc
+      entityType: number
+      label: Giá bán lẻ (mộc)
   - name: loaitien
     type: text
     mapTo:
