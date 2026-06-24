@@ -1,14 +1,24 @@
-/* BanVeTypePage — component chung cho 6 trang bản vẽ theo loại.
-   Nhận prop `phanloai` (vd "Bản vẽ kỹ thuật") để lọc + tạo đúng loại.
-   Layout: filter bar → file table → PDF viewer inline.
-   Định mức ngũ kim / gỗ ván được tách ra trang riêng (/dinh-muc/...). */
-
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
-import { Modal, SearchableSelect } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Modal,
+  SearchableSelect,
+  SplitPane,
+} from "@/components/ui";
 
-/* ── Types ── */
+function buildPdfJsViewerUrl(fileUrl: string): string | null {
+  if (!fileUrl) return null;
+  const base =
+    (import.meta.env.VITE_PDFJS_BASE as string | undefined) ?? "https://view.dongquochung.com:4432";
+  const abs = fileUrl.startsWith("http") ? fileUrl : window.location.origin + fileUrl;
+  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=${encodeURIComponent(abs)}`;
+}
+
 interface SpRow {
   masp: string;
   tensp: string | null;
@@ -29,13 +39,11 @@ interface BanveRow {
 }
 type Opt = { value: string; label: string };
 
-/* ── Helpers ── */
 async function jget<T = unknown>(url: string): Promise<T> {
   const r = await fetch(url, { credentials: "include" });
   return (await r.json().catch(() => ({}))) as T;
 }
 
-/* ── Modal thêm bản vẽ ── */
 function ThemModal({
   hehangs,
   phanloai,
@@ -121,6 +129,7 @@ function ThemModal({
       if (!createRes.ok) {
         const body = (await createRes.json().catch(() => ({}))) as { error?: string };
         setErr(body.error ?? "Lỗi tạo bản vẽ");
+        setUploading(false);
         return;
       }
       onSuccess();
@@ -139,20 +148,19 @@ function ThemModal({
       title={`Thêm ${phanloai.toLowerCase()}`}
       width={540}
       footer={
-        <div className="flex gap-2 justify-end w-full">
-          <button type="button" className="btn btn-default px-4 py-1.5 text-sm" onClick={onClose}>
+        <>
+          <Button variant="ghost" onClick={onClose}>
             Hủy
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
             disabled={uploading}
-            className="btn btn-primary px-4 py-1.5 text-sm disabled:opacity-60 flex items-center gap-1.5"
             onClick={handleSubmit}
+            icon={uploading ? <I.Loader size={13} className="animate-spin" /> : undefined}
           >
-            {uploading && <I.Loader size={13} className="animate-spin" />}
             Lưu
-          </button>
-        </div>
+          </Button>
+        </>
       }
     >
       <div className="space-y-3 py-1">
@@ -171,7 +179,6 @@ function ThemModal({
             placeholder="Chọn hệ hàng…"
           />
         </div>
-
         <div>
           <label className="block text-xs text-muted mb-1">Mã sản phẩm</label>
           <SearchableSelect
@@ -179,8 +186,7 @@ function ThemModal({
             value={masp}
             onChange={(v) => {
               setMasp(v);
-              const sp = products.find((p) => p.masp === v) ?? null;
-              setSpInfo(sp);
+              setSpInfo(products.find((p) => p.masp === v) ?? null);
             }}
             options={productOpts}
             placeholder={
@@ -188,7 +194,6 @@ function ThemModal({
             }
           />
         </div>
-
         {spInfo?.tensp && (
           <div>
             <label className="block text-xs text-muted mb-1">Tên sản phẩm</label>
@@ -199,7 +204,6 @@ function ThemModal({
             />
           </div>
         )}
-
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-muted mb-1">Định dạng</label>
@@ -220,7 +224,6 @@ function ThemModal({
             />
           </div>
         </div>
-
         <div>
           <label className="block text-xs text-muted mb-1">
             File bản vẽ <span className="text-danger">*</span>
@@ -233,14 +236,12 @@ function ThemModal({
             <input type="file" className="sr-only" onChange={handleFileChange} />
           </label>
         </div>
-
         {err && <p className="text-xs text-danger">{err}</p>}
       </div>
     </Modal>
   );
 }
 
-/* ── Main component ── */
 export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const navigate = useNavigate();
   const [hehangs, setHehangs] = useState<Opt[]>([]);
@@ -249,10 +250,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [selectedMasp, setSelectedMasp] = useState("");
   const [spInfo, setSpInfo] = useState<SpRow | null>(null);
   const [loadingProd, setLoadingProd] = useState(false);
-
   const [banveRows, setBanveRows] = useState<BanveRow[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
-
   const [selectedBvId, setSelectedBvId] = useState<string | null>(null);
   const [showThem, setShowThem] = useState(false);
 
@@ -324,30 +323,19 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   }));
 
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
+  const hasSelection = !!selectedMasp;
 
-  return (
-    <div className="min-h-screen flex flex-col bg-bg text-text">
-      {/* ── Header standalone ── */}
-      <div className="sticky top-0 z-10 bg-panel border-b border-border px-3 py-2.5 flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => void navigate({ to: "/ban-ve" })}
-          className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
-          aria-label="Quay lại"
-        >
-          <I.ChevronLeft size={20} />
-        </button>
-        <I.FileText size={16} className="text-accent shrink-0" />
-        <h1 className="font-semibold text-sm flex-1 truncate">{phanloai}</h1>
-      </div>
-
-      {/* ── Filter bar ── */}
-      <div className="shrink-0 border-b border-border bg-panel px-4 py-3">
-        <div className="flex flex-wrap gap-3 items-end max-w-5xl">
-          <div className="flex-1 min-w-40">
-            <label className="block text-xs text-muted mb-1">Hệ hàng</label>
+  /* ── Left panel: filter + table ── */
+  const leftPanel = (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Filter bar */}
+      <div className="shrink-0 border-b border-border bg-panel/60 px-3 py-2.5">
+        <Card className="p-2.5 flex flex-wrap items-end gap-2">
+          <div className="min-w-36 flex-1">
+            <label className="block text-xs text-muted mb-0.5">Hệ hàng</label>
             <SearchableSelect
               className="w-full"
+              triggerClassName="h-8! text-xs!"
               value={hehang}
               onChange={(v) => {
                 setHehang(v);
@@ -364,21 +352,22 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               placeholder="Chọn hệ hàng…"
             />
           </div>
-
-          <div className="flex-[2] min-w-56">
-            <label className="block text-xs text-muted mb-1">
+          <div className="min-w-44 flex-[2]">
+            <label className="block text-xs text-muted mb-0.5">
               Mã sản phẩm
               {products.length > 0 && (
-                <span className="ml-1 text-accent font-medium">({products.length})</span>
+                <Chip variant="accent" className="ml-1 text-[10px]">
+                  {products.length}
+                </Chip>
               )}
             </label>
             <SearchableSelect
               className="w-full"
+              triggerClassName="h-8! text-xs!"
               value={selectedMasp}
               onChange={(v) => {
                 setSelectedMasp(v);
-                const sp = products.find((p) => p.masp === v) ?? null;
-                setSpInfo(sp);
+                setSpInfo(products.find((p) => p.masp === v) ?? null);
                 if (v) void loadBanve(v);
               }}
               options={productOpts}
@@ -388,180 +377,207 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                   : loadingProd
                     ? "Đang tải…"
                     : products.length === 0
-                      ? "Không có sản phẩm"
-                      : "Chọn mã sản phẩm…"
+                      ? "Không có SP"
+                      : "Chọn SP…"
               }
             />
           </div>
-
-          {spInfo?.tensp && (
-            <div className="flex flex-wrap gap-3 text-xs text-muted py-1">
-              <span>
-                Tên: <span className="text-text font-medium">{spInfo.tensp}</span>
-              </span>
-              {spInfo.hehang && (
-                <span>
-                  HH: <span className="text-text font-medium">{spInfo.hehang}</span>
-                </span>
-              )}
-            </div>
-          )}
-
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => setShowThem(true)}
-            className="btn btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 shrink-0"
+            icon={<I.Plus size={12} />}
+            className="shrink-0"
           >
-            <I.Plus size={13} />
             Thêm
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
 
-      {/* ── Empty state ── */}
-      {!selectedMasp && (
-        <div className="flex-1 flex items-center justify-center text-muted text-sm">
-          <div className="text-center space-y-2">
-            <I.FileText size={40} className="mx-auto opacity-30" />
-            <p>Chọn hệ hàng và mã sản phẩm để xem {phanloai.toLowerCase()}</p>
-          </div>
+      {/* Product info bar */}
+      {spInfo?.tensp && (
+        <div className="shrink-0 border-b border-border bg-accent/5 px-3 py-1.5 flex items-center gap-2 text-xs">
+          <I.Package size={13} className="text-accent shrink-0" />
+          <span className="font-medium text-text">{selectedMasp}</span>
+          <span className="text-muted truncate">{spInfo.tensp}</span>
+          {spInfo.hehang && <Chip className="text-[10px] ml-auto">{spInfo.hehang}</Chip>}
         </div>
       )}
 
-      {/* ── Danh sách + PDF viewer ── */}
-      {selectedMasp && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* File table */}
-          <div className="border-b border-border shrink-0">
-            <div className="px-4 py-2 bg-panel/50 flex items-center gap-2">
-              <I.FileText size={14} className="text-accent" />
-              <span className="text-xs font-semibold text-text uppercase tracking-wide">
-                {phanloai}
-              </span>
-              {banveRows.length > 0 && (
-                <span className="text-xs text-muted ml-1">({banveRows.length})</span>
-              )}
-              {loadingDetail && <I.Loader size={12} className="animate-spin text-muted ml-1" />}
-            </div>
+      {/* Empty state */}
+      {!hasSelection && (
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            icon={<I.FileText size={24} />}
+            title="Chọn sản phẩm"
+            hint={`Chọn hệ hàng và mã sản phẩm để xem ${phanloai.toLowerCase()}`}
+          />
+        </div>
+      )}
 
-            {banveRows.length === 0 && !loadingDetail ? (
-              <div className="px-4 py-3 text-xs text-muted flex items-center gap-2">
-                <I.FileX size={14} className="opacity-50" />
-                Chưa có {phanloai.toLowerCase()} cho sản phẩm này
-              </div>
+      {/* Table */}
+      {hasSelection && (
+        <>
+          <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
+            <I.FileText size={13} className="text-accent" />
+            <span className="text-xs font-semibold uppercase tracking-wide">{phanloai}</span>
+            {loadingDetail ? (
+              <I.Loader size={11} className="animate-spin text-muted" />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-bg-soft border-b border-border">
-                    <tr>
-                      <th className="text-left px-3 py-1.5 text-muted font-medium w-8">#</th>
-                      <th className="text-left px-3 py-1.5 text-muted font-medium">Tên file</th>
-                      <th className="text-left px-3 py-1.5 text-muted font-medium">Định dạng</th>
-                      <th className="text-left px-3 py-1.5 text-muted font-medium">Ngày tải</th>
-                      <th className="text-left px-3 py-1.5 text-muted font-medium">Ngày sửa</th>
-                      <th className="px-3 py-1.5 text-right text-muted font-medium w-20" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {banveRows.map((bv, i) => {
-                      const active = selectedBvId === bv.id;
-                      return (
-                        <tr
-                          key={bv.id}
-                          className={`border-b border-border/50 cursor-pointer transition-colors ${active ? "bg-accent/10" : "hover:bg-hover"}`}
-                          onClick={() => setSelectedBvId(active ? null : bv.id)}
-                        >
-                          <td className="px-3 py-1.5 text-muted">{i + 1}</td>
-                          <td className="px-3 py-1.5 max-w-48 truncate">{bv.seq2 ?? ""}</td>
-                          <td className="px-3 py-1.5 text-muted">{bv.seq1 ?? ""}</td>
-                          <td className="px-3 py-1.5 text-muted">{bv.create_date ?? ""}</td>
-                          <td className="px-3 py-1.5 text-muted">{bv.update_date ?? ""}</td>
-                          <td className="px-3 py-1.5 text-right">
-                            <div className="flex gap-1 justify-end">
-                              <a
-                                href={`/banvesvc/file?id=${encodeURIComponent(bv.id)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-0.5 text-accent border border-accent/40 rounded px-1.5 py-0.5 hover:bg-accent/10 text-[11px]"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <I.ExternalLink size={10} />
-                                Mở
-                              </a>
-                              <button
-                                type="button"
-                                className="inline-flex items-center text-danger border border-danger/40 rounded px-1.5 py-0.5 hover:bg-danger/10 text-[11px]"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDelete(bv.id);
-                                }}
-                              >
-                                <I.Trash2 size={10} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <Chip variant="accent" className="text-[10px]">
+                {banveRows.length}
+              </Chip>
+            )}
+            <div className="flex-1" />
+            {banveRows.length > 0 && !selectedBv && (
+              <span className="text-[10px] text-muted">Click để xem PDF</span>
             )}
           </div>
-
-          {/* PDF viewer */}
-          {selectedBv?.filepath && (
-            <div className="flex-1 flex flex-col min-h-0" style={{ minHeight: "40vh" }}>
-              <div className="px-4 py-2 bg-panel/50 border-b border-border flex items-center gap-2 shrink-0">
-                <I.FileText size={13} className="text-accent" />
-                <span className="text-xs font-semibold text-text flex-1 truncate min-w-0">
-                  {selectedBv.seq2 || phanloai}
-                </span>
-                <a
-                  href={`/banvesvc/file?id=${encodeURIComponent(selectedBv.id)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-accent border border-accent/40 rounded px-2 py-0.5 hover:bg-accent/10 shrink-0"
-                >
-                  <I.ExternalLink size={11} />
-                  Mở tab
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setSelectedBvId(null)}
-                  className="p-1 rounded hover:bg-hover text-muted shrink-0"
-                  aria-label="Đóng xem"
-                >
-                  <I.X size={14} />
-                </button>
+          <div className="flex-1 overflow-y-auto">
+            {banveRows.length === 0 && !loadingDetail ? (
+              <div className="p-3">
+                <EmptyState
+                  icon={<I.FileX size={20} />}
+                  title="Chưa có bản vẽ"
+                  hint={`Nhấn "Thêm" để tải lên ${phanloai.toLowerCase()}.`}
+                />
               </div>
-              <iframe
-                key={selectedBv.id}
-                src={`/banvesvc/file?id=${encodeURIComponent(selectedBv.id)}`}
-                title={phanloai}
-                className="flex-1 w-full bg-white"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
-              />
-            </div>
-          )}
-
-          {!selectedBv && banveRows.length > 0 && (
-            <div className="shrink-0 px-4 py-3 text-xs text-muted flex items-center gap-2 border-t border-border bg-panel/30">
-              <I.MousePointerClick size={13} className="opacity-50" />
-              Click vào một bản vẽ để xem PDF
-            </div>
-          )}
-        </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-bg-soft text-xs text-muted sticky top-0">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2 w-6">#</th>
+                    <th className="text-left font-medium px-3 py-2">Tên file</th>
+                    <th className="text-left font-medium px-3 py-2">Định dạng</th>
+                    <th className="text-left font-medium px-3 py-2 hidden sm:table-cell">
+                      Ngày tải
+                    </th>
+                    <th className="px-3 py-2 text-right w-16" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {banveRows.map((bv, i) => {
+                    const active = selectedBvId === bv.id;
+                    return (
+                      <tr
+                        key={bv.id}
+                        className={`border-t border-border/50 cursor-pointer transition-colors ${active ? "bg-accent/10" : "hover:bg-hover/40"}`}
+                        onClick={() => setSelectedBvId(active ? null : bv.id)}
+                      >
+                        <td className="px-3 py-2 text-muted text-xs">{i + 1}</td>
+                        <td className="px-3 py-2 max-w-36 truncate font-medium">{bv.seq2 ?? ""}</td>
+                        <td className="px-3 py-2 text-muted text-xs">
+                          {bv.seq1 ?? <span className="italic opacity-50">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-muted text-xs hidden sm:table-cell">
+                          {bv.create_date ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            icon={<I.Trash2 size={11} />}
+                            className="text-danger/60 hover:text-danger hover:bg-danger/15"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDelete(bv.id);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
+    </div>
+  );
+
+  /* ── Right panel: PDF viewer ── */
+  const rightPanel = selectedBv?.filepath ? (
+    <div className="flex flex-col h-full">
+      <div className="shrink-0 border-b border-border bg-panel/50 px-3 py-2 flex items-center gap-2">
+        <I.FileText size={13} className="text-accent" />
+        <span className="text-xs font-semibold flex-1 truncate min-w-0">
+          {selectedBv.seq2 || phanloai}
+        </span>
+        <Button
+          variant="ghost"
+          size="xs"
+          icon={<I.ExternalLink size={11} />}
+          onClick={() => {
+            const fileUrl =
+              selectedBv.filepath ?? `/banvesvc/file?id=${encodeURIComponent(selectedBv.id)}`;
+            window.open(buildPdfJsViewerUrl(fileUrl) ?? fileUrl, "_blank");
+          }}
+        >
+          Mở tab
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          icon={<I.X size={14} />}
+          onClick={() => setSelectedBvId(null)}
+        />
+      </div>
+      <iframe
+        key={selectedBv.id}
+        src={`/banvesvc/file?id=${encodeURIComponent(selectedBv.id)}`}
+        title={phanloai}
+        className="flex-1 w-full bg-white"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+      />
+    </div>
+  ) : (
+    <div className="h-full flex items-center justify-center">
+      <EmptyState
+        icon={<I.FileText size={28} />}
+        title={hasSelection ? "Chọn bản vẽ để xem" : "Chưa có sản phẩm"}
+        hint={
+          hasSelection
+            ? "Click vào một bản vẽ ở danh sách bên trái"
+            : "Chọn hệ hàng và mã sản phẩm trước"
+        }
+      />
+    </div>
+  );
+
+  return (
+    <div className="h-screen flex flex-col bg-bg text-text">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-panel border-b border-border px-4 py-2.5 flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => void navigate({ to: "/ban-ve" })}
+          className="-ml-1 p-1 rounded hover:bg-hover text-muted shrink-0"
+          aria-label="Quay lại"
+        >
+          <I.ChevronLeft size={20} />
+        </button>
+        <I.FileText size={16} className="text-accent shrink-0" />
+        <h1 className="font-semibold text-sm flex-1 truncate">{phanloai}</h1>
+      </div>
+
+      {/* SplitPane layout: list left + PDF preview right */}
+      <SplitPane
+        left={leftPanel}
+        right={rightPanel}
+        defaultLeftWidth={480}
+        minLeft={320}
+        minRight={320}
+        storageKey="banve:splitsize"
+        className="flex-1"
+      />
 
       {showThem && (
         <ThemModal
           hehangs={hehangs}
           phanloai={phanloai}
           onClose={() => setShowThem(false)}
-          onSuccess={() => {
-            void reloadBanve();
-          }}
+          onSuccess={() => void reloadBanve()}
         />
       )}
     </div>
