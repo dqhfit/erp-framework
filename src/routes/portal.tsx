@@ -298,7 +298,7 @@ function PortalRoute() {
               activeId ? "text-muted hover:text-text" : "font-semibold text-accent bg-accent/10",
             )}
           >
-            <I.Layout size={14} className="shrink-0" />
+            <I.Home size={14} className="shrink-0" />
             <span>Trang chủ</span>
           </button>
           {activeBreadcrumb && activeBreadcrumb.length > 0 && (
