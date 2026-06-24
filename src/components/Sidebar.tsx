@@ -50,7 +50,6 @@ export function Sidebar() {
       agents: true,
       datasources: true,
       ops: true,
-      banve: false,
       settings: false,
     };
     try {
@@ -71,7 +70,6 @@ export function Sidebar() {
       agents: next,
       datasources: next,
       ops: next,
-      banve: next,
       settings: next,
     });
   };
@@ -988,111 +986,6 @@ export function Sidebar() {
               }
             />
           </NavGroup>
-          {!isViewer && (
-            <NavGroup
-              title="Bản vẽ"
-              collapsed={collapsed}
-              open={sectionsOpen.banve}
-              onToggle={toggle("banve")}
-            >
-              <SidebarItem
-                to="/ban-ve/ky-thuat"
-                active={pathname === "/ban-ve/ky-thuat"}
-                icon={<I.FileText size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ kỹ thuật"
-                isFavorited={favs.isFav("/ban-ve/ky-thuat")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/ky-thuat",
-                    to: "/ban-ve/ky-thuat",
-                    label: "Bản vẽ kỹ thuật",
-                    iconName: "FileText",
-                  })
-                }
-              />
-              <SidebarItem
-                to="/ban-ve/dong-goi"
-                active={pathname === "/ban-ve/dong-goi"}
-                icon={<I.Package size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ đóng gói"
-                isFavorited={favs.isFav("/ban-ve/dong-goi")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/dong-goi",
-                    to: "/ban-ve/dong-goi",
-                    label: "Bản vẽ đóng gói",
-                    iconName: "Package",
-                  })
-                }
-              />
-              <SidebarItem
-                to="/ban-ve/phat-trien"
-                active={pathname === "/ban-ve/phat-trien"}
-                icon={<I.Zap size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ phát triển"
-                isFavorited={favs.isFav("/ban-ve/phat-trien")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/phat-trien",
-                    to: "/ban-ve/phat-trien",
-                    label: "Bản vẽ phát triển",
-                    iconName: "Zap",
-                  })
-                }
-              />
-              <SidebarItem
-                to="/ban-ve/ai"
-                active={pathname === "/ban-ve/ai"}
-                icon={<I.Sparkles size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ AI"
-                isFavorited={favs.isFav("/ban-ve/ai")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/ai",
-                    to: "/ban-ve/ai",
-                    label: "Bản vẽ AI",
-                    iconName: "Sparkles",
-                  })
-                }
-              />
-              <SidebarItem
-                to="/ban-ve/mau"
-                active={pathname === "/ban-ve/mau"}
-                icon={<I.PenTool size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ mẫu"
-                isFavorited={favs.isFav("/ban-ve/mau")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/mau",
-                    to: "/ban-ve/mau",
-                    label: "Bản vẽ mẫu",
-                    iconName: "PenTool",
-                  })
-                }
-              />
-              <SidebarItem
-                to="/ban-ve/dao"
-                active={pathname === "/ban-ve/dao"}
-                icon={<I.Hammer size={14} />}
-                collapsed={collapsed}
-                label="Bản vẽ dao"
-                isFavorited={favs.isFav("/ban-ve/dao")}
-                onToggleFavorite={() =>
-                  favs.toggle({
-                    id: "/ban-ve/dao",
-                    to: "/ban-ve/dao",
-                    label: "Bản vẽ dao",
-                    iconName: "Hammer",
-                  })
-                }
-              />
-            </NavGroup>
-          )}
           {!isViewer && (
             <NavGroup
               title={t("sidebar.group_settings")}
