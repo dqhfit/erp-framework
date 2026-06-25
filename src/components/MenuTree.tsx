@@ -458,7 +458,7 @@ function MenuBranch({
     const tooltip = [...parentPath, myLabel].join(" › ");
     const favored = !!(node.pageId && isFav?.(node.pageId));
     return (
-      <li role="none" className={cn("flex", depth > 0 && "relative")}>
+      <li role="none" className={cn("flex group/leaf", depth > 0 && "relative")}>
         <button
           type="button"
           role="treeitem"
@@ -534,7 +534,7 @@ function MenuBranch({
   if (kids.length === 0) return null;
   const leafCount = kids.filter((k) => k.pageId != null).length;
   return (
-    <li role="none">
+    <li role="none" className="group/grp">
       <button
         type="button"
         role="treeitem"
