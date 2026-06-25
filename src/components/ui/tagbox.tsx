@@ -356,6 +356,7 @@ function PickerModal({
       onClose={onClose}
       title={title}
       width={560}
+      align="top"
       footer={
         <>
           <Button variant="default" size="sm" onClick={onClose}>

@@ -463,6 +463,13 @@ try {
     for (const { p } of toPush) {
       // Dịch page content: entity UUID (local→prod theo tên) + DS UUID (local→prod qua map)
       let content = p.content;
+      if (typeof content === "string") {
+        try {
+          content = JSON.parse(content);
+        } catch (e) {
+          console.error("Lỗi parse JSON content:", e);
+        }
+      }
       if (!NO_DEPS) {
         const trEntity = (id) => translateEntityId(id, entityMaps.local.byId, entityMaps.prod.byName);
         const trDs = (id) => localDsIdToProdDsId.get(id) ?? id;
@@ -524,6 +531,13 @@ try {
           // Page content từ prod đã dùng prod DS UUID → không cần dịch DS UUID.
           // Dịch entity UUID prod→local nếu khác (thông thường giống nhau).
           let content = p.content;
+          if (typeof content === "string") {
+            try {
+              content = JSON.parse(content);
+            } catch (e) {
+              console.error("Lỗi parse JSON content:", e);
+            }
+          }
           if (!NO_DEPS && entityMaps.prod.byId.size) {
             const trEntity = (id) => translateEntityId(id, entityMaps.prod.byId, entityMaps.local.byName);
             const trDs = (id) => id; // DS UUID giữ nguyên prod UUID

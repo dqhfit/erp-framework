@@ -360,6 +360,14 @@ export function PageDesigner({ pageId }: Props) {
   const update = (id: string, patch: Partial<PageComponent>) =>
     setComponents((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
+  if (!ready) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 text-muted text-sm bg-bg h-full min-h-[300px]">
+        <I.Loader className="animate-spin mr-2" size={16} /> Đang tải cấu hình trang...
+      </div>
+    );
+  }
+
   // Mobile: trình thiết kế kéo-thả không dùng được → hiện banner + xem trước
   // (ConsumerPage tự stack 1 cột). Chỉnh sửa bố cục để dành cho desktop.
   if (isMobile) {

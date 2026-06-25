@@ -76,24 +76,16 @@ export function BangMauTypePage() {
     left: number;
   } | null>(null);
 
-  // Recalculate position dynamically whenever index or grid row layout changes (adding row, etc.)
+  // Recalculate position dynamically whenever index or grid row layout changes
   useLayoutEffect(() => {
     if (activeLookupIndex === null) {
       setLookupPos(null);
       return;
     }
 
-    let active = true;
-    let lastRect: DOMRect | null = null;
-    let lastPositionAbove = false;
-
     const update = () => {
-      if (!active) return;
       const el = lookupAnchorRef.current;
-      if (!el) {
-        requestAnimationFrame(update);
-        return;
-      }
+      if (!el) return;
       const r = el.getBoundingClientRect();
 
       const spaceBelow = window.innerHeight - r.bottom;
@@ -112,32 +104,31 @@ export function BangMauTypePage() {
             left: r.left,
           };
 
-      if (
-        !lastRect ||
-        r.top !== lastRect.top ||
-        r.left !== lastRect.left ||
-        r.width !== lastRect.width ||
-        r.height !== lastRect.height ||
-        positionAbove !== lastPositionAbove
-      ) {
-        lastRect = r;
-        lastPositionAbove = positionAbove;
-        setLookupPos(nextPos);
-      }
-      requestAnimationFrame(update);
+      setLookupPos(nextPos);
     };
 
-    update();
+    // Chạy update ngay sau khi render xong để đảm bảo layout của Modal đã ổn định
+    const timer = setTimeout(update, 0);
 
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
 
     return () => {
-      active = false;
+      clearTimeout(timer);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
   }, [activeLookupIndex]);
+  // Tự động tìm kiếm sản phẩm khi người dùng nhập từ khóa (live search)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: searchLookupProducts không bọc useCallback, chủ ý chỉ chạy theo lookupSearch và activeLookupIndex
+  useEffect(() => {
+    if (activeLookupIndex === null) return;
+    const delayDebounceFn = setTimeout(() => {
+      void searchLookupProducts(lookupSearch);
+    }, 200);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [lookupSearch, activeLookupIndex]);
 
   // Fetch product line suggestion values
   useEffect(() => {
@@ -354,17 +345,60 @@ export function BangMauTypePage() {
 
   // Search products inside the inline lookup popup
   const searchLookupProducts = async (queryStr: string) => {
+    const trimmed = queryStr.trim();
     setSearchingProducts(true);
     try {
-      const res = await api.getRecords(ENTITY_SANPHAM, {
-        q: queryStr.trim(),
-        limit: 50,
-      });
-      const rows = res.rows.map((r: { id: string; data: Record<string, unknown> }) => ({
-        masp: String(r.data.masp ?? ""),
-        tensp: r.data.tensp ? String(r.data.tensp) : null,
-        hehang: r.data.hehang ? String(r.data.hehang) : null,
-      }));
+      let rows: SpRow[] = [];
+      if (!trimmed) {
+        const res = await api.getRecords(ENTITY_SANPHAM, { limit: 50 });
+        rows = res.rows.map((r: { id: string; data: Record<string, unknown> }) => ({
+          masp: String(r.data.masp ?? ""),
+          tensp: r.data.tensp ? String(r.data.tensp) : null,
+          hehang: r.data.hehang ? String(r.data.hehang) : null,
+        }));
+      } else {
+        const resQ = await api.getRecords(ENTITY_SANPHAM, {
+          q: trimmed,
+          limit: 50,
+        });
+        let rowsQ = resQ.rows.map((r: { id: string; data: Record<string, unknown> }) => ({
+          masp: String(r.data.masp ?? ""),
+          tensp: r.data.tensp ? String(r.data.tensp) : null,
+          hehang: r.data.hehang ? String(r.data.hehang) : null,
+        }));
+
+        if (rowsQ.length === 0) {
+          const [resMasp, resTensp] = await Promise.all([
+            api.getRecords(ENTITY_SANPHAM, {
+              filters: { masp: { op: "contains", value: trimmed } },
+              limit: 50,
+            }),
+            api.getRecords(ENTITY_SANPHAM, {
+              filters: { tensp: { op: "contains", value: trimmed } },
+              limit: 50,
+            }),
+          ]);
+
+          const mapRow = (r: { id: string; data: Record<string, unknown> }) => ({
+            masp: String(r.data.masp ?? ""),
+            tensp: r.data.tensp ? String(r.data.tensp) : null,
+            hehang: r.data.hehang ? String(r.data.hehang) : null,
+          });
+
+          const rowsMasp = resMasp.rows.map(mapRow);
+          const rowsTensp = resTensp.rows.map(mapRow);
+
+          const merged = [...rowsMasp];
+          const masps = new Set(merged.map((r) => r.masp));
+          for (const r of rowsTensp) {
+            if (!masps.has(r.masp)) {
+              merged.push(r);
+            }
+          }
+          rowsQ = merged.slice(0, 50);
+        }
+        rows = rowsQ;
+      }
       setLookupProducts(rows);
     } catch (e) {
       toast.error(`Lỗi tìm kiếm sản phẩm: ${(e as Error).message}`);
@@ -433,8 +467,9 @@ export function BangMauTypePage() {
           stt: row.stt ? Number(row.stt) : 0,
           mact: row.mact || "",
           quytrinh: row.quytrinh || "",
-          dinhluong: row.dinhluong !== null ? Number(row.dinhluong) : null,
-          somat: row.somat !== null ? Number(row.somat) : null,
+          dinhluong:
+            row.dinhluong !== null && !Number.isNaN(row.dinhluong) ? Number(row.dinhluong) : 0,
+          somat: row.somat !== null && !Number.isNaN(row.somat) ? Number(row.somat) : 0,
           ghichu: row.ghichu || "",
           nguyenlieu: row.nguyenlieu || "",
         };
@@ -527,8 +562,8 @@ export function BangMauTypePage() {
         mact: "",
         tensp: "",
         quytrinh: "",
-        dinhluong: null,
-        somat: null,
+        dinhluong: 0,
+        somat: 0,
         ghichu: "",
         nguyenlieu: "",
       },
@@ -824,10 +859,10 @@ export function BangMauTypePage() {
                                 {r.mact ? (productNameMap.get(r.mact) ?? "") : ""}
                               </td>
                               <td className="p-2 border border-border/80 text-right font-medium">
-                                {r.dinhluong !== null ? r.dinhluong.toLocaleString("vi-VN") : ""}
+                                {(r.dinhluong ?? 0).toLocaleString("vi-VN")}
                               </td>
                               <td className="p-2 border border-border/80 text-center">
-                                {r.somat !== null ? r.somat : ""}
+                                {r.somat ?? 0}
                               </td>
                               <td
                                 className="p-2 border border-border/80 text-muted truncate max-w-[240px]"
@@ -1081,13 +1116,14 @@ export function BangMauTypePage() {
                                   <button
                                     type="button"
                                     onClick={() => void searchLookupProducts(lookupSearch)}
-                                    className="h-8 px-4 text-xs font-semibold bg-panel border border-border hover:bg-hover rounded transition-colors"
+                                    className="h-8 w-8 flex items-center justify-center bg-panel border border-border hover:bg-hover rounded transition-colors shrink-0"
+                                    title="Tìm kiếm"
                                   >
-                                    Find
+                                    <I.Search size={14} className="text-accent" />
                                   </button>
                                 </div>
 
-                                <div className="border border-border/80 rounded-md overflow-hidden max-h-[220px] overflow-y-auto">
+                                <div className="border border-border/80 rounded-md overflow-hidden h-[220px] overflow-y-auto">
                                   <table className="w-full text-xs text-left border-collapse">
                                     <thead className="bg-panel-2 text-muted border-b border-border/60 sticky top-0 z-10">
                                       <tr>
@@ -1105,7 +1141,7 @@ export function BangMauTypePage() {
                                       ) : lookupProducts.length === 0 ? (
                                         <tr>
                                           <td colSpan={2} className="p-4 text-center text-muted">
-                                            Gõ từ khóa và bấm "Find" để tìm sản phẩm
+                                            Nhập từ khóa và click tìm kiếm để tìm sản phẩm
                                           </td>
                                         </tr>
                                       ) : (
@@ -1137,22 +1173,33 @@ export function BangMauTypePage() {
                                   </table>
                                 </div>
 
-                                <div className="flex justify-end pt-1">
+                                <div className="flex justify-end gap-2 pt-1">
+                                  {row.mact && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...gridRows];
+                                        const item = updated[idx];
+                                        if (item) {
+                                          item.mact = "";
+                                          item.tensp = "";
+                                        }
+                                        setGridRows(updated);
+                                        setActiveLookupIndex(null);
+                                      }}
+                                      className="h-7 px-3 text-xs font-semibold bg-panel border border-border hover:bg-hover rounded text-danger hover:text-danger hover:border-danger/30 transition-colors"
+                                    >
+                                      Xóa chọn
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const updated = [...gridRows];
-                                      const item = updated[idx];
-                                      if (item) {
-                                        item.mact = "";
-                                        item.tensp = "";
-                                      }
-                                      setGridRows(updated);
                                       setActiveLookupIndex(null);
                                     }}
-                                    className="h-7 px-4 text-xs font-semibold bg-panel border border-border hover:bg-hover rounded text-danger hover:text-danger hover:border-danger/30 transition-colors"
+                                    className="h-7 px-4 text-xs font-semibold bg-panel border border-border hover:bg-hover rounded text-muted hover:text-text transition-colors"
                                   >
-                                    Clear
+                                    Đóng
                                   </button>
                                 </div>
                               </div>,
@@ -1173,12 +1220,15 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.dinhluong ?? ""}
+                            value={row.dinhluong ?? 0}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
-                              if (item) item.dinhluong = v !== "" ? Number(v) : null;
+                              if (item) {
+                                const numVal = v === "" ? 0 : Number(v);
+                                item.dinhluong = Number.isNaN(numVal) ? 0 : numVal;
+                              }
                               setGridRows(updated);
                             }}
                             className="w-full text-right bg-transparent border-0 focus:ring-0 focus:outline-none text-xs font-medium"
@@ -1190,12 +1240,15 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.somat ?? ""}
+                            value={row.somat ?? 0}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
-                              if (item) item.somat = v !== "" ? Number(v) : null;
+                              if (item) {
+                                const numVal = v === "" ? 0 : Number(v);
+                                item.somat = Number.isNaN(numVal) ? 0 : numVal;
+                              }
                               setGridRows(updated);
                             }}
                             className="w-full text-center bg-transparent border-0 focus:ring-0 focus:outline-none text-xs"
