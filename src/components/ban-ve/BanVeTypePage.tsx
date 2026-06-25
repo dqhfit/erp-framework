@@ -506,7 +506,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     const params = new URLSearchParams(window.location.search);
     const urlHehang = params.get("hehang") || "";
     const urlMasp = params.get("masp") || "";
-    const urlPage = params.get("page") || "banve";
+    const urlTab = params.get("tab") || "banve";
     const urlBvId = params.get("bvId") || null;
 
     if (urlHehang) {
@@ -537,8 +537,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       }
     }
 
-    if (urlPage && ["banve", "govan", "ngukim", "donggoi"].includes(urlPage)) {
-      setTab(urlPage as "banve" | "govan" | "ngukim" | "donggoi");
+    if (urlTab && ["banve", "govan", "ngukim", "donggoi"].includes(urlTab)) {
+      setTab(urlTab as "banve" | "govan" | "ngukim" | "donggoi");
     }
   }, [phanloai, isDao, loadProducts, loadBanve, loadDongGoi, loadBoms]);
 
@@ -557,8 +557,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       else params.delete("masp");
     }
 
-    if (tab && tab !== "banve") params.set("page", tab);
-    else params.delete("page");
+    if (tab && tab !== "banve") params.set("tab", tab);
+    else params.delete("tab");
 
     if (selectedBvId) params.set("bvId", selectedBvId);
     else params.delete("bvId");
@@ -579,13 +579,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       const params = new URLSearchParams(window.location.search);
       const urlHehang = params.get("hehang") || "";
       const urlMasp = params.get("masp") || "";
-      const urlPage = params.get("page") || "banve";
+      const urlTab = params.get("tab") || "banve";
       const urlBvId = params.get("bvId") || null;
 
       setHehang(urlHehang);
       setSelectedMasp(urlMasp);
-      if (urlPage && ["banve", "govan", "ngukim", "donggoi"].includes(urlPage)) {
-        setTab(urlPage as "banve" | "govan" | "ngukim" | "donggoi");
+      if (urlTab && ["banve", "govan", "ngukim", "donggoi"].includes(urlTab)) {
+        setTab(urlTab as "banve" | "govan" | "ngukim" | "donggoi");
       }
       setSelectedBvId(urlBvId);
 
