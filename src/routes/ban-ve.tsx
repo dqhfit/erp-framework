@@ -267,21 +267,26 @@ function BanVePage() {
           <span className="text-xs text-muted">Quản lý:</span>
           {(
             [
-              { label: "Kỹ thuật", to: "/ban-ve/ky-thuat", type: "ky-thuat" },
-              { label: "Đóng gói", to: "/ban-ve/dong-goi", type: "dong-goi" },
-              { label: "Phát triển", to: "/ban-ve/phat-trien", type: "phat-trien" },
-              { label: "AI", to: "/ban-ve/ai", type: "ai" },
-              { label: "Mẫu", to: "/ban-ve/mau", type: "mau" },
-              { label: "Dao", to: "/ban-ve/dao", type: "dao" },
+              { label: "Kỹ thuật", type: "ky-thuat" },
+              { label: "Đóng gói", type: "dong-goi" },
+              { label: "Phát triển", type: "phat-trien" },
+              { label: "AI", type: "ai" },
+              { label: "Mẫu", type: "mau" },
+              { label: "Dao", type: "dao" },
             ] as const
-          ).map(({ label, to, type: t }) => {
+          ).map(({ label, type: t }) => {
             const pageId = getPageIdForType(t);
             return (
               <button
-                key={to}
+                key={t}
                 type="button"
-                onClick={() => void navigate({ to, search: { page: pageId } })}
+                onClick={() => {
+                  if (pageId) {
+                    void navigate({ to: `/pages/${pageId}` });
+                  }
+                }}
                 className="chip chip-default text-xs"
+                disabled={!pageId}
               >
                 {label}
               </button>

@@ -10,6 +10,7 @@ import { createProceduresClient } from "@erp-framework/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
+import { BangMauTypePage } from "@/components/bang-mau/BangMauTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import {
@@ -233,7 +234,15 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   }
   if (comp.kind === "kanban") return <KanbanWidget cfg={cfg} />;
   if (comp.kind === "step") return <StepWidget cfg={cfg} />;
-  if (comp.kind === "split") return <SplitWidget comp={comp} />;
+  if (comp.kind === "split") {
+    if (
+      pageId === "20d6b1e3-a164-4338-867c-d7992972de52" ||
+      pageId === "a71707c3-c690-4212-aeb8-615695b87b2d"
+    ) {
+      return <BangMauTypePage />;
+    }
+    return <SplitWidget comp={comp} />;
+  }
   if (comp.kind === "grid") return <GridWidget comp={comp} />;
   if (comp.kind === "search") return <SearchWidget cfg={cfg} />;
   if (comp.kind === "filter") return <FilterWidget cfg={cfg} />;
@@ -247,6 +256,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "banve-type") {
     return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;
   }
+
   if (comp.kind === "html") {
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/

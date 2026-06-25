@@ -41,6 +41,7 @@ export interface TagBoxProps {
   pickerTitle?: string;
   /** Chiều cao cố định h-8 — dùng khi cần đồng bộ với input/select khác. */
   compact?: boolean;
+  disableDropdown?: boolean;
 }
 
 export function TagBox({
@@ -56,6 +57,7 @@ export function TagBox({
   enablePicker,
   pickerTitle,
   compact = false,
+  disableDropdown = false,
 }: TagBoxProps) {
   const t = useT();
   const showPicker = (enablePicker ?? suggestions.length > 0) && !disabled;
@@ -228,7 +230,8 @@ export function TagBox({
         )}
       </div>
 
-      {open &&
+      {!disableDropdown &&
+        open &&
         pos &&
         (filtered.length > 0 || (q.trim() && !strict)) &&
         createPortal(
