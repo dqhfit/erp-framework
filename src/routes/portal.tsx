@@ -84,9 +84,9 @@ function PortalRoute() {
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
 
-  // Tự động mở sidebar khi về dashboard (không có activeId)
+  // Dashboard → mở sidebar, vào ?page → tự động thu sidebar
   useEffect(() => {
-    if (!activeId) setSidebarCollapsed(false);
+    setSidebarCollapsed(!!activeId);
   }, [activeId]);
 
   const isMobile = useIsMobile();
