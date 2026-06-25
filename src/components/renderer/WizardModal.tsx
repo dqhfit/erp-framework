@@ -601,6 +601,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               : (wizardStep.fields ?? []),
           ),
         );
+        if (wizardEntityId) {
+          const entName = entities.find((e) => e.id === wizardEntityId)?.name;
+          if (entName === "tr_color") {
+            if (editableFieldNames.has("duongdan")) editableFieldNames.add("tenfile");
+            if (editableFieldNames.has("duongdan2")) editableFieldNames.add("tenfile2");
+          }
+        }
         // Khi KHÔNG có step nào khai báo fields tường minh (editableFieldNames rỗng),
         // bỏ filter — lưu tất cả field có giá trị. Tránh payload rỗng khi wizard
         // dùng fallback "hiện 7 field đầu" mà không liệt kê field.
@@ -712,7 +719,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    fetch("/upload/image", { method: "POST", body: fd })
+    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const url = sub ? `/upload/image?subfolder=${sub}` : "/upload/image";
+    fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
         if (!res.ok) {
           const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
@@ -744,7 +753,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    fetch("/upload/file", { method: "POST", body: fd })
+    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const url = sub ? `/upload/file?subfolder=${sub}` : "/upload/file";
+    fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
         if (!res.ok) {
           const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
@@ -754,7 +765,14 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       })
       .then(({ url, name: displayName }) => {
         setField(name, url);
-        if (displayName) setFileDisplayNames((m) => ({ ...m, [name]: displayName }));
+        if (displayName) {
+          setFileDisplayNames((m) => ({ ...m, [name]: displayName }));
+          if (name === "duongdan") {
+            setField("tenfile", displayName);
+          } else if (name === "duongdan2") {
+            setField("tenfile2", displayName);
+          }
+        }
       })
       .catch((e: Error) => toast.error(e.message))
       .finally(() =>

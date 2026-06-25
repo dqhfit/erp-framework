@@ -918,12 +918,21 @@ async function main(): Promise<void> {
       reply.code(400).send({ error: "Định dạng file không hợp lệ" });
       return;
     }
+    // Lấy subfolder từ query param (lọc ký tự an toàn chống path traversal)
+    const subfolder = String((req.query as Record<string, unknown> | undefined)?.subfolder ?? "")
+      .replace(/[^\w-]/g, "")
+      .trim();
+
     const filename = randomUUID() + ext;
-    const dir = join(UPLOAD_DIR, "img", active.companyId);
+    const dir = subfolder
+      ? join(UPLOAD_DIR, "img", active.companyId, subfolder)
+      : join(UPLOAD_DIR, "img", active.companyId);
+
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, filename), buf);
 
-    reply.send({ url: signFileUrl(active.companyId, "img", filename) });
+    const relativeFilename = subfolder ? `${subfolder}/${filename}` : filename;
+    reply.send({ url: signFileUrl(active.companyId, "img", relativeFilename) });
   });
 
   /* Upload file đính kèm cho field type="file" — lưu UPLOAD_DIR/doc/<companyId>/,

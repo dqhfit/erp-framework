@@ -199,6 +199,8 @@ function ThemModal({
           "Bản vẽ mẫu": "mau",
           "Bản vẽ AI": "ai",
           "Bản vẽ dao": "dao",
+          "Màu sắc": "mau-sac",
+          "Bản vẽ màu sắc": "mau-sac",
         };
         return map[p] || "ky-thuat";
       };
@@ -714,6 +716,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             "Bản vẽ mẫu": "mau",
             "Bản vẽ AI": "ai",
             "Bản vẽ dao": "dao",
+            "Màu sắc": "mau-sac",
+            "Bản vẽ màu sắc": "mau-sac",
           };
           return map[p] || "ky-thuat";
         };
@@ -778,6 +782,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         if (subType === "Bản vẽ đóng gói") sub = "dong-goi";
         else if (subType === "Bản vẽ dao") sub = "dao";
         else if (subType === "Bản vẽ AI") sub = "ai";
+        else if (subType === "Màu sắc" || subType === "Bản vẽ màu sắc") sub = "mau-sac";
 
         const upRes = await fetch(`/upload/file?subfolder=${sub}`, {
           method: "POST",
