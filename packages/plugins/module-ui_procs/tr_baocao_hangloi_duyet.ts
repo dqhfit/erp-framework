@@ -7,15 +7,15 @@ import { procTable } from "../src/proc-table";
 export async function trBaocaoHangloiDuyet(
   db: DB,
   companyId: string,
-  args: { id: string; nguoiduyet: string },
+  args: { id?: string; _id?: string; nguoiduyet: string },
 ): Promise<Array<{ updated: number }>> {
-  if (!args.id) throw new Error("Thiếu id");
+  if (!args.id && !args._id) throw new Error("Thiếu id");
   if (!args.nguoiduyet) throw new Error("Thiếu nguoiduyet");
 
   const t = await procTable(db, companyId, "tr_baocao_hangloi");
-  const updated = await t.updateWhere(
-    { nguoiduyet: args.nguoiduyet },
-    sql`${t.text("id")} = ${args.id}`,
-  );
+  // _id = uuid VẬT LÝ của dòng (rowAction tự inject) → match cột id; id =
+  // khoá nghiệp vụ (caller cũ) → match field "id".
+  const where = args._id ? sql`id = ${args._id}::uuid` : sql`${t.text("id")} = ${args.id}`;
+  const updated = await t.updateWhere({ nguoiduyet: args.nguoiduyet }, where);
   return [{ updated }];
 }
