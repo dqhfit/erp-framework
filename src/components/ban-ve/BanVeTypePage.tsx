@@ -169,7 +169,7 @@ function ThemModal({
     setFile(f);
     if (f) {
       const ext = f.name.split(".").pop() || "";
-      setSeq1(ext.toUpperCase());
+      setSeq1(`.${ext.toLowerCase()}`);
       setSeq2(f.name.replace(/\.[^.]+$/, ""));
     }
   };
@@ -688,7 +688,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         const { url: filepath } = (await upRes.json()) as { url: string };
 
         const ext = f.name.split(".").pop() || "";
-        const seq1 = ext.toUpperCase();
+        const seq1 = `.${ext.toLowerCase()}`;
         const seq2 = f.name.replace(/\.[^.]+$/, "");
 
         const updateRes = await fetch("/banvesvc/banve-update", {
@@ -996,7 +996,15 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                   {bv.seq2 ?? ""}
                                 </td>
                                 <td className="px-3 py-2 text-muted text-xs truncate w-24 shrink-0">
-                                  {bv.seq1 ?? <span className="italic opacity-50">—</span>}
+                                  {bv.seq1 ? (
+                                    bv.seq1.startsWith(".") ? (
+                                      bv.seq1.toLowerCase()
+                                    ) : (
+                                      `.${bv.seq1.toLowerCase()}`
+                                    )
+                                  ) : (
+                                    <span className="italic opacity-50">—</span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2 text-muted text-xs truncate w-32 shrink-0 hidden sm:table-cell">
                                   {bv.create_date ?? "—"}
