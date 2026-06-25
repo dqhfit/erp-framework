@@ -68,7 +68,7 @@ function PortalRoute() {
   );
 
   const { data: navNodes = [] } = useNavTree();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [focusCategory, setFocusCategory] = useState<string | null>(null);
   const [drawerQ, setDrawerQ] = useState("");
   const drawerSearchRef = useRef<HTMLInputElement>(null);
@@ -84,33 +84,16 @@ function PortalRoute() {
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
 
+  // Tự động mở sidebar khi về dashboard (không có activeId)
+  useEffect(() => {
+    if (!activeId) setSidebarCollapsed(false);
+  }, [activeId]);
+
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [drawerOpen]);
-
-  useEffect(() => {
-    if (drawerOpen) {
-      setDrawerQ("");
-      drawerSearchRef.current?.focus();
-    }
-  }, [drawerOpen]);
 
   useEffect(() => {
     void loadPrefs();
   }, [loadPrefs]);
-
-  useEffect(() => {
-    if (focusCategory) {
-      setDrawerOpen(true);
-    }
-  }, [focusCategory]);
 
   const { page: urlPage } = Route.useSearch();
 
@@ -179,7 +162,6 @@ function PortalRoute() {
         return;
       }
       setActiveId(id);
-      setDrawerOpen(false);
       void navigate({ to: "/portal", search: { page: id }, replace: true });
     },
     [setActiveId, navigate],
@@ -276,12 +258,12 @@ function PortalRoute() {
       <header className="h-12 shrink-0 flex items-center px-3 sm:px-4 gap-1 sm:gap-2 border-b border-border bg-panel z-30 relative">
         <button
           type="button"
-          onClick={() => setDrawerOpen((s) => !s)}
+          onClick={() => setSidebarCollapsed((s) => !s)}
           className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-muted hover:text-text hover:bg-hover/80 shrink-0",
-            drawerOpen && "bg-hover/80 text-text",
+            !sidebarCollapsed && "bg-hover/80 text-text",
           )}
-          title="Tất cả menu"
+          title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
         >
           <I.Menu size={16} />
         </button>
@@ -333,6 +315,28 @@ function PortalRoute() {
         </div>
 
         <div id="portal-page-actions" className="flex items-center gap-1.5 shrink-0" />
+
+        {activeId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={
+              <I.Star
+                size={13}
+                className={favs.isFav(activeId) ? "fill-warning text-warning" : ""}
+              />
+            }
+            onClick={() =>
+              favs.toggle({
+                id: activeId,
+                to: `/pages/${activeId}`,
+                label: publishedPages.find((p) => p.id === activeId)?.name ?? activeId,
+                iconName: "Layout",
+              })
+            }
+            title={favs.isFav(activeId) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          />
+        )}
 
         {canEdit && activeId && (
           <Button
@@ -446,35 +450,13 @@ function PortalRoute() {
       </header>
 
       {/* ─── Body ─── */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {drawerOpen && (
-          <button
-            type="button"
-            aria-label="Đóng"
-            className="fixed inset-0 z-[690] bg-black/30 transition-opacity"
-            onClick={() => setDrawerOpen(false)}
-          />
-        )}
-
-        <div
-          className={cn(
-            "fixed inset-y-0 left-0 z-[695] w-[480px] max-w-[90vw] bg-panel border-r border-border shadow-2xl flex flex-col transition-transform duration-200",
-            drawerOpen ? "translate-x-0" : "-translate-x-full",
-          )}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ─── Persistent sidebar ─── */}
+        <aside
+          className="shrink-0 border-r border-border bg-panel flex flex-col overflow-hidden"
+          style={{ width: sidebarCollapsed ? 0 : 420, transition: "width 180ms ease" }}
         >
-          <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-border">
-            <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
-              Tất cả menu
-            </div>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              className="shrink-0 w-6 h-6 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60"
-            >
-              <I.X size={14} />
-            </button>
-          </div>
-          <div className="shrink-0 flex items-center gap-1.5 px-3 h-9 border-b border-border">
+          <div className="shrink-0 flex items-center gap-1 px-2 h-9 border-b border-border">
             <I.Search size={12} className="shrink-0 text-muted/50" />
             <input
               ref={drawerSearchRef}
@@ -502,6 +484,14 @@ function PortalRoute() {
                 <I.X size={12} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              className="shrink-0 w-5 h-5 rounded flex items-center justify-center text-muted/40 hover:text-text hover:bg-hover/60"
+              title="Thu gọn menu"
+            >
+              <I.PanelLeft size={12} />
+            </button>
           </div>
           <div
             className={cn(
@@ -522,10 +512,7 @@ function PortalRoute() {
                       >
                         <button
                           type="button"
-                          onClick={() => {
-                            onSelectPage(node.pageId as string);
-                            setDrawerOpen(false);
-                          }}
+                          onClick={() => onSelectPage(node.pageId as string)}
                           className="flex-1 flex items-center gap-2 px-3 py-2 text-left min-w-0"
                         >
                           <I.Layout size={13} className="shrink-0 text-muted" />
@@ -564,10 +551,7 @@ function PortalRoute() {
                 roots={navRoots}
                 childrenOf={navChildrenOf}
                 activePageId={activeId}
-                onSelectPage={(id) => {
-                  onSelectPage(id);
-                  setDrawerOpen(false);
-                }}
+                onSelectPage={onSelectPage}
                 focusCategory={focusCategory}
                 onFocusCategoryUsed={() => setFocusCategory(null)}
                 isFav={(id) => favs.isFav(id)}
@@ -575,7 +559,7 @@ function PortalRoute() {
               />
             )}
           </div>
-        </div>
+        </aside>
 
         <main
           className="flex-1 overflow-hidden relative"
@@ -600,7 +584,6 @@ function PortalRoute() {
                   pages={pageListForDashboard}
                   favs={{ ids: new Set(favs.favs.map((f) => f.id)), isFav: favs.isFav }}
                   onSelectPage={onSelectPage}
-                  onOpenAllPages={() => setDrawerOpen(true)}
                 />
               </div>
               {publishedPages.map((p) =>
