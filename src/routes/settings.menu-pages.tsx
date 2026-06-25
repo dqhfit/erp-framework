@@ -429,8 +429,11 @@ function MenuPagesPage() {
             </span>
           )}
           {!r.active && (
-            <span className="shrink-0 rounded bg-panel-2 px-1.5 py-0.5 text-[10px] text-muted">
-              ẩn
+            <span
+              className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] text-warning"
+              title="Đang ẩn khỏi portal — user thường không thấy mục này"
+            >
+              ẩn khỏi portal
             </span>
           )}
           {r.winId && (
@@ -559,7 +562,7 @@ function MenuPagesPage() {
                   >
                     {r.active ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
                   </button>
-                  {r.custom && (
+                  {r.custom ? (
                     <button
                       type="button"
                       disabled={busy}
@@ -570,6 +573,13 @@ function MenuPagesPage() {
                     >
                       <I.Trash size={14} />
                     </button>
+                  ) : (
+                    <span
+                      title="Mục từ DQHF — không xoá được. Dùng nút Ẩn để loại khỏi portal."
+                      className="inline-flex h-7 w-7 items-center justify-center rounded text-muted/30 cursor-default"
+                    >
+                      <I.Lock size={13} />
+                    </span>
                   )}
                 </div>
               )
@@ -659,15 +669,25 @@ function MenuPagesPage() {
                 />
               </>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() => setEditCode(r.sourceCode)}
-                icon={<I.Plus size={14} />}
-              >
-                Gán trang
-              </Button>
+              <>
+                {r.active && (
+                  <span
+                    className="shrink-0 rounded bg-danger/10 px-1.5 py-0.5 text-[10px] text-danger/70"
+                    title="Mục này đang hiện trong portal nhưng chưa có trang — user bấm vào sẽ không thấy gì"
+                  >
+                    chưa có trang
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setEditCode(r.sourceCode)}
+                  icon={<I.Plus size={14} />}
+                >
+                  Gán trang
+                </Button>
+              </>
             )}
           </div>
         </div>
