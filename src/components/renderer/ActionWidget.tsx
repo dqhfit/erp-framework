@@ -50,6 +50,8 @@ export function ActionWidget({
   const [busy, setBusy] = useState(false);
   const [popupStep, setPopupStep] = useState<ActionStepOpenPopup | null>(null);
   const [popupRecordId, setPopupRecordId] = useState<unknown>(undefined);
+  // listFilters đã resolve (field → giá trị) cho popup list lọc server-side.
+  const [popupFilters, setPopupFilters] = useState<Record<string, unknown> | undefined>(undefined);
   const popupResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
   const [wizardStep, setWizardStep] = useState<ActionStepOpenWizard | null>(null);
   const [wizardRecordId, setWizardRecordId] = useState<unknown>(undefined);
@@ -68,6 +70,16 @@ export function ActionWidget({
     ): Promise<Record<string, unknown> | null> => {
       const rid = step.recordIdBinding ? resolveBinding(step.recordIdBinding, getter) : undefined;
       setPopupRecordId(rid);
+      if (step.listFilters) {
+        const f: Record<string, unknown> = {};
+        for (const [k, b] of Object.entries(step.listFilters)) {
+          const v = resolveBinding(b, getter);
+          if (v !== undefined && v !== null && v !== "") f[k] = v;
+        }
+        setPopupFilters(Object.keys(f).length ? f : undefined);
+      } else {
+        setPopupFilters(undefined);
+      }
       setPopupStep(step);
       return new Promise((resolve) => {
         popupResolveRef.current = resolve;
@@ -179,6 +191,7 @@ export function ActionWidget({
           <PopupPickerModal
             step={popupStep}
             recordId={popupRecordId}
+            filters={popupFilters}
             onSelect={(value) => closePopup(value)}
             onCancel={() => closePopup(null)}
           />
@@ -225,6 +238,7 @@ export function ActionWidget({
         <PopupPickerModal
           step={popupStep}
           recordId={popupRecordId}
+          filters={popupFilters}
           onSelect={(value) => closePopup(value)}
           onCancel={() => closePopup(null)}
         />

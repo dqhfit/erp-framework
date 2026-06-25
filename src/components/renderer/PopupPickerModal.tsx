@@ -20,11 +20,13 @@ const api = createApiDataSource("");
 interface Props {
   step: ActionStepOpenPopup;
   recordId?: unknown;
+  /** (list) Lọc server-side đã resolve: field → giá trị (op "="). */
+  filters?: Record<string, unknown>;
   onSelect: (value: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
-export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) {
+export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const entity = entities.find((e) => e.id === step.entity);
 
@@ -44,6 +46,8 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   const [lookupOpts, setLookupOpts] = useState<
     Record<string, Array<{ value: string; label: string }>>
   >({});
+  // (list) Map nhãn cho cột lookup: { fieldName → { giá trị lưu → nhãn } }.
+  const [listLabels, setListLabels] = useState<Record<string, Record<string, string>>>({});
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
@@ -51,8 +55,22 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  // (list multiSelect) tập id dòng đang chọn.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const multi = step.popupMode === "list" && step.multiSelect === true;
+  const toggleSel = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Khoá ổn định cho filters (object đổi identity mỗi render) → tránh refetch loop.
+  const filtersKey = JSON.stringify(filters ?? null);
 
   /* Fetch records (list) / record đơn (detail) / record nạp form sửa (form+recordId) */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters dùng qua filtersKey (khoá JSON ổn định) thay vì object identity
   useEffect(() => {
     if (!step.entity) return;
     // Form THÊM mới (không recordId) → không fetch; effect init rỗng bên dưới lo.
@@ -60,8 +78,17 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
 
     if (step.popupMode === "list") {
       setLoading(true);
+      // Lọc server-side theo filters (op "=") — vd chỉ sản phẩm cùng màu phiên bản.
+      const f = filters
+        ? Object.fromEntries(
+            Object.entries(filters).map(([k, v]) => [k, { op: "=" as const, value: v }]),
+          )
+        : undefined;
+      const sort = step.listSort
+        ? { sort: { field: step.listSort.field, dir: step.listSort.dir ?? "asc" } }
+        : {};
       api
-        .getRecords(step.entity, { limit: 300 })
+        .getRecords(step.entity, { limit: 500, ...(f ? { filters: f } : {}), ...sort })
         .then((res) => setRows(res.rows.map((r) => ({ ...r.data, id: r.id }))))
         .catch(() => setRows([]))
         .finally(() => setLoading(false));
@@ -86,7 +113,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     } else {
       setLoading(false);
     }
-  }, [step.entity, step.popupMode, recordId]);
+  }, [step.entity, step.popupMode, recordId, filtersKey]);
 
   /* Khởi tạo form: rỗng (thêm mới) hoặc đổ từ formSeed (sửa). */
   // biome-ignore lint/correctness/useExhaustiveDependencies: chu y chi reset form khi doi popupMode/entity/seed, khong reset khi visibleFields thay doi de tranh xoa input dang nhap
@@ -141,6 +168,37 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     };
   }, [step.popupMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* (list) Nạp nhãn cho cột lookup (vd bom_son_version_id → mã phiên bản). */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi đổi popupMode/entity; step.listLookups ổn định theo lần mở popup
+  useEffect(() => {
+    const lks = step.listLookups ?? [];
+    if (step.popupMode !== "list" || lks.length === 0) return;
+    let alive = true;
+    Promise.all(
+      lks.map(async (lk) => {
+        const vf = lk.valueField ?? "id";
+        try {
+          const res = await api.getRecords(lk.entity, { limit: 2000 });
+          const map: Record<string, string> = {};
+          for (const r of res.rows) {
+            const d = r.data as Record<string, unknown>;
+            const val = vf === "id" ? r.id : d[vf];
+            const lbl = d[lk.labelField];
+            if (val != null) map[String(val)] = lbl == null ? String(val) : String(lbl);
+          }
+          return [lk.field, map] as const;
+        } catch {
+          return [lk.field, {} as Record<string, string>] as const;
+        }
+      }),
+    ).then((pairs) => {
+      if (alive) setListLabels(Object.fromEntries(pairs));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [step.popupMode, step.entity]);
+
   const onConfirmForm = async () => {
     const data: Record<string, unknown> = {};
     for (const f of visibleFields) {
@@ -170,6 +228,12 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmMulti = () => {
+    const ids = [...selected];
+    const items = rows.filter((r) => ids.includes(String(r.id)));
+    onSelect({ __many: true, ids, items });
   };
 
   const defaultTitle =
@@ -223,6 +287,15 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
               Chọn
             </Button>
           </>
+        ) : multi ? (
+          <>
+            <Button variant="ghost" onClick={onCancel}>
+              Huỷ
+            </Button>
+            <Button variant="primary" disabled={selected.size === 0} onClick={confirmMulti}>
+              Áp dụng ({selected.size})
+            </Button>
+          </>
         ) : null
       }
     >
@@ -252,6 +325,25 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-panel-2 border-b border-border">
                     <tr>
+                      {multi && (
+                        <th className="w-9 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            aria-label="Chọn tất cả"
+                            checked={
+                              filteredRows.length > 0 &&
+                              filteredRows.every((r) => selected.has(String(r.id)))
+                            }
+                            onChange={(e) =>
+                              setSelected(
+                                e.target.checked
+                                  ? new Set(filteredRows.map((r) => String(r.id)))
+                                  : new Set(),
+                              )
+                            }
+                          />
+                        </th>
+                      )}
                       {visibleFields.map((f) => (
                         <th
                           key={f.id}
@@ -260,29 +352,54 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                           {f.label}
                         </th>
                       ))}
-                      <th className="w-8" />
+                      {!multi && <th className="w-8" />}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, i) => (
-                      <tr
-                        // biome-ignore lint/suspicious/noArrayIndexKey: row la Record dong, khong dam bao co id on dinh; chi so hang la danh tinh hien thi
-                        key={i}
-                        className="border-t border-border hover:bg-hover cursor-pointer group/row"
-                        onClick={() => onSelect(row)}
-                      >
-                        {visibleFields.map((f) => (
-                          <td key={f.id} className="px-3 py-2 max-w-[180px] truncate">
-                            {String(row[f.name] ?? "")}
-                          </td>
-                        ))}
-                        <td className="pr-2 text-right">
-                          <span className="text-[10px] text-accent opacity-0 group-hover/row:opacity-100">
-                            Chọn →
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredRows.map((row, i) => {
+                      const rid = String(row.id);
+                      const isSel = multi && selected.has(rid);
+                      return (
+                        <tr
+                          // biome-ignore lint/suspicious/noArrayIndexKey: row la Record dong, khong dam bao co id on dinh; chi so hang la danh tinh hien thi
+                          key={i}
+                          className={`border-t border-border cursor-pointer group/row ${isSel ? "bg-accent/10" : "hover:bg-hover"}`}
+                          onClick={() => (multi ? toggleSel(rid) : onSelect(row))}
+                        >
+                          {multi && (
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                aria-label="Chọn dòng"
+                                checked={isSel}
+                                onChange={() => toggleSel(rid)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </td>
+                          )}
+                          {visibleFields.map((f) => {
+                            const raw = String(row[f.name] ?? "");
+                            const disp = listLabels[f.name]?.[raw] ?? raw;
+                            return (
+                              <td
+                                key={f.id}
+                                className="px-3 py-2 max-w-[180px] truncate"
+                                title={disp}
+                              >
+                                {disp}
+                              </td>
+                            );
+                          })}
+                          {!multi && (
+                            <td className="pr-2 text-right">
+                              <span className="text-[10px] text-accent opacity-0 group-hover/row:opacity-100">
+                                Chọn →
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

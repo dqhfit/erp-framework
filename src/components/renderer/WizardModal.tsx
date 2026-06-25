@@ -49,7 +49,7 @@ function WizardLookupField({
     return { value: val, label: lbl || val };
   });
   const ent = entities.find((e) => e.id === lk.entity);
-  const srcLabel = ent?.label ?? ent?.name ?? "mục";
+  const srcLabel = ent?.name ?? "mục";
   const createNames = lk.createFields ?? [...new Set([lk.valueField, ...labels])];
   const createDefs = createNames
     .map((n) => ent?.fields.find((f) => f.name === n))
