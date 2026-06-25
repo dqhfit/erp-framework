@@ -72,13 +72,22 @@ function mimeByExt(name: string): string {
 }
 
 /** URL viewer PDF.js — port y hệt FnSanPham.GetLinkViewPDFFile. */
-function pdfViewerUrl(filepath: string): string {
+function pdfViewerUrl(filepath: string, host?: string): string {
   const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
-  const value = encodeURIComponent(filepath.replace(/\\/g, "/")).replace(
+  let targetFile = filepath;
+  if (filepath.startsWith("/f/")) {
+    if (host) {
+      const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+      targetFile = `${protocol}://${host}${filepath}`;
+    }
+  } else {
+    targetFile = `/f/${filepath.replace(/\\/g, "/")}`;
+  }
+  const value = encodeURIComponent(targetFile).replace(
     /[!'()*]/g,
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
-  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=/f/${value}`;
+  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=${value}`;
 }
 
 /** URL file PDF THÔ trên file-server (endpoint /f/ mà viewer nạp qua `file=`).
@@ -471,12 +480,34 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const govan = gvId
       ? (await listByMasp(db, cid, gvId, masp)).map((r) => ({
           stt: r.data.stt ?? null,
+          mact: r.data.mact ?? null,
           chitiet: r.data.chitiet ?? null,
           nguyenlieu: r.data.nguyenlieu ?? null,
           dayy_tc: r.data.dayy_tc ?? null,
           rong_tc: r.data.rong_tc ?? null,
           dai_tc: r.data.dai_tc ?? null,
-          soluong: r.data.soluong_tc ?? null,
+          soluong_tc: r.data.soluong_tc ?? null,
+          m3_tc: r.data.m3_tc ?? null,
+          phoi_tructiep: r.data.phoi_tructiep ?? null,
+          phoi_ghep: r.data.phoi_ghep ?? null,
+          dayy_sc: r.data.dayy_sc ?? null,
+          rong_sc: r.data.rong_sc ?? null,
+          dai_sc: r.data.dai_sc ?? null,
+          mong1: r.data.mong1 ?? null,
+          mong2: r.data.mong2 ?? null,
+          veneer_matchinh: r.data.veneer_matchinh ?? null,
+          veneer_matphu: r.data.veneer_matphu ?? null,
+          veneer_canhngan: r.data.veneer_canhngan ?? null,
+          veneer_canhdai: r.data.veneer_canhdai ?? null,
+          veneer_dan_canh: r.data.veneer_dan_canh ?? null,
+          uv_matchinh: r.data.uv_matchinh ?? null,
+          uv_matphu: r.data.uv_matphu ?? null,
+          uv_canhdai: r.data.uv_canhdai ?? null,
+          uv_canhngan: r.data.uv_canhngan ?? null,
+          fsc_100: r.data.fsc_100 ?? null,
+          fsc_mix: r.data.fsc_mix ?? null,
+          fsc_cw: r.data.fsc_cw ?? null,
+          ghichu: r.data.ghichu ?? null,
         }))
       : [];
 
@@ -486,11 +517,13 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           mavt: r.data.mavt ?? null,
           chitiet: r.data.chitiet ?? null,
           quycach: r.data.quycach ?? null,
+          mausac: r.data.mausac ?? null,
           soluong: r.data.soluong ?? null,
           dvt: r.data.dvt ?? null,
           hwforai: r.data.hwforai ?? null,
           hwforww: r.data.hwforww ?? null,
           hwforpacking: r.data.hwforpacking ?? null,
+          ghichu: r.data.ghichu ?? null,
         }))
       : [];
 
@@ -741,7 +774,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       }
     }
 
-    return reply.redirect(pdfViewerUrl(rel));
+    return reply.redirect(pdfViewerUrl(rel, req.headers.host));
   });
 
   // ── Mô hình 3D / artifact phụ của 1 bản vẽ AI (STL/STEP/PNG) ──
@@ -859,27 +892,52 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   });
 
   // ── Danh sách bản vẽ đầy đủ theo masp + phanloai (cho trang desktop) ──
+  // phanloai hỗ trợ 1 giá trị hoặc nhiều giá trị phân tách bằng dấu phẩy
+  // (ví dụ: "Bản vẽ kỹ thuật,Bản vẽ mẫu,Bản vẽ phát triển").
   app.get("/banvesvc/banve-list", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
-    const q = (req.query ?? {}) as { masp?: string; phanloai?: string };
+    const q = (req.query ?? {}) as { masp?: string; hehang?: string; phanloai?: string };
     const masp = q.masp?.trim() ?? "";
-    const phanloai = q.phanloai?.trim() ?? "";
-    if (!masp) return reply.send({ rows: [] });
+    const hehang = q.hehang?.trim() ?? "";
+    const phanloaiRaw = q.phanloai?.trim() ?? "";
+    const phanloaiList = phanloaiRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isDao = phanloaiList.length === 1 && phanloaiList[0] === "Bản vẽ dao";
+    if (isDao) {
+      if (!hehang) return reply.send({ rows: [] });
+    } else {
+      if (!masp) return reply.send({ rows: [] });
+    }
     const cid = auth.companyId;
-    const phanloaiCond = phanloai ? sql`AND f_phanloai = ${phanloai}` : sql``;
+    const phanloaiCond =
+      phanloaiList.length > 1
+        ? sql`AND f_phanloai IN (${sql.join(
+            phanloaiList.map((p) => sql`${p}`),
+            sql`, `,
+          )})`
+        : phanloaiList.length === 1
+          ? sql`AND f_phanloai = ${phanloaiList[0]}`
+          : sql``;
+    const filterCond = isDao ? sql`AND f_hehang = ${hehang}` : sql`AND f_masp = ${masp}`;
     const rows = (await db.execute(
       sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
                  f_phanloai AS phanloai, f_filepath AS filepath,
-                 ext->>'seq1' AS seq1, ext->>'seq2' AS seq2,
-                 ext->>'khachhang' AS khachhang, f_active AS active,
+                 COALESCE(ext->>'seq1', f_seq1) AS seq1,
+                 COALESCE(ext->>'seq2', f_seq2) AS seq2,
+                 COALESCE(ext->>'khachhang', f_khachhang) AS khachhang,
+                 f_active AS active,
+                 f_create_by AS create_by,
+                 f_update_by AS update_by,
                  created_at::date::text AS create_date,
                  updated_at::date::text AS update_date
-          FROM tr_banve
-          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
-            AND f_masp = ${masp} ${phanloaiCond}
-            AND (f_active IS DISTINCT FROM FALSE)
-          ORDER BY created_at DESC LIMIT 200`,
+           FROM tr_banve
+           WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+             ${filterCond} ${phanloaiCond}
+             AND (f_active IS DISTINCT FROM FALSE)
+           ORDER BY created_at DESC LIMIT 200`,
     )) as unknown as Array<Record<string, unknown>>;
     return reply.send({ rows });
   });
@@ -898,7 +956,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       seq1?: string;
       seq2?: string;
     };
-    const {
+    let {
       masp,
       tensp = "",
       hehang = "",
@@ -908,19 +966,77 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       seq1 = "",
       seq2 = "",
     } = body;
-    if (!masp || !filepath) {
-      return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
+    if (phanloai === "Bản vẽ dao") {
+      if (!hehang || !filepath) {
+        return reply.code(400).send({ error: "Thiếu hệ hàng hoặc file bản vẽ" });
+      }
+      masp = hehang;
+    } else {
+      if (!masp || !filepath) {
+        return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
+      }
     }
     const cid = auth.companyId;
     const bvId = await entityIdByName(db, cid, "tr_banve");
     if (!bvId) return reply.code(500).send({ error: "Không tìm thấy entity tr_banve" });
+
+    const urows = (await db.execute(
+      sql`SELECT name FROM users WHERE id = ${auth.userId}::uuid LIMIT 1`,
+    )) as unknown as Array<{ name: string | null }>;
+    const uname = urows[0]?.name || "";
+
     const row = await getRecordStore(db).insert(
       cid,
       bvId,
-      { masp, tensp, hehang, khachhang, phanloai, filepath, seq1, seq2, active: true },
+      {
+        masp,
+        tensp,
+        hehang,
+        khachhang,
+        phanloai,
+        filepath,
+        seq1,
+        seq2,
+        active: true,
+        create_by: uname,
+      },
       auth.userId,
     );
     return reply.send({ id: row?.id ?? null, ok: true });
+  });
+
+  // ── Cập nhật file bản vẽ (đổi filepath, tên file, định dạng) ──
+  app.post("/banvesvc/banve-update", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const body = (req.body ?? {}) as {
+      id?: string;
+      filepath?: string;
+      seq1?: string;
+      seq2?: string;
+    };
+    const { id, filepath, seq1, seq2 } = body;
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id) || !filepath) {
+      return reply.code(400).send({ error: "Thiếu hoặc sai ID hoặc filepath" });
+    }
+
+    const urows = (await db.execute(
+      sql`SELECT name FROM users WHERE id = ${auth.userId}::uuid LIMIT 1`,
+    )) as unknown as Array<{ name: string | null }>;
+    const uname = urows[0]?.name || "";
+
+    if (seq1 !== undefined && seq2 !== undefined) {
+      await db.execute(
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_seq1 = ${seq1}, f_seq2 = ${seq2}, f_update_by = ${uname}, updated_at = now()
+            WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
+      );
+    } else {
+      await db.execute(
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_update_by = ${uname}, updated_at = now()
+            WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
+      );
+    }
+    return reply.send({ ok: true });
   });
 
   // ── Xóa mềm 1 bản vẽ ──

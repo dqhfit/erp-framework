@@ -5,7 +5,7 @@ import {
   INPUT_WIDGET_KINDS,
   type PageComponent,
 } from "@/components/designer/page-designer-constants";
-import { Chip, FormField, Input, Switch, Textarea } from "@/components/ui";
+import { Chip, FormField, Input, Select, Switch, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 
 export function ChungInspector({
@@ -30,6 +30,24 @@ export function ChungInspector({
           onChange={(e) => update(sel.id, { config: { ...sel.config, title: e.target.value } })}
         />
       </FormField>
+      {sel.kind === "banve-type" && (
+        <FormField label="Phân loại bản vẽ">
+          <Select
+            value={(sel.config.phanloai as string) ?? "Bản vẽ kỹ thuật"}
+            onChange={(e) =>
+              update(sel.id, { config: { ...sel.config, phanloai: e.target.value } })
+            }
+          >
+            <option value="Bản vẽ kỹ thuật">Bản vẽ kỹ thuật</option>
+            <option value="Bản vẽ phát triển">Bản vẽ phát triển</option>
+            <option value="Bản vẽ đóng gói">Bản vẽ đóng gói</option>
+            <option value="Bản vẽ mẫu">Bản vẽ mẫu</option>
+            <option value="Bản vẽ mẫu (PPS)">Bản vẽ mẫu (PPS)</option>
+            <option value="Bản vẽ AI">Bản vẽ AI</option>
+            <option value="Bản vẽ dao">Bản vẽ dao</option>
+          </Select>
+        </FormField>
+      )}
       {/* Widget HTML / Ghi chú — ô nhập nội dung (trước đây
                           thiếu inspector nên "không ghi chú được"). */}
       {sel.kind === "html" && (

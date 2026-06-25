@@ -25,6 +25,7 @@ function localDbUrl() {
 }
 
 function findKey() {
+  if (process.env.MCP_API_KEY) return process.env.MCP_API_KEY;
   const cfg = JSON.parse(readFileSync(join(homedir(), ".claude.json"), "utf8"));
   const proj = cfg.projects?.["D:/code/cowok/Apps/erp-framework"];
   const servers = { ...(cfg.mcpServers ?? {}), ...(proj?.mcpServers ?? {}) };

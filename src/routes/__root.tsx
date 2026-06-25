@@ -36,7 +36,7 @@ function embedToken(): string | null {
 /** Trang xưởng tự dựng layout full-screen (mobile) — bỏ AppShell chrome
  *  (Topbar/Sidebar). Cũng là trang role VIEWER được phép vào (ngoài
  *  /portal + /view) để công nhân xem bản vẽ + nhập sản lượng. */
-const STANDALONE_PREFIXES = ["/banve", "/sanluong"];
+const STANDALONE_PREFIXES = ["/banve", "/ban-ve", "/sanluong"];
 
 const embedClient = createEmbedClient("");
 

@@ -792,16 +792,16 @@ export function Sidebar() {
             />
             {/* MES / Sản xuất — port DQHF */}
             <SidebarItem
-              to="/banve"
-              active={pathname === "/banve"}
+              to="/ban-ve"
+              active={pathname === "/ban-ve"}
               icon={<I.FileText size={14} />}
               collapsed={collapsed}
               label="Xem bản vẽ"
-              isFavorited={favs.isFav("/banve")}
+              isFavorited={favs.isFav("/ban-ve")}
               onToggleFavorite={() =>
                 favs.toggle({
-                  id: "/banve",
-                  to: "/banve",
+                  id: "/ban-ve",
+                  to: "/ban-ve",
                   label: "Xem bản vẽ",
                   iconName: "FileText",
                 })

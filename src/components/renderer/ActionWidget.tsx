@@ -34,6 +34,8 @@ interface Props {
   /** Mở form Tạo mới master-detail của list (createForm) — list widget cấp khi
    *  render embeddedActions, cho step "open-create-form". */
   onOpenCreateForm?: () => void;
+  /** Gọi sau khi chuỗi action chạy xong, dùng để refresh lookup trong wizard cha. */
+  onComplete?: () => void;
 }
 
 export function ActionWidget({
@@ -43,6 +45,7 @@ export function ActionWidget({
   compact = false,
   menuItem = false,
   onOpenCreateForm,
+  onComplete,
 }: Props) {
   const user = useAuth((s) => s.user);
   const role = user?.role;
@@ -141,6 +144,7 @@ export function ActionWidget({
       if (res.completed && res.procedureRuns > 0 && !hasModuleProc) {
         toast.success(config.label ? `Đã chạy: ${config.label}` : "Đã chạy xong");
       }
+      if (res.completed) onComplete?.();
     } catch {
       // toast.error đã hiển thị trong run-action.ts; nuốt để không crash widget.
     } finally {
@@ -190,8 +194,14 @@ export function ActionWidget({
             pageState={pageState}
             onDone={(value) => closeWizard(value)}
             onCancel={() => closeWizard(null)}
-            renderAction={(a, key) => (
-              <ActionWidget key={key} config={a} pageState={pageState} inline />
+            renderAction={(a, key, onActionComplete) => (
+              <ActionWidget
+                key={key}
+                config={a}
+                pageState={pageState}
+                inline
+                onComplete={onActionComplete}
+              />
             )}
           />
         )}
@@ -236,8 +246,14 @@ export function ActionWidget({
           pageState={pageState}
           onDone={(value) => closeWizard(value)}
           onCancel={() => closeWizard(null)}
-          renderAction={(a, key) => (
-            <ActionWidget key={key} config={a} pageState={pageState} inline />
+          renderAction={(a, key, onActionComplete) => (
+            <ActionWidget
+              key={key}
+              config={a}
+              pageState={pageState}
+              inline
+              onComplete={onActionComplete}
+            />
           )}
         />
       )}

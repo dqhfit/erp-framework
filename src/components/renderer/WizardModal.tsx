@@ -92,7 +92,7 @@ interface Props {
   onDone: (data: Record<string, unknown>) => void;
   onCancel: () => void;
   /** Render một ActionConfig thành nút hành động. Được cung cấp bởi ActionWidget để tránh circular import. */
-  renderAction?: (action: ActionConfig, key: string) => ReactNode;
+  renderAction?: (action: ActionConfig, key: string, onComplete?: () => void) => ReactNode;
 }
 
 /** Khoá form dùng chung cho mọi bước ở chế độ 1-entity (tránh field cùng tên
@@ -198,6 +198,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [detailLookupData, setDetailLookupData] = useState<
     Record<string, Record<string, unknown>[]>
   >({});
+  const [lookupReloadKey, setLookupReloadKey] = useState(0);
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
   const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
@@ -217,11 +218,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       ]),
     ),
   ].join(",");
+  const lookupRequestKey = lookupKey ? `${lookupKey}|${lookupReloadKey}` : "";
   useEffect(() => {
-    if (!lookupKey) return;
+    if (!lookupRequestKey) return;
+    const ids = lookupRequestKey.split("|")[0] ?? "";
     let alive = true;
     Promise.all(
-      lookupKey.split(",").map((id) =>
+      ids.split(",").map((id) =>
         api
           .getRecords(id, { limit: 2000 })
           .then((res) => [id, res.rows.map((r) => r.data)] as const)
@@ -233,7 +236,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     return () => {
       alive = false;
     };
-  }, [lookupKey]);
+  }, [lookupRequestKey]);
 
   // (1-entity, SỬA) Tải bản ghi → prefill form dùng chung.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ nạp lại khi đổi record/entity; KHÔNG bám wizardSteps để khỏi reset input
@@ -598,6 +601,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               : (wizardStep.fields ?? []),
           ),
         );
+        if (wizardEntityId) {
+          const entName = entities.find((e) => e.id === wizardEntityId)?.name;
+          if (entName === "tr_color") {
+            if (editableFieldNames.has("duongdan")) editableFieldNames.add("tenfile");
+            if (editableFieldNames.has("duongdan2")) editableFieldNames.add("tenfile2");
+          }
+        }
         // Khi KHÔNG có step nào khai báo fields tường minh (editableFieldNames rỗng),
         // bỏ filter — lưu tất cả field có giá trị. Tránh payload rỗng khi wizard
         // dùng fallback "hiện 7 field đầu" mà không liệt kê field.
@@ -709,7 +719,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    fetch("/upload/image", { method: "POST", body: fd })
+    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const url = sub ? `/upload/image?subfolder=${sub}` : "/upload/image";
+    fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
         if (!res.ok) {
           const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
@@ -741,7 +753,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    fetch("/upload/file", { method: "POST", body: fd })
+    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const url = sub ? `/upload/file?subfolder=${sub}` : "/upload/file";
+    fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
         if (!res.ok) {
           const e = await res.json().catch(() => ({ error: "Upload thất bại" }));
@@ -751,7 +765,14 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       })
       .then(({ url, name: displayName }) => {
         setField(name, url);
-        if (displayName) setFileDisplayNames((m) => ({ ...m, [name]: displayName }));
+        if (displayName) {
+          setFileDisplayNames((m) => ({ ...m, [name]: displayName }));
+          if (name === "duongdan") {
+            setField("tenfile", displayName);
+          } else if (name === "duongdan2") {
+            setField("tenfile2", displayName);
+          }
+        }
       })
       .catch((e: Error) => toast.error(e.message))
       .finally(() =>
@@ -1052,6 +1073,24 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const leftFields = visibleFields.filter((f) => f.type !== "image" && f.name !== "hinhanh");
   const hasImagePanel = imgFields.length > 0 || !!relatedImageCfg;
 
+  const renderFieldInput = (f: EntityField) => {
+    const renderFieldAction = !readOnly ? renderAction : undefined;
+    const actions = current.fieldActions?.[f.name] ?? [];
+    if (!renderFieldAction || actions.length === 0) return renderControl(f);
+    return (
+      <div className="flex items-start gap-1.5">
+        <div className="min-w-0 flex-1">{renderControl(f)}</div>
+        <div className="shrink-0 flex items-center gap-1">
+          {actions.map((a) =>
+            renderFieldAction({ ...a, iconOnly: a.iconOnly ?? true }, a.id, () =>
+              setLookupReloadKey((x) => x + 1),
+            ),
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Modal
       open
@@ -1258,7 +1297,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                                       <span className="text-danger ml-0.5">*</span>
                                     ) : null}
                                   </label>
-                                  {renderControl(f)}
+                                  {renderFieldInput(f)}
                                   {!readOnly && fieldErrors[f.name] && (
                                     <span className="text-[10px] font-medium text-danger mt-1 block">
                                       {fieldErrors[f.name]}
@@ -1304,7 +1343,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                               <span className="text-danger ml-0.5">*</span>
                             ) : null}
                           </label>
-                          {renderControl(f)}
+                          {renderFieldInput(f)}
                           {!readOnly && fieldErrors[f.name] && (
                             <span className="text-[10px] font-medium text-danger mt-1 block">
                               {fieldErrors[f.name]}

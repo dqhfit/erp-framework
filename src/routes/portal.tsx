@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
-import { MenuTree, type MenuTreeHandle, type NavNode } from "@/components/MenuTree";
+import { labelOf, MenuBrowser } from "@/components/MenuBrowser";
+import type { NavNode } from "@/components/MenuTree";
 import { PortalDashboard } from "@/components/PortalDashboard";
 import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useFavs } from "@/components/Sidebar";
@@ -67,11 +68,10 @@ function PortalRoute() {
   );
 
   const { data: navNodes = [] } = useNavTree();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [focusCategory, setFocusCategory] = useState<string | null>(null);
   const [drawerQ, setDrawerQ] = useState("");
   const drawerSearchRef = useRef<HTMLInputElement>(null);
-  const menuTreeRef = useRef<MenuTreeHandle>(null);
   const filteredNavNodes = useMemo(() => {
     if (!drawerQ) return navNodes;
     const q = stripAccents(drawerQ);
@@ -84,23 +84,12 @@ function PortalRoute() {
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
 
+  // Dashboard → mở sidebar, vào ?page → tự động thu sidebar
+  useEffect(() => {
+    setSidebarCollapsed(!!activeId);
+  }, [activeId]);
+
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [drawerOpen]);
-
-  useEffect(() => {
-    if (drawerOpen) {
-      setDrawerQ("");
-      drawerSearchRef.current?.focus();
-    }
-  }, [drawerOpen]);
 
   useEffect(() => {
     void loadPrefs();
@@ -173,7 +162,6 @@ function PortalRoute() {
         return;
       }
       setActiveId(id);
-      setDrawerOpen(false);
       void navigate({ to: "/portal", search: { page: id }, replace: true });
     },
     [setActiveId, navigate],
@@ -270,18 +258,12 @@ function PortalRoute() {
       <header className="h-12 shrink-0 flex items-center px-3 sm:px-4 gap-1 sm:gap-2 border-b border-border bg-panel z-30 relative">
         <button
           type="button"
-          onClick={goToDashboard}
-          className="w-7 h-7 rounded-lg bg-accent/20 text-accent flex items-center justify-center shrink-0 hover:bg-accent/30 transition-colors"
-          title={t("portal.title")}
-        >
-          <I.Layout size={14} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setDrawerOpen((s) => !s)}
-          className="w-7 h-7 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 shrink-0 transition-colors"
-          title="Tất cả menu"
+          onClick={() => setSidebarCollapsed((s) => !s)}
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-muted hover:text-text hover:bg-hover/80 shrink-0",
+            !sidebarCollapsed && "bg-hover/80 text-text",
+          )}
+          title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
         >
           <I.Menu size={16} />
         </button>
@@ -294,11 +276,12 @@ function PortalRoute() {
             type="button"
             onClick={goToDashboard}
             className={cn(
-              "shrink-0 transition-colors",
-              activeId ? "text-muted hover:text-text" : "font-semibold text-text",
+              "shrink-0 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-hover/40",
+              activeId ? "text-muted hover:text-text" : "font-semibold text-accent bg-accent/10",
             )}
           >
-            Trang chủ
+            <I.Home size={14} className="shrink-0" />
+            <span>Trang chủ</span>
           </button>
           {activeBreadcrumb && activeBreadcrumb.length > 0 && (
             <>
@@ -332,6 +315,28 @@ function PortalRoute() {
         </div>
 
         <div id="portal-page-actions" className="flex items-center gap-1.5 shrink-0" />
+
+        {activeId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={
+              <I.Star
+                size={13}
+                className={favs.isFav(activeId) ? "fill-warning text-warning" : ""}
+              />
+            }
+            onClick={() =>
+              favs.toggle({
+                id: activeId,
+                to: `/pages/${activeId}`,
+                label: publishedPages.find((p) => p.id === activeId)?.name ?? activeId,
+                iconName: "Layout",
+              })
+            }
+            title={favs.isFav(activeId) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          />
+        )}
 
         {canEdit && activeId && (
           <Button
@@ -396,7 +401,7 @@ function PortalRoute() {
               <button
                 type="button"
                 onClick={() => {
-                  void navigate({ to: "/banve" });
+                  void navigate({ to: "/ban-ve" });
                   setUserMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-text hover:bg-hover/60 transition-colors"
@@ -445,35 +450,13 @@ function PortalRoute() {
       </header>
 
       {/* ─── Body ─── */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {drawerOpen && (
-          <button
-            type="button"
-            aria-label="Đóng"
-            className="fixed inset-0 z-[690] bg-black/30 transition-opacity"
-            onClick={() => setDrawerOpen(false)}
-          />
-        )}
-
-        <div
-          className={cn(
-            "fixed inset-y-0 left-0 z-[695] w-[260px] max-w-[85vw] bg-panel border-r border-border shadow-2xl flex flex-col transition-transform duration-200",
-            drawerOpen ? "translate-x-0" : "-translate-x-full",
-          )}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ─── Persistent sidebar ─── */}
+        <aside
+          className="shrink-0 border-r border-border bg-panel flex flex-col overflow-hidden"
+          style={{ width: sidebarCollapsed ? 0 : 420, transition: "width 180ms ease" }}
         >
-          <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-border">
-            <div className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
-              Tất cả menu
-            </div>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              className="shrink-0 w-6 h-6 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60"
-            >
-              <I.X size={14} />
-            </button>
-          </div>
-          <div className="shrink-0 flex items-center gap-1.5 px-3 h-9 border-b border-border">
+          <div className="shrink-0 flex items-center gap-1 px-2 h-9 border-b border-border">
             <I.Search size={12} className="shrink-0 text-muted/50" />
             <input
               ref={drawerSearchRef}
@@ -501,33 +484,82 @@ function PortalRoute() {
                 <I.X size={12} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              className="shrink-0 w-5 h-5 rounded flex items-center justify-center text-muted/40 hover:text-text hover:bg-hover/60"
+              title="Thu gọn menu"
+            >
+              <I.PanelLeft size={12} />
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <MenuTree
-              ref={menuTreeRef}
-              nodes={filteredNavNodes}
-              activePageId={activeId}
-              onSelect={onSelectPage}
-              expandAll={!!drawerQ}
-              storageKey="portal"
-              cleanLabels
-              compact
-              isFav={(id) => favs.isFav(id)}
-              onToggleFav={(node) => {
-                if (!node.pageId) return;
-                const isRoute = node.pageId.startsWith("/");
-                favs.toggle({
-                  id: node.pageId,
-                  to: isRoute ? node.pageId : `/pages/${node.pageId}`,
-                  label: isRoute
-                    ? (node.name ?? node.pageId)
-                    : (publishedPages.find((p) => p.id === node.pageId)?.name ?? node.name ?? ""),
-                  iconName: "Layout",
-                });
-              }}
-            />
+          <div
+            className={cn(
+              "flex-1 min-h-0 flex flex-col",
+              drawerQ ? "overflow-y-auto" : "overflow-hidden",
+            )}
+          >
+            {drawerQ ? (
+              <div className="p-2 space-y-1">
+                {filteredNavNodes
+                  .filter((n) => n.pageId)
+                  .map((node) => {
+                    const faved = favs.isFav(node.pageId as string);
+                    return (
+                      <div
+                        key={node.code}
+                        className="group flex items-center text-sm hover:bg-hover/40 rounded transition-colors"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onSelectPage(node.pageId as string)}
+                          className="flex-1 flex items-center gap-2 px-3 py-2 text-left min-w-0"
+                        >
+                          <I.Layout size={13} className="shrink-0 text-muted" />
+                          <span className="truncate text-text font-medium">{labelOf(node)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            favs.toggle({
+                              id: node.pageId as string,
+                              to: `/pages/${node.pageId}`,
+                              label: node.name ?? "",
+                              iconName: "Layout",
+                            });
+                          }}
+                          className={cn(
+                            "px-3 py-2 shrink-0 transition-colors opacity-0 group-hover:opacity-100",
+                            faved ? "opacity-100 text-warning" : "text-muted/40 hover:text-warning",
+                          )}
+                          title={faved ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+                        >
+                          <I.Star size={13} className={faved ? "fill-current" : ""} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                {filteredNavNodes.filter((n) => n.pageId).length === 0 && (
+                  <div className="text-xs text-muted text-center py-4">
+                    Không tìm thấy trang nào
+                  </div>
+                )}
+              </div>
+            ) : (
+              <MenuBrowser
+                roots={navRoots}
+                childrenOf={navChildrenOf}
+                activePageId={activeId}
+                onSelectPage={onSelectPage}
+                focusCategory={focusCategory}
+                onFocusCategoryUsed={() => setFocusCategory(null)}
+                isFav={(id) => favs.isFav(id)}
+                onToggleFav={(item) => favs.toggle(item)}
+              />
+            )}
           </div>
-        </div>
+        </aside>
 
         <main
           className="flex-1 overflow-hidden relative"
@@ -552,11 +584,6 @@ function PortalRoute() {
                   pages={pageListForDashboard}
                   favs={{ ids: new Set(favs.favs.map((f) => f.id)), isFav: favs.isFav }}
                   onSelectPage={onSelectPage}
-                  navRoots={navRoots}
-                  navChildrenOf={navChildrenOf}
-                  focusCategory={focusCategory}
-                  onFocusCategoryUsed={() => setFocusCategory(null)}
-                  onOpenAllPages={() => setDrawerOpen(true)}
                 />
               </div>
               {publishedPages.map((p) =>

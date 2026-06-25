@@ -9,6 +9,7 @@
 import { createProceduresClient } from "@erp-framework/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import {
@@ -243,6 +244,9 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
+  if (comp.kind === "banve-type") {
+    return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;
+  }
   if (comp.kind === "html") {
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/
@@ -339,11 +343,11 @@ export function ConsumerPage({
   const rawContent = content as RawContent;
   const baseComponents: PageComponent[] = Array.isArray(rawContent)
     ? (rawContent as PageComponent[])
-    : ((rawContent as { components?: PageComponent[] }).components ?? []);
+    : ((rawContent as { components?: PageComponent[] } | undefined)?.components ?? []);
   const pageMeta: Record<string, unknown> = Array.isArray(rawContent)
     ? {}
-    : ((rawContent as { meta?: Record<string, unknown> }).meta ?? {});
-  const screenFit = !!pageMeta.screenFit;
+    : ((rawContent as { meta?: Record<string, unknown> } | undefined)?.meta ?? {});
+  const screenFit = !!pageMeta?.screenFit;
   // Trang scratch (vd "Tạo y/c mua hàng"): xoá working set khi rời trang để
   // danh sách không nhớ dữ liệu giữa các lần ghé. meta.onLeaveProc = tên proc
   // xoá; meta.onLeaveRefresh = entityId cần re-query để hiện rỗng khi quay lại.
