@@ -4,22 +4,36 @@ import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useNavTree } from "@/hooks/useNavTree";
 import { useUserObjects } from "@/stores/userObjects";
 
+function matchesPage(p: { name?: string; techName?: string }) {
+  const tech = (p.techName || "").toLowerCase();
+  const label = (p.name || "").toLowerCase();
+  return (
+    tech.includes("ban_ve_ky_thuat") ||
+    tech.includes("ban_ve_kt") ||
+    (label.includes("bản vẽ") && label.includes("kỹ thuật"))
+  );
+}
+
 function BanVeKyThuatRoute() {
+  const { page: urlPage } = Route.useSearch();
   const { data: navNodes } = useNavTree();
   const pages = useUserObjects((s) => s.pages);
   const pageContent = useUserObjects((s) => s.pageContent);
 
-  // 1. Tìm pageId liên kết trong menu với mã bbiBanVe hoặc I1
-  const menuNode = navNodes?.find((n) => n.code === "bbiBanVe" || n.code === "I1");
-  let activePageId = menuNode?.pageId;
+  // 1. Ưu tiên 1: Đọc pageId trực tiếp từ URL query param ?page=xxx
+  let activePageId = urlPage;
 
-  // 2. Nếu chưa liên kết trong menu, tìm trang có techName bắt đầu bằng ban_ve_ky_thuat_ hoặc name khớp
+  // 2. Ưu tiên 2: Tìm pageId liên kết trong menu với mã bbiBanVe hoặc I1
   if (!activePageId) {
-    const fallbackPage = pages.find(
-      (p) => p.techName?.startsWith("ban_ve_ky_thuat_") || p.name === "Bản vẽ kỹ thuật",
-    );
+    const menuNode = navNodes?.find((n) => n.code === "bbiBanVe" || n.code === "I1");
+    activePageId = menuNode?.pageId ?? undefined;
+  }
+
+  // 3. Ưu tiên 3: Nếu chưa liên kết trong menu, tìm trang khớp thông minh
+  if (!activePageId) {
+    const fallbackPage = pages.find(matchesPage);
     if (fallbackPage) {
-      activePageId = fallbackPage.id;
+      activePageId = fallbackPage.id ?? undefined;
     }
   }
 
@@ -41,5 +55,10 @@ function BanVeKyThuatRoute() {
 }
 
 export const Route = createFileRoute("/ban-ve/ky-thuat")({
+  validateSearch: (search: Record<string, unknown>): { page?: string } => {
+    return {
+      page: (search.page as string) || undefined,
+    };
+  },
   component: BanVeKyThuatRoute,
 });

@@ -9,7 +9,50 @@ import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useStat
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, SearchableSelect, Select } from "@/components/ui";
+import { useNavTree } from "@/hooks/useNavTree";
 import { useAuth } from "@/stores/auth";
+import { useUserObjects } from "@/stores/userObjects";
+
+function matchesPage(p: { name?: string; techName?: string }, type: string) {
+  const tech = (p.techName || "").toLowerCase();
+  const label = (p.name || "").toLowerCase();
+
+  if (type === "ky-thuat" || type === "ky_thuat") {
+    return (
+      tech.includes("ban_ve_ky_thuat") ||
+      tech.includes("ban_ve_kt") ||
+      (label.includes("bản vẽ") && label.includes("kỹ thuật"))
+    );
+  }
+  if (type === "dong-goi" || type === "dong_goi") {
+    return (
+      tech.includes("ban_ve_dong_goi") ||
+      tech.includes("ban_ve_dgo") ||
+      (label.includes("bản vẽ") && label.includes("đóng gói"))
+    );
+  }
+  if (type === "ai") {
+    return (
+      tech.includes("ban_ve_ai") ||
+      tech.includes("dinh_muc_ban_ve_ai") ||
+      (label.includes("bản vẽ") && label.includes("ai")) ||
+      label.includes("định mức - bản vẽ - ai")
+    );
+  }
+  if (type === "dao") {
+    return tech.includes("ban_ve_dao") || (label.includes("bản vẽ") && label.includes("dao"));
+  }
+  if (type === "mau") {
+    return tech.includes("ban_ve_mau") || (label.includes("bản vẽ") && label.includes("mẫu"));
+  }
+  if (type === "phat-trien" || type === "phat_trien") {
+    return (
+      tech.includes("ban_ve_phat_trien") ||
+      (label.includes("bản vẽ") && label.includes("phát triển"))
+    );
+  }
+  return false;
+}
 
 export const Route = createFileRoute("/ban-ve")({ component: BanVeLayout });
 
@@ -94,7 +137,41 @@ type Tab = "banve" | "dao" | "govan" | "ngukim";
 function BanVePage() {
   const navigate = useNavigate();
   const role = useAuth((s) => s.user?.role);
+  const { data: navNodes } = useNavTree();
+  const pages = useUserObjects((s) => s.pages);
   const goBack = () => void navigate({ to: role === "viewer" ? "/portal" : "/" });
+
+  const getPageIdForType = (type: string) => {
+    let menuCodes: string[] = [];
+    let matchType = "";
+    if (type === "ky-thuat") {
+      menuCodes = ["bbiBanVe", "I1", "CUST-97ae4fcc-5194-40a0-b34a-28d340f68079"];
+      matchType = "ky-thuat";
+    } else if (type === "dong-goi") {
+      menuCodes = ["bbiBanVeDongGoi", "D1"];
+      matchType = "dong-goi";
+    } else if (type === "phat-trien") {
+      menuCodes = ["bbiBanVePhatTrien"];
+      matchType = "phat-trien";
+    } else if (type === "ai") {
+      menuCodes = ["bbiBanVeAI", "I1217", "I1013"];
+      matchType = "ai";
+    } else if (type === "mau") {
+      menuCodes = ["bbiBanVeMau", "I1227", "I1193"];
+      matchType = "mau";
+    } else if (type === "dao") {
+      menuCodes = ["bbiBanVeDao", "I1141"];
+      matchType = "dao";
+    }
+
+    // 1. Tìm pageId liên kết trong menu
+    const menuNode = navNodes?.find((n) => n.code && menuCodes.includes(n.code));
+    if (menuNode?.pageId) return menuNode.pageId;
+
+    // 2. Tìm trang khớp thông minh
+    const fallbackPage = pages.find((p) => matchesPage(p, matchType));
+    return fallbackPage?.id;
+  };
   const [type, setType] = useState<string>(BANVE_TYPES[0].val);
   const [masp, setMasp] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
@@ -190,23 +267,26 @@ function BanVePage() {
           <span className="text-xs text-muted">Quản lý:</span>
           {(
             [
-              { label: "Kỹ thuật", to: "/ban-ve/ky-thuat" },
-              { label: "Đóng gói", to: "/ban-ve/dong-goi" },
-              { label: "Phát triển", to: "/ban-ve/phat-trien" },
-              { label: "AI", to: "/ban-ve/ai" },
-              { label: "Mẫu", to: "/ban-ve/mau" },
-              { label: "Dao", to: "/ban-ve/dao" },
+              { label: "Kỹ thuật", to: "/ban-ve/ky-thuat", type: "ky-thuat" },
+              { label: "Đóng gói", to: "/ban-ve/dong-goi", type: "dong-goi" },
+              { label: "Phát triển", to: "/ban-ve/phat-trien", type: "phat-trien" },
+              { label: "AI", to: "/ban-ve/ai", type: "ai" },
+              { label: "Mẫu", to: "/ban-ve/mau", type: "mau" },
+              { label: "Dao", to: "/ban-ve/dao", type: "dao" },
             ] as const
-          ).map(({ label, to }) => (
-            <button
-              key={to}
-              type="button"
-              onClick={() => void navigate({ to })}
-              className="chip chip-default text-xs"
-            >
-              {label}
-            </button>
-          ))}
+          ).map(({ label, to, type: t }) => {
+            const pageId = getPageIdForType(t);
+            return (
+              <button
+                key={to}
+                type="button"
+                onClick={() => void navigate({ to, search: { page: pageId } })}
+                className="chip chip-default text-xs"
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       )}
 

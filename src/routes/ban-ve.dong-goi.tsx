@@ -4,6 +4,16 @@ import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useNavTree } from "@/hooks/useNavTree";
 import { useUserObjects } from "@/stores/userObjects";
 
+function matchesPage(p: { name?: string; techName?: string }) {
+  const tech = (p.techName || "").toLowerCase();
+  const label = (p.name || "").toLowerCase();
+  return (
+    tech.includes("ban_ve_dong_goi") ||
+    tech.includes("ban_ve_dgo") ||
+    (label.includes("bản vẽ") && label.includes("đóng gói"))
+  );
+}
+
 function BanVeDongGoiRoute() {
   const { page: urlPage } = Route.useSearch();
   const { data: navNodes } = useNavTree();
@@ -19,11 +29,9 @@ function BanVeDongGoiRoute() {
     activePageId = menuNode?.pageId ?? undefined;
   }
 
-  // 3. Ưu tiên 3: Tìm trang có techName bắt đầu bằng ban_ve_dong_goi_ hoặc name khớp
+  // 3. Ưu tiên 3: Nếu chưa liên kết trong menu, tìm trang khớp thông minh
   if (!activePageId) {
-    const fallbackPage = pages.find(
-      (p) => p.techName?.startsWith("ban_ve_dong_goi_") || p.name === "Bản vẽ đóng gói",
-    );
+    const fallbackPage = pages.find(matchesPage);
     if (fallbackPage) {
       activePageId = fallbackPage.id ?? undefined;
     }
@@ -47,7 +55,7 @@ function BanVeDongGoiRoute() {
 }
 
 export const Route = createFileRoute("/ban-ve/dong-goi")({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { page?: string } => {
     return {
       page: (search.page as string) || undefined,
     };
