@@ -604,10 +604,23 @@ function MenuPagesPage() {
                   />
                 </>
               ) : (
-                <span className="text-[11px] text-muted">
-                  thư mục ·{" "}
-                  {kids.length ? `${kids.length} mục con` : "trống — dùng + để thêm trang"}
-                </span>
+                <>
+                  <span className="text-[11px] text-muted">
+                    thư mục ·{" "}
+                    {kids.length ? `${kids.length} mục con` : "trống — dùng + để thêm trang"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title={r.active ? "Ẩn khỏi portal" : "Hiện lại trong portal"}
+                    onClick={() =>
+                      runStruct(r.sourceCode, () => api.setNodeActive(r.sourceCode, !r.active))
+                    }
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                  >
+                    {r.active ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                  </button>
+                </>
               )
             ) : editing ? (
               <div className="flex items-center gap-1.5">
@@ -667,6 +680,17 @@ function MenuPagesPage() {
                   icon={<I.Trash size={14} />}
                   title="Gỡ trang"
                 />
+                <button
+                  type="button"
+                  disabled={busy}
+                  title={r.active ? "Ẩn khỏi portal" : "Hiện lại trong portal"}
+                  onClick={() =>
+                    runStruct(r.sourceCode, () => api.setNodeActive(r.sourceCode, !r.active))
+                  }
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                >
+                  {r.active ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                </button>
               </>
             ) : (
               <>
@@ -687,6 +711,17 @@ function MenuPagesPage() {
                 >
                   Gán trang
                 </Button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  title={r.active ? "Ẩn khỏi portal" : "Hiện lại trong portal"}
+                  onClick={() =>
+                    runStruct(r.sourceCode, () => api.setNodeActive(r.sourceCode, !r.active))
+                  }
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-40"
+                >
+                  {r.active ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                </button>
               </>
             )}
           </div>
