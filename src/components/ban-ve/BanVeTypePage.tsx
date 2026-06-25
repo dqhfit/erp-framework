@@ -428,6 +428,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const loadBanve = useCallback(
     async (keyVal: string) => {
       if (!keyVal) return;
+      setBanveRows([]);
       setSelectedBvId(null);
       setLoadingDetail(true);
       try {
@@ -449,6 +450,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     async (masp: string) => {
       if (isDao) return;
       if (!masp) return;
+      setGovan([]);
+      setNgukim([]);
       setLoadingBoms(true);
       try {
         const res = await fetch(`/banvesvc/product?masp=${encodeURIComponent(masp)}`, {
@@ -472,6 +475,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     async (masp: string) => {
       if (isDao) return;
       if (!masp) return;
+      setDonggoi([]);
+      setDonggoiMausac(null);
       setLoadingDongGoi(true);
       try {
         const res = await fetch(`/banvesvc/donggoi-chitiet?masp=${encodeURIComponent(masp)}`, {
@@ -903,7 +908,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 )}
               </div>
               <div className="flex-1 overflow-y-auto">
-                {banveRows.length === 0 && !loadingDetail ? (
+                {loadingDetail ? (
+                  <div className="h-full flex items-center justify-center py-10">
+                    <I.Loader size={20} className="animate-spin text-accent" />
+                  </div>
+                ) : banveRows.length === 0 ? (
                   <div className="p-3">
                     <EmptyState
                       icon={<I.FileX size={20} />}
@@ -1067,7 +1076,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 {loadingBoms && <I.Loader size={11} className="animate-spin text-muted shrink-0" />}
               </div>
               <div className="flex-1 overflow-auto p-3">
-                <GoVanGrid rows={govan} />
+                {loadingBoms ? (
+                  <div className="h-full flex items-center justify-center py-10">
+                    <I.Loader size={20} className="animate-spin text-accent" />
+                  </div>
+                ) : (
+                  <GoVanGrid rows={govan} />
+                )}
               </div>
             </>
           )}
@@ -1085,7 +1100,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 {loadingBoms && <I.Loader size={11} className="animate-spin text-muted shrink-0" />}
               </div>
               <div className="flex-1 overflow-auto p-3">
-                <NguKimGrid rows={ngukim} />
+                {loadingBoms ? (
+                  <div className="h-full flex items-center justify-center py-10">
+                    <I.Loader size={20} className="animate-spin text-accent" />
+                  </div>
+                ) : (
+                  <NguKimGrid rows={ngukim} />
+                )}
               </div>
             </>
           )}
@@ -1105,7 +1126,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 )}
               </div>
               <div className="flex-1 overflow-auto p-3">
-                <DongGoiGrid rows={donggoi} masp={selectedMasp} mausac={donggoiMausac} />
+                {loadingDongGoi ? (
+                  <div className="h-full flex items-center justify-center py-10">
+                    <I.Loader size={20} className="animate-spin text-accent" />
+                  </div>
+                ) : (
+                  <DongGoiGrid rows={donggoi} masp={selectedMasp} mausac={donggoiMausac} />
+                )}
               </div>
             </>
           )}
@@ -1115,7 +1142,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   );
 
   /* ── Right panel: PDF viewer ── */
-  const rightPanel = selectedBv?.filepath ? (
+  const rightPanel = loadingDetail ? (
+    <div className="h-full flex items-center justify-center">
+      <I.Loader size={28} className="animate-spin text-accent" />
+    </div>
+  ) : selectedBv?.filepath ? (
     <div className="flex flex-col h-full">
       <div className="shrink-0 border-b border-border bg-panel/50 px-3 py-2 flex items-center gap-2">
         <I.FileText size={13} className="text-accent" />
