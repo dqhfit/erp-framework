@@ -402,7 +402,7 @@ function PickerModal({
             {t("tagbox.selected_count", { count: draft.size })}
           </div>
         </div>
-        <ul className="border border-border rounded max-h-96 overflow-y-auto divide-y divide-border">
+        <ul className="border border-border rounded h-96 overflow-y-auto divide-y divide-border">
           {filtered.length === 0 && (
             <li className="p-3 text-sm text-muted text-center">{t("tagbox.no_results")}</li>
           )}
