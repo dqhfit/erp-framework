@@ -372,7 +372,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const isDao = phanloai === "Bản vẽ dao";
   const isKyThuat = phanloai === "Bản vẽ kỹ thuật";
   const isDongGoi = phanloai === "Bản vẽ đóng gói";
-  const isSlotPage = isKyThuat || isDongGoi || isDao;
+  const isAi = phanloai === "Bản vẽ AI";
+  const isSlotPage = isKyThuat || isDongGoi || isDao || isAi;
   const [hehangs, setHehangs] = useState<Opt[]>([]);
   const [hehang, setHehang] = useState("");
   const [products, setProducts] = useState<SpRow[]>([]);
@@ -776,6 +777,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         let sub = "ky-thuat";
         if (subType === "Bản vẽ đóng gói") sub = "dong-goi";
         else if (subType === "Bản vẽ dao") sub = "dao";
+        else if (subType === "Bản vẽ AI") sub = "ai";
 
         const upRes = await fetch(`/upload/file?subfolder=${sub}`, {
           method: "POST",
@@ -1301,8 +1303,9 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                         );
                       }
 
-                      // isDao: multiple cards + one dashed upload label at the bottom
+                      // isDao || isAi: multiple cards + one dashed upload label at the bottom
                       const isUploading = slotUploading === phanloai;
+                      const uploadLabel = isAi ? "Tải lên bản vẽ AI mới" : "Tải lên bản vẽ dao mới";
                       return (
                         <div className="max-w-md mx-auto space-y-2 py-0.5">
                           <div className="space-y-1">
@@ -1311,6 +1314,9 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                             </div>
                             {banveRows.map((bv, idx) => {
                               const active = selectedBvId === bv.id;
+                              const defaultTitle = isAi
+                                ? `Bản vẽ AI #${idx + 1}`
+                                : `Bản vẽ dao #${idx + 1}`;
                               return (
                                 <Card
                                   key={bv.id}
@@ -1334,9 +1340,9 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     <div className="flex-1 min-w-0">
                                       <p
                                         className="text-xs font-semibold truncate text-text"
-                                        title={bv.seq2 || `Bản vẽ dao #${idx + 1}`}
+                                        title={bv.seq2 || defaultTitle}
                                       >
-                                        {bv.seq2 || `Bản vẽ dao #${idx + 1}`}
+                                        {bv.seq2 || defaultTitle}
                                       </p>
                                       <p className="text-[9px] text-muted truncate mt-0.5">
                                         {bv.seq1 || ""}
@@ -1409,7 +1415,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                 <I.Upload size={11} className="text-muted" />
                               )}
                               <span className="text-[11px] text-muted font-medium">
-                                {isUploading ? "Đang tải lên…" : `Tải lên bản vẽ dao mới`}
+                                {isUploading ? "Đang tải lên…" : uploadLabel}
                               </span>
                               <span className="text-[9px] text-muted/40">(PDF, DWG, AI...)</span>
                               <input
