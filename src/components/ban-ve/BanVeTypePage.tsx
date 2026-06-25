@@ -10,7 +10,70 @@ import {
   SplitPane,
 } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
-import { GoVanGrid, type GoVanRow, NguKimGrid, type NguKimRow } from "@/routes/ban-ve";
+import { fmtNum, GoVanGrid, type GoVanRow, NguKimGrid, type NguKimRow } from "@/routes/ban-ve";
+
+interface DongGoiRow {
+  stt: unknown;
+  ccode: unknown;
+  chitiet: unknown;
+  quycach: unknown;
+  soluong: unknown;
+  dvt: unknown;
+  ghichu: unknown;
+  nhom: unknown;
+}
+
+export function DongGoiGrid({
+  rows,
+  masp,
+  mausac,
+}: {
+  rows: DongGoiRow[];
+  masp: string;
+  mausac: string | null;
+}) {
+  if (rows.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có định mức đóng gói.</div>;
+  return (
+    <div className="overflow-x-auto pt-1">
+      <table className="w-full text-xs border-collapse border border-border">
+        <thead className="text-muted bg-panel-2">
+          <tr>
+            <th className="p-2 border border-border text-left font-medium">Mã sản phẩm</th>
+            <th className="p-2 border border-border text-left font-medium">Mã chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Mô tả</th>
+            <th className="p-2 border border-border text-left font-medium">Quy cách</th>
+            <th className="p-2 border border-border text-left font-medium">Màu sắc</th>
+            <th className="p-2 border border-border text-right font-medium">Số lượng</th>
+            <th className="p-2 border border-border text-center font-medium">ĐVT</th>
+            <th className="p-2 border border-border text-left font-medium">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+            <tr key={i} className="hover:bg-hover/20">
+              <td className="p-2 border border-border/60 whitespace-nowrap text-left">{masp}</td>
+              <td className="p-2 border border-border/60 whitespace-nowrap text-left">
+                {String(r.ccode ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.chitiet ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{String(r.quycach ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{mausac ?? ""}</td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtNum(r.soluong)}
+              </td>
+              <td className="p-2 border border-border/60 text-center whitespace-nowrap">
+                {String(r.dvt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 interface SpRow {
   masp: string;
@@ -290,10 +353,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [maspAutoOpen, setMaspAutoOpen] = useState(false);
 
   // Tab & BOM states
-  const [tab, setTab] = useState<"banve" | "govan" | "ngukim">("banve");
+  const [tab, setTab] = useState<"banve" | "govan" | "ngukim" | "donggoi">("banve");
   const [govan, setGovan] = useState<GoVanRow[]>([]);
   const [ngukim, setNgukim] = useState<NguKimRow[]>([]);
+  const [donggoi, setDonggoi] = useState<DongGoiRow[]>([]);
+  const [donggoiMausac, setDonggoiMausac] = useState<string | null>(null);
   const [loadingBoms, setLoadingBoms] = useState(false);
+  const [loadingDongGoi, setLoadingDongGoi] = useState(false);
 
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
 
@@ -315,6 +381,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     setSelectedBvId(null);
     setGovan([]);
     setNgukim([]);
+    setDonggoi([]);
+    setDonggoiMausac(null);
     setTab("banve");
     setMaspAutoOpen(false);
     try {
@@ -363,6 +431,25 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       console.error("Error loading BOMs", e);
     } finally {
       setLoadingBoms(false);
+    }
+  }, []);
+
+  const loadDongGoi = useCallback(async (masp: string) => {
+    if (!masp) return;
+    setLoadingDongGoi(true);
+    try {
+      const res = await fetch(`/banvesvc/donggoi-chitiet?masp=${encodeURIComponent(masp)}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const p = (await res.json()) as { masp: string; mausac: string | null; rows: DongGoiRow[] };
+        setDonggoi(p.rows ?? []);
+        setDonggoiMausac(p.mausac ?? null);
+      }
+    } catch (e) {
+      console.error("Error loading Dong Goi details", e);
+    } finally {
+      setLoadingDongGoi(false);
     }
   }, []);
 
@@ -483,6 +570,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                   setSpInfo(null);
                   setBanveRows([]);
                   setSelectedBvId(null);
+                  setDonggoi([]);
+                  setDonggoiMausac(null);
                   setMaspAutoOpen(false);
                 }
               }}
@@ -510,7 +599,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 setTab("banve");
                 if (v) {
                   void loadBanve(v);
-                  void loadBoms(v);
+                  if (phanloai === "Bản vẽ đóng gói") {
+                    void loadDongGoi(v);
+                  } else {
+                    void loadBoms(v);
+                  }
                 }
               }}
               options={productOpts}
@@ -564,28 +657,44 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             >
               Bản vẽ
             </button>
-            <button
-              type="button"
-              onClick={() => setTab("govan")}
-              className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                tab === "govan"
-                  ? "border-accent text-accent font-semibold"
-                  : "border-transparent text-muted"
-              }`}
-            >
-              Gỗ ván
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("ngukim")}
-              className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                tab === "ngukim"
-                  ? "border-accent text-accent font-semibold"
-                  : "border-transparent text-muted"
-              }`}
-            >
-              Ngũ kim
-            </button>
+            {phanloai === "Bản vẽ đóng gói" ? (
+              <button
+                type="button"
+                onClick={() => setTab("donggoi")}
+                className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+                  tab === "donggoi"
+                    ? "border-accent text-accent font-semibold"
+                    : "border-transparent text-muted"
+                }`}
+              >
+                Đóng gói
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setTab("govan")}
+                  className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+                    tab === "govan"
+                      ? "border-accent text-accent font-semibold"
+                      : "border-transparent text-muted"
+                  }`}
+                >
+                  Gỗ ván
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("ngukim")}
+                  className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+                    tab === "ngukim"
+                      ? "border-accent text-accent font-semibold"
+                      : "border-transparent text-muted"
+                  }`}
+                >
+                  Ngũ kim
+                </button>
+              </>
+            )}
           </div>
 
           {tab === "banve" && (
@@ -710,7 +819,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             </>
           )}
 
-          {tab === "govan" && (
+          {tab === "govan" && phanloai !== "Bản vẽ đóng gói" && (
             <>
               <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
                 <I.FileText size={13} className="text-accent" />
@@ -728,7 +837,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             </>
           )}
 
-          {tab === "ngukim" && (
+          {tab === "ngukim" && phanloai !== "Bản vẽ đóng gói" && (
             <>
               <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
                 <I.FileText size={13} className="text-accent" />
@@ -742,6 +851,26 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               </div>
               <div className="flex-1 overflow-auto p-3">
                 <NguKimGrid rows={ngukim} />
+              </div>
+            </>
+          )}
+
+          {tab === "donggoi" && phanloai === "Bản vẽ đóng gói" && (
+            <>
+              <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
+                <I.FileText size={13} className="text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wide">
+                  Định mức đóng gói
+                </span>
+                <Chip variant="accent" className="text-[10px]">
+                  {donggoi.length}
+                </Chip>
+                {loadingDongGoi && (
+                  <I.Loader size={11} className="animate-spin text-muted shrink-0" />
+                )}
+              </div>
+              <div className="flex-1 overflow-auto p-3">
+                <DongGoiGrid rows={donggoi} masp={selectedMasp} mausac={donggoiMausac} />
               </div>
             </>
           )}
