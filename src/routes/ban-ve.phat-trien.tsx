@@ -4,18 +4,9 @@ import { ConsumerPage } from "@/components/renderer/ConsumerPage";
 import { useNavTree } from "@/hooks/useNavTree";
 import { useUserObjects } from "@/stores/userObjects";
 
-function matchesPage(p: { name?: string; techName?: string }) {
-  const tech = (p.techName || "").toLowerCase();
-  const label = (p.name || "").toLowerCase();
-  return (
-    tech.includes("ban_ve_phat_trien") || (label.includes("bản vẽ") && label.includes("phát triển"))
-  );
-}
-
 function BanVePhatTrienRoute() {
   const { page: urlPage } = Route.useSearch();
   const { data: navNodes } = useNavTree();
-  const pages = useUserObjects((s) => s.pages);
   const pageContent = useUserObjects((s) => s.pageContent);
 
   // 1. Ưu tiên 1: Đọc pageId trực tiếp từ URL query param ?page=xxx
@@ -25,14 +16,6 @@ function BanVePhatTrienRoute() {
   if (!activePageId) {
     const menuNode = navNodes?.find((n) => n.code === "bbiBanVePhatTrien");
     activePageId = menuNode?.pageId ?? undefined;
-  }
-
-  // 3. Ưu tiên 3: Nếu chưa liên kết trong menu, tìm trang khớp thông minh
-  if (!activePageId) {
-    const fallbackPage = pages.find(matchesPage);
-    if (fallbackPage) {
-      activePageId = fallbackPage.id ?? undefined;
-    }
   }
 
   // Kiểm tra trang có components thiết kế thực tế không (nếu là trang rỗng thì hiển thị fallback bản vẽ mặc định)
