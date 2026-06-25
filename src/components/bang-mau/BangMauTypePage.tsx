@@ -70,7 +70,11 @@ export function BangMauTypePage() {
 
   const lookupInputRef = useRef<HTMLInputElement>(null);
   const lookupAnchorRef = useRef<HTMLDivElement>(null);
-  const [lookupPos, setLookupPos] = useState<{ top: number; left: number } | null>(null);
+  const [lookupPos, setLookupPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  } | null>(null);
 
   // Recalculate position dynamically whenever index or grid row layout changes (adding row, etc.)
   useLayoutEffect(() => {
@@ -81,6 +85,7 @@ export function BangMauTypePage() {
 
     let active = true;
     let lastRect: DOMRect | null = null;
+    let lastPositionAbove = false;
 
     const update = () => {
       if (!active) return;
@@ -90,15 +95,34 @@ export function BangMauTypePage() {
         return;
       }
       const r = el.getBoundingClientRect();
+
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      const popupHeight = 310; // estimated max height of search popup
+
+      const positionAbove = spaceBelow < popupHeight && spaceAbove > spaceBelow;
+
+      const nextPos = positionAbove
+        ? {
+            bottom: window.innerHeight - r.top + 4,
+            left: r.left,
+          }
+        : {
+            top: r.bottom + 4,
+            left: r.left,
+          };
+
       if (
         !lastRect ||
         r.top !== lastRect.top ||
         r.left !== lastRect.left ||
         r.width !== lastRect.width ||
-        r.height !== lastRect.height
+        r.height !== lastRect.height ||
+        positionAbove !== lastPositionAbove
       ) {
         lastRect = r;
-        setLookupPos({ top: r.bottom + 4, left: r.left });
+        lastPositionAbove = positionAbove;
+        setLookupPos(nextPos);
       }
       requestAnimationFrame(update);
     };
@@ -1033,7 +1057,9 @@ export function BangMauTypePage() {
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
                                   position: "fixed",
-                                  top: lookupPos.top,
+                                  ...(lookupPos.top !== undefined
+                                    ? { top: lookupPos.top }
+                                    : { bottom: lookupPos.bottom }),
                                   left: lookupPos.left,
                                   width: "540px",
                                 }}
