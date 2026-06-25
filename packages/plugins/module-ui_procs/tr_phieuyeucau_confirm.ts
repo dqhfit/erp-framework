@@ -53,13 +53,14 @@ export async function trPhieuyeucauConfirm(
   db: DB,
   companyId: string,
   args: {
-    id: string;
+    id?: string;
+    _id?: string;
     type: number;
     nguoiduyet: string;
     ngayduyet: string;
   },
 ): Promise<Array<{ updated: number }>> {
-  if (!args.id) throw new Error("Thiếu id");
+  if (!args.id && !args._id) throw new Error("Thiếu id");
   if (args.type == null) throw new Error("Thiếu type");
   if (!args.nguoiduyet) throw new Error("Thiếu nguoiduyet");
   if (!args.ngayduyet) throw new Error("Thiếu ngayduyet");
@@ -77,7 +78,9 @@ export async function trPhieuyeucauConfirm(
   if (rule && isTruthyBool(rule.allowadd)) type = 2;
 
   const t = await procTable(db, companyId, "tr_phieuyeucau");
-  const where = sql`${t.text("id")} = ${args.id}`;
+  // Nếu có _id (uuid vật lý từ rowAction) → match cột id vật lý;
+  // ngược lại fallback theo business key text "id" (GUID nguồn).
+  const where = args._id ? sql`id = ${args._id}::uuid` : sql`${t.text("id")} = ${args.id}`;
 
   // Đọc phiếu (loaidexuat + nguoitao + ngaytao cho nhánh XENANG)
   const [phieu] = await t.listWhere(where, { limit: 1 });
