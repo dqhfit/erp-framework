@@ -59,6 +59,34 @@ import { bootstrapTools, shutdownTools } from "./tools";
 
 const PORT = Number(process.env.PORT ?? 8910);
 const HOST = process.env.HOST ?? "127.0.0.1";
+
+/** Cờ sẵn sàng (readiness) — bật sau khi server đã listen (migrations đã chạy
+ *  TRƯỚC listen nên xong). Endpoint /ready đọc cờ này + ping DB sống. Khác
+ *  /health (luôn 200, chỉ báo tiến trình còn sống). */
+let appReady = false;
+
+/** Giới hạn body JSON (chống payload lớn làm cạn RAM). Route /upload dùng
+ *  @fastify/multipart với giới hạn riêng (25MB) nên không bị cờ này chặn. */
+const BODY_LIMIT = Number(process.env.BODY_LIMIT ?? 16 * 1024 * 1024);
+
+/** Fail-fast lúc boot khi thiếu ENV bắt buộc — gom hết rồi báo MỘT lần (DX tốt
+ *  hơn fail rải rác lúc dùng). Mirror pattern fail-fast của crypto.ts
+ *  (ENCRYPTION_KEY). ENCRYPTION_KEY tự kiểm ở crypto.ts; CORS_ORIGIN ở phần
+ *  CORS dưới — ở đây kiểm sớm để không boot nửa vời. */
+function assertRequiredEnv(): void {
+  const missing: string[] = [];
+  if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.CORS_ORIGIN) missing.push("CORS_ORIGIN (production)");
+    if (!process.env.ENCRYPTION_KEY) missing.push("ENCRYPTION_KEY (production)");
+  }
+  if (missing.length) {
+    throw new Error(
+      `Thiếu biến môi trường bắt buộc: ${missing.join(", ")}. ` +
+        "Khai báo trong .env hoặc cấu hình deploy trước khi khởi động.",
+    );
+  }
+}
 /** Thư mục lưu file tải lên Knowledge Base (volume Docker erp-uploads). */
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/data/uploads";
 
@@ -188,6 +216,9 @@ async function main(): Promise<void> {
   // app đứng lên với DB sai schema sẽ gây lỗi runtime khó debug hơn.
   // Hoạt động cho mọi deploy (Docker, k8s, PM2, native), không phụ
   // thuộc shell command bên ngoài.
+  // Fail-fast: thiếu ENV bắt buộc → dừng ngay với message rõ, không boot nửa vời.
+  assertRequiredEnv();
+
   console.log("[migrate] chạy migrations...");
   try {
     await runMigrations(db);
@@ -229,6 +260,7 @@ async function main(): Promise<void> {
     logger: true,
     maxParamLength: 5000,
     trustProxy: true,
+    bodyLimit: BODY_LIMIT,
   });
 
   // CORS — cho frontend (origin khác) gọi kèm cookie phiên.
@@ -342,6 +374,19 @@ async function main(): Promise<void> {
     endpoints: { health: "/health", trpc: "/trpc", iot: "/iot/v1", ws: "/ws" },
   }));
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
+
+  /* Readiness probe — KHÁC /health (liveness). Trả 200 chỉ khi server đã boot
+     xong (migrations đã chạy trước listen) VÀ DB còn ping được. Lúc đang boot
+     hoặc DB rớt → 503 để load balancer/Coolify KHÔNG route traffic vào. */
+  app.get("/ready", async (_req, reply) => {
+    if (!appReady) return reply.code(503).send({ ready: false, reason: "starting" });
+    try {
+      await db.execute(sql`select 1`);
+    } catch {
+      return reply.code(503).send({ ready: false, reason: "db" });
+    }
+    return { ready: true, ts: Date.now() };
+  });
 
   /* WebSocket endpoint — realtime push. Client connect kèm cookie phiên;
      server xác thực user qua sessions table, register vào ws-hub. Client
@@ -1422,6 +1467,7 @@ async function main(): Promise<void> {
   });
 
   await app.listen({ host: HOST, port: PORT });
+  appReady = true; // server đã listen + migrations xong → readiness OK.
   console.log(`ERP Framework server → http://${HOST}:${PORT}`);
 
   // Scheduler — KHÔNG chặn boot nếu DB chưa sẵn sàng.

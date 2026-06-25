@@ -11,6 +11,10 @@ export default defineConfig({
   // loại khỏi vitest để không bị gom nhầm.
   test: {
     exclude: [...configDefaults.exclude, "e2e/**", ".claude/**"],
+    // Coverage (v8) instrument + cold-start transform monorepo làm test đầu mỗi
+    // worker chậm hơn nhiều → nới timeout để coverage gate không flake (5s mặc
+    // định quá ngắn; vd procedure-runner.test.ts timeout dưới coverage).
+    testTimeout: 20000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

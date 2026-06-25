@@ -37,6 +37,17 @@ jobs:
       # click-to-close, drag handle, custom controls). Hard-enforce từ giờ.
       - name: Lint (Biome, hard-fail)
         run: pnpm lint
+      # Quét lỗ hổng dependency. Giai đoạn đầu CẢNH BÁO (continue-on-error) để
+      # không chặn merge đột ngột; nâng thành hard-fail sau khi dọn sạch backlog.
+      - name: Audit dependency (pnpm audit, cảnh báo)
+        continue-on-error: true
+        run: pnpm audit --audit-level high
+      # Coverage gate — chạy vitest --coverage để threshold trong vite.config.ts
+      # (ratchet) được ENFORCE. Tách khỏi "Test" (pnpm -r test) vì bước đó chạy
+      # per-package (tôn trọng config riêng, vd mssql-client). Bước này đo coverage
+      # tổng theo root config → CI ĐỎ nếu coverage tụt dưới ngưỡng.
+      - name: Coverage gate (vitest --coverage, hard-fail)
+        run: pnpm test:coverage
 
   migration:
     runs-on: ubuntu-latest
