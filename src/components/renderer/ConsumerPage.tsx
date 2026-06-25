@@ -45,6 +45,7 @@ import {
   withEmbeddedActions,
 } from "@/components/renderer/widgets/layout-widgets";
 import { ListWidget, ServerPagedListWidget } from "@/components/renderer/widgets/list-widgets";
+import { ReportWidget } from "@/components/renderer/widgets/report-widget";
 import {
   CalendarWidget,
   ChartWidget,
@@ -243,6 +244,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "calendar") return <CalendarWidget cfg={cfg} />;
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
+  if (comp.kind === "report") return <ReportWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
   if (comp.kind === "banve-type") {
     return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;

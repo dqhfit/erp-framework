@@ -1,0 +1,137 @@
+{
+  "_note": "Phase 3 (port-form-giaidoan2) — config trang dùng widget 'report' (nguồn read-proc Tier D). ĐẨY LÊN PROD SAU KHI Coolify redeploy (code widget + proc đã lên). Đẩy bằng page_create_draft (MCP migration) theo id, overwrite:true. Thứ tự BẮT BUỘC: redeploy code → đẩy config (CLAUDE.md 11.2).",
+  "pages": [
+    {
+      "id": "fd09fa9b-2d4a-480d-8622-80da07949567",
+      "name": "thong_ke_nhap_xuat_vat_tu_b7f3c1",
+      "label": "Thống kê nhập - xuất vật tư",
+      "menuNode": "I1295?",
+      "proc": "materialInout",
+      "content": [
+        {
+          "id": "w_report",
+          "kind": "report",
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 11,
+          "config": {
+            "title": "Thống kê nhập - xuất vật tư",
+            "procName": "materialInout",
+            "autoLoad": true,
+            "pageSize": 50,
+            "emptyText": "Không có phát sinh nhập/xuất trong kỳ.",
+            "filters": [
+              {
+                "key": "makho",
+                "label": "Kho",
+                "type": "select",
+                "default": "NKI",
+                "required": true,
+                "reloadOnChange": true,
+                "width": 160,
+                "options": [
+                  { "value": "NKI", "label": "Kho Ngũ Kim" },
+                  { "value": "GVA", "label": "Kho Gỗ Ván" },
+                  { "value": "DGO", "label": "Kho Bao Bì" },
+                  { "value": "SON", "label": "Kho Hóa Chất" },
+                  { "value": "HTR", "label": "Kho Hàng Trắng" },
+                  { "value": "VPH", "label": "Kho Văn Phòng Phẩm" },
+                  { "value": "GWHS", "label": "Kho Thành Phẩm" }
+                ]
+              },
+              { "key": "tungay", "label": "Từ ngày", "type": "date", "default": "$firstOfMonth", "required": true, "width": 150 },
+              { "key": "denngay", "label": "Đến ngày", "type": "date", "default": "$lastOfMonth", "required": true, "width": 150 }
+            ],
+            "columns": [
+              { "field": "sophieu", "label": "Số phiếu", "width": 120 },
+              { "field": "trangthai", "label": "Trạng thái", "width": 90 },
+              { "field": "mact", "label": "Mã vật tư", "width": 110 },
+              { "field": "mota", "label": "Mô tả", "width": 200 },
+              { "field": "quycach", "label": "Quy cách", "width": 120 },
+              { "field": "mausac", "label": "Màu sắc", "width": 90 },
+              { "field": "dvt", "label": "ĐVT", "width": 60 },
+              { "field": "soluong", "label": "Số lượng", "type": "number", "decimals": 2, "summary": "sum", "width": 100 },
+              { "field": "dongia", "label": "Đơn giá", "type": "number", "decimals": 0, "width": 110 },
+              { "field": "donhang", "label": "Đơn hàng", "width": 120 },
+              { "field": "bengiao", "label": "Bên giao / nhận", "width": 160 },
+              { "field": "ngaythang", "label": "Ngày", "type": "date", "width": 100 },
+              { "field": "ngayphieu", "label": "Ngày phiếu", "type": "date", "width": 100 },
+              { "field": "reftypename", "label": "Loại tham chiếu", "width": 130 },
+              { "field": "ghichu", "label": "Ghi chú", "width": 160 }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "7e8cb0b3-982e-4bea-8f9c-d03eb4889a5d",
+      "name": "tong_hop_chi_tiet_inv137_d401c6",
+      "label": "Tổng hợp chi tiết",
+      "proc": "dqtTonghopChitiet",
+      "content": [
+        {
+          "id": "w_report",
+          "kind": "report",
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 11,
+          "config": {
+            "title": "Tổng hợp chi tiết (theo đơn hàng)",
+            "procName": "dqtTonghopChitiet",
+            "autoLoad": false,
+            "pageSize": 50,
+            "emptyText": "Nhập (các) mã đơn hàng rồi bấm Xem.",
+            "filters": [
+              {
+                "key": "maddh",
+                "label": "Đơn đặt hàng (cách nhau dấu phẩy)",
+                "type": "text",
+                "required": true,
+                "width": 320
+              },
+              {
+                "key": "mode",
+                "label": "Cách tổng hợp",
+                "type": "select",
+                "default": "0",
+                "reloadOnChange": true,
+                "width": 170,
+                "options": [
+                  { "value": "0", "label": "Theo chi tiết" },
+                  { "value": "1", "label": "Theo sản phẩm" },
+                  { "value": "2", "label": "Chi tiết đầy đủ" }
+                ]
+              }
+            ],
+            "columns": [
+              { "field": "maddh", "label": "Đơn hàng", "width": 130 },
+              { "field": "tensp", "label": "Tên SP", "width": 180 },
+              { "field": "mahtr", "label": "Mã hàng trắng", "width": 120 },
+              { "field": "chitiet", "label": "Chi tiết", "width": 120 },
+              { "field": "nguyenlieu", "label": "Nguyên liệu", "width": 120 },
+              { "field": "chitiet_ghep2", "label": "Loại CT", "width": 130 },
+              { "field": "dayy_tc", "label": "Dày", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "rong_tc", "label": "Rộng", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "dai_tc", "label": "Dài", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "dayy_sc", "label": "Dày SC", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "rong_sc", "label": "Rộng SC", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "dai_sc", "label": "Dài SC", "type": "number", "decimals": 1, "width": 70 },
+              { "field": "soluong_tc", "label": "ĐM/SP", "type": "number", "decimals": 0, "width": 70 },
+              { "field": "soluong", "label": "Số lượng", "type": "number", "decimals": 0, "summary": "sum", "width": 90 },
+              { "field": "m3_tc", "label": "Khối (m³)", "type": "number", "decimals": 4, "summary": "sum", "width": 100 },
+              { "field": "mc", "label": "Mặt chính", "width": 100 },
+              { "field": "mp", "label": "Mặt phụ", "width": 100 },
+              { "field": "dc", "label": "Dán cạnh", "width": 100 },
+              { "field": "tilehaohut", "label": "Tỉ lệ hao hụt", "type": "number", "decimals": 2, "width": 100 },
+              { "field": "congdaiphoi", "label": "Cộng dài phôi", "type": "number", "decimals": 0, "width": 100 },
+              { "field": "loaichitiet", "label": "Loại (N/T/D)", "width": 90 },
+              { "field": "ghichu", "label": "Ghi chú", "width": 150 }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
