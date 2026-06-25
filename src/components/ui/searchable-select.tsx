@@ -86,6 +86,11 @@ export function SearchableSelect({
         .join(" ")}`.trim()
     : undefined;
   const [open, setOpen] = useState(!!autoOpen);
+  useEffect(() => {
+    if (autoOpen) {
+      setOpen(true);
+    }
+  }, [autoOpen]);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   // Báo caller khi dropdown đóng (true→false) — ô lưới thoát chế độ sửa.

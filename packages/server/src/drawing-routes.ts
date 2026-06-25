@@ -958,6 +958,34 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ id: row?.id ?? null, ok: true });
   });
 
+  // ── Cập nhật file bản vẽ (đổi filepath, tên file, định dạng) ──
+  app.post("/banvesvc/banve-update", async (req, reply) => {
+    const auth = await authView(db, req, reply);
+    if (!auth) return;
+    const body = (req.body ?? {}) as {
+      id?: string;
+      filepath?: string;
+      seq1?: string;
+      seq2?: string;
+    };
+    const { id, filepath, seq1, seq2 } = body;
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id) || !filepath) {
+      return reply.code(400).send({ error: "Thiếu hoặc sai ID hoặc filepath" });
+    }
+    if (seq1 !== undefined && seq2 !== undefined) {
+      await db.execute(
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_seq1 = ${seq1}, f_seq2 = ${seq2}, updated_at = now()
+            WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
+      );
+    } else {
+      await db.execute(
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, updated_at = now()
+            WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
+      );
+    }
+    return reply.send({ ok: true });
+  });
+
   // ── Xóa mềm 1 bản vẽ ──
   app.delete("/banvesvc/banve-delete", async (req, reply) => {
     const auth = await authView(db, req, reply);

@@ -295,6 +295,8 @@ export interface WizardStepDef {
   saveOutputTo?: string;
   /** Nút hành động tuỳ chỉnh hiển thị trong bước này. */
   actions?: Array<{ id: string } & ActionConfig>;
+  /** Nút hành động gắn sát từng field trong form, ví dụ nút + để thêm nhanh danh mục lookup. */
+  fieldActions?: Record<string, Array<{ id: string } & ActionConfig>>;
   /** Nhóm field có tiêu đề — thay thế `fields` khi cần chia form thành các
    *  block có header (vd "Thông tin ngân hàng", "Thông tin tài khoản").
    *  Khi có `sections`, bỏ qua `fields` (lấy danh sách từ sections). */

@@ -121,32 +121,47 @@
            "customer": {
             "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
             "valueField": "customer_id",
-            "labelFields": ["customer_id", "customer_name"]
+            "labelFields": [
+             "customer_id",
+             "customer_name"
+            ]
            },
            "hehang": {
             "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
             "valueField": "tenhh",
-           "labelFields": ["tenhh"]
-          },
+            "labelFields": [
+             "tenhh"
+            ]
+           },
            "mausac": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "dvt": {
             "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
             "valueField": "don_vi_tinh",
-            "labelFields": ["don_vi_tinh"]
+            "labelFields": [
+             "don_vi_tinh"
+            ]
            },
            "loaisp": {
             "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
             "valueField": "maloaisp",
-            "labelFields": ["tenloaisp"]
+            "labelFields": [
+             "tenloaisp"
+            ]
            },
            "mauuv": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"],
+            "labelFields": [
+             "code",
+             "name"
+            ],
             "autofill": {
              "tenuv": "name"
             }
@@ -154,12 +169,18 @@
            "mautrong": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "masp_nhamay": {
             "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
             "valueField": "masp_nhamay",
-            "labelFields": ["masp_nhamay", "tensp"]
+            "labelFields": [
+             "masp_nhamay",
+             "tensp"
+            ]
            }
           },
           "actions": [
@@ -175,66 +196,294 @@
              }
             ]
            }
-          ]
+          ],
+          "fieldActions": {
+           "customer": [
+            {
+             "id": "act_add_customer_inline",
+             "label": "Th?m kh?ch h?ng",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh kh?ch h?ng",
+             "steps": [
+              {
+               "id": "open_add_customer",
+               "kind": "open-wizard",
+               "title": "Th?m kh?ch h?ng",
+               "submitLabel": "L?u",
+               "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+               "steps": [
+                {
+                 "id": "customer_info",
+                 "title": "Th?ng tin kh?ch h?ng",
+                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                 "cols": 2,
+                 "fields": [
+                  "customer_id",
+                  "customer_name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "hehang": [
+            {
+             "id": "act_add_hehang_inline",
+             "label": "Th?m h? h?ng",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh h? h?ng",
+             "steps": [
+              {
+               "id": "open_add_hehang",
+               "kind": "open-wizard",
+               "title": "Th?m h? h?ng",
+               "submitLabel": "L?u",
+               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+               "steps": [
+                {
+                 "id": "hehang_info",
+                 "title": "Th?ng tin h? h?ng",
+                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                 "cols": 1,
+                 "fields": [
+                  "tenhh"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mausac": [
+            {
+             "id": "act_add_mausac_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "dvt": [
+            {
+             "id": "act_add_dvt_inline",
+             "label": "Th?m ??n v? t?nh",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh ??n v? t?nh",
+             "steps": [
+              {
+               "id": "open_add_dvt",
+               "kind": "open-wizard",
+               "title": "Th?m ??n v? t?nh",
+               "submitLabel": "L?u",
+               "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+               "steps": [
+                {
+                 "id": "dvt_info",
+                 "title": "Th?ng tin ??n v? t?nh",
+                 "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+                 "cols": 1,
+                 "fields": [
+                  "don_vi_tinh"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "loaisp": [
+            {
+             "id": "act_add_loaisp_inline",
+             "label": "Th?m lo?i s?n ph?m",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh lo?i s?n ph?m",
+             "steps": [
+              {
+               "id": "open_add_loaisp",
+               "kind": "open-wizard",
+               "title": "Th?m lo?i s?n ph?m",
+               "submitLabel": "L?u",
+               "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+               "steps": [
+                {
+                 "id": "loaisp_info",
+                 "title": "Th?ng tin lo?i s?n ph?m",
+                 "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+                 "cols": 2,
+                 "fields": [
+                  "maloaisp",
+                  "tenloaisp"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mauuv": [
+            {
+             "id": "act_add_mauuv_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u UV",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mautrong": [
+            {
+             "id": "act_add_mautrong_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u trong",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
          },
-          {
+         {
           "id": "step_physical",
-           "title": "Thông số vật lý",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Thông tin sản phẩm",
-             "fields": [
-              "bemat_sanpham",
-              "ketcau",
-              "g_weight",
-              "n_weight"
-             ]
-            }
-           ],
-           "fieldOverrides": {
-            "bemat_sanpham": {
-             "type": "select",
-             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-            },
-            "ketcau": {
-             "type": "select",
-             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
-            }
+          "title": "Thông số vật lý",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Thông tin sản phẩm",
+            "fields": [
+             "bemat_sanpham",
+             "ketcau",
+             "g_weight",
+             "n_weight"
+            ]
            }
-          },
-          {
-           "id": "step_pricing",
-           "title": "Định giá & Hình ảnh",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Giá mộc (chưa sơn)",
-             "fields": [
-              "dongia_moc",
-              "dongia_si_moc",
-              "dongia_le_moc"
-             ]
-            },
-            {
-             "title": "Giá thành phẩm (đã sơn)",
-             "fields": [
-              "dongia",
-              "dongia_si",
-              "dongia_le"
-             ]
-            }
-           ],
-           "relatedImage": {
-            "entityName": "tr_hinhanh",
-            "linkField": "masp",
-            "parentField": "masp",
-            "imageField": "hinhanh",
-            "label": "Hình ảnh"
+          ],
+          "fieldOverrides": {
+           "bemat_sanpham": {
+            "type": "select",
+            "options": [
+             "Bắn cát",
+             "Cào cước",
+             "Cào cước/ Ép lồi lõm",
+             "Cào cước/ Giả cổ",
+             "Cào cước/ Trơn láng",
+             "Da",
+             "Ép Cước",
+             "Ép lồi lõm",
+             "Giả cổ",
+             "Trơn láng",
+             "Trơn láng/ Bắn cát",
+             "Trơn láng/ Da",
+             "Trơn láng/ Giả cổ"
+            ]
+           },
+           "ketcau": {
+            "type": "select",
+            "options": [
+             "Ráp chết",
+             "Semi KD",
+             "Tháo rời"
+            ]
            }
           }
+         },
+         {
+          "id": "step_pricing",
+          "title": "Định giá & Hình ảnh",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Giá mộc (chưa sơn)",
+            "fields": [
+             "dongia_moc",
+             "dongia_si_moc",
+             "dongia_le_moc"
+            ]
+           },
+           {
+            "title": "Giá thành phẩm (đã sơn)",
+            "fields": [
+             "dongia",
+             "dongia_si",
+             "dongia_le"
+            ]
+           }
+          ],
+          "relatedImage": {
+           "entityName": "tr_hinhanh",
+           "linkField": "masp",
+           "parentField": "masp",
+           "imageField": "hinhanh",
+           "label": "Hình ảnh"
+          }
+         }
         ]
        }
       ]
@@ -287,32 +536,47 @@
            "customer": {
             "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
             "valueField": "customer_id",
-            "labelFields": ["customer_id", "customer_name"]
+            "labelFields": [
+             "customer_id",
+             "customer_name"
+            ]
            },
            "hehang": {
             "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
             "valueField": "tenhh",
-           "labelFields": ["tenhh"]
-          },
+            "labelFields": [
+             "tenhh"
+            ]
+           },
            "mausac": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "dvt": {
             "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
             "valueField": "don_vi_tinh",
-            "labelFields": ["don_vi_tinh"]
+            "labelFields": [
+             "don_vi_tinh"
+            ]
            },
            "loaisp": {
             "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
             "valueField": "maloaisp",
-            "labelFields": ["tenloaisp"]
+            "labelFields": [
+             "tenloaisp"
+            ]
            },
            "mauuv": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"],
+            "labelFields": [
+             "code",
+             "name"
+            ],
             "autofill": {
              "tenuv": "name"
             }
@@ -320,12 +584,18 @@
            "mautrong": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "masp_nhamay": {
             "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
             "valueField": "masp_nhamay",
-            "labelFields": ["masp_nhamay", "tensp"]
+            "labelFields": [
+             "masp_nhamay",
+             "tensp"
+            ]
            }
           },
           "actions": [
@@ -340,67 +610,295 @@
               "name": "TR_SANPHAM_COMMON_INSERT"
              }
             ]
+           }
+          ],
+          "fieldActions": {
+           "customer": [
+            {
+             "id": "act_add_customer_inline",
+             "label": "Th?m kh?ch h?ng",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh kh?ch h?ng",
+             "steps": [
+              {
+               "id": "open_add_customer",
+               "kind": "open-wizard",
+               "title": "Th?m kh?ch h?ng",
+               "submitLabel": "L?u",
+               "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+               "steps": [
+                {
+                 "id": "customer_info",
+                 "title": "Th?ng tin kh?ch h?ng",
+                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                 "cols": 2,
+                 "fields": [
+                  "customer_id",
+                  "customer_name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "hehang": [
+            {
+             "id": "act_add_hehang_inline",
+             "label": "Th?m h? h?ng",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh h? h?ng",
+             "steps": [
+              {
+               "id": "open_add_hehang",
+               "kind": "open-wizard",
+               "title": "Th?m h? h?ng",
+               "submitLabel": "L?u",
+               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+               "steps": [
+                {
+                 "id": "hehang_info",
+                 "title": "Th?ng tin h? h?ng",
+                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                 "cols": 1,
+                 "fields": [
+                  "tenhh"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mausac": [
+            {
+             "id": "act_add_mausac_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "dvt": [
+            {
+             "id": "act_add_dvt_inline",
+             "label": "Th?m ??n v? t?nh",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh ??n v? t?nh",
+             "steps": [
+              {
+               "id": "open_add_dvt",
+               "kind": "open-wizard",
+               "title": "Th?m ??n v? t?nh",
+               "submitLabel": "L?u",
+               "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+               "steps": [
+                {
+                 "id": "dvt_info",
+                 "title": "Th?ng tin ??n v? t?nh",
+                 "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+                 "cols": 1,
+                 "fields": [
+                  "don_vi_tinh"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "loaisp": [
+            {
+             "id": "act_add_loaisp_inline",
+             "label": "Th?m lo?i s?n ph?m",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh lo?i s?n ph?m",
+             "steps": [
+              {
+               "id": "open_add_loaisp",
+               "kind": "open-wizard",
+               "title": "Th?m lo?i s?n ph?m",
+               "submitLabel": "L?u",
+               "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+               "steps": [
+                {
+                 "id": "loaisp_info",
+                 "title": "Th?ng tin lo?i s?n ph?m",
+                 "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+                 "cols": 2,
+                 "fields": [
+                  "maloaisp",
+                  "tenloaisp"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mauuv": [
+            {
+             "id": "act_add_mauuv_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u UV",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mautrong": [
+            {
+             "id": "act_add_mautrong_inline",
+             "label": "Th?m m?u",
+             "icon": "Plus",
+             "variant": "ghost",
+             "hint": "Th?m nhanh m?u trong",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Th?m m?u",
+               "submitLabel": "L?u",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "title": "Th?ng tin m?u",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "cols": 2,
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
             }
            ]
-          },
-          {
-           "id": "step_physical",
-           "title": "Thông số vật lý",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Thông tin sản phẩm",
-             "fields": [
-              "bemat_sanpham",
-              "ketcau",
-              "g_weight",
-              "n_weight"
-             ]
-            }
-           ],
-           "fieldOverrides": {
-            "bemat_sanpham": {
-             "type": "select",
-             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-            },
-            "ketcau": {
-             "type": "select",
-             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
-            }
+          }
+         },
+         {
+          "id": "step_physical",
+          "title": "Thông số vật lý",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Thông tin sản phẩm",
+            "fields": [
+             "bemat_sanpham",
+             "ketcau",
+             "g_weight",
+             "n_weight"
+            ]
            }
-          },
-          {
-           "id": "step_pricing",
-           "title": "Định giá & Hình ảnh",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Giá mộc (chưa sơn)",
-             "fields": [
-              "dongia_moc",
-              "dongia_si_moc",
-              "dongia_le_moc"
-             ]
-            },
-            {
-             "title": "Giá thành phẩm (đã sơn)",
-             "fields": [
-              "dongia",
-              "dongia_si",
-              "dongia_le"
-             ]
-            }
-           ],
-           "relatedImage": {
-            "entityName": "tr_hinhanh",
-            "linkField": "masp",
-            "parentField": "masp",
-            "imageField": "hinhanh",
-            "label": "Hình ảnh"
+          ],
+          "fieldOverrides": {
+           "bemat_sanpham": {
+            "type": "select",
+            "options": [
+             "Bắn cát",
+             "Cào cước",
+             "Cào cước/ Ép lồi lõm",
+             "Cào cước/ Giả cổ",
+             "Cào cước/ Trơn láng",
+             "Da",
+             "Ép Cước",
+             "Ép lồi lõm",
+             "Giả cổ",
+             "Trơn láng",
+             "Trơn láng/ Bắn cát",
+             "Trơn láng/ Da",
+             "Trơn láng/ Giả cổ"
+            ]
+           },
+           "ketcau": {
+            "type": "select",
+            "options": [
+             "Ráp chết",
+             "Semi KD",
+             "Tháo rời"
+            ]
            }
           }
+         },
+         {
+          "id": "step_pricing",
+          "title": "Định giá & Hình ảnh",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Giá mộc (chưa sơn)",
+            "fields": [
+             "dongia_moc",
+             "dongia_si_moc",
+             "dongia_le_moc"
+            ]
+           },
+           {
+            "title": "Giá thành phẩm (đã sơn)",
+            "fields": [
+             "dongia",
+             "dongia_si",
+             "dongia_le"
+            ]
+           }
+          ],
+          "relatedImage": {
+           "entityName": "tr_hinhanh",
+           "linkField": "masp",
+           "parentField": "masp",
+           "imageField": "hinhanh",
+           "label": "Hình ảnh"
+          }
+         }
         ]
        }
       ]
@@ -453,32 +951,47 @@
            "customer": {
             "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
             "valueField": "customer_id",
-            "labelFields": ["customer_id", "customer_name"]
+            "labelFields": [
+             "customer_id",
+             "customer_name"
+            ]
            },
            "hehang": {
             "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
             "valueField": "tenhh",
-           "labelFields": ["tenhh"]
-          },
+            "labelFields": [
+             "tenhh"
+            ]
+           },
            "mausac": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "dvt": {
             "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
             "valueField": "don_vi_tinh",
-            "labelFields": ["don_vi_tinh"]
+            "labelFields": [
+             "don_vi_tinh"
+            ]
            },
            "loaisp": {
             "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
             "valueField": "maloaisp",
-            "labelFields": ["tenloaisp"]
+            "labelFields": [
+             "tenloaisp"
+            ]
            },
            "mauuv": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"],
+            "labelFields": [
+             "code",
+             "name"
+            ],
             "autofill": {
              "tenuv": "name"
             }
@@ -486,73 +999,97 @@
            "mautrong": {
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
-            "labelFields": ["code", "name"]
+            "labelFields": [
+             "code",
+             "name"
+            ]
            },
            "masp_nhamay": {
             "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
             "valueField": "masp_nhamay",
-            "labelFields": ["masp_nhamay", "tensp"]
+            "labelFields": [
+             "masp_nhamay",
+             "tensp"
+            ]
            }
           }
          },
-          {
-           "id": "step_physical",
-           "title": "Thông số vật lý",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Thông tin sản phẩm",
-             "fields": [
-              "bemat_sanpham",
-              "ketcau",
-              "g_weight",
-              "n_weight"
-             ]
-            }
-           ],
-           "fieldOverrides": {
-            "bemat_sanpham": {
-             "type": "select",
-             "options": ["Bắn cát", "Cào cước", "Cào cước/ Ép lồi lõm", "Cào cước/ Giả cổ", "Cào cước/ Trơn láng", "Da", "Ép Cước", "Ép lồi lõm", "Giả cổ", "Trơn láng", "Trơn láng/ Bắn cát", "Trơn láng/ Da", "Trơn láng/ Giả cổ"]
-            },
-            "ketcau": {
-             "type": "select",
-             "options": ["Ráp chết", "Semi KD", "Tháo rời"]
-            }
+         {
+          "id": "step_physical",
+          "title": "Thông số vật lý",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Thông tin sản phẩm",
+            "fields": [
+             "bemat_sanpham",
+             "ketcau",
+             "g_weight",
+             "n_weight"
+            ]
            }
-          },
-          {
-           "id": "step_pricing",
-           "title": "Định giá & Hình ảnh",
-           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-           "cols": 2,
-           "sections": [
-            {
-             "title": "Giá mộc (chưa sơn)",
-             "fields": [
-              "dongia_moc",
-              "dongia_si_moc",
-              "dongia_le_moc"
-             ]
-            },
-            {
-             "title": "Giá thành phẩm (đã sơn)",
-             "fields": [
-              "dongia",
-              "dongia_si",
-              "dongia_le"
-             ]
-            }
-           ],
-           "relatedImage": {
-            "entityName": "tr_hinhanh",
-            "linkField": "masp",
-            "parentField": "masp",
-            "imageField": "hinhanh",
-            "label": "Hình ảnh"
+          ],
+          "fieldOverrides": {
+           "bemat_sanpham": {
+            "type": "select",
+            "options": [
+             "Bắn cát",
+             "Cào cước",
+             "Cào cước/ Ép lồi lõm",
+             "Cào cước/ Giả cổ",
+             "Cào cước/ Trơn láng",
+             "Da",
+             "Ép Cước",
+             "Ép lồi lõm",
+             "Giả cổ",
+             "Trơn láng",
+             "Trơn láng/ Bắn cát",
+             "Trơn láng/ Da",
+             "Trơn láng/ Giả cổ"
+            ]
+           },
+           "ketcau": {
+            "type": "select",
+            "options": [
+             "Ráp chết",
+             "Semi KD",
+             "Tháo rời"
+            ]
            }
           }
+         },
+         {
+          "id": "step_pricing",
+          "title": "Định giá & Hình ảnh",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Giá mộc (chưa sơn)",
+            "fields": [
+             "dongia_moc",
+             "dongia_si_moc",
+             "dongia_le_moc"
+            ]
+           },
+           {
+            "title": "Giá thành phẩm (đã sơn)",
+            "fields": [
+             "dongia",
+             "dongia_si",
+             "dongia_le"
+            ]
+           }
+          ],
+          "relatedImage": {
+           "entityName": "tr_hinhanh",
+           "linkField": "masp",
+           "parentField": "masp",
+           "imageField": "hinhanh",
+           "label": "Hình ảnh"
+          }
+         }
         ]
        }
       ]

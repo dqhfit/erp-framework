@@ -30,6 +30,7 @@ import { createContext, resolveActiveCompany } from "./context";
 import { db } from "./db";
 import { verifyOoJwt } from "./documents-router";
 import { registerDrawingRoutes } from "./drawing-routes";
+import { signFileUrl, verifyFileToken } from "./file-token";
 import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
@@ -58,7 +59,6 @@ import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
-import { signFileUrl, verifyFileToken } from "./file-token";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
 import { bootstrapTools, shutdownTools } from "./tools";
 
@@ -996,12 +996,21 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Lấy subfolder từ query param (lọc ký tự an toàn chống path traversal)
+    const subfolder = String((req.query as Record<string, unknown> | undefined)?.subfolder ?? "")
+      .replace(/[^\w-]/g, "")
+      .trim();
+
     // Giữ tên gốc (đã làm sạch) sau "__" để tải về có tên thân thiện.
     const safeName = (file.filename || `file${ext}`).replace(/[^\w.-]+/g, "_");
-    const filename = `${randomUUID()}__${safeName}`;
-    const dir = join(UPLOAD_DIR, "doc", active.companyId);
+    const relativeFilename = `${randomUUID()}__${safeName}`;
+    const filename = subfolder ? `${subfolder}/${relativeFilename}` : relativeFilename;
+    const dir = subfolder
+      ? join(UPLOAD_DIR, "doc", active.companyId, subfolder)
+      : join(UPLOAD_DIR, "doc", active.companyId);
+
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, filename), buf);
+    await writeFile(join(dir, relativeFilename), buf);
 
     reply.send({ url: signFileUrl(active.companyId, "doc", filename), name: safeName });
   });

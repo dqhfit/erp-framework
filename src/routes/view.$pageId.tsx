@@ -127,16 +127,18 @@ function ViewRoute() {
 
   // Sau khi đăng nhập thành công, hydrate userObjects để ConsumerPage có dữ liệu
   const hydrate = useUserObjects((s) => s.hydrate);
+  const ready = useUserObjects((s) => s.ready);
   const prevStatusRef = useRef(status);
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
     if (status === "in" && prev !== "in") {
+      useUserObjects.setState({ ready: false });
       void hydrate();
     }
   }, [status, hydrate]);
 
-  if (pageOk === "checking" || status === "checking") {
+  if (pageOk === "checking" || status === "checking" || (status === "in" && !ready)) {
     return (
       <div className="h-screen flex items-center justify-center bg-bg text-muted text-sm">
         {t("common.loading")}
