@@ -35,7 +35,7 @@ import { signFileUrl, verifyFileToken } from "./file-token";
 import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
-import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
+import { enqueueKbIngest, getJobsStatus, startJobs, stopJobs } from "./jobs";
 import { agenticRetrieve, type RouteDecision, routeQuery } from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
@@ -50,6 +50,7 @@ import { registerPrintRoutes } from "./print-routes";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
 import { queryParams } from "./router-helpers";
+import { recordServerError } from "./server-errors";
 import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
@@ -257,10 +258,53 @@ async function main(): Promise<void> {
   // của connection peer (= nginx container) → rate-limit sẽ chung 1 IP
   // cho mọi user. Bật trustProxy để req.ip lấy IP client thật.
   const app = Fastify({
-    logger: true,
+    // pino (sẵn của Fastify) — redact header nhạy cảm khỏi log request;
+    // level theo env LOG_LEVEL (mặc định info). Quan sát: log đã có reqId,
+    // method, url, statusCode, responseTime cho mỗi request.
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      redact: ["req.headers.cookie", "req.headers.authorization", 'req.headers["x-api-key"]'],
+    },
     maxParamLength: 5000,
     trustProxy: true,
     bodyLimit: BODY_LIMIT,
+  });
+
+  /* Error handler toàn cục — KHÔNG để lỗi route raw rơi vào im lặng. Log có
+     ngữ cảnh (reqId/method/url) qua pino; đồng thời best-effort ghi vào
+     client_errors (source=server) nếu request có phiên → admin thấy ở
+     /settings/errors. Giữ ĐỊNH DẠNG lỗi mặc định của Fastify cho client.
+     (tRPC tự xử lý lỗi của procedure → handler này chủ yếu cho /agent,
+     /upload, /files… và các lỗi chưa bắt.) */
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error(
+      { err: error, reqId: request.id, method: request.method, url: request.url },
+      "request error",
+    );
+    // Fire-and-forget: phân giải company từ phiên rồi ghi (lỗi hiếm nên 1 lookup
+    // chấp nhận được). Không chặn reply; mọi lỗi nuốt trong recordServerError.
+    void (async () => {
+      try {
+        const sid = (request.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+        if (!sid) return;
+        const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+        if (!s) return;
+        const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+        if (!active) return;
+        const err = error as Error;
+        await recordServerError(db, {
+          companyId: active.companyId,
+          userId: s.userId,
+          message: err.message,
+          stack: err.stack ?? null,
+          url: request.url,
+          meta: { method: request.method, statusCode: reply.statusCode },
+        });
+      } catch {
+        /* fail-safe: không vỡ đường lỗi */
+      }
+    })();
+    reply.send(error); // giữ định dạng lỗi mặc định Fastify (statusCode + message).
   });
 
   // CORS — cho frontend (origin khác) gọi kèm cookie phiên.
@@ -386,6 +430,20 @@ async function main(): Promise<void> {
       return reply.code(503).send({ ready: false, reason: "db" });
     }
     return { ready: true, ts: Date.now() };
+  });
+
+  /* Giám sát hàng đợi pg-boss (ADMIN-only) — depth từng queue + cờ running.
+     Cho ops/monitoring phát hiện job kẹt (size tăng dồn) hoặc worker chết
+     (running=false). Auth bằng phiên, đồng nhất các route raw khác. */
+  app.get("/jobs/status", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) return reply.code(401).send({ error: "Chưa đăng nhập" });
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) return reply.code(401).send({ error: "Phiên hết hạn" });
+    const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+    if (!active) return reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+    if (active.role !== "admin") return reply.code(403).send({ error: "Chỉ admin xem được" });
+    return getJobsStatus();
   });
 
   /* WebSocket endpoint — realtime push. Client connect kèm cookie phiên;

@@ -76,6 +76,40 @@ interface BackupJobData {
 
 let boss: PgBoss | null = null;
 
+/** Mọi queue đã đăng ký — dùng cho /jobs/status giám sát vận hành. */
+const ALL_QUEUES = [
+  QUEUE_RUN,
+  QUEUE_WF_DELAY,
+  QUEUE_TICK,
+  QUEUE_HEARTBEAT,
+  QUEUE_ENTITY_SYNC,
+  QUEUE_SESSION_CLEANUP,
+  QUEUE_KB_INGEST,
+  QUEUE_BACKUP,
+  QUEUE_FEEDBACK_AI,
+  QUEUE_MIGRATION,
+  QUEUE_GUARDRAIL_LESSON,
+];
+
+/** Trạng thái hàng đợi pg-boss cho endpoint /jobs/status (giám sát vận hành).
+ *  `size` = số job CHƯA hoàn thành (created+retry+active) — depth hàng đợi.
+ *  `running=false` khi pg-boss chưa start (vd DB chưa sẵn lúc boot). Fail-safe:
+ *  lỗi 1 queue trả size=-1, không vỡ cả endpoint. */
+export async function getJobsStatus(): Promise<{
+  running: boolean;
+  queues: Array<{ queue: string; size: number }>;
+}> {
+  const b = boss;
+  if (!b) return { running: false, queues: [] };
+  const queues = await Promise.all(
+    ALL_QUEUES.map(async (queue) => ({
+      queue,
+      size: await b.getQueueSize(queue).catch(() => -1),
+    })),
+  );
+  return { running: true, queues };
+}
+
 export async function startJobs(): Promise<void> {
   const url = process.env.DATABASE_URL ?? "postgres://localhost:5432/erp_framework";
   boss = new PgBoss({ connectionString: url, max: 5 });
