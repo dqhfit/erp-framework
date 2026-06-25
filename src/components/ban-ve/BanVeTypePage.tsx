@@ -394,6 +394,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
   // Sub-type cho trang Bản vẽ kỹ thuật (3 slot: kỹ thuật, mẫu, phát triển)
   const [drawingSubType, setDrawingSubType] = useState<KtSubType>("Bản vẽ kỹ thuật");
+  const drawingSubTypeRef = useRef(drawingSubType);
+  drawingSubTypeRef.current = drawingSubType;
   const [slotUploading, setSlotUploading] = useState<KtSubType | null>(null);
 
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
@@ -464,7 +466,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         const rows = d.rows ?? [];
         setBanveRows(rows);
         if (isKyThuat) {
-          const matchingBv = rows.find((r) => r.phanloai === drawingSubType);
+          const matchingBv = rows.find((r) => r.phanloai === drawingSubTypeRef.current);
           if (matchingBv) {
             setSelectedBvId(matchingBv.id);
           }
@@ -473,7 +475,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         setLoadingDetail(false);
       }
     },
-    [phanloai, isDao, isKyThuat, drawingSubType],
+    [phanloai, isDao, isKyThuat],
   );
 
   const loadBoms = useCallback(
