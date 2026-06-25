@@ -892,22 +892,36 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   });
 
   // ── Danh sách bản vẽ đầy đủ theo masp + phanloai (cho trang desktop) ──
+  // phanloai hỗ trợ 1 giá trị hoặc nhiều giá trị phân tách bằng dấu phẩy
+  // (ví dụ: "Bản vẽ kỹ thuật,Bản vẽ mẫu,Bản vẽ phát triển").
   app.get("/banvesvc/banve-list", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
     const q = (req.query ?? {}) as { masp?: string; hehang?: string; phanloai?: string };
     const masp = q.masp?.trim() ?? "";
     const hehang = q.hehang?.trim() ?? "";
-    const phanloai = q.phanloai?.trim() ?? "";
-    if (phanloai === "Bản vẽ dao") {
+    const phanloaiRaw = q.phanloai?.trim() ?? "";
+    const phanloaiList = phanloaiRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isDao = phanloaiList.length === 1 && phanloaiList[0] === "Bản vẽ dao";
+    if (isDao) {
       if (!hehang) return reply.send({ rows: [] });
     } else {
       if (!masp) return reply.send({ rows: [] });
     }
     const cid = auth.companyId;
-    const phanloaiCond = phanloai ? sql`AND f_phanloai = ${phanloai}` : sql``;
-    const filterCond =
-      phanloai === "Bản vẽ dao" ? sql`AND f_hehang = ${hehang}` : sql`AND f_masp = ${masp}`;
+    const phanloaiCond =
+      phanloaiList.length > 1
+        ? sql`AND f_phanloai IN (${sql.join(
+            phanloaiList.map((p) => sql`${p}`),
+            sql`, `,
+          )})`
+        : phanloaiList.length === 1
+          ? sql`AND f_phanloai = ${phanloaiList[0]}`
+          : sql``;
+    const filterCond = isDao ? sql`AND f_hehang = ${hehang}` : sql`AND f_masp = ${masp}`;
     const rows = (await db.execute(
       sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
                  f_phanloai AS phanloai, f_filepath AS filepath,

@@ -359,8 +359,18 @@ function ThemModal({
   );
 }
 
+// 3 loại bản vẽ hiển thị dưới dạng slot trên trang Bản vẽ kỹ thuật
+const KT_SUB_TYPES = ["Bản vẽ kỹ thuật", "Bản vẽ mẫu", "Bản vẽ phát triển"] as const;
+type KtSubType = (typeof KT_SUB_TYPES)[number];
+const KT_SUB_LABELS: Record<KtSubType, string> = {
+  "Bản vẽ kỹ thuật": "Bản vẽ kỹ thuật",
+  "Bản vẽ mẫu": "Bản vẽ mẫu (PPS)",
+  "Bản vẽ phát triển": "Bản vẽ phát triển",
+};
+
 export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const isDao = phanloai === "Bản vẽ dao";
+  const isKyThuat = phanloai === "Bản vẽ kỹ thuật";
   const [hehangs, setHehangs] = useState<Opt[]>([]);
   const [hehang, setHehang] = useState("");
   const [products, setProducts] = useState<SpRow[]>([]);
@@ -382,11 +392,20 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [loadingBoms, setLoadingBoms] = useState(false);
   const [loadingDongGoi, setLoadingDongGoi] = useState(false);
 
+  // Sub-type cho trang Bản vẽ kỹ thuật (3 slot: kỹ thuật, mẫu, phát triển)
+  const [drawingSubType, setDrawingSubType] = useState<KtSubType>("Bản vẽ kỹ thuật");
+  const [slotUploading, setSlotUploading] = useState<KtSubType | null>(null);
+
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
 
   const [updatingFileId, setUpdatingFileId] = useState<string | null>(null);
   const [targetBvId, setTargetBvId] = useState<string | null>(null);
   const rowInputRef = useRef<HTMLInputElement>(null);
+  const slotInputRef = useRef<HTMLInputElement>(null);
+  const slotActionRef = useRef<{ subType: KtSubType; existingId: string | null }>({
+    subType: "Bản vẽ kỹ thuật",
+    existingId: null,
+  });
 
   useEffect(() => {
     jget<{ rows: string[] }>("/banvesvc/hehang").then((d) => {
@@ -435,15 +454,26 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         const queryParam = isDao
           ? `hehang=${encodeURIComponent(keyVal)}`
           : `masp=${encodeURIComponent(keyVal)}`;
+        // Trang Bản vẽ kỹ thuật lấy cả 3 loại (kỹ thuật, mẫu, phát triển) trong 1 request
+        const plParam = isKyThuat
+          ? encodeURIComponent(KT_SUB_TYPES.join(","))
+          : encodeURIComponent(phanloai);
         const d = await jget<{ rows: BanveRow[] }>(
-          `/banvesvc/banve-list?${queryParam}&phanloai=${encodeURIComponent(phanloai)}`,
+          `/banvesvc/banve-list?${queryParam}&phanloai=${plParam}`,
         );
-        setBanveRows(d.rows ?? []);
+        const rows = d.rows ?? [];
+        setBanveRows(rows);
+        if (isKyThuat) {
+          const matchingBv = rows.find((r) => r.phanloai === drawingSubType);
+          if (matchingBv) {
+            setSelectedBvId(matchingBv.id);
+          }
+        }
       } finally {
         setLoadingDetail(false);
       }
     },
-    [phanloai, isDao],
+    [phanloai, isDao, isKyThuat, drawingSubType],
   );
 
   const loadBoms = useCallback(
@@ -633,11 +663,14 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     const queryParam = isDao
       ? `hehang=${encodeURIComponent(keyVal)}`
       : `masp=${encodeURIComponent(keyVal)}`;
+    const plParam = isKyThuat
+      ? encodeURIComponent(KT_SUB_TYPES.join(","))
+      : encodeURIComponent(phanloai);
     const d = await jget<{ rows: BanveRow[] }>(
-      `/banvesvc/banve-list?${queryParam}&phanloai=${encodeURIComponent(phanloai)}`,
+      `/banvesvc/banve-list?${queryParam}&phanloai=${plParam}`,
     );
     setBanveRows(d.rows ?? []);
-  }, [selectedMasp, hehang, phanloai, isDao]);
+  }, [selectedMasp, hehang, phanloai, isDao, isKyThuat]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -718,6 +751,77 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       }
     },
     [targetBvId, phanloai, reloadBanve],
+  );
+
+  // Handler cho slot upload (trang Bản vẽ kỹ thuật — 3 slot)
+  const handleSlotFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const { subType, existingId } = slotActionRef.current;
+      setSlotUploading(subType);
+      try {
+        const fd = new FormData();
+        fd.append("file", f);
+        // Tất cả lưu vào thư mục ky-thuat
+        const upRes = await fetch("/upload/file?subfolder=ky-thuat", {
+          method: "POST",
+          credentials: "include",
+          body: fd,
+        });
+        if (!upRes.ok) {
+          void dialog.alert("Lỗi tải file lên");
+          return;
+        }
+        const { url: filepath } = (await upRes.json()) as { url: string };
+
+        const ext = f.name.split(".").pop() || "";
+        const seq1 = `.${ext.toLowerCase()}`;
+        const seq2 = f.name.replace(/\.[^.]+$/, "");
+
+        if (existingId) {
+          // Cập nhật file cho bản vẽ đã có
+          const updateRes = await fetch("/banvesvc/banve-update", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: existingId, filepath, seq1, seq2 }),
+          });
+          if (!updateRes.ok) {
+            void dialog.alert("Lỗi cập nhật bản vẽ");
+            return;
+          }
+        } else {
+          // Tạo mới bản vẽ cho loại này
+          const createRes = await fetch("/banvesvc/banve-create", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              masp: selectedMasp,
+              tensp: spInfo?.tensp ?? "",
+              hehang,
+              phanloai: subType,
+              filepath,
+              seq1,
+              seq2,
+            }),
+          });
+          if (!createRes.ok) {
+            const body = (await createRes.json().catch(() => ({}))) as { error?: string };
+            void dialog.alert(body.error ?? "Lỗi tạo bản vẽ");
+            return;
+          }
+        }
+        await reloadBanve();
+      } catch (err) {
+        void dialog.alert(`Lỗi: ${(err as Error).message}`);
+      } finally {
+        setSlotUploading(null);
+        if (slotInputRef.current) slotInputRef.current.value = "";
+      }
+    },
+    [selectedMasp, spInfo, hehang, reloadBanve],
   );
 
   const productOpts: Opt[] = products.map((p) => ({
@@ -804,7 +908,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               />
             </div>
           )}
-          {(!isDao || banveRows.length === 0) && (
+          {!isKyThuat && (!isDao || banveRows.length === 0) && (
             <Button
               variant="primary"
               size="sm"
@@ -893,134 +997,97 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
           {tab === "banve" && (
             <>
-              <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
-                <I.FileText size={13} className="text-accent" />
-                <span className="text-xs font-semibold uppercase tracking-wide">{phanloai}</span>
-                <Chip variant="accent" className="text-[10px]">
-                  {banveRows.length}
-                </Chip>
-                {loadingDetail && (
-                  <I.Loader size={11} className="animate-spin text-muted shrink-0" />
-                )}
-                <div className="flex-1" />
-                {banveRows.length > 0 && !selectedBv && (
-                  <span className="text-[10px] text-muted">Click để xem PDF</span>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {loadingDetail ? (
-                  <div className="h-full flex items-center justify-center py-10">
-                    <I.Loader size={20} className="animate-spin text-accent" />
-                  </div>
-                ) : banveRows.length === 0 ? (
-                  <div className="p-3">
-                    <EmptyState
-                      icon={<I.FileX size={20} />}
-                      title="Chưa có bản vẽ"
-                      hint={`Nhấn "Thêm" để tải lên ${phanloai.toLowerCase()}.`}
-                    />
-                  </div>
-                ) : (
-                  <table className="w-full text-sm table-fixed">
-                    <thead className="bg-bg-soft text-xs text-muted sticky top-0">
-                      <tr>
-                        <th className="text-left font-medium px-3 py-2 w-8 shrink-0">#</th>
-                        {isDao ? (
-                          <>
-                            <th className="text-left font-medium px-3 py-2 w-32 shrink-0">
-                              Hệ hàng
-                            </th>
-                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
-                              Ngày tạo
-                            </th>
-                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
-                              Người tạo
-                            </th>
-                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
-                              Ngày sửa
-                            </th>
-                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
-                              Người sửa
-                            </th>
-                          </>
-                        ) : (
-                          <>
-                            <th className="text-left font-medium px-3 py-2 min-w-0">Tên file</th>
-                            <th className="text-left font-medium px-3 py-2 w-24 shrink-0">
-                              Định dạng
-                            </th>
-                            <th className="text-left font-medium px-3 py-2 w-32 shrink-0 hidden sm:table-cell">
-                              Ngày tải
-                            </th>
-                          </>
+              {/* Sub-tab cho 3 loại bản vẽ kỹ thuật */}
+              {isKyThuat && (
+                <div className="flex border-b border-border overflow-x-auto bg-panel/20 px-3 shrink-0">
+                  {KT_SUB_TYPES.map((st) => {
+                    const count = banveRows.filter((r) => r.phanloai === st).length;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          setDrawingSubType(st);
+                          const matchingBv = banveRows.find((r) => r.phanloai === st);
+                          setSelectedBvId(matchingBv ? matchingBv.id : null);
+                        }}
+                        className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px flex items-center gap-1.5 ${
+                          drawingSubType === st
+                            ? "border-accent text-accent font-semibold"
+                            : "border-transparent text-muted hover:text-text"
+                        }`}
+                      >
+                        {KT_SUB_LABELS[st]}
+                        {count > 0 && (
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[9px] font-bold">
+                            {count}
+                          </span>
                         )}
-                        <th className="px-3 py-2 text-right w-24 shrink-0" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {banveRows.map((bv, i) => {
-                        const active = selectedBvId === bv.id;
-                        return (
-                          <tr
-                            key={bv.id}
-                            className={`border-t border-border/50 cursor-pointer transition-colors ${active ? "bg-accent/10" : "hover:bg-hover/40"}`}
-                            onClick={() => setSelectedBvId(active ? null : bv.id)}
-                          >
-                            <td className="px-3 py-2 text-muted text-xs truncate w-8 shrink-0">
-                              {i + 1}
-                            </td>
-                            {isDao ? (
-                              <>
-                                <td className="px-3 py-2 truncate font-medium w-32 shrink-0">
-                                  {bv.hehang ?? ""}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
-                                  {bv.create_date ?? "—"}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
-                                  {bv.create_by ?? "—"}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
-                                  {bv.update_by ? (bv.update_date ?? "—") : "—"}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
-                                  {bv.update_by ?? "—"}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td
-                                  className="px-3 py-2 truncate font-medium min-w-0"
-                                  title={bv.seq2 ?? ""}
-                                >
-                                  {bv.seq2 ?? ""}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-24 shrink-0">
-                                  {bv.seq1 ? (
-                                    bv.seq1.startsWith(".") ? (
-                                      bv.seq1.toLowerCase()
-                                    ) : (
-                                      `.${bv.seq1.toLowerCase()}`
-                                    )
-                                  ) : (
-                                    <span className="italic opacity-50">—</span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 text-muted text-xs truncate w-32 shrink-0 hidden sm:table-cell">
-                                  {bv.create_date ?? "—"}
-                                </td>
-                              </>
-                            )}
-                            <td className="px-3 py-2 text-right">
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* === KỸ THUẬT: 1 slot upload per sub-type === */}
+              {isKyThuat ? (
+                <div className="flex-1 overflow-y-auto p-4">
+                  {loadingDetail ? (
+                    <div className="h-full flex items-center justify-center py-10">
+                      <I.Loader size={20} className="animate-spin text-accent" />
+                    </div>
+                  ) : (
+                    (() => {
+                      const slotBv = banveRows.find((r) => r.phanloai === drawingSubType);
+                      const isUploading = slotUploading === drawingSubType;
+                      return (
+                        <div className="max-w-md mx-auto">
+                          <div className="text-xs text-muted mb-3 flex items-center gap-2">
+                            <I.FileText size={13} className="text-accent" />
+                            <span className="font-semibold uppercase tracking-wide">
+                              {KT_SUB_LABELS[drawingSubType]}
+                            </span>
+                          </div>
+
+                          {slotBv ? (
+                            /* Card hiển thị file đã có */
+                            <Card className="p-0 overflow-hidden">
+                              {/* Click vào card để xem PDF */}
                               <div
-                                className="inline-flex items-center gap-1 justify-end"
+                                className={`p-4 cursor-pointer transition-colors ${
+                                  selectedBvId === slotBv.id ? "bg-accent/10" : "hover:bg-hover/40"
+                                }`}
+                                onClick={() =>
+                                  setSelectedBvId(selectedBvId === slotBv.id ? null : slotBv.id)
+                                }
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+                                    <I.FileText size={18} className="text-accent" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {slotBv.seq2 || "Bản vẽ"}
+                                    </p>
+                                    <p className="text-xs text-muted mt-0.5">
+                                      {slotBv.seq1 || ""}
+                                      {slotBv.create_date ? ` · ${slotBv.create_date}` : ""}
+                                    </p>
+                                  </div>
+                                  <I.ChevronRight size={14} className="text-muted shrink-0" />
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div
+                                className="border-t border-border/60 px-4 py-2 flex items-center gap-1 bg-bg-soft/50"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <Button
                                   variant="ghost"
                                   size="xs"
                                   icon={
-                                    updatingFileId === bv.id ? (
+                                    isUploading ? (
                                       <I.Loader size={11} className="animate-spin text-muted" />
                                     ) : (
                                       <I.Upload size={11} />
@@ -1028,46 +1095,272 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                   }
                                   className="text-muted hover:text-text hover:bg-hover"
                                   onClick={() => {
-                                    setTargetBvId(bv.id);
-                                    setTimeout(() => rowInputRef.current?.click(), 0);
+                                    slotActionRef.current = {
+                                      subType: drawingSubType,
+                                      existingId: slotBv.id,
+                                    };
+                                    setTimeout(() => slotInputRef.current?.click(), 0);
                                   }}
-                                  disabled={updatingFileId !== null}
-                                  title="Cập nhật file"
-                                />
+                                  disabled={isUploading}
+                                >
+                                  Thay file
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="xs"
                                   icon={<I.Download size={11} />}
                                   className="text-muted hover:text-text hover:bg-hover"
                                   onClick={() => {
-                                    const fileUrl = `/banvesvc/file?id=${encodeURIComponent(bv.id)}`;
+                                    const fileUrl = `/banvesvc/file?id=${encodeURIComponent(slotBv.id)}`;
                                     const link = document.createElement("a");
                                     link.href = fileUrl;
-                                    const ext = (bv.filepath || "").split(".").pop() || "pdf";
-                                    link.download = `${bv.seq2 || phanloai}.${ext}`;
+                                    const ext = (slotBv.filepath || "").split(".").pop() || "pdf";
+                                    link.download = `${slotBv.seq2 || drawingSubType}.${ext}`;
                                     document.body.appendChild(link);
                                     link.click();
                                     document.body.removeChild(link);
                                   }}
-                                  title="Tải file"
-                                />
+                                >
+                                  Tải về
+                                </Button>
+                                <div className="flex-1" />
                                 <Button
                                   variant="ghost"
                                   size="xs"
                                   icon={<I.Trash2 size={11} />}
                                   className="text-danger/60 hover:text-danger hover:bg-danger/15"
-                                  onClick={() => void handleDelete(bv.id)}
-                                  title="Xóa"
-                                />
+                                  onClick={() => void handleDelete(slotBv.id)}
+                                >
+                                  Xóa
+                                </Button>
                               </div>
-                            </td>
+                            </Card>
+                          ) : (
+                            /* Upload zone khi chưa có file */
+                            <label
+                              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-10 px-6 cursor-pointer transition-colors ${
+                                isUploading
+                                  ? "border-accent/40 bg-accent/5"
+                                  : "border-border hover:border-accent/60 hover:bg-hover/30"
+                              }`}
+                            >
+                              {isUploading ? (
+                                <I.Loader size={24} className="animate-spin text-accent mb-2" />
+                              ) : (
+                                <I.Upload size={24} className="text-muted mb-2" />
+                              )}
+                              <span className="text-sm text-muted">
+                                {isUploading
+                                  ? "Đang tải lên…"
+                                  : `Nhấn để tải lên ${KT_SUB_LABELS[drawingSubType].toLowerCase()}`}
+                              </span>
+                              <span className="text-xs text-muted/60 mt-1">
+                                PDF, DWG, AI, DXF, JPG, PNG
+                              </span>
+                              <input
+                                type="file"
+                                className="sr-only"
+                                accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
+                                disabled={isUploading}
+                                onChange={(e) => {
+                                  slotActionRef.current = {
+                                    subType: drawingSubType,
+                                    existingId: null,
+                                  };
+                                  void handleSlotFileChange(e);
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              ) : (
+                /* === CÁC LOẠI KHÁC: bảng danh sách cũ === */
+                <>
+                  <div className="shrink-0 border-b border-border bg-panel/30 px-3 py-1.5 flex items-center gap-2">
+                    <I.FileText size={13} className="text-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      {phanloai}
+                    </span>
+                    <Chip variant="accent" className="text-[10px]">
+                      {banveRows.length}
+                    </Chip>
+                    {loadingDetail && (
+                      <I.Loader size={11} className="animate-spin text-muted shrink-0" />
+                    )}
+                    <div className="flex-1" />
+                    {banveRows.length > 0 && !selectedBv && (
+                      <span className="text-[10px] text-muted">Click để xem PDF</span>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {loadingDetail ? (
+                      <div className="h-full flex items-center justify-center py-10">
+                        <I.Loader size={20} className="animate-spin text-accent" />
+                      </div>
+                    ) : banveRows.length === 0 ? (
+                      <div className="p-3">
+                        <EmptyState
+                          icon={<I.FileX size={20} />}
+                          title="Chưa có bản vẽ"
+                          hint={`Nhấn "Thêm" để tải lên ${phanloai.toLowerCase()}.`}
+                        />
+                      </div>
+                    ) : (
+                      <table className="w-full text-sm table-fixed">
+                        <thead className="bg-bg-soft text-xs text-muted sticky top-0">
+                          <tr>
+                            <th className="text-left font-medium px-3 py-2 w-8 shrink-0">#</th>
+                            {isDao ? (
+                              <>
+                                <th className="text-left font-medium px-3 py-2 w-32 shrink-0">
+                                  Hệ hàng
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                                  Ngày tạo
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                                  Người tạo
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                                  Ngày sửa
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                                  Người sửa
+                                </th>
+                              </>
+                            ) : (
+                              <>
+                                <th className="text-left font-medium px-3 py-2 min-w-0">
+                                  Tên file
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-24 shrink-0">
+                                  Định dạng
+                                </th>
+                                <th className="text-left font-medium px-3 py-2 w-32 shrink-0 hidden sm:table-cell">
+                                  Ngày tải
+                                </th>
+                              </>
+                            )}
+                            <th className="px-3 py-2 text-right w-24 shrink-0" />
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                        </thead>
+                        <tbody>
+                          {banveRows.map((bv, i) => {
+                            const active = selectedBvId === bv.id;
+                            return (
+                              <tr
+                                key={bv.id}
+                                className={`border-t border-border/50 cursor-pointer transition-colors ${active ? "bg-accent/10" : "hover:bg-hover/40"}`}
+                                onClick={() => setSelectedBvId(active ? null : bv.id)}
+                              >
+                                <td className="px-3 py-2 text-muted text-xs truncate w-8 shrink-0">
+                                  {i + 1}
+                                </td>
+                                {isDao ? (
+                                  <>
+                                    <td className="px-3 py-2 truncate font-medium w-32 shrink-0">
+                                      {bv.hehang ?? ""}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                      {bv.create_date ?? "—"}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                      {bv.create_by ?? "—"}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                      {bv.update_by ? (bv.update_date ?? "—") : "—"}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                      {bv.update_by ?? "—"}
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td
+                                      className="px-3 py-2 truncate font-medium min-w-0"
+                                      title={bv.seq2 ?? ""}
+                                    >
+                                      {bv.seq2 ?? ""}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-24 shrink-0">
+                                      {bv.seq1 ? (
+                                        bv.seq1.startsWith(".") ? (
+                                          bv.seq1.toLowerCase()
+                                        ) : (
+                                          `.${bv.seq1.toLowerCase()}`
+                                        )
+                                      ) : (
+                                        <span className="italic opacity-50">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted text-xs truncate w-32 shrink-0 hidden sm:table-cell">
+                                      {bv.create_date ?? "—"}
+                                    </td>
+                                  </>
+                                )}
+                                <td className="px-3 py-2 text-right">
+                                  <div
+                                    className="inline-flex items-center gap-1 justify-end"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      icon={
+                                        updatingFileId === bv.id ? (
+                                          <I.Loader size={11} className="animate-spin text-muted" />
+                                        ) : (
+                                          <I.Upload size={11} />
+                                        )
+                                      }
+                                      className="text-muted hover:text-text hover:bg-hover"
+                                      onClick={() => {
+                                        setTargetBvId(bv.id);
+                                        setTimeout(() => rowInputRef.current?.click(), 0);
+                                      }}
+                                      disabled={updatingFileId !== null}
+                                      title="Cập nhật file"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      icon={<I.Download size={11} />}
+                                      className="text-muted hover:text-text hover:bg-hover"
+                                      onClick={() => {
+                                        const fileUrl = `/banvesvc/file?id=${encodeURIComponent(bv.id)}`;
+                                        const link = document.createElement("a");
+                                        link.href = fileUrl;
+                                        const ext = (bv.filepath || "").split(".").pop() || "pdf";
+                                        link.download = `${bv.seq2 || phanloai}.${ext}`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      }}
+                                      title="Tải file"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      icon={<I.Trash2 size={11} />}
+                                      className="text-danger/60 hover:text-danger hover:bg-danger/15"
+                                      onClick={() => void handleDelete(bv.id)}
+                                      title="Xóa"
+                                    />
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -1233,6 +1526,14 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         type="file"
         ref={rowInputRef}
         onChange={handleRowFileChange}
+        className="sr-only"
+        accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
+      />
+      {/* Hidden input for slot uploads (trang kỹ thuật) */}
+      <input
+        type="file"
+        ref={slotInputRef}
+        onChange={handleSlotFileChange}
         className="sr-only"
         accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
       />
