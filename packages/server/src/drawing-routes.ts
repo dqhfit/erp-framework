@@ -957,19 +957,6 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         return reply.code(400).send({ error: "Thiếu hệ hàng hoặc file bản vẽ" });
       }
       masp = hehang;
-      const cid = auth.companyId;
-      const existing = await db.execute(
-        sql`SELECT id FROM tr_banve 
-            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
-              AND f_hehang = ${hehang} AND f_phanloai = ${phanloai}
-              AND (f_active IS DISTINCT FROM FALSE)
-            LIMIT 1`,
-      );
-      if (existing.length > 0) {
-        return reply
-          .code(400)
-          .send({ error: "Hệ hàng này đã có bản vẽ dao, vui lòng cập nhật file" });
-      }
     } else {
       if (!masp || !filepath) {
         return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
