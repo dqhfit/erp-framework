@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterUsable, mergeContiguous, mergeHits } from "./knowledge-agentic";
+import { filterUsable, mergeContiguous, mergeHits, normalizeRoute } from "./knowledge-agentic";
 import type { KnowledgeHit } from "./knowledge-search";
 
 /** Hit có kiểm soát sourceId + seq + content (cho test mergeContiguous). */
@@ -104,5 +104,65 @@ describe("mergeContiguous", () => {
     );
     // Khối đầu luôn giữ; khối sau vượt ngân sách 150 → loại.
     expect(out.map((h) => h.sourceId)).toEqual(["a"]);
+  });
+});
+
+describe("normalizeRoute", () => {
+  const allowed = new Set(["don_hang", "san_pham"]);
+
+  it("null/rỗng → fail-safe ['kb']", () => {
+    expect(normalizeRoute(null).targets).toEqual(["kb"]);
+    expect(normalizeRoute({}).targets).toEqual(["kb"]);
+    expect(normalizeRoute({ targets: [] }).targets).toEqual(["kb"]);
+  });
+
+  it("lọc target không hợp lệ, khử trùng", () => {
+    const r = normalizeRoute({ targets: ["kb", "kb", "xyz", "DIRECT"] });
+    // 'direct' bị loại vì còn data-target 'kb'; 'xyz' không hợp lệ.
+    expect(r.targets).toEqual(["kb"]);
+  });
+
+  it("records cần entity trong allowlist — entity lạ → bỏ records", () => {
+    const r = normalizeRoute(
+      { targets: ["records"], entity: "khong_co", recordQuery: "abc" },
+      { allowedEntities: allowed },
+    );
+    expect(r.targets).toEqual(["kb"]); // records bị bỏ → rỗng → fail-safe kb
+    expect(r.entity).toBeUndefined();
+  });
+
+  it("records + entity hợp lệ → giữ entity (case-insensitive) + recordQuery", () => {
+    const r = normalizeRoute(
+      { targets: ["records"], entity: "Don_Hang", recordQuery: " keo " },
+      { allowedEntities: allowed },
+    );
+    expect(r.targets).toEqual(["records"]);
+    expect(r.entity).toBe("Don_Hang");
+    expect(r.recordQuery).toBe("keo");
+  });
+
+  it("bỏ 'web' khi allowWeb=false", () => {
+    expect(normalizeRoute({ targets: ["web"] }, { allowWeb: false }).targets).toEqual(["kb"]);
+    expect(normalizeRoute({ targets: ["web"] }, { allowWeb: true }).targets).toEqual(["web"]);
+  });
+
+  it("'direct' chỉ giữ khi là target DUY NHẤT", () => {
+    expect(normalizeRoute({ targets: ["direct"] }).targets).toEqual(["direct"]);
+    expect(normalizeRoute({ targets: ["direct", "kb"] }).targets).toEqual(["kb"]);
+  });
+
+  it("đa nguồn kb + records (entity hợp lệ) cùng lúc", () => {
+    const r = normalizeRoute(
+      { targets: ["kb", "records"], entity: "san_pham" },
+      { allowedEntities: allowed },
+    );
+    expect(r.targets).toEqual(["kb", "records"]);
+    expect(r.entity).toBe("san_pham");
+  });
+
+  it("không có allowlist → chấp nhận mọi entity (chỉ cần chuỗi)", () => {
+    const r = normalizeRoute({ targets: ["records"], entity: "bat_ky" });
+    expect(r.targets).toEqual(["records"]);
+    expect(r.entity).toBe("bat_ky");
   });
 });

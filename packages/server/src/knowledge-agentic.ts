@@ -56,6 +56,19 @@ const COMPRESS_SYSTEM =
   "(không đưa vào kết quả). Giữ nguyên số liệu, tên riêng, thuật ngữ; KHÔNG bịa " +
   'thêm. Trả JSON: {"kept":[{"i":<chỉ số đoạn>,"text":"<nội dung đã nén>"}]}.';
 
+const ROUTE_SYSTEM =
+  "Bạn là bộ ĐỊNH TUYẾN truy vấn cho trợ lý ERP. Cho CÂU HỎI của người dùng " +
+  "và danh sách ENTITY có thể tra dữ liệu. Chọn (các) NGUỒN phù hợp:\n" +
+  '- "records": câu hỏi về SỐ LIỆU/BẢN GHI cụ thể của một entity (đơn hàng, ' +
+  'sản phẩm, định mức…) — kèm "entity" = ĐÚNG tên kỹ thuật trong danh sách và ' +
+  '"recordQuery" = từ khoá tìm.\n' +
+  '- "kb": câu hỏi về TÀI LIỆU/QUY TRÌNH/VĂN BẢN nội bộ.\n' +
+  '- "web": cần thông tin CÔNG KHAI bên ngoài công ty (chỉ khi được phép).\n' +
+  '- "direct": chào hỏi/giải thích chung KHÔNG cần tra cứu dữ liệu.\n' +
+  'Có thể chọn NHIỀU nguồn nếu cần. KHÔNG chắc → chọn "kb". CHỈ chọn entity có ' +
+  "trong danh sách. Trả JSON: " +
+  '{"targets":["kb"|"records"|"web"|"direct"],"entity":"...","recordQuery":"...","reason":"ngắn gọn"}.';
+
 interface QueryPlan {
   queries?: string[];
   reason?: string;
@@ -452,4 +465,119 @@ export async function agenticRetrieve(
   }
 
   return { hits, queries, gradedOut };
+}
+
+/* ==========================================================
+   QUERY ROUTING (Phase 5) — định tuyến câu hỏi → nguồn tra cứu.
+   Bước classify orchestrated chạy cho MỌI adapter (gồm claude-cli):
+   1 lời gọi callLlmJson rẻ phân loại ý định → caller dispatch sang
+   KB (agenticRetrieve) / records (searchAgentRecords) / web / direct.
+   Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §11.
+   ========================================================== */
+
+export type RouteTarget = "kb" | "records" | "direct" | "web";
+
+export interface RouteDecision {
+  /** Nguồn cần tra (đã chuẩn hoá, LUÔN ≥1 phần tử). */
+  targets: RouteTarget[];
+  /** Tên kỹ thuật entity khi targets gồm "records" (đã validate allowlist). */
+  entity?: string;
+  /** Từ khoá FTS cho records (thiếu → caller dùng câu hỏi gốc). */
+  recordQuery?: string;
+  /** Lý do định tuyến — telemetry/hiển thị. */
+  reason?: string;
+}
+
+interface RawRoute {
+  targets?: unknown;
+  entity?: unknown;
+  recordQuery?: unknown;
+  reason?: unknown;
+}
+
+const VALID_TARGETS: RouteTarget[] = ["kb", "records", "direct", "web"];
+
+export interface NormalizeRouteOpts {
+  /** Tên entity (LOWERCASE) được phép tra records — ngoài tập này thì bỏ "records". */
+  allowedEntities?: Set<string>;
+  /** Có cho phép nhánh "web" không (SearXNG đã cấu hình). */
+  allowWeb?: boolean;
+}
+
+/** Chuẩn hoá kết quả LLM router → RouteDecision an toàn. Hàm THUẦN (unit-test):
+ *  - chỉ giữ target hợp lệ; bỏ "web" nếu !allowWeb; bỏ "records" nếu entity
+ *    không nằm trong allowlist; "direct" CHỈ giữ khi không còn data-target nào
+ *    khác (có dữ liệu cần tra → không phải direct). Rỗng sau lọc → ["kb"]
+ *    (fail-safe = hành vi auto-RAG hiện tại). */
+export function normalizeRoute(raw: RawRoute | null, opts: NormalizeRouteOpts = {}): RouteDecision {
+  const allowed = opts.allowedEntities;
+  const rawTargets = Array.isArray(raw?.targets) ? raw.targets : [];
+  let targets = [...new Set(rawTargets.map((t) => String(t).trim().toLowerCase()))].filter(
+    (t): t is RouteTarget => (VALID_TARGETS as string[]).includes(t),
+  );
+  if (!opts.allowWeb) targets = targets.filter((t) => t !== "web");
+
+  const entityRaw = typeof raw?.entity === "string" ? raw.entity.trim() : "";
+  const entityValid =
+    entityRaw && (!allowed || allowed.has(entityRaw.toLowerCase())) ? entityRaw : "";
+  if (!entityValid) targets = targets.filter((t) => t !== "records");
+
+  // "direct" loại trừ data-target: còn nguồn dữ liệu cần tra thì bỏ "direct".
+  const dataTargets = targets.filter((t) => t !== "direct");
+  if (dataTargets.length) targets = dataTargets;
+
+  if (!targets.length) targets = ["kb"]; // fail-safe mặc định
+
+  const hasRecords = targets.includes("records");
+  const recordQuery =
+    typeof raw?.recordQuery === "string" && raw.recordQuery.trim()
+      ? raw.recordQuery.trim()
+      : undefined;
+  const reason = typeof raw?.reason === "string" ? raw.reason.trim() : undefined;
+  return {
+    targets,
+    entity: hasRecords ? entityValid : undefined,
+    recordQuery: hasRecords ? recordQuery : undefined,
+    reason,
+  };
+}
+
+export interface RouteQueryOpts {
+  /** Entity được phép tra records (name kỹ thuật + nhãn) — feed cho LLM + allowlist. */
+  entities?: Array<{ name: string; label: string }>;
+  /** Có cho phép nhánh "web" (SearXNG đã cấu hình). */
+  allowWeb?: boolean;
+  /** User hiện tại — ưu tiên profile LLM cá nhân khi classify. */
+  userId?: string;
+}
+
+/** Định tuyến câu hỏi → nguồn tra cứu (kb/records/web/direct). 1 lời gọi
+ *  callLlmJson rẻ (maxTokens nhỏ) rồi normalizeRoute (thuần). Fail-safe:
+ *  lỗi/null → ["kb"] (lùi về hành vi auto-RAG hiện tại). */
+export async function routeQuery(
+  db: DB,
+  companyId: string,
+  userQuery: string,
+  opts: RouteQueryOpts = {},
+): Promise<RouteDecision> {
+  const q = userQuery.trim();
+  const ents = opts.entities ?? [];
+  const allowed = new Set(ents.map((e) => e.name.toLowerCase()));
+  const normOpts: NormalizeRouteOpts = { allowedEntities: allowed, allowWeb: opts.allowWeb };
+  if (!q) return normalizeRoute(null, normOpts);
+
+  const entityList = ents.length
+    ? ents.map((e) => `- ${e.name} (${e.label})`).join("\n")
+    : "(không có entity nào được bật cho agent tra cứu)";
+  const user =
+    `CÂU HỎI: ${q}\n\n` +
+    `ENTITY CÓ THỂ TRA (chọn bằng ĐÚNG tên kỹ thuật bên trái):\n${entityList}\n\n` +
+    `Web ${opts.allowWeb ? "ĐƯỢC" : "KHÔNG được"} dùng.`;
+  const raw = await callLlmJson<RawRoute>(db, companyId, {
+    system: ROUTE_SYSTEM,
+    user,
+    maxTokens: 200,
+    userId: opts.userId,
+  });
+  return normalizeRoute(raw, normOpts);
 }

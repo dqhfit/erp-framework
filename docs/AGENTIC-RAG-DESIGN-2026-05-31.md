@@ -378,6 +378,11 @@ CHỈ trả lời dựa trên nội dung đã truy hồi. Nếu không có thôn
    `/agent/chat`) bật `plan+grade`; auto-RAG tiêu thụ `gradedOut` (lạc đề
    → nhắc "không tìm thấy", không chèn rác); chỉ thị trích nguồn inline
    `[#tên nguồn]`; toggle "Tìm sâu" (I.Sparkles) trong `AgentPanel`.
+5. **P5** (Query routing) — ✅ XONG. `routeQuery`/`normalizeRoute`
+   (`knowledge-agentic.ts`) phân loại ý định → KB / records / web / direct
+   cho MỌI adapter; dispatch ở auto-RAG (`index.ts`) sang `agenticRetrieve`
+   và/hoặc `searchAgentRecords` (helper mới, dùng chung với tool); cờ
+   `smartRoute` + toggle "Định tuyến" (I.GitBranch). Xem §11.
 
 ## 10. Câu hỏi cần chốt (trước khi code)
 1. ~~Phạm vi adapter agentic~~ → **ĐÃ CHỐT (§1.5):** pipeline
@@ -391,3 +396,76 @@ CHỈ trả lời dựa trên nội dung đã truy hồi. Nếu không có thôn
    `logActivity` đo token. Thêm trace sau nếu cần audit. *(P4.)*
 
 > Cả 3 mặc định thuộc P3/P4 — không chặn P1. P1 bắt đầu code ngay.
+
+---
+
+## 11. PHASE 5 — Query routing (định tuyến truy vấn) ✅ XONG
+
+> Trạng thái: ĐÃ CODE (2026-06-25). Bổ sung sau P1–P4.
+
+**Vấn đề còn lại sau P1–P4.** Source routing KB↔records (P3) CHỈ chạy ở nhánh
+*autonomous tool-loop* — tức adapter native (Anthropic/OpenAI) tự gọi
+`records_search`. Nhánh **server-orchestrated** (`agenticRetrieve`, đường chính
+cho claude-cli/Ollama) thì **luôn tra KB**, không có bước quyết định "câu hỏi
+này về dữ liệu bản ghi, không phải tài liệu". Với đa số tenant dùng bridge
+→ chưa có định tuyến thật.
+
+**Giải pháp:** thêm 1 bước **classify orchestrated** (1 lời gọi `callLlmJson`
+rẻ) trước truy hồi, chạy cho MỌI adapter, phân loại ý định → định tuyến:
+
+| target | nguồn | thực thi |
+|---|---|---|
+| `kb` | tài liệu/quy trình/văn bản | `agenticRetrieve` (như cũ) |
+| `records` | số liệu/bản ghi 1 entity | `searchAgentRecords` (dữ liệu cấu trúc) |
+| `web` | thông tin công khai ngoài cty | KB + `webFallback` (SearXNG) |
+| `direct` | chào hỏi/giải thích chung | KHÔNG tra cứu (tiết kiệm token) |
+
+### 11.1 Router contract (`callLlmJson`)
+```ts
+type RouteTarget = "kb" | "records" | "direct" | "web";
+interface RouteDecision {
+  targets: RouteTarget[];      // ≥1 (đa nguồn được); fail-safe = ["kb"]
+  entity?: string;             // khi gồm "records" (đã validate allowlist)
+  recordQuery?: string;        // từ khoá FTS records (thiếu → câu hỏi gốc)
+  reason?: string;
+}
+```
+- `routeQuery(db, companyId, userQuery, { entities, allowWeb, userId })` —
+  feed danh sách entity `agentSearchable` (name + label) cho LLM để chọn ĐÚNG
+  entity và **chặn route tới entity cấm**.
+- `normalizeRoute(raw, { allowedEntities, allowWeb })` — hàm **THUẦN** (unit-test):
+  lọc target hợp lệ; bỏ `web` nếu `!allowWeb`; bỏ `records` nếu entity ngoài
+  allowlist; `direct` chỉ giữ khi là target DUY NHẤT; rỗng → `["kb"]`.
+
+### 11.2 Bật/tắt (tôn trọng "rẻ mặc định")
+- Cờ `smartRoute` (body `/agent/chat`) HOẶC `deepSearch` → bật router.
+- **Không bật → mặc định `["kb"]`** = hành vi auto-RAG cũ, **0 lời gọi LLM
+  thêm** (giữ Fast rẻ). Router là tier opt-in (1 call rẻ); nhánh `direct`
+  còn *tiết kiệm* so với cũ (cũ luôn embed+search KB cả khi không cần).
+- Toggle UI "Định tuyến" (I.GitBranch) cạnh "Tìm sâu" trong `AgentPanel`.
+
+### 11.3 Bảo mật (BẮT BUỘC, fail-closed)
+- Router chỉ thấy entity `agentSearchable=true` → KHÔNG route tới entity cấm.
+- `searchAgentRecords` (helper mới `agent-records-search.ts`, **dùng chung**
+  với tool `records_search` → 1 cổng bảo mật): deny-by-default
+  `meta.agentSearchable` + field-level RBAC `stripUnreadableFields` + decrypt.
+- Role-gate `view:entity` kiểm tại call-site (chỉ chạy nhánh records khi
+  `canViewRecords`).
+
+### 11.4 Fail-safe phân tầng
+- `routeQuery` lỗi/null → `normalizeRoute(null)` → `["kb"]` (lùi auto-RAG cũ).
+- Nhánh records lỗi/entity chưa opt-in → bỏ nhánh, KHÔNG vỡ chat (KB vẫn chạy).
+
+### 11.5 File chạm
+| File | Loại |
+|---|---|
+| `knowledge-agentic.ts` | + `routeQuery` / `normalizeRoute` / types / `ROUTE_SYSTEM` |
+| `agent-records-search.ts` (mới) | `searchAgentRecords` — tách từ tool, dùng chung |
+| `index.ts` | router dispatch ở auto-RAG; cờ `smartRoute`; tool `records_search` gọi helper |
+| `AgentPanel.tsx` | state + body `smartRoute` + toggle "Định tuyến" |
+| `knowledge-agentic.test.ts` | unit test `normalizeRoute` (9 ca) |
+
+### 11.6 Mở rộng tương lai (chưa làm)
+- Router sinh `filters` cấu trúc cho records (giờ chỉ `q` FTS) — cần schema field.
+- Heuristic pre-router (không LLM) cho ca hiển nhiên để bật mặc định mà vẫn rẻ.
+- Lưu `route.reason` vào telemetry/`retrieval_trace` cho explainability.

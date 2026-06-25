@@ -23,6 +23,7 @@ import {
   MEMORY_FILES,
   type MemoryFile,
 } from "./agent-memory";
+import { searchAgentRecords } from "./agent-records-search";
 import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
 import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
@@ -35,7 +36,7 @@ import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
-import { agenticRetrieve } from "./knowledge-agentic";
+import { agenticRetrieve, type RouteDecision, routeQuery } from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
@@ -46,15 +47,9 @@ import { registerMenuMcp } from "./mcp-menu";
 import { registerMigrationMcp } from "./mcp-migration";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
-import { getRecordStore } from "./record-store";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
-import {
-  decryptDataOut,
-  loadEntityFields,
-  queryParams,
-  stripUnreadableFields,
-} from "./router-helpers";
+import { queryParams } from "./router-helpers";
 import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
 import { isChannelAllowed } from "./ws-channels";
@@ -427,6 +422,11 @@ async function main(): Promise<void> {
       // Bật web fallback (SearXNG) khi KB không đủ kết quả. Chỉ có hiệu lực
       // khi SearXNG đã cấu hình (webSearchCfg?.configured === true).
       webSearch?: boolean;
+      // "Định tuyến thông minh" (Query routing, Phase 5): 1 lời gọi LLM rẻ
+      // phân loại ý định câu hỏi → KB / records (dữ liệu cấu trúc) / web /
+      // direct, chạy cho MỌI adapter. Mặc định false (giữ Fast = 0 LLM thêm).
+      // deepSearch=true cũng bật router. Xem design §11.
+      smartRoute?: boolean;
     };
     reply.hijack();
     const raw = reply.raw;
@@ -511,55 +511,116 @@ async function main(): Promise<void> {
           }
         }
       }
-      // Auto-RAG orchestrated: tra Knowledge Base bằng câu hỏi mới nhất rồi
-      // CHÈN đoạn liên quan + chỉ thị trích nguồn vào system prompt. Đường
-      // dùng chung mọi adapter (gồm claude-cli — bridge tool-call emulation
-      // dễ vỡ nên ưu tiên đường này). Fail-safe: lỗi không vỡ chat.
-      //  - deepSearch=false (Fast, mặc định): tìm thẳng, KHÔNG tốn LLM thêm.
+      // Auto-RAG orchestrated + Query routing: tra dữ liệu liên quan rồi CHÈN
+      // vào system prompt. Đường dùng chung mọi adapter (gồm claude-cli — bridge
+      // tool-call emulation dễ vỡ nên ưu tiên đường này). Fail-safe: lỗi không
+      // vỡ chat.
+      //  - deepSearch=false (Fast, mặc định): tìm thẳng KB, KHÔNG tốn LLM thêm.
       //  - deepSearch=true (Tìm sâu): plan (rewrite) + CRAG grading.
-      // Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §1.5.
+      //  - smartRoute (hoặc deepSearch): +1 lời gọi LLM rẻ phân loại ý định →
+      //    KB / records (dữ liệu cấu trúc) / web / direct. Không bật → luôn KB.
+      // Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §1.5 + §11.
       let kbContext = "";
+      let recordsContext = "";
       try {
         const lastUser = [...(body.messages ?? [])]
           .reverse()
           .find((m) => m.role === "user")
           ?.content?.trim();
         if (lastUser) {
-          const { hits, gradedOut } = await agenticRetrieve(db, active.companyId, lastUser, {
-            limit: 5,
-            userId: s.userId,
-            plan: body.deepSearch === true,
-            grade: body.deepSearch === true,
-            // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
-            expand: body.deepSearch === true,
-            rerank: body.deepSearch === true,
-            compress: body.deepSearch === true,
-            webFallback: body.webSearch === true && webSearchCfg?.configured === true,
-            sourceIds: agentSourceIds,
-          });
-          if (hits.length && !gradedOut) {
-            kbContext =
-              "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
-              "Khi dùng thông tin từ các trích đoạn dưới, TRÍCH NGUỒN dạng " +
-              "[#tên nguồn]. CHỈ trả lời dựa trên nội dung đã truy hồi; nếu " +
-              'không đủ thông tin, nói rõ "Không tìm thấy trong tri thức nội ' +
-              'bộ" — TUYỆT ĐỐI không bịa.\n\n' +
-              hits
-                .map((h, i) => `[${i + 1}] Nguồn: [#${h.sourceTitle}]\n${h.content}`)
-                .join("\n\n");
-          } else if (gradedOut) {
-            // CRAG kết luận lạc đề → KHÔNG chèn rác, nhắc model nói thẳng.
-            kbContext =
-              "\n\n## Tri thức nội bộ\n" +
-              "Không tìm thấy nội dung liên quan trong Knowledge Base. Nếu câu " +
-              'hỏi cần dữ liệu nội bộ, hãy nói rõ "Không tìm thấy trong tri ' +
-              'thức nội bộ" thay vì suy đoán.';
+          const webEnabled = body.webSearch === true && webSearchCfg?.configured === true;
+          // Query routing: bật khi smartRoute HOẶC deepSearch. Không bật →
+          // mặc định ["kb"] (= hành vi auto-RAG cũ, 0 LLM thêm). Fail-safe:
+          // routeQuery lỗi/null tự lùi về ["kb"].
+          const routeEnabled = body.smartRoute === true || body.deepSearch === true;
+          let route: RouteDecision = { targets: ["kb"] };
+          if (routeEnabled) {
+            // Entity agent ĐƯỢC tra (deny-by-default meta.agentSearchable) —
+            // feed cho router để chọn đúng + chặn route tới entity cấm.
+            const routableEntities = canViewRecords
+              ? await db
+                  .select({ name: entities.name, label: entities.label })
+                  .from(entities)
+                  .where(
+                    and(
+                      eq(entities.companyId, active.companyId),
+                      sql`${entities.meta} @> '{"agentSearchable": true}'::jsonb`,
+                    ),
+                  )
+                  .limit(100)
+              : [];
+            route = await routeQuery(db, active.companyId, lastUser, {
+              entities: routableEntities,
+              allowWeb: webEnabled,
+              userId: s.userId,
+            });
+          }
+          const wantKb = route.targets.includes("kb") || route.targets.includes("web");
+          const wantRecords = route.targets.includes("records") && canViewRecords && !!route.entity;
+
+          // Nhánh KB — chạy khi mặc định (không router) hoặc router chọn kb/web.
+          // records-only / direct → BỎ QUA (tiết kiệm embedding + search).
+          if (wantKb) {
+            const { hits, gradedOut } = await agenticRetrieve(db, active.companyId, lastUser, {
+              limit: 5,
+              userId: s.userId,
+              plan: body.deepSearch === true,
+              grade: body.deepSearch === true,
+              // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
+              expand: body.deepSearch === true,
+              rerank: body.deepSearch === true,
+              compress: body.deepSearch === true,
+              webFallback: webEnabled || route.targets.includes("web"),
+              sourceIds: agentSourceIds,
+            });
+            if (hits.length && !gradedOut) {
+              kbContext =
+                "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
+                "Khi dùng thông tin từ các trích đoạn dưới, TRÍCH NGUỒN dạng " +
+                "[#tên nguồn]. CHỈ trả lời dựa trên nội dung đã truy hồi; nếu " +
+                'không đủ thông tin, nói rõ "Không tìm thấy trong tri thức nội ' +
+                'bộ" — TUYỆT ĐỐI không bịa.\n\n' +
+                hits
+                  .map((h, i) => `[${i + 1}] Nguồn: [#${h.sourceTitle}]\n${h.content}`)
+                  .join("\n\n");
+            } else if (gradedOut) {
+              // CRAG kết luận lạc đề → KHÔNG chèn rác, nhắc model nói thẳng.
+              kbContext =
+                "\n\n## Tri thức nội bộ\n" +
+                "Không tìm thấy nội dung liên quan trong Knowledge Base. Nếu câu " +
+                'hỏi cần dữ liệu nội bộ, hãy nói rõ "Không tìm thấy trong tri ' +
+                'thức nội bộ" thay vì suy đoán.';
+            }
+          }
+
+          // Nhánh records (dữ liệu CÓ CẤU TRÚC) — router chọn "records" + entity
+          // hợp lệ (đã trong allowlist agentSearchable). Helper áp field-level
+          // RBAC strip. Fail-safe: lỗi/entity chưa opt-in → bỏ nhánh, không vỡ.
+          if (wantRecords && route.entity) {
+            try {
+              const res = await searchAgentRecords(db, active.companyId, active.role, {
+                entity: route.entity,
+                q: route.recordQuery ?? lastUser,
+                limit: 10,
+              });
+              if (res.rows.length) {
+                recordsContext =
+                  `\n\n## Dữ liệu bản ghi liên quan (${res.label})\n` +
+                  "Các bản ghi dưới đây lấy từ DỮ LIỆU CÓ CẤU TRÚC của hệ thống. " +
+                  "Dùng để trả lời câu hỏi về số liệu; nếu không đủ, nói rõ thay " +
+                  "vì suy đoán.\n\n" +
+                  res.rows.map((r, i) => `[${i + 1}] ${JSON.stringify(r.data)}`).join("\n");
+              }
+            } catch (e) {
+              console.warn("[agent] routing records lỗi:", (e as Error).message);
+            }
           }
         }
       } catch (e) {
-        console.warn("[agent] auto-RAG KB lỗi:", (e as Error).message);
+        console.warn("[agent] auto-RAG/routing lỗi:", (e as Error).message);
       }
-      const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.") + kbContext;
+      const finalSystem =
+        memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.") + kbContext + recordsContext;
 
       const tools = [
         ...(body.tools ?? []),
@@ -621,34 +682,6 @@ async function main(): Promise<void> {
           // RBAC: kiểm lại tại thời điểm chạy (fail-closed, không tin vào
           // việc tool đã/ chưa được liệt kê).
           if (!canViewRecords) throw new Error('Không có quyền "view:entity".');
-          const entityName = String(args.entity ?? "").trim();
-          if (!entityName) throw new Error("Thiếu tên entity.");
-          // Resolve entity theo tên CASE-INSENSITIVE trong phạm vi công ty.
-          const [ent] = await db
-            .select()
-            .from(entities)
-            .where(
-              and(
-                eq(entities.companyId, active.companyId),
-                sql`lower(${entities.name}) = lower(${entityName})`,
-              ),
-            )
-            .limit(1);
-          if (!ent)
-            throw new Error(
-              `Không tìm thấy entity "${entityName}" trong hệ thống. ` +
-                `Hãy dùng đúng tên kỹ thuật của entity (phân biệt hoa/thường không quan trọng). ` +
-                `Admin có thể xem danh sách entity tại mục Entities trong ứng dụng.`,
-            );
-          // Deny-by-default: chỉ entity được bật cờ opt-in mới cho agent tra.
-          const meta = (ent.meta ?? {}) as { agentSearchable?: boolean };
-          if (meta.agentSearchable !== true) {
-            throw new Error(
-              `Entity "${entityName}" chưa được cấp quyền cho agent tìm kiếm. ` +
-                `Admin cần vào cài đặt entity → bật "Cho phép agent tìm kiếm" (AgentSearchable). ` +
-                `Đây là tính năng opt-in để bảo vệ dữ liệu nhạy cảm.`,
-            );
-          }
           // Validate query của LLM qua zod (queryParams) — bỏ field rác.
           const parsed = queryParams.safeParse({
             q: typeof args.q === "string" ? args.q : undefined,
@@ -659,23 +692,15 @@ async function main(): Promise<void> {
             limit: Math.min(50, Math.max(1, Number(args.limit) || 10)),
           });
           const query = parsed.success ? parsed.data : { limit: 10 };
-          // Qua RecordStore — HYBRID-aware (entity tier='table' đọc bảng thật).
-          const { rows } = await getRecordStore(db).list(active.companyId, ent.id, {
+          // Helper dùng chung với Query routing — 1 cổng bảo mật (resolve +
+          // agentSearchable deny-by-default + field-level RBAC strip).
+          const { rows } = await searchAgentRecords(db, active.companyId, active.role, {
+            entity: String(args.entity ?? ""),
             q: query?.q,
             filters: query?.filters,
             limit: query?.limit ?? 10,
-            withTotal: false,
           });
-          // Decrypt + field-level RBAC strip (đồng nhất records.get).
-          const fields = await loadEntityFields(db, active.companyId, ent.id);
-          return rows.map((r) => ({
-            id: r.id,
-            data: stripUnreadableFields(
-              fields,
-              decryptDataOut(fields, r.data as Record<string, unknown>),
-              active.role,
-            ),
-          }));
+          return rows;
         }
         if (name === "cad_generate") {
           // RBAC kiểm lại tại runtime (fail-closed).

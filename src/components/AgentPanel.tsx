@@ -100,6 +100,9 @@ export function AgentPanel() {
   // "Tìm sâu": bật query-rewrite + CRAG grading phía server (orchestrated
   // Agentic RAG). Mặc định tắt cho nhanh/rẻ. Xem AGENTIC-RAG-DESIGN §1.5.
   const [deepSearch, setDeepSearch] = useState(false);
+  // "Định tuyến": bật Query routing — server phân loại ý định câu hỏi → KB /
+  // dữ liệu bản ghi / web / trả lời thẳng. Mặc định tắt. Xem §11.
+  const [smartRoute, setSmartRoute] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   // Lịch sử trò chuyện (lưu server, per-user). conversationId = cuộc đang mở
   // (null = cuộc mới chưa lưu). bodyRef vẫn dùng cho auto-scroll.
@@ -257,6 +260,8 @@ export function AgentPanel() {
           ...(boundAgentId ? { agentId: boundAgentId } : {}),
           // "Tìm sâu" → server bật plan + grade trong auto-RAG.
           deepSearch,
+          // "Định tuyến" → server phân loại nguồn (KB/records/web/direct).
+          smartRoute,
         }),
       });
       if (!res.ok || !res.body) throw new Error(`Server ${res.status}`);
@@ -562,6 +567,16 @@ export function AgentPanel() {
               aria-pressed={deepSearch}
             >
               Tìm sâu
+            </Button>
+            <Button
+              variant={smartRoute ? "primary" : "ghost"}
+              size="sm"
+              icon={<I.GitBranch size={13} />}
+              onClick={() => setSmartRoute((v) => !v)}
+              title="Định tuyến — tự chọn nguồn trả lời: tài liệu (KB), dữ liệu bản ghi, web, hoặc trả lời thẳng"
+              aria-pressed={smartRoute}
+            >
+              Định tuyến
             </Button>
           </div>
           <Button
