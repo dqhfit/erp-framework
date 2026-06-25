@@ -394,10 +394,6 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [loadingBoms, setLoadingBoms] = useState(false);
   const [loadingDongGoi, setLoadingDongGoi] = useState(false);
 
-  // Sub-type cho trang Bản vẽ kỹ thuật (3 slot: kỹ thuật, mẫu, phát triển)
-  const [drawingSubType, setDrawingSubType] = useState<KtSubType>("Bản vẽ kỹ thuật");
-  const drawingSubTypeRef = useRef(drawingSubType);
-  drawingSubTypeRef.current = drawingSubType;
   const [slotUploading, setSlotUploading] = useState<string | null>(null);
 
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
@@ -468,10 +464,18 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         const rows = d.rows ?? [];
         setBanveRows(rows);
         if (isSlotPage) {
-          const activeSubType = isKyThuat ? drawingSubTypeRef.current : phanloai;
-          const matchingBv = rows.find((r) => r.phanloai === activeSubType);
-          if (matchingBv) {
-            setSelectedBvId(matchingBv.id);
+          if (isKyThuat) {
+            const firstAvailable = KT_SUB_TYPES.map((st) =>
+              rows.find((r) => r.phanloai === st),
+            ).find(Boolean);
+            if (firstAvailable) {
+              setSelectedBvId(firstAvailable.id);
+            }
+          } else {
+            const matchingBv = rows.find((r) => r.phanloai === phanloai);
+            if (matchingBv) {
+              setSelectedBvId(matchingBv.id);
+            }
           }
         }
       } finally {
@@ -1003,39 +1007,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
           {tab === "banve" && (
             <>
-              {/* Sub-tab cho 3 loại bản vẽ kỹ thuật */}
-              {isKyThuat && (
-                <div className="flex border-b border-border overflow-x-auto bg-panel/20 px-3 shrink-0">
-                  {KT_SUB_TYPES.map((st) => {
-                    const count = banveRows.filter((r) => r.phanloai === st).length;
-                    return (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => {
-                          setDrawingSubType(st);
-                          const matchingBv = banveRows.find((r) => r.phanloai === st);
-                          setSelectedBvId(matchingBv ? matchingBv.id : null);
-                        }}
-                        className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px flex items-center gap-1.5 ${
-                          drawingSubType === st
-                            ? "border-accent text-accent font-semibold"
-                            : "border-transparent text-muted hover:text-text"
-                        }`}
-                      >
-                        {KT_SUB_LABELS[st]}
-                        {count > 0 && (
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[9px] font-bold">
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* === KỸ THUẬT & ĐÓNG GÓI: 1 slot upload === */}
+              {/* === KỸ THUẬT & ĐÓNG GÓI: slot upload === */}
               {isSlotPage ? (
                 <div className="flex-1 overflow-y-auto p-4">
                   {loadingDetail ? (
@@ -1044,142 +1016,153 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                     </div>
                   ) : (
                     (() => {
-                      const activeSubType = isKyThuat ? drawingSubType : phanloai;
-                      const activeLabel = isKyThuat ? KT_SUB_LABELS[drawingSubType] : phanloai;
-                      const slotBv = banveRows.find((r) => r.phanloai === activeSubType);
-                      const isUploading = slotUploading === activeSubType;
+                      const subtypesToRender = isKyThuat ? KT_SUB_TYPES : [phanloai];
                       return (
-                        <div className="max-w-md mx-auto">
-                          <div className="text-xs text-muted mb-3 flex items-center gap-2">
-                            <I.FileText size={13} className="text-accent" />
-                            <span className="font-semibold uppercase tracking-wide">
-                              {activeLabel}
-                            </span>
-                          </div>
-
-                          {slotBv ? (
-                            /* Card hiển thị file đã có */
-                            <Card className="p-0 overflow-hidden">
-                              {/* Click vào card để xem PDF */}
-                              <div
-                                className={`p-4 cursor-pointer transition-colors ${
-                                  selectedBvId === slotBv.id ? "bg-accent/10" : "hover:bg-hover/40"
-                                }`}
-                                onClick={() =>
-                                  setSelectedBvId(selectedBvId === slotBv.id ? null : slotBv.id)
-                                }
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
-                                    <I.FileText size={18} className="text-accent" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                      {slotBv.seq2 || "Bản vẽ"}
-                                    </p>
-                                    <p className="text-xs text-muted mt-0.5">
-                                      {slotBv.seq1 || ""}
-                                      {slotBv.create_date ? ` · ${slotBv.create_date}` : ""}
-                                    </p>
-                                  </div>
-                                  <I.ChevronRight size={14} className="text-muted shrink-0" />
+                        <div className="max-w-md mx-auto space-y-2 py-0.5">
+                          {subtypesToRender.map((st) => {
+                            const slotBv = banveRows.find((r) => r.phanloai === st);
+                            const isUploading = slotUploading === st;
+                            const activeLabel = isKyThuat
+                              ? KT_SUB_LABELS[st as KtSubType]
+                              : phanloai;
+                            const active = slotBv && selectedBvId === slotBv.id;
+                            return (
+                              <div key={st} className="space-y-1">
+                                <div className="text-[10px] text-muted/80 font-bold uppercase tracking-wider px-1">
+                                  {activeLabel}
                                 </div>
-                              </div>
 
-                              {/* Actions */}
-                              <div
-                                className="border-t border-border/60 px-4 py-2 flex items-center gap-1 bg-bg-soft/50"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  icon={
-                                    isUploading ? (
-                                      <I.Loader size={11} className="animate-spin text-muted" />
+                                {slotBv ? (
+                                  /* Card hiển thị file đã có (ngang rút gọn) */
+                                  <Card
+                                    className={`p-1.5 flex items-center justify-between gap-2.5 hover:bg-hover/10 cursor-pointer transition-all ${
+                                      active ? "shadow-sm" : ""
+                                    }`}
+                                    style={
+                                      active
+                                        ? {
+                                            background: "hsl(var(--accent) / 0.12)",
+                                            borderColor: "hsl(var(--accent) / 0.45)",
+                                          }
+                                        : undefined
+                                    }
+                                    onClick={() => setSelectedBvId(active ? null : slotBv.id)}
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
+                                        <I.FileText size={13} className="text-accent" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p
+                                          className="text-xs font-semibold truncate text-text"
+                                          title={slotBv.seq2 || "Bản vẽ"}
+                                        >
+                                          {slotBv.seq2 || "Bản vẽ"}
+                                        </p>
+                                        <p className="text-[9px] text-muted truncate mt-0.5">
+                                          {slotBv.seq1 || ""}
+                                          {slotBv.create_date ? ` · ${slotBv.create_date}` : ""}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div
+                                      className="flex items-center gap-0.5 shrink-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={
+                                          isUploading ? (
+                                            <I.Loader
+                                              size={10}
+                                              className="animate-spin text-muted"
+                                            />
+                                          ) : (
+                                            <I.Upload size={10} />
+                                          )
+                                        }
+                                        onClick={() => {
+                                          slotActionRef.current = {
+                                            subType: st,
+                                            existingId: slotBv.id,
+                                          };
+                                          setTimeout(() => slotInputRef.current?.click(), 0);
+                                        }}
+                                        disabled={isUploading}
+                                        title="Thay file"
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={<I.Download size={10} />}
+                                        onClick={() => {
+                                          const fileUrl = `/banvesvc/file?id=${encodeURIComponent(slotBv.id)}`;
+                                          const link = document.createElement("a");
+                                          link.href = fileUrl;
+                                          const ext =
+                                            (slotBv.filepath || "").split(".").pop() || "pdf";
+                                          link.download = `${slotBv.seq2 || st}.${ext}`;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                        }}
+                                        title="Tải về"
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={<I.Trash2 size={10} />}
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
+                                        onClick={() => void handleDelete(slotBv.id)}
+                                        title="Xóa"
+                                      />
+                                    </div>
+                                  </Card>
+                                ) : (
+                                  /* Upload zone khi chưa có file (rút gọn) */
+                                  <label
+                                    className={`flex items-center justify-center gap-1.5 border border-dashed rounded-lg py-1.5 px-2.5 cursor-pointer transition-colors ${
+                                      isUploading
+                                        ? "border-accent/40 bg-accent/5"
+                                        : "border-border hover:border-accent/60 hover:bg-hover/20"
+                                    }`}
+                                  >
+                                    {isUploading ? (
+                                      <I.Loader size={11} className="animate-spin text-accent" />
                                     ) : (
-                                      <I.Upload size={11} />
-                                    )
-                                  }
-                                  className="text-muted hover:text-text hover:bg-hover"
-                                  onClick={() => {
-                                    slotActionRef.current = {
-                                      subType: activeSubType,
-                                      existingId: slotBv.id,
-                                    };
-                                    setTimeout(() => slotInputRef.current?.click(), 0);
-                                  }}
-                                  disabled={isUploading}
-                                >
-                                  Thay file
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  icon={<I.Download size={11} />}
-                                  className="text-muted hover:text-text hover:bg-hover"
-                                  onClick={() => {
-                                    const fileUrl = `/banvesvc/file?id=${encodeURIComponent(slotBv.id)}`;
-                                    const link = document.createElement("a");
-                                    link.href = fileUrl;
-                                    const ext = (slotBv.filepath || "").split(".").pop() || "pdf";
-                                    link.download = `${slotBv.seq2 || activeSubType}.${ext}`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }}
-                                >
-                                  Tải về
-                                </Button>
-                                <div className="flex-1" />
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  icon={<I.Trash2 size={11} />}
-                                  className="text-danger/60 hover:text-danger hover:bg-danger/15"
-                                  onClick={() => void handleDelete(slotBv.id)}
-                                >
-                                  Xóa
-                                </Button>
+                                      <I.Upload size={11} className="text-muted" />
+                                    )}
+                                    <span className="text-[11px] text-muted font-medium">
+                                      {isUploading
+                                        ? "Đang tải lên…"
+                                        : `Tải lên ${activeLabel.toLowerCase()}`}
+                                    </span>
+                                    <span className="text-[9px] text-muted/40">
+                                      (PDF, DWG, AI...)
+                                    </span>
+                                    <input
+                                      type="file"
+                                      className="sr-only"
+                                      accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
+                                      disabled={isUploading}
+                                      onChange={(e) => {
+                                        slotActionRef.current = {
+                                          subType: st,
+                                          existingId: null,
+                                        };
+                                        void handleSlotFileChange(e);
+                                      }}
+                                    />
+                                  </label>
+                                )}
                               </div>
-                            </Card>
-                          ) : (
-                            /* Upload zone khi chưa có file */
-                            <label
-                              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-10 px-6 cursor-pointer transition-colors ${
-                                isUploading
-                                  ? "border-accent/40 bg-accent/5"
-                                  : "border-border hover:border-accent/60 hover:bg-hover/30"
-                              }`}
-                            >
-                              {isUploading ? (
-                                <I.Loader size={24} className="animate-spin text-accent mb-2" />
-                              ) : (
-                                <I.Upload size={24} className="text-muted mb-2" />
-                              )}
-                              <span className="text-sm text-muted">
-                                {isUploading
-                                  ? "Đang tải lên…"
-                                  : `Nhấn để tải lên ${activeLabel.toLowerCase()}`}
-                              </span>
-                              <span className="text-xs text-muted/60 mt-1">
-                                PDF, DWG, AI, DXF, JPG, PNG
-                              </span>
-                              <input
-                                type="file"
-                                className="sr-only"
-                                accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
-                                disabled={isUploading}
-                                onChange={(e) => {
-                                  slotActionRef.current = {
-                                    subType: activeSubType,
-                                    existingId: null,
-                                  };
-                                  void handleSlotFileChange(e);
-                                }}
-                              />
-                            </label>
-                          )}
+                            );
+                          })}
                         </div>
                       );
                     })()
