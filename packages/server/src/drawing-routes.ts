@@ -72,13 +72,22 @@ function mimeByExt(name: string): string {
 }
 
 /** URL viewer PDF.js — port y hệt FnSanPham.GetLinkViewPDFFile. */
-function pdfViewerUrl(filepath: string): string {
+function pdfViewerUrl(filepath: string, host?: string): string {
   const base = process.env.BANVE_PDFJS_BASE ?? "https://view.dongquochung.com:4432";
-  const value = encodeURIComponent(filepath.replace(/\\/g, "/")).replace(
+  let targetFile = filepath;
+  if (filepath.startsWith("/f/")) {
+    if (host) {
+      const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+      targetFile = `${protocol}://${host}${filepath}`;
+    }
+  } else {
+    targetFile = `/f/${filepath.replace(/\\/g, "/")}`;
+  }
+  const value = encodeURIComponent(targetFile).replace(
     /[!'()*]/g,
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
-  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=/f/${value}`;
+  return `${base.replace(/\/+$/, "")}/web/viewer.html?file=${value}`;
 }
 
 /** URL file PDF THÔ trên file-server (endpoint /f/ mà viewer nạp qua `file=`).
@@ -471,12 +480,34 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const govan = gvId
       ? (await listByMasp(db, cid, gvId, masp)).map((r) => ({
           stt: r.data.stt ?? null,
+          mact: r.data.mact ?? null,
           chitiet: r.data.chitiet ?? null,
           nguyenlieu: r.data.nguyenlieu ?? null,
           dayy_tc: r.data.dayy_tc ?? null,
           rong_tc: r.data.rong_tc ?? null,
           dai_tc: r.data.dai_tc ?? null,
-          soluong: r.data.soluong_tc ?? null,
+          soluong_tc: r.data.soluong_tc ?? null,
+          m3_tc: r.data.m3_tc ?? null,
+          phoi_tructiep: r.data.phoi_tructiep ?? null,
+          phoi_ghep: r.data.phoi_ghep ?? null,
+          dayy_sc: r.data.dayy_sc ?? null,
+          rong_sc: r.data.rong_sc ?? null,
+          dai_sc: r.data.dai_sc ?? null,
+          mong1: r.data.mong1 ?? null,
+          mong2: r.data.mong2 ?? null,
+          veneer_matchinh: r.data.veneer_matchinh ?? null,
+          veneer_matphu: r.data.veneer_matphu ?? null,
+          veneer_canhngan: r.data.veneer_canhngan ?? null,
+          veneer_canhdai: r.data.veneer_canhdai ?? null,
+          veneer_dan_canh: r.data.veneer_dan_canh ?? null,
+          uv_matchinh: r.data.uv_matchinh ?? null,
+          uv_matphu: r.data.uv_matphu ?? null,
+          uv_canhdai: r.data.uv_canhdai ?? null,
+          uv_canhngan: r.data.uv_canhngan ?? null,
+          fsc_100: r.data.fsc_100 ?? null,
+          fsc_mix: r.data.fsc_mix ?? null,
+          fsc_cw: r.data.fsc_cw ?? null,
+          ghichu: r.data.ghichu ?? null,
         }))
       : [];
 
@@ -486,11 +517,13 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           mavt: r.data.mavt ?? null,
           chitiet: r.data.chitiet ?? null,
           quycach: r.data.quycach ?? null,
+          mausac: r.data.mausac ?? null,
           soluong: r.data.soluong ?? null,
           dvt: r.data.dvt ?? null,
           hwforai: r.data.hwforai ?? null,
           hwforww: r.data.hwforww ?? null,
           hwforpacking: r.data.hwforpacking ?? null,
+          ghichu: r.data.ghichu ?? null,
         }))
       : [];
 
@@ -741,7 +774,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       }
     }
 
-    return reply.redirect(pdfViewerUrl(rel));
+    return reply.redirect(pdfViewerUrl(rel, req.headers.host));
   });
 
   // ── Mô hình 3D / artifact phụ của 1 bản vẽ AI (STL/STEP/PNG) ──
@@ -871,8 +904,10 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const rows = (await db.execute(
       sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
                  f_phanloai AS phanloai, f_filepath AS filepath,
-                 ext->>'seq1' AS seq1, ext->>'seq2' AS seq2,
-                 ext->>'khachhang' AS khachhang, f_active AS active,
+                 COALESCE(ext->>'seq1', f_seq1) AS seq1,
+                 COALESCE(ext->>'seq2', f_seq2) AS seq2,
+                 COALESCE(ext->>'khachhang', f_khachhang) AS khachhang,
+                 f_active AS active,
                  created_at::date::text AS create_date,
                  updated_at::date::text AS update_date
           FROM tr_banve

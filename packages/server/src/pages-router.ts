@@ -301,21 +301,60 @@ export const pagesRouter = router({
         .where(eq(pages.id, input));
     }),
 
-  // Endpoint không cần auth — trả trang nếu published=true AND publish_mode='public'.
-  // Dùng cho /view/:pageId khi đối tác chưa đăng nhập.
   getPublic: publicProcedure.input(z.string().uuid()).query(async ({ ctx, input }) => {
+    console.log("[getPublic] input:", input);
+    console.log(
+      "[getPublic] ctx.user:",
+      ctx.user ? { id: ctx.user.id, companyId: ctx.user.companyId } : null,
+    );
     const [row] = await ctx.db
       .select()
       .from(pages)
-      // Chỉ trang published=true VÀ publishMode='public' mới lộ ra cho ẩn danh.
-      // Trang 'private' (chỉ cho thành viên đăng nhập) KHÔNG trả ở endpoint này.
-      .where(and(eq(pages.id, input), eq(pages.published, true), eq(pages.publishMode, "public")));
+      .where(and(eq(pages.id, input), eq(pages.published, true)));
+    console.log(
+      "[getPublic] row found:",
+      row
+        ? {
+            id: row.id,
+            companyId: row.companyId,
+            published: row.published,
+            publishMode: row.publishMode,
+          }
+        : null,
+    );
     if (!row) {
+      console.log("[getPublic] Error: Page not found or not published");
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "Trang không tồn tại hoặc chưa được xuất bản công khai",
+        message: "Trang không tồn tại hoặc chưa được xuất bản",
       });
     }
+
+    if (row.publishMode === "private") {
+      // Nếu chưa đăng nhập -> chỉ trả về metadata để frontend hiện màn hình đăng nhập
+      if (!ctx.user) {
+        console.log("[getPublic] Anonymous request for private page, returning metadata only");
+        return {
+          id: row.id,
+          name: row.name,
+          label: row.label,
+          published: row.published,
+          publishMode: row.publishMode,
+          content: { components: [] },
+        };
+      }
+      // Nếu đã đăng nhập nhưng khác công ty -> trả lỗi 404 bảo mật tenant
+      if (row.companyId !== ctx.user.companyId) {
+        console.log(
+          `[getPublic] Error: Company mismatch. Page company: ${row.companyId}, User company: ${ctx.user.companyId}`,
+        );
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Trang không tồn tại hoặc chưa được xuất bản",
+        });
+      }
+    }
+    console.log("[getPublic] Returning full page data");
     return row;
   }),
 });

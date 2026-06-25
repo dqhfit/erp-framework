@@ -9,6 +9,7 @@
 import { createProceduresClient } from "@erp-framework/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import {
@@ -243,6 +244,9 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
+  if (comp.kind === "banve-type") {
+    return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;
+  }
   if (comp.kind === "html") {
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/

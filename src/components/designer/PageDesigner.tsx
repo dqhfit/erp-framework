@@ -841,7 +841,7 @@ export function PageDesigner({ pageId }: Props) {
             }
           }}
         >
-          <div className="max-w-[1200px] mx-auto p-4">
+          <div className="mx-auto p-4 w-full max-w-none px-4">
             <div ref={gridRef} className="grid grid-cols-12 gap-3 auto-rows-[80px]">
               {components.length === 0 && !dragKind && (
                 <div
