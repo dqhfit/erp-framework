@@ -371,6 +371,8 @@ const KT_SUB_LABELS: Record<KtSubType, string> = {
 export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const isDao = phanloai === "Bản vẽ dao";
   const isKyThuat = phanloai === "Bản vẽ kỹ thuật";
+  const isDongGoi = phanloai === "Bản vẽ đóng gói";
+  const isSlotPage = isKyThuat || isDongGoi;
   const [hehangs, setHehangs] = useState<Opt[]>([]);
   const [hehang, setHehang] = useState("");
   const [products, setProducts] = useState<SpRow[]>([]);
@@ -396,7 +398,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [drawingSubType, setDrawingSubType] = useState<KtSubType>("Bản vẽ kỹ thuật");
   const drawingSubTypeRef = useRef(drawingSubType);
   drawingSubTypeRef.current = drawingSubType;
-  const [slotUploading, setSlotUploading] = useState<KtSubType | null>(null);
+  const [slotUploading, setSlotUploading] = useState<string | null>(null);
 
   const selectedBv = banveRows.find((r) => r.id === selectedBvId);
 
@@ -404,7 +406,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [targetBvId, setTargetBvId] = useState<string | null>(null);
   const rowInputRef = useRef<HTMLInputElement>(null);
   const slotInputRef = useRef<HTMLInputElement>(null);
-  const slotActionRef = useRef<{ subType: KtSubType; existingId: string | null }>({
+  const slotActionRef = useRef<{ subType: string; existingId: string | null }>({
     subType: "Bản vẽ kỹ thuật",
     existingId: null,
   });
@@ -465,8 +467,9 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         );
         const rows = d.rows ?? [];
         setBanveRows(rows);
-        if (isKyThuat) {
-          const matchingBv = rows.find((r) => r.phanloai === drawingSubTypeRef.current);
+        if (isSlotPage) {
+          const activeSubType = isKyThuat ? drawingSubTypeRef.current : phanloai;
+          const matchingBv = rows.find((r) => r.phanloai === activeSubType);
           if (matchingBv) {
             setSelectedBvId(matchingBv.id);
           }
@@ -475,7 +478,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         setLoadingDetail(false);
       }
     },
-    [phanloai, isDao, isKyThuat],
+    [phanloai, isDao, isKyThuat, isSlotPage],
   );
 
   const loadBoms = useCallback(
@@ -765,8 +768,9 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       try {
         const fd = new FormData();
         fd.append("file", f);
-        // Tất cả lưu vào thư mục ky-thuat
-        const upRes = await fetch("/upload/file?subfolder=ky-thuat", {
+        // Lấy thư mục tương ứng với loại bản vẽ
+        const sub = subType === "Bản vẽ đóng gói" ? "dong-goi" : "ky-thuat";
+        const upRes = await fetch(`/upload/file?subfolder=${sub}`, {
           method: "POST",
           credentials: "include",
           body: fd,
@@ -910,7 +914,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               />
             </div>
           )}
-          {!isKyThuat && (!isDao || banveRows.length === 0) && (
+          {!isSlotPage && (!isDao || banveRows.length === 0) && (
             <Button
               variant="primary"
               size="sm"
@@ -1031,8 +1035,8 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 </div>
               )}
 
-              {/* === KỸ THUẬT: 1 slot upload per sub-type === */}
-              {isKyThuat ? (
+              {/* === KỸ THUẬT & ĐÓNG GÓI: 1 slot upload === */}
+              {isSlotPage ? (
                 <div className="flex-1 overflow-y-auto p-4">
                   {loadingDetail ? (
                     <div className="h-full flex items-center justify-center py-10">
@@ -1040,14 +1044,16 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                     </div>
                   ) : (
                     (() => {
-                      const slotBv = banveRows.find((r) => r.phanloai === drawingSubType);
-                      const isUploading = slotUploading === drawingSubType;
+                      const activeSubType = isKyThuat ? drawingSubType : phanloai;
+                      const activeLabel = isKyThuat ? KT_SUB_LABELS[drawingSubType] : phanloai;
+                      const slotBv = banveRows.find((r) => r.phanloai === activeSubType);
+                      const isUploading = slotUploading === activeSubType;
                       return (
                         <div className="max-w-md mx-auto">
                           <div className="text-xs text-muted mb-3 flex items-center gap-2">
                             <I.FileText size={13} className="text-accent" />
                             <span className="font-semibold uppercase tracking-wide">
-                              {KT_SUB_LABELS[drawingSubType]}
+                              {activeLabel}
                             </span>
                           </div>
 
@@ -1098,7 +1104,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                   className="text-muted hover:text-text hover:bg-hover"
                                   onClick={() => {
                                     slotActionRef.current = {
-                                      subType: drawingSubType,
+                                      subType: activeSubType,
                                       existingId: slotBv.id,
                                     };
                                     setTimeout(() => slotInputRef.current?.click(), 0);
@@ -1117,7 +1123,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     const link = document.createElement("a");
                                     link.href = fileUrl;
                                     const ext = (slotBv.filepath || "").split(".").pop() || "pdf";
-                                    link.download = `${slotBv.seq2 || drawingSubType}.${ext}`;
+                                    link.download = `${slotBv.seq2 || activeSubType}.${ext}`;
                                     document.body.appendChild(link);
                                     link.click();
                                     document.body.removeChild(link);
@@ -1154,7 +1160,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                               <span className="text-sm text-muted">
                                 {isUploading
                                   ? "Đang tải lên…"
-                                  : `Nhấn để tải lên ${KT_SUB_LABELS[drawingSubType].toLowerCase()}`}
+                                  : `Nhấn để tải lên ${activeLabel.toLowerCase()}`}
                               </span>
                               <span className="text-xs text-muted/60 mt-1">
                                 PDF, DWG, AI, DXF, JPG, PNG
@@ -1166,7 +1172,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                 disabled={isUploading}
                                 onChange={(e) => {
                                   slotActionRef.current = {
-                                    subType: drawingSubType,
+                                    subType: activeSubType,
                                     existingId: null,
                                   };
                                   void handleSlotFileChange(e);
