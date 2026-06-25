@@ -389,10 +389,12 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       const d = await jget<{ rows: SpRow[] }>(
         `/banvesvc/sanpham-by-hehang?hehang=${encodeURIComponent(hh)}`,
       );
-      setProducts(d.rows ?? []);
+      const rows = d.rows ?? [];
+      setProducts(rows);
       if (shouldAutoOpen) {
         setMaspAutoOpen(true);
       }
+      return rows;
     } finally {
       setLoadingProd(false);
     }
@@ -452,6 +454,118 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       setLoadingDongGoi(false);
     }
   }, []);
+
+  // Đọc cấu hình từ URL khi mount lần đầu
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const urlHehang = params.get("hehang") || "";
+    const urlMasp = params.get("masp") || "";
+    const urlPage = params.get("page") || "banve";
+    const urlBvId = params.get("bvId") || null;
+
+    if (urlHehang) {
+      setHehang(urlHehang);
+      void loadProducts(urlHehang, false).then((rows) => {
+        if (urlMasp) {
+          setSelectedMasp(urlMasp);
+          if (rows) {
+            setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
+          }
+          void loadBanve(urlMasp);
+          if (phanloai === "Bản vẽ đóng gói") {
+            void loadDongGoi(urlMasp);
+          } else {
+            void loadBoms(urlMasp);
+          }
+          if (urlBvId) {
+            setSelectedBvId(urlBvId);
+          }
+        }
+      });
+    }
+
+    if (urlPage && ["banve", "govan", "ngukim", "donggoi"].includes(urlPage)) {
+      setTab(urlPage as "banve" | "govan" | "ngukim" | "donggoi");
+    }
+  }, [phanloai, loadProducts, loadBanve, loadDongGoi, loadBoms]);
+
+  // Đồng bộ state lên URL khi thay đổi
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+
+    if (hehang) params.set("hehang", hehang);
+    else params.delete("hehang");
+
+    if (selectedMasp) params.set("masp", selectedMasp);
+    else params.delete("masp");
+
+    if (tab && tab !== "banve") params.set("page", tab);
+    else params.delete("page");
+
+    if (selectedBvId) params.set("bvId", selectedBvId);
+    else params.delete("bvId");
+
+    const newSearch = params.toString();
+    const currentSearch = window.location.search.replace(/^\?/, "");
+    if (newSearch !== currentSearch) {
+      const u = new URL(window.location.href);
+      u.search = newSearch ? `?${newSearch}` : "";
+      window.history.replaceState(null, "", u.pathname + u.search);
+    }
+  }, [hehang, selectedMasp, tab, selectedBvId]);
+
+  // Lắng nghe sự kiện back/forward của trình duyệt để đồng bộ URL về state
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlHehang = params.get("hehang") || "";
+      const urlMasp = params.get("masp") || "";
+      const urlPage = params.get("page") || "banve";
+      const urlBvId = params.get("bvId") || null;
+
+      setHehang(urlHehang);
+      setSelectedMasp(urlMasp);
+      if (urlPage && ["banve", "govan", "ngukim", "donggoi"].includes(urlPage)) {
+        setTab(urlPage as "banve" | "govan" | "ngukim" | "donggoi");
+      }
+      setSelectedBvId(urlBvId);
+
+      if (urlHehang) {
+        void loadProducts(urlHehang, false).then((rows) => {
+          if (urlMasp) {
+            if (rows) {
+              setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
+            }
+            void loadBanve(urlMasp);
+            if (phanloai === "Bản vẽ đóng gói") {
+              void loadDongGoi(urlMasp);
+            } else {
+              void loadBoms(urlMasp);
+            }
+          } else {
+            setSpInfo(null);
+            setBanveRows([]);
+            setGovan([]);
+            setNgukim([]);
+            setDonggoi([]);
+          }
+        });
+      } else {
+        setProducts([]);
+        setSpInfo(null);
+        setBanveRows([]);
+        setGovan([]);
+        setNgukim([]);
+        setDonggoi([]);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [phanloai, loadProducts, loadBanve, loadDongGoi, loadBoms]);
 
   const reloadBanve = useCallback(async () => {
     if (!selectedMasp) return;
