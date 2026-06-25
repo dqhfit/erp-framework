@@ -16,7 +16,7 @@ function BanVeDongGoiRoute() {
   // 2. Ưu tiên 2: Tìm pageId liên kết trong menu với mã bbiBanVeDongGoi hoặc D1
   if (!activePageId) {
     const menuNode = navNodes?.find((n) => n.code === "bbiBanVeDongGoi" || n.code === "D1");
-    activePageId = menuNode?.pageId;
+    activePageId = menuNode?.pageId ?? undefined;
   }
 
   // 3. Ưu tiên 3: Tìm trang có techName bắt đầu bằng ban_ve_dong_goi_ hoặc name khớp

@@ -92,6 +92,8 @@ interface BanveRow {
   khachhang: string | null;
   create_date: string | null;
   update_date: string | null;
+  create_by?: string | null;
+  update_by?: string | null;
 }
 type Opt = { value: string; label: string };
 
@@ -115,9 +117,10 @@ function ThemModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const isDao = phanloai === "Bản vẽ dao";
   const [hehang, setHehang] = useState(defaultHehang || "");
   const [products, setProducts] = useState<SpRow[]>([]);
-  const [masp, setMasp] = useState(defaultMasp || "");
+  const [masp, setMasp] = useState(isDao ? defaultHehang || "" : defaultMasp || "");
   const [spInfo, setSpInfo] = useState<SpRow | null>(null);
   const [seq1, setSeq1] = useState("");
   const [seq2, setSeq2] = useState("");
@@ -126,31 +129,35 @@ function ThemModal({
   const [err, setErr] = useState("");
   const [maspAutoOpen, setMaspAutoOpen] = useState(false);
 
-  const loadProducts = useCallback(async (hh: string, shouldAutoOpen = false) => {
-    if (!hh) {
-      setProducts([]);
-      return [];
-    }
-    const d = await jget<{ rows: SpRow[] }>(
-      `/banvesvc/sanpham-by-hehang?hehang=${encodeURIComponent(hh)}`,
-    );
-    const rows = d.rows ?? [];
-    setProducts(rows);
-    if (shouldAutoOpen) {
-      setMaspAutoOpen(true);
-    }
-    return rows;
-  }, []);
+  const loadProducts = useCallback(
+    async (hh: string, shouldAutoOpen = false) => {
+      if (isDao) return [];
+      if (!hh) {
+        setProducts([]);
+        return [];
+      }
+      const d = await jget<{ rows: SpRow[] }>(
+        `/banvesvc/sanpham-by-hehang?hehang=${encodeURIComponent(hh)}`,
+      );
+      const rows = d.rows ?? [];
+      setProducts(rows);
+      if (shouldAutoOpen) {
+        setMaspAutoOpen(true);
+      }
+      return rows;
+    },
+    [isDao],
+  );
 
   useEffect(() => {
-    if (defaultHehang) {
+    if (defaultHehang && !isDao) {
       void loadProducts(defaultHehang, false).then((rows) => {
         if (rows && defaultMasp) {
           setSpInfo(rows.find((p) => p.masp === defaultMasp) ?? null);
         }
       });
     }
-  }, [defaultHehang, defaultMasp, loadProducts]);
+  }, [defaultHehang, defaultMasp, loadProducts, isDao]);
 
   const productOpts: Opt[] = products.map((p) => ({
     value: p.masp,
@@ -168,8 +175,9 @@ function ThemModal({
   };
 
   const handleSubmit = async () => {
-    if (!masp) {
-      setErr("Vui lòng chọn mã sản phẩm");
+    const finalMasp = isDao ? hehang : masp;
+    if (!finalMasp) {
+      setErr(isDao ? "Vui lòng chọn hệ hàng" : "Vui lòng chọn mã sản phẩm");
       return;
     }
     if (!file) {
@@ -212,9 +220,9 @@ function ThemModal({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          masp,
-          tensp: spInfo?.tensp ?? "",
-          hehang: spInfo?.hehang ?? hehang,
+          masp: finalMasp,
+          tensp: isDao ? "" : (spInfo?.tensp ?? ""),
+          hehang: hehang,
           phanloai,
           filepath,
           seq1: seq1.trim(),
@@ -266,41 +274,53 @@ function ThemModal({
             value={hehang}
             onChange={(v) => {
               setHehang(v);
-              setMasp("");
-              setSpInfo(null);
-              setMaspAutoOpen(false);
-              void loadProducts(v, true);
+              if (isDao) {
+                setMasp(v);
+              } else {
+                setMasp("");
+                setSpInfo(null);
+                setMaspAutoOpen(false);
+                void loadProducts(v, true);
+              }
             }}
             options={hehangs}
             placeholder="Chọn hệ hàng…"
           />
         </div>
-        <div>
-          <label className="block text-xs text-muted mb-1">Mã sản phẩm</label>
-          <SearchableSelect
-            key={hehang}
-            className="w-full"
-            value={masp}
-            onChange={(v) => {
-              setMasp(v);
-              setSpInfo(products.find((p) => p.masp === v) ?? null);
-            }}
-            options={productOpts}
-            autoOpen={maspAutoOpen}
-            placeholder={
-              !hehang ? "Chọn hệ hàng trước" : products.length === 0 ? "Không có SP" : "Chọn mã SP…"
-            }
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-muted mb-1">Tên sản phẩm</label>
-          <input
-            className="input w-full text-sm bg-bg-soft text-muted cursor-default"
-            readOnly
-            value={spInfo?.tensp ?? ""}
-            placeholder="Chưa chọn sản phẩm"
-          />
-        </div>
+        {!isDao && (
+          <>
+            <div>
+              <label className="block text-xs text-muted mb-1">Mã sản phẩm</label>
+              <SearchableSelect
+                key={hehang}
+                className="w-full"
+                value={masp}
+                onChange={(v) => {
+                  setMasp(v);
+                  setSpInfo(products.find((p) => p.masp === v) ?? null);
+                }}
+                options={productOpts}
+                autoOpen={maspAutoOpen}
+                placeholder={
+                  !hehang
+                    ? "Chọn hệ hàng trước"
+                    : products.length === 0
+                      ? "Không có SP"
+                      : "Chọn mã SP…"
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-muted mb-1">Tên sản phẩm</label>
+              <input
+                className="input w-full text-sm bg-bg-soft text-muted cursor-default"
+                readOnly
+                value={spInfo?.tensp ?? ""}
+                placeholder="Chưa chọn sản phẩm"
+              />
+            </div>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-muted mb-1">Định dạng</label>
@@ -340,6 +360,7 @@ function ThemModal({
 }
 
 export function BanVeTypePage({ phanloai }: { phanloai: string }) {
+  const isDao = phanloai === "Bản vẽ dao";
   const [hehangs, setHehangs] = useState<Opt[]>([]);
   const [hehang, setHehang] = useState("");
   const [products, setProducts] = useState<SpRow[]>([]);
@@ -373,87 +394,106 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     });
   }, []);
 
-  const loadProducts = useCallback(async (hh: string, shouldAutoOpen = false) => {
-    setLoadingProd(true);
-    setSelectedMasp("");
-    setSpInfo(null);
-    setBanveRows([]);
-    setSelectedBvId(null);
-    setGovan([]);
-    setNgukim([]);
-    setDonggoi([]);
-    setDonggoiMausac(null);
-    setTab("banve");
-    setMaspAutoOpen(false);
-    try {
-      const d = await jget<{ rows: SpRow[] }>(
-        `/banvesvc/sanpham-by-hehang?hehang=${encodeURIComponent(hh)}`,
-      );
-      const rows = d.rows ?? [];
-      setProducts(rows);
-      if (shouldAutoOpen) {
-        setMaspAutoOpen(true);
+  const loadProducts = useCallback(
+    async (hh: string, shouldAutoOpen = false) => {
+      if (isDao) return [];
+      setLoadingProd(true);
+      setSelectedMasp("");
+      setSpInfo(null);
+      setBanveRows([]);
+      setSelectedBvId(null);
+      setGovan([]);
+      setNgukim([]);
+      setDonggoi([]);
+      setDonggoiMausac(null);
+      setTab("banve");
+      setMaspAutoOpen(false);
+      try {
+        const d = await jget<{ rows: SpRow[] }>(
+          `/banvesvc/sanpham-by-hehang?hehang=${encodeURIComponent(hh)}`,
+        );
+        const rows = d.rows ?? [];
+        setProducts(rows);
+        if (shouldAutoOpen) {
+          setMaspAutoOpen(true);
+        }
+        return rows;
+      } finally {
+        setLoadingProd(false);
       }
-      return rows;
-    } finally {
-      setLoadingProd(false);
-    }
-  }, []);
+    },
+    [isDao],
+  );
 
   const loadBanve = useCallback(
-    async (masp: string) => {
-      if (!masp) return;
+    async (keyVal: string) => {
+      if (!keyVal) return;
       setSelectedBvId(null);
       setLoadingDetail(true);
       try {
+        const queryParam = isDao
+          ? `hehang=${encodeURIComponent(keyVal)}`
+          : `masp=${encodeURIComponent(keyVal)}`;
         const d = await jget<{ rows: BanveRow[] }>(
-          `/banvesvc/banve-list?masp=${encodeURIComponent(masp)}&phanloai=${encodeURIComponent(phanloai)}`,
+          `/banvesvc/banve-list?${queryParam}&phanloai=${encodeURIComponent(phanloai)}`,
         );
         setBanveRows(d.rows ?? []);
       } finally {
         setLoadingDetail(false);
       }
     },
-    [phanloai],
+    [phanloai, isDao],
   );
 
-  const loadBoms = useCallback(async (masp: string) => {
-    if (!masp) return;
-    setLoadingBoms(true);
-    try {
-      const res = await fetch(`/banvesvc/product?masp=${encodeURIComponent(masp)}`, {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const p = (await res.json()) as { govan?: GoVanRow[]; ngukim?: NguKimRow[] };
-        setGovan(p.govan ?? []);
-        setNgukim(p.ngukim ?? []);
+  const loadBoms = useCallback(
+    async (masp: string) => {
+      if (isDao) return;
+      if (!masp) return;
+      setLoadingBoms(true);
+      try {
+        const res = await fetch(`/banvesvc/product?masp=${encodeURIComponent(masp)}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const p = (await res.json()) as { govan?: GoVanRow[]; ngukim?: NguKimRow[] };
+          setGovan(p.govan ?? []);
+          setNgukim(p.ngukim ?? []);
+        }
+      } catch (e) {
+        console.error("Error loading BOMs", e);
+      } finally {
+        setLoadingBoms(false);
       }
-    } catch (e) {
-      console.error("Error loading BOMs", e);
-    } finally {
-      setLoadingBoms(false);
-    }
-  }, []);
+    },
+    [isDao],
+  );
 
-  const loadDongGoi = useCallback(async (masp: string) => {
-    if (!masp) return;
-    setLoadingDongGoi(true);
-    try {
-      const res = await fetch(`/banvesvc/donggoi-chitiet?masp=${encodeURIComponent(masp)}`, {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const p = (await res.json()) as { masp: string; mausac: string | null; rows: DongGoiRow[] };
-        setDonggoi(p.rows ?? []);
-        setDonggoiMausac(p.mausac ?? null);
+  const loadDongGoi = useCallback(
+    async (masp: string) => {
+      if (isDao) return;
+      if (!masp) return;
+      setLoadingDongGoi(true);
+      try {
+        const res = await fetch(`/banvesvc/donggoi-chitiet?masp=${encodeURIComponent(masp)}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const p = (await res.json()) as {
+            masp: string;
+            mausac: string | null;
+            rows: DongGoiRow[];
+          };
+          setDonggoi(p.rows ?? []);
+          setDonggoiMausac(p.mausac ?? null);
+        }
+      } catch (e) {
+        console.error("Error loading Dong Goi details", e);
+      } finally {
+        setLoadingDongGoi(false);
       }
-    } catch (e) {
-      console.error("Error loading Dong Goi details", e);
-    } finally {
-      setLoadingDongGoi(false);
-    }
-  }, []);
+    },
+    [isDao],
+  );
 
   // Đọc cấu hình từ URL khi mount lần đầu
   useEffect(() => {
@@ -466,29 +506,36 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
     if (urlHehang) {
       setHehang(urlHehang);
-      void loadProducts(urlHehang, false).then((rows) => {
-        if (urlMasp) {
-          setSelectedMasp(urlMasp);
-          if (rows) {
-            setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
-          }
-          void loadBanve(urlMasp);
-          if (phanloai === "Bản vẽ đóng gói") {
-            void loadDongGoi(urlMasp);
-          } else {
-            void loadBoms(urlMasp);
-          }
-          if (urlBvId) {
-            setSelectedBvId(urlBvId);
-          }
+      if (isDao) {
+        void loadBanve(urlHehang);
+        if (urlBvId) {
+          setSelectedBvId(urlBvId);
         }
-      });
+      } else {
+        void loadProducts(urlHehang, false).then((rows) => {
+          if (urlMasp) {
+            setSelectedMasp(urlMasp);
+            if (rows) {
+              setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
+            }
+            void loadBanve(urlMasp);
+            if (phanloai === "Bản vẽ đóng gói") {
+              void loadDongGoi(urlMasp);
+            } else {
+              void loadBoms(urlMasp);
+            }
+            if (urlBvId) {
+              setSelectedBvId(urlBvId);
+            }
+          }
+        });
+      }
     }
 
     if (urlPage && ["banve", "govan", "ngukim", "donggoi"].includes(urlPage)) {
       setTab(urlPage as "banve" | "govan" | "ngukim" | "donggoi");
     }
-  }, [phanloai, loadProducts, loadBanve, loadDongGoi, loadBoms]);
+  }, [phanloai, isDao, loadProducts, loadBanve, loadDongGoi, loadBoms]);
 
   // Đồng bộ state lên URL khi thay đổi
   useEffect(() => {
@@ -498,8 +545,12 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     if (hehang) params.set("hehang", hehang);
     else params.delete("hehang");
 
-    if (selectedMasp) params.set("masp", selectedMasp);
-    else params.delete("masp");
+    if (isDao) {
+      params.delete("masp");
+    } else {
+      if (selectedMasp) params.set("masp", selectedMasp);
+      else params.delete("masp");
+    }
 
     if (tab && tab !== "banve") params.set("page", tab);
     else params.delete("page");
@@ -514,7 +565,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       u.search = newSearch ? `?${newSearch}` : "";
       window.history.replaceState(null, "", u.pathname + u.search);
     }
-  }, [hehang, selectedMasp, tab, selectedBvId]);
+  }, [hehang, selectedMasp, tab, selectedBvId, isDao]);
 
   // Lắng nghe sự kiện back/forward của trình duyệt để đồng bộ URL về state
   useEffect(() => {
@@ -534,25 +585,29 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       setSelectedBvId(urlBvId);
 
       if (urlHehang) {
-        void loadProducts(urlHehang, false).then((rows) => {
-          if (urlMasp) {
-            if (rows) {
-              setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
-            }
-            void loadBanve(urlMasp);
-            if (phanloai === "Bản vẽ đóng gói") {
-              void loadDongGoi(urlMasp);
+        if (isDao) {
+          void loadBanve(urlHehang);
+        } else {
+          void loadProducts(urlHehang, false).then((rows) => {
+            if (urlMasp) {
+              if (rows) {
+                setSpInfo(rows.find((p) => p.masp === urlMasp) ?? null);
+              }
+              void loadBanve(urlMasp);
+              if (phanloai === "Bản vẽ đóng gói") {
+                void loadDongGoi(urlMasp);
+              } else {
+                void loadBoms(urlMasp);
+              }
             } else {
-              void loadBoms(urlMasp);
+              setSpInfo(null);
+              setBanveRows([]);
+              setGovan([]);
+              setNgukim([]);
+              setDonggoi([]);
             }
-          } else {
-            setSpInfo(null);
-            setBanveRows([]);
-            setGovan([]);
-            setNgukim([]);
-            setDonggoi([]);
-          }
-        });
+          });
+        }
       } else {
         setProducts([]);
         setSpInfo(null);
@@ -565,15 +620,19 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [phanloai, loadProducts, loadBanve, loadDongGoi, loadBoms]);
+  }, [phanloai, isDao, loadProducts, loadBanve, loadDongGoi, loadBoms]);
 
   const reloadBanve = useCallback(async () => {
-    if (!selectedMasp) return;
+    const keyVal = isDao ? hehang : selectedMasp;
+    if (!keyVal) return;
+    const queryParam = isDao
+      ? `hehang=${encodeURIComponent(keyVal)}`
+      : `masp=${encodeURIComponent(keyVal)}`;
     const d = await jget<{ rows: BanveRow[] }>(
-      `/banvesvc/banve-list?masp=${encodeURIComponent(selectedMasp)}&phanloai=${encodeURIComponent(phanloai)}`,
+      `/banvesvc/banve-list?${queryParam}&phanloai=${encodeURIComponent(phanloai)}`,
     );
     setBanveRows(d.rows ?? []);
-  }, [selectedMasp, phanloai]);
+  }, [selectedMasp, hehang, phanloai, isDao]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -647,7 +706,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         if (rowInputRef.current) rowInputRef.current.value = "";
         void dialog.alert("Cập nhật file thành công!");
       } catch (err) {
-        void dialog.alert("Lỗi: " + (err as Error).message);
+        void dialog.alert(`Lỗi: ${(err as Error).message}`);
       } finally {
         setUpdatingFileId(null);
         setTargetBvId(null);
@@ -661,7 +720,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     label: p.tensp ? `${p.masp} — ${p.tensp}` : p.masp,
   }));
 
-  const hasSelection = !!selectedMasp;
+  const hasSelection = isDao ? !!hehang : !!selectedMasp;
 
   /* ── Left panel: filter + table ── */
   const leftPanel = (
@@ -677,8 +736,13 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               value={hehang}
               onChange={(v) => {
                 setHehang(v);
-                if (v) void loadProducts(v, true);
-                else {
+                if (v) {
+                  if (isDao) {
+                    void loadBanve(v);
+                  } else {
+                    void loadProducts(v, true);
+                  }
+                } else {
                   setProducts([]);
                   setSelectedMasp("");
                   setSpInfo(null);
@@ -693,55 +757,60 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               placeholder="Chọn hệ hàng…"
             />
           </div>
-          <div className="min-w-44 flex-[2]">
-            <label className="flex items-center h-5 text-xs text-muted mb-0.5">
-              <span>Mã sản phẩm</span>
-              {products.length > 0 && (
-                <Chip variant="accent" className="ml-1 text-[10px] shrink-0">
-                  {products.length}
-                </Chip>
-              )}
-            </label>
-            <SearchableSelect
-              key={hehang}
-              className="w-full"
-              triggerClassName="h-8! text-xs!"
-              value={selectedMasp}
-              onChange={(v) => {
-                setSelectedMasp(v);
-                setSpInfo(products.find((p) => p.masp === v) ?? null);
-                setTab("banve");
-                if (v) {
-                  void loadBanve(v);
-                  if (phanloai === "Bản vẽ đóng gói") {
-                    void loadDongGoi(v);
-                  } else {
-                    void loadBoms(v);
+          {!isDao && (
+            <div className="min-w-44 flex-[2]">
+              <label className="flex items-center h-5 text-xs text-muted mb-0.5">
+                <span>Mã sản phẩm</span>
+                {products.length > 0 && (
+                  <Chip variant="accent" className="ml-1 text-[10px] shrink-0">
+                    {products.length}
+                  </Chip>
+                )}
+              </label>
+              <SearchableSelect
+                key={hehang}
+                className="w-full"
+                triggerClassName="h-8! text-xs!"
+                value={selectedMasp}
+                onChange={(v) => {
+                  setSelectedMasp(v);
+                  setSpInfo(products.find((p) => p.masp === v) ?? null);
+                  setTab("banve");
+                  if (v) {
+                    void loadBanve(v);
+                    if (phanloai === "Bản vẽ đóng gói") {
+                      void loadDongGoi(v);
+                    } else {
+                      void loadBoms(v);
+                    }
                   }
+                }}
+                options={productOpts}
+                autoOpen={maspAutoOpen}
+                placeholder={
+                  !hehang
+                    ? "Chọn hệ hàng trước"
+                    : loadingProd
+                      ? "Đang tải…"
+                      : products.length === 0
+                        ? "Không có SP"
+                        : "Chọn SP…"
                 }
-              }}
-              options={productOpts}
-              autoOpen={maspAutoOpen}
-              placeholder={
-                !hehang
-                  ? "Chọn hệ hàng trước"
-                  : loadingProd
-                    ? "Đang tải…"
-                    : products.length === 0
-                      ? "Không có SP"
-                      : "Chọn SP…"
-              }
-            />
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowThem(true)}
-            icon={<I.Plus size={12} />}
-            className="shrink-0"
-          >
-            Thêm
-          </Button>
+              />
+            </div>
+          )}
+          {(!isDao || banveRows.length === 0) && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowThem(true)}
+              icon={<I.Plus size={12} />}
+              className="shrink-0"
+              disabled={isDao && !hehang}
+            >
+              Thêm
+            </Button>
+          )}
         </Card>
       </div>
 
@@ -750,8 +819,12 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             icon={<I.FileText size={24} />}
-            title="Chọn sản phẩm"
-            hint={`Chọn hệ hàng và mã sản phẩm để xem ${phanloai.toLowerCase()}`}
+            title={isDao ? "Chọn hệ hàng" : "Chọn sản phẩm"}
+            hint={
+              isDao
+                ? "Chọn hệ hàng để xem bản vẽ dao"
+                : `Chọn hệ hàng và mã sản phẩm để xem ${phanloai.toLowerCase()}`
+            }
           />
         </div>
       )}
@@ -759,57 +832,59 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
       {/* Table & Tabs */}
       {hasSelection && (
         <>
-          <div className="flex border-b border-border overflow-x-auto bg-panel/20 px-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setTab("banve")}
-              className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                tab === "banve"
-                  ? "border-accent text-accent font-semibold"
-                  : "border-transparent text-muted"
-              }`}
-            >
-              Bản vẽ
-            </button>
-            {phanloai === "Bản vẽ đóng gói" ? (
+          {!isDao && (
+            <div className="flex border-b border-border overflow-x-auto bg-panel/20 px-3 shrink-0">
               <button
                 type="button"
-                onClick={() => setTab("donggoi")}
+                onClick={() => setTab("banve")}
                 className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                  tab === "donggoi"
+                  tab === "banve"
                     ? "border-accent text-accent font-semibold"
                     : "border-transparent text-muted"
                 }`}
               >
-                Đóng gói
+                Bản vẽ
               </button>
-            ) : (
-              <>
+              {phanloai === "Bản vẽ đóng gói" ? (
                 <button
                   type="button"
-                  onClick={() => setTab("govan")}
+                  onClick={() => setTab("donggoi")}
                   className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                    tab === "govan"
+                    tab === "donggoi"
                       ? "border-accent text-accent font-semibold"
                       : "border-transparent text-muted"
                   }`}
                 >
-                  Gỗ ván
+                  Đóng gói
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("ngukim")}
-                  className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
-                    tab === "ngukim"
-                      ? "border-accent text-accent font-semibold"
-                      : "border-transparent text-muted"
-                  }`}
-                >
-                  Ngũ kim
-                </button>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setTab("govan")}
+                    className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+                      tab === "govan"
+                        ? "border-accent text-accent font-semibold"
+                        : "border-transparent text-muted"
+                    }`}
+                  >
+                    Gỗ ván
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab("ngukim")}
+                    className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 -mb-px ${
+                      tab === "ngukim"
+                        ? "border-accent text-accent font-semibold"
+                        : "border-transparent text-muted"
+                    }`}
+                  >
+                    Ngũ kim
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {tab === "banve" && (
             <>
@@ -841,11 +916,35 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                     <thead className="bg-bg-soft text-xs text-muted sticky top-0">
                       <tr>
                         <th className="text-left font-medium px-3 py-2 w-8 shrink-0">#</th>
-                        <th className="text-left font-medium px-3 py-2 min-w-0">Tên file</th>
-                        <th className="text-left font-medium px-3 py-2 w-24 shrink-0">Định dạng</th>
-                        <th className="text-left font-medium px-3 py-2 w-32 shrink-0 hidden sm:table-cell">
-                          Ngày tải
-                        </th>
+                        {isDao ? (
+                          <>
+                            <th className="text-left font-medium px-3 py-2 w-32 shrink-0">
+                              Hệ hàng
+                            </th>
+                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                              Ngày tạo
+                            </th>
+                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                              Người tạo
+                            </th>
+                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                              Ngày sửa
+                            </th>
+                            <th className="text-left font-medium px-3 py-2 w-28 shrink-0">
+                              Người sửa
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="text-left font-medium px-3 py-2 min-w-0">Tên file</th>
+                            <th className="text-left font-medium px-3 py-2 w-24 shrink-0">
+                              Định dạng
+                            </th>
+                            <th className="text-left font-medium px-3 py-2 w-32 shrink-0 hidden sm:table-cell">
+                              Ngày tải
+                            </th>
+                          </>
+                        )}
                         <th className="px-3 py-2 text-right w-24 shrink-0" />
                       </tr>
                     </thead>
@@ -861,18 +960,40 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                             <td className="px-3 py-2 text-muted text-xs truncate w-8 shrink-0">
                               {i + 1}
                             </td>
-                            <td
-                              className="px-3 py-2 truncate font-medium min-w-0"
-                              title={bv.seq2 ?? ""}
-                            >
-                              {bv.seq2 ?? ""}
-                            </td>
-                            <td className="px-3 py-2 text-muted text-xs truncate w-24 shrink-0">
-                              {bv.seq1 ?? <span className="italic opacity-50">—</span>}
-                            </td>
-                            <td className="px-3 py-2 text-muted text-xs truncate w-32 shrink-0 hidden sm:table-cell">
-                              {bv.create_date ?? "—"}
-                            </td>
+                            {isDao ? (
+                              <>
+                                <td className="px-3 py-2 truncate font-medium w-32 shrink-0">
+                                  {bv.hehang ?? ""}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                  {bv.create_date ?? "—"}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                  {bv.create_by ?? "—"}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                  {bv.update_by ? (bv.update_date ?? "—") : "—"}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-28 shrink-0">
+                                  {bv.update_by ?? "—"}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td
+                                  className="px-3 py-2 truncate font-medium min-w-0"
+                                  title={bv.seq2 ?? ""}
+                                >
+                                  {bv.seq2 ?? ""}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-24 shrink-0">
+                                  {bv.seq1 ?? <span className="italic opacity-50">—</span>}
+                                </td>
+                                <td className="px-3 py-2 text-muted text-xs truncate w-32 shrink-0 hidden sm:table-cell">
+                                  {bv.create_date ?? "—"}
+                                </td>
+                              </>
+                            )}
                             <td className="px-3 py-2 text-right">
                               <div
                                 className="inline-flex items-center gap-1 justify-end"
@@ -1000,7 +1121,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         <I.FileText size={13} className="text-accent" />
         <span className="text-xs font-semibold flex-1 truncate min-w-0">
           {selectedBv.seq2 || phanloai}
-          {spInfo?.tensp ? ` (${selectedMasp} — ${spInfo.tensp})` : ` (${selectedMasp})`}
+          {isDao
+            ? ` (${hehang})`
+            : spInfo?.tensp
+              ? ` (${selectedMasp} — ${spInfo.tensp})`
+              : ` (${selectedMasp})`}
         </span>
         <Button
           variant="ghost"
@@ -1049,11 +1174,15 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     <div className="h-full flex items-center justify-center">
       <EmptyState
         icon={<I.FileText size={28} />}
-        title={hasSelection ? "Chọn bản vẽ để xem" : "Chưa có sản phẩm"}
+        title={
+          hasSelection ? "Chọn bản vẽ để xem" : isDao ? "Chưa chọn hệ hàng" : "Chưa có sản phẩm"
+        }
         hint={
           hasSelection
             ? "Click vào một bản vẽ ở danh sách bên trái"
-            : "Chọn hệ hàng và mã sản phẩm trước"
+            : isDao
+              ? "Chọn hệ hàng trước"
+              : "Chọn hệ hàng và mã sản phẩm trước"
         }
       />
     </div>

@@ -895,12 +895,19 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   app.get("/banvesvc/banve-list", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
-    const q = (req.query ?? {}) as { masp?: string; phanloai?: string };
+    const q = (req.query ?? {}) as { masp?: string; hehang?: string; phanloai?: string };
     const masp = q.masp?.trim() ?? "";
+    const hehang = q.hehang?.trim() ?? "";
     const phanloai = q.phanloai?.trim() ?? "";
-    if (!masp) return reply.send({ rows: [] });
+    if (phanloai === "Bản vẽ dao") {
+      if (!hehang) return reply.send({ rows: [] });
+    } else {
+      if (!masp) return reply.send({ rows: [] });
+    }
     const cid = auth.companyId;
     const phanloaiCond = phanloai ? sql`AND f_phanloai = ${phanloai}` : sql``;
+    const filterCond =
+      phanloai === "Bản vẽ dao" ? sql`AND f_hehang = ${hehang}` : sql`AND f_masp = ${masp}`;
     const rows = (await db.execute(
       sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
                  f_phanloai AS phanloai, f_filepath AS filepath,
@@ -908,13 +915,15 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
                  COALESCE(ext->>'seq2', f_seq2) AS seq2,
                  COALESCE(ext->>'khachhang', f_khachhang) AS khachhang,
                  f_active AS active,
+                 f_create_by AS create_by,
+                 f_update_by AS update_by,
                  created_at::date::text AS create_date,
                  updated_at::date::text AS update_date
-          FROM tr_banve
-          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
-            AND f_masp = ${masp} ${phanloaiCond}
-            AND (f_active IS DISTINCT FROM FALSE)
-          ORDER BY created_at DESC LIMIT 200`,
+           FROM tr_banve
+           WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+             ${filterCond} ${phanloaiCond}
+             AND (f_active IS DISTINCT FROM FALSE)
+           ORDER BY created_at DESC LIMIT 200`,
     )) as unknown as Array<Record<string, unknown>>;
     return reply.send({ rows });
   });
@@ -933,7 +942,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       seq1?: string;
       seq2?: string;
     };
-    const {
+    let {
       masp,
       tensp = "",
       hehang = "",
@@ -943,16 +952,53 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       seq1 = "",
       seq2 = "",
     } = body;
-    if (!masp || !filepath) {
-      return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
+    if (phanloai === "Bản vẽ dao") {
+      if (!hehang || !filepath) {
+        return reply.code(400).send({ error: "Thiếu hệ hàng hoặc file bản vẽ" });
+      }
+      masp = hehang;
+      const cid = auth.companyId;
+      const existing = await db.execute(
+        sql`SELECT id FROM tr_banve 
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+              AND f_hehang = ${hehang} AND f_phanloai = ${phanloai}
+              AND (f_active IS DISTINCT FROM FALSE)
+            LIMIT 1`,
+      );
+      if (existing.length > 0) {
+        return reply
+          .code(400)
+          .send({ error: "Hệ hàng này đã có bản vẽ dao, vui lòng cập nhật file" });
+      }
+    } else {
+      if (!masp || !filepath) {
+        return reply.code(400).send({ error: "Thiếu mã sản phẩm hoặc file bản vẽ" });
+      }
     }
     const cid = auth.companyId;
     const bvId = await entityIdByName(db, cid, "tr_banve");
     if (!bvId) return reply.code(500).send({ error: "Không tìm thấy entity tr_banve" });
+
+    const urows = (await db.execute(
+      sql`SELECT name FROM users WHERE id = ${auth.userId}::uuid LIMIT 1`,
+    )) as unknown as Array<{ name: string | null }>;
+    const uname = urows[0]?.name || "";
+
     const row = await getRecordStore(db).insert(
       cid,
       bvId,
-      { masp, tensp, hehang, khachhang, phanloai, filepath, seq1, seq2, active: true },
+      {
+        masp,
+        tensp,
+        hehang,
+        khachhang,
+        phanloai,
+        filepath,
+        seq1,
+        seq2,
+        active: true,
+        create_by: uname,
+      },
       auth.userId,
     );
     return reply.send({ id: row?.id ?? null, ok: true });
@@ -972,14 +1018,20 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     if (!id || !/^[0-9a-f-]{36}$/i.test(id) || !filepath) {
       return reply.code(400).send({ error: "Thiếu hoặc sai ID hoặc filepath" });
     }
+
+    const urows = (await db.execute(
+      sql`SELECT name FROM users WHERE id = ${auth.userId}::uuid LIMIT 1`,
+    )) as unknown as Array<{ name: string | null }>;
+    const uname = urows[0]?.name || "";
+
     if (seq1 !== undefined && seq2 !== undefined) {
       await db.execute(
-        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_seq1 = ${seq1}, f_seq2 = ${seq2}, updated_at = now()
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_seq1 = ${seq1}, f_seq2 = ${seq2}, f_update_by = ${uname}, updated_at = now()
             WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
       );
     } else {
       await db.execute(
-        sql`UPDATE tr_banve SET f_filepath = ${filepath}, updated_at = now()
+        sql`UPDATE tr_banve SET f_filepath = ${filepath}, f_update_by = ${uname}, updated_at = now()
             WHERE id = ${id}::uuid AND company_id = ${auth.companyId}::uuid AND deleted_at IS NULL`,
       );
     }
