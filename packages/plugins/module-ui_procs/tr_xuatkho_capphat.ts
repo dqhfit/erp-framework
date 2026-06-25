@@ -38,7 +38,9 @@ export async function trXuatkhoCapphat(
   companyId: string,
   args: {
     /** id bản ghi (uuid) của DÒNG lệnh cấp phát đang chọn (page state "sel"). */
-    line_uuid: string;
+    line_uuid?: string;
+    /** rowAction tự inject _id = uuid VẬT LÝ dòng — fallback của line_uuid. */
+    _id?: string;
     nguoitao: string;
     makho?: string | null;
     nguoinhan?: string | null;
@@ -49,12 +51,13 @@ export async function trXuatkhoCapphat(
     loaiphieu?: number | null;
   },
 ): Promise<Array<{ sopx: string; soluong: number; message: string }>> {
-  if (!args.line_uuid) throw new Error("Chưa chọn dòng lệnh cấp phát");
+  const line_uuid = args.line_uuid ?? args._id;
+  if (!line_uuid) throw new Error("Chưa chọn dòng lệnh cấp phát");
   if (!args.nguoitao) throw new Error("Thiếu nguoitao");
 
   return db.transaction(async (tx) => {
     const lcp = await procTable(tx, companyId, "tr_lenhcapphat");
-    const [line] = await lcp.listWhere(sql`id = ${args.line_uuid}::uuid`, { limit: 1 });
+    const [line] = await lcp.listWhere(sql`id = ${line_uuid}::uuid`, { limit: 1 });
     if (!line) throw new Error("Không tìm thấy dòng lệnh cấp phát");
 
     const lenhcapphatid = (line.lenhcapphatid as string) ?? null;
@@ -131,7 +134,7 @@ export async function trXuatkhoCapphat(
     const conlai = Math.max(yeucau - daphat, 0);
     await lcp.updateWhere(
       { soluong_daphat: daphat, soluong_conlai: conlai, capphat: conlai <= 0 },
-      sql`id = ${args.line_uuid}::uuid`,
+      sql`id = ${line_uuid}::uuid`,
     );
 
     // 5) trừ tồn FIFO — TR_TONKHO_CHITIET_XUAT: rút dần từ các kệ có tồn của mavt,
