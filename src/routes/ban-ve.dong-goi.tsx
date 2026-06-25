@@ -25,7 +25,7 @@ function BanVeDongGoiRoute() {
       (p) => p.techName?.startsWith("ban_ve_dong_goi_") || p.name === "Bản vẽ đóng gói",
     );
     if (fallbackPage) {
-      activePageId = fallbackPage.id;
+      activePageId = fallbackPage.id ?? undefined;
     }
   }
 
