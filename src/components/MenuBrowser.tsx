@@ -186,22 +186,23 @@ export function MenuBrowser({
             )}
             {currentItems.map(({ node }) => {
               const hasKids = (childrenOf.get(node.code)?.length ?? 0) > 0;
-              const isFolder = hasKids && !node.pageId;
-              const isPage = !!node.pageId;
-              const faved = isPage && isFav ? isFav(node.pageId as string) : false;
+              // Nếu có con → ưu tiên xử lý như thư mục (drill-in), kể cả có pageId
+              const isFolder = hasKids;
+              const isLeafPage = !hasKids && !!node.pageId;
+              const faved = isLeafPage && isFav ? isFav(node.pageId as string) : false;
               return (
                 <div
                   key={node.code}
                   className={cn(
                     "group flex items-center text-sm transition-colors",
-                    isPage ? "hover:bg-hover/40" : "hover:bg-accent/5",
+                    isLeafPage ? "hover:bg-hover/40" : "hover:bg-accent/5",
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => {
-                      if (isPage) onSelectPage(node.pageId as string);
-                      else if (hasKids) drillIn(node.code);
+                      if (hasKids) drillIn(node.code);
+                      else if (node.pageId) onSelectPage(node.pageId);
                     }}
                     className="flex-1 flex items-center gap-2 px-3 py-2 text-left min-w-0"
                   >
@@ -217,7 +218,7 @@ export function MenuBrowser({
                       <I.ChevronRight size={11} className="ml-auto shrink-0 text-muted/40" />
                     )}
                   </button>
-                  {isPage && onToggleFav && (
+                  {isLeafPage && onToggleFav && (
                     <button
                       type="button"
                       onClick={(e) => {
