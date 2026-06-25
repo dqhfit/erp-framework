@@ -9,7 +9,9 @@
    song song→gộp/khử trùng). P2 sẽ chèn bước grade/correct vào
    agenticRetrieve (đã chừa hook). Toàn bộ fail-safe.
    ========================================================== */
+import { type FilterOp, fieldCan, type Role } from "@erp-framework/core";
 import { type SQL, sql } from "drizzle-orm";
+import type { AgentEntityInfo } from "./agent-records-search";
 import type { DB } from "./db";
 import { type KnowledgeHit, type KnowledgeSearchOpts, knowledgeSearch } from "./knowledge-search";
 import { callLlmJson } from "./llm-json";
@@ -551,6 +553,101 @@ export interface RouteQueryOpts {
   userId?: string;
 }
 
+/** Chuẩn hoá câu hỏi để khớp heuristic: bỏ dấu tiếng Việt (NFD + strip
+ *  combining), đ→d, hạ chữ thường, đổi mọi ký tự không phải chữ-số thành
+ *  khoảng trắng (nuốt dấu câu/emoji), gộp khoảng trắng. */
+function normForRoute(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Các câu chào hỏi/ack/chitchat (dạng đã chuẩn hoá) — KHỚP TRỌN câu mới
+ *  tính (tránh bắt nhầm câu hỏi thật có chứa "ok"/"chào"). */
+const GREETINGS = new Set([
+  // chào
+  "hi",
+  "hello",
+  "hey",
+  "helu",
+  "halo",
+  "alo",
+  "yo",
+  "hi hi",
+  "hello ban",
+  "hi ban",
+  "chao",
+  "chao ban",
+  "chao bot",
+  "chao ban oi",
+  "xin chao",
+  "xin chao ban",
+  "chao buoi sang",
+  // cảm ơn
+  "cam on",
+  "cam on ban",
+  "cam on nhe",
+  "cam on nhieu",
+  "cam on bot",
+  "thanks",
+  "thank you",
+  "thank",
+  "tks",
+  "ty",
+  "thank u",
+  "thanks ban",
+  "thanks nhe",
+  // xác nhận / ack
+  "ok",
+  "oke",
+  "oki",
+  "okay",
+  "okie",
+  "oke ban",
+  "dong y",
+  "duoc roi",
+  "tot",
+  "tuyet",
+  // tạm biệt
+  "bye",
+  "tam biet",
+  "goodbye",
+  "see you",
+  "hen gap lai",
+  "good bye",
+]);
+
+/** Câu hỏi meta về chính trợ lý (định danh/năng lực) — KHÔNG cần tra cứu. */
+const META_PATTERNS: RegExp[] = [
+  /^ban (la ai|la gi|ten (la )?gi|ten gi)\b/,
+  /^ban (co the |)(lam|giup) (duoc |)(gi|nhung gi|nhung dieu gi|duoc gi)\b/,
+  /^ban biet (lam )?(nhung )?gi\b/,
+  /^(gioi thieu|tu gioi thieu)( ve)?( ban| ban than| chinh ban)?\s*$/,
+  /^who are you\b/,
+  /^what can you do\b/,
+  /^help$/,
+];
+
+/** Pre-router heuristic (KHÔNG LLM, hàm THUẦN): nhận diện ca HIỂN NHIÊN để
+ *  short-circuit — chào hỏi / cảm ơn / ack / hỏi-về-trợ-lý → "direct" (khỏi
+ *  truy hồi). Đây là điểm "bật routing mặc định mà vẫn rẻ": gọi được cả ở
+ *  đường Fast (0 LLM) để chào hỏi không tốn embedding+search, và đứng trước
+ *  LLM router để né 1 lời gọi cho ca rõ ràng. CHỈ trả quyết định khi CHẮC
+ *  CHẮN; mơ hồ → null (caller lùi về LLM router hoặc mặc định kb). */
+export function preRoute(userQuery: string): RouteDecision | null {
+  const n = normForRoute(userQuery);
+  if (!n) return null;
+  if (GREETINGS.has(n) || META_PATTERNS.some((re) => re.test(n))) {
+    return { targets: ["direct"], reason: "pre-route: chào hỏi/chitchat" };
+  }
+  return null;
+}
+
 /** Định tuyến câu hỏi → nguồn tra cứu (kb/records/web/direct). 1 lời gọi
  *  callLlmJson rẻ (maxTokens nhỏ) rồi normalizeRoute (thuần). Fail-safe:
  *  lỗi/null → ["kb"] (lùi về hành vi auto-RAG hiện tại). */
@@ -566,6 +663,11 @@ export async function routeQuery(
   const normOpts: NormalizeRouteOpts = { allowedEntities: allowed, allowWeb: opts.allowWeb };
   if (!q) return normalizeRoute(null, normOpts);
 
+  // Pre-router heuristic (0 LLM): ca hiển nhiên (chào hỏi/chitchat) → khỏi
+  // tốn lời gọi LLM phân loại.
+  const pre = preRoute(q);
+  if (pre) return pre;
+
   const entityList = ents.length
     ? ents.map((e) => `- ${e.name} (${e.label})`).join("\n")
     : "(không có entity nào được bật cho agent tra cứu)";
@@ -580,4 +682,77 @@ export async function routeQuery(
     userId: opts.userId,
   });
   return normalizeRoute(raw, normOpts);
+}
+
+/* ==========================================================
+   STRUCTURED RECORD FILTERS (Phase 5+ / §11.6) — nâng nhánh records từ
+   FTS thô (`q`) lên BỘ LỌC CÓ CẤU TRÚC theo field. 1 lời gọi callLlmJson,
+   chỉ chạy trên nhánh đã route tới records (hiếm) ở chế độ Deep. Output
+   vẫn được searchAgentRecords sanitize lại (RBAC field-level) — đây chỉ là
+   bước "gợi ý"; bảo mật nằm ở cổng searchAgentRecords.
+   ========================================================== */
+
+const RECORD_FILTER_SYSTEM =
+  "Bạn là bộ lập BỘ LỌC cho tìm bản ghi có cấu trúc. Cho CÂU HỎI và DANH SÁCH " +
+  "FIELD (tên kỹ thuật + nhãn + kiểu). Khi câu hỏi nêu điều kiện RÕ (ngày, số " +
+  "tiền, trạng thái, mã...), sinh filter CHÍNH XÁC theo field. Toán tử hợp lệ: " +
+  "=, !=, >, >=, <, <=, contains, in, is-true, is-not-true. Field số/ngày dùng " +
+  "so sánh (>,>=,<,<=,=); field chữ dùng = hoặc contains; field bool dùng " +
+  "is-true/is-not-true. CHỈ dùng field CÓ trong danh sách; KHÔNG chắc thì để " +
+  'trống filters. Phần từ khoá tự do còn lại đưa vào "q". Trả JSON: ' +
+  '{"q":"...","filters":{"<field>":{"op":"...","value":...}}}.';
+
+interface RawRecordFilter {
+  q?: unknown;
+  filters?: unknown;
+}
+
+export interface RecordFilterPlan {
+  /** Từ khoá FTS còn lại (sau khi rút điều kiện cấu trúc ra filters). */
+  q?: string;
+  /** Bộ lọc theo field (chưa sanitize RBAC — searchAgentRecords lọc lại). */
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+}
+
+/** Sinh bộ lọc CÓ CẤU TRÚC cho records từ câu hỏi (chế độ Deep). 1 lời gọi
+ *  callLlmJson, CHỈ phơi cho LLM field role ĐỌC ĐƯỢC + không mã hoá (giảm
+ *  token + không gợi ý lọc field cấm). Fail-safe: lỗi/null/không field →
+ *  null (caller lùi về FTS recordQuery). Bảo mật thật ở searchAgentRecords
+ *  (sanitizeAgentFilters) — hàm này chỉ là gợi ý. */
+export async function planRecordFilters(
+  db: DB,
+  companyId: string,
+  info: AgentEntityInfo,
+  userQuery: string,
+  role: Role,
+  userId?: string,
+): Promise<RecordFilterPlan | null> {
+  const q = userQuery.trim();
+  if (!q) return null;
+  const usable = info.fields.filter((f) => !f.encrypted && fieldCan(role, "read", f));
+  if (!usable.length) return null;
+  const fieldList = usable.map((f) => `- ${f.name} (${f.label}) [${f.type}]`).join("\n");
+  const user = `CÂU HỎI: ${q}\n\nFIELD CỦA "${info.label}" (chọn ĐÚNG tên kỹ thuật bên trái):\n${fieldList}`;
+  const raw = await callLlmJson<RawRecordFilter>(db, companyId, {
+    system: RECORD_FILTER_SYSTEM,
+    user,
+    maxTokens: 400,
+    userId,
+  });
+  if (!raw) return null;
+  const out: RecordFilterPlan = {};
+  if (typeof raw.q === "string" && raw.q.trim()) out.q = raw.q.trim();
+  if (raw.filters && typeof raw.filters === "object") {
+    const f: Record<string, { op: FilterOp; value: unknown }> = {};
+    for (const [name, cond] of Object.entries(raw.filters as Record<string, unknown>)) {
+      if (cond && typeof cond === "object" && "op" in cond) {
+        f[name] = {
+          op: (cond as { op: FilterOp }).op,
+          value: (cond as { value?: unknown }).value,
+        };
+      }
+    }
+    if (Object.keys(f).length) out.filters = f;
+  }
+  return out.q || out.filters ? out : null;
 }

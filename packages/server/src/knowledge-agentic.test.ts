@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { filterUsable, mergeContiguous, mergeHits, normalizeRoute } from "./knowledge-agentic";
+import {
+  filterUsable,
+  mergeContiguous,
+  mergeHits,
+  normalizeRoute,
+  preRoute,
+} from "./knowledge-agentic";
 import type { KnowledgeHit } from "./knowledge-search";
 
 /** Hit có kiểm soát sourceId + seq + content (cho test mergeContiguous). */
@@ -164,5 +170,48 @@ describe("normalizeRoute", () => {
     const r = normalizeRoute({ targets: ["records"], entity: "bat_ky" });
     expect(r.targets).toEqual(["records"]);
     expect(r.entity).toBe("bat_ky");
+  });
+});
+
+describe("preRoute", () => {
+  it("chào hỏi (có/không dấu, hoa/thường, dấu câu) → direct", () => {
+    for (const q of ["chào", "Chào bạn!", "xin chào", "hello", "Hi 👋", "alo", "  chao ban  "]) {
+      expect(preRoute(q)?.targets).toEqual(["direct"]);
+    }
+  });
+
+  it("cảm ơn / xác nhận / tạm biệt → direct", () => {
+    for (const q of ["Cảm ơn", "cám ơn bạn", "thanks nhé", "ok", "Oke", "đồng ý", "tạm biệt"]) {
+      expect(preRoute(q)?.targets).toEqual(["direct"]);
+    }
+  });
+
+  it("hỏi về chính trợ lý (định danh/năng lực) → direct", () => {
+    for (const q of [
+      "bạn là ai",
+      "Bạn tên gì?",
+      "bạn làm được gì",
+      "bạn có thể giúp gì",
+      "who are you",
+    ]) {
+      expect(preRoute(q)?.targets).toEqual(["direct"]);
+    }
+  });
+
+  it("câu hỏi thật → null (không short-circuit)", () => {
+    for (const q of [
+      "cho tôi xem đơn hàng tháng này",
+      "định mức gỗ ván là bao nhiêu",
+      "chào giá sản phẩm X thế nào", // có 'chào' nhưng KHỚP TRỌN mới tính
+      "ok cho tôi xem báo cáo", // có 'ok' nhưng cả câu không phải ack
+      "quy trình sơn gồm những bước nào",
+    ]) {
+      expect(preRoute(q)).toBeNull();
+    }
+  });
+
+  it("rỗng/khoảng trắng → null", () => {
+    expect(preRoute("")).toBeNull();
+    expect(preRoute("   ")).toBeNull();
   });
 });

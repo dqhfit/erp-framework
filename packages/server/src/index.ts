@@ -14,6 +14,7 @@ import websocketPlugin from "@fastify/websocket";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { and, eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import { logActivity } from "./activity";
 import { canActOnAgentLite } from "./agent-acl";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import {
@@ -23,7 +24,7 @@ import {
   MEMORY_FILES,
   type MemoryFile,
 } from "./agent-memory";
-import { searchAgentRecords } from "./agent-records-search";
+import { describeAgentEntity, searchAgentRecords } from "./agent-records-search";
 import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
 import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
@@ -36,7 +37,14 @@ import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
 import { enqueueKbIngest, getJobsStatus, startJobs, stopJobs } from "./jobs";
-import { agenticRetrieve, type RouteDecision, routeQuery } from "./knowledge-agentic";
+import {
+  agenticRetrieve,
+  planRecordFilters,
+  preRoute,
+  type RecordFilterPlan,
+  type RouteDecision,
+  routeQuery,
+} from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
@@ -636,8 +644,13 @@ async function main(): Promise<void> {
           // mặc định ["kb"] (= hành vi auto-RAG cũ, 0 LLM thêm). Fail-safe:
           // routeQuery lỗi/null tự lùi về ["kb"].
           const routeEnabled = body.smartRoute === true || body.deepSearch === true;
-          let route: RouteDecision = { targets: ["kb"] };
-          if (routeEnabled) {
+          // Pre-router heuristic (0 LLM): ca hiển nhiên (chào hỏi/cảm ơn/hỏi
+          // về trợ lý) → "direct", bỏ qua truy hồi NGAY CẢ ở chế độ Fast mặc
+          // định (tiết kiệm embedding + search KB). Chỉ khi không bắt được
+          // mới cân nhắc LLM router (nếu bật) hoặc lùi về ["kb"].
+          const pre = preRoute(lastUser);
+          let route: RouteDecision = pre ?? { targets: ["kb"] };
+          if (!pre && routeEnabled) {
             // Entity agent ĐƯỢC tra (deny-by-default meta.agentSearchable) —
             // feed cho router để chọn đúng + chặn route tới entity cấm.
             const routableEntities = canViewRecords
@@ -656,6 +669,22 @@ async function main(): Promise<void> {
               entities: routableEntities,
               allowWeb: webEnabled,
               userId: s.userId,
+            });
+          }
+          // Telemetry routing (explainability §11.6): chỉ ghi khi THỰC SỰ có
+          // quyết định (pre-route heuristic hoặc LLM router chạy) — đường kb
+          // mặc định không ghi. Fail-safe + fire-and-forget (logActivity tự
+          // nuốt lỗi). Không lưu retrieval_trace (§10-q4 hoãn — cần migration).
+          if (pre || routeEnabled) {
+            void logActivity(db, {
+              companyId: active.companyId,
+              kind: "route",
+              target: route.targets.join(","),
+              detail:
+                `Định tuyến: [${route.targets.join(", ")}]` +
+                (route.entity ? ` entity=${route.entity}` : "") +
+                (route.reason ? ` — ${route.reason}` : ""),
+              actorUserId: s.userId,
             });
           }
           const wantKb = route.targets.includes("kb") || route.targets.includes("web");
@@ -701,9 +730,26 @@ async function main(): Promise<void> {
           // RBAC strip. Fail-safe: lỗi/entity chưa opt-in → bỏ nhánh, không vỡ.
           if (wantRecords && route.entity) {
             try {
+              // Chế độ Deep: nâng records từ FTS thô → bộ lọc CÓ CẤU TRÚC theo
+              // field (+1 lời gọi LLM, chỉ trên nhánh records — hiếm).
+              // describeAgentEntity ném nếu entity chưa opt-in → catch dưới bỏ
+              // nhánh. Output filter vẫn được searchAgentRecords sanitize lại.
+              let plan: RecordFilterPlan | null = null;
+              if (body.deepSearch === true) {
+                const info = await describeAgentEntity(db, active.companyId, route.entity);
+                plan = await planRecordFilters(
+                  db,
+                  active.companyId,
+                  info,
+                  lastUser,
+                  active.role,
+                  s.userId,
+                );
+              }
               const res = await searchAgentRecords(db, active.companyId, active.role, {
                 entity: route.entity,
-                q: route.recordQuery ?? lastUser,
+                q: plan?.q ?? route.recordQuery ?? lastUser,
+                filters: plan?.filters,
                 limit: 10,
               });
               if (res.rows.length) {

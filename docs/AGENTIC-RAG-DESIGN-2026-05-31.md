@@ -459,13 +459,42 @@ interface RouteDecision {
 ### 11.5 File chạm
 | File | Loại |
 |---|---|
-| `knowledge-agentic.ts` | + `routeQuery` / `normalizeRoute` / types / `ROUTE_SYSTEM` |
-| `agent-records-search.ts` (mới) | `searchAgentRecords` — tách từ tool, dùng chung |
+| `knowledge-agentic.ts` | + `routeQuery` / `normalizeRoute` / `preRoute` / types / `ROUTE_SYSTEM` |
+| `agent-records-search.ts` (mới) | `searchAgentRecords` — tách từ tool, dùng chung; + `describeAgentEntity` / `sanitizeAgentFilters` (RBAC filter) |
 | `index.ts` | router dispatch ở auto-RAG; cờ `smartRoute`; tool `records_search` gọi helper |
 | `AgentPanel.tsx` | state + body `smartRoute` + toggle "Định tuyến" |
 | `knowledge-agentic.test.ts` | unit test `normalizeRoute` (9 ca) |
 
-### 11.6 Mở rộng tương lai (chưa làm)
-- Router sinh `filters` cấu trúc cho records (giờ chỉ `q` FTS) — cần schema field.
-- Heuristic pre-router (không LLM) cho ca hiển nhiên để bật mặc định mà vẫn rẻ.
-- Lưu `route.reason` vào telemetry/`retrieval_trace` cho explainability.
+### 11.6 Mở rộng (✅ XONG 2026-06-26 — cả 3 mục)
+- ✅ **Heuristic pre-router (không LLM)** — XONG (2026-06-26). `preRoute(query)`
+  (`knowledge-agentic.ts`, hàm THUẦN): chuẩn hoá câu hỏi (bỏ dấu + hạ chữ +
+  nuốt dấu câu) rồi khớp TRỌN câu với tập chào hỏi/cảm ơn/ack + vài pattern
+  hỏi-về-trợ-lý → `["direct"]`; mơ hồ → `null`. Gọi ở 2 nơi: (a) đầu
+  `routeQuery` → né 1 lời gọi LLM router cho ca hiển nhiên; (b) trong dispatch
+  auto-RAG (`index.ts`) TRƯỚC gate `routeEnabled` → chào hỏi bỏ qua truy hồi
+  NGAY CẢ ở chế độ Fast mặc định (tiết kiệm embedding + search KB), 0 LLM thêm.
+  Fail-safe phân tầng: `null` → giữ nguyên hành vi cũ. Unit test 5 ca
+  (`knowledge-agentic.test.ts`: chào hỏi/cảm ơn/meta → direct, câu hỏi thật +
+  rỗng → null). Là bước hiện thực hoá "bật routing mặc định mà vẫn rẻ".
+- ✅ **Router sinh `filters` cấu trúc cho records** — XONG (2026-06-26). Hai
+  phần: (a) **bảo mật** — `sanitizeAgentFilters(fields, filters, role)` (hàm
+  THUẦN, `agent-records-search.ts`) áp NGAY TRONG `searchAgentRecords` (cổng
+  duy nhất) nên CẢ tool autonomous `records_search` LẪN routing đều bị chặn:
+  bỏ filter trên field lạ / mã hoá / role-không-đọc-được (chống *filter-oracle*
+  dò giá trị field cấm qua `>`/`<`) / op không hợp lệ. Đây cũng vá lỗ cũ (tool
+  truyền filter LLM thẳng vào `buildRecordWhere` không kiểm field-RBAC). (b)
+  **sinh filter** — `planRecordFilters(db, companyId, info, query, role)`
+  (`knowledge-agentic.ts`): chế độ **Deep**, +1 lời gọi `callLlmJson` CHỈ trên
+  nhánh đã route tới records (hiếm); chỉ phơi field role đọc được + không mã
+  hoá; LLM rút điều kiện rõ (ngày/số tiền/trạng thái) thành `{op,value}`, phần
+  còn lại để `q`. Helper `describeAgentEntity` resolve+gate+nạp-field dùng
+  chung. Fail-safe: null → lùi về FTS `recordQuery`; output luôn được sanitize
+  lại ở cổng. Unit test 7 ca `sanitizeAgentFilters`.
+- ✅ **Telemetry `route.reason`** — XONG (2026-06-26). `logActivity(kind:"route")`
+  ở dispatch auto-RAG (`index.ts`): ghi `targets` + `entity` + `reason` mỗi khi
+  THỰC SỰ có quyết định định tuyến (pre-route heuristic hoặc LLM router chạy) —
+  đường kb mặc định KHÔNG ghi (tránh nhiễu). Fire-and-forget, fail-safe (lỗi
+  log không vỡ chat), company-scoped + `actorUserId`. KHÔNG thêm
+  `retrieval_trace` (jsonb trên `agent_conversations`) — đúng quyết định §10-q4
+  (hoãn cho tới khi cần audit sâu, tránh migration ở MVP); telemetry nhẹ qua
+  `activity_log` (đã có) là đủ explainability per-tenant.
