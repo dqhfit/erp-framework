@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { api } from "@/components/renderer/page-data";
-import { Button, EmptyState, Modal, SplitPane, TagBox } from "@/components/ui";
+import { Button, Card, EmptyState, Modal, SplitPane, TagBox } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
 
@@ -672,72 +672,78 @@ export function BangMauTypePage() {
                   Không tìm thấy bảng màu nào.
                 </div>
               ) : (
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="bg-panel border-b border-border text-muted sticky top-0 z-10">
-                    <tr>
-                      <th className="p-2 border-r border-border font-semibold w-16">Mã</th>
-                      <th className="p-2 border-r border-border font-semibold">Tên bảng màu</th>
-                      <th className="p-2 border-r border-border font-semibold w-24">Hệ hàng</th>
-                      <th className="p-2 font-semibold text-center w-14"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {filteredPalettes.map((p) => {
-                      const isSelected = selectedPalette?.id === p.id;
-                      return (
-                        <tr
-                          key={p.id}
-                          onClick={() => setSelectedPalette(p)}
-                          className={`group cursor-pointer transition-colors hover:bg-hover/40 ${
-                            isSelected ? "bg-hover font-medium" : ""
-                          }`}
-                        >
-                          <td className="p-2 border-r border-border/80 font-mono text-accent select-all">
-                            {p.ma}
-                          </td>
-                          <td
-                            className="p-2 border-r border-border/80 truncate max-w-[120px]"
-                            title={p.ten}
-                          >
-                            {p.ten}
-                          </td>
-                          <td
-                            className="p-2 border-r border-border/80 truncate max-w-[100px]"
-                            title={p.hehang ?? ""}
-                          >
-                            {p.hehang ?? ""}
-                          </td>
-                          <td className="p-2 text-center">
-                            <div className="flex items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleEditPalette(p);
-                                }}
-                                title="Sửa bảng màu"
-                                className="p-1 rounded text-muted hover:text-text hover:bg-panel border border-transparent hover:border-border transition-all"
-                              >
-                                <I.Edit size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDeletePalette(p);
-                                }}
-                                title="Xóa bảng màu"
-                                className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all"
-                              >
-                                <I.Trash size={12} />
-                              </button>
+                <div className="p-3 space-y-2">
+                  {filteredPalettes.map((p) => {
+                    const isSelected = selectedPalette?.id === p.id;
+                    return (
+                      <Card
+                        key={p.id}
+                        className="p-2 flex items-center justify-between gap-3 hover:bg-hover/10 cursor-pointer transition-all border border-border/50"
+                        style={
+                          isSelected
+                            ? {
+                                background: "hsl(var(--accent) / 0.12)",
+                                borderColor: "hsl(var(--accent) / 0.45)",
+                              }
+                            : undefined
+                        }
+                        onClick={() => setSelectedPalette(p)}
+                      >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-8 h-8 rounded bg-accent/15 flex items-center justify-center shrink-0">
+                            <I.Layers size={13} className="text-accent" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-text truncate" title={p.ten}>
+                              {p.ten}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted truncate">
+                              <span className="font-mono bg-bg-soft px-1 py-0.5 rounded border border-border/40 select-all">
+                                {p.ma}
+                              </span>
+                              {p.hehang && (
+                                <>
+                                  <span>·</span>
+                                  <span className="bg-accent/10 text-accent px-1.5 py-0.2 rounded-full font-medium">
+                                    {p.hehang}
+                                  </span>
+                                </>
+                              )}
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                        </div>
+
+                        <div
+                          className="flex items-center gap-1 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleEditPalette(p);
+                            }}
+                            title="Sửa bảng màu"
+                            className="p-1 rounded text-muted hover:text-text hover:bg-hover border border-transparent hover:border-border transition-all"
+                          >
+                            <I.Edit size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDeletePalette(p);
+                            }}
+                            title="Xóa bảng màu"
+                            className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all"
+                          >
+                            <I.Trash size={12} />
+                          </button>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
