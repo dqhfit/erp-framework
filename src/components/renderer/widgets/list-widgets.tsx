@@ -511,6 +511,10 @@ function EditableListWidget({
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
+  // Ref để cell renderer trong columns memo đọc pageState MỚI NHẤT mà không
+  // đưa pageState vào deps (pageState thay identity mỗi khi có set → re-memo không cần thiết).
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
@@ -685,6 +689,7 @@ function EditableListWidget({
   };
 
   // Cột TanStack: cell = ô sửa inline. Cột số → summary=sum (footer tổng hợp).
+  // pageState KHÔNG đưa vào deps — cell renderer đọc qua pageStateRef.current (ref luôn mới nhất).
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     const cols: ColumnDef<Record<string, unknown>>[] = visibleFields.map((f) => ({
       id: f.name,
@@ -840,7 +845,13 @@ function EditableListWidget({
                 onClick={(e) => e.stopPropagation()}
               >
                 {bound.map((a) => (
-                  <ActionWidget key={a.label} config={a} pageState={pageState} inline compact />
+                  <ActionWidget
+                    key={a.label}
+                    config={a}
+                    pageState={pageStateRef.current}
+                    inline
+                    compact
+                  />
                 ))}
               </div>
             );
@@ -848,7 +859,7 @@ function EditableListWidget({
           return (
             <RowActionsCell
               actions={bound}
-              pageState={pageState}
+              pageState={pageStateRef.current}
               row={row}
               cols={visibleFields.map((f) => ({
                 key: f.name,
@@ -870,7 +881,6 @@ function EditableListWidget({
     myGroupIds,
     newRows.length,
     rowActions,
-    pageState,
     title,
     rowActionsHidden,
     rowActionsStyle,

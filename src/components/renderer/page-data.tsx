@@ -30,6 +30,18 @@ import { useUserObjects } from "@/stores/userObjects";
 
 export const api = createApiDataSource("");
 
+/** Cache module: dsId → Promise<meta> — tránh fetch song song khi nhiều widget
+ *  cùng dùng một DataSource trên cùng trang. Promise được giữ sau khi resolve
+ *  để phục vụ widget mount muộn mà không round-trip thêm. */
+const _dsMetaCache = new Map<string, Promise<Awaited<ReturnType<typeof api.getDataSourceMeta>>>>();
+function cachedGetDataSourceMeta(dsId: string) {
+  if (!_dsMetaCache.has(dsId)) {
+    _dsMetaCache.set(dsId, api.getDataSourceMeta(dsId));
+  }
+  // biome-ignore lint/style/noNonNullAssertion: vừa set nên chắc chắn có
+  return _dsMetaCache.get(dsId)!;
+}
+
 const PageStateContext = createContext<PageStateCtx | null>(null);
 
 export function PageStateProvider({
@@ -242,8 +254,9 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
 }
 
 export function useEntity(entityId?: string): MockEntity | undefined {
-  const entities = useUserObjects((s) => s.entities);
-  return entities.find((e) => e.id === entityId);
+  // Selector inline — chỉ re-render khi entity CỤ THỂ này thay đổi,
+  // không khi entity KHÁC trong mảng được thêm/sửa/xoá.
+  return useUserObjects((s) => s.entities.find((e) => e.id === entityId));
 }
 
 /* ── DataSource (ORM-like) read hook — row PHẲNG đã join + field meta. ──
@@ -268,29 +281,17 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const refreshTag = dataSourceId
     ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
     : undefined;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
+  // Meta effect: chỉ chạy khi dataSourceId đổi — dùng cache để tránh fetch lặp.
   useEffect(() => {
-    if (!dataSourceId || !enabled) {
-      setRows([]);
-      setLoading(false);
+    if (!dataSourceId) {
+      setFields([]);
       return;
     }
     let alive = true;
-    setLoading(true);
-    setErr("");
-    Promise.all([
-      api.getDataSourceRecords(dataSourceId, {
-        limit,
-        filters,
-        q,
-        sort: sort ? { key: sort.field, dir: sort.dir } : undefined,
-      }),
-      api.getDataSourceMeta(dataSourceId),
-    ])
-      .then(([res, meta]) => {
+    cachedGetDataSourceMeta(dataSourceId)
+      .then((meta) => {
         if (!alive) return;
         metaRef.current = meta;
-        setRows(res.rows as Record<string, unknown>[]);
         setFields(
           meta.fields.map((f) => ({
             id: f.key,
@@ -302,6 +303,34 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
             writable: f.sourceRelationId === "base" && f.writable !== false,
           })),
         );
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [dataSourceId]);
+
+  // Data effect: chạy lại khi filter/sort/refreshTag đổi — KHÔNG refetch meta.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
+  useEffect(() => {
+    if (!dataSourceId || !enabled) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    setErr("");
+    api
+      .getDataSourceRecords(dataSourceId, {
+        limit,
+        filters,
+        q,
+        sort: sort ? { key: sort.field, dir: sort.dir } : undefined,
+      })
+      .then((res) => {
+        if (!alive) return;
+        setRows(res.rows as Record<string, unknown>[]);
         setLoading(false);
       })
       .catch((e) => {
@@ -392,15 +421,14 @@ export function useServerPagedRecords(opts: {
   const [refreshTag, setRefreshTag] = useState(0);
   const [summary, setSummary] = useState<Record<string, number>>({});
 
-  // Field meta của DataSource (1 lần) — entity lấy thẳng từ useEntity.
+  // Field meta của DataSource (1 lần, dùng cache) — entity lấy thẳng từ useEntity.
   useEffect(() => {
     if (!dataSourceId) {
       setDsFields([]);
       return;
     }
     let alive = true;
-    api
-      .getDataSourceMeta(dataSourceId)
+    cachedGetDataSourceMeta(dataSourceId)
       .then((m) => {
         if (alive)
           setDsFields(
@@ -602,8 +630,8 @@ export function useWidgetMeta(cfg: Record<string, unknown>): {
       return;
     }
     let alive = true;
-    api
-      .getDataSourceMeta(dataSourceId)
+    // Dùng cache — meta thường đã nạp từ useDataSourceRecords trên cùng trang
+    cachedGetDataSourceMeta(dataSourceId)
       .then((m) => {
         if (alive)
           setDsFields(

@@ -4,7 +4,15 @@
    ActionBarWidget. Tách từ ConsumerPage.tsx (Phase A7) — chỉ di chuyển code,
    KHÔNG đổi hành vi. Export: GridWidget, SplitWidget, ActionBarWidget,
    withEmbeddedActions (Widget dispatcher dùng). */
-import { Fragment, type ReactElement, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactElement,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
@@ -440,10 +448,26 @@ export function SplitWidget({ comp }: { comp: PageComponent }) {
   const kindB = panelB.kind ?? "detail";
   const kindC = panelC.kind ?? "list";
   const kindD = panelD.kind ?? "list";
-  const cfgA = buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey, "a");
-  const cfgB = buildSubCfg({ ...panelB, kind: kindB }, splitKey, "b");
-  const cfgC = buildSubCfg({ ...panelC, kind: kindC }, splitKey, "c");
-  const cfgD = buildSubCfg({ ...panelD, kind: kindD }, splitKey, "d");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cfg=comp.config ổn định (load 1 lần từ server); splitKey từ comp.id
+  const cfgA = useMemo(
+    () => buildSubCfg({ ...panelA, kind: kindA, linkField: undefined }, splitKey, "a"),
+    [cfg, splitKey],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cfg=comp.config ổn định; splitKey từ comp.id
+  const cfgB = useMemo(
+    () => buildSubCfg({ ...panelB, kind: kindB }, splitKey, "b"),
+    [cfg, splitKey],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cfg=comp.config ổn định; splitKey từ comp.id
+  const cfgC = useMemo(
+    () => buildSubCfg({ ...panelC, kind: kindC }, splitKey, "c"),
+    [cfg, splitKey],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cfg=comp.config ổn định; splitKey từ comp.id
+  const cfgD = useMemo(
+    () => buildSubCfg({ ...panelD, kind: kindD }, splitKey, "d"),
+    [cfg, splitKey],
+  );
 
   // Ratios — initialized from saved config, adjusted by drag at runtime only
   const savedRatios = cfg.splitRatios as number[] | undefined;
@@ -533,19 +557,18 @@ export function SplitWidget({ comp }: { comp: PageComponent }) {
           ))}
         </div>
         <div className="flex-1 overflow-hidden">
-          {tabDefs.map((p) => (
-            <div
-              key={p.key}
-              className="h-full overflow-hidden"
-              style={{ display: activeTab === p.key ? "block" : "none" }}
-            >
-              <RenderSubWidget
-                kind={p.kind}
-                cfg={p.cfg}
-                stateKey={`${comp.id}:${p.key.toLowerCase()}`}
-              />
-            </div>
-          ))}
+          {/* Chỉ mount tab ACTIVE — tránh fetch dữ liệu thừa cho tab ẩn */}
+          {tabDefs.map((p) =>
+            activeTab === p.key ? (
+              <div key={p.key} className="h-full overflow-hidden">
+                <RenderSubWidget
+                  kind={p.kind}
+                  cfg={p.cfg}
+                  stateKey={`${comp.id}:${p.key.toLowerCase()}`}
+                />
+              </div>
+            ) : null,
+          )}
         </div>
       </div>
     );

@@ -1,15 +1,12 @@
 /* Leaf widget hiển thị (viz) cho renderer: Chart / Kanban / Step / Calendar /
    Map / Kpi / Pivot. Mỗi widget đọc dữ liệu qua foundation page-data. Tách từ
-   ConsumerPage.tsx (Phase A3) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+   ConsumerPage.tsx (Phase A3) — chỉ di chuyển code, KHÔNG đổi hành vi.
+   ChartWidget + MapWidget lazy-load (recharts + leaflet KHÔNG bake vào main bundle). */
+import { lazy, Suspense, useState } from "react";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
-import { Chart } from "@/components/renderer/Chart";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { api, useEntity, usePageState, useWidgetData } from "@/components/renderer/page-data";
-import type { ChartKind } from "@/components/renderer/page-types";
 import { SearchableSelect } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { applyFilters } from "@/lib/page-filters";
@@ -17,86 +14,18 @@ import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, FilterNode } from "@/types/page";
 
-/** Widget "chart" — gom nhóm record thật theo `groupBy`, tổng hợp
-   `valueField` (nếu trống → đếm số bản ghi).
-   filterFromState: lọc rows trước khi gom nhóm theo master selection. */
+// Lazy: recharts chỉ load khi trang có widget chart (~500 KB gzip)
+const ChartWidgetImpl = lazy(() => import("./chart-widget-impl"));
+// Lazy: leaflet + leaflet.css chỉ load khi trang có widget map (~700 KB gzip)
+const MapWidgetImpl = lazy(() => import("./map-widget-impl"));
+
+/** Widget "chart" — lazy wrapper: recharts chỉ load khi widget thực sự render.
+ *  Toàn bộ logic nằm trong chart-widget-impl.tsx. */
 export function ChartWidget({ cfg }: { cfg: Record<string, unknown> }) {
-  const t = useT();
-  const entityId = cfg.entity as string | undefined;
-  const groupBy = (cfg.groupBy as string) || "";
-  const valueField =
-    (cfg.valueField as string) || (cfg.field as string) || (cfg.metric as string) || "";
-  const kind = ((cfg.kind as string) || "bar") as ChartKind;
-  const filterFromState = cfg.filterFromState as { field: string; stateKey: string } | undefined;
-  const filterConditions = cfg.filterConditions as
-    | Array<{ field: string; stateKey: string }>
-    | undefined;
-  const filters = cfg.filters as FilterNode | null | undefined;
-  const pageState = usePageState();
-  // Chỉ truy vấn khi đã cấu hình field nhóm (entity/datasource từ cfg).
-  const { rows: allRows, loading, err } = useWidgetData(groupBy ? cfg : {});
-
-  if (!entityId || !groupBy) {
-    return (
-      <div className="p-3 text-xs text-muted">
-        Chart chưa cấu hình — chọn entity + field nhóm ở trình thiết kế.
-      </div>
-    );
-  }
-  if (loading) return <div className="p-3 text-xs text-muted">{t("widget.loading")}</div>;
-  if (err) return <div className="p-3 text-xs text-danger">{t("widget.error", { err })}</div>;
-
-  let rows = allRows;
-  if (filters) {
-    rows = applyFilters(allRows, filters, pageState);
-  } else if (filterFromState) {
-    const sv = pageState.get(filterFromState.stateKey);
-    if (sv !== undefined && sv !== null && sv !== "") {
-      rows = allRows.filter((r) => {
-        const v = r[filterFromState.field];
-        return v === sv || String(v) === String(sv);
-      });
-    } else {
-      rows = [];
-    }
-  }
-  if (filterConditions?.length) {
-    const vals = filterConditions.map((c) => pageState.get(c.stateKey));
-    const anyEmpty = vals.some((v) => v === undefined || v === null || v === "");
-    if (anyEmpty) {
-      rows = [];
-    } else {
-      rows = rows.filter((r) =>
-        filterConditions.every((c, i) => {
-          const sv = vals[i];
-          const v = r[c.field];
-          return v === sv || String(v) === String(sv);
-        }),
-      );
-    }
-  }
-
-  const agg = new Map<string, number>();
-  for (const r of rows) {
-    const key = String(r[groupBy] ?? "(trống)");
-    const inc = valueField ? Number(r[valueField]) || 0 : 1;
-    agg.set(key, (agg.get(key) ?? 0) + inc);
-  }
-  const data = [...agg.entries()].map(([k, v]) => ({ k, v }));
-
   return (
-    <div className="p-2 h-full flex flex-col">
-      {cfg.title ? (
-        <div className="text-xs font-medium mb-1 truncate">{String(cfg.title)}</div>
-      ) : null}
-      <div className="flex-1 min-h-0">
-        {data.length === 0 ? (
-          <div className="text-xs text-muted p-2">{t("widget.empty_chart")}</div>
-        ) : (
-          <Chart kind={kind} data={data} labelKey="k" valueKeys={["v"]} />
-        )}
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-3 text-xs text-muted">Đang tải...</div>}>
+      <ChartWidgetImpl cfg={cfg} />
+    </Suspense>
   );
 }
 
@@ -487,87 +416,13 @@ export function CalendarWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
 }
 
-/** Widget "map" — hiển thị record có field geo {lat, lng}. Dùng Leaflet
- *  + OpenStreetMap tiles (free, không cần API key). Field shape:
- *  geo: { lat: number, lng: number }. */
+/** Widget "map" — lazy wrapper: leaflet + css chỉ load khi widget thực sự render.
+ *  Toàn bộ logic nằm trong map-widget-impl.tsx. */
 export function MapWidget({ cfg }: { cfg: Record<string, unknown> }) {
-  const t = useT();
-  const entityId = cfg.entity as string | undefined;
-  const geoField = (cfg.geoField as string) || "location";
-  const titleField = (cfg.titleField as string) || "name";
-  const filters = cfg.filters as FilterNode | null | undefined;
-  const ent = useEntity(entityId);
-  const { rows: allRows, loading, err } = useWidgetData(cfg);
-  const pageState = usePageState();
-
-  if (!entityId || !ent)
-    return <div className="p-3 text-xs text-muted">{t("widget.no_entity_map")}</div>;
-  if (loading) return <div className="p-3 text-xs text-muted">{t("widget.loading")}</div>;
-  if (err) return <div className="p-3 text-xs text-danger">{t("widget.error", { err })}</div>;
-
-  const rows = filters ? applyFilters(allRows, filters, pageState) : allRows;
-  const points = rows.flatMap((r) => {
-    const g = r[geoField];
-    if (g && typeof g === "object" && "lat" in g && "lng" in g) {
-      return [
-        {
-          lat: (g as { lat: number }).lat,
-          lng: (g as { lng: number }).lng,
-          title: String(r[titleField] ?? ""),
-        },
-      ];
-    }
-    return [];
-  });
-
   return (
-    <div className="h-full flex flex-col">
-      <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
-        <I.MapPin size={11} /> {ent.name} · {points.length} điểm
-      </div>
-      <div className="flex-1 min-h-0">
-        {points.length === 0 ? (
-          <div className="p-3 text-xs text-muted">
-            Chưa có record có geo. Field "{geoField}" cần shape {"{lat, lng}"}.
-          </div>
-        ) : (
-          <LeafletMap points={points} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Map render qua Leaflet — lazy load để tránh SSR-style issue + giảm
- *  bundle initial. Tile mặc định OpenStreetMap (public, attribution required). */
-function LeafletMap({ points }: { points: Array<{ lat: number; lng: number; title: string }> }) {
-  // Default center = trung tâm trung bình các điểm; fallback HCMC.
-  const center: [number, number] =
-    points.length > 0
-      ? [
-          points.reduce((s, p) => s + p.lat, 0) / points.length,
-          points.reduce((s, p) => s + p.lng, 0) / points.length,
-        ]
-      : [10.776, 106.7];
-  // react-leaflet 5 expects "MapContainer" wrapping.
-  return (
-    <MapContainer
-      center={center}
-      zoom={12}
-      style={{ height: "100%", width: "100%" }}
-      attributionControl={false}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap"
-      />
-      {points.map((p, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: list ổn định, không reorder
-        <Marker key={i} position={[p.lat, p.lng]}>
-          <Popup>{p.title || "(không tên)"}</Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+    <Suspense fallback={<div className="p-3 text-xs text-muted">Đang tải...</div>}>
+      <MapWidgetImpl cfg={cfg} />
+    </Suspense>
   );
 }
 
