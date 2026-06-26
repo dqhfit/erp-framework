@@ -244,11 +244,18 @@ thiếu (bảng `bg_kho`/`bg_nguongocgo` đã migrate table-tier, sync=null ghi 
   list CRUD (tennguongoc), 21 dòng.
 Draft tabbed `danh_muc_thuong_mai_go` cũ thừa (4 mục là node lá riêng) → mồ côi, bỏ.
 
-**CÒN LẠI (cần user quyết):**
-- **R61 Danh sách đơn hàng trắng** (`frmKeHoachHangTrang*`): ĐÃ có ≥3 trang "Kế hoạch
-  hàng trắng" linked (I72→1d4eab00, I1360→6c875959, I1084→351731ea); node I1351 "Kế hoạch
-  đơn hàng trắng Ver2" còn trống. R61 nhiều khả năng TRÙNG → chờ user xác nhận nên bỏ
-  (trùng) hay dựng riêng cho node I1351.
+**R61 Danh sách đơn hàng trắng — ĐÓNG (trùng, user chốt 2026-06-26):** dữ liệu trùng
+các trang "Kế hoạch hàng trắng" đã publish (I72/I1360/I1084) → bỏ, không đẻ trang mới.
+
+### TỔNG KẾT Group B — TẤT CẢ mục HOLD đã đóng (2026-06-26)
+R46 (I95), R50 (I22), R62 (I1059), R66 (I1202/I1203) LIVE; R61 đóng-trùng. Cộng 32
+trang publish trước đó + 7 form bg_* (Phase 4) → **Group B hoàn tất**.
+
+**CÒN LẠI (polish/cutover — không phải port mới):**
+- Anh Thiện: 4 gap config (phần lớn đã fix; còn nút Phát hành định mức cần state binding).
+- Cutover các entity mirror (tr_order/dondathang/phieunhap/xuat/baocao/denghi_thanhtoan/
+  phieuyeucau...) để các nút GHI đã wire (7 trang) ghi thật.
+- Push 2 commit doc local (5531b4d/2f1aa62/3-) — kẹt sau journal WIP chat/KG (0090/0091/0092).
 - R62 nice-to-have: thay ô maddh text bằng order-picker (LookupPicker) thay vì gõ tay.
 - Anh Thiện (4 gap config) + cutover các entity mirror để nút GHI ghi thật.
 

@@ -50,7 +50,7 @@ import { fieldCan } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, FilterNode } from "@/types/page";
+import type { ActionConfig, BindingValue, FilterNode } from "@/types/page";
 
 /* ── Date/DateTime trong ô grid ──────────────────────────────────────────
    Giá trị lưu = chuỗi ISO (datetime, vd "2020-03-10T12:41:21Z") hoặc YYYY-MM-DD
@@ -1460,17 +1460,61 @@ export function ServerPagedListWidget({
 function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): ActionConfig {
   const rowId =
     action.recordIdField != null ? row[action.recordIdField] : (row.id ?? row.ID ?? row._id);
+  // recordIdBinding mặc định = id dòng. NHƯNG nếu cấu hình đã trỏ page-state/template
+  // (vd cập nhật 1 record KHÁC chọn từ popup) thì GIỮ NGUYÊN — chỉ ghi đè khi
+  // chưa cấu hình hoặc đang là const (mặc định "thao tác trên chính dòng này").
+  const keepRid = (rid: BindingValue | undefined): boolean =>
+    rid != null && (rid.source === "state" || rid.source === "template");
+  // Thay sentinel bằng GIÁ TRỊ của dòng: "$rowId" → id dòng; "$row.<field>" →
+  // row[field]. Áp cho cả chuỗi trần (field-map) lẫn const BindingValue (listFilters).
+  // Cho phép gán dữ liệu của dòng (id phiên bản, mã màu...) vào record/khác hoặc
+  // bộ lọc popup.
+  const subSentinel = (v: unknown): unknown => {
+    let raw: unknown = v;
+    if (v != null && typeof v === "object" && (v as BindingValue).source === "const") {
+      raw = (v as { value?: unknown }).value;
+    } else if (typeof v !== "string") {
+      return v;
+    }
+    if (raw === "$rowId") return { source: "const" as const, value: rowId };
+    if (typeof raw === "string" && raw.startsWith("$row.")) {
+      return { source: "const" as const, value: row[raw.slice(5)] };
+    }
+    return v;
+  };
+  const subFields = <T,>(fields: Record<string, T>): Record<string, T> => {
+    const out: Record<string, T> = {};
+    for (const [f, v] of Object.entries(fields)) out[f] = subSentinel(v) as T;
+    return out;
+  };
   return {
     ...action,
     steps: action.steps.map((s) => {
-      if (
-        s.kind === "open-popup" ||
-        s.kind === "delete-record" ||
-        s.kind === "open-wizard" ||
-        s.kind === "update-fields" ||
-        s.kind === "update-record"
-      ) {
-        return { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      if (s.kind === "update-fields") {
+        return {
+          ...s,
+          fields: subFields(s.fields),
+          recordIdBinding: keepRid(s.recordIdBinding)
+            ? s.recordIdBinding
+            : { source: "const" as const, value: rowId },
+        };
+      }
+      if (s.kind === "update-many-fields") {
+        // recordIdsBinding luôn từ cấu hình (state popup multiSelect) — không ép id dòng.
+        return { ...s, fields: subFields(s.fields) };
+      }
+      if (s.kind === "update-record") {
+        return keepRid(s.recordIdBinding)
+          ? s
+          : { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      }
+      if (s.kind === "open-popup") {
+        // listFilters: thay "$row.<field>" → giá trị màu/khoá của dòng để lọc popup.
+        return {
+          ...s,
+          recordIdBinding: { source: "const" as const, value: rowId },
+          ...(s.listFilters ? { listFilters: subFields(s.listFilters) } : {}),
+        };
       }
       // invoke-module-proc: inject _id (UUID dòng) vào args để proc nhận biết record.
       if (s.kind === "invoke-module-proc") {
@@ -1479,7 +1523,9 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
           args: { ...(s.args ?? {}), _id: { source: "const" as const, value: rowId } },
         };
       }
-      return s;
+      return s.kind === "delete-record" || s.kind === "open-wizard"
+        ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
+        : s;
     }),
   };
 }

@@ -161,6 +161,20 @@ export interface ActionStepUpdateFields {
   /** Invalidate list sau update. */
   invalidateEntities?: string[];
 }
+/** Cập nhật CÙNG bộ field cho NHIỀU bản ghi (lặp records.update). Dùng sau 1
+ *  step open-popup multiSelect — gán cùng giá trị (vd phiên bản BOM sơn) cho
+ *  tất cả bản ghi đã chọn. */
+export interface ActionStepUpdateManyFields {
+  id: string;
+  kind: "update-many-fields";
+  /** Nguồn MẢNG recordId — thường state key trỏ ids của popup multiSelect
+   *  (vd "selProducts.ids"). */
+  recordIdsBinding: BindingValue;
+  /** Map field slug → giá trị (giống update-fields, hỗ trợ $currentUser/$now). */
+  fields: Record<string, "$currentUser" | "$now" | BindingValue>;
+  /** Invalidate list sau update. */
+  invalidateEntities?: string[];
+}
 export interface ActionStepNavigate {
   id: string;
   kind: "navigate";
@@ -206,6 +220,25 @@ export interface ActionStepOpenPopup {
   saveOutputTo: string;
   /** Ghi đè type/label của field trong popup (vd url→file, text→image). */
   fieldOverrides?: Record<string, FieldOverride>;
+  /** (list) Chọn NHIỀU dòng: hiện checkbox + nút xác nhận. Kết quả trả về
+   *  { __many: true, ids: string[], items: object[] } để step sau lặp cập nhật. */
+  multiSelect?: boolean;
+  /** (list) Lọc danh sách SERVER-SIDE theo field → giá trị (op "="). Giá trị là
+   *  BindingValue (resolve theo page state). Trong row-action, dùng sentinel
+   *  const "$row.<field>" để lấy giá trị field của dòng (vd lọc sản phẩm cùng
+   *  màu: { mausac: { source:"const", value:"$row.mausac" } }). */
+  listFilters?: Record<string, BindingValue>;
+  /** (list) Sắp xếp server-side theo field. */
+  listSort?: { field: string; dir?: "asc" | "desc" };
+  /** (list) Hiển thị NHÃN thay cho giá trị thô của field (resolve value→label qua
+   *  entity khác). Vd cột bom_son_version_id (lưu id phiên bản) hiện mã phiên bản. */
+  listLookups?: Array<{
+    field: string;
+    entity: string;
+    /** Field khớp giá trị lưu ở cột (mặc định "id" = record id đích). */
+    valueField?: string;
+    labelField: string;
+  }>;
   /** Form: render field này thành dropdown — hoặc lấy options từ entity khác
    *  (hiện `labelField`, lưu `valueField`), hoặc dùng `options` tĩnh (value≠label,
    *  vd Phân loại: TRONG→"Màu trong"). */
@@ -242,6 +275,14 @@ export interface WizardLookupRef {
   /** Tự điền field khác từ record nguồn khi chọn: { fieldĐích: fieldNguồn }.
    *  Vd makhachhang lookup tr_khachhang → { tenkhachhang: "customer_name" }. */
   autofill?: Record<string, string>;
+  /** true → hiện nút "+" cạnh combobox để tạo nhanh bản ghi mới trong entity nguồn
+   *  (vd thêm bước sơn chưa có), sau đó tự chọn + autofill. */
+  allowCreate?: boolean;
+  /** Field hiển thị trong form tạo nhanh (mặc định valueField + labelFields). */
+  createFields?: string[];
+  /** Field TỰ TĂNG khi tạo nhanh (không nhập tay) = max(giá trị nguồn)+1.
+   *  Vd id_buocson. Giá trị mới cũng dùng cho autofill. */
+  createAutoInc?: string[];
 }
 
 /** Cấu hình bước nhập LƯỚI chi tiết (master-detail) trong wizard 1-entity. */
@@ -260,6 +301,12 @@ export interface WizardStepDetail {
   computed?: Record<string, string[]>;
   /** Field hiển thị TỔNG ở footer lưới. */
   footerSums?: string[];
+  /** Kế thừa giá trị từ bản ghi MASTER sang mỗi dòng chi tiết: { fieldChiTiết: fieldMaster }.
+   *  Vd quy trình kế thừa màu của phiên bản: { mausac: "mausac", id_mausac: "id_mausac" }.
+   *  Áp khi lưu (master-detail 1-entity). parentKeyField="id" → linkField nhận id master mới tạo. */
+  inherit?: Record<string, string>;
+  /** Giá trị mặc định cho DÒNG MỚI trong lưới (vd { is_active: "true" }). */
+  rowDefaults?: Record<string, string>;
 }
 
 /** Ảnh chỉ đọc lấy từ entity liên quan, không tham gia payload lưu entity chính. */
@@ -353,6 +400,7 @@ export type ActionStep =
   | ActionStepCreateRecord
   | ActionStepUpdateRecord
   | ActionStepUpdateFields
+  | ActionStepUpdateManyFields
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepRefresh
