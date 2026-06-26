@@ -3,6 +3,7 @@
    hook meta. ConsumerPage và mọi widget tách ra đều import từ đây. Chỉ DI CHUYỂN
    code từ ConsumerPage.tsx (Phase A2), KHÔNG đổi hành vi. */
 import { createApiDataSource } from "@erp-framework/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -302,56 +303,40 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
 
 /** Hook nhỏ — nạp record thật của một entity (số dòng + điều kiện cấu hình được).
  *  Khi ActionWidget gọi procedure xong, nó set pageState["__refresh:<entityId>"]
- *  = timestamp; ta đọc tag đó vào deps để useEffect re-run → refetch. */
+ *  = timestamp; đưa tag đó vào queryKey → TanStack Query refetch tự động.
+ *  Dedup: nhiều widget cùng entity/filters trên 1 trang chia sẻ 1 request. */
 function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const limit = opts?.limit ?? DEFAULT_ROW_LIMIT;
   const enabled = opts?.enabled !== false;
   const filters = opts?.filters;
   const q = opts?.q;
   const sort = opts?.sort;
-  // Khóa ổn định cho deps — tránh re-fetch vô hạn do object literal mới mỗi render.
+  // Khóa ổn định cho queryKey — tránh refetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const sortKey = sort ? JSON.stringify(sort) : "";
 
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!entityId && enabled);
-  const [err, setErr] = useState("");
   // Subscribe CHỈ refresh tag của entity này — không re-render khi key khác đổi
   const refreshTag = usePageStateKey(entityId ? `__refresh:${entityId}` : "") as number | undefined;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
-  useEffect(() => {
-    if (!entityId || !enabled) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    setLoading(true);
-    setErr("");
-    api
-      .getRecords(entityId, { limit, filters, q, sort })
-      .then((res) => {
-        if (alive) {
-          // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
-          // cũ kiểu integer ở entity mirror) đè lên → recordId sai (Invalid
-          // UUID) khi select/sửa/xóa. Khớp đường datasource (useDataSourceRecords).
-          setRows(res.rows.map((r) => ({ ...r.data, id: r.id, created_at: r.createdAt })));
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        if (alive) {
-          console.error("[useRecords] entity:", entityId, "filters:", filtersKey, "err:", e);
-          setErr((e as Error).message);
-          setLoading(false);
-        }
-      });
-    return () => {
-      alive = false;
-    };
-    // filtersKey/sortKey thay cho filters/sort object để deps ổn định.
-  }, [entityId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
-  return { rows, loading, err };
+
+  const { data, isLoading, error } = useQuery({
+    // refreshTag trong queryKey → thay đổi tag = query mới → TQ refetch tự động;
+    // filtersKey/sortKey (chuỗi) thay cho object để queryKey ổn định giữa các render.
+    queryKey: ["records", entityId, filtersKey, limit, q, sortKey, refreshTag],
+    queryFn: async () => {
+      const res = await api.getRecords(entityId!, { limit, filters, q, sort });
+      // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id cũ
+      // kiểu integer ở entity mirror) đè lên → recordId sai khi select/sửa/xóa.
+      return res.rows.map((r) => ({ ...r.data, id: r.id, created_at: r.createdAt }));
+    },
+    // loadGate: enabled=false → không fetch, trả rows=[] (giữ hành vi useEffect cũ)
+    enabled: !!entityId && enabled,
+  });
+
+  return {
+    rows: data ?? [],
+    loading: isLoading,
+    err: error?.message ?? "",
+  };
 }
 
 export function useEntity(entityId?: string): MockEntity | undefined {
@@ -369,81 +354,65 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const filters = opts.filters;
   const q = opts.q;
   const sort = opts.sort;
+  // Khóa ổn định cho queryKey — tránh refetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const sortKey = sort ? JSON.stringify(sort) : "";
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [fields, setFields] = useState<EntityField[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!dataSourceId && enabled);
-  const [err, setErr] = useState("");
-  // Giữ meta thô (fields có sourceField/sourceRelationId + relations) để map
-  // field ref → cột projection khi đổi giá trị (auto điền Tên vật tư…).
-  const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
+
   // Subscribe CHỈ refresh tag của datasource này — không re-render khi key khác đổi
   const refreshTag = usePageStateKey(dataSourceId ? `__refresh:ds:${dataSourceId}` : "") as
     | number
     | undefined;
-  // Meta effect: chỉ chạy khi dataSourceId đổi — dùng cache để tránh fetch lặp.
-  useEffect(() => {
-    if (!dataSourceId) {
-      setFields([]);
-      return;
-    }
-    let alive = true;
-    cachedGetDataSourceMeta(dataSourceId)
-      .then((meta) => {
-        if (!alive) return;
-        metaRef.current = meta;
-        setFields(
-          meta.fields.map((f) => ({
-            id: f.key,
-            name: f.key,
-            label: f.label,
-            type: f.type,
-            ref: f.ref,
-            refValueField: f.refValueField,
-            writable: f.sourceRelationId === "base" && f.writable !== false,
-          })),
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [dataSourceId]);
 
-  // Data effect: chạy lại khi filter/sort/refreshTag đổi — KHÔNG refetch meta.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
-  useEffect(() => {
-    if (!dataSourceId || !enabled) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    setLoading(true);
-    setErr("");
-    api
-      .getDataSourceRecords(dataSourceId, {
+  // --- Meta query (tách khỏi data — chỉ refetch khi dataSourceId đổi) ---
+  // queryFn dùng module-level _dsMetaCache: Promise được giữ → widget mount muộn
+  // không thêm round-trip; TQ cũng dedup in-flight requests theo queryKey.
+  const { data: meta } = useQuery({
+    queryKey: ["ds-meta", dataSourceId],
+    queryFn: () => cachedGetDataSourceMeta(dataSourceId!),
+    enabled: !!dataSourceId,
+    staleTime: Number.POSITIVE_INFINITY, // meta không đổi trong phiên làm việc
+  });
+
+  // Ref đồng bộ để refFill đọc đồng bộ mà không cần await
+  const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
+  // Gán trong render (không phải side-effect — ref là container mutable)
+  if (meta) metaRef.current = meta;
+
+  // fields phẳng từ meta — chỉ tính lại khi meta đổi (thực tế = khi dataSourceId đổi)
+  const fields = useMemo<EntityField[]>(() => {
+    if (!meta) return [];
+    return meta.fields.map((f) => ({
+      id: f.key,
+      name: f.key,
+      label: f.label,
+      type: f.type,
+      ref: f.ref,
+      refValueField: f.refValueField,
+      writable: f.sourceRelationId === "base" && f.writable !== false,
+    }));
+  }, [meta]);
+
+  // --- Data query: refetch khi filter/sort/refreshTag đổi — KHÔNG refetch meta ---
+  const {
+    data: rowData,
+    isLoading,
+    error,
+  } = useQuery({
+    // refreshTag trong queryKey → thay đổi tag = query mới → TQ refetch tự động;
+    // filtersKey/sortKey (chuỗi) thay cho object để queryKey ổn định giữa các render.
+    queryKey: ["ds-records", dataSourceId, filtersKey, limit, q, sortKey, refreshTag],
+    queryFn: async () => {
+      const res = await api.getDataSourceRecords(dataSourceId!, {
         limit,
         filters,
         q,
         sort: sort ? { key: sort.field, dir: sort.dir } : undefined,
-      })
-      .then((res) => {
-        if (!alive) return;
-        setRows(res.rows as Record<string, unknown>[]);
-        setLoading(false);
-      })
-      .catch((e) => {
-        if (alive) {
-          setErr((e as Error).message);
-          setLoading(false);
-        }
       });
-    return () => {
-      alive = false;
-    };
-  }, [dataSourceId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
+      return res.rows as Record<string, unknown>[];
+    },
+    // loadGate: enabled=false → không fetch, trả rows=[] (giữ hành vi useEffect cũ)
+    enabled: !!dataSourceId && enabled,
+  });
 
   // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
   // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị
@@ -494,7 +463,13 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     return { overlay, snapshot };
   }, []);
 
-  return { rows, fields, loading, err, refFill };
+  return {
+    rows: rowData ?? [],
+    fields,
+    loading: isLoading,
+    err: error?.message ?? "",
+    refFill,
+  };
 }
 
 /* ── Server-side paging hook (cho bảng LỚN) — grid phát query (trang/sắp/lọc),
