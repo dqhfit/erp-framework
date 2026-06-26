@@ -353,7 +353,7 @@ const FIND_MODES: [FindMode, string][] = [
   ["donhang", "Đơn đặt hàng"],
   ["order", "Đơn hàng PO#"],
 ];
-type Opt = { value: string; label: string };
+type Opt = { value: string; label: string; daco?: number; chuaco?: number };
 
 async function jget(url: string): Promise<{ rows?: unknown[] }> {
   const res = await fetch(url, { credentials: "include" });
@@ -404,7 +404,16 @@ function TimSanPham({
     try {
       if (m === "hehang") {
         const d = await jget("/banvesvc/hehang");
-        setL1(((d.rows as string[]) ?? []).map((h) => ({ value: h, label: h })));
+        // Shape mới: [{hehang,daco,chuaco}]; cũ: string[] (server chưa redeploy).
+        const rows =
+          (d.rows as Array<string | { hehang: string; daco?: number; chuaco?: number }>) ?? [];
+        setL1(
+          rows.map((r) =>
+            typeof r === "string"
+              ? { value: r, label: r }
+              : { value: r.hehang, label: r.hehang, daco: r.daco ?? 0, chuaco: r.chuaco ?? 0 },
+          ),
+        );
       } else if (m === "donhang") {
         const d = await jget("/banvesvc/donhang");
         setL1(
@@ -503,45 +512,87 @@ function TimSanPham({
             </button>
           ))}
         </div>
-        {/* 2 combobox xâu chuỗi */}
-        <div className="p-3 space-y-3">
-          <label className="block">
-            <span className="text-xs text-muted">{l1Label}</span>
-            <div className="mt-1">
-              <SearchableSelect
-                className="w-full"
-                value={l1v}
-                onChange={(v) => {
-                  setL1v(v);
-                  void loadProducts(mode, v);
-                }}
-                options={l1}
-                placeholder={
-                  busy && l1.length === 0 ? "Đang tải…" : `Chọn ${l1Label.toLowerCase()}…`
-                }
-              />
+        {/* Cấp 1: HỆ HÀNG = danh sách (mỗi dòng: số SP đã/chưa có bản vẽ);
+            ĐƠN ĐẶT HÀNG / PO# giữ combobox. Cấp 2: SẢN PHẨM = danh sách. */}
+        <div className="p-3 space-y-3 overflow-y-auto">
+          {mode === "hehang" ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted px-0.5">
+                <span>Hệ hàng</span>
+                <span>
+                  <span className="text-success">đã có BV</span> / chưa có
+                </span>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded border border-border divide-y divide-border">
+                {busy && l1.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted">Đang tải…</div>
+                ) : l1.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted">Không có hệ hàng</div>
+                ) : (
+                  l1.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => {
+                        setL1v(o.value);
+                        void loadProducts(mode, o.value);
+                      }}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-hover ${
+                        l1v === o.value ? "bg-accent/10 text-accent font-medium" : ""
+                      }`}
+                    >
+                      <span className="flex-1 truncate">{o.label}</span>
+                      <span className="text-xs text-success shrink-0">{o.daco ?? 0}</span>
+                      <span className="text-xs text-muted shrink-0">/ {o.chuaco ?? 0}</span>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted">Sản phẩm</span>
-            <div className="mt-1">
-              <SearchableSelect
-                className="w-full"
-                value=""
-                onChange={(v) => v && onPick(v)}
-                options={products}
-                placeholder={
-                  !l1v
-                    ? "Chọn ở trên trước"
-                    : busy
-                      ? "Đang tải…"
-                      : products.length === 0
-                        ? "Không có sản phẩm"
-                        : "Chọn sản phẩm…"
-                }
-              />
+          ) : (
+            <label className="block">
+              <span className="text-xs text-muted">{l1Label}</span>
+              <div className="mt-1">
+                <SearchableSelect
+                  className="w-full"
+                  value={l1v}
+                  onChange={(v) => {
+                    setL1v(v);
+                    void loadProducts(mode, v);
+                  }}
+                  options={l1}
+                  placeholder={
+                    busy && l1.length === 0 ? "Đang tải…" : `Chọn ${l1Label.toLowerCase()}…`
+                  }
+                />
+              </div>
+            </label>
+          )}
+          <div className="space-y-1">
+            <span className="block text-xs text-muted px-0.5">
+              Sản phẩm{products.length > 0 && ` (${products.length})`}
+            </span>
+            <div className="max-h-56 overflow-y-auto rounded border border-border divide-y divide-border">
+              {!l1v ? (
+                <div className="px-2 py-3 text-xs text-muted">Chọn ở trên trước</div>
+              ) : busy ? (
+                <div className="px-2 py-3 text-xs text-muted">Đang tải…</div>
+              ) : products.length === 0 ? (
+                <div className="px-2 py-3 text-xs text-muted">Không có sản phẩm</div>
+              ) : (
+                products.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => onPick(p.value)}
+                    className="w-full block px-2 py-1.5 text-left text-sm hover:bg-hover truncate"
+                  >
+                    {p.label}
+                  </button>
+                ))
+              )}
             </div>
-          </label>
+          </div>
         </div>
         {/* Quét mã QR thẻ pallet → sản phẩm (cách thứ 4) */}
         {canScanBarcode() && (

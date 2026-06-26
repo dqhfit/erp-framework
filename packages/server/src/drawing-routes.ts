@@ -606,14 +606,34 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const auth = await authView(db, req, reply);
     if (!auth) return;
     const q = ((req.query ?? {}) as { q?: string }).q?.trim() ?? "";
+    const cid = auth.companyId;
+    // Mỗi hệ hàng: tổng SP + số SP ĐÃ CÓ bản vẽ (>=1 tr_banve active + filepath)
+    // và CHƯA CÓ. LEFT JOIN tập masp đã có bản vẽ → đếm theo có/không khớp.
     const rows = (await db.execute(
-      sql`SELECT DISTINCT f_hehang AS hehang FROM tr_sanpham
-          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
-            AND f_hehang IS NOT NULL AND f_hehang <> ''
-            AND (${q} = '' OR f_hehang ILIKE ${`%${q}%`})
-          ORDER BY f_hehang LIMIT 1000`,
-    )) as unknown as Array<{ hehang: string }>;
-    return reply.send({ rows: rows.map((r) => r.hehang) });
+      sql`SELECT sp.f_hehang AS hehang,
+                 COUNT(*) AS total,
+                 COUNT(*) FILTER (WHERE bv.masp IS NOT NULL) AS daco,
+                 COUNT(*) FILTER (WHERE bv.masp IS NULL) AS chuaco
+          FROM tr_sanpham sp
+          LEFT JOIN (
+            SELECT DISTINCT f_masp AS masp FROM tr_banve
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+              AND f_active IS DISTINCT FROM FALSE
+              AND f_filepath IS NOT NULL AND f_filepath <> ''
+          ) bv ON bv.masp = sp.f_masp
+          WHERE sp.company_id = ${cid}::uuid AND sp.deleted_at IS NULL
+            AND sp.f_hehang IS NOT NULL AND sp.f_hehang <> ''
+            AND (${q} = '' OR sp.f_hehang ILIKE ${`%${q}%`})
+          GROUP BY sp.f_hehang ORDER BY sp.f_hehang LIMIT 1000`,
+    )) as unknown as Array<{ hehang: string; total: number; daco: number; chuaco: number }>;
+    return reply.send({
+      rows: rows.map((r) => ({
+        hehang: r.hehang,
+        total: Number(r.total),
+        daco: Number(r.daco),
+        chuaco: Number(r.chuaco),
+      })),
+    });
   });
 
   // ── Danh sách Đơn đặt hàng (maddh DQH-DQHF%/DQH-VFM%) cho "Theo đơn đặt hàng" ──

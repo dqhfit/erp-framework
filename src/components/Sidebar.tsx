@@ -807,6 +807,22 @@ export function Sidebar() {
                 })
               }
             />
+            <SidebarItem
+              to="/ban-ve/ky-thuat"
+              active={pathname === "/ban-ve/ky-thuat"}
+              icon={<I.FileText size={14} />}
+              collapsed={collapsed}
+              label="Bản vẽ kỹ thuật"
+              isFavorited={favs.isFav("/ban-ve/ky-thuat")}
+              onToggleFavorite={() =>
+                favs.toggle({
+                  id: "/ban-ve/ky-thuat",
+                  to: "/ban-ve/ky-thuat",
+                  label: "Bản vẽ kỹ thuật",
+                  iconName: "FileText",
+                })
+              }
+            />
             {!isViewer && (
               <SidebarItem
                 to="/sanluong"
