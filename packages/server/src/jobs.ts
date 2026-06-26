@@ -13,6 +13,7 @@ import {
   backupRuns,
   entitySyncs,
   knowledgeSources,
+  migrationReverseModules,
   migrationSyncModules,
   schedules,
   sessions,
@@ -373,6 +374,29 @@ export async function startJobs(): Promise<void> {
           args: { connectionId: sm.connectionId },
           userId: sm.createdBy,
           companyId: sm.companyId,
+        });
+      }
+    }
+
+    // Reverse-sync PG→MSSQL — module enabled + cron tới hạn → enqueue.
+    const revMods = await db
+      .select()
+      .from(migrationReverseModules)
+      .where(eq(migrationReverseModules.enabled, true));
+    for (const rm of revMods) {
+      if (cronMatches(rm.cronExpr, now)) {
+        if (!rm.createdBy) {
+          console.warn(
+            `[tick] reverse-sync ${rm.module}: thieu created_by (bat sync lai trong UI de gan) — skip chu ky.`,
+          );
+          continue;
+        }
+        await enqueueMigrationJob({
+          action: "reverse-sync",
+          module: rm.module,
+          args: { connectionId: rm.connectionId },
+          userId: rm.createdBy,
+          companyId: rm.companyId,
         });
       }
     }

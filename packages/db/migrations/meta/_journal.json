@@ -652,6 +652,13 @@
       "when": 1783800005000,
       "tag": "0092_chat_attachments",
       "breakpoints": false
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1783800006000,
+      "tag": "0093_migration_reverse_sync",
+      "breakpoints": false
     }
   ]
 }

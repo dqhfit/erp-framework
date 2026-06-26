@@ -26,6 +26,7 @@ import { publish as publishWs } from "./ws-hub";
 import { runGenerateModule } from "./migration-codegen-batch";
 import { runFullImportJob } from "./migration-full-import";
 import { runDeltaSyncRun } from "./migration-delta-sync";
+import { runReverseSyncRun } from "./migration-reverse-sync";
 
 const QUEUE_MIGRATION = "migration-run";
 
@@ -37,7 +38,8 @@ type MigrationAction =
   | "data"
   | "audit"
   | "full-import"
-  | "delta-sync";
+  | "delta-sync"
+  | "reverse-sync";
 
 interface MigrationJobData {
   jobId: string;
@@ -262,7 +264,8 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
   try {
     // full-import KHÔNG cần MSSQL client ở scope worker — runFullImportJob
     // tự mở connection theo job.connectionId trong DB (per-job, per-resume).
-    if (data.action !== "full-import") {
+    // reverse-sync cũng tự mở connection qua loadConn bên trong runReverseSyncRun.
+    if (data.action !== "full-import" && data.action !== "reverse-sync") {
       // Resolve MSSQL connection: arg connectionId > isDefault của company.
       const connectionId =
         typeof data.args.connectionId === "string" ? data.args.connectionId : undefined;
@@ -407,6 +410,23 @@ async function handleMigrationJob(data: MigrationJobData): Promise<void> {
           state.message = `Delta-sync ${data.module}: bỏ qua (lock đang giữ bởi job khác)`;
         } else {
           state.message = `Delta-sync ${data.module}: +${r.inserts} ins / ~${r.updates} upd / -${r.deletes} del (${r.tablesRun} bảng)`;
+        }
+        break;
+      }
+      case "reverse-sync": {
+        // Reverse-sync PG→MSSQL: data.args = { connectionId, module }.
+        // runReverseSyncRun tự mở/đóng connection nên KHÔNG dùng mssqlClient từ scope worker.
+        const connId = typeof data.args.connectionId === "string" ? data.args.connectionId : "";
+        const r = await runReverseSyncRun({
+          companyId: data.companyId,
+          connectionId: connId,
+          module: data.module,
+          userId: data.userId,
+        });
+        if (r.skipped) {
+          state.message = `Reverse-sync ${data.module}: bỏ qua (lock đang giữ bởi job khác)`;
+        } else {
+          state.message = `Reverse-sync ${data.module}: ${r.upserts} upserts / ${r.deletes} del (${r.tablesRun} bảng)`;
         }
         break;
       }

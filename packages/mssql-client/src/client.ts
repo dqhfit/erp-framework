@@ -7,7 +7,7 @@
    giai đoạn quá độ.
    ========================================================== */
 
-import sql, { type ConnectionPool, type config as MssqlConfig } from "mssql";
+import sql, { type ConnectionPool, type ISqlType, type config as MssqlConfig } from "mssql";
 import {
   introspectFindProcsReferencing,
   introspectGetProc,
@@ -15,7 +15,7 @@ import {
   introspectListProcs,
   introspectListTables,
 } from "./introspect.js";
-import type { ProcInfo, ProcStats, TableInfo } from "./types.js";
+import type { ColumnInfo, ProcInfo, ProcStats, TableInfo } from "./types.js";
 
 export interface MssqlClientOptions {
   /** Connection string dạng "Server=...;Database=...;User Id=...;Password=...;". */
@@ -555,5 +555,268 @@ export class MssqlClient {
       lastExecAt: row.last_execution_time ? row.last_execution_time.toISOString() : null,
       execCount: row.execution_count,
     }));
+  }
+
+  /* ── GHI MSSQL — CHỈ cho reverse replica (PG→MSSQL). Mọi method dưới đây
+     `requireWrite()` → ném nếu connection KHÔNG allowWrite (fail-closed,
+     không bao giờ ghi nhầm connection read-only). ──────────────────────── */
+
+  /** Pool + bắt buộc allowWrite=true. */
+  private requireWrite(): ConnectionPool {
+    if (!this.opts.allowWrite) {
+      throw new Error(
+        "MssqlClient ở chế độ read-only — thao tác ghi bị chặn. Connection reverse replica phải allowWrite=true.",
+      );
+    }
+    return this.requirePool();
+  }
+
+  /** Validate + bracket-escape 1 tên cột. */
+  private static col(c: string): string {
+    if (!/^[\w\s]+$/.test(c) || c.trim() === "") throw new Error(`Invalid column: "${c}"`);
+    return `[${c.replace(/]/g, "]]")}]`;
+  }
+
+  /** ISqlType cho 1 cột theo dataType (bind TYPED → tránh implicit convert lỗi). */
+  private static typeOf(col: ColumnInfo): ISqlType {
+    const t = col.dataType.toLowerCase();
+    switch (t) {
+      case "bit":
+        return sql.Bit();
+      case "tinyint":
+        return sql.TinyInt();
+      case "smallint":
+        return sql.SmallInt();
+      case "int":
+        return sql.Int();
+      case "bigint":
+        return sql.BigInt();
+      case "decimal":
+      case "numeric":
+        return sql.Decimal(col.numericPrecision ?? 18, col.numericScale ?? 0);
+      case "money":
+        return sql.Money();
+      case "smallmoney":
+        return sql.SmallMoney();
+      case "float":
+        return sql.Float();
+      case "real":
+        return sql.Real();
+      case "date":
+        return sql.Date();
+      case "datetime":
+        return sql.DateTime();
+      case "datetime2":
+        return sql.DateTime2();
+      case "smalldatetime":
+        return sql.SmallDateTime();
+      case "datetimeoffset":
+        return sql.DateTimeOffset();
+      case "time":
+        return sql.Time();
+      case "uniqueidentifier":
+        return sql.UniqueIdentifier();
+      case "char":
+        return col.maxLength && col.maxLength > 0 ? sql.Char(col.maxLength) : sql.Char();
+      case "nchar":
+        return col.maxLength && col.maxLength > 0 ? sql.NChar(col.maxLength) : sql.NChar();
+      case "varchar":
+        return col.maxLength === -1 ? sql.VarChar(sql.MAX) : sql.VarChar(col.maxLength ?? 255);
+      case "nvarchar":
+        return col.maxLength === -1 ? sql.NVarChar(sql.MAX) : sql.NVarChar(col.maxLength ?? 255);
+      case "text":
+        return sql.Text();
+      case "ntext":
+        return sql.NText();
+      default:
+        return sql.NVarChar(sql.MAX);
+    }
+  }
+
+  /** Coerce giá trị JS (từ PG) sang dạng hợp cột MSSQL — fail-safe: xấu → null. */
+  private static coerce(col: ColumnInfo, v: unknown): unknown {
+    if (v == null || v === "") return null;
+    const t = col.dataType.toLowerCase();
+    if (t === "bit") {
+      if (typeof v === "boolean") return v;
+      const s = String(v).toLowerCase();
+      if (s === "true" || s === "1") return true;
+      if (s === "false" || s === "0") return false;
+      return null;
+    }
+    if (
+      [
+        "tinyint",
+        "smallint",
+        "int",
+        "bigint",
+        "decimal",
+        "numeric",
+        "money",
+        "smallmoney",
+        "float",
+        "real",
+      ].includes(t)
+    ) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (["date", "datetime", "datetime2", "smalldatetime", "datetimeoffset"].includes(t)) {
+      const d = v instanceof Date ? v : new Date(String(v));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    return typeof v === "string" ? v : String(v);
+  }
+
+  private typeFor(columnTypes: Map<string, ColumnInfo>, col: string): ColumnInfo {
+    const ci = columnTypes.get(col.toLowerCase());
+    if (!ci) throw new Error(`Cột "${col}" không có trong schema MSSQL đích`);
+    return ci;
+  }
+
+  /** MERGE từng row theo keyColumns (case-insensitive). Bind TYPED. identityInsert
+   *  → bọc SET IDENTITY_INSERT ON/OFF trong 1 transaction (giữ scope qua nhiều
+   *  statement). Trả {inserted, updated} đếm qua OUTPUT $action. */
+  async upsertRows(opts: {
+    schemaTable: string;
+    keyColumns: string[];
+    columns: string[];
+    rows: Array<Record<string, unknown>>;
+    columnTypes: Map<string, ColumnInfo>;
+    identityInsert?: boolean;
+  }): Promise<{ inserted: number; updated: number }> {
+    this.requireWrite();
+    const pool = this.requirePool();
+    if (opts.rows.length === 0) return { inserted: 0, updated: 0 };
+    const safeTbl = escapeMssqlIdentifier(opts.schemaTable);
+    const keyLc = new Set(opts.keyColumns.map((k) => k.toLowerCase()));
+    const updateCols = opts.columns.filter((c) => !keyLc.has(c.toLowerCase()));
+    const cb = MssqlClient.col;
+
+    const usingSel = opts.columns.map((c, i) => `@c${i} AS ${cb(c)}`).join(", ");
+    const onClause = opts.keyColumns.map((k) => `tgt.${cb(k)} = src.${cb(k)}`).join(" AND ");
+    const insertCols = opts.columns.map(cb).join(", ");
+    const insertVals = opts.columns.map((c) => `src.${cb(c)}`).join(", ");
+    const matched = updateCols.length
+      ? `WHEN MATCHED THEN UPDATE SET ${updateCols.map((c) => `tgt.${cb(c)} = src.${cb(c)}`).join(", ")}`
+      : "";
+    const mergeSql = `MERGE ${safeTbl} WITH (HOLDLOCK) AS tgt
+      USING (SELECT ${usingSel}) AS src ON ${onClause}
+      ${matched}
+      WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})
+      OUTPUT $action AS act;`;
+
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+    let inserted = 0;
+    let updated = 0;
+    try {
+      if (opts.identityInsert) {
+        await new sql.Request(tx).query(`SET IDENTITY_INSERT ${safeTbl} ON;`);
+      }
+      for (const row of opts.rows) {
+        const req = new sql.Request(tx);
+        opts.columns.forEach((c, i) => {
+          const ci = this.typeFor(opts.columnTypes, c);
+          req.input(`c${i}`, MssqlClient.typeOf(ci), MssqlClient.coerce(ci, row[c]));
+        });
+        const r = await req.query<{ act: string }>(mergeSql);
+        for (const o of r.recordset) {
+          if (o.act === "INSERT") inserted++;
+          else if (o.act === "UPDATE") updated++;
+        }
+      }
+      if (opts.identityInsert) {
+        await new sql.Request(tx).query(`SET IDENTITY_INSERT ${safeTbl} OFF;`);
+      }
+      await tx.commit();
+    } catch (e) {
+      await tx.rollback().catch(() => {});
+      throw e;
+    }
+    return { inserted, updated };
+  }
+
+  /** Hard DELETE từng row theo keyColumns. */
+  async deleteRows(opts: {
+    schemaTable: string;
+    keyColumns: string[];
+    keys: Array<Record<string, unknown>>;
+    columnTypes: Map<string, ColumnInfo>;
+  }): Promise<number> {
+    this.requireWrite();
+    const pool = this.requirePool();
+    if (opts.keys.length === 0) return 0;
+    const safeTbl = escapeMssqlIdentifier(opts.schemaTable);
+    const cb = MssqlClient.col;
+    const where = opts.keyColumns.map((k, i) => `${cb(k)} = @k${i}`).join(" AND ");
+    const delSql = `DELETE FROM ${safeTbl} WHERE ${where};`;
+    let n = 0;
+    for (const key of opts.keys) {
+      const req = pool.request();
+      opts.keyColumns.forEach((k, i) => {
+        const ci = this.typeFor(opts.columnTypes, k);
+        req.input(`k${i}`, MssqlClient.typeOf(ci), MssqlClient.coerce(ci, key[k]));
+      });
+      const r = await req.query(delSql);
+      n += r.rowsAffected[0] ?? 0;
+    }
+    return n;
+  }
+
+  /** Soft-delete = UPDATE set softDeleteCol theo keyColumns (delete_mode='soft'). */
+  async softFlagRows(opts: {
+    schemaTable: string;
+    keyColumns: string[];
+    softDeleteCol: string;
+    flagValue: unknown;
+    keys: Array<Record<string, unknown>>;
+    columnTypes: Map<string, ColumnInfo>;
+  }): Promise<number> {
+    this.requireWrite();
+    const pool = this.requirePool();
+    if (opts.keys.length === 0) return 0;
+    const safeTbl = escapeMssqlIdentifier(opts.schemaTable);
+    const cb = MssqlClient.col;
+    const softCi = this.typeFor(opts.columnTypes, opts.softDeleteCol);
+    const where = opts.keyColumns.map((k, i) => `${cb(k)} = @k${i}`).join(" AND ");
+    const updSql = `UPDATE ${safeTbl} SET ${cb(opts.softDeleteCol)} = @flag WHERE ${where};`;
+    let n = 0;
+    for (const key of opts.keys) {
+      const req = pool.request();
+      req.input("flag", MssqlClient.typeOf(softCi), MssqlClient.coerce(softCi, opts.flagValue));
+      opts.keyColumns.forEach((k, i) => {
+        const ci = this.typeFor(opts.columnTypes, k);
+        req.input(`k${i}`, MssqlClient.typeOf(ci), MssqlClient.coerce(ci, key[k]));
+      });
+      const r = await req.query(updSql);
+      n += r.rowsAffected[0] ?? 0;
+    }
+    return n;
+  }
+
+  /** Cột PK có phải IDENTITY + max(pk) hiện tại — seed dải id khi ERP tự cấp. */
+  async getIdentityInfo(
+    schemaTable: string,
+    pkColumn: string,
+  ): Promise<{ isIdentity: boolean; maxId: number | null }> {
+    const safeTbl = escapeMssqlIdentifier(schemaTable);
+    const safePk = MssqlClient.col(pkColumn);
+    const pool = this.requirePool();
+    const r = await pool
+      .request()
+      .input("col", pkColumn)
+      .query<{
+        is_identity: number;
+        max_id: string | null;
+      }>(
+        `SELECT COLUMNPROPERTY(OBJECT_ID('${safeTbl}'), @col, 'IsIdentity') AS is_identity,
+              CAST((SELECT MAX(${safePk}) FROM ${safeTbl} ${NOLOCK}) AS varchar(40)) AS max_id`,
+      );
+    const row = r.recordset[0];
+    return {
+      isIdentity: Number(row?.is_identity ?? 0) === 1,
+      maxId: row?.max_id != null ? Number(row.max_id) : null,
+    };
   }
 }

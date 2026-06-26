@@ -107,6 +107,8 @@ export const migrationSyncRuns = pgTable(
     updates: integer("updates").notNull().default(0),
     deletes: integer("deletes").notNull().default(0),
     error: text("error"),
+    // forward (MSSQL→PG, mặc định) | reverse (PG→MSSQL replica).
+    direction: text("direction").notNull().default("forward"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -114,6 +116,84 @@ export const migrationSyncRuns = pgTable(
       t.companyId,
       t.module,
       t.startedAt,
+    ),
+  }),
+);
+
+/* ─── Reverse replica PG → MSSQL (sau cutover, MSSQL chỉ-đọc) ──────
+   Mirror ngược của delta-sync: watermark keyset (updated_at, id) thay CT version.
+   - migration_reverse_sync: per-bảng config + watermark tuple + counters
+   - migration_reverse_modules: per-module cron config + heartbeat lock      */
+
+export const migrationReverseSync = pgTable(
+  "migration_reverse_sync",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    // Connection GHI (allowWrite=true) — KHÁC connection read-only của forward.
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => mssqlConnections.id, { onDelete: "cascade" }),
+    module: text("module").notNull(),
+    entityId: uuid("entity_id").references(() => entities.id, { onDelete: "set null" }),
+    mssqlTable: text("mssql_table").notNull(),
+    // Field PK gốc để MERGE match (vd "id").
+    pkField: text("pk_field").notNull(),
+    // Watermark keyset: row cuối đã đẩy (updated_at, id-uuid tie-break).
+    wmUpdatedAt: timestamp("wm_updated_at", { withTimezone: true }),
+    wmId: uuid("wm_id"),
+    // Safety lag (giây) — chỉ đẩy row updated_at <= now()-lag (chống transaction in-flight).
+    lagSeconds: integer("lag_seconds").notNull().default(5),
+    // delete_mode: hard (DELETE thật) | soft (set cờ soft_delete_col).
+    deleteMode: text("delete_mode").notNull().default("hard"),
+    softDeleteCol: text("soft_delete_col"),
+    identityInsert: boolean("identity_insert").notNull().default(true),
+    enabled: boolean("enabled").notNull().default(false),
+    // status: idle | seeding | running | error | paused
+    status: text("status").notNull().default("idle"),
+    upsertsCount: bigint("upserts_count", { mode: "number" }).notNull().default(0),
+    deletesCount: bigint("deletes_count", { mode: "number" }).notNull().default(0),
+    lastSyncedAt: timestamp("last_synced_at"),
+    lastError: text("last_error"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    connTableUidx: uniqueIndex("migration_reverse_sync_conn_table_uq_idx").on(
+      t.companyId,
+      t.connectionId,
+      t.mssqlTable,
+    ),
+    companyModuleIdx: index("migration_reverse_sync_company_module_idx").on(t.companyId, t.module),
+  }),
+);
+
+export const migrationReverseModules = pgTable(
+  "migration_reverse_modules",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => mssqlConnections.id, { onDelete: "cascade" }),
+    module: text("module").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    cronExpr: text("cron_expr").notNull().default("*/5 * * * *"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    heartbeatAt: timestamp("heartbeat_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyModuleUidx: uniqueIndex("migration_reverse_modules_company_module_uq_idx").on(
+      t.companyId,
+      t.connectionId,
+      t.module,
     ),
   }),
 );
