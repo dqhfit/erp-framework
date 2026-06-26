@@ -590,13 +590,21 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     const hehang = ((req.query ?? {}) as { hehang?: string }).hehang?.trim() ?? "";
     if (!q && !hehang) return reply.send({ rows: [] });
     const like = `%${q}%`;
+    // types = các LOẠI bản vẽ mỗi SP đang có (active + filepath) → frontend hiện tag.
     const rows = (await db.execute(
-      sql`SELECT f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang
-          FROM tr_sanpham
-          WHERE company_id = ${auth.companyId}::uuid AND deleted_at IS NULL
-            AND (${q} = '' OR f_masp ILIKE ${like} OR f_tensp ILIKE ${like})
-            AND (${hehang} = '' OR f_hehang = ${hehang})
-          ORDER BY f_masp LIMIT 50`,
+      sql`SELECT sp.f_masp AS masp, sp.f_tensp AS tensp, sp.f_hehang AS hehang,
+                 ARRAY(
+                   SELECT DISTINCT bv.f_phanloai FROM tr_banve bv
+                   WHERE bv.company_id = ${auth.companyId}::uuid AND bv.deleted_at IS NULL
+                     AND bv.f_masp = sp.f_masp AND bv.f_active IS DISTINCT FROM FALSE
+                     AND bv.f_filepath IS NOT NULL AND bv.f_filepath <> ''
+                     AND bv.f_phanloai IS NOT NULL AND bv.f_phanloai <> ''
+                 ) AS types
+          FROM tr_sanpham sp
+          WHERE sp.company_id = ${auth.companyId}::uuid AND sp.deleted_at IS NULL
+            AND (${q} = '' OR sp.f_masp ILIKE ${like} OR sp.f_tensp ILIKE ${like})
+            AND (${hehang} = '' OR sp.f_hehang = ${hehang})
+          ORDER BY sp.f_masp LIMIT 50`,
     )) as unknown as Array<Record<string, unknown>>;
     return reply.send({ rows });
   });
@@ -926,11 +934,8 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
       .map((s) => s.trim())
       .filter(Boolean);
     const isDao = phanloaiList.length === 1 && phanloaiList[0] === "Bản vẽ dao";
-    if (isDao) {
-      if (!hehang) return reply.send({ rows: [] });
-    } else {
-      if (!masp) return reply.send({ rows: [] });
-    }
+    // Non-dao bắt buộc masp; dao thì hehang TÙY CHỌN — thiếu hehang = TẤT CẢ dao.
+    if (!isDao && !masp) return reply.send({ rows: [] });
     const cid = auth.companyId;
     const phanloaiCond =
       phanloaiList.length > 1
@@ -941,7 +946,11 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
         : phanloaiList.length === 1
           ? sql`AND f_phanloai = ${phanloaiList[0]}`
           : sql``;
-    const filterCond = isDao ? sql`AND f_hehang = ${hehang}` : sql`AND f_masp = ${masp}`;
+    const filterCond = isDao
+      ? hehang
+        ? sql`AND f_hehang = ${hehang}`
+        : sql``
+      : sql`AND f_masp = ${masp}`;
     const rows = (await db.execute(
       sql`SELECT id::text AS id, f_masp AS masp, f_tensp AS tensp, f_hehang AS hehang,
                  f_phanloai AS phanloai, f_filepath AS filepath,

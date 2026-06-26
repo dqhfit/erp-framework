@@ -41,6 +41,8 @@ const BANVE_TYPES = [
 interface BanVeItem {
   id: string;
   phanloai: string;
+  /** Nhãn phụ (vd dao toàn bộ: "mã SP — tên") — ưu tiên hiển thị nếu có. */
+  label?: string;
 }
 export interface GoVanRow {
   stt: unknown;
@@ -111,7 +113,15 @@ function BanVePage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [tab, setTab] = useState<Tab>("banve");
   const [viewId, setViewId] = useState<string | null>(null);
+  const [viewTitle, setViewTitle] = useState("Bản vẽ");
   const [view3dId, setView3dId] = useState<string | null>(null);
+  // Bản vẽ dao: LUÔN tải tất cả, không phụ thuộc sản phẩm đã chọn.
+  const [allDao, setAllDao] = useState<BanVeItem[]>([]);
+  // Mở PDF kèm tiêu đề loại bản vẽ.
+  const openPdf = (id: string, phanloai?: string) => {
+    setViewId(id);
+    setViewTitle(phanloai?.trim() || "Bản vẽ");
+  };
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -160,10 +170,44 @@ function BanVePage() {
     [load],
   );
 
+  // Tải TẤT CẢ bản vẽ dao (1 lần khi mở trang) — tab Dao luôn hiện đầy đủ,
+  // không phụ thuộc sản phẩm đã chọn. Fail-safe: lỗi → để trống.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/banvesvc/banve-list?phanloai=${encodeURIComponent("Bản vẽ dao")}`,
+          {
+            credentials: "include",
+          },
+        );
+        const j = (await res.json().catch(() => ({}))) as { rows?: Array<Record<string, unknown>> };
+        if (!alive) return;
+        setAllDao(
+          (j.rows ?? []).map((r) => {
+            const m = String(r.masp ?? "");
+            const tn = String(r.tensp ?? "");
+            const hh = String(r.hehang ?? "");
+            return {
+              id: String(r.id ?? ""),
+              phanloai: String(r.phanloai ?? "Bản vẽ dao"),
+              label: [m, tn].filter(Boolean).join(" — ") || hh || "Bản vẽ dao",
+            };
+          }),
+        );
+      } catch {
+        /* fail-safe */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const banveList = (product?.banve ?? []).filter(
     (b) => b.phanloai === type && !b.phanloai.startsWith("Bản vẽ dao"),
   );
-  const daoList = (product?.banve ?? []).filter((b) => b.phanloai.startsWith("Bản vẽ dao"));
   const govan = product?.govan ?? [];
   const ngukim = product?.ngukim ?? [];
 
@@ -194,32 +238,6 @@ function BanVePage() {
           </button>
         )}
       </div>
-
-      {/* Quick links quản lý — chỉ hiện với non-viewer */}
-      {role !== "viewer" && (
-        <div className="shrink-0 border-b border-border bg-panel/60 px-3 py-1.5 flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-muted">Quản lý:</span>
-          {(
-            [
-              { label: "Kỹ thuật", to: "/ban-ve/ky-thuat" },
-              { label: "Đóng gói", to: "/ban-ve/dong-goi" },
-              { label: "Phát triển", to: "/ban-ve/phat-trien" },
-              { label: "AI", to: "/ban-ve/ai" },
-              { label: "Mẫu", to: "/ban-ve/mau" },
-              { label: "Dao", to: "/ban-ve/dao" },
-            ] as const
-          ).map(({ label, to }) => (
-            <button
-              key={to}
-              type="button"
-              onClick={() => void navigate({ to })}
-              className="chip chip-default text-xs"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
         {/* Tìm sản phẩm */}
@@ -276,42 +294,57 @@ function BanVePage() {
           </div>
         )}
 
-        {/* Tabs */}
-        {product?.found && (
-          <>
-            <div className="flex border-b border-border overflow-x-auto -mx-1 px-1">
-              <TabBtn active={tab === "banve"} onClick={() => setTab("banve")}>
-                Bản vẽ {banveList.length > 0 && `(${banveList.length})`}
-              </TabBtn>
-              <TabBtn active={tab === "dao"} onClick={() => setTab("dao")}>
-                Bản vẽ dao {daoList.length > 0 && `(${daoList.length})`}
-              </TabBtn>
-              <TabBtn active={tab === "govan"} onClick={() => setTab("govan")}>
-                Định mức gỗ ván {govan.length > 0 && `(${govan.length})`}
-              </TabBtn>
-              <TabBtn active={tab === "ngukim"} onClick={() => setTab("ngukim")}>
-                Định mức ngũ kim {ngukim.length > 0 && `(${ngukim.length})`}
-              </TabBtn>
-            </div>
+        {/* Tabs — LUÔN hiển thị. Dao luôn hiện tất cả; các tab khác cần chọn SP. */}
+        <div className="flex border-b border-border overflow-x-auto -mx-1 px-1">
+          <TabBtn active={tab === "banve"} onClick={() => setTab("banve")}>
+            Bản vẽ {banveList.length > 0 && `(${banveList.length})`}
+          </TabBtn>
+          <TabBtn active={tab === "dao"} onClick={() => setTab("dao")}>
+            Bản vẽ dao {allDao.length > 0 && `(${allDao.length})`}
+          </TabBtn>
+          <TabBtn active={tab === "govan"} onClick={() => setTab("govan")}>
+            Định mức gỗ ván {govan.length > 0 && `(${govan.length})`}
+          </TabBtn>
+          <TabBtn active={tab === "ngukim"} onClick={() => setTab("ngukim")}>
+            Định mức ngũ kim {ngukim.length > 0 && `(${ngukim.length})`}
+          </TabBtn>
+        </div>
 
-            <div className="pt-1">
-              {tab === "banve" && (
-                <BanVeList
-                  items={banveList}
-                  onView={setViewId}
-                  onView3d={setView3dId}
-                  empty="loại này"
-                />
-              )}
-              {tab === "dao" && <BanVeList items={daoList} onView={setViewId} empty="dao" />}
-              {tab === "govan" && <GoVanGrid rows={govan} />}
-              {tab === "ngukim" && <NguKimGrid rows={ngukim} />}
-            </div>
-          </>
-        )}
+        <div className="pt-1">
+          {tab === "banve" &&
+            (product?.found ? (
+              <BanVeList
+                items={banveList}
+                onView={openPdf}
+                onView3d={setView3dId}
+                empty="loại này"
+              />
+            ) : (
+              <div className="text-xs text-muted py-6 text-center">
+                Chọn sản phẩm để xem bản vẽ.
+              </div>
+            ))}
+          {tab === "dao" && <BanVeList items={allDao} onView={openPdf} empty="dao" />}
+          {tab === "govan" &&
+            (product?.found ? (
+              <GoVanGrid rows={govan} />
+            ) : (
+              <div className="text-xs text-muted py-6 text-center">
+                Chọn sản phẩm để xem định mức.
+              </div>
+            ))}
+          {tab === "ngukim" &&
+            (product?.found ? (
+              <NguKimGrid rows={ngukim} />
+            ) : (
+              <div className="text-xs text-muted py-6 text-center">
+                Chọn sản phẩm để xem định mức.
+              </div>
+            ))}
+        </div>
       </div>
 
-      {viewId && <PdfViewer id={viewId} onClose={() => setViewId(null)} />}
+      {viewId && <PdfViewer id={viewId} title={viewTitle} onClose={() => setViewId(null)} />}
       {view3dId && (
         <Suspense
           fallback={
@@ -353,7 +386,14 @@ const FIND_MODES: [FindMode, string][] = [
   ["donhang", "Đơn đặt hàng"],
   ["order", "Đơn hàng PO#"],
 ];
-type Opt = { value: string; label: string; daco?: number; chuaco?: number };
+type Opt = {
+  value: string;
+  label: string;
+  daco?: number;
+  chuaco?: number;
+  total?: number;
+  types?: string[];
+};
 
 async function jget(url: string): Promise<{ rows?: unknown[] }> {
   const res = await fetch(url, { credentials: "include" });
@@ -406,12 +446,20 @@ function TimSanPham({
         const d = await jget("/banvesvc/hehang");
         // Shape mới: [{hehang,daco,chuaco}]; cũ: string[] (server chưa redeploy).
         const rows =
-          (d.rows as Array<string | { hehang: string; daco?: number; chuaco?: number }>) ?? [];
+          (d.rows as Array<
+            string | { hehang: string; daco?: number; chuaco?: number; total?: number }
+          >) ?? [];
         setL1(
           rows.map((r) =>
             typeof r === "string"
               ? { value: r, label: r }
-              : { value: r.hehang, label: r.hehang, daco: r.daco ?? 0, chuaco: r.chuaco ?? 0 },
+              : {
+                  value: r.hehang,
+                  label: r.hehang,
+                  daco: r.daco ?? 0,
+                  chuaco: r.chuaco ?? 0,
+                  total: r.total ?? 0,
+                },
           ),
         );
       } else if (m === "donhang") {
@@ -454,7 +502,11 @@ function TimSanPham({
         ((d.rows as Array<Record<string, unknown>>) ?? []).map((r) => {
           const masp = String(r.masp ?? "");
           const name = String(r.tensp ?? r.tenchitiet ?? r.description ?? r.hehang ?? "");
-          return { value: masp, label: name ? `${masp} — ${name}` : masp };
+          // types = loại bản vẽ SP đang có (chỉ /banvesvc/search trả) → hiện tag.
+          const types = Array.isArray(r.types)
+            ? (r.types as unknown[]).map(String).filter(Boolean)
+            : undefined;
+          return { value: masp, label: name ? `${masp} — ${name}` : masp, types };
         }),
       );
     } finally {
@@ -520,7 +572,7 @@ function TimSanPham({
               <div className="flex items-center justify-between text-xs text-muted px-0.5">
                 <span>Hệ hàng</span>
                 <span>
-                  <span className="text-success">đã có BV</span> / chưa có
+                  <span className="text-success">có BV</span> / tất cả
                 </span>
               </div>
               <div className="max-h-48 overflow-y-auto rounded border border-border divide-y divide-border">
@@ -542,8 +594,10 @@ function TimSanPham({
                       }`}
                     >
                       <span className="flex-1 truncate">{o.label}</span>
-                      <span className="text-xs text-success shrink-0">{o.daco ?? 0}</span>
-                      <span className="text-xs text-muted shrink-0">/ {o.chuaco ?? 0}</span>
+                      <span className="text-xs shrink-0">
+                        <span className="text-success">{o.daco ?? 0}</span>
+                        <span className="text-muted"> / {o.total ?? 0}</span>
+                      </span>
                     </button>
                   ))
                 )}
@@ -585,9 +639,21 @@ function TimSanPham({
                     key={p.value}
                     type="button"
                     onClick={() => onPick(p.value)}
-                    className="w-full block px-2 py-1.5 text-left text-sm hover:bg-hover truncate"
+                    className="w-full block px-2 py-1.5 text-left text-sm hover:bg-hover"
                   >
-                    {p.label}
+                    <span className="block truncate">{p.label}</span>
+                    {p.types && p.types.length > 0 && (
+                      <span className="mt-0.5 flex flex-wrap gap-1">
+                        {p.types.map((t) => (
+                          <span
+                            key={t}
+                            className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-accent/15 text-accent"
+                          >
+                            {t.replace(/^Bản vẽ\s*/i, "") || t}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </button>
                 ))
               )}
@@ -636,7 +702,7 @@ function BanVeList({
   empty,
 }: {
   items: BanVeItem[];
-  onView: (id: string) => void;
+  onView: (id: string, phanloai?: string) => void;
   onView3d?: (id: string) => void;
   empty: string;
 }) {
@@ -651,13 +717,18 @@ function BanVeList({
         >
           <button
             type="button"
-            onClick={() => onView(b.id)}
+            onClick={() => onView(b.id, b.phanloai)}
             className="flex items-center gap-3 flex-1 min-w-0 text-left"
           >
             <span className="w-9 h-9 rounded bg-accent/15 text-accent flex items-center justify-center shrink-0">
               <I.FileText size={18} />
             </span>
-            <span className="flex-1 text-sm font-medium truncate">{b.phanloai || "Bản vẽ"}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-medium truncate">
+                {b.label || b.phanloai || "Bản vẽ"}
+              </span>
+              {b.label && <span className="block text-xs text-muted truncate">{b.phanloai}</span>}
+            </span>
           </button>
           {onView3d && b.phanloai === "Bản vẽ AI" && (
             <button
@@ -971,12 +1042,12 @@ export function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
 }
 
 /* ── PDF viewer toàn màn hình (iframe; nút mở tab mới cho iOS Safari) ── */
-function PdfViewer({ id, onClose }: { id: string; onClose: () => void }) {
+function PdfViewer({ id, title, onClose }: { id: string; title?: string; onClose: () => void }) {
   const src = `/banvesvc/file?id=${encodeURIComponent(id)}`;
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2 bg-panel border-b border-border">
-        <span className="text-sm font-medium flex-1">Bản vẽ</span>
+        <span className="text-sm font-medium flex-1 truncate">{title || "Bản vẽ"}</span>
         <a
           href={src}
           target="_blank"
