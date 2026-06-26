@@ -22,6 +22,17 @@ function safeRandomUUID() {
   });
 }
 
+function parseNumber(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const num = Number(v);
+  return Number.isNaN(num) ? null : num;
+}
+
+function getInputValue(v: number | null | undefined): string | number {
+  if (v === null || v === undefined || Number.isNaN(v)) return "";
+  return v;
+}
+
 interface PaletteRow {
   id: string;
   ma: string;
@@ -203,8 +214,8 @@ export function BangMauTypePage() {
           stt: Number(r.data.stt ?? 0),
           mact: String(r.data.mact ?? ""),
           quytrinh: String(r.data.quytrinh ?? ""),
-          dinhluong: r.data.dinhluong !== null ? Number(r.data.dinhluong) : null,
-          somat: r.data.somat !== null ? Number(r.data.somat) : null,
+          dinhluong: parseNumber(r.data.dinhluong),
+          somat: parseNumber(r.data.somat),
           ghichu: String(r.data.ghichu ?? ""),
           nguyenlieu: String(r.data.nguyenlieu ?? ""),
         }),
@@ -289,8 +300,8 @@ export function BangMauTypePage() {
           stt: Number(r.data.stt ?? 0),
           mact: String(r.data.mact ?? ""),
           quytrinh: String(r.data.quytrinh ?? ""),
-          dinhluong: r.data.dinhluong !== null ? Number(r.data.dinhluong) : null,
-          somat: r.data.somat !== null ? Number(r.data.somat) : null,
+          dinhluong: parseNumber(r.data.dinhluong),
+          somat: parseNumber(r.data.somat),
           ghichu: String(r.data.ghichu ?? ""),
           nguyenlieu: String(r.data.nguyenlieu ?? ""),
         }),
@@ -598,9 +609,8 @@ export function BangMauTypePage() {
           stt: row.stt ? Number(row.stt) : 0,
           mact: row.mact || "",
           quytrinh: row.quytrinh || "",
-          dinhluong:
-            row.dinhluong !== null && !Number.isNaN(row.dinhluong) ? Number(row.dinhluong) : 0,
-          somat: row.somat !== null && !Number.isNaN(row.somat) ? Number(row.somat) : 0,
+          dinhluong: parseNumber(row.dinhluong),
+          somat: parseNumber(row.somat),
           ghichu: row.ghichu || "",
           nguyenlieu: row.nguyenlieu || "",
         };
@@ -792,7 +802,7 @@ export function BangMauTypePage() {
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-hidden min-h-0">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
               {loadingPalettes ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="loader" />
@@ -1221,14 +1231,13 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.dinhluong ?? 0}
+                            value={getInputValue(row.dinhluong)}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
                               if (item) {
-                                const numVal = v === "" ? 0 : Number(v);
-                                item.dinhluong = Number.isNaN(numVal) ? 0 : numVal;
+                                item.dinhluong = v === "" ? null : Number(v);
                               }
                               setGridRows(updated);
                             }}
@@ -1241,14 +1250,13 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.somat ?? 0}
+                            value={getInputValue(row.somat)}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
                               if (item) {
-                                const numVal = v === "" ? 0 : Number(v);
-                                item.somat = Number.isNaN(numVal) ? 0 : numVal;
+                                item.somat = v === "" ? null : Number(v);
                               }
                               setGridRows(updated);
                             }}
