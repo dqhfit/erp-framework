@@ -1,2 +1,0 @@
-ALTER TABLE pages ADD COLUMN IF NOT EXISTS published boolean NOT NULL DEFAULT false;
-ALTER TABLE pages ADD COLUMN IF NOT EXISTS publish_mode text NOT NULL DEFAULT 'private';
