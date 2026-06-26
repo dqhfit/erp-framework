@@ -461,4 +461,11 @@ export interface ActionConfig {
   /** Giới hạn nút chỉ hiển thị với tài khoản cụ thể (user ids).
    *  Ưu tiên nhóm: user có trong danh sách này thấy nút kể cả không thuộc nhóm. */
   visibleToUsers?: string[];
+  /** Ẩn-riêng nút với các nhóm cụ thể (denylist, model phân quyền nút mặc-định-thấy).
+   *  Mặc định mọi người thấy; group có trong danh sách này KHÔNG thấy nút, các nhóm
+   *  khác vẫn thấy. Deny thắng allow (xem filterActions). Admin/editor luôn thấy. */
+  hiddenForGroups?: string[];
+  /** Ẩn-riêng nút với các tài khoản cụ thể (denylist).
+   *  User có trong danh sách này KHÔNG thấy nút, người khác vẫn thấy. */
+  hiddenForUsers?: string[];
 }

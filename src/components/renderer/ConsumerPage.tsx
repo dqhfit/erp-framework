@@ -74,8 +74,11 @@ const BangMauTypePage = lazy(() =>
 );
 
 /** Lọc danh sách nút hành động theo quyền nhóm/tài khoản.
- *  Admin/editor luôn thấy tất cả; viewer thấy nút không hạn chế hoặc
- *  thuộc nhóm/tài khoản được phép. */
+ *  Admin/editor luôn thấy tất cả. Hai lớp độc lập:
+ *  1) DENYLIST (mặc-định-thấy): hiddenForGroups/hiddenForUsers ẩn-riêng nút
+ *     với nhóm/tài khoản cụ thể; deny THẮNG allow → kiểm tra TRƯỚC.
+ *  2) ALLOWLIST (designer): visibleToGroups/visibleToUsers giới hạn chỉ nhóm/
+ *     tài khoản được phép; rỗng/vắng = mọi người thấy. */
 function filterActions(
   actions: ActionBarItem[],
   role: string | undefined,
@@ -84,11 +87,15 @@ function filterActions(
 ): ActionBarItem[] {
   if (role === "admin" || role === "editor") return actions;
   return actions.filter((a) => {
+    // Lớp 1 — DENY ẩn-riêng (thắng allow): user/nhóm bị ẩn thì mất nút ngay.
+    if (userId && a.hiddenForUsers?.includes(userId)) return false;
+    if (a.hiddenForGroups?.some((g) => groupIds.includes(g))) return false;
+    // Lớp 2 — ALLOWLIST designer (giữ nguyên hành vi cũ).
     const hasGroupRestriction = a.visibleToGroups && a.visibleToGroups.length > 0;
     const hasUserRestriction = a.visibleToUsers && a.visibleToUsers.length > 0;
     if (!hasGroupRestriction && !hasUserRestriction) return true;
     if (userId && a.visibleToUsers?.includes(userId)) return true;
-    if (hasGroupRestriction && groupIds.some((g) => a.visibleToGroups!.includes(g))) return true;
+    if (hasGroupRestriction && groupIds.some((g) => a.visibleToGroups?.includes(g))) return true;
     return false;
   });
 }
