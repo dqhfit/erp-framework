@@ -66,10 +66,19 @@ export function NotificationBell() {
   }, []);
 
   // Poll số chưa đọc mỗi 30s (fallback khi WS rớt / chưa kết nối).
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại.
   useEffect(() => {
     loadCount();
-    const id = setInterval(loadCount, 30_000);
-    return () => clearInterval(id);
+    const onTick = () => {
+      if (document.hidden) return;
+      loadCount();
+    };
+    const id = setInterval(onTick, 30_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [loadCount]);
 
   // Realtime: server push notification mới → tăng badge ngay (prepend nếu đang mở).

@@ -283,10 +283,17 @@ export function CockpitPage() {
     fetchJobs();
     // Đọc cờ active từ ref — KHÔNG gọi fetchJobs trong updater setJobs (side
     // effect trong reducer → StrictMode chạy 2× = gấp đôi request).
-    const id = setInterval(() => {
-      if (jobsActiveRef.current) fetchJobs();
-    }, 4_000);
-    return () => clearInterval(id);
+    // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại (nếu có job active).
+    const onTick = () => {
+      if (document.hidden || !jobsActiveRef.current) return;
+      fetchJobs();
+    };
+    const id = setInterval(onTick, 4_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [reload]);
 
   const onToggle = useCallback((code: string) => {

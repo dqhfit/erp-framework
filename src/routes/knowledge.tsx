@@ -159,10 +159,19 @@ function KnowledgePage() {
     () => sources.some((s) => s.status === "pending" || s.status === "processing"),
     [sources],
   );
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại (chỉ khi có nguồn pending).
   useEffect(() => {
     if (!hasPending) return;
-    const id = setInterval(load, 3000);
-    return () => clearInterval(id);
+    const onTick = () => {
+      if (document.hidden) return;
+      load();
+    };
+    const id = setInterval(onTick, 3000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [hasPending, load]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {

@@ -47,9 +47,20 @@ function IotDeviceDetail() {
   }, [load]);
 
   // Tự làm mới mỗi 5 giây — telemetry chảy về liên tục từ thiết bị.
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại.
+  // Lưu ý: iot.devices.list() không có filter theo id, chưa có get(id) —
+  // giữ nguyên list().find() đến khi endpoint devices.get(id) được thêm vào server.
   useEffect(() => {
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+    const onTick = () => {
+      if (document.hidden) return;
+      load();
+    };
+    const t = setInterval(onTick, 5000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [load]);
 
   const queueCmd = async () => {

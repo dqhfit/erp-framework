@@ -309,17 +309,26 @@ function ChatPage() {
   }, [loadConvs]);
 
   // Presence: poll online ~20s (in-memory phia server).
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại.
   useEffect(() => {
-    const load = () =>
+    const fetchPresence = () =>
       chat
         .presenceOnline()
         .then((r) => setOnline(new Set(r.online)))
         .catch(() => {
           /* ignore */
         });
-    load();
-    const id = setInterval(load, 20_000);
-    return () => clearInterval(id);
+    const onTick = () => {
+      if (document.hidden) return;
+      fetchPresence();
+    };
+    fetchPresence();
+    const id = setInterval(onTick, 20_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, []);
 
   // Inbox: tin moi / hoi thoai moi → refresh danh sach + badge.

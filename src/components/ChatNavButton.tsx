@@ -25,10 +25,19 @@ export function ChatNavButton() {
       });
   }, []);
 
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại.
   useEffect(() => {
     load();
-    const id = setInterval(load, 60_000);
-    return () => clearInterval(id);
+    const onTick = () => {
+      if (document.hidden) return;
+      load();
+    };
+    const id = setInterval(onTick, 60_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [load]);
 
   // Tin moi / hoi thoai moi → cap nhat badge ngay.

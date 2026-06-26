@@ -75,11 +75,20 @@ function BackupPage() {
   }, [loadConfig, loadRuns]);
 
   // Có job đang chạy → poll 3s.
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại (chỉ khi có job đang chạy).
   const hasRunning = runs.some((r) => r.status === "running");
   useEffect(() => {
     if (!hasRunning) return;
-    const t = setInterval(loadRuns, 3000);
-    return () => clearInterval(t);
+    const onTick = () => {
+      if (document.hidden) return;
+      loadRuns();
+    };
+    const t = setInterval(onTick, 3000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [hasRunning, loadRuns]);
 
   const wrap = async (fn: () => Promise<void>, ok: string) => {

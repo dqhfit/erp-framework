@@ -7,7 +7,8 @@ export function useNavTree() {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: () => createLegacyMenuClient("").navTree(),
-    staleTime: 10_000,
+    // staleTime 5 phút — menu ít thay đổi; invalidate explicit gọi khi cần thiết.
+    staleTime: 5 * 60_000,
     gcTime: 5 * 60_000,
   });
 }
