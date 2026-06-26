@@ -1,0 +1,31 @@
+# plan-guard — CHẶN code trên nhánh `plan`.
+# Nhánh plan chỉ được chứa TÀI LIỆU kế hoạch. Mọi push/PR vào plan
+# sẽ fail nếu có file nằm ngoài allowlist (docs/, migration-plan/, …).
+# Dùng ALLOWLIST (không phải blocklist) → tự bắt mọi thư mục code MỚI.
+name: plan-guard
+
+on:
+  push:
+    branches: [plan]
+  pull_request:
+    branches: [plan]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chỉ cho phép tài liệu trên nhánh plan
+        run: |
+          # Allowlist: tài liệu kế hoạch + meta repo + chính CI guard này.
+          ALLOWED='^(docs/|migration-plan/|\.github/|README\.md$|CONTRIBUTING\.md$|CLAUDE\.md$|ROADMAP\.md$|DESIGN_SPEC\.md$|migration-[^/]*\.(json|txt)$|\.gitignore$|\.gitattributes$)'
+          VIOLATIONS="$(git ls-files | grep -vE "$ALLOWED" || true)"
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Nhánh 'plan' CHỈ được chứa tài liệu. Phát hiện file không hợp lệ:"
+            echo "$VIOLATIONS" | sed 's/^/  - /'
+            echo ""
+            echo "→ Đưa code sang nhánh code (main/feature), nhánh plan chỉ giữ tài liệu."
+            exit 1
+          fi
+          echo "OK — nhánh plan chỉ chứa tài liệu kế hoạch."

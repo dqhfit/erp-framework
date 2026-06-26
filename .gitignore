@@ -85,3 +85,37 @@ tooling/migration-cli/src/check-session.mjs
 tooling/migration-cli/src/fix-lcp-columns.mjs
 tooling/pull-dinhmuc-from-prod.ps1
 tooling/sync-viewer-group-pages-to-prod.mjs
+
+# ============================================================
+# NHÁNH plan — CHỈ chứa tài liệu kế hoạch. CHẶN code lọt vào:
+# ignore mọi thư mục/cấu hình code để `git add` vô tình không
+# nhặt. (CI .github/workflows/plan-guard.yml chặn CỨNG khi push.)
+# Mục này chỉ tồn tại trên nhánh plan — nhánh code có .gitignore riêng.
+# ============================================================
+/src/
+/packages/
+/e2e/
+/tooling/
+/scripts/
+/public/
+/docker/
+/design-reference/
+/.husky/
+/.cursor/
+/.tanstack/
+/.npmrc
+/.dockerignore
+/index.html
+/vite.config.ts
+/postcss.config.js
+/biome.json
+/tsconfig.json
+/tsconfig.tsbuildinfo
+/package.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+/playwright.config.ts
+/playwright.dinhmuc.config.ts
+/playwright.fullstack.config.ts
+/Dockerfile
+/nginx.conf
