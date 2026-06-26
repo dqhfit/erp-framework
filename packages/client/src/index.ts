@@ -21,6 +21,18 @@ export {
 } from "./approvals";
 export { createAuthClient } from "./auth";
 export {
+  type ChatAttachment,
+  type ChatClient,
+  type ChatConversationRow,
+  type ChatDirectoryRow,
+  type ChatLastMessage,
+  type ChatMemberRef,
+  type ChatMessageRow,
+  type ChatReaction,
+  type ChatSearchHit,
+  createChatClient,
+} from "./chat";
+export {
   type BackupClient,
   type BackupConfigView,
   type BackupRun,

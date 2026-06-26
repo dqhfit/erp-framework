@@ -61,6 +61,7 @@ import { queryParams } from "./router-helpers";
 import { recordServerError } from "./server-errors";
 import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
+import { isChatMember } from "./chat-router";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
@@ -478,19 +479,33 @@ async function main(): Promise<void> {
     const conn = registerConnection(socket as never, s.userId, active.companyId);
     socket.send(JSON.stringify({ channel: "system", payload: { ok: true, userId: s.userId } }));
     socket.on("message", (raw: Buffer) => {
-      try {
-        const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
-        if (!m.channel) return;
-        // P4.1 — channel allowlist. Mọi channel phải khớp 1 trong các
-        // pattern + scope theo user/company hiện tại. Channel ngoài
-        // whitelist hoặc cross-tenant → silently drop (không reply
-        // error để tránh oracle).
-        if (!isChannelAllowed(m.channel, s.userId, active.companyId)) return;
-        if (m.action === "subscribe") subscribe(conn, m.channel);
-        else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
-      } catch {
-        /* malformed message — ignore */
-      }
+      void (async () => {
+        try {
+          const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
+          if (!m.channel) return;
+          // P4.1 — channel allowlist. Mọi channel phải khớp 1 trong các
+          // pattern + scope theo user/company hiện tại. Channel ngoài
+          // whitelist hoặc cross-tenant → silently drop (không reply
+          // error để tránh oracle).
+          if (!isChannelAllowed(m.channel, s.userId, active.companyId)) return;
+          // chat:<conversationId> — allowlist trên chỉ check format UUID;
+          // verify membership (thuộc hội thoại + cùng company) bằng DB
+          // trước khi cho subscribe để không rò tin nhắn chéo hội thoại.
+          if (m.channel.startsWith("chat:")) {
+            const ok = await isChatMember(
+              db,
+              m.channel.slice("chat:".length),
+              s.userId,
+              active.companyId,
+            );
+            if (!ok) return;
+          }
+          if (m.action === "subscribe") subscribe(conn, m.channel);
+          else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
+        } catch {
+          /* malformed message — ignore */
+        }
+      })();
     });
   });
 

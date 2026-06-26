@@ -17,6 +17,15 @@
    - migration:<userId>                — UI migration nhận progress job
                                          (start/log/done/error) chỉ user
                                          khởi job.
+   - chat-inbox:<userId>               — cập nhật danh sách/badge chat của
+                                         chính user (tin mới / hội thoại mới).
+   - chat:<conversationId>             — tin nhắn trong 1 hội thoại. Ở đây
+                                         CHỈ check format UUID; membership
+                                         (caller có thuộc hội thoại không +
+                                         cùng company) verify bằng DB lookup
+                                         ở /ws handler (index.ts) trước khi
+                                         subscribe — tin nhắn nhạy cảm hơn
+                                         presence nên KHÔNG để format-only.
    - other                             → reject (silently drop ở caller)
    ========================================================== */
 
@@ -27,10 +36,14 @@ export function isChannelAllowed(channel: string, userId: string, companyId: str
   if (channel === `notifications:${userId}`) return true;
   if (channel === `approval:${userId}`) return true;
   if (channel === `migration:${userId}`) return true;
+  if (channel === `chat-inbox:${userId}`) return true;
   const m = channel.match(RECORD_CH);
   if (m) return m[1] === companyId;
   if (channel.startsWith("presence:")) {
     return UUID_RE.test(channel.slice("presence:".length));
+  }
+  if (channel.startsWith("chat:")) {
+    return UUID_RE.test(channel.slice("chat:".length));
   }
   return false;
 }

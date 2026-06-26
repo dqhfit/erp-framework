@@ -624,6 +624,27 @@
       "when": 1783800001000,
       "tag": "0088_user_page_access",
       "breakpoints": false
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1783800002000,
+      "tag": "0089_chat",
+      "breakpoints": false
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1783800004000,
+      "tag": "0091_chat_phase2",
+      "breakpoints": false
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1783800005000,
+      "tag": "0092_chat_attachments",
+      "breakpoints": false
     }
   ]
 }

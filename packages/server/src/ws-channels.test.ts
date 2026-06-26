@@ -65,6 +65,25 @@ describe("isChannelAllowed (P4.1)", () => {
     });
   });
 
+  describe("chat-inbox:<userId>", () => {
+    it("pass khi khớp userId", () => {
+      expect(isChannelAllowed(`chat-inbox:${U1}`, U1, C1)).toBe(true);
+    });
+    it("reject userId khác", () => {
+      expect(isChannelAllowed("chat-inbox:other-user", U1, C1)).toBe(false);
+    });
+  });
+
+  describe("chat:<conversationId> (format-only; membership verify ở /ws)", () => {
+    it("pass khi là UUID hợp lệ", () => {
+      expect(isChannelAllowed(`chat:${R1}`, U1, C1)).toBe(true);
+    });
+    it("reject khi không phải UUID", () => {
+      expect(isChannelAllowed("chat:bad", U1, C1)).toBe(false);
+      expect(isChannelAllowed("chat:", U1, C1)).toBe(false);
+    });
+  });
+
   describe("Channel ngoài whitelist", () => {
     it("Reject channel arbitrary", () => {
       expect(isChannelAllowed("foo:bar", U1, C1)).toBe(false);
