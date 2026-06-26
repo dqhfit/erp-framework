@@ -54,6 +54,8 @@ interface ActionEntry {
   label: string;
   icon?: string;
   visibleToGroups?: string[];
+  /** Danh sách userId được phép thấy nút (song song visibleToGroups). */
+  visibleToUsers?: string[];
 }
 
 /** Chuyển raw content (2 format: array cũ / {meta,components}) thành mảng component. */
@@ -88,6 +90,7 @@ function extractPageActions(rawContent: unknown): ActionEntry[] {
         label: (cfg.label as string) || "(nút không tên)",
         icon: cfg.icon as string | undefined,
         visibleToGroups: cfg.visibleToGroups as string[] | undefined,
+        visibleToUsers: cfg.visibleToUsers as string[] | undefined,
       });
     } else if (comp.kind === "actionbar") {
       /* Thanh hành động — config.items[]. */
@@ -105,6 +108,7 @@ function extractPageActions(rawContent: unknown): ActionEntry[] {
           label: item.label || "(nút không tên)",
           icon: item.icon,
           visibleToGroups: item.visibleToGroups,
+          visibleToUsers: item.visibleToUsers,
         });
       }
     } else if (comp.kind === "list" || comp.kind === "form" || comp.kind === "detail") {
@@ -125,6 +129,7 @@ function extractPageActions(rawContent: unknown): ActionEntry[] {
             label: ra.label || "(nút không tên)",
             icon: ra.icon,
             visibleToGroups: ra.visibleToGroups,
+            visibleToUsers: ra.visibleToUsers,
           });
         }
       }
@@ -142,6 +147,7 @@ function extractPageActions(rawContent: unknown): ActionEntry[] {
           label: ea.label || "(nút không tên)",
           icon: ea.icon,
           visibleToGroups: ea.visibleToGroups,
+          visibleToUsers: ea.visibleToUsers,
         });
       }
     }
@@ -199,6 +205,46 @@ function applyGroupToggle(
     const updatedItem = { ...(item as object) } as Record<string, unknown>;
     if (newGroups === null) delete updatedItem.visibleToGroups;
     else updatedItem.visibleToGroups = newGroups;
+    arr[entry.index] = updatedItem;
+    return { ...comp, config: { ...cfg, [entry.arrayKey]: arr } };
+  });
+
+  /* Giữ nguyên shape: array → array; {meta, components} → {meta, components}. */
+  if (Array.isArray(rawContent)) return comps;
+  const obj = rawContent as { meta?: unknown; components?: unknown };
+  return { ...obj, components: comps };
+}
+
+/** Áp dụng thay đổi visibleToUsers vào raw content, giữ nguyên cấu trúc gốc.
+ *  Song song applyGroupToggle nhưng patch visibleToUsers thay vì visibleToGroups. */
+function applyUserToggle(
+  rawContent: unknown,
+  entry: ActionEntry,
+  userId: string,
+  turnOn: boolean,
+): unknown {
+  const comps = parsePageComponents(rawContent).map((comp) => {
+    if (comp.id !== entry.compId) return comp;
+    const cfg = { ...(comp.config ?? {}) };
+
+    if (entry.arrayKey === "action") {
+      /* Widget đơn — sửa trực tiếp trên config. */
+      const newUsers = computeNewGroups(cfg.visibleToUsers as string[] | undefined, userId, turnOn);
+      const updated = { ...cfg };
+      if (newUsers === null) delete updated.visibleToUsers;
+      else updated.visibleToUsers = newUsers;
+      return { ...comp, config: updated };
+    }
+
+    /* Mảng rowActions / embeddedActions / items */
+    const arr = [...((cfg[entry.arrayKey] as unknown[]) ?? [])];
+    const item = arr[entry.index];
+    if (!item) return comp;
+    const currUsers = (item as { visibleToUsers?: string[] }).visibleToUsers;
+    const newUsers = computeNewGroups(currUsers, userId, turnOn);
+    const updatedItem = { ...(item as object) } as Record<string, unknown>;
+    if (newUsers === null) delete updatedItem.visibleToUsers;
+    else updatedItem.visibleToUsers = newUsers;
     arr[entry.index] = updatedItem;
     return { ...comp, config: { ...cfg, [entry.arrayKey]: arr } };
   });
@@ -721,10 +767,15 @@ function ActionButtonPermissionsTab({
             </div>
 
             {actions.map((entry) => {
-              const noList = !entry.visibleToGroups || entry.visibleToGroups.length === 0;
-              const inList = !noList && (entry.visibleToGroups?.includes(group.id) ?? false);
-              /* Toggle ON = không giới hạn (mọi nhóm) HOẶC nhóm trong allowlist. */
-              const isOn = noList || inList;
+              const noGroups = !entry.visibleToGroups || entry.visibleToGroups.length === 0;
+              const noUsers = !entry.visibleToUsers || entry.visibleToUsers.length === 0;
+              const inGroupList = !noGroups && (entry.visibleToGroups?.includes(group.id) ?? false);
+              /* BUG FIX: chỉ CHECKED khi nhóm này THỰC SỰ trong allowlist.
+               *  Trước: isOn = noGroups || inGroupList → nút "Mọi nhóm" luôn checked
+               *  → bỏ tích = NO-OP (xoá khỏi list rỗng không làm gì). */
+              const isOn = inGroupList;
+              /* Hạn chế nếu có BẤT KỲ danh sách nào (nhóm hoặc tài khoản). */
+              const noRestriction = noGroups && noUsers;
 
               return (
                 <div
@@ -739,15 +790,15 @@ function ActionButtonPermissionsTab({
                     </div>
                   </div>
 
-                  {/* Badge trạng thái hạn chế */}
+                  {/* Badge trạng thái hạn chế — phản ánh cả nhóm lẫn tài khoản. */}
                   <div className="w-20 flex items-center justify-center">
-                    {noList ? (
+                    {noRestriction ? (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-success/15 text-success font-medium whitespace-nowrap">
-                        Mọi nhóm
+                        Mọi người
                       </span>
                     ) : (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium whitespace-nowrap">
-                        {entry.visibleToGroups?.length ?? 0} nhóm
+                        Hạn chế
                       </span>
                     )}
                   </div>
@@ -759,7 +810,7 @@ function ActionButtonPermissionsTab({
                       checked={isOn}
                       disabled={saving}
                       title={
-                        noList
+                        noRestriction
                           ? "Bật để giới hạn chỉ nhóm này (nhóm khác sẽ mất nút)"
                           : isOn
                             ? "Tắt để loại nhóm này khỏi danh sách cho phép"
@@ -780,9 +831,10 @@ function ActionButtonPermissionsTab({
       <div className="shrink-0 px-3 py-1.5 border-t border-border bg-bg-soft/30">
         <p className="text-[10px] text-muted/50 leading-relaxed">
           Tích = nhóm này thấy nút.&nbsp;
-          <strong>Mọi nhóm</strong> = chưa giới hạn (tất cả thấy).&nbsp; Tích lần đầu tạo allowlist
-          — nhóm khác mất nút, cần xác nhận.&nbsp; Admin/editor luôn thấy mọi nút.&nbsp; Đây là
-          quyền HIỂN THỊ UI, không thay thế RBAC proc.
+          <strong>Mọi người</strong> = chưa giới hạn gì (mọi nhóm + mọi tài khoản đều thấy).&nbsp;
+          <strong>Hạn chế</strong> = đã có danh sách nhóm hoặc tài khoản.&nbsp; Tích lần đầu tạo
+          allowlist nhóm — cần xác nhận.&nbsp; Quyền tài khoản cá nhân cài ở tab "Tài khoản".&nbsp;
+          Admin/editor luôn thấy mọi nút.
         </p>
       </div>
     </div>
@@ -1361,6 +1413,185 @@ function UserFieldPermissionsTab({ userId }: { userId: string }) {
   );
 }
 
+/* ── UserActionButtonPermissionsTab ─────────────────────── */
+/** Tab "Phân quyền nút" trong UserPageAccessPanel: chọn trang → liệt kê
+ *  nút → toggle visibleToUsers per tài khoản.  */
+function UserActionButtonPermissionsTab({
+  user,
+  allPages,
+}: {
+  user: CompanyMember;
+  allPages: { id: string; name: string }[];
+}) {
+  const pageContent = useUserObjects((s) => s.pageContent);
+  const setPageContent = useUserObjects((s) => s.setPageContent);
+
+  const pageOptions = useMemo<SearchableSelectOption[]>(
+    () => allPages.map((p) => ({ value: p.id, label: p.name, searchText: p.name })),
+    [allPages],
+  );
+
+  /* Trang đang chọn — mặc định trang đầu tiên trong danh sách. */
+  const [selPageId, setSelPageId] = useState<string>(() => allPages[0]?.id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  /* Reset khi đổi user. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset khi đổi user
+  useEffect(() => {
+    setSelPageId(allPages[0]?.id ?? "");
+    setSavedMsg("");
+  }, [user.userId]);
+
+  /* Trích nút hành động từ content trang đang chọn (đã có trong store). */
+  const rawContent = selPageId ? pageContent[selPageId] : undefined;
+  const actions = useMemo(() => extractPageActions(rawContent), [rawContent]);
+
+  const toggleUser = async (entry: ActionEntry, turnOn: boolean) => {
+    if (!selPageId) return;
+
+    /* Nếu nút đang "Mọi người" (chưa có bất kỳ allowlist nào) mà BẬT →
+     *  cảnh báo xác nhận trước khi tạo allowlist user. */
+    const noExistingGroupList = !entry.visibleToGroups || entry.visibleToGroups.length === 0;
+    const noExistingUserList = !entry.visibleToUsers || entry.visibleToUsers.length === 0;
+    if (turnOn && noExistingGroupList && noExistingUserList) {
+      const ok = await dialog.confirm(
+        `Nút "${entry.label}" hiện không giới hạn — mọi người đều thấy. Xác nhận sẽ TẠO danh sách hạn chế tài khoản: CHỈ tài khoản "${user.name || user.email}" thấy nút này (cùng các nhóm được phép, nếu có sau).`,
+        { title: "Giới hạn hiển thị nút theo tài khoản", confirmText: "Tiếp tục", danger: true },
+      );
+      if (!ok) return;
+    }
+
+    setSaving(true);
+    try {
+      const newContent = applyUserToggle(rawContent, entry, user.userId, turnOn);
+      /* setPageContent: cập nhật store (immutable) + fire-and-forget save backend. */
+      setPageContent(selPageId, newContent);
+      setSavedMsg("Đã lưu");
+      setTimeout(() => setSavedMsg(""), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Picker trang */}
+      <div className="px-3 pt-3 pb-2 border-b border-border shrink-0 space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted shrink-0">Trang:</span>
+          <div className="flex-1">
+            <SearchableSelect
+              value={selPageId}
+              onChange={setSelPageId}
+              options={pageOptions}
+              placeholder="— chọn trang —"
+              emptyOption="— chọn trang —"
+              triggerClassName="h-7! text-xs!"
+            />
+          </div>
+          {savedMsg && <span className="text-[11px] text-success shrink-0">{savedMsg}</span>}
+        </div>
+      </div>
+
+      {/* Danh sách nút */}
+      <div className="flex-1 overflow-y-auto">
+        {!selPageId ? (
+          <div className="text-xs text-muted/60 text-center py-10">
+            Chọn trang để xem nút hành động.
+          </div>
+        ) : actions.length === 0 ? (
+          <div className="text-xs text-muted/60 text-center py-10">
+            Trang này chưa có nút hành động nào.
+          </div>
+        ) : (
+          <>
+            {/* Header cột */}
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 px-3 py-1.5 border-b border-border sticky top-0 bg-bg-soft/80 backdrop-blur-sm">
+              <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide">
+                Nút hành động
+              </span>
+              <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide w-20 text-center">
+                Hạn chế
+              </span>
+              <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide w-12 text-center">
+                Thấy
+              </span>
+            </div>
+
+            {actions.map((entry) => {
+              const noGroups = !entry.visibleToGroups || entry.visibleToGroups.length === 0;
+              const noUsers = !entry.visibleToUsers || entry.visibleToUsers.length === 0;
+              const inUserList = !noUsers && (entry.visibleToUsers?.includes(user.userId) ?? false);
+              /* Chỉ CHECKED khi user này THỰC SỰ trong visibleToUsers. */
+              const isOn = inUserList;
+              /* Hạn chế nếu có BẤT KỲ danh sách nào (nhóm hoặc tài khoản). */
+              const noRestriction = noGroups && noUsers;
+
+              return (
+                <div
+                  key={`${entry.compId}-${entry.arrayKey}-${entry.index}`}
+                  className="grid grid-cols-[1fr_auto_auto] gap-x-2 px-3 py-2.5 border-b border-border/50 items-center hover:bg-hover/30"
+                >
+                  {/* Nhãn nút + info widget */}
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate leading-tight">{entry.label}</div>
+                    <div className="text-[10px] text-muted/60 truncate leading-tight">
+                      {entry.compKind} · {entry.compLabel}
+                    </div>
+                  </div>
+
+                  {/* Badge trạng thái — phản ánh cả nhóm lẫn tài khoản. */}
+                  <div className="w-20 flex items-center justify-center">
+                    {noRestriction ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-success/15 text-success font-medium whitespace-nowrap">
+                        Mọi người
+                      </span>
+                    ) : (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium whitespace-nowrap">
+                        Hạn chế
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Toggle tài khoản thấy nút */}
+                  <div className="w-12 flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      disabled={saving}
+                      title={
+                        noRestriction
+                          ? "Bật để giới hạn riêng tài khoản này (tạo allowlist user)"
+                          : isOn
+                            ? "Tắt để loại tài khoản này khỏi danh sách được phép"
+                            : "Bật để thêm tài khoản này vào danh sách được phép"
+                      }
+                      onChange={(e) => void toggleUser(entry, e.target.checked)}
+                      className="w-3.5 h-3.5 accent-accent"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Footer ghi chú nghiệp vụ */}
+      <div className="shrink-0 px-3 py-1.5 border-t border-border bg-bg-soft/30">
+        <p className="text-[10px] text-muted/50 leading-relaxed">
+          Tích = tài khoản này thấy nút (ưu tiên: thấy kể cả không thuộc nhóm được phép).&nbsp;
+          <strong>Mọi người</strong> = chưa giới hạn gì.&nbsp;
+          <strong>Hạn chế</strong> = đã có danh sách nhóm hoặc tài khoản.&nbsp; Tích lần đầu tạo
+          allowlist user — cần xác nhận.&nbsp; Quyền nhóm cài ở tab "Nhóm" phần "Phân quyền
+          nút".&nbsp; Admin/editor luôn thấy mọi nút.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── UserPageAccessPanel (cột phải khi chọn user ở tab Tài khoản) ── */
 function UserPageAccessPanel({
   user,
@@ -1372,7 +1603,7 @@ function UserPageAccessPanel({
   onClose: () => void;
 }) {
   const hydrate = useUserObjects((s) => s.hydrate);
-  const [tab, setTab] = useState<"pages" | "fields">("pages");
+  const [tab, setTab] = useState<"pages" | "actions" | "fields">("pages");
   const [pageIds, setPageIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1426,6 +1657,7 @@ function UserPageAccessPanel({
         {(
           [
             { key: "pages", label: "Trang" },
+            { key: "actions", label: "Phân quyền nút" },
             { key: "fields", label: "Quyền trường" },
           ] as const
         ).map(({ key, label }) => (
@@ -1539,6 +1771,9 @@ function UserPageAccessPanel({
           )}
         </>
       )}
+
+      {/* Tab: Phân quyền nút hành động theo tài khoản */}
+      {tab === "actions" && <UserActionButtonPermissionsTab user={user} allPages={allPages} />}
 
       {/* Tab: Quyền trường */}
       {tab === "fields" && <UserFieldPermissionsTab userId={user.userId} />}
