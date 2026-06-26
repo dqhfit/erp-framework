@@ -1,3 +1,4 @@
+import type { FilterOp as RecordFilterOp } from "@erp-framework/core";
 import type { IconName } from "@/lib/object-types";
 
 /* ── Filter system (V2) ───────────────────────────────────────
@@ -275,6 +276,23 @@ export interface WizardLookupRef {
   /** Tự điền field khác từ record nguồn khi chọn: { fieldĐích: fieldNguồn }.
    *  Vd makhachhang lookup tr_khachhang → { tenkhachhang: "customer_name" }. */
   autofill?: Record<string, string>;
+  /** true → TÌM SERVER-SIDE: gõ vào combobox sẽ query entity nguồn (ILIKE contains
+   *  trên `searchFields`), thay vì lọc client trên danh sách preload. Bắt buộc cho
+   *  entity LỚN (vd tr_material 36k dòng) — preload chỉ lấy ~2000 dòng đầu. */
+  serverSearch?: boolean;
+  /** (serverSearch) Field để tìm contains, mặc định = labelFields. Mỗi field 1 query
+   *  rồi gộp (cho phép tìm theo cả mã lẫn tên). */
+  searchFields?: string[];
+  /** Lọc server-side khi PRELOAD danh sách (vd { xoa: { op: "=", value: "N" } } —
+   *  chỉ lấy bản ghi chưa xoá). Shape = QueryParams.filters. */
+  filters?: Record<string, { op: RecordFilterOp; value: unknown }>;
+  /** Số dòng tối đa preload (mặc định 2000). Tăng khi muốn hiện HẾT danh sách lớn
+   *  (vd tr_material xoa='N' ~30k) mà không dùng serverSearch. */
+  preloadLimit?: number;
+  /** Kích thước mỗi trang khi preload LŨY TIẾN: nạp từng trang rồi APPEND vào
+   *  danh sách (combobox dùng được ngay sau trang đầu, các trang sau chạy nền).
+   *  Mặc định 500. */
+  preloadPageSize?: number;
   /** true → hiện nút "+" cạnh combobox để tạo nhanh bản ghi mới trong entity nguồn
    *  (vd thêm bước sơn chưa có), sau đó tự chọn + autofill. */
   allowCreate?: boolean;
@@ -307,6 +325,10 @@ export interface WizardStepDetail {
   inherit?: Record<string, string>;
   /** Giá trị mặc định cho DÒNG MỚI trong lưới (vd { is_active: "true" }). */
   rowDefaults?: Record<string, string>;
+  /** Field VẪN LƯU nhưng KHÔNG render thành cột (vd soluong mặc định 1 qua
+   *  rowDefaults, hoặc field tự fill từ lookup mà không cần hiện). Phải nằm trong
+   *  `fields` để được lưu; chỉ bị ẩn khỏi lưới. */
+  hiddenFields?: string[];
 }
 
 /** Ảnh chỉ đọc lấy từ entity liên quan, không tham gia payload lưu entity chính. */
@@ -330,6 +352,9 @@ export interface WizardStepDef {
   entity?: string;
   /** Tập con field hiển thị. undefined = toàn bộ field của entity. */
   fields?: string[];
+  /** Field VẪN nằm trong `fields` (để lưu, vd qua defaults $now/$currentUser) nhưng
+   *  KHÔNG render ra form — ẩn khỏi người dùng. Vd ngaytao/nguoitao tự điền. */
+  hiddenFields?: string[];
   /** (1-entity) Map fieldName → picker entity: field hiện COMBOBOX chọn record
    *  từ entity nguồn (lưu valueField). Vd makhachhang → tr_khachhang. */
   fieldLookups?: Record<string, WizardLookupRef>;
