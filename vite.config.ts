@@ -5,7 +5,9 @@ import react from "@vitejs/plugin-react-swc";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [TanStackRouterVite(), react(), tailwindcss()],
+  // autoCodeSplitting: plugin tự tách component route thành lazy chunk tại build-time.
+  // routeTree.gen.ts sẽ tự regenerate ở lần build/dev kế tiếp — không cần sửa tay route files.
+  plugins: [TanStackRouterVite({ autoCodeSplitting: true }), react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   // Vitest — unit test cho src/. Thư mục e2e/ là Playwright spec,
   // loại khỏi vitest để không bị gom nhầm.
@@ -97,7 +99,9 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    // "hidden": vẫn sinh .map để debug lỗi prod, nhưng không nhúng URL vào bundle
+    // → không expose source qua browser DevTools; giảm kích thước chunk nhẹ.
+    sourcemap: "hidden",
     target: "es2022",
     rollupOptions: {
       output: {
@@ -122,7 +126,8 @@ export default defineConfig({
           three: ["three"],
           // pdfjs (gán trang bản vẽ + thumbnail) — import động, chunk lazy riêng.
           pdf: ["pdfjs-dist"],
-          icons: ["lucide-react"],
+          // icons: ["lucide-react"],  ← đã xoá: lucide-react không được import ở đâu trong src/
+          // (Icons.tsx tự vẽ SVG inline — chunk này là dead weight)
         },
       },
     },
