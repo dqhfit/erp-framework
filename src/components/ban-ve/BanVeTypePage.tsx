@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import type { ActionBarItem } from "@/components/renderer/page-types";
 import {
   Button,
   Card,
@@ -370,7 +371,15 @@ const KT_SUB_LABELS: Record<KtSubType, string> = {
   "Bản vẽ phát triển": "Bản vẽ phát triển",
 };
 
-export function BanVeTypePage({ phanloai }: { phanloai: string }) {
+export function BanVeTypePage({
+  phanloai,
+  actions = [],
+  allActions = [],
+}: {
+  phanloai: string;
+  actions?: ActionBarItem[];
+  allActions?: ActionBarItem[];
+}) {
   const isDao = phanloai === "Bản vẽ dao";
   const isKyThuat = phanloai === "Bản vẽ kỹ thuật";
   const isDongGoi = phanloai === "Bản vẽ đóng gói";
@@ -387,6 +396,33 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   const [selectedBvId, setSelectedBvId] = useState<string | null>(null);
   const [showThem, setShowThem] = useState(false);
   const [maspAutoOpen, setMaspAutoOpen] = useState(false);
+
+  // Panel Collapsible states
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return !params.get("bvId");
+    }
+    return true;
+  });
+
+  const handleSelectBv = useCallback((id: string | null) => {
+    setSelectedBvId((prev) => {
+      if (prev === id) {
+        if (id !== null) {
+          setIsRightCollapsed((c) => !c);
+        }
+        return prev;
+      }
+      if (id !== null) {
+        setIsRightCollapsed(false);
+      } else {
+        setIsRightCollapsed(true);
+      }
+      return id;
+    });
+  }, []);
 
   // Tab & BOM states
   const [tab, setTab] = useState<"banve" | "govan" | "ngukim" | "donggoi">("banve");
@@ -409,6 +445,30 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
     subType: "Bản vẽ kỹ thuật",
     existingId: null,
   });
+
+  const canUpload = useCallback(
+    (subType: string) => {
+      let targetSub = "ky-thuat";
+      if (subType === "Bản vẽ đóng gói") targetSub = "dong-goi";
+      else if (subType === "Bản vẽ dao") targetSub = "dao";
+      else if (subType === "Bản vẽ AI") targetSub = "ai";
+      else if (subType === "Bản vẽ mẫu" || subType === "Bản vẽ mẫu (PPS)") targetSub = "mau";
+      else if (subType === "Bản vẽ phát triển") targetSub = "phat-trien";
+
+      const hasConfig = allActions?.some((act) => {
+        const step = act.steps?.[0];
+        return step?.kind === "upload-file" && step.subfolder === targetSub;
+      });
+
+      if (!hasConfig) return true;
+
+      return actions.some((act) => {
+        const step = act.steps?.[0];
+        return step?.kind === "upload-file" && step.subfolder === targetSub;
+      });
+    },
+    [actions, allActions],
+  );
 
   useEffect(() => {
     // Server trả object { hehang, daco, chuaco, total } từ commit 74bf984;
@@ -479,12 +539,12 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
               rows.find((r) => r.phanloai === st),
             ).find(Boolean);
             if (firstAvailable) {
-              setSelectedBvId(firstAvailable.id);
+              handleSelectBv(firstAvailable.id);
             }
           } else {
             const matchingBv = rows.find((r) => r.phanloai === phanloai);
             if (matchingBv) {
-              setSelectedBvId(matchingBv.id);
+              handleSelectBv(matchingBv.id);
             }
           }
         }
@@ -492,7 +552,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         setLoadingDetail(false);
       }
     },
-    [phanloai, isDao, isKyThuat, isSlotPage],
+    [phanloai, isDao, isKyThuat, isSlotPage, handleSelectBv],
   );
 
   const loadBoms = useCallback(
@@ -564,6 +624,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         void loadBanve(urlHehang);
         if (urlBvId) {
           setSelectedBvId(urlBvId);
+          setIsRightCollapsed(false);
         }
       } else {
         void loadProducts(urlHehang, false).then((rows) => {
@@ -580,6 +641,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             }
             if (urlBvId) {
               setSelectedBvId(urlBvId);
+              setIsRightCollapsed(false);
             }
           }
         });
@@ -637,6 +699,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         setTab(urlTab as "banve" | "govan" | "ngukim" | "donggoi");
       }
       setSelectedBvId(urlBvId);
+      setIsRightCollapsed(!urlBvId);
 
       if (urlHehang) {
         if (isDao) {
@@ -699,10 +762,10 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         method: "DELETE",
         credentials: "include",
       });
-      if (selectedBvId === id) setSelectedBvId(null);
+      if (selectedBvId === id) handleSelectBv(null);
       void reloadBanve();
     },
-    [selectedBvId, reloadBanve],
+    [selectedBvId, reloadBanve, handleSelectBv],
   );
 
   const handleRowFileChange = useCallback(
@@ -864,7 +927,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
 
   /* ── Left panel: filter + table ── */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden min-w-0">
       {/* Filter bar */}
       <div className="shrink-0 border-b border-border bg-panel/60 px-3 py-2.5">
         <Card className="p-2.5 flex flex-wrap items-end gap-2">
@@ -887,7 +950,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                   setSelectedMasp("");
                   setSpInfo(null);
                   setBanveRows([]);
-                  setSelectedBvId(null);
+                  handleSelectBv(null);
                   setDonggoi([]);
                   setDonggoiMausac(null);
                   setMaspAutoOpen(false);
@@ -1030,7 +1093,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
             <>
               {/* === KỸ THUẬT & ĐÓNG GÓI: slot upload === */}
               {isSlotPage ? (
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 overflow-y-auto p-4 min-w-0">
                   {loadingDetail ? (
                     <div className="h-full flex items-center justify-center py-10">
                       <I.Loader size={20} className="animate-spin text-accent" />
@@ -1063,7 +1126,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                             }
                                           : undefined
                                       }
-                                      onClick={() => setSelectedBvId(active ? null : slotBv.id)}
+                                      onClick={() => handleSelectBv(active ? null : slotBv.id)}
                                     >
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
@@ -1087,30 +1150,32 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                         className="flex items-center gap-0.5 shrink-0"
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        <Button
-                                          variant="ghost"
-                                          size="xs"
-                                          icon={
-                                            isUploading ? (
-                                              <I.Loader
-                                                size={10}
-                                                className="animate-spin text-muted"
-                                              />
-                                            ) : (
-                                              <I.Upload size={10} />
-                                            )
-                                          }
-                                          onClick={() => {
-                                            slotActionRef.current = {
-                                              subType: st,
-                                              existingId: slotBv.id,
-                                            };
-                                            setTimeout(() => slotInputRef.current?.click(), 0);
-                                          }}
-                                          disabled={isUploading}
-                                          title="Thay file"
-                                          className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
-                                        />
+                                        {canUpload(st) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            icon={
+                                              isUploading ? (
+                                                <I.Loader
+                                                  size={10}
+                                                  className="animate-spin text-muted"
+                                                />
+                                              ) : (
+                                                <I.Upload size={10} />
+                                              )
+                                            }
+                                            onClick={() => {
+                                              slotActionRef.current = {
+                                                subType: st,
+                                                existingId: slotBv.id,
+                                              };
+                                              setTimeout(() => slotInputRef.current?.click(), 0);
+                                            }}
+                                            disabled={isUploading}
+                                            title="Thay file"
+                                            className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
+                                          />
+                                        )}
                                         <Button
                                           variant="ghost"
                                           size="xs"
@@ -1129,17 +1194,19 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                           title="Tải về"
                                           className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
                                         />
-                                        <Button
-                                          variant="ghost"
-                                          size="xs"
-                                          icon={<I.Trash2 size={10} />}
-                                          className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
-                                          onClick={() => void handleDelete(slotBv.id)}
-                                          title="Xóa"
-                                        />
+                                        {canUpload(st) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            icon={<I.Trash2 size={10} />}
+                                            className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
+                                            onClick={() => void handleDelete(slotBv.id)}
+                                            title="Xóa"
+                                          />
+                                        )}
                                       </div>
                                     </Card>
-                                  ) : (
+                                  ) : canUpload(st) ? (
                                     <label
                                       className={`flex items-center justify-center gap-1.5 border border-dashed rounded-lg py-1.5 px-2.5 cursor-pointer transition-colors ${
                                         isUploading
@@ -1174,6 +1241,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                         }}
                                       />
                                     </label>
+                                  ) : (
+                                    <div className="border border-dashed border-border/60 rounded-lg py-1.5 px-2.5 text-muted/50 text-[11px] flex justify-center items-center gap-1.5 bg-hover/5 select-none">
+                                      <I.FileX size={11} />
+                                      <span>Chưa có {activeLabel.toLowerCase()}</span>
+                                    </div>
                                   )}
                                 </div>
                               );
@@ -1205,7 +1277,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                         }
                                       : undefined
                                   }
-                                  onClick={() => setSelectedBvId(active ? null : slotBv.id)}
+                                  onClick={() => handleSelectBv(active ? null : slotBv.id)}
                                 >
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
@@ -1229,27 +1301,32 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     className="flex items-center gap-0.5 shrink-0"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={
-                                        isUploading ? (
-                                          <I.Loader size={10} className="animate-spin text-muted" />
-                                        ) : (
-                                          <I.Upload size={10} />
-                                        )
-                                      }
-                                      onClick={() => {
-                                        slotActionRef.current = {
-                                          subType: phanloai,
-                                          existingId: slotBv.id,
-                                        };
-                                        setTimeout(() => slotInputRef.current?.click(), 0);
-                                      }}
-                                      disabled={isUploading}
-                                      title="Thay file"
-                                      className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={
+                                          isUploading ? (
+                                            <I.Loader
+                                              size={10}
+                                              className="animate-spin text-muted"
+                                            />
+                                          ) : (
+                                            <I.Upload size={10} />
+                                          )
+                                        }
+                                        onClick={() => {
+                                          slotActionRef.current = {
+                                            subType: phanloai,
+                                            existingId: slotBv.id,
+                                          };
+                                          setTimeout(() => slotInputRef.current?.click(), 0);
+                                        }}
+                                        disabled={isUploading}
+                                        title="Thay file"
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
+                                      />
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="xs"
@@ -1268,17 +1345,19 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                       title="Tải về"
                                       className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
                                     />
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={<I.Trash2 size={10} />}
-                                      className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
-                                      onClick={() => void handleDelete(slotBv.id)}
-                                      title="Xóa"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={<I.Trash2 size={10} />}
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
+                                        onClick={() => void handleDelete(slotBv.id)}
+                                        title="Xóa"
+                                      />
+                                    )}
                                   </div>
                                 </Card>
-                              ) : (
+                              ) : canUpload(phanloai) ? (
                                 <label
                                   className={`flex items-center justify-center gap-1.5 border border-dashed rounded-lg py-1.5 px-2.5 cursor-pointer transition-colors ${
                                     isUploading
@@ -1313,6 +1392,11 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     }}
                                   />
                                 </label>
+                              ) : (
+                                <div className="border border-dashed border-border/60 rounded-lg py-1.5 px-2.5 text-muted/50 text-[11px] flex justify-center items-center gap-1.5 bg-hover/5 select-none">
+                                  <I.FileX size={11} />
+                                  <span>Chưa có {phanloai.toLowerCase()}</span>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1347,7 +1431,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                         }
                                       : undefined
                                   }
-                                  onClick={() => setSelectedBvId(active ? null : bv.id)}
+                                  onClick={() => handleSelectBv(active ? null : bv.id)}
                                 >
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
                                     <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
@@ -1371,24 +1455,29 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     className="flex items-center gap-0.5 shrink-0"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={
-                                        updatingFileId === bv.id ? (
-                                          <I.Loader size={10} className="animate-spin text-muted" />
-                                        ) : (
-                                          <I.Upload size={10} />
-                                        )
-                                      }
-                                      onClick={() => {
-                                        setTargetBvId(bv.id);
-                                        setTimeout(() => rowInputRef.current?.click(), 0);
-                                      }}
-                                      disabled={updatingFileId !== null}
-                                      title="Thay file"
-                                      className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={
+                                          updatingFileId === bv.id ? (
+                                            <I.Loader
+                                              size={10}
+                                              className="animate-spin text-muted"
+                                            />
+                                          ) : (
+                                            <I.Upload size={10} />
+                                          )
+                                        }
+                                        onClick={() => {
+                                          setTargetBvId(bv.id);
+                                          setTimeout(() => rowInputRef.current?.click(), 0);
+                                        }}
+                                        disabled={updatingFileId !== null}
+                                        title="Thay file"
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
+                                      />
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="xs"
@@ -1406,48 +1495,59 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                       title="Tải về"
                                       className="w-7 h-7 p-0 flex items-center justify-center rounded-md hover:bg-hover"
                                     />
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={<I.Trash2 size={10} />}
-                                      className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
-                                      onClick={() => void handleDelete(bv.id)}
-                                      title="Xóa"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={<I.Trash2 size={10} />}
+                                        className="w-7 h-7 p-0 flex items-center justify-center rounded-md text-danger/60 hover:text-danger hover:bg-danger/15"
+                                        onClick={() => void handleDelete(bv.id)}
+                                        title="Xóa"
+                                      />
+                                    )}
                                   </div>
                                 </Card>
                               );
                             })}
-                            <label
-                              className={`flex items-center justify-center gap-1.5 border border-dashed rounded-lg py-1.5 px-2.5 cursor-pointer transition-colors ${
-                                isUploading
-                                  ? "border-accent/40 bg-accent/5"
-                                  : "border-border hover:border-accent/60 hover:bg-hover/20"
-                              }`}
-                            >
-                              {isUploading ? (
-                                <I.Loader size={11} className="animate-spin text-accent" />
-                              ) : (
-                                <I.Upload size={11} className="text-muted" />
-                              )}
-                              <span className="text-[11px] text-muted font-medium">
-                                {isUploading ? "Đang tải lên…" : uploadLabel}
-                              </span>
-                              <span className="text-[9px] text-muted/40">(PDF, DWG, AI...)</span>
-                              <input
-                                type="file"
-                                className="sr-only"
-                                accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
-                                disabled={isUploading}
-                                onChange={(e) => {
-                                  slotActionRef.current = {
-                                    subType: phanloai,
-                                    existingId: null,
-                                  };
-                                  void handleSlotFileChange(e);
-                                }}
-                              />
-                            </label>
+                            {canUpload(phanloai) ? (
+                              <label
+                                className={`flex items-center justify-center gap-1.5 border border-dashed rounded-lg py-1.5 px-2.5 cursor-pointer transition-colors ${
+                                  isUploading
+                                    ? "border-accent/40 bg-accent/5"
+                                    : "border-border hover:border-accent/60 hover:bg-hover/20"
+                                }`}
+                              >
+                                {isUploading ? (
+                                  <I.Loader size={11} className="animate-spin text-accent" />
+                                ) : (
+                                  <I.Upload size={11} className="text-muted" />
+                                )}
+                                <span className="text-[11px] text-muted font-medium">
+                                  {isUploading ? "Đang tải lên…" : uploadLabel}
+                                </span>
+                                <span className="text-[9px] text-muted/40">(PDF, DWG, AI...)</span>
+                                <input
+                                  type="file"
+                                  className="sr-only"
+                                  accept=".pdf,.dwg,.ai,.dxf,.jpg,.png"
+                                  disabled={isUploading}
+                                  onChange={(e) => {
+                                    slotActionRef.current = {
+                                      subType: phanloai,
+                                      existingId: null,
+                                    };
+                                    void handleSlotFileChange(e);
+                                  }}
+                                />
+                              </label>
+                            ) : (
+                              banveRows.length === 0 && (
+                                <div className="border border-dashed border-border/60 rounded-lg py-1.5 px-2.5 text-muted/50 text-[11px] flex justify-center items-center gap-1.5 bg-hover/5 select-none">
+                                  <I.FileX size={11} />
+                                  <span>Chưa có {phanloai.toLowerCase()}</span>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
                       );
@@ -1473,7 +1573,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                       <span className="text-[10px] text-muted">Click để xem PDF</span>
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto min-w-0">
                     {loadingDetail ? (
                       <div className="h-full flex items-center justify-center py-10">
                         <I.Loader size={20} className="animate-spin text-accent" />
@@ -1532,7 +1632,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                               <tr
                                 key={bv.id}
                                 className={`border-t border-border/50 cursor-pointer transition-colors ${active ? "bg-accent/10" : "hover:bg-hover/40"}`}
-                                onClick={() => setSelectedBvId(active ? null : bv.id)}
+                                onClick={() => handleSelectBv(active ? null : bv.id)}
                               >
                                 <td className="px-3 py-2 text-muted text-xs truncate w-8 shrink-0">
                                   {i + 1}
@@ -1584,24 +1684,29 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                     className="inline-flex items-center gap-1 justify-end"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={
-                                        updatingFileId === bv.id ? (
-                                          <I.Loader size={11} className="animate-spin text-muted" />
-                                        ) : (
-                                          <I.Upload size={11} />
-                                        )
-                                      }
-                                      className="text-muted hover:text-text hover:bg-hover"
-                                      onClick={() => {
-                                        setTargetBvId(bv.id);
-                                        setTimeout(() => rowInputRef.current?.click(), 0);
-                                      }}
-                                      disabled={updatingFileId !== null}
-                                      title="Cập nhật file"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={
+                                          updatingFileId === bv.id ? (
+                                            <I.Loader
+                                              size={11}
+                                              className="animate-spin text-muted"
+                                            />
+                                          ) : (
+                                            <I.Upload size={11} />
+                                          )
+                                        }
+                                        className="text-muted hover:text-text hover:bg-hover"
+                                        onClick={() => {
+                                          setTargetBvId(bv.id);
+                                          setTimeout(() => rowInputRef.current?.click(), 0);
+                                        }}
+                                        disabled={updatingFileId !== null}
+                                        title="Cập nhật file"
+                                      />
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="xs"
@@ -1619,14 +1724,16 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                                       }}
                                       title="Tải file"
                                     />
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon={<I.Trash2 size={11} />}
-                                      className="text-danger/60 hover:text-danger hover:bg-danger/15"
-                                      onClick={() => void handleDelete(bv.id)}
-                                      title="Xóa"
-                                    />
+                                    {canUpload(phanloai) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon={<I.Trash2 size={11} />}
+                                        className="text-danger/60 hover:text-danger hover:bg-danger/15"
+                                        onClick={() => void handleDelete(bv.id)}
+                                        title="Xóa"
+                                      />
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1653,7 +1760,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 </Chip>
                 {loadingBoms && <I.Loader size={11} className="animate-spin text-muted shrink-0" />}
               </div>
-              <div className="flex-1 overflow-auto p-3">
+              <div className="flex-1 overflow-auto p-3 min-w-0">
                 {loadingBoms ? (
                   <div className="h-full flex items-center justify-center py-10">
                     <I.Loader size={20} className="animate-spin text-accent" />
@@ -1677,7 +1784,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                 </Chip>
                 {loadingBoms && <I.Loader size={11} className="animate-spin text-muted shrink-0" />}
               </div>
-              <div className="flex-1 overflow-auto p-3">
+              <div className="flex-1 overflow-auto p-3 min-w-0">
                 {loadingBoms ? (
                   <div className="h-full flex items-center justify-center py-10">
                     <I.Loader size={20} className="animate-spin text-accent" />
@@ -1703,7 +1810,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
                   <I.Loader size={11} className="animate-spin text-muted shrink-0" />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-3">
+              <div className="flex-1 overflow-auto p-3 min-w-0">
                 {loadingDongGoi ? (
                   <div className="h-full flex items-center justify-center py-10">
                     <I.Loader size={20} className="animate-spin text-accent" />
@@ -1760,6 +1867,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
           onClick={() => {
             const fileUrl = `/banvesvc/file?id=${encodeURIComponent(selectedBv.id)}`;
             window.open(fileUrl, "_blank");
+            setIsRightCollapsed(true);
           }}
         >
           Mở tab
@@ -1768,7 +1876,7 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
           variant="ghost"
           size="xs"
           icon={<I.X size={14} />}
-          onClick={() => setSelectedBvId(null)}
+          onClick={() => handleSelectBv(null)}
         />
       </div>
       <iframe
@@ -1823,6 +1931,10 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         minRight={320}
         storageKey="banve:splitsize"
         className="flex-1"
+        isLeftCollapsed={isLeftCollapsed}
+        onLeftCollapseChange={setIsLeftCollapsed}
+        isRightCollapsed={isRightCollapsed}
+        onRightCollapseChange={setIsRightCollapsed}
       />
 
       {showThem && (
