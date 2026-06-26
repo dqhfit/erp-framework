@@ -14,7 +14,8 @@ import {
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
-import { Button, SearchableSelect, Select } from "@/components/ui";
+import { Button, SearchableSelect } from "@/components/ui";
+import { normalizeVi } from "@/lib/text-utils";
 import { useAuth } from "@/stores/auth";
 
 export const Route = createFileRoute("/ban-ve")({ component: BanVeLayout });
@@ -27,16 +28,6 @@ function BanVeLayout() {
   if (pathname === "/ban-ve") return <BanVePage />;
   return <Outlet />;
 }
-
-/** 6 loại bản vẽ (BanVeType). val = giá trị khớp tr_banve.phanloai (PPS strip
- *  " (PPS)"). Tab "Bản vẽ" lọc theo val; tab "Bản vẽ dao" độc lập. */
-const BANVE_TYPES = [
-  { label: "Bản vẽ kỹ thuật", val: "Bản vẽ kỹ thuật" },
-  { label: "Bản vẽ phát triển", val: "Bản vẽ phát triển" },
-  { label: "Bản vẽ mẫu (PPS)", val: "Bản vẽ mẫu" },
-  { label: "Bản vẽ đóng gói", val: "Bản vẽ đóng gói" },
-  { label: "Bản vẽ AI", val: "Bản vẽ AI" },
-] as const;
 
 interface BanVeItem {
   id: string;
@@ -108,7 +99,6 @@ function BanVePage() {
     if (router.history.canGoBack()) router.history.back();
     else void navigate({ to: role === "viewer" ? "/portal" : "/" });
   };
-  const [type, setType] = useState<string>(BANVE_TYPES[0].val);
   const [masp, setMasp] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
   const [tab, setTab] = useState<Tab>("banve");
@@ -127,9 +117,9 @@ function BanVePage() {
   const [scanning, setScanning] = useState(false);
   const [searching, setSearching] = useState(false);
 
-  const load = useCallback(async (m: string) => {
+  const load = useCallback(async (m: string): Promise<Product | null> => {
     const q = m.trim();
-    if (!q) return;
+    if (!q) return null;
     setLoading(true);
     setErr("");
     try {
@@ -143,9 +133,11 @@ function BanVePage() {
       const p = (await res.json()) as Product;
       setProduct(p);
       if (p.found && typeof localStorage !== "undefined") localStorage.setItem(LS_MASP, q);
+      return p;
     } catch (e) {
       setErr((e as Error).message);
       setProduct(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -154,17 +146,29 @@ function BanVePage() {
   const scanResult = useCallback(
     async (code: string) => {
       setScanning(false);
+      // Resolve mã quét → masp (fallback: dùng chính mã thô nếu resolve lỗi).
+      let m = code.trim();
       try {
         const res = await fetch(`/banvesvc/resolve?code=${encodeURIComponent(code)}`, {
           credentials: "include",
         });
         const j = (await res.json()) as { masp?: string };
-        const m = (j.masp ?? "").trim() || code.trim();
-        setMasp(m);
-        await load(m);
+        m = (j.masp ?? "").trim() || code.trim();
       } catch {
-        setMasp(code.trim());
-        await load(code.trim());
+        /* fail-safe: giữ mã thô */
+      }
+      setMasp(m);
+      const p = await load(m);
+      // Nếu SP chỉ có ĐÚNG 1 loại bản vẽ hiển thị (đã loại "Bản vẽ dao" cho nhất
+      // quán với banveList) → mở thẳng, khỏi bắt người dùng chọn. >1 loại → giữ
+      // hành vi cũ (hiện danh sách tab Bản vẽ). Dùng setter stable, tránh dep useCallback.
+      if (p?.found && p.banve) {
+        const shown = p.banve.filter((b) => !b.phanloai.startsWith("Bản vẽ dao"));
+        const distinct = [...new Set(shown.map((b) => b.phanloai))];
+        if (distinct.length === 1 && shown[0]) {
+          setViewId(shown[0].id);
+          setViewTitle(shown[0].phanloai?.trim() || "Bản vẽ");
+        }
       }
     },
     [load],
@@ -205,9 +209,9 @@ function BanVePage() {
     };
   }, []);
 
-  const banveList = (product?.banve ?? []).filter(
-    (b) => b.phanloai === type && !b.phanloai.startsWith("Bản vẽ dao"),
-  );
+  // Hiện tất cả loại bản vẽ (trừ dao — dao có tab riêng).
+  // Không còn lọc theo "loại đã chọn" vì tag trên mỗi SP đã mở thẳng bản vẽ.
+  const banveList = (product?.banve ?? []).filter((b) => !b.phanloai.startsWith("Bản vẽ dao"));
   const govan = product?.govan ?? [];
   const ngukim = product?.ngukim ?? [];
 
@@ -240,23 +244,18 @@ function BanVePage() {
       </div>
 
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
-        {/* Tìm sản phẩm */}
-        <Button variant="ghost" onClick={() => setSearching(true)} className="w-full justify-start">
-          <I.Search size={15} /> Tìm sản phẩm (hệ hàng / đơn đặt hàng / PO#)
-        </Button>
-
-        {/* Loại bản vẽ + quét */}
+        {/* Tìm sản phẩm + Quét phiếu — cùng dòng */}
         <div className="flex gap-2">
-          <Select value={type} onChange={(e) => setType(e.target.value)} className="flex-1">
-            {BANVE_TYPES.map((t) => (
-              <option key={t.val} value={t.val}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
+          <Button
+            variant="ghost"
+            onClick={() => setSearching(true)}
+            className="flex-1 justify-start"
+          >
+            <I.Search size={15} /> Tìm sản phẩm (hệ hàng / đơn đặt hàng / PO#)
+          </Button>
           {canScanBarcode() && (
             <Button onClick={() => setScanning(true)}>
-              <I.QrCode size={16} /> Quét phiếu
+              <I.QrCode size={16} /> Quét
             </Button>
           )}
         </div>
@@ -366,10 +365,17 @@ function BanVePage() {
             setSearching(false);
             setScanning(true);
           }}
-          onPick={(m) => {
+          onPick={(m, phanloai) => {
             setSearching(false);
             setMasp(m);
-            void load(m);
+            // Nếu user nhấn tag loại BV → tải SP rồi mở thẳng bản vẽ loại đó.
+            void (async () => {
+              const p = await load(m);
+              if (phanloai && p?.found && p?.banve) {
+                const bv = p.banve.find((b) => b.phanloai === phanloai);
+                if (bv) openPdf(bv.id, bv.phanloai);
+              }
+            })();
           }}
         />
       )}
@@ -406,7 +412,8 @@ function TimSanPham({
   onScan,
 }: {
   onClose: () => void;
-  onPick: (masp: string) => void;
+  /** Chọn sản phẩm. phanloai truyền thêm khi user nhấn tag loại BV → mở thẳng bản vẽ. */
+  onPick: (masp: string, phanloai?: string) => void;
   onScan: () => void;
 }) {
   const initMode = (): FindMode => {
@@ -419,6 +426,9 @@ function TimSanPham({
   const [l1v, setL1vRaw] = useState("");
   const [products, setProducts] = useState<Opt[]>([]);
   const [busy, setBusy] = useState(false);
+  // Bộ lọc client-side: hệ hàng (cấp 1) và sản phẩm (cấp 2).
+  const [hehangFilter, setHehangFilter] = useState("");
+  const [productFilter, setProductFilter] = useState("");
   // Nhớ chế độ + giá trị cấp 1 đã chọn → khôi phục khi mở lại popup.
   const savedL1v = useRef(
     typeof localStorage !== "undefined" ? localStorage.getItem("banve:find:l1v") || "" : "",
@@ -429,12 +439,27 @@ function TimSanPham({
     setModeRaw(m);
     restored.current = true; // user đổi chế độ → không khôi phục l1v cũ
     savedL1v.current = "";
+    setHehangFilter("");
+    setProductFilter("");
     if (typeof localStorage !== "undefined") localStorage.setItem("banve:find:mode", m);
   };
   const setL1v = (v: string) => {
     setL1vRaw(v);
+    setProductFilter(""); // reset khi đổi hệ hàng
     if (typeof localStorage !== "undefined" && v) localStorage.setItem("banve:find:l1v", v);
   };
+
+  // Lọc client-side không dấu cho danh sách hệ hàng.
+  const normHehangFilter = hehangFilter ? normalizeVi(hehangFilter) : "";
+  const filteredL1 = normHehangFilter
+    ? l1.filter((o) => normalizeVi(o.label).includes(normHehangFilter))
+    : l1;
+
+  // Lọc client-side không dấu cho danh sách sản phẩm.
+  const normProductFilter = productFilter ? normalizeVi(productFilter) : "";
+  const filteredProducts = normProductFilter
+    ? products.filter((p) => normalizeVi(p.label).includes(normProductFilter))
+    : products;
 
   const loadL1 = useCallback(async (m: FindMode) => {
     setBusy(true);
@@ -575,13 +600,23 @@ function TimSanPham({
                   <span className="text-success">có BV</span> / tất cả
                 </span>
               </div>
-              <div className="max-h-48 overflow-y-auto rounded border border-border divide-y divide-border">
-                {busy && l1.length === 0 ? (
+              {/* Ô lọc hệ hàng (client, không dấu) */}
+              <input
+                type="text"
+                value={hehangFilter}
+                onChange={(e) => setHehangFilter(e.target.value)}
+                placeholder="Tìm hệ hàng…"
+                className="input w-full h-7 text-xs"
+              />
+              <div className="max-h-44 overflow-y-auto rounded border border-border divide-y divide-border">
+                {busy && filteredL1.length === 0 ? (
                   <div className="px-2 py-3 text-xs text-muted">Đang tải…</div>
-                ) : l1.length === 0 ? (
-                  <div className="px-2 py-3 text-xs text-muted">Không có hệ hàng</div>
+                ) : filteredL1.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted">
+                    {hehangFilter ? "Không khớp" : "Không có hệ hàng"}
+                  </div>
                 ) : (
-                  l1.map((o) => (
+                  filteredL1.map((o) => (
                     <button
                       key={o.value}
                       type="button"
@@ -626,35 +661,53 @@ function TimSanPham({
             <span className="block text-xs text-muted px-0.5">
               Sản phẩm{products.length > 0 && ` (${products.length})`}
             </span>
-            <div className="max-h-56 overflow-y-auto rounded border border-border divide-y divide-border">
+            {/* Ô lọc sản phẩm (client, không dấu) — hiện khi đã chọn cấp 1 */}
+            {l1v && (
+              <input
+                type="text"
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                placeholder="Tìm sản phẩm…"
+                className="input w-full h-7 text-xs"
+              />
+            )}
+            <div className="max-h-52 overflow-y-auto rounded border border-border divide-y divide-border">
               {!l1v ? (
                 <div className="px-2 py-3 text-xs text-muted">Chọn ở trên trước</div>
               ) : busy ? (
                 <div className="px-2 py-3 text-xs text-muted">Đang tải…</div>
-              ) : products.length === 0 ? (
-                <div className="px-2 py-3 text-xs text-muted">Không có sản phẩm</div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="px-2 py-3 text-xs text-muted">
+                  {productFilter ? "Không khớp" : "Không có sản phẩm"}
+                </div>
               ) : (
-                products.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => onPick(p.value)}
-                    className="w-full block px-2 py-1.5 text-left text-sm hover:bg-hover"
-                  >
-                    <span className="block truncate">{p.label}</span>
+                filteredProducts.map((p) => (
+                  // Tách tên SP và tags thành 2 phần để tránh nested button (HTML không hợp lệ).
+                  <div key={p.value} className="w-full">
+                    <button
+                      type="button"
+                      onClick={() => onPick(p.value)}
+                      className="w-full block px-2 pt-1.5 pb-1 text-left text-sm hover:bg-hover"
+                    >
+                      <span className="block truncate">{p.label}</span>
+                    </button>
                     {p.types && p.types.length > 0 && (
-                      <span className="mt-0.5 flex flex-wrap gap-1">
+                      // Tags loại BV — nhấn tag → mở thẳng bản vẽ loại đó cho SP này.
+                      <div className="px-2 pb-1.5 flex flex-wrap gap-1">
                         {p.types.map((t) => (
-                          <span
+                          <button
                             key={t}
-                            className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-accent/15 text-accent"
+                            type="button"
+                            onClick={() => onPick(p.value, t)}
+                            className="text-[10px] leading-tight px-1.5 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/30 transition-colors"
+                            title={`Mở ${t}`}
                           >
                             {t.replace(/^Bản vẽ\s*/i, "") || t}
-                          </span>
+                          </button>
                         ))}
-                      </span>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 ))
               )}
             </div>
