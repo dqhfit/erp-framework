@@ -9,7 +9,7 @@
    proc Tier D insert 2 record GIAO/NHẬN + mark hoàn thành (phase 2a).
    ========================================================== */
 import { createProceduresClient } from "@erp-framework/client";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
@@ -55,8 +55,13 @@ const todayIso = () => {
 
 function SanLuongPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const user = useAuth((s) => s.user);
-  const goBack = () => void navigate({ to: user?.role === "viewer" ? "/portal" : "/" });
+  // Về ĐÚNG trang trước nếu có lịch sử; vào thẳng (QR/refresh) → cổng/trang chủ.
+  const goBack = () => {
+    if (router.history.canGoBack()) router.history.back();
+    else void navigate({ to: user?.role === "viewer" ? "/portal" : "/" });
+  };
   const [congDoan, setCongDoan] = useState(
     () => (typeof localStorage !== "undefined" && localStorage.getItem(LS_CONGDOAN)) || "",
   );

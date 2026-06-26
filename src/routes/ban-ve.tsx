@@ -4,7 +4,13 @@
    - Khi ở /ban-ve/*:   render <Outlet /> → child routes hiển thị standalone.
    ========================================================== */
 
-import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
@@ -36,24 +42,48 @@ interface BanVeItem {
   id: string;
   phanloai: string;
 }
-interface GoVanRow {
+export interface GoVanRow {
   stt: unknown;
+  mact: unknown;
   chitiet: unknown;
   nguyenlieu: unknown;
   dayy_tc: unknown;
   rong_tc: unknown;
   dai_tc: unknown;
-  soluong: unknown;
+  soluong_tc: unknown;
+  m3_tc: unknown;
+  phoi_tructiep: unknown;
+  phoi_ghep: unknown;
+  dayy_sc: unknown;
+  rong_sc: unknown;
+  dai_sc: unknown;
+  mong1: unknown;
+  mong2: unknown;
+  veneer_matchinh: unknown;
+  veneer_matphu: unknown;
+  veneer_canhngan: unknown;
+  veneer_canhdai: unknown;
+  veneer_dan_canh: unknown;
+  uv_matchinh: unknown;
+  uv_matphu: unknown;
+  uv_canhdai: unknown;
+  uv_canhngan: unknown;
+  fsc_100: unknown;
+  fsc_mix: unknown;
+  fsc_cw: unknown;
+  ghichu: unknown;
 }
-interface NguKimRow {
+export interface NguKimRow {
   mavt: unknown;
   chitiet: unknown;
   quycach: unknown;
+  mausac: unknown;
   soluong: unknown;
   dvt: unknown;
   hwforai: unknown;
   hwforww: unknown;
   hwforpacking: unknown;
+  ghichu: unknown;
 }
 interface Product {
   found: boolean;
@@ -69,8 +99,13 @@ type Tab = "banve" | "dao" | "govan" | "ngukim";
 
 function BanVePage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const role = useAuth((s) => s.user?.role);
-  const goBack = () => void navigate({ to: role === "viewer" ? "/portal" : "/" });
+  // Về ĐÚNG trang trước nếu có lịch sử; vào thẳng (QR/refresh) → cổng/trang chủ.
+  const goBack = () => {
+    if (router.history.canGoBack()) router.history.back();
+    else void navigate({ to: role === "viewer" ? "/portal" : "/" });
+  };
   const [type, setType] = useState<string>(BANVE_TYPES[0].val);
   const [masp, setMasp] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
@@ -589,43 +624,219 @@ function BanVeList({
   );
 }
 
-const fmtNum = (v: unknown): string => {
+export const fmtNum = (v: unknown): string => {
   const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[,\s]/g, ""));
   return Number.isNaN(n)
     ? String(v ?? "")
     : n.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
 };
-const quyCach = (r: GoVanRow): string => {
-  const d = Number(r.dayy_tc) || 0;
-  const w = Number(r.rong_tc) || 0;
-  const l = Number(r.dai_tc) || 0;
-  return d || w || l ? `${fmtNum(d)}×${fmtNum(w)}×${fmtNum(l)}` : "";
-};
 
-function GoVanGrid({ rows }: { rows: GoVanRow[] }) {
+export function GoVanGrid({ rows }: { rows: GoVanRow[] }) {
   if (rows.length === 0)
     return <div className="text-xs text-muted py-6 text-center">Không có định mức gỗ ván.</div>;
+
+  const flag = (v: unknown) => (v == null || ["0", "false", "0.0"].includes(String(v)) ? "" : "✓");
+  const textVal = (v: unknown) =>
+    v == null || ["0", "false", "0.0"].includes(String(v)) ? "" : String(v);
+
+  const fmtCellNum = (v: unknown, maxDigits = 2) => {
+    if (v == null || v === "") return "";
+    const n = typeof v === "number" ? v : Number(String(v).replace(/[,\s]/g, ""));
+    if (Number.isNaN(n) || n === 0) return "";
+    return n.toLocaleString("vi-VN", { maximumFractionDigits: maxDigits });
+  };
+
+  const getFscText = (r: GoVanRow) => {
+    const parts: string[] = [];
+    if (r.fsc_100 && !["0", "false"].includes(String(r.fsc_100))) parts.push("100%");
+    if (r.fsc_mix && !["0", "false"].includes(String(r.fsc_mix))) parts.push("Mix");
+    if (r.fsc_cw && !["0", "false"].includes(String(r.fsc_cw))) parts.push("CW");
+    return parts.length > 0 ? parts.join("/") : "";
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead className="text-muted">
-          <tr className="border-b border-border text-left">
-            <th className="py-1.5 pr-2">STT</th>
-            <th className="py-1.5 pr-2">Tên chi tiết</th>
-            <th className="py-1.5 pr-2">Nguyên liệu</th>
-            <th className="py-1.5 pr-2">Quy cách</th>
-            <th className="py-1.5 pr-2 text-right">SL</th>
+    <div className="overflow-x-auto pt-1">
+      <table className="w-full text-xs border-collapse border border-border">
+        <thead className="text-muted bg-panel-2">
+          <tr>
+            <th
+              colSpan={4}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Thông tin
+            </th>
+            <th
+              colSpan={5}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Tinh chế (mm)
+            </th>
+            <th
+              rowSpan={2}
+              className="p-2 border border-border text-center font-semibold text-text align-middle"
+            >
+              Phôi liền
+            </th>
+            <th
+              rowSpan={2}
+              className="p-2 border border-border text-center font-semibold text-text align-middle"
+            >
+              Phôi ghép
+            </th>
+            <th
+              colSpan={3}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Sơ chế
+            </th>
+            <th
+              colSpan={2}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Mộng
+            </th>
+            <th
+              colSpan={5}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Dán veneer
+            </th>
+            <th
+              colSpan={4}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              UV
+            </th>
+            <th
+              rowSpan={2}
+              className="p-2 border border-border text-center font-semibold text-text align-middle"
+            >
+              Tình trạng FSC
+            </th>
+            <th
+              rowSpan={2}
+              className="p-2 border border-border text-left font-semibold text-text align-middle"
+            >
+              Ghi chú
+            </th>
+          </tr>
+          <tr>
+            {/* Thông tin */}
+            <th className="p-2 border border-border text-left font-medium">STT</th>
+            <th className="p-2 border border-border text-left font-medium">Mã chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Tên chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">NL</th>
+            {/* Tinh chế */}
+            <th className="p-2 border border-border text-right font-medium">Dày</th>
+            <th className="p-2 border border-border text-right font-medium">Rộng</th>
+            <th className="p-2 border border-border text-right font-medium">Dài</th>
+            <th className="p-2 border border-border text-right font-medium">SL</th>
+            <th className="p-2 border border-border text-right font-medium">M3</th>
+            {/* Sơ chế */}
+            <th className="p-2 border border-border text-right font-medium">Dày</th>
+            <th className="p-2 border border-border text-right font-medium">Rộng</th>
+            <th className="p-2 border border-border text-right font-medium">Dài</th>
+            {/* Mộng */}
+            <th className="p-2 border border-border text-center font-medium">Mộng 1</th>
+            <th className="p-2 border border-border text-center font-medium">Mộng 2</th>
+            {/* Dán veneer */}
+            <th className="p-2 border border-border text-center font-medium">Mặt chính</th>
+            <th className="p-2 border border-border text-center font-medium">Mặt phụ</th>
+            <th className="p-2 border border-border text-center font-medium">Cạnh ngắn</th>
+            <th className="p-2 border border-border text-center font-medium">Cạnh dài</th>
+            <th className="p-2 border border-border text-center font-medium">Dán cạnh</th>
+            {/* UV */}
+            <th className="p-2 border border-border text-center font-medium">Mặt chính</th>
+            <th className="p-2 border border-border text-center font-medium">Mặt phụ</th>
+            <th className="p-2 border border-border text-center font-medium">Cạnh dài</th>
+            <th className="p-2 border border-border text-center font-medium">Cạnh ngắn</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
-            <tr key={i} className="border-b border-border/50">
-              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.stt ?? "")}</td>
-              <td className="py-1.5 pr-2">{String(r.chitiet ?? "")}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.nguyenlieu ?? "")}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap">{quyCach(r)}</td>
-              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{fmtNum(r.soluong)}</td>
+            <tr key={i} className="hover:bg-hover/20">
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.stt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.mact ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.chitiet ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">
+                {String(r.nguyenlieu ?? "")}
+              </td>
+              {/* Tinh chế */}
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.dayy_tc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.rong_tc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.dai_tc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.soluong_tc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.m3_tc, 6)}
+              </td>
+              {/* Phôi */}
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.phoi_tructiep)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.phoi_ghep)}
+              </td>
+              {/* Sơ chế */}
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.dayy_sc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.rong_sc, 2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtCellNum(r.dai_sc, 2)}
+              </td>
+              {/* Mộng */}
+              <td className="p-2 border border-border/60 text-center">{textVal(r.mong1)}</td>
+              <td className="p-2 border border-border/60 text-center">{textVal(r.mong2)}</td>
+              {/* Dán veneer */}
+              <td className="p-2 border border-border/60 text-center">
+                {textVal(r.veneer_matchinh)}
+              </td>
+              <td className="p-2 border border-border/60 text-center">
+                {textVal(r.veneer_matphu)}
+              </td>
+              <td className="p-2 border border-border/60 text-center">
+                {textVal(r.veneer_canhngan)}
+              </td>
+              <td className="p-2 border border-border/60 text-center">
+                {textVal(r.veneer_canhdai)}
+              </td>
+              <td className="p-2 border border-border/60 text-center">
+                {textVal(r.veneer_dan_canh)}
+              </td>
+              {/* UV */}
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.uv_matchinh)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.uv_matphu)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.uv_canhdai)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.uv_canhngan)}
+              </td>
+              {/* FSC */}
+              <td className="p-2 border border-border/60 text-center font-medium text-accent whitespace-nowrap">
+                {getFscText(r)}
+              </td>
+              {/* Ghi chú */}
+              <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
             </tr>
           ))}
         </tbody>
@@ -634,37 +845,72 @@ function GoVanGrid({ rows }: { rows: GoVanRow[] }) {
   );
 }
 
-function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
+export function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
   if (rows.length === 0)
     return <div className="text-xs text-muted py-6 text-center">Không có định mức ngũ kim.</div>;
   const flag = (v: unknown) => (v == null || ["0", "false"].includes(String(v)) ? "" : "✓");
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead className="text-muted">
-          <tr className="border-b border-border text-left">
-            <th className="py-1.5 pr-2">Mã VT</th>
-            <th className="py-1.5 pr-2">Tên vật tư</th>
-            <th className="py-1.5 pr-2">Quy cách</th>
-            <th className="py-1.5 pr-2 text-right">SL</th>
-            <th className="py-1.5 pr-2">ĐV</th>
-            <th className="py-1.5 pr-2 text-center">AI</th>
-            <th className="py-1.5 pr-2 text-center">WW</th>
-            <th className="py-1.5 pr-2 text-center">ĐG</th>
+    <div className="overflow-x-auto pt-1">
+      <table className="w-full text-xs border-collapse border border-border">
+        <thead className="text-muted bg-panel-2">
+          <tr>
+            <th
+              colSpan={6}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Thông tin chi tiết
+            </th>
+            <th
+              colSpan={3}
+              className="p-2 border border-border text-center font-semibold text-text"
+            >
+              Cấp phát
+            </th>
+            <th
+              rowSpan={2}
+              className="p-2 border border-border text-left font-semibold text-text align-middle"
+            >
+              Ghi chú
+            </th>
+          </tr>
+          <tr>
+            <th className="p-2 border border-border text-left font-medium">Mã vật tư</th>
+            <th className="p-2 border border-border text-left font-medium">Chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Quy cách</th>
+            <th className="p-2 border border-border text-left font-medium">Màu sắc</th>
+            <th className="p-2 border border-border text-center font-medium">Đơn vị tính</th>
+            <th className="p-2 border border-border text-right font-medium">Số lượng</th>
+            <th className="p-2 border border-border text-center font-medium">Trước sơn</th>
+            <th className="p-2 border border-border text-center font-medium">Sau sơn</th>
+            <th className="p-2 border border-border text-center font-medium">AI</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
-            <tr key={i} className="border-b border-border/50">
-              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.mavt ?? "")}</td>
-              <td className="py-1.5 pr-2">{String(r.chitiet ?? "")}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.quycach ?? "")}</td>
-              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{fmtNum(r.soluong)}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap">{String(r.dvt ?? "")}</td>
-              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforai)}</td>
-              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforww)}</td>
-              <td className="py-1.5 pr-2 text-center text-success">{flag(r.hwforpacking)}</td>
+            <tr key={i} className="hover:bg-hover/20">
+              <td className="p-2 border border-border/60 whitespace-nowrap text-left">
+                {String(r.mavt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.chitiet ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{String(r.quycach ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{String(r.mausac ?? "")}</td>
+              <td className="p-2 border border-border/60 text-center whitespace-nowrap">
+                {String(r.dvt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtNum(r.soluong)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.hwforpacking)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.hwforww)}
+              </td>
+              <td className="p-2 border border-border/60 text-center text-success font-bold">
+                {flag(r.hwforai)}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
             </tr>
           ))}
         </tbody>
