@@ -415,6 +415,13 @@ export interface ActionStepOpenWizard {
   /** (1-entity, TẠO MỚI) Giá trị mặc định điền sẵn cho form (fieldName → giá trị
    *  dạng chuỗi; boolean dùng "true"/"false"). Chỉ áp khi tạo mới (không có recordId). */
   defaults?: Record<string, string>;
+  /** (1-entity, TẠO MỚI) Tự sinh SỐ chứng từ khi `field` để TRỐNG lúc lưu.
+   *  `format` hỗ trợ token theo ngày hiện tại: `MM` (tháng 2 số), `yyyy` (năm 4 số),
+   *  `dd` (ngày 2 số); và `{seq}` = số thứ tự tăng dần trong nhóm cùng prefix
+   *  (phần trước {seq}). Vd "MMyyyy-{seq}" → "062026-49". `pad` = số chữ số tối
+   *  thiểu của seq (mặc định 2). Số sinh ra cũng được dùng làm khoá liên kết
+   *  master-detail nếu parentKeyField trỏ tới `field` này. */
+  autoNumber?: { field: string; format: string; pad?: number };
 }
 
 export type ActionStep =

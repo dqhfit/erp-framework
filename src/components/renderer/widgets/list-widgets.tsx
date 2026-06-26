@@ -393,6 +393,15 @@ interface EditableListWidgetProps {
   /** Cột tính client-side: field = tích các factor (vd thành tiền = sl_can × dongia).
    *  Khi sửa 1 factor → cập nhật overlay NGAY (không cần refetch). */
   computedColumns?: Array<{ field: string; product: string[] }>;
+  /** Cột TÍNH read-only (không phải field entity). kind "percentDelta": hiện
+   *  % chênh lệch (row[to] − row[from]) / row[from] × 100 (vd % tăng/giảm giá). */
+  derivedColumns?: Array<{
+    field: string;
+    label?: string;
+    kind: "percentDelta";
+    from: string;
+    to: string;
+  }>;
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
   /** Bulk + dry-run validate (entity-backed) — ListWidget truyền khi không phải
    *  datasource. Có thì "Lưu tất cả" dùng validate→confirm→bulk thay tuần tự. */
@@ -490,6 +499,7 @@ function EditableListWidget({
   editableFields,
   highlightEmptyFields,
   computedColumns,
+  derivedColumns,
   onSave,
   batchOps,
   onRowClick,
@@ -773,7 +783,35 @@ function EditableListWidget({
         );
       },
     }));
-    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỈ khi lưới KHÔNG có cột hành động.
+    // Cột TÍNH read-only (derivedColumns): % chênh lệch giữa 2 cột số. Tăng → đỏ
+    // (danger), giảm → xanh (success). Mẫu số = từ (from); from rỗng/0 → "—".
+    for (const dc of derivedColumns ?? []) {
+      cols.push({
+        id: dc.field,
+        header: columnLabels?.[dc.field] ?? dc.label ?? dc.field,
+        enableGrouping: false,
+        enableSorting: false,
+        meta: { techName: dc.field, noSummary: true },
+        cell: (ctx) => {
+          const row = ctx.row.original as Record<string, unknown>;
+          const from = Number(row[dc.from]);
+          const to = Number(row[dc.to]);
+          if (!Number.isFinite(from) || from === 0 || !Number.isFinite(to)) {
+            return <span className="block text-right text-muted">—</span>;
+          }
+          const pct = ((to - from) / from) * 100;
+          const cls = pct > 0 ? "text-danger" : pct < 0 ? "text-success" : "text-muted";
+          const sign = pct > 0 ? "+" : "";
+          return (
+            <span className={`block text-right tabular-nums ${cls}`}>
+              {sign}
+              {pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%
+            </span>
+          );
+        },
+      });
+    }
+    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỉ khi lưới KHÔNG có cột hành động.
     // Có cột hành động (__rowacts__) → ✕ nằm TRONG cột đó (cell __isNew bên dưới).
     const hasActionCol = !!(rowActions && rowActions.length > 0);
     if (newRows.length > 0 && !hasActionCol) {
@@ -874,6 +912,7 @@ function EditableListWidget({
     title,
     rowActionsHidden,
     rowActionsStyle,
+    derivedColumns,
   ]);
 
   const saveAll = async () => {
@@ -1551,6 +1590,7 @@ export function ListWidget({
   editableFields,
   highlightEmptyFields,
   computedColumns,
+  derivedColumns,
   batchEdit,
   excelMode,
   rowLimit,
@@ -1626,6 +1666,14 @@ export function ListWidget({
   /** Cột tính client-side (vd thành tiền = sl_can × dongia) — cập nhật tức thì
    *  khi sửa factor, không cần refetchOnSave. */
   computedColumns?: Array<{ field: string; product: string[] }>;
+  /** Cột TÍNH read-only (% chênh lệch 2 cột số) — pass-through xuống lưới. */
+  derivedColumns?: Array<{
+    field: string;
+    label?: string;
+    kind: "percentDelta";
+    from: string;
+    to: string;
+  }>;
   /** Tích lũy thay đổi, hiện nút "Lưu tất cả" thay vì auto-save. */
   batchEdit?: boolean;
   /** Chế độ bảng tính kiểu Excel với hỗ trợ công thức. */
@@ -2069,6 +2117,32 @@ export function ListWidget({
     },
   }));
 
+  // Cột TÍNH read-only (derivedColumns): % chênh lệch giữa 2 cột số (vd % tăng/
+  // giảm giá = (giá mới − giá cũ)/giá cũ × 100). Tăng → đỏ, giảm → xanh.
+  const derivedFieldColumns = (derivedColumns ?? []).map((dc) => ({
+    accessorKey: dc.field,
+    header: columnLabels?.[dc.field] ?? dc.label ?? dc.field,
+    enableSorting: false,
+    meta: { techName: dc.field, noSummary: true as const },
+    cell: (c: { row: { original: Record<string, unknown> } }) => {
+      const row = c.row.original;
+      const from = Number(row[dc.from]);
+      const to = Number(row[dc.to]);
+      if (!Number.isFinite(from) || from === 0 || !Number.isFinite(to)) {
+        return <span className="block text-right text-muted">—</span>;
+      }
+      const pct = ((to - from) / from) * 100;
+      const cls = pct > 0 ? "text-danger" : pct < 0 ? "text-success" : "text-muted";
+      const sign = pct > 0 ? "+" : "";
+      return (
+        <span className={`block text-right tabular-nums ${cls}`}>
+          {sign}
+          {pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%
+        </span>
+      );
+    },
+  }));
+
   const checkboxCol =
     multiSelect && selectionStateKey
       ? [
@@ -2233,6 +2307,7 @@ export function ListWidget({
     ...actionCol,
     ...checkboxCol,
     ...fieldColumns,
+    ...derivedFieldColumns,
     ...systemHiddenCols,
   ];
 
@@ -2313,6 +2388,7 @@ export function ListWidget({
         editableFields={editableFields}
         highlightEmptyFields={highlightEmptyFields}
         computedColumns={computedColumns}
+        derivedColumns={derivedColumns}
         onSave={saveRecord}
         batchOps={editBatchOps}
         onRowClick={onRowClick}

@@ -190,6 +190,17 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         computedColumns={
           cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
         }
+        derivedColumns={
+          cfg.derivedColumns as
+            | Array<{
+                field: string;
+                label?: string;
+                kind: "percentDelta";
+                from: string;
+                to: string;
+              }>
+            | undefined
+        }
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
