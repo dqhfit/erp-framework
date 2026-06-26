@@ -807,22 +807,28 @@ export function Sidebar() {
                 })
               }
             />
-            <SidebarItem
-              to="/ban-ve/ky-thuat"
-              active={pathname === "/ban-ve/ky-thuat"}
-              icon={<I.FileText size={14} />}
-              collapsed={collapsed}
-              label="Bản vẽ kỹ thuật"
-              isFavorited={favs.isFav("/ban-ve/ky-thuat")}
-              onToggleFavorite={() =>
-                favs.toggle({
-                  id: "/ban-ve/ky-thuat",
-                  to: "/ban-ve/ky-thuat",
-                  label: "Bản vẽ kỹ thuật",
-                  iconName: "FileText",
-                })
-              }
-            />
+            {!isViewer &&
+              (
+                [
+                  ["/ban-ve/ky-thuat", "Bản vẽ kỹ thuật"],
+                  ["/ban-ve/dong-goi", "Bản vẽ đóng gói"],
+                  ["/ban-ve/phat-trien", "Bản vẽ phát triển"],
+                  ["/ban-ve/ai", "Bản vẽ AI"],
+                  ["/ban-ve/mau", "Bản vẽ mẫu"],
+                  ["/ban-ve/dao", "Bản vẽ dao"],
+                ] as const
+              ).map(([to, label]) => (
+                <SidebarItem
+                  key={to}
+                  to={to}
+                  active={pathname === to}
+                  icon={<I.FileText size={14} />}
+                  collapsed={collapsed}
+                  label={label}
+                  isFavorited={favs.isFav(to)}
+                  onToggleFavorite={() => favs.toggle({ id: to, to, label, iconName: "FileText" })}
+                />
+              ))}
             {!isViewer && (
               <SidebarItem
                 to="/sanluong"
