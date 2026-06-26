@@ -235,8 +235,20 @@ này **CHƯA migrate** vào ERP → blocked như 7 form Phase 4. Cần full-impo
   map order finished=true → áp filter cứng = báo cáo RỖNG. Đổi cancelled/finished thành CỘT hiển thị
   (không lọc cứng) để báo cáo hữu dụng.
 
-**CÒN LẠI (ngoài Phase 3 + R50):**
-- R61/R66: chờ user làm rõ ý định.
+**R66 Danh mục TM gỗ — DONE LIVE (2026-06-26):** nhóm menu G1186 "Danh mục" có 4
+mục lá. KH (I1201) + NCC (I1200) đã có trang sẵn. Dựng mới + PUBLISH + LINK 2 mục
+thiếu (bảng `bg_kho`/`bg_nguongocgo` đã migrate table-tier, sync=null ghi được):
+- **I1202 "Danh sách kho"** → trang `danh_sach_kho_tmgo` (d1c9cc4d), list CRUD
+  (makho/tenkho/diachi), 3 dòng.
+- **I1203 "Danh sách nguồn gốc gỗ"** → trang `danh_sach_nguon_goc_go` (a3abd016),
+  list CRUD (tennguongoc), 21 dòng.
+Draft tabbed `danh_muc_thuong_mai_go` cũ thừa (4 mục là node lá riêng) → mồ côi, bỏ.
+
+**CÒN LẠI (cần user quyết):**
+- **R61 Danh sách đơn hàng trắng** (`frmKeHoachHangTrang*`): ĐÃ có ≥3 trang "Kế hoạch
+  hàng trắng" linked (I72→1d4eab00, I1360→6c875959, I1084→351731ea); node I1351 "Kế hoạch
+  đơn hàng trắng Ver2" còn trống. R61 nhiều khả năng TRÙNG → chờ user xác nhận nên bỏ
+  (trùng) hay dựng riêng cho node I1351.
 - R62 nice-to-have: thay ô maddh text bằng order-picker (LookupPicker) thay vì gõ tay.
 - Anh Thiện (4 gap config) + cutover các entity mirror để nút GHI ghi thật.
 
