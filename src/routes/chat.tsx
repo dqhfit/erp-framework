@@ -273,10 +273,14 @@ function MessageItem({
 function ChatPage() {
   const me = useAuth((s) => s.user?.id) ?? "";
   const role = useAuth((s) => s.user?.role);
+  const { from } = Route.useSearch();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  // Viewer truy cập /chat không có AppShell → tự dựng layout full-screen.
-  const isViewer = role === "viewer";
+  // Render gọn (không AppShell) khi: viewer (luôn vào /chat dạng standalone),
+  // HOẶC mở chat từ portal (?from=portal — admin/viewer đều giữ kiểu portal).
+  // Admin mở /chat từ Topbar app chính (không from) → full chrome như cũ.
+  const fromPortal = from === "portal";
+  const standalone = role === "viewer" || fromPortal;
 
   const [convs, setConvs] = useState<ChatConversationRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -617,13 +621,13 @@ function ChatPage() {
   return (
     <div
       className={cn(
-        isViewer
+        standalone
           ? "h-screen flex flex-col bg-bg text-text"
           : "flex-1 flex flex-col min-h-0 overflow-hidden",
       )}
     >
-      {/* Nút quay về Portal — chỉ hiện cho viewer (không có AppShell nav) */}
-      {isViewer && (
+      {/* Nút quay về Portal — hiện khi standalone (không có AppShell nav) */}
+      {standalone && (
         <div className="h-10 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-panel">
           <button
             type="button"
@@ -971,4 +975,10 @@ function ChatPage() {
   );
 }
 
-export const Route = createFileRoute("/chat")({ component: ChatPage });
+export const Route = createFileRoute("/chat")({
+  // `?from=portal` (optional): mở chat từ portal → render gọn + nút "Quay về Portal".
+  validateSearch: (search: Record<string, unknown>) => ({
+    from: search.from === "portal" ? ("portal" as const) : undefined,
+  }),
+  component: ChatPage,
+});

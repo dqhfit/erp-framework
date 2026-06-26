@@ -11,7 +11,10 @@ import { useAuth } from "@/stores/auth";
 
 const chat = createChatClient("");
 
-export function ChatNavButton() {
+/** `fromPortal`: khi mở chat TỪ portal → kèm `?from=portal` để /chat
+ *  render gọn (không chrome admin) + có nút "Quay về Portal", bất kể role.
+ *  Topbar app chính KHÔNG truyền cờ này → /chat giữ full chrome như cũ. */
+export function ChatNavButton({ fromPortal = false }: { fromPortal?: boolean }) {
   const me = useAuth((s) => s.user?.id) ?? "";
   const navigate = useNavigate();
   const [count, setCount] = useState(0);
@@ -46,7 +49,7 @@ export function ChatNavButton() {
   return (
     <button
       type="button"
-      onClick={() => navigate({ to: "/chat" })}
+      onClick={() => navigate({ to: "/chat", search: { from: fromPortal ? "portal" : undefined } })}
       title="Tin nhắn nội bộ"
       className="relative w-8 h-8 rounded flex items-center justify-center text-muted hover:text-text hover:bg-hover/60 transition-colors"
     >

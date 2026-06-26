@@ -353,8 +353,9 @@ function PortalRoute() {
           </Button>
         )}
 
-        {/* Nút chat nội bộ — badge số tin chưa đọc, bấm → /chat */}
-        <ChatNavButton />
+        {/* Nút chat nội bộ — badge số tin chưa đọc, bấm → /chat?from=portal
+            (giữ kiểu portal: render gọn + nút "Quay về Portal", bất kể role) */}
+        <ChatNavButton fromPortal />
 
         <Button
           variant={agentOpen ? "primary" : "ghost"}
