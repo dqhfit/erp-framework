@@ -127,8 +127,6 @@ async function listByMasp(
   return out.rows.map((r) => ({ _id: r.id, data: (r.data ?? {}) as Record<string, unknown> }));
 }
 
-const isActive = (v: unknown) => v == null || !["0", "false"].includes(String(v));
-
 export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
   // ── Công đoạn (c_location *-PROD) mà user đang đăng nhập được xếp ──
   //    Map: users.legacy_username = trtb_scan_op.f_user_id (username DQHF) →
@@ -445,7 +443,10 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     return reply.send({ mode: "detail", rows });
   });
 
-  // ── Thông tin sản phẩm cho 4 tab ──
+  // ── Thông tin sản phẩm cho 6 tab (bản vẽ / dao / gỗ ván / ngũ kim / đóng gói / sơn) ──
+  //   Dùng trực tiếp SQL bảng thật (không qua getRecordStore/EAV) vì data nằm ở
+  //   physical table (tier=table, entity_records rỗng). Fail-safe: bảng chưa tồn tại
+  //   trên dev → trả [] không throw 500.
   app.get("/banvesvc/product", async (req, reply) => {
     const auth = await authView(db, req, reply);
     if (!auth) return;
@@ -453,81 +454,101 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
     if (!masp) return reply.send({ found: false });
     const cid = auth.companyId;
 
-    const [spId, bvId, gvId, nkId] = await Promise.all([
-      entityIdByName(db, cid, "tr_sanpham"),
-      entityIdByName(db, cid, "tr_banve"),
-      entityIdByName(db, cid, "tr_dinhmuc_govan"),
-      entityIdByName(db, cid, "tr_dinhmuc_ngukim"),
-    ]);
-
     // Tên sản phẩm
-    let tensp: string | null = null;
-    if (spId) {
-      const sp = await listByMasp(db, cid, spId, masp, 1);
-      tensp = (sp[0]?.data.tensp as string | null) ?? null;
+    const spRows = (await db.execute(
+      sql`SELECT f_tensp AS tensp FROM tr_sanpham
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_masp = ${masp}
+          LIMIT 1`,
+    )) as unknown as Array<{ tensp: string | null }>;
+    const tensp = spRows[0]?.tensp ?? null;
+
+    // Bản vẽ active có file — frontend tách theo phanloai (Bản vẽ dao / còn lại)
+    const banveRows = (await db.execute(
+      sql`SELECT id::text AS id, f_phanloai AS phanloai
+          FROM tr_banve
+          WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
+            AND f_masp = ${masp}
+            AND COALESCE(ext->>'active', 'true') NOT IN ('0', 'false')
+            AND (COALESCE(f_filepath, '') <> '' OR COALESCE(f_pdffile, '') <> '')
+          ORDER BY created_at DESC LIMIT 200`,
+    )) as unknown as Array<{ id: string; phanloai: string | null }>;
+    const banve = banveRows.map((r) => ({ id: r.id, phanloai: r.phanloai ?? "" }));
+
+    // Định mức gỗ ván — bảng thật tr_dinhmuc_govan
+    let govan: Record<string, unknown>[] = [];
+    try {
+      govan = (await db.execute(
+        sql`SELECT f_stt AS stt, f_mact AS mact, f_chitiet AS chitiet,
+                   f_nguyenlieu AS nguyenlieu,
+                   f_dayy_tc AS dayy_tc, f_rong_tc AS rong_tc, f_dai_tc AS dai_tc,
+                   f_soluong_tc AS soluong_tc, f_m3_tc AS m3_tc,
+                   f_phoi_tructiep AS phoi_tructiep, f_phoi_ghep AS phoi_ghep,
+                   f_dayy_sc AS dayy_sc, f_rong_sc AS rong_sc, f_dai_sc AS dai_sc,
+                   f_mong1 AS mong1, f_mong2 AS mong2,
+                   f_veneer_matchinh AS veneer_matchinh, f_veneer_matphu AS veneer_matphu,
+                   f_veneer_canhngan AS veneer_canhngan, f_veneer_canhdai AS veneer_canhdai,
+                   f_veneer_dan_canh AS veneer_dan_canh,
+                   f_uv_matchinh AS uv_matchinh, f_uv_matphu AS uv_matphu,
+                   f_uv_canhdai AS uv_canhdai, f_uv_canhngan AS uv_canhngan,
+                   f_fsc_100 AS fsc_100, f_fsc_mix AS fsc_mix, f_fsc_cw AS fsc_cw,
+                   f_ghichu AS ghichu
+            FROM tr_dinhmuc_govan
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_masp = ${masp}
+            ORDER BY f_stt, f_mact LIMIT 500`,
+      )) as unknown as Record<string, unknown>[];
+    } catch {
+      /* fail-safe: bảng chưa migrate trên môi trường này */
     }
 
-    // Bản vẽ (mọi loại active) — frontend tách theo phanloai cho 2 tab.
-    const banve = bvId
-      ? (await listByMasp(db, cid, bvId, masp)).flatMap((r) =>
-          isActive(r.data.active) && r.data.filepath
-            ? [{ id: r._id, phanloai: (r.data.phanloai as string | null) ?? "" }]
-            : [],
-        )
-      : [];
+    // Định mức ngũ kim — bảng thật tr_dinhmuc_ngukim
+    // Lưu ý: tr_dinhmuc_ngukim không có cột mausac → trả NULL an toàn
+    let ngukim: Record<string, unknown>[] = [];
+    try {
+      ngukim = (await db.execute(
+        sql`SELECT f_mavt AS mavt, f_chitiet AS chitiet, f_quycach AS quycach,
+                   NULL AS mausac,
+                   f_soluong AS soluong, f_dvt AS dvt,
+                   f_hwforai AS hwforai, f_hwforww AS hwforww, f_hwforpacking AS hwforpacking,
+                   f_ghichu AS ghichu
+            FROM tr_dinhmuc_ngukim
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_masp = ${masp}
+            ORDER BY f_stt LIMIT 500`,
+      )) as unknown as Record<string, unknown>[];
+    } catch {
+      /* fail-safe: bảng chưa migrate */
+    }
 
-    // Định mức gỗ ván (grid)
-    const govan = gvId
-      ? (await listByMasp(db, cid, gvId, masp)).map((r) => ({
-          stt: r.data.stt ?? null,
-          mact: r.data.mact ?? null,
-          chitiet: r.data.chitiet ?? null,
-          nguyenlieu: r.data.nguyenlieu ?? null,
-          dayy_tc: r.data.dayy_tc ?? null,
-          rong_tc: r.data.rong_tc ?? null,
-          dai_tc: r.data.dai_tc ?? null,
-          soluong_tc: r.data.soluong_tc ?? null,
-          m3_tc: r.data.m3_tc ?? null,
-          phoi_tructiep: r.data.phoi_tructiep ?? null,
-          phoi_ghep: r.data.phoi_ghep ?? null,
-          dayy_sc: r.data.dayy_sc ?? null,
-          rong_sc: r.data.rong_sc ?? null,
-          dai_sc: r.data.dai_sc ?? null,
-          mong1: r.data.mong1 ?? null,
-          mong2: r.data.mong2 ?? null,
-          veneer_matchinh: r.data.veneer_matchinh ?? null,
-          veneer_matphu: r.data.veneer_matphu ?? null,
-          veneer_canhngan: r.data.veneer_canhngan ?? null,
-          veneer_canhdai: r.data.veneer_canhdai ?? null,
-          veneer_dan_canh: r.data.veneer_dan_canh ?? null,
-          uv_matchinh: r.data.uv_matchinh ?? null,
-          uv_matphu: r.data.uv_matphu ?? null,
-          uv_canhdai: r.data.uv_canhdai ?? null,
-          uv_canhngan: r.data.uv_canhngan ?? null,
-          fsc_100: r.data.fsc_100 ?? null,
-          fsc_mix: r.data.fsc_mix ?? null,
-          fsc_cw: r.data.fsc_cw ?? null,
-          ghichu: r.data.ghichu ?? null,
-        }))
-      : [];
+    // Định mức đóng gói — bảng thật tr_dinhmuc_donggoi
+    let donggoi: Record<string, unknown>[] = [];
+    try {
+      donggoi = (await db.execute(
+        sql`SELECT f_stt AS stt, f_ccode AS ccode, f_chitiet AS chitiet,
+                   f_quycach AS quycach, f_soluong AS soluong, f_dvt AS dvt,
+                   f_nhom AS nhom, f_ghichu AS ghichu
+            FROM tr_dinhmuc_donggoi
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_masp = ${masp}
+            ORDER BY f_stt LIMIT 500`,
+      )) as unknown as Record<string, unknown>[];
+    } catch {
+      /* fail-safe: bảng chưa migrate */
+    }
 
-    // Định mức ngũ kim (grid)
-    const ngukim = nkId
-      ? (await listByMasp(db, cid, nkId, masp)).map((r) => ({
-          mavt: r.data.mavt ?? null,
-          chitiet: r.data.chitiet ?? null,
-          quycach: r.data.quycach ?? null,
-          mausac: r.data.mausac ?? null,
-          soluong: r.data.soluong ?? null,
-          dvt: r.data.dvt ?? null,
-          hwforai: r.data.hwforai ?? null,
-          hwforww: r.data.hwforww ?? null,
-          hwforpacking: r.data.hwforpacking ?? null,
-          ghichu: r.data.ghichu ?? null,
-        }))
-      : [];
+    // Định mức sơn — bảng thật tr_dinhmuc_son (bước sơn × chi tiết)
+    let son: Record<string, unknown>[] = [];
+    try {
+      son = (await db.execute(
+        sql`SELECT f_stt AS stt, f_buoc AS buoc, f_mact AS mact, f_tenct AS tenct,
+                   f_sl_m2 AS sl_m2, f_sl_sp AS sl_sp, f_dvt AS dvt,
+                   f_nhom AS nhom, f_mamau AS mamau, f_ghichu AS ghichu
+            FROM tr_dinhmuc_son
+            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL AND f_masp = ${masp}
+            ORDER BY f_stt, f_mact LIMIT 500`,
+      )) as unknown as Record<string, unknown>[];
+    } catch {
+      /* fail-safe: bảng chưa migrate */
+    }
 
-    return reply.send({ found: true, masp, tensp, banve, govan, ngukim });
+    return reply.send({ found: true, masp, tensp, banve, govan, ngukim, donggoi, son });
   });
 
   // ── Resolve mã quét → masp ──

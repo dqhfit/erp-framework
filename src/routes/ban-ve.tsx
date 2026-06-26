@@ -78,6 +78,28 @@ export interface NguKimRow {
   hwforpacking: unknown;
   ghichu: unknown;
 }
+export interface DongGoiRow {
+  stt: unknown;
+  ccode: unknown;
+  chitiet: unknown;
+  quycach: unknown;
+  soluong: unknown;
+  dvt: unknown;
+  nhom: unknown;
+  ghichu: unknown;
+}
+export interface SonRow {
+  stt: unknown;
+  buoc: unknown;
+  mact: unknown;
+  tenct: unknown;
+  sl_m2: unknown;
+  sl_sp: unknown;
+  dvt: unknown;
+  nhom: unknown;
+  mamau: unknown;
+  ghichu: unknown;
+}
 interface Product {
   found: boolean;
   masp?: string;
@@ -85,10 +107,12 @@ interface Product {
   banve?: BanVeItem[];
   govan?: GoVanRow[];
   ngukim?: NguKimRow[];
+  donggoi?: DongGoiRow[];
+  son?: SonRow[];
 }
 
 const LS_MASP = "banve:lastmasp";
-type Tab = "banve" | "dao" | "govan" | "ngukim";
+type Tab = "banve" | "dao" | "govan" | "ngukim" | "donggoi" | "son";
 
 function BanVePage() {
   const navigate = useNavigate();
@@ -214,6 +238,8 @@ function BanVePage() {
   const banveList = (product?.banve ?? []).filter((b) => !b.phanloai.startsWith("Bản vẽ dao"));
   const govan = product?.govan ?? [];
   const ngukim = product?.ngukim ?? [];
+  const donggoi = product?.donggoi ?? [];
+  const son = product?.son ?? [];
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col">
@@ -307,6 +333,12 @@ function BanVePage() {
           <TabBtn active={tab === "ngukim"} onClick={() => setTab("ngukim")}>
             Định mức ngũ kim {ngukim.length > 0 && `(${ngukim.length})`}
           </TabBtn>
+          <TabBtn active={tab === "donggoi"} onClick={() => setTab("donggoi")}>
+            Định mức đóng gói {donggoi.length > 0 && `(${donggoi.length})`}
+          </TabBtn>
+          <TabBtn active={tab === "son"} onClick={() => setTab("son")}>
+            Định mức sơn {son.length > 0 && `(${son.length})`}
+          </TabBtn>
         </div>
 
         <div className="pt-1">
@@ -335,6 +367,22 @@ function BanVePage() {
           {tab === "ngukim" &&
             (product?.found ? (
               <NguKimGrid rows={ngukim} />
+            ) : (
+              <div className="text-xs text-muted py-6 text-center">
+                Chọn sản phẩm để xem định mức.
+              </div>
+            ))}
+          {tab === "donggoi" &&
+            (product?.found ? (
+              <DongGoiGrid rows={donggoi} />
+            ) : (
+              <div className="text-xs text-muted py-6 text-center">
+                Chọn sản phẩm để xem định mức.
+              </div>
+            ))}
+          {tab === "son" &&
+            (product?.found ? (
+              <SonGrid rows={son} />
             ) : (
               <div className="text-xs text-muted py-6 text-center">
                 Chọn sản phẩm để xem định mức.
@@ -1085,6 +1133,108 @@ export function NguKimGrid({ rows }: { rows: NguKimRow[] }) {
               <td className="p-2 border border-border/60 text-center text-success font-bold">
                 {flag(r.hwforai)}
               </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function DongGoiGrid({ rows }: { rows: DongGoiRow[] }) {
+  if (rows.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có định mức đóng gói.</div>;
+
+  return (
+    <div className="overflow-x-auto pt-1">
+      <table className="w-full text-xs border-collapse border border-border">
+        <thead className="text-muted bg-panel-2">
+          <tr>
+            <th className="p-2 border border-border text-left font-medium">STT</th>
+            <th className="p-2 border border-border text-left font-medium">Mã chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Quy cách</th>
+            <th className="p-2 border border-border text-right font-medium">Số lượng</th>
+            <th className="p-2 border border-border text-center font-medium">ĐVT</th>
+            <th className="p-2 border border-border text-left font-medium">Nhóm</th>
+            <th className="p-2 border border-border text-left font-medium">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+            <tr key={i} className="hover:bg-hover/20">
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.stt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.ccode ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.chitiet ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{String(r.quycach ?? "")}</td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtNum(r.soluong)}
+              </td>
+              <td className="p-2 border border-border/60 text-center whitespace-nowrap">
+                {String(r.dvt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.nhom ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function SonGrid({ rows }: { rows: SonRow[] }) {
+  if (rows.length === 0)
+    return <div className="text-xs text-muted py-6 text-center">Không có định mức sơn.</div>;
+
+  return (
+    <div className="overflow-x-auto pt-1">
+      <table className="w-full text-xs border-collapse border border-border">
+        <thead className="text-muted bg-panel-2">
+          <tr>
+            <th className="p-2 border border-border text-left font-medium">STT</th>
+            <th className="p-2 border border-border text-left font-medium">Bước sơn</th>
+            <th className="p-2 border border-border text-left font-medium">Mã chi tiết</th>
+            <th className="p-2 border border-border text-left font-medium">Tên chi tiết</th>
+            <th className="p-2 border border-border text-right font-medium">SL/m²</th>
+            <th className="p-2 border border-border text-right font-medium">SL/SP</th>
+            <th className="p-2 border border-border text-center font-medium">ĐVT</th>
+            <th className="p-2 border border-border text-left font-medium">Mã màu</th>
+            <th className="p-2 border border-border text-left font-medium">Nhóm</th>
+            <th className="p-2 border border-border text-left font-medium">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: grid read-only, không reorder
+            <tr key={i} className="hover:bg-hover/20">
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.stt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.buoc ?? "")}</td>
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.mact ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.tenct ?? "")}</td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtNum(r.sl_m2)}
+              </td>
+              <td className="p-2 border border-border/60 text-right whitespace-nowrap">
+                {fmtNum(r.sl_sp)}
+              </td>
+              <td className="p-2 border border-border/60 text-center whitespace-nowrap">
+                {String(r.dvt ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left whitespace-nowrap">
+                {String(r.mamau ?? "")}
+              </td>
+              <td className="p-2 border border-border/60 text-left">{String(r.nhom ?? "")}</td>
               <td className="p-2 border border-border/60 text-left">{String(r.ghichu ?? "")}</td>
             </tr>
           ))}
